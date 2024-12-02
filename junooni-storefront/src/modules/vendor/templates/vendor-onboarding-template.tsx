@@ -13,7 +13,7 @@ export const VENDOR_VIEW = {
 }
 
 const VendorTemplate = () => {
-  const [currentView, setCurrentView] = useState<VendorView>(VENDOR_VIEW.REGISTER)
+  const [currentView, setCurrentView] = useState<VendorView>(VENDOR_VIEW.SIGN_IN)
 
   return (
     <div className="w-full flex justify-center py-24">

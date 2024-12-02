@@ -7,17 +7,20 @@ import { SubmitButton } from "@modules/checkout/components/submit-button";
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 import { VendorView } from "../../templates/vendor-onboarding-template";
 
-type Props = {
+interface VendorRegisterProps {
   setCurrentView: (view: VendorView) => void;
-};
+}
 
-const VendorRegister = ({ setCurrentView }: Props) => {
+
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL;
+
+const VendorRegister = ({ setCurrentView }: VendorRegisterProps) => {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
-  
   // Step 1: Handle email/password registration
   const handleInitialSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -29,17 +32,13 @@ const VendorRegister = ({ setCurrentView }: Props) => {
       const email = formData.get("email")?.toString();
       const password = formData.get("password")?.toString();
 
-      const response = await fetch(
-        "http://localhost:9000/auth/vendor/emailpass/register",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            
-          },
-          body: JSON.stringify({ email, password }),
-        }
-      );
+      const response = await fetch(`${BACKEND_URL}/auth/vendor/emailpass/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -47,10 +46,12 @@ const VendorRegister = ({ setCurrentView }: Props) => {
       }
 
       const data = await response.json();
-      setAuthToken(data.token);
+     
+      const token = data.token;
+      setAuthToken(token); // Update state for future use
+      
       setStep(2); // Move to next step after successful registration
     } catch (error) {
-      console.error("Initial Registration Error:", error);
       setMessage(error instanceof Error ? error.message : "Registration failed");
     } finally {
       setLoading(false);
@@ -62,7 +63,7 @@ const VendorRegister = ({ setCurrentView }: Props) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
-
+  
     try {
       const formData = new FormData(e.currentTarget);
       const vendorData = {
@@ -74,27 +75,28 @@ const VendorRegister = ({ setCurrentView }: Props) => {
           last_name: formData.get("last_name")?.toString(),
         },
       };
-
-      const response = await fetch("http://localhost:9000/vendors", {
+  
+      console.log("Vendor Data Payload:", vendorData);
+  
+      const token = authToken;
+      console.log("Authorization Header:", `Bearer ${token}`);
+  
+      const response = await fetch(`${BACKEND_URL}/vendors`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(vendorData),
       });
-
+  
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(errorText);
       }
-
-      // Registration complete - you can redirect or show success message
+  
       setMessage("Registration successful!");
-      // Optional: Redirect to dashboard or signin
-      // setCurrentView("SIGN_IN");
     } catch (error) {
-      console.error("Vendor Details Error:", error);
       setMessage(error instanceof Error ? error.message : "Failed to create vendor profile");
     } finally {
       setLoading(false);
@@ -102,40 +104,18 @@ const VendorRegister = ({ setCurrentView }: Props) => {
   };
 
   return (
-    <div className="max-w-sm flex flex-col items-center">
-      <h1 className="text-large-semi uppercase mb-6">
-        Become a Medusa Store Vendor
-      </h1>
-      
+    <div>
+      <h1>Vendor Registration</h1>
       {step === 1 ? (
-        // Step 1: Email and Password Form
-        <>
-          <p className="text-center text-base-regular text-ui-fg-base mb-4">
-            Create your account credentials
-          </p>
-          <form className="w-full flex flex-col" onSubmit={handleInitialSignup}>
-            <div className="flex flex-col w-full gap-y-2">
-              <Input
-                label="Email"
-                name="email"
-                required
-                type="email"
-                autoComplete="email"
-              />
-              <Input
-                label="Password"
-                name="password"
-                required
-                type="password"
-                autoComplete="new-password"
-              />
-            </div>
-            {message && <ErrorMessage error={message} />}
+        <form onSubmit={handleInitialSignup}>
+          <Input label="Email" name="email" required />
+          <Input label="Password" name="password" required type="password" />
+          {message && <ErrorMessage error={message} />}
           <SubmitButton>{loading ? "Processing..." : "Continue"}</SubmitButton>
         </form>
-        </>
       ) : (
         <form onSubmit={handleVendorDetails}>
+          <Input label="Email" name="email" required />
           <Input label="Company Name" name="company_name" required />
           <Input label="Handle" name="handle" required />
           <Input label="First Name" name="first_name" required />
@@ -143,30 +123,10 @@ const VendorRegister = ({ setCurrentView }: Props) => {
           {message && <ErrorMessage error={message} />}
           <SubmitButton>{loading ? "Processing..." : "Submit"}</SubmitButton>
         </form>
-        </>
       )}
-
-      <span className="text-center text-ui-fg-base text-small-regular mt-6">
-        By creating a vendor account, you agree to Medusa Store&apos;s{" "}
-        <LocalizedClientLink href="/content/privacy-policy" className="underline">
-          Privacy Policy
-        </LocalizedClientLink>{" "}
-        and{" "}
-        <LocalizedClientLink href="/content/terms-of-use" className="underline">
-          Terms of Use
-        </LocalizedClientLink>
-        .
-      </span>
-
-      <span className="text-center text-ui-fg-base text-small-regular mt-6">
-        Already a vendor?{" "}
-        <button onClick={() => setCurrentView("SIGN_IN")} className="underline">
-          Sign in
-        </button>
-        .
-      </span>
     </div>
   );
 };
 
 export default VendorRegister;
+
