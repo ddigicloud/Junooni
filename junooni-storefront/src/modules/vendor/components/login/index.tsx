@@ -1,82 +1,104 @@
-// src/modules/vendors/components/login/index.tsx
+"use client"; // include with Next.js 13+
 
-"use client"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { VendorView } from "../../templates/vendor-onboarding-template";
 
-import { useFormState } from "react-dom"
-import Input from "@modules/common/components/input"
-import { SubmitButton } from "@modules/checkout/components/submit-button"
-import ErrorMessage from "@modules/checkout/components/error-message"
-import { VendorView } from "@modules/vendor/templates/vendor-onboarding-template"
-
-type Props = {
-  setCurrentView: (view: VendorView) => void
+interface VendorLoginProps {
+  setCurrentView: (view: VendorView) => void;
 }
 
-async function loginVendor(prevState: any, formData: FormData) {
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/vendors/login`,
-      {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      }
-    )
+export default function VendorLogin({ setCurrentView }: VendorLoginProps) {
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const router = useRouter();
 
-    if (!response.ok) {
-      const error = await response.json()
-      return error.message
+  const handleLogin = async (
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      setError("Email and Password are required.");
+      return;
     }
 
-    return null
-  } catch (error) {
-    return "An error occurred during login"
-  }
-}
+    setLoading(true);
+    setError("");
 
-const VendorLogin = ({ setCurrentView }: Props) => {
-  const [message, formAction] = useFormState(loginVendor, null)
+    try {
+      // Obtain JWT token for the vendor
+      const { token } = await fetch(
+        `http://localhost:9000/auth/vendor/emailpass`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        }
+      ).then((res) => {
+        if (!res.ok) {
+          throw new Error("Invalid email or password");
+        }
+        return res.json();
+      });
+
+      // Save token to localStorage
+      localStorage.setItem("vendorToken", token);
+
+      // Redirect to the vendor dashboard
+      router.push("/vendor/dashboard");
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="max-w-sm flex flex-col items-center">
-      <h1 className="text-large-semi uppercase mb-6">Welcome Back</h1>
-      <p className="text-center text-base-regular text-ui-fg-base mb-8">
-        Sign in to your vendor account
-      </p>
-      <form className="w-full flex flex-col" action={formAction}>
-        <div className="flex flex-col w-full gap-y-2">
-          <Input
-            label="Email"
-            name="email"
-            type="email"
-            title="Enter your email address"
-            autoComplete="email"
-            required
-          />
-          <Input
-            label="Password"
-            name="password"
-            type="password"
-            title="Enter your password"
-            autoComplete="current-password"
-            required
-          />
-        </div>
-        <ErrorMessage error={message} />
-        <SubmitButton className="w-full mt-6">Sign in</SubmitButton>
+    <div className="w-full max-w-md">
+      <form className="space-y-4">
+        <input
+          type="email"
+          name="email"
+          value={email}
+          placeholder="Email"
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full p-2 border rounded"
+        />
+        <input
+          type="password"
+          name="password"
+          value={password}
+          placeholder="Password"
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-2 border rounded"
+        />
+        <button
+          disabled={loading}
+          onClick={handleLogin}
+          className="w-full p-2 bg-blue-500 text-white rounded"
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+        {error && <p className="text-red-500">{error}</p>}
       </form>
-      <span className="text-center text-ui-fg-base text-small-regular mt-6">
-        Not a vendor yet?{" "}
+      <p className="mt-4 text-center">
+        Don't have an account?{" "}
         <button
           onClick={() => setCurrentView("REGISTER")}
-          className="underline"
+          className="text-blue-500 hover:underline"
         >
-          Join us
+          Register
         </button>
-        .
-      </span>
+      </p>
     </div>
-  )
+  );
 }
-
-export default VendorLogin
