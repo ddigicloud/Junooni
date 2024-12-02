@@ -131,50 +131,18 @@ const VendorRegister = ({ setCurrentView }: Props) => {
               />
             </div>
             {message && <ErrorMessage error={message} />}
-            <SubmitButton className="w-full mt-6">
-              {loading ? "Processing..." : "Continue"}
-            </SubmitButton>
-          </form>
+          <SubmitButton>{loading ? "Processing..." : "Continue"}</SubmitButton>
+        </form>
         </>
       ) : (
-        // Step 2: Vendor Details Form
-        <>
-          <p className="text-center text-base-regular text-ui-fg-base mb-4">
-            Complete your vendor profile
-          </p>
-          <form className="w-full flex flex-col" onSubmit={handleVendorDetails}>
-            <div className="flex flex-col w-full gap-y-2">
-              <Input
-                label="Company Name"
-                name="company_name"
-                required
-                autoComplete="organization"
-              />
-              <Input
-                label="Handle (URL identifier)"
-                name="handle"
-                required
-                pattern="[a-z0-9-]+"
-                title="Lowercase letters, numbers, and hyphens only"
-              />
-              <Input
-                label="First Name"
-                name="first_name"
-                required
-                autoComplete="given-name"
-              />
-              <Input
-                label="Last Name"
-                name="last_name"
-                required
-                autoComplete="family-name"
-              />
-            </div>
-            {message && <ErrorMessage error={message} />}
-            <SubmitButton className="w-full mt-6">
-              {loading ? "Creating Profile..." : "Complete Registration"}
-            </SubmitButton>
-          </form>
+        <form onSubmit={handleVendorDetails}>
+          <Input label="Company Name" name="company_name" required />
+          <Input label="Handle" name="handle" required />
+          <Input label="First Name" name="first_name" required />
+          <Input label="Last Name" name="last_name" required />
+          {message && <ErrorMessage error={message} />}
+          <SubmitButton>{loading ? "Processing..." : "Submit"}</SubmitButton>
+        </form>
         </>
       )}
 
