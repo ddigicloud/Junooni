@@ -55,6 +55,7 @@ const MockupGenerator = ({ designElements, currentView, baseImages, printingArea
           y: printingArea.y,
           width: printingArea.width,
           height: printingArea.height,
+          skewX: 0.7,
           rotation: 0,
           scale: 1
       }
