@@ -25,13 +25,13 @@ export default async function Footer() {
             {product_categories && product_categories?.length > 0 && (
               <div className="flex flex-col gap-y-2">
                 <span className="txt-small-plus txt-ui-fg-base">
-                  Categories
+                  Junooni Categories
                 </span>
                 <ul
                   className="grid grid-cols-1 gap-2"
                   data-testid="footer-categories"
                 >
-                  {product_categories?.slice(0, 6).map((c) => {
+                  {product_categories.map((c) => {
                     if (c.parent_category) {
                       return
                     }
@@ -58,6 +58,7 @@ export default async function Footer() {
                         >
                           {c.name}
                         </LocalizedClientLink>
+                       
                         {children && (
                           <ul className="grid grid-cols-1 ml-3 gap-2">
                             {children &&

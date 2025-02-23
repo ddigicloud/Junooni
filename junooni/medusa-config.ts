@@ -24,5 +24,8 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/blank",
     },
+    {
+      resolve: "./src/modules/size-chart",
+    }
   ]
 })

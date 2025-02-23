@@ -1,0 +1,1 @@
+{"version":3,"file":"cancel-transfer.d.ts","sourceRoot":"","sources":["../../../src/workflow/order/cancel-transfer.ts"],"names":[],"mappings":"AAAA,MAAM,MAAM,uCAAuC,GAAG;IACpD,QAAQ,EAAE,MAAM,CAAA;IAChB,iBAAiB,EAAE,MAAM,CAAA;IACzB,UAAU,EAAE,UAAU,GAAG,MAAM,CAAA;CAChC,CAAA"}

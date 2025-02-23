@@ -49,7 +49,8 @@ export const POST = async (
   );
 
   // Create vendor
-  let vendor = await marketplaceModuleService.createVendors([vendorData]);
+  //let vendor = await marketplaceModuleService.createVendors([vendorData]);
+  let vendor = await marketplaceModuleService.createVendors(vendorData)
 
   // Create vendor admin
   await createVendorAdminWorkflow(req.scope).run({
@@ -106,3 +107,4 @@ export const GET = async (
     );
   }
 };
+

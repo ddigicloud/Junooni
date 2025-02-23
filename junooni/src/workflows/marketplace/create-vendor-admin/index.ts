@@ -31,6 +31,7 @@ export const createVendorWorkflow = createWorkflow(
 
     return new WorkflowResponse(vendorAdmin);
   }
+  
 );
 
 export default createVendorWorkflow;

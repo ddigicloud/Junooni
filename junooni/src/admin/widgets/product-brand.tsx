@@ -1,44 +1,57 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { DetailWidgetProps, AdminProduct } from "@medusajs/framework/types"
-import { useEffect, useState } from "react"
-import { Container, Heading } from "@medusajs/ui"
+import { clx, Container, Heading, Text } from "@medusajs/ui"
+import { useQuery } from "@tanstack/react-query"
+import { sdk } from "../lib/sdk"
+
+type AdminProductBrand = AdminProduct & {
+  brand?: {
+    id: string
+    name: string
+  }
+}
 
 const ProductBrandWidget = ({ 
-  data,
+  data: product,
 }: DetailWidgetProps<AdminProduct>) => {
-  const [brand, setBrand] = useState<
-    Record<string, string> | undefined
-  >()
-  const [loading, setLoading] = useState(true)
+  const { data: queryResult } = useQuery({
+    queryFn: () => sdk.admin.product.retrieve(product.id, {
+      fields: "+brand.*",
+    }),
+    queryKey: [["product", product.id]],
+  })
+  const brandName = (queryResult?.product as AdminProductBrand)?.brand?.name
 
-  useEffect(() => {
-    if (!loading) {
-      return
-    }
-
-    fetch(`/admin/products/${data.id}/brand`, {
-      credentials: "include",
-    })
-    .then((res) => res.json())
-    .then(({ brand }) => {
-      setBrand(brand)
-      setLoading(false)
-    })
-  }, [loading])
-  
   return (
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">Brand</Heading>
+        <div>
+          <Heading level="h3">Brand</Heading>
+        </div>
       </div>
-      {loading && <span>Loading...</span>}
-      {brand && <span>Name: {brand.name}</span>}
+      <div
+        className={clx(
+          `text-ui-fg-subtle grid grid-cols-2 items-center px-6 py-4`
+        )}
+      >
+        <Text size="small" weight="plus" leading="compact">
+          Name
+        </Text>
+
+        <Text
+          size="small"
+          leading="compact"
+          className="whitespace-pre-line text-pretty"
+        >
+          {brandName || "-"}
+        </Text>
+      </div>
     </Container>
   )
 }
 
 export const config = defineWidgetConfig({
-  zone: "product.details.before",
+  zone: "product.details.side.after",
 })
 
 export default ProductBrandWidget

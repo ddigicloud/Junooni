@@ -8,7 +8,14 @@ import { AdminCreateProduct } from "@medusajs/medusa/api/admin/products/validato
 import { createFindParams } from "@medusajs/medusa/api/utils/validators"
 import { z } from "zod"
 import cors from "cors"
+import { PostAdminCreateBrand } from "./admin/brand/validators"
+
 import { PostCreateBlank } from "./blank/route"
+import multer from "multer"
+
+
+const upload = multer({ storage: multer.memoryStorage() })
+
 const allowedOrigins = [
   "http://localhost:8000", // Storefront
   "http://localhost:3000", // Vendor Dashboard
@@ -112,14 +119,38 @@ export default defineMiddlewares({
       ],
     },
     {
+      matcher: "/vendors/uploads",
+      method: ["OPTIONS", "POST"],
+      middlewares: [
+        (req, res, next) => {
+          const configModule = req.scope.resolve("configModule");
+          cors({
+            origin: true,
+            credentials: true,
+          })(req, res, next);
+        },
+        upload.array("files"),
+        authenticate("vendor", ["session", "bearer"])
+       
+      ],
+    },
+    {
       matcher: "/blank",
       method: "POST",
       middlewares: [
         validateAndTransformBody(PostCreateBlank),
       ],
     },
+      
     {
-      matcher: "/admin/brand",
+      matcher: "/admin/brands",
+      method: "POST",
+      middlewares: [
+        validateAndTransformBody(PostAdminCreateBrand),
+      ],
+    },
+    {
+      matcher: "/admin/brands",
       method: "GET",
       middlewares: [
         validateAndTransformQuery(
@@ -135,7 +166,6 @@ export default defineMiddlewares({
         ),
       ],
     },
-
     {
       matcher: "/admin/orders/*",
       method: "POST",
@@ -147,8 +177,7 @@ export default defineMiddlewares({
       additionalDataValidator: {
         brand_id: z.string().optional(),
       },
-    },
-
-  ],
+    }
+   ],
   
 });

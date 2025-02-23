@@ -2,7 +2,7 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework/http";
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import { ContainerRegistrationKeys, ProductStatus } from "@medusajs/framework/utils";
 import MarketplaceModuleService from "../../../modules/marketplace/service";
 import { MARKETPLACE_MODULE } from "../../../modules/marketplace";
 
@@ -33,7 +33,7 @@ export const GET = async (
     data: [vendor],
   } = await query.graph({
     entity: "vendor",
-    fields: ["products.*"],
+    fields: ["products.*", "products.variants.*","products.options.*","products.variants.options.*"],
     filters: {
       id: vendorAdmin.vendor.id,
     },
@@ -99,3 +99,4 @@ export const POST = async (
     product,
   });
 };
+
