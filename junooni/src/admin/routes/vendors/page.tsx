@@ -25,7 +25,8 @@ const VendorsPage = () => {
 
   const fetchVendors = async () => {
     try {
-      const response = await fetch(`/vendors`)
+      const response = await fetch(`http://localhost:9000/vendors`)
+      console.log(response)
       const data = await response.json()
       setVendors(data.vendors)
     } catch (error) {
@@ -37,7 +38,7 @@ const VendorsPage = () => {
 
   return (
     <Container>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <Heading level="h1">Vendors</Heading>
         <Link to="/vendors/register">
           <Button variant="primary">Create Vendor</Button>
@@ -73,7 +74,7 @@ const VendorsPage = () => {
                   ))}
                 </Table.Cell>
                 <Table.Cell>
-                  <Link to={`/vendor/${vendor.vendor_id}`}>
+                  <Link to={`/vendors/${vendor.vendor_id}`}>
                     <Button variant="secondary" size="small">
                       Edit
                     </Button>

@@ -1,3 +1,119 @@
+// import { defineMiddlewares, authenticate } from "@medusajs/medusa"
+// import type { MedusaNextFunction, MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+// import {  validateAndTransformQuery } from "@medusajs/framework/http"
+// import { ConfigModule } from "@medusajs/framework/types"
+// import { parseCorsOrigins } from "@medusajs/framework/utils"
+// import { validateAndTransformBody } from "@medusajs/framework"
+// import { AdminCreateProduct } from "@medusajs/medusa/api/admin/products/validators"
+// import { createFindParams } from "@medusajs/medusa/api/utils/validators"
+// import { z } from "zod"
+// import cors from "cors"
+// import { PostAdminCreateBrand } from "./admin/brand/validators"
+
+// import { PostCreateBlank } from "./blank/route"
+// import multer from "multer"
+
+
+// const upload = multer({ storage: multer.memoryStorage() })
+
+// const allowedOrigins = [
+//   "http://localhost:8000", // Storefront
+//   "http://localhost:3000",
+//   "http://localhost:5173"
+// ];
+
+// export const GetBrandsSchema = createFindParams()
+// export default defineMiddlewares({
+//   routes: [
+//     {
+//       matcher: "/vendors",
+//       method: "POST",
+//       middlewares: [
+//         authenticate("vendor", ["session", "bearer"], {
+//           allowUnregistered: true,
+//         }),
+//       ],
+//     },
+//     {
+//       matcher: "/vendors/*",
+//       middlewares: [
+//         authenticate("vendor", ["session", "bearer"]),
+//       ]
+//     },
+//     {
+//       matcher: "/vendors/products",
+//       method: "POST",
+//       middlewares: [
+//         authenticate("vendor", ["session", "bearer"]),
+//         validateAndTransformBody(AdminCreateProduct),
+//       ]
+//     }
+// ,
+//     {
+//       matcher: "/vendors/uploads",
+//       method: ["OPTIONS", "POST"],
+//       middlewares: [
+//         (req, res, next) => {
+//           const configModule = req.scope.resolve("configModule");
+//           cors({
+//             origin: true,
+//             credentials: true,
+//           })(req, res, next);
+//         },
+//         upload.array("files"),
+//         authenticate("vendor", ["session", "bearer"])
+       
+//       ],
+//     },
+//     {
+//       matcher: "/blank",
+//       method: "POST",
+//       middlewares: [
+//         validateAndTransformBody(PostCreateBlank),
+//       ],
+//     },
+      
+//     {
+//       matcher: "/admin/brands",
+//       method: "POST",
+//       middlewares: [
+//         validateAndTransformBody(PostAdminCreateBrand),
+//       ],
+//     },
+//     {
+//       matcher: "/admin/brands",
+//       method: "GET",
+//       middlewares: [
+//         validateAndTransformQuery(
+//           GetBrandsSchema,
+//           {
+//             defaults: [
+//               "id",
+//               "name",
+//               "products.*",
+//             ],
+//             isList: true,
+//           }
+//         ),
+//       ],
+//     },
+//     {
+//       matcher: "/admin/orders/*",
+//       method: "POST",
+//       middlewares: [authenticate("vendor", ["session", "bearer"])],
+//     },
+//     {
+//       matcher: "/admin/products",
+//       method: ["POST"],
+//       additionalDataValidator: {
+//         brand_id: z.string().optional(),
+//       },
+//     }
+//    ],
+  
+// });
+
+
 import { defineMiddlewares, authenticate } from "@medusajs/medusa"
 import type { MedusaNextFunction, MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import {  validateAndTransformQuery } from "@medusajs/framework/http"
@@ -19,6 +135,7 @@ const upload = multer({ storage: multer.memoryStorage() })
 const allowedOrigins = [
   "http://localhost:8000", // Storefront
   "http://localhost:3000", // Vendor Dashboard
+  "http://localhost:5173"
 ];
 
 export const GetBrandsSchema = createFindParams()
@@ -34,7 +151,7 @@ export default defineMiddlewares({
           // Define multiple origins
           const allowedOrigins = [
             ...parseCorsOrigins(configModule.projectConfig.http.storeCors),
-            "http://localhost:3000" // Add vendor dashboard origin here
+            "http://localhost:5173" // Add vendor dashboard origin here
           ];
     
           // CORS middleware with dynamic origin handling

@@ -79,17 +79,28 @@
       "schema": "public",
       "indexes": [
         {
+          "keyName": "IDX_vendor_deleted_at",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_vendor_deleted_at\" ON \"vendor\" (deleted_at) WHERE deleted_at IS NULL"
+        },
+        {
           "keyName": "vendor_pkey",
           "columnNames": [
             "id"
           ],
           "composite": false,
+          "constraint": true,
           "primary": true,
           "unique": true
         }
       ],
       "checks": [],
-      "foreignKeys": {}
+      "foreignKeys": {},
+      "nativeEnums": {}
     },
     {
       "columns": {
@@ -178,6 +189,7 @@
           "keyName": "IDX_vendor_admin_email_unique",
           "columnNames": [],
           "composite": false,
+          "constraint": false,
           "primary": false,
           "unique": false,
           "expression": "CREATE UNIQUE INDEX IF NOT EXISTS \"IDX_vendor_admin_email_unique\" ON \"vendor_admin\" (email) WHERE deleted_at IS NULL"
@@ -186,9 +198,19 @@
           "keyName": "IDX_vendor_admin_vendor_id",
           "columnNames": [],
           "composite": false,
+          "constraint": false,
           "primary": false,
           "unique": false,
           "expression": "CREATE INDEX IF NOT EXISTS \"IDX_vendor_admin_vendor_id\" ON \"vendor_admin\" (vendor_id) WHERE deleted_at IS NULL"
+        },
+        {
+          "keyName": "IDX_vendor_admin_deleted_at",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_vendor_admin_deleted_at\" ON \"vendor_admin\" (deleted_at) WHERE deleted_at IS NULL"
         },
         {
           "keyName": "vendor_admin_pkey",
@@ -196,6 +218,7 @@
             "id"
           ],
           "composite": false,
+          "constraint": true,
           "primary": true,
           "unique": true
         }
@@ -214,7 +237,9 @@
           "referencedTableName": "public.vendor",
           "updateRule": "cascade"
         }
-      }
+      },
+      "nativeEnums": {}
     }
-  ]
+  ],
+  "nativeEnums": {}
 }

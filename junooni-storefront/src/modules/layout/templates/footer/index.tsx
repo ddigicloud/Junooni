@@ -1,86 +1,57 @@
-import { getCategoriesList } from "@lib/data/categories"
-import { getCollectionsList } from "@lib/data/collections"
-import { Text, clx } from "@medusajs/ui"
+import { listCategories } from "@lib/data/categories";
+import { Text,clx } from "@medusajs/ui";
+import CustomCollection from "@modules/layout/components/CustomCollection";
+import LocalizedClientLink from "@modules/common/components/localized-client-link";
+import { listCollections } from "@lib/data/collections";
+// import { FaFacebookF } from "react-icons/fa";
+// import { FiLinkedin } from "react-icons/fi";
+// import { RxTwitterLogo } from "react-icons/rx";
 
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import MedusaCTA from "@modules/layout/components/medusa-cta"
+
+import Newsletter from "@modules/layout/components/Newsletter";
 
 export default async function Footer() {
-  const { collections } = await getCollectionsList(0, 6)
-  const { product_categories } = await getCategoriesList(0, 6)
+  const productCategories = await listCategories();
+  const { collections } = await listCollections()
+  console.log(productCategories)
 
   return (
-    <footer className="border-t border-ui-border-base w-full">
-      <div className="content-container flex flex-col w-full">
-        <div className="flex flex-col gap-y-6 xsmall:flex-row items-start justify-between py-40">
-          <div>
-            <LocalizedClientLink
-              href="/"
-              className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
-            >
-              Medusa Store
-            </LocalizedClientLink>
-          </div>
-          <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-3">
-            {product_categories && product_categories?.length > 0 && (
-              <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
-                  Junooni Categories
-                </span>
-                <ul
-                  className="grid grid-cols-1 gap-2"
-                  data-testid="footer-categories"
-                >
-                  {product_categories.map((c) => {
-                    if (c.parent_category) {
-                      return
-                    }
+    <footer className="w-full border-t border-gray-200 bg-gray-50">
+      <Newsletter/>
+      <div className="container px-6 py-16 mx-auto">
+        <div className="w-full">
+          
 
-                    const children =
-                      c.category_children?.map((child) => ({
-                        name: child.name,
-                        handle: child.handle,
-                        id: child.id,
-                      })) || null
+          {/* Help Center & Other Links */}
+          <div className="grid grid-cols-1 gap-10 text-sm sm:grid-cols-2 md:grid-cols-5">
 
-                    return (
-                      <li
-                        className="flex flex-col gap-2 text-ui-fg-subtle txt-small"
-                        key={c.id}
+          {productCategories?.length > 0 && (
+            <div>
+              <h3 className="mb-3 font-semibold text-gray-800">Categories</h3>
+              <ul className="flex flex-col mt-2 space-y-2 text-gray-600">
+                {productCategories.map((c) => {
+                  if (c.parent_category) return null;
+                  const children = c.category_children || [];
+
+                  return (
+                    <li key={c.id}>
+                      <LocalizedClientLink
+                        className="hover:text-black"
+                        href={`/categories/${c.handle}`}
                       >
-                        <LocalizedClientLink
-                          className={clx(
-                            "hover:text-ui-fg-base",
-                            children && "txt-small-plus"
-                          )}
-                          href={`/categories/${c.handle}`}
-                          data-testid="category-link"
-                        >
-                          {c.name}
-                        </LocalizedClientLink>
-                       
-                        {children && (
-                          <ul className="grid grid-cols-1 ml-3 gap-2">
-                            {children &&
-                              children.map((child) => (
-                                <li key={child.id}>
-                                  <LocalizedClientLink
-                                    className="hover:text-ui-fg-base"
-                                    href={`/categories/${child.handle}`}
-                                    data-testid="category-link"
-                                  >
-                                    {child.name}
-                                  </LocalizedClientLink>
-                                </li>
-                              ))}
-                          </ul>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            )}
+                        {c.name}
+                      </LocalizedClientLink>
+                     
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+
+        {/* collection */}
+
             {collections && collections.length > 0 && (
               <div className="flex flex-col gap-y-2">
                 <span className="txt-small-plus txt-ui-fg-base">
@@ -89,12 +60,10 @@ export default async function Footer() {
                 <ul
                   className={clx(
                     "grid grid-cols-1 gap-2 text-ui-fg-subtle txt-small",
-                    {
-                      "grid-cols-2": (collections?.length || 0) > 3,
-                    }
+                    
                   )}
                 >
-                  {collections?.slice(0, 6).map((c) => (
+                  {collections.map((c) => (
                     <li key={c.id}>
                       <LocalizedClientLink
                         className="hover:text-ui-fg-base"
@@ -107,50 +76,55 @@ export default async function Footer() {
                 </ul>
               </div>
             )}
-            <div className="flex flex-col gap-y-2">
-              <span className="txt-small-plus txt-ui-fg-base">Medusa</span>
-              <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle txt-small">
-                <li>
-                  <a
-                    href="https://github.com/medusajs"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    GitHub
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://docs.medusajs.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://github.com/medusajs/nextjs-starter-medusa"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    Source code
-                  </a>
-                </li>
+
+            <div>
+              <span className="font-semibold text-gray-800">Help Center</span>
+              <ul className="mt-2 space-y-2 text-gray-600">
+                <li><LocalizedClientLink href="/faqs" className="hover:text-black">FAQs</LocalizedClientLink></li>
+                <li><LocalizedClientLink href="/orders-shipping" className="hover:text-black">Orders & Shipping</LocalizedClientLink></li>
+                <li><LocalizedClientLink href="/payment-methods" className="hover:text-black">Payment Methods</LocalizedClientLink></li>
+                <li><LocalizedClientLink href="/product-care" className="hover:text-black">Product Care</LocalizedClientLink></li>
+              </ul>
+            </div>
+
+           
+
+          
+            
+            <div>
+              <span className="font-semibold text-gray-800">Order Tracking</span>
+              <ul className="mt-2 space-y-2 text-gray-600">
+                <li><LocalizedClientLink href="/track-order" className="hover:text-black">Track by Order ID</LocalizedClientLink></li>
+                <li><LocalizedClientLink href="/shipment-status" className="hover:text-black">Shipment Status</LocalizedClientLink></li>
+              </ul>
+            </div>
+
+            <div>
+              <span className="font-semibold text-gray-800">Size Guide</span>
+              <ul className="mt-2 space-y-2 text-gray-600">
+                <li><LocalizedClientLink href="/size-guide" className="hover:text-black">Apparel Sizing Charts</LocalizedClientLink></li>
+                <li><LocalizedClientLink href="/measurement-tips" className="hover:text-black">Tips for Accurate Measurements</LocalizedClientLink></li>
               </ul>
             </div>
           </div>
         </div>
-        <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
-          <Text className="txt-compact-small">
-            © {new Date().getFullYear()} Medusa Store. All rights reserved.
-          </Text>
-          <MedusaCTA />
-        </div>
+
       </div>
+      
+        {/* Footer Bottom */}
+        <div className="flex-col px-4 py-4 text-sm text-gray-600 border border-t md:flex-row">
+          <div className="flex justify-between mx-auto max-w-7xl">
+          <Text>© {new Date().getFullYear()} Junooni Store. All rights reserved.</Text>
+          <div className="flex gap-6 md:mt-0">
+            <LocalizedClientLink href="/privacy-policy" className="hover:text-black">
+              Privacy Policy
+            </LocalizedClientLink>
+            <LocalizedClientLink href="/terms-conditions" className="hover:text-black">
+              Terms & Conditions
+            </LocalizedClientLink>
+          </div>
+          </div>
+        </div>
     </footer>
-  )
+  );
 }

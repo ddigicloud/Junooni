@@ -23,7 +23,7 @@ const ProductBrandWidget = ({
   const brandName = (queryResult?.product as AdminProductBrand)?.brand?.name
 
   return (
-    <Container className="divide-y p-0">
+    <Container className="p-0 divide-y">
       <div className="flex items-center justify-between px-6 py-4">
         <div>
           <Heading level="h3">Brand</Heading>

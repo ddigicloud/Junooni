@@ -42,29 +42,37 @@ export const POST = async (
     );
   }
 
+  // Validate and parse the request body
   const { admin, ...vendorData } = schema.parse(req.body) as RequestBody;
 
   const marketplaceModuleService: MarketplaceModuleService = req.scope.resolve(
     "marketplaceModuleService"
   );
 
-  // Create vendor
-  //let vendor = await marketplaceModuleService.createVendors([vendorData]);
-  let vendor = await marketplaceModuleService.createVendors(vendorData)
+  // Create vendor (assuming it returns a single vendor object)
+  let vendor = await marketplaceModuleService.createVendors(vendorData);
 
-  // Create vendor admin
+  // Ensure vendor creation succeeded and has an id
+  if (!vendor || !vendor.id) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Vendor creation failed."
+    );
+  }
+
+  // Create vendor admin using the created vendor's id
   await createVendorAdminWorkflow(req.scope).run({
     input: {
       admin: {
         ...admin,
-        vendor_id: vendor[0].id,
+        vendor_id: vendor.id,
       },
       authIdentityId: req.auth_context.auth_identity_id,
     },
   });
 
   // Retrieve vendor again with admin details
-  vendor = await marketplaceModuleService.retrieveVendor(vendor[0].id, {
+  vendor = await marketplaceModuleService.retrieveVendor(vendor.id, {
     relations: ["admins"],
   });
 
@@ -102,9 +110,8 @@ export const GET = async (
     res.json({ vendors: response });
   } catch (error) {
     throw new MedusaError(
-      MedusaError.Types.DB_ERROR, // Corrected the error type
+      MedusaError.Types.DB_ERROR,
       "Unable to retrieve vendors."
     );
   }
 };
-

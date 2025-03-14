@@ -48,9 +48,9 @@ import {
           "products.images.*",
           "products.options.*",
           "products.variants.calculated_price.*",
-          "products.brand.*"
-          
-          
+          "products.brand.*",
+          "products.categories.*",
+          "products.tags.*"
         ],
         filters: {
           id: vendorAdmin.vendor.id,

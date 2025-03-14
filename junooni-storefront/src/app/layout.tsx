@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
 }
 
+if (typeof window !== 'undefined'){Date.now()}
+
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
     <html lang="en" data-mode="light">

@@ -55,7 +55,7 @@
   }
 
   .contrast-btn {
-    @apply px-4 py-2 border border-black rounded-full hover:bg-black hover:text-white transition-colors duration-200 ease-in;
+    @apply px-4 py-2 transition-colors duration-200 ease-in border border-black rounded-full hover:bg-black hover:text-white;
   }
 
   .text-xsmall-regular {
@@ -63,27 +63,27 @@
   }
 
   .text-small-regular {
-    @apply text-xs leading-5 font-normal;
+    @apply text-xs font-normal leading-5;
   }
 
   .text-small-semi {
-    @apply text-xs leading-5 font-semibold;
+    @apply text-xs font-semibold leading-5;
   }
 
   .text-base-regular {
-    @apply text-sm leading-6 font-normal;
+    @apply text-sm font-normal leading-6;
   }
 
   .text-base-semi {
-    @apply text-sm leading-6 font-semibold;
+    @apply text-sm font-semibold leading-6;
   }
 
   .text-large-regular {
-    @apply text-base leading-6 font-normal;
+    @apply text-base font-normal leading-6;
   }
 
   .text-large-semi {
-    @apply text-base leading-6 font-semibold;
+    @apply text-base font-semibold leading-6;
   }
 
   .text-xl-regular {
@@ -110,3 +110,30 @@
     @apply text-[32px] leading-[44px] font-semibold;
   }
 }
+
+
+.product-swiper .swiper-button-next,
+.product-swiper .swiper-button-prev {
+  color: #000;
+  background: white;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.product-swiper .swiper-button-next:after,
+.product-swiper .swiper-button-prev:after {
+  font-size: 18px;
+}
+
+.product-swiper .swiper-pagination-bullet {
+  background: #000;
+}
+
+.product-swiper .swiper-pagination-bullet-active {
+  background: #000;
+  outline: 1px solid black;
+  border: 2px solid white;
+}
+
