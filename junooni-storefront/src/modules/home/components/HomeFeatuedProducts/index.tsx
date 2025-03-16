@@ -26,6 +26,7 @@ export default function HomeFeatuedProducts() {
           },
         });
         const data = await res.json();
+        console.log(data)
         if (data.regions && data.regions.length > 0) {
           setRegion(data.regions[0].id);
         }
@@ -47,8 +48,7 @@ export default function HomeFeatuedProducts() {
       try {
         setLoading(true);
         setError(null);
-        console.log("Fetching products with region:", region);
-        
+  
         // For initial debugging, let's try to fetch without complex query params
         const res = await fetch(
           `http://localhost:9000/store/products`,
@@ -68,14 +68,14 @@ export default function HomeFeatuedProducts() {
         }
 
         const data = await res.json();
-        console.log("API Response:", data);
+      
         
         if (!data.products || !Array.isArray(data.products)) {
           console.error("Invalid data format:", data);
           throw new Error("Invalid data format received from API");
         }
 
-        console.log("Products found:", data.products.length);
+       
         setProducts(data.products);
       } catch (error) {
         console.error("Error fetching products:", error);

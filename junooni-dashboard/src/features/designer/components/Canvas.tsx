@@ -11,6 +11,10 @@ import {
 } from 'react-konva';
 import RealisticMockupGenerator, { ShirtSide, DesignElement, MockupTemplate } from './mockupgenerator';
 
+// import {useSearch} from "@tansktack/react-router";
+
+// const {color : selectedColor} = useSearch();
+
 // Type definitions for PayloadCMS API response
 interface ProductColor {
   id: string;
@@ -515,11 +519,11 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
     if (activeView === 'preview') {
       return (
         <div className="p-4">
-          <h3 className="text-lg font-medium mb-4">Product Configuration</h3>
+          <h3 className="mb-4 text-lg font-medium">Product Configuration</h3>
           
           {/* Available Colors */}
           <div className="mb-6">
-            <h4 className="text-sm font-medium mb-2">Available Colors</h4>
+            <h4 className="mb-2 text-sm font-medium">Available Colors</h4>
             <div className="flex flex-wrap gap-2 mb-2">
               {selectedColors.map((color) => (
                 <div
@@ -542,12 +546,12 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
           
           {/* Available Sizes */}
           <div className="mb-6">
-            <h4 className="text-sm font-medium mb-2">Available Sizes</h4>
+            <h4 className="mb-2 text-sm font-medium">Available Sizes</h4>
             <div className="grid grid-cols-4 gap-2">
               {selectedSizes.map((size) => (
                 <div
                   key={size}
-                  className="py-2 px-3 text-center rounded-md border border-gray-300 bg-gray-50"
+                  className="px-3 py-2 text-center border border-gray-300 rounded-md bg-gray-50"
                 >
                   {size}
                 </div>
@@ -557,8 +561,8 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
           
           {/* Price Information */}
           <div className="mb-6">
-            <h4 className="text-sm font-medium mb-2">Price</h4>
-            <div className="flex justify-between items-end">
+            <h4 className="mb-2 text-sm font-medium">Price</h4>
+            <div className="flex items-end justify-between">
               <div>
                 <p className="text-2xl font-bold">${productData.cost || 24.99}</p>
                 <p className="text-xs text-gray-500">Price per shirt</p>
@@ -571,11 +575,11 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
           </div>
           
           {/* Add to Store Button */}
-          <button className="w-full py-3 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 mb-3">
+          <button className="w-full py-3 mb-3 font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
             ADD TO STORE
           </button>
           
-          <button className="w-full py-2 border border-blue-500 text-blue-500 rounded-md font-medium hover:bg-blue-50">
+          <button className="w-full py-2 font-medium text-blue-500 border border-blue-500 rounded-md hover:bg-blue-50">
             Save Design
           </button>
         </div>
@@ -587,13 +591,13 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
       case 'colors':
         return (
           <div className="p-4">
-            <h3 className="text-lg font-medium mb-3">Select colors</h3>
+            <h3 className="mb-3 text-lg font-medium">Select colors</h3>
             <div className="grid grid-cols-5 gap-2 mb-6">
               {productData.colorOptions.map((color) => (
                 <button
                   key={color.id}
                   onClick={() => handleColorChange(color.colorHex, color.colorName)}
-                  className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center"
+                  className="flex items-center justify-center w-10 h-10 border border-gray-300 rounded-full"
                   style={{ backgroundColor: color.colorHex }}
                   title={color.colorName}
                 >
@@ -606,13 +610,13 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
               ))}
             </div>
             
-            <h3 className="text-lg font-medium mb-3">Selected colors</h3>
+            <h3 className="mb-3 text-lg font-medium">Selected colors</h3>
             <div className="space-y-2">
               {selectedColors.map((color) => (
-                <div key={color.value} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
+                <div key={color.value} className="flex items-center justify-between p-2 rounded-md bg-gray-50">
                   <div className="flex items-center">
                     <div 
-                      className="w-8 h-8 rounded-full mr-3 border border-gray-200"
+                      className="w-8 h-8 mr-3 border border-gray-200 rounded-full"
                       style={{ backgroundColor: color.value }}
                     />
                     <span>{color.name}</span>
@@ -630,7 +634,7 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
                     {selectedColors.length > 1 && (
                       <button 
                         onClick={() => removeColor(color.value)}
-                        className="p-1 rounded text-red-600 hover:bg-red-50"
+                        className="p-1 text-red-600 rounded hover:bg-red-50"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -647,7 +651,7 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
       case 'sizes':
         return (
           <div className="p-4">
-            <h3 className="text-lg font-medium mb-3">Select Sizes</h3>
+            <h3 className="mb-3 text-lg font-medium">Select Sizes</h3>
             <div className="grid grid-cols-3 gap-2">
               {productData.sizeOptions.map((size) => (
                 <button
@@ -668,13 +672,13 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
             <div className="mt-4">
               <button
                 onClick={() => setSelectedSizes(allSizes)} // Select all
-                className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 mr-2"
+                className="px-4 py-2 mr-2 text-gray-800 bg-gray-100 rounded-md hover:bg-gray-200"
               >
                 Select All
               </button>
               <button
                 onClick={() => setSelectedSizes([])} // Clear selection
-                className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
+                className="px-4 py-2 text-gray-800 bg-gray-100 rounded-md hover:bg-gray-200"
               >
                 Clear All
               </button>
@@ -685,13 +689,13 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
       case 'upload':
         return (
           <div className="p-4">
-            <h3 className="text-lg font-medium mb-3">Upload Image</h3>
+            <h3 className="mb-3 text-lg font-medium">Upload Image</h3>
             <div className="mb-4">
-              <label className="block w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-md text-center cursor-pointer hover:bg-gray-50">
-                <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+              <label className="block w-full px-4 py-8 text-center border-2 border-gray-300 border-dashed rounded-md cursor-pointer hover:bg-gray-50">
+                <svg className="w-12 h-12 mx-auto text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                   <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4h-12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span className="mt-2 block text-sm font-medium text-gray-900">
+                <span className="block mt-2 text-sm font-medium text-gray-900">
                   Click to upload
                 </span>
                 <input 
@@ -708,7 +712,7 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
             </div>
             <button
               onClick={addText}
-              className="w-full py-2 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              className="w-full px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600"
             >
               Add Text
             </button>
@@ -718,7 +722,7 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
       case 'library':
         return (
           <div className="p-4">
-            <h3 className="text-lg font-medium mb-3">Image Library</h3>
+            <h3 className="mb-3 text-lg font-medium">Image Library</h3>
             <div className="grid grid-cols-2 gap-2">
               {sampleLibraryImages.map((img) => (
                 <div 
@@ -726,8 +730,8 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
                   className="p-2 border border-gray-200 rounded-md cursor-pointer hover:bg-gray-50"
                   onClick={() => addImage(img.src)}
                 >
-                  <img src={img.src} alt={img.name} className="w-full aspect-square object-contain" />
-                  <p className="text-xs text-center mt-1 text-gray-600">{img.name}</p>
+                  <img src={img.src} alt={img.name} className="object-contain w-full aspect-square" />
+                  <p className="mt-1 text-xs text-center text-gray-600">{img.name}</p>
                 </div>
               ))}
             </div>
@@ -740,9 +744,9 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-gray-100">
       {/* Left Sidebar (1/4 width) */}
-      <div className="w-1/4 bg-white border-r border-gray-200 flex flex-col">
+      <div className="flex flex-col w-1/4 bg-white border-r border-gray-200">
         {/* Sidebar Tabs - Only visible in Design view */}
         {activeView === 'design' && (
           <div className="flex border-b border-gray-200">
@@ -780,9 +784,9 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
       </div>
       
       {/* Main Content Area (3/4 width) */}
-      <div className="w-3/4 flex flex-col">
+      <div className="flex flex-col w-3/4">
         {/* Top Navigation */}
-        <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+        <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
           <h1 className="text-xl font-bold">{productData.name} Designer</h1>
           
           {/* Printing Technology Selection */}
@@ -792,7 +796,7 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
               <select
                 value={activeTechnology}
                 onChange={(e) => handleTechnologyChange(e.target.value)}
-                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                className="px-2 py-1 text-sm border border-gray-300 rounded-md"
               >
                 {productData.printingTechnologies.map(tech => (
                   <option key={tech.id} value={tech.id}>
@@ -833,7 +837,7 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
           {activeView === 'design' ? (
             <div className="flex flex-col h-full">
               {/* Side Selector */}
-              <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+              <div className="p-3 mb-4 bg-white rounded-lg shadow-sm">
                 <div className="flex space-x-2">
                   <button
                     onClick={() => setActiveSide('front')}
@@ -867,7 +871,7 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
               </div>
               
               {/* Design Canvas */}
-              <div className="flex-1 flex justify-center bg-white rounded-lg shadow-sm p-4">
+              <div className="flex justify-center flex-1 p-4 bg-white rounded-lg shadow-sm">
                 <div className="relative">
                   <Stage
                     ref={stageRef}
@@ -977,13 +981,13 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
                   
                   {/* Design Controls */}
                   {selectedId && (
-                    <div className="absolute top-4 right-4 bg-white rounded-md shadow-md p-2 flex space-x-2">
+                    <div className="absolute flex p-2 space-x-2 bg-white rounded-md shadow-md top-4 right-4">
                       <button 
                         onClick={deleteSelectedElement}
-                        className="p-1 rounded-md text-red-600 hover:bg-red-50"
+                        className="p-1 text-red-600 rounded-md hover:bg-red-50"
                         title="Delete"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
                       </button>
@@ -1001,10 +1005,10 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
             // Preview View
             <div className="flex flex-col h-full">
               {/* Side & Style Selector */}
-              <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+              <div className="p-3 mb-4 bg-white rounded-lg shadow-sm">
                 <div className="flex flex-wrap gap-3">
                   <div className="flex items-center">
-                    <span className="text-sm font-medium mr-2">Side:</span>
+                    <span className="mr-2 text-sm font-medium">Side:</span>
                     <div className="flex space-x-1">
                       <button
                         onClick={() => setActiveSide('front')}
@@ -1038,7 +1042,7 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
                   </div>
                   
                   <div className="flex items-center ml-auto">
-                    <span className="text-sm font-medium mr-2">Style:</span>
+                    <span className="mr-2 text-sm font-medium">Style:</span>
                     <select
                       value={mockupTemplate}
                       onChange={(e) => setMockupTemplate(e.target.value as MockupTemplate)}
@@ -1055,8 +1059,8 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
               </div>
               
               {/* Mockup Preview */}
-              <div className="flex-1 bg-white rounded-lg shadow-sm p-4 flex justify-center items-center">
-                <div className="max-w-xl w-full">
+              <div className="flex items-center justify-center flex-1 p-4 bg-white rounded-lg shadow-sm">
+                <div className="w-full max-w-xl">
                   <RealisticMockupGenerator
                     activeSide={activeSide}
                     designElements={designElements[activeSide]}
@@ -1071,8 +1075,8 @@ const DynamicTShirtDesigner: React.FC<TShirtDesignerProps> = ({ productData }) =
               </div>
               
               {/* Product Details */}
-              <div className="mt-4 bg-white rounded-lg shadow-sm p-4">
-                <h3 className="text-md font-medium mb-2">Product Details</h3>
+              <div className="p-4 mt-4 bg-white rounded-lg shadow-sm">
+                <h3 className="mb-2 font-medium text-md">Product Details</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Current Color:</p>

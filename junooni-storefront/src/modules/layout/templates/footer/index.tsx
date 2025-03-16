@@ -1,6 +1,5 @@
 import { listCategories } from "@lib/data/categories";
 import { Text,clx } from "@medusajs/ui";
-import CustomCollection from "@modules/layout/components/CustomCollection";
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 import { listCollections } from "@lib/data/collections";
 // import { FaFacebookF } from "react-icons/fa";
@@ -13,11 +12,10 @@ import Newsletter from "@modules/layout/components/Newsletter";
 export default async function Footer() {
   const productCategories = await listCategories();
   const { collections } = await listCollections()
-  console.log(productCategories)
+ 
 
   return (
     <footer className="w-full border-t border-gray-200 bg-gray-50">
-      <Newsletter/>
       <div className="container px-6 py-16 mx-auto">
         <div className="w-full">
           

@@ -744,8 +744,20 @@ const ProductPage = () => {
                   className="w-full"
                   size="lg"
                   disabled={!selectedColor || !selectedSize}
+                  onClick={() => {
+                  
+                    
+                    // Navigate with just the color name in URL
+                    router.navigate({ 
+                      to: `/designer/${productId}`, 
+                      search: { 
+                        color: selectedColor?.id,
+                        
+                      }
+                    });
+                  }}
                 >
-                  Start Designing
+                  Start Designing 
                 </Button>
                 
                 <Button 

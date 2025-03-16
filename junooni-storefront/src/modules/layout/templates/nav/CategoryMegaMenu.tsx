@@ -101,7 +101,7 @@ export function CategoryMegaMenu({ categories = [] }: CategoryMegaMenuProps) {
   const menuItems = organizeCategories();
 
   return (
-    <div className="flex items-center">
+    <div className="items-center hidden md:flex">
       {menuItems.map((item, index) => (
         <NavLink 
           key={index}

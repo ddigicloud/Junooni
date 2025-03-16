@@ -86,7 +86,7 @@ interface ProductDataLoaderProps {
   productId: string | number; // Required product ID to load
 }
 
-const ProductDataLoader: React.FC<ProductDataLoaderProps> = ({ productId }) => {
+const ProductDataLoader: React.FC<ProductDataLoaderProps> = ({ productId } ) => {
   const [productData, setProductData] = useState<ProductData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -175,7 +175,7 @@ const ProductDataLoader: React.FC<ProductDataLoaderProps> = ({ productId }) => {
         setLoading(true);
         
         // Fetch data from the PayloadCMS API endpoint
-        const response = await fetch(`http://localhost:3000/api/blank-products/4`);
+        const response = await fetch(`http://localhost:3000/api/blank-products/${productId}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch product data: ${response.status}`);
@@ -201,9 +201,9 @@ const ProductDataLoader: React.FC<ProductDataLoaderProps> = ({ productId }) => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto"></div>
+          <div className="w-12 h-12 mx-auto border-b-2 border-blue-700 rounded-full animate-spin"></div>
           <p className="mt-4 text-lg">Loading product data...</p>
         </div>
       </div>
@@ -212,15 +212,15 @@ const ProductDataLoader: React.FC<ProductDataLoaderProps> = ({ productId }) => {
 
   if (error) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center text-red-600 p-6 bg-red-50 rounded-lg max-w-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex items-center justify-center h-screen">
+        <div className="max-w-lg p-6 text-center text-red-600 rounded-lg bg-red-50">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h2 className="text-xl font-bold mt-4">Error Loading Product</h2>
+          <h2 className="mt-4 text-xl font-bold">Error Loading Product</h2>
           <p className="mt-2">{error}</p>
           <button 
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 mt-4 text-white bg-blue-600 rounded-md hover:bg-blue-700"
             onClick={() => window.location.reload()}
           >
             Try Again
@@ -232,12 +232,12 @@ const ProductDataLoader: React.FC<ProductDataLoaderProps> = ({ productId }) => {
 
   if (!productData) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center text-yellow-600 p-6 bg-yellow-50 rounded-lg max-w-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex items-center justify-center h-screen">
+        <div className="max-w-lg p-6 text-center text-yellow-600 rounded-lg bg-yellow-50">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 mx-auto text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <h2 className="text-xl font-bold mt-4">No Product Data</h2>
+          <h2 className="mt-4 text-xl font-bold">No Product Data</h2>
           <p className="mt-2">No product data was found. Please try again or contact support.</p>
         </div>
       </div>

@@ -16,7 +16,8 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import Thumbnail from "@modules/products/components/thumbnail"
 import { usePathname } from "next/navigation"
 // import { CiShoppingCart } from "react-icons/ci";
-import { PiShoppingBagThin } from "react-icons/pi";
+// import { PiShoppingBagThin } from "react-icons/pi";
+import { ShoppingCart } from "lucide-react"
 import { Fragment, useEffect, useRef, useState } from "react"
 
 const CartDropdown = ({
@@ -87,7 +88,7 @@ const CartDropdown = ({
             className="relative flex hover:text-ui-fg-base"
             href="/cart"
             data-testid="nav-cart-link"
-          ><PiShoppingBagThin className="w-6 h-6"/> </LocalizedClientLink>
+          ><ShoppingCart className="w-5 h-5"/> </LocalizedClientLink>
           {/* <span className="absolute px-1 text-xs text-white bg-black rounded-full -bottom-1 -right-1"> {totalItems}</span> */}
         </PopoverButton>
         <Transition

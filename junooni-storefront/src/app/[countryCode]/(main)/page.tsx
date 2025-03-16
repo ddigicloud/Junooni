@@ -7,6 +7,7 @@ import { getRegion } from "@lib/data/regions"
 import HomeFeatuedProducts from "@modules/home/components/HomeFeatuedProducts"
 import WhatsAppTag from "@modules/layout/components/WhatsAppTag"
 import HomeCategories from "@modules/home/components/features"
+import JunooniHomepage from "@modules/layout/JunooniHomePage"
 
 
 export const metadata: Metadata = {
@@ -34,7 +35,7 @@ export default async function Home(props: {
 
   return (
     <>
-      <Hero />
+      {/* <Hero />
       <div className="pt-12">
         <ul className="flex flex-col gap-x-6">
           <FeaturedProducts collections={collections} region={region} />
@@ -43,7 +44,10 @@ export default async function Home(props: {
       
       <HomeCategories/>
       <HomeFeatuedProducts/>
-      <WhatsAppTag/>
+      <WhatsAppTag/> */}
+
+     <JunooniHomepage/>
+
     </>
   )
 }
