@@ -3,9 +3,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { RxHamburgerMenu } from "react-icons/rx";
 import { IoMdClose } from "react-icons/io";
-import { IoChevronDown, IoChevronUp, IoChevronForward, IoChevronBack } from "react-icons/io5";
+import { IoChevronDown, IoChevronUp } from "react-icons/io5";
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 import { motion, AnimatePresence } from "framer-motion";
+import { Search, UserCircle, ShoppingCart } from "lucide-react";
+import { useNavContext } from "./NavContext"; // Import the NavContext hook
 
 // Animation variants for menu transitions
 const menuVariants = {
@@ -67,6 +69,10 @@ interface ExpandedState {
 }
 
 export default function MobileMenu({ categories = [] }: MobileMenuProps) {
+  // Get the navigation context to coordinate with desktop navigation
+  // Now include the isPast100vh and isHomePage values
+  const { isAnyMenuHovered, isPast100vh, isHomePage } = useNavContext();
+  
   // Menu state
   const [isOpen, setIsOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<ExpandedState>({});
@@ -183,12 +189,21 @@ export default function MobileMenu({ categories = [] }: MobileMenuProps) {
     };
   }, [isOpen]);
   
+  // Determine the hamburger icon color based on page type and scroll position
+  // Replace your current getHamburgerColor function with this one
+const getHamburgerColor = () => {
+
+  return isHomePage && !isPast100vh && !isAnyMenuHovered 
+    ? "text-white" 
+    : "text-black";
+};
+  
   return (
     <div>
-      {/* Hamburger Menu Toggle Button */}
+      {/* Hamburger Menu Toggle Button - Color changes based on navigation context and scroll position */}
       <button 
         onClick={toggleMenu} 
-        className="p-1 focus:outline-none"
+        className={`p-1 focus:outline-none transition-colors duration-300 ${getHamburgerColor()}`}
         aria-label={isOpen ? "Close menu" : "Open menu"}
       >
         <RxHamburgerMenu className="w-6 h-6" />
@@ -224,15 +239,16 @@ export default function MobileMenu({ categories = [] }: MobileMenuProps) {
               {/* Menu Header */}
               <div className="flex items-center justify-between p-4 border-b">
                 <LocalizedClientLink
-                href="/"
-                className="text-xl font-semibold uppercase hover:text-ui-fg-base"
-                data-testid="nav-store-link"
+                  href="/"
+                  className="text-xl font-semibold text-black uppercase transition-colors duration-200 hover:text-gray-700"
+                  data-testid="nav-store-link"
+                  onClick={handleNavigate}
                 >
-                JUNOONI
+                  JUNOONI
                 </LocalizedClientLink>
                 <button 
                   onClick={toggleMenu} 
-                  className="p-1 focus:outline-none"
+                  className="p-1 text-black focus:outline-none"
                   aria-label="Close menu"
                 >
                   <IoMdClose className="w-5 h-5" />
@@ -250,11 +266,11 @@ export default function MobileMenu({ categories = [] }: MobileMenuProps) {
                     <div key={category.id} className="border-b border-gray-100">
                       {/* Level 1 Category */}
                       <div 
-                        className={`flex items-center justify-between px-4 py-3 ${isExpanded ? 'bg-gray-100' : 'bg-gray-50'} transition-colors duration-200`}
+                        className={`flex items-center justify-between px-4 py-3 ${isExpanded ? 'bg-gray-100' : ''} transition-colors duration-200`}
                       >
                         <LocalizedClientLink
                           href={`/categories/${category.handle}`}
-                          className="flex-1 text-sm"
+                          className="flex-1 text-sm text-black"
                           onClick={handleNavigate}
                         >
                           {category.name}
@@ -300,7 +316,7 @@ export default function MobileMenu({ categories = [] }: MobileMenuProps) {
                                   >
                                     <LocalizedClientLink
                                       href={`/categories/${subcategory.handle}`}
-                                      className="flex-1 pl-2 text-sm"
+                                      className="flex-1 pl-2 text-sm text-black"
                                       onClick={handleNavigate}
                                     >
                                       {subcategory.name}
@@ -337,7 +353,7 @@ export default function MobileMenu({ categories = [] }: MobileMenuProps) {
                                             <div className="px-10 py-2">
                                               <LocalizedClientLink
                                                 href={`/categories/${subsubcategory.handle}`}
-                                                className="block w-full pl-2 text-sm"
+                                                className="block w-full pl-2 text-sm text-black"
                                                 onClick={handleNavigate}
                                               >
                                                 {subsubcategory.name}
@@ -361,27 +377,27 @@ export default function MobileMenu({ categories = [] }: MobileMenuProps) {
               
               {/* Additional Navigation Links */}
               <div className="mt-auto border-t border-gray-200">
-                <div className="flex justify-between py-2">
+                <div className="flex justify-end py-2">
                   <LocalizedClientLink
                     href="/account"
-                    className="flex items-center px-4 py-3 text-base"
+                    className="flex items-center px-4 py-3 text-base text-black transition-colors duration-200 hover:text-gray-700"
                     onClick={handleNavigate}
                   >
-                    <span className="text-sm ">My Account</span>
+                    <UserCircle className="w-5 h-5"/>
                   </LocalizedClientLink>
                   <LocalizedClientLink
                     href="/search"
-                    className="flex items-center px-4 py-3 text-base"
+                    className="flex items-center px-4 py-3 text-base text-black transition-colors duration-200 hover:text-gray-700"
                     onClick={handleNavigate}
                   >
-                    <span className="text-sm">Search</span>
+                    <Search className="w-5 h-5"/>
                   </LocalizedClientLink>
                   <LocalizedClientLink
                     href="/cart"
-                    className="flex items-center px-4 py-3 text-base"
+                    className="flex items-center px-4 py-3 text-base text-black transition-colors duration-200 hover:text-gray-700"
                     onClick={handleNavigate}
                   >
-                    <span className="text-sm">Cart</span>
+                    <ShoppingCart className="w-5 h-5"/>
                   </LocalizedClientLink>
                 </div>
               </div>

@@ -1886,11 +1886,11 @@
 
 // export default EditProduct;
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IconCirclePlus, IconX, IconLink, IconUpload, IconCopy } from '@tabler/icons-react';
+import { IconCirclePlus, IconX, IconLink, IconUpload, IconCopy, IconDragDrop } from '@tabler/icons-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1914,6 +1914,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
 
 import { ProductSchema, ApiOption, ApiVariant } from '../data/schema';
 import { fetchProduct, updateProduct, uploadProductImage, fetchCategories } from '../context/fetchApi';
@@ -2049,8 +2050,6 @@ function generateVariantsFromOptions(
 }[] {
   if (!options.length) return [];
 
-  console.log("Generating variants from options:", options);
-
   // Helper function for the Cartesian product
   const cartesian = (arrays: string[][]): string[][] => {
     return arrays.reduce<string[][]>(
@@ -2120,11 +2119,14 @@ type ProductFormValues = {
 const EditProduct = () => {
   const { id } = useParams({ from: "/_authenticated/products/$id" });
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageTab, setActiveImageTab] = useState("upload");
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   // For managing the new option value being added for each option
   const [newOptionValues, setNewOptionValues] = useState<Record<number, string>>({});
@@ -2143,12 +2145,18 @@ const EditProduct = () => {
 
   // Ref for the hidden file input for drag‑and‑drop.
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   
   // Keep track of the original options/variants for reconciliation
   const [originalData, setOriginalData] = useState<{
     options?: ApiOption[];
     variants?: ApiVariant[];
   }>({});
+  
+  // Add refs to prevent multiple fetches and infinite loops
+  const dataFetchedRef = useRef(false);
+  const variantsGeneratedRef = useRef(false);
+  const initialRenderRef = useRef(true);
 
   // Initialize the form with default values based on the schema
   const form = useForm<ProductFormValues>({
@@ -2193,8 +2201,8 @@ const EditProduct = () => {
     name: 'variants',
   });
 
-  // Add a new option value for a specific option
-  const handleAddOptionValue = (optionIndex: number) => {
+  // Add a new option value for a specific option - memoized with useCallback
+  const handleAddOptionValue = useCallback((optionIndex: number) => {
     const value = newOptionValues[optionIndex];
     if (!value || value.trim() === '') return;
     
@@ -2220,14 +2228,11 @@ const EditProduct = () => {
       const updatedNewValues = { ...newOptionValues };
       updatedNewValues[optionIndex] = '';
       setNewOptionValues(updatedNewValues);
-      
-      // Generate variants after adding a new option value
-      handleGenerateVariants();
     }
-  };
+  }, [form, newOptionValues, updateOption]);
 
-  // Remove an option value
-  const handleRemoveOptionValue = (optionIndex: number, valueIndex: number) => {
+  // Remove an option value - memoized with useCallback
+  const handleRemoveOptionValue = useCallback((optionIndex: number, valueIndex: number) => {
     const currentOptions = form.getValues('options');
     const currentOption = currentOptions[optionIndex];
     
@@ -2244,21 +2249,30 @@ const EditProduct = () => {
       ...currentOption,
       optionValues: updatedValues
     });
-    
-    // Generate variants after removing an option value
-    handleGenerateVariants();
-  };
+  }, [form, updateOption]);
 
-  // Handle change in new option value input
-  const handleNewOptionValueChange = (optionIndex: number, value: string) => {
+  // Handle change in new option value input - memoized with useCallback
+  const handleNewOptionValueChange = useCallback((optionIndex: number, value: string) => {
     setNewOptionValues(prev => ({
       ...prev,
       [optionIndex]: value
     }));
-  };
+  }, []);
 
-  // Generate variants from options
-  const handleGenerateVariants = () => {
+  // Generate variants from options - memoized with useCallback
+  const handleGenerateVariants = useCallback(() => {
+    // Prevent unnecessary variant generation during initial loading
+    if (isLoading) return;
+    
+    // Set flag to avoid multiple generations in the same render cycle
+    if (variantsGeneratedRef.current) return;
+    variantsGeneratedRef.current = true;
+    
+    // We'll reset this after a delay to allow future generations
+    setTimeout(() => {
+      variantsGeneratedRef.current = false;
+    }, 500);
+    
     const currentOptions = form.getValues('options');
     
     // Filter out options without name or values
@@ -2267,8 +2281,6 @@ const EditProduct = () => {
     );
     
     if (validOptions.length > 0) {
-      console.log("Generating variants from options:", validOptions);
-      
       const parsedOptions = validOptions.map((opt) => ({
         optionId: opt.id || generateUUID(),
         optionName: opt.title,
@@ -2276,10 +2288,8 @@ const EditProduct = () => {
       }));
       
       const currentVariants = form.getValues('variants');
-      console.log("Current variants before generation:", currentVariants);
       
       const newVariants = generateVariantsFromOptions(parsedOptions);
-      console.log("Generated new variants:", newVariants);
       
       // Preserve existing variant data (prices, stock, etc.) where possible
       const variantsWithExistingData = newVariants.map(newVariant => {
@@ -2302,11 +2312,6 @@ const EditProduct = () => {
         });
         
         if (existingVariant) {
-          console.log("Found existing variant match:", {
-            new: newVariant.title,
-            existing: existingVariant.title
-          });
-          
           // Keep existing data but update title and optionValues
           return {
             ...existingVariant,
@@ -2337,28 +2342,19 @@ const EditProduct = () => {
           manageInventory: true,
         };
         
-        console.log("Created new variant:", variant.title);
         return variant;
       });
       
-      console.log("Final variants to be applied:", variantsWithExistingData);
-      
       // Replace variants in the form
       replaceVariants(variantsWithExistingData);
-      
-      // Log variants after replacement to verify
-      setTimeout(() => {
-        console.log("Variants after replacement:", form.getValues('variants'));
-      }, 0);
     } else {
-      console.log("No valid options found, clearing variants");
       // If there are no valid options, clear the variants
       replaceVariants([]);
     }
-  };
+  }, [form, isLoading, replaceVariants]);
 
-  // Update a specific variant field
-  const handleVariantFieldChange = (variantIndex: number, field: string, value: any) => {
+  // Update a specific variant field - memoized with useCallback
+  const handleVariantFieldChange = useCallback((variantIndex: number, field: string, value: any) => {
     const currentVariants = form.getValues('variants');
     const currentVariant = currentVariants[variantIndex];
     
@@ -2366,14 +2362,11 @@ const EditProduct = () => {
     const updatedVariant = JSON.parse(JSON.stringify(currentVariant));
     updatedVariant[field] = value;
     
-    // Log for debugging
-    console.log(`Updating variant ${variantIndex}, field ${field}:`, value);
-    
     updateVariant(variantIndex, updatedVariant);
-  };
+  }, [form, updateVariant]);
 
-  // Handle bulk edit of variants
-  const handleBulkEdit = (field: string, value: any) => {
+  // Handle bulk edit of variants - memoized with useCallback
+  const handleBulkEdit = useCallback((field: string, value: any) => {
     if (!selectedVariants.length) return;
     
     const currentVariants = form.getValues('variants');
@@ -2389,10 +2382,10 @@ const EditProduct = () => {
     // Clear bulk edit values after applying
     if (field === 'price') setBulkPrice('');
     if (field === 'stock') setBulkStock('');
-  };
+  }, [form, handleVariantFieldChange, selectedVariants]);
 
-  // Handle selecting all variants
-  const handleSelectAllVariants = (checked: boolean) => {
+  // Handle selecting all variants - memoized with useCallback
+  const handleSelectAllVariants = useCallback((checked: boolean) => {
     if (checked) {
       // Select all variants
       const allVariantIds = form.getValues('variants').map(v => v.id);
@@ -2401,10 +2394,10 @@ const EditProduct = () => {
       // Deselect all
       setSelectedVariants([]);
     }
-  };
+  }, [form]);
 
-  // Toggle selection of a specific variant
-  const handleToggleVariantSelection = (variantId: string) => {
+  // Toggle selection of a specific variant - memoized with useCallback
+  const handleToggleVariantSelection = useCallback((variantId: string) => {
     setSelectedVariants(prev => {
       if (prev.includes(variantId)) {
         return prev.filter(id => id !== variantId);
@@ -2412,10 +2405,10 @@ const EditProduct = () => {
         return [...prev, variantId];
       }
     });
-  };
+  }, []);
 
-  // Duplicate a variant
-  const handleDuplicateVariant = (variantIndex: number) => {
+  // Duplicate a variant - memoized with useCallback
+  const handleDuplicateVariant = useCallback((variantIndex: number) => {
     const currentVariants = form.getValues('variants');
     const variantToDuplicate = currentVariants[variantIndex];
     
@@ -2432,45 +2425,217 @@ const EditProduct = () => {
     updatedVariants.splice(variantIndex + 1, 0, newVariant);
     
     replaceVariants(updatedVariants);
-  };
+  }, [form, replaceVariants]);
 
-  // Handle adding a new image via URL
-  const handleAddImageUrl = () => {
+  // Handle adding a new image via URL - memoized with useCallback
+  const handleAddImageUrl = useCallback(async () => {
     if (!newImageUrl.trim()) return;
     
     // Basic URL validation
     try {
       new URL(newImageUrl); // Will throw if not a valid URL
       
-      // Add to media items
-      setMediaItems((prev) => [
-        ...prev,
-        {
-          file: null,
-          url: newImageUrl,
-          rank: prev.length,
-          isNew: true
+      setUploadingImage(true);
+      
+      try {
+        // Upload the image URL to server
+        const uploadedImage = await uploadProductImage({
+          productId: id,
+          imageUrl: newImageUrl
+        });
+        
+        if (uploadedImage) {
+          // Add to media items with server-provided id
+          setMediaItems((prev) => [
+            ...prev,
+            {
+              file: null,
+              url: uploadedImage.url,
+              id: uploadedImage.id,
+              rank: prev.length,
+              isNew: false // Already uploaded
+            }
+          ]);
+          
+          toast({
+            title: "Image added",
+            description: "The image was successfully added to the product.",
+          });
         }
-      ]);
+      } catch (error) {
+        console.error('Error uploading image URL:', error);
+        toast({
+          variant: "destructive",
+          title: "Upload failed",
+          description: "Failed to add image. Please try again.",
+        });
+      } finally {
+        setUploadingImage(false);
+      }
       
       // Clear the input
       setNewImageUrl('');
       
     } catch (error) {
-      setError('Please enter a valid URL');
-      setTimeout(() => setError(null), 3000);
+      toast({
+        variant: "destructive",
+        title: "Invalid URL",
+        description: "Please enter a valid image URL.",
+      });
     }
-  };
+  }, [id, newImageUrl, toast, uploadProductImage]);
 
-  // Monitor option changes to update variants
+  // Handle file upload - memoized with useCallback
+  const handleFileUpload = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    setUploadingImage(true);
+    
+    try {
+      // Create a FormData object for multiple file upload
+      const formData = new FormData();
+      Array.from(files).forEach((file) => {
+        formData.append('files', file);
+      });
+      
+      // Upload the files to server
+      const uploadedImages = await uploadProductImage({
+        productId: id,
+        formData: formData,
+        multiple: true
+      });
+      
+      if (uploadedImages && Array.isArray(uploadedImages)) {
+        // Add all uploaded images to the media items
+        const newItems = uploadedImages.map((img, index) => ({
+          file: null,
+          url: img.url,
+          id: img.id,
+          rank: mediaItems.length + index,
+          isNew: false // Already uploaded to server
+        }));
+        
+        setMediaItems((prev) => [...prev, ...newItems]);
+        
+        toast({
+          title: "Images uploaded",
+          description: `Successfully uploaded ${uploadedImages.length} image(s).`,
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: "Failed to upload images. Please try again.",
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  }, [id, mediaItems.length, toast, uploadProductImage]);
+
+  // Handle drag and drop events - memoized with useCallback
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(true);
+  }, []);
+  
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+  }, []);
+  
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileUpload(e.dataTransfer.files);
+    }
+  }, [handleFileUpload]);
+
+  // Handle file input change - memoized with useCallback
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileUpload(e.target.files);
+    // Reset the input value so the same file can be selected again
+    e.target.value = '';
+  }, [handleFileUpload]);
+
+  // Remove an image - memoized with useCallback
+  const handleRemoveImage = useCallback(async (index: number) => {
+    const imageToRemove = mediaItems[index];
+    
+    if (imageToRemove.id) {
+      try {
+        // Call API to delete the image from the server
+        await uploadProductImage({
+          productId: id,
+          imageId: imageToRemove.id,
+          action: 'delete'
+        });
+        
+        toast({
+          title: "Image removed",
+          description: "The image was successfully removed.",
+        });
+      } catch (error) {
+        console.error('Error removing image:', error);
+        toast({
+          variant: "destructive",
+          title: "Removal failed",
+          description: "Failed to remove image. It will be kept in the product.",
+        });
+        return; // Don't remove from UI if server removal failed
+      }
+    }
+    
+    // Remove from UI
+    setMediaItems((prev) => {
+      const filtered = prev.filter((_, i) => i !== index);
+      return filtered.map((item, i) => ({ ...item, rank: i }));
+    });
+  }, [id, mediaItems, toast, uploadProductImage]);
+
+  // Move image up in order - memoized with useCallback
+  const handleMoveImageUp = useCallback((index: number) => {
+    if (index === 0) return; // Already at the top
+    
+    setMediaItems((prev) => {
+      const newMedia = [...prev];
+      const temp = newMedia[index - 1];
+      newMedia[index - 1] = { ...newMedia[index], rank: index - 1 };
+      newMedia[index] = { ...temp, rank: index };
+      return newMedia;
+    });
+  }, []);
+
+  // Move image down in order - memoized with useCallback
+  const handleMoveImageDown = useCallback((index: number) => {
+    if (index === mediaItems.length - 1) return; // Already at the bottom
+    
+    setMediaItems((prev) => {
+      const newMedia = [...prev];
+      const temp = newMedia[index + 1];
+      newMedia[index + 1] = { ...newMedia[index], rank: index + 1 };
+      newMedia[index] = { ...temp, rank: index };
+      return newMedia;
+    });
+  }, [mediaItems.length]);
+
+  // Monitor option changes to update variants - with debounce to prevent excessive calls
   useEffect(() => {
+    // Skip during initial load
+    if (isLoading) return;
+    
+    let debounceTimer: NodeJS.Timeout;
+    
     const subscription = form.watch((formValues, { name, type }) => {
-      console.log('Form changed:', { name, type, formValues });
+      // Only handle option changes after initial load is complete
+      if (isLoading || initialRenderRef.current) return;
       
       // Check if the changed field is an option field
       if (name && (name.includes('options') || name.includes('title'))) {
         const currentOptions = form.getValues('options');
-        console.log('Current options after change:', currentOptions);
         
         // If the last option has values and we have fewer than 3 options
         if (currentOptions.length > 0) {
@@ -2493,29 +2658,31 @@ const EditProduct = () => {
           }
         }
         
-        // Only regenerate variants if we have a meaningful change to options
-        // This prevents unnecessary regeneration during initial form setup
-        if (isLoading) return;
-        
-        // If the change is significant, regenerate the variants
-        if (type === 'change') {
-          console.log('Regenerating variants due to option change');
-          handleGenerateVariants();
-        }
+        // Debounce the variant generation to prevent multiple calls
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (type === 'change') {
+            handleGenerateVariants();
+          }
+        }, 300);
       }
     });
     
-    // Cleanup subscription on component unmount
-    return () => subscription.unsubscribe();
+    // After first render, set the flag to false
+    initialRenderRef.current = false;
+    
+    // Cleanup subscription and timer on component unmount
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(debounceTimer);
+    };
   }, [appendOption, form, isLoading, handleGenerateVariants]);
 
-  // Fetch categories on component mount
+  // Fetch categories on component mount - only once
   useEffect(() => {
     async function loadCategories() {
       try {
         const categoriesData = await fetchCategories({ id });
-  
-        console.log("Raw API Response:", JSON.stringify(categoriesData, null, 2));
   
         if (categoriesData && Array.isArray(categoriesData.categories)) {
           setCategories(categoriesData.categories);
@@ -2530,12 +2697,15 @@ const EditProduct = () => {
     }
   
     loadCategories();
-  }, [id]);
+  }, []); // Removed id from dependencies to prevent unnecessary fetches
   
 
-  // Fetch the product details when the component mounts.
+  // Fetch the product details when the component mounts - only once
   useEffect(() => {
     async function loadProduct() {
+      // Prevent multiple fetches
+      if (dataFetchedRef.current) return;
+      
       setIsLoading(true);
       setError(null);
       
@@ -2543,12 +2713,13 @@ const EditProduct = () => {
         // Fetch product data
         const product = await fetchProduct({id});
         
+        // Mark as fetched to prevent duplicate fetches
+        dataFetchedRef.current = true;
+        
         // Defensive check to ensure we have a valid product
         if (!product) {
           throw new Error('Product data is empty or invalid');
         }
-
-        console.log('Loaded product data:', product);
         
         // Save original data for reference
         setOriginalData({
@@ -2646,8 +2817,6 @@ const EditProduct = () => {
               });
             }
             
-            console.log(`Variant ${variant.title} option values:`, optionValues);
-            
             transformedVariants.push({
               id: variant.id,
               title: variant.title,
@@ -2710,89 +2879,24 @@ const EditProduct = () => {
     if (id) {
       loadProduct();
     }
-  }, [id, form]);
+  }, [id]); // Removed form from dependencies to prevent re-fetching
 
-  // File selection handler (for adding new images).
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newMedia = Array.from(e.target.files).map((file, index) => ({
-        file,
-        url: URL.createObjectURL(file),
-        rank: mediaItems.length + index, // Assign new ranks
-        isNew: true
-      }));
-      setMediaItems((prev) => [...prev, ...newMedia]);
+  // Call handleGenerateVariants once after form is initialized with data
+  useEffect(() => {
+    // Only generate variants after loading is complete and it hasn't been done yet
+    if (!isLoading && !variantsGeneratedRef.current && form.getValues('options').length > 0) {
+      // Set timeout to ensure form is fully populated
+      const timer = setTimeout(() => {
+        handleGenerateVariants();
+        variantsGeneratedRef.current = true;
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
-  };
+  }, [form, handleGenerateVariants, isLoading]);
 
-  // Trigger the hidden file input when clicking the dropzone.
-  const handleDropzoneClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  // Remove an image and revoke its object URL if necessary.
-  const handleRemoveImage = (index: number) => {
-    setMediaItems((prev) => {
-      const removed = prev[index];
-      if (removed.file) {
-        URL.revokeObjectURL(removed.url);
-      }
-      // Return filtered array with reordered ranks
-      const filtered = prev.filter((_, i) => i !== index);
-      return filtered.map((item, i) => ({ ...item, rank: i }));
-    });
-  };
-
-  // Move image up in order
-  const handleMoveImageUp = (index: number) => {
-    if (index === 0) return; // Already at the top
-    
-    setMediaItems((prev) => {
-      const newMedia = [...prev];
-      const temp = newMedia[index - 1];
-      newMedia[index - 1] = { ...newMedia[index], rank: index - 1 };
-      newMedia[index] = { ...temp, rank: index };
-      return newMedia;
-    });
-  };
-
-  // Move image down in order
-  const handleMoveImageDown = (index: number) => {
-    if (index === mediaItems.length - 1) return; // Already at the bottom
-    
-    setMediaItems((prev) => {
-      const newMedia = [...prev];
-      const temp = newMedia[index + 1];
-      newMedia[index + 1] = { ...newMedia[index], rank: index + 1 };
-      newMedia[index] = { ...temp, rank: index };
-      return newMedia;
-    });
-  };
-
-  // Upload a single file to the server
-  const uploadFile = async (file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await uploadProductImage({
-        productId: id,
-        formData
-      });
-      
-      if (response && response.id) {
-        return response.url || response.originalPath || response.path;
-      }
-      
-      throw new Error('Failed to get image URL from response');
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      throw error;
-    }
-  };
-
-  // Update the submission handler to match the schema
-  const onSubmit = async (values: ProductFormValues) => {
+  // Update the submission handler to match the schema - memoized with useCallback
+  const onSubmit = useCallback(async (values: ProductFormValues) => {
     // Validate required fields
     if (!values.title.trim()) {
       setError('Product title is required');
@@ -2803,41 +2907,8 @@ const EditProduct = () => {
     setError(null);
     
     try {
-      console.log('Form values for submission:', values);
-      
-      // Step 1: Upload any new image files first
-      const updatedMedia = [...mediaItems];
-      
-      // Find items with file property (newly added files)
-      const newFileItems = mediaItems.filter(item => item.file || item.isNew);
-      
-      if (newFileItems.length > 0) {
-        try {
-          // Upload each file and update the URL
-          for (const [index, item] of mediaItems.entries()) {
-            if (item.file) {
-              // Upload file to server
-              const uploadedUrl = await uploadFile(item.file);
-              
-              // Update the media item with the new URL from server
-              updatedMedia[index] = {
-                ...updatedMedia[index],
-                url: uploadedUrl,
-                file: null, // Clear the file reference
-                isNew: false
-              };
-            }
-          }
-        } catch (uploadError) {
-          console.error('Error uploading images:', uploadError);
-          setError('Failed to upload images. Please try again.');
-          setIsSubmitting(false);
-          return;
-        }
-      }
-      
-      // Prepare images in the API format - ensure it's an array
-      const images = updatedMedia.map((item) => ({
+      // Prepare images in the API format
+      const images = mediaItems.map((item) => ({
         id: item.id, // Include image id if it exists
         url: item.url,
         rank: item.rank,
@@ -2859,8 +2930,6 @@ const EditProduct = () => {
           })),
         };
       });
-
-      console.log('Formatted options:', options);
       
       // Validate variants - make sure each has at least a title and SKU
       const invalidVariants = values.variants.filter(v => !v.title || !v.sku);
@@ -2935,8 +3004,6 @@ const EditProduct = () => {
         
         return variantObj;
       });
-
-      console.log('Formatted variants:', variants);
     
       // Construct the product object in API format, conforming to the schema
       const updatedProduct = {
@@ -2947,26 +3014,26 @@ const EditProduct = () => {
         status: values.status,
         thumbnail: values.thumbnail || "",
         discountable: Boolean(values.discountable),
-        // Add the price property to fix TypeScript error
-        price: 0, // Derive a reasonable default from variants if needed
+        price: values.variants.length > 0 ? values.variants[0].price : 0,
         weight: values.weight ? parseInt(values.weight) || 0 : 0,
         length: values.length ? parseInt(values.length) || 0 : 0,
         width: values.width ? parseInt(values.width) || 0 : 0,
         height: values.height ? parseInt(values.height) || 0 : 0,
         material: values.material || undefined,
         origin_country: values.origin_country || undefined,
-        // options,
-        // variants,
+        options,
+        variants,
         images,
       };
-
-      // Debug output
-      console.log('Product data being sent to API:', JSON.stringify(updatedProduct, null, 2));
       
       try {
         // Send the update request
         const result = await updateProduct({ product: updatedProduct });
-        console.log('Update result:', result);
+        
+        toast({
+          title: "Product saved",
+          description: "Product has been updated successfully.",
+        });
         
         // Navigate back to products list on success
         navigate({ to: '/products' });
@@ -2975,36 +3042,41 @@ const EditProduct = () => {
         
         // More detailed error handling
         if (apiError.response) {
-          console.error('API Error response:', apiError.response);
-          console.error('Error response data:', apiError.response.data);
           setError(`API Error: ${apiError.response.data?.message || apiError.response.data?.error || apiError.message || 'Unknown API error'}`);
         } else if (apiError.request) {
           setError('Network error: No response received from server. Please check your connection.');
         } else {
           setError(`Error: ${apiError.message || 'Unknown error occurred'}`);
         }
+        
+        toast({
+          variant: "destructive",
+          title: "Save failed",
+          description: "There was an error saving the product. Please try again.",
+        });
       }
     } catch (error: any) {
       console.error('Error preparing data for update:', error);
       setError(`Failed to update product: ${error?.message || 'Unknown error'}`);
+      
+      toast({
+        variant: "destructive",
+        title: "Save failed",
+        description: error?.message || "An unknown error occurred while preparing data.",
+      });
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [id, mediaItems, navigate, originalData.variants, toast]);
 
-  // Cleanup any object URLs for newly added files when unmounting.
-  const mediaRef = useRef(mediaItems);
-  useEffect(() => {
-    mediaRef.current = mediaItems;
-  }, [mediaItems]);
-
+  // Cleanup any object URLs when unmounting
   useEffect(() => {
     return () => {
-      mediaRef.current.forEach((item) => {
+      mediaItems.forEach((item) => {
         if (item.file) URL.revokeObjectURL(item.url);
       });
     };
-  }, []);
+  }, [mediaItems]);
 
   if (isLoading) {
     return (
@@ -3138,32 +3210,28 @@ const EditProduct = () => {
                   
                   <TabsContent value="upload">
                     <div
-                      onClick={handleDropzoneClick}
-                      className="flex flex-col items-center justify-center p-6 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-gray-400"
+                      ref={dropZoneRef}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`flex flex-col items-center justify-center p-6 border-2 ${
+                        isDraggingOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                      } border-dashed rounded-lg cursor-pointer hover:border-gray-400 transition-colors`}
                     >
-                      <svg
-                        className="w-10 h-10 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 48 48"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M14 22h20M24 12v20"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                      <IconDragDrop size={40} className={`${isDraggingOver ? 'text-blue-500' : 'text-gray-400'}`} />
                       <span className="mt-2 text-sm text-gray-600">
                         Drag and drop images or click to upload
+                      </span>
+                      <span className="mt-1 text-xs text-gray-500">
+                        Images will be uploaded automatically
                       </span>
                     </div>
                     <input
                       type="file"
                       multiple
                       accept="image/*"
-                      onChange={handleFileChange}
+                      onChange={handleFileInputChange}
                       ref={fileInputRef}
                       className="hidden"
                     />
@@ -3183,14 +3251,28 @@ const EditProduct = () => {
                             handleAddImageUrl();
                           }
                         }}
+                        disabled={uploadingImage}
                       />
-                      <Button onClick={handleAddImageUrl} type="button">Add Image</Button>
+                      <Button 
+                        onClick={handleAddImageUrl} 
+                        type="button" 
+                        disabled={uploadingImage || !newImageUrl.trim()}
+                      >
+                        {uploadingImage ? 'Adding...' : 'Add Image'}
+                      </Button>
                     </div>
                     <p className="mt-2 text-xs text-gray-500">
                       Enter the URL of an image to add it to the product gallery.
                     </p>
                   </TabsContent>
                 </Tabs>
+                
+                {uploadingImage && (
+                  <div className="flex items-center p-3 mt-4 border border-blue-200 rounded-md bg-blue-50">
+                    <div className="w-4 h-4 mr-2 border-2 border-blue-500 rounded-full border-t-transparent animate-spin" />
+                    <span className="text-sm text-blue-700">Uploading images...</span>
+                  </div>
+                )}
                 
                 {mediaItems.length > 0 && (
                   <div className="mt-4">
@@ -3200,13 +3282,13 @@ const EditProduct = () => {
                         .sort((a, b) => a.rank - b.rank)
                         .map((item, index) => (
                           <div
-                            key={index}
-                            className="relative flex flex-col overflow-hidden bg-gray-100 border rounded"
+                            key={item.id || index}
+                            className="relative flex flex-col overflow-hidden bg-gray-100 border rounded group"
                           >
                             <div className="flex items-center justify-center h-32 overflow-hidden">
                               <img
                                 src={item.url}
-                                alt={`Preview ${index}`}
+                                alt={`Product Image ${index + 1}`}
                                 className="object-cover w-full h-full"
                               />
                             </div>
@@ -3215,45 +3297,59 @@ const EditProduct = () => {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap max-w-[120px]">
-                                      {item.file ? item.file.name : item.url.split('/').pop() || `Image ${index + 1}`}
+                                      {item.url.split('/').pop() || `Image ${index + 1}`}
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    {item.isNew ? 'Will be saved on submit' : 'Saved in Medusa'}
+                                    {item.id ? 'Saved on server' : 'Will be saved on submit'}
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
                               <div className="flex space-x-1">
-                                <button
+                                <Button
                                   type="button"
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={() => handleMoveImageUp(index)}
                                   disabled={index === 0}
-                                  className="p-1 text-xs bg-gray-200 rounded disabled:opacity-50"
+                                  className="p-1 text-xs bg-gray-200 rounded disabled:opacity-50 h-7 w-7"
                                 >
                                   ↑
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                   type="button"
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={() => handleMoveImageDown(index)}
                                   disabled={index === mediaItems.length - 1}
-                                  className="p-1 text-xs bg-gray-200 rounded disabled:opacity-50"
+                                  className="p-1 text-xs bg-gray-200 rounded disabled:opacity-50 h-7 w-7"
                                 >
                                   ↓
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                   type="button"
+                                  size="sm"
+                                  variant="destructive"
                                   onClick={() => handleRemoveImage(index)}
-                                  className="p-1 text-xs text-white bg-red-500 rounded"
+                                  className="p-1 h-7 w-7"
                                 >
                                   ×
-                                </button>
+                                </Button>
                               </div>
                             </div>
-                            {item.isNew && (
-                              <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 py-0.5">
-                                New
+                            
+                            {/* Overlay with controls visible on hover */}
+                            <div className="absolute inset-0 flex items-center justify-center transition-opacity bg-black opacity-0 bg-opacity-40 group-hover:opacity-100">
+                              <div className="flex space-x-2">
+                                <Button 
+                                  variant="secondary" 
+                                  size="sm" 
+                                  onClick={() => handleRemoveImage(index)}
+                                >
+                                  Remove
+                                </Button>
                               </div>
-                            )}
+                            </div>
                           </div>
                         ))}
                     </div>
@@ -3673,7 +3769,7 @@ const EditProduct = () => {
                           <SelectContent>
                           {categories.length > 0 ? (
                                 categories.map(category => (
-                                <SelectItem key={category.id} value={category.name}>
+                                <SelectItem key={category.id} value={category.id}>
                                   {category.name}
                                 </SelectItem>
                                 ))
@@ -3781,7 +3877,7 @@ const EditProduct = () => {
             <Button variant="outline" onClick={() => navigate({ to: '/products' })}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || uploadingImage}>
               {isSubmitting ? 'Saving...' : 'Save'}
             </Button>
           </div>

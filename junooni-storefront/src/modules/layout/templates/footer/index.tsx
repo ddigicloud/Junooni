@@ -7,7 +7,7 @@ import { listCollections } from "@lib/data/collections";
 // import { RxTwitterLogo } from "react-icons/rx";
 
 
-import Newsletter from "@modules/layout/components/Newsletter";
+
 
 export default async function Footer() {
   const productCategories = await listCategories();

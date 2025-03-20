@@ -26,6 +26,9 @@ module.exports = defineConfig({
     },
     {
       resolve: "./src/modules/size-chart",
+    },
+    {
+      resolve: "./src/modules/wishlist"
     }
   ]
 })

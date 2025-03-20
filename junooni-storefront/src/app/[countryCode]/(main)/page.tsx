@@ -1,17 +1,20 @@
 import { Metadata } from "next"
-
-import FeaturedProducts from "@modules/home/components/featured-products"
-import Hero from "@modules/home/components/hero"
 import { listCollections } from "@lib/data/collections"
 import { getRegion } from "@lib/data/regions"
-import HomeFeatuedProducts from "@modules/home/components/HomeFeatuedProducts"
-import WhatsAppTag from "@modules/layout/components/WhatsAppTag"
-import HomeCategories from "@modules/home/components/features"
-import JunooniHomepage from "@modules/layout/JunooniHomePage"
+import HomeCategories from "@modules/home/components/HomeCategories"
+import VendorCreator from "@modules/home/components/vendorCreator"
+import CollectionBanner from "@modules/home/components/CollectionBanner"
+import Bestsellers from "@modules/home/components/BestSellers"
+import Features from "@modules/home/components/Features"
+import CreatorInstagram from "@modules/home/components/CreatorInstagram"
+import FanContent from "@modules/home/components/FanContent"
+import NewsLetter from "@modules/home/components/NewsLetter"
+import FeaturedProducts from "@modules/home/components/featured-products"
+import Hero from "@modules/home/components/hero"
 
 
 export const metadata: Metadata = {
-  title: "Medusa Next.js Starter Template",
+  title: "JUNOONI | HOME",
   description:
     "A performant frontend ecommerce starter template with Next.js 14 and Medusa.",
 }
@@ -26,7 +29,7 @@ export default async function Home(props: {
   const region = await getRegion(countryCode)
 
   const { collections } = await listCollections({
-    fields: "id, handle, title",
+    fields: "id, handle, title, *metadata",
   })
 
   if (!collections || !region) {
@@ -35,19 +38,33 @@ export default async function Home(props: {
 
   return (
     <>
-      {/* <Hero />
-      <div className="pt-12">
-        <ul className="flex flex-col gap-x-6">
-          <FeaturedProducts collections={collections} region={region} />
-        </ul>
-      </div>
       
-      <HomeCategories/>
-      <HomeFeatuedProducts/>
-      <WhatsAppTag/> */}
+          <Hero />
+          <div className="flex flex-col min-h-screen bg-white">
+            <main className="flex-grow">
+              <VendorCreator />
+              <div className="pt-12">
+                <ul className="flex flex-col gap-x-6">
+                  <FeaturedProducts collections={collections} region={region} />
+                </ul>
+              </div>
 
-     <JunooniHomepage/>
+              <HomeCategories />
+              <CollectionBanner />
 
+              <div className="pt-12">
+                <ul className="flex flex-col gap-x-6">
+                  <Bestsellers collections={collections} region={region} />
+                </ul>
+              </div>
+
+              <Features />
+              <CreatorInstagram />
+              <FanContent />
+              <NewsLetter />
+            </main>
+          </div>
+       
     </>
   )
 }

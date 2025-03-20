@@ -125,6 +125,7 @@ import { createFindParams } from "@medusajs/medusa/api/utils/validators"
 import { z } from "zod"
 import cors from "cors"
 import { PostAdminCreateBrand } from "./admin/brand/validators"
+import { PostStoreCreateWishlistItem } from "./store/customers/me/wishlists/items/validators"
 
 import { PostCreateBlank } from "./blank/route"
 import multer from "multer"
@@ -151,7 +152,7 @@ export default defineMiddlewares({
           // Define multiple origins
           const allowedOrigins = [
             ...parseCorsOrigins(configModule.projectConfig.http.storeCors),
-            "http://localhost:5173" // Add vendor dashboard origin here
+            "http://localhost:5173", "http://localhost:9000" // Add vendor dashboard origin here
           ];
     
           // CORS middleware with dynamic origin handling
@@ -170,15 +171,15 @@ export default defineMiddlewares({
     },
     {
       matcher: "/vendors",
-      method: ["OPTIONS", "POST"], // Handle preflight OPTIONS and POST
+      method: ["OPTIONS", "POST","PUT"], // Handle preflight OPTIONS and POST
       middlewares: [
         // CORS Middleware
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule");
-          cors({
+          cors({  
             origin:true,
             credentials: true,
-            methods: ["POST", "OPTIONS"], // Allow specific methods
+            methods: ["POST", "OPTIONS", "PUT"], // Allow specific methods
             allowedHeaders: [
               "Content-Type",
               "Authorization",
@@ -202,7 +203,7 @@ export default defineMiddlewares({
     },
     {
       matcher: "/vendors/*",
-      method: ["GET","OPTIONS", "POST", "PUT", "DELETE"],
+      method: ["OPTIONS", "POST", "PUT", "DELETE"],
       middlewares: [
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule");
@@ -281,6 +282,13 @@ export default defineMiddlewares({
             isList: true,
           }
         ),
+      ],
+    },
+    {
+      matcher: "/store/customers/me/wishlists/items",
+      method: "POST",
+      middlewares: [
+        validateAndTransformBody(PostStoreCreateWishlistItem),
       ],
     },
     {

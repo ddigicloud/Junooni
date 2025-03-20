@@ -24,24 +24,6 @@ interface CategoryLevel1 {
   category_children?: CategoryLevel2[];
 }
 
-// Define what NavLink expects (now supporting 3 levels)
-interface SubmenuItemLevel3 {
-  label: string;
-  href: string;
-}
-
-interface SubmenuItemLevel2 {
-  label: string;
-  href: string;
-  submenuItems?: SubmenuItemLevel3[];
-}
-
-interface SubmenuItemLevel1 {
-  label: string;
-  href: string;
-  submenuItems: SubmenuItemLevel2[];
-}
-
 interface CategoryMegaMenuProps {
   categories: CategoryLevel1[];
 }
@@ -101,7 +83,7 @@ export function CategoryMegaMenu({ categories = [] }: CategoryMegaMenuProps) {
   const menuItems = organizeCategories();
 
   return (
-    <div className="items-center hidden md:flex">
+    <div className="items-center hidden h-full md:flex">
       {menuItems.map((item, index) => (
         <NavLink 
           key={index}
