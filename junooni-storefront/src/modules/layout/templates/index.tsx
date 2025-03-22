@@ -1,7 +1,8 @@
 import React from "react"
 
 import Footer from "@modules/layout/templates/footer"
-import Nav from "@modules/layout/templates/nav"
+import Nav from "./nav"
+import ClientNavContainer from "./nav/ClientNavContainer"
 
 
 const Layout: React.FC<{
@@ -9,8 +10,9 @@ const Layout: React.FC<{
 }> = ({ children }) => {
   return (
     <div className="relative">
-      <Nav />
-      
+      <ClientNavContainer >
+        <Nav />
+        </ClientNavContainer>
       <main className="relative">{children}</main>
       <Footer />
     </div>

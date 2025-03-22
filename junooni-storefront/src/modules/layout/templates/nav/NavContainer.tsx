@@ -96,11 +96,11 @@ export function NavContainer({ children, isHomePage = false }: NavContainerProps
 
   return (
     <NavContext.Provider value={{ isAnyMenuHovered, setAnyMenuHovered }}>
-      <div className={`fixed inset-x-0 top-0 z-[1000] transition-transform duration-300 ${
+      <div className={`fixed inset-x-0 top-0 z-[1000] transition-transform duration-100 ${
         isVisible ? 'transform-none' : 'transform -translate-y-full'
       }`}>
         <header 
-          className={`relative h-16 mx-auto duration-300 transition-all w-full ${
+          className={`relative h-16 mx-auto duration-100 transition-all w-full ${
             isHomePage 
               ? isAnyMenuHovered || isPast100vh
                 ? 'bg-white text-black shadow-sm' 

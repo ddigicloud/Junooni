@@ -1,12 +1,13 @@
 import { Metadata } from "next"
-
 import { listCartOptions, retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
 import { getBaseURL } from "@lib/util/env"
 import { StoreCartShippingOption } from "@medusajs/types"
 import CartMismatchBanner from "@modules/layout/components/cart-mismatch-banner"
 import Footer from "@modules/layout/templates/footer"
-import NavWrapper from "@modules/layout/templates/nav/NavWrapper"
+import Nav from "@modules/layout/templates/nav"
+import { NavProvider } from "@modules/layout/templates/nav/NavContext"
+import ClientNavContainer from "@modules/layout/templates/nav/ClientNavContainer"
 import FreeShippingPriceNudge from "@modules/shipping/components/free-shipping-price-nudge"
 
 export const metadata: Metadata = {
@@ -25,8 +26,12 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
 
   return (
     <>
-      <NavWrapper />
-      
+      <NavProvider>
+        <ClientNavContainer>
+          <Nav />
+        </ClientNavContainer>
+      </NavProvider>
+     
       {customer && cart && (
         <CartMismatchBanner customer={customer} cart={cart} />
       )}

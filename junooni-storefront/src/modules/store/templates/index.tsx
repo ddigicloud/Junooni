@@ -10,17 +10,35 @@ const StoreTemplate = ({
   sortBy,
   page,
   countryCode,
+  categoryId,
+  brands,
+  colors,
+  price,
 }: {
   sortBy?: SortOptions
   page?: string
   countryCode: string
+  categoryId?: string
+  brands?: string
+  colors?: string
+  price?: string
 }) => {
   const pageNumber = page ? parseInt(page) : 1
   const sort = sortBy || "created_at"
+  const brandArray = brands ? brands.split(",") : []
+  const colorArray = colors ? colors.split(",") : []
+  
+  // Process price range parameter
+  let minPrice, maxPrice
+  if (price) {
+    const [min, max] = price.split("-").map(p => parseInt(p, 10))
+    minPrice = min
+    maxPrice = max
+  }
 
   return (
     <div
-      className="flex flex-col small:flex-row small:items-start py-6 content-container"
+      className="flex flex-col py-6 small:flex-row small:items-start content-container"
       data-testid="category-container"
     >
       <RefinementList sortBy={sort} />
@@ -33,6 +51,11 @@ const StoreTemplate = ({
             sortBy={sort}
             page={pageNumber}
             countryCode={countryCode}
+            categoryId={categoryId}
+            brands={brandArray.length > 0 ? brandArray : undefined}
+            colors={colorArray.length > 0 ? colorArray : undefined}
+            minPrice={minPrice}
+            maxPrice={maxPrice}
           />
         </Suspense>
       </div>

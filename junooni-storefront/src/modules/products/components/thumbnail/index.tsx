@@ -1,12 +1,8 @@
-import { Container, clx } from "@medusajs/ui"
-import Image from "next/image"
 import React from "react"
-
 import PlaceholderImage from "@modules/common/icons/placeholder-image"
 
 type ThumbnailProps = {
   thumbnail?: string | null
-  // TODO: Fix image typings
   images?: any[] | null
   size?: "small" | "medium" | "large" | "full" | "square"
   isFeatured?: boolean
@@ -22,47 +18,40 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
   className,
   "data-testid": dataTestid,
 }) => {
+  // Find the initial image to display - use thumbnail if available, otherwise the first image
   const initialImage = thumbnail || images?.[0]?.url
 
   return (
-    <Container
-      className={clx(
-        "relative w-full overflow-hidden p-4 bg-ui-bg-subtle shadow-elevation-card-rest rounded-large group-hover:shadow-elevation-card-hover transition-shadow ease-in-out duration-150",
-        className,
-        {
-          "aspect-[11/14]": isFeatured,
-          "aspect-[9/16]": !isFeatured && size !== "square",
-          "aspect-[1/1]": size === "square",
-          "w-[180px]": size === "small",
-          "w-[290px]": size === "medium",
-          "w-[440px]": size === "large",
-          "w-full": size === "full",
-        }
-      )}
+    <div 
+      className={`w-full h-full ${className || ""}`}
       data-testid={dataTestid}
     >
-      <ImageOrPlaceholder image={initialImage} size={size} />
-    </Container>
-  )
-}
-
-const ImageOrPlaceholder = ({
-  image,
-  size,
-}: Pick<ThumbnailProps, "size"> & { image?: string }) => {
-  return image ? (
-    <img
-      src={image}
-      alt="Thumbnail"
-      className="absolute inset-0 object-cover object-center h-full"
-      draggable={false}
-      // quality={50}
-      sizes="(max-width: 576px) 280px, (max-width: 768px) 360px, (max-width: 992px) 480px, 800px"
-      // fill
-    />
-  ) : (
-    <div className="w-full h-full absolute inset-0 flex items-center justify-center">
-      <PlaceholderImage size={size === "small" ? 16 : 24} />
+      {/* Primary image - fills the entire container using standard flow */}
+      {initialImage ? (
+        <img
+          src={initialImage}
+          alt="Product thumbnail"
+          className="object-cover object-center w-full h-full"
+          draggable={false}
+          loading="lazy"
+        />
+      ) : (
+        /* Placeholder when no image is available */
+        <div className="flex items-center justify-center w-full h-full bg-gray-100">
+          <PlaceholderImage size={size === "small" ? 16 : 24} />
+        </div>
+      )}
+      
+      {/* Optional secondary image for hover effect - appears on hover */}
+      {images && images.length > 1 && (
+        <img
+          src={images[1].url}
+          alt="Product thumbnail hover"
+          className="absolute inset-0 object-cover object-center w-full h-full transition-opacity duration-300 opacity-0 group-hover:opacity-100"
+          draggable={false}
+          loading="lazy"
+        />
+      )}
     </div>
   )
 }

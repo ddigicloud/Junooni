@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 import CartButton from "@modules/layout/components/cart-button";
 import { listCategories } from "@lib/data/categories";
-import { Search, UserCircle } from "lucide-react";
+import { Heart, Search, UserCircle } from "lucide-react";
 import { CategoryMegaMenu } from "./CategoryMegaMenu";
 import MobileMenu from "./MobileMenu";
 
@@ -11,7 +11,7 @@ import MobileMenu from "./MobileMenu";
 export default async function Nav() {
   // Fetch all categories to get the complete hierarchy
   const allCategories = await listCategories();
-  
+ 
   return (
    
         <nav className="relative flex items-center justify-between w-full h-full content-container txt-xsmall-plus text-small-regular">
@@ -94,6 +94,13 @@ export default async function Nav() {
               data-testid="nav-account-link"
             >
               <UserCircle className="w-5 h-5"/>
+            </LocalizedClientLink>
+            <LocalizedClientLink
+              className="transition-colors duration-300"
+              href="/wishlist"
+              data-testid="nav-account-link"
+            >
+              <Heart className="w-5 h-5"/>
             </LocalizedClientLink>
             <Suspense
               fallback={

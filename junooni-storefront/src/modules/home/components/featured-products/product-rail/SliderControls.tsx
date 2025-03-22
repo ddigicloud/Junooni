@@ -92,7 +92,7 @@ export default function SliderControls({ sliderId, itemCount }: SliderControlsPr
       {/* Progress indicator */}
       {/* <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-200 rounded-full">
         <div 
-          className="h-full bg-black rounded-full transition-all duration-300"
+          className="h-full transition-all duration-300 bg-black rounded-full"
           style={{ width: `${Math.min(progressPercentage, 100)}%` }}
         />
       </div> */}

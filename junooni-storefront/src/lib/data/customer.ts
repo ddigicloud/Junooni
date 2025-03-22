@@ -5,6 +5,8 @@ import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
+import { cookies as nextCookies } from "next/headers"
+
 import {
   getAuthHeaders,
   getCacheOptions,
@@ -78,8 +80,10 @@ export async function signup(_currentState: unknown, formData: FormData) {
     const { customer: createdCustomer } = await sdk.store.customer.create(
       customerForm,
       {},
-      headers
+      headers,
     )
+
+   
 
     const loginToken = await sdk.auth.login("customer", "emailpass", {
       email: customerForm.email,
@@ -92,12 +96,19 @@ export async function signup(_currentState: unknown, formData: FormData) {
     revalidateTag(customerCacheTag)
 
     await transferCart()
+   
+    if(createdCustomer){
+      
+      await wishListCreate();
+    }
 
     return createdCustomer
   } catch (error: any) {
     return error.toString()
   }
+    
 }
+
 
 export async function login(_currentState: unknown, formData: FormData) {
   const email = formData.get("email") as string
@@ -245,3 +256,57 @@ export const updateCustomerAddress = async (
       return { success: false, error: err.toString() }
     })
 }
+
+
+  // wishlist create 
+
+export const wishListCreate =
+  async () => {
+    const cookies = await nextCookies()
+    const token = cookies.get("_medusa_jwt")?.value
+    console.log(token)
+
+     await sdk.client
+      .fetch(`/store/customers/me/wishlists`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+        },
+      })
+      .then((customer) =>{
+         console.log(token)
+         console.log(customer)
+      })
+      .catch(() => null)
+  }
+
+
+  // wishlist addItem
+
+  export const wishlistAddItem =
+  async (variant_id) => {
+
+    console.log(variant_id)
+
+    const cookies = await nextCookies()
+    const token = cookies.get("_medusa_jwt")?.value
+    if(!token){
+        return console.log("please login")
+    }
+    return await sdk.client
+      .fetch(`/store/customers/me/wishlists/items`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+        },
+        body:{
+          "variant_id" : `${variant_id}`
+        }
+      })
+      .then((res) => console.log(res))
+      .catch(() => null)
+  }

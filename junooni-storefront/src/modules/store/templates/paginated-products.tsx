@@ -12,6 +12,10 @@ type PaginatedProductsParams = {
   category_id?: string[]
   id?: string[]
   order?: string
+  vendors?: string[]
+  tags?: string[]
+  price_min?: number
+  price_max?: number
 }
 
 export default async function PaginatedProducts({
@@ -21,6 +25,10 @@ export default async function PaginatedProducts({
   categoryId,
   productsIds,
   countryCode,
+  brands,
+  colors,
+  minPrice,
+  maxPrice,
 }: {
   sortBy?: SortOptions
   page: number
@@ -28,9 +36,13 @@ export default async function PaginatedProducts({
   categoryId?: string
   productsIds?: string[]
   countryCode: string
+  brands?: string[]
+  colors?: string[]
+  minPrice?: number
+  maxPrice?: number
 }) {
   const queryParams: PaginatedProductsParams = {
-    limit: 12,
+    limit: PRODUCT_LIMIT,
   }
 
   if (collectionId) {
@@ -43,6 +55,22 @@ export default async function PaginatedProducts({
 
   if (productsIds) {
     queryParams["id"] = productsIds
+  }
+
+  if (brands && brands.length > 0) {
+    queryParams["vendors"] = brands
+  }
+
+  if (colors && colors.length > 0) {
+    queryParams["tags"] = colors
+  }
+  
+  if (minPrice !== undefined) {
+    queryParams["price_min"] = minPrice
+  }
+  
+  if (maxPrice !== undefined) {
+    queryParams["price_max"] = maxPrice
   }
 
   if (sortBy === "created_at") {
@@ -69,7 +97,7 @@ export default async function PaginatedProducts({
   return (
     <>
       <ul
-        className="grid grid-cols-2 w-full small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-8"
+        className="grid w-full grid-cols-2 small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-8"
         data-testid="products-list"
       >
         {products.map((p) => {

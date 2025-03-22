@@ -6,6 +6,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import Thumbnail from "../thumbnail"
 import PreviewPrice from "./price"
 import { Heart } from "lucide-react"
+import WishlistButton from "./wishListButtons"
 
 export default async function ProductPreview({
   product,
@@ -16,6 +17,7 @@ export default async function ProductPreview({
   isFeatured?: boolean
   region: HttpTypes.StoreRegion
 }) {
+  // Fetch price information for the product
   const pricedProduct = await listProducts({
     regionId: region.id,
     queryParams: { id: [product.id!] },
@@ -25,22 +27,27 @@ export default async function ProductPreview({
     return null
   }
 
+  // Get the cheapest price for the product
   const { cheapestPrice } = getProductPrice({
     product,
   })
 
   return (
-    <LocalizedClientLink href={`/products/${product.handle}`}>
-      <div data-testid="product-wrapper" className="relative group h-full flex flex-col">
-        {/* Product image container with overlay effects */}
+    
+      <div data-testid="product-wrapper" className="relative flex flex-col h-full group">
+        {/* Product image container with overlay effects - controls the aspect ratio */}
         <div className="relative overflow-hidden rounded-lg bg-gray-50 aspect-[4/5] mb-4">
           {/* Wishlist button */}
-          <button 
+          {/* <button 
             className="absolute z-10 p-2 transition-all duration-300 bg-white rounded-full shadow-md opacity-0 right-3 top-3 group-hover:opacity-100 hover:bg-gray-50"
             aria-label="Add to wishlist"
+            
           >
             <Heart className="w-5 h-5 text-gray-700 transition-all hover:text-black hover:fill-current" />
           </button>
+          */}
+
+          <WishlistButton variantId={product.variants?.[0]?.id}/>
           
           {/* Product tags */}
           <div className="absolute z-10 flex flex-wrap gap-2 left-3 top-3 max-w-[85%]">
@@ -54,8 +61,8 @@ export default async function ProductPreview({
             ))}
           </div>
           
-          {/* Product image with hover effect */}
-          <div className="transition-transform duration-500 group-hover:scale-105 h-full">
+          {/* Image container with transform effect - wraps the Thumbnail */}
+          <div className="w-full h-full transition-transform duration-500 group-hover:scale-105">
             <Thumbnail
               thumbnail={product.thumbnail}
               images={product.images}
@@ -64,41 +71,45 @@ export default async function ProductPreview({
             />
           </div>
           
-          {/* Quick add overlay - optional */}
+          {/* Quick add overlay - appears on hover */}
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-center p-2 transition-all translate-y-full opacity-0 bg-white/90 group-hover:translate-y-0 group-hover:opacity-100">
+          <LocalizedClientLink href={`/products/${product.handle}`}>
             <span className="text-sm font-medium">Quick view</span>
+            </LocalizedClientLink>
           </div>
         </div>
         
-        {/* Product info */}
-        <div className="flex-grow">
+        {/* Product info section */}
+        <div className="flex-grow" >
           {/* Vendor name */}
-          <div className="text-xs text-gray-500 mb-1">
+          <div className="mb-1 text-xs text-gray-500">
             By {product.vendor ? product.vendor.name : "Junooni"}
           </div>
-          
+           
           {/* Product title and price */}
-          <div className="flex justify-between items-start mb-2">
+          <div className="flex items-start justify-between mb-2">
+          <LocalizedClientLink href={`/products/${product.handle}`}>
             <Text 
-              className="text-base font-medium leading-tight line-clamp-2 pr-2" 
+              className="pr-2 text-base font-medium leading-tight line-clamp-2" 
               data-testid="product-title"
             >
               {product.title}
             </Text>
+            </LocalizedClientLink>
             <div className="font-semibold text-gray-900 whitespace-nowrap">
               {cheapestPrice && <PreviewPrice price={cheapestPrice} />}
             </div>
           </div>
         </div>
         
-        {/* Color options */}
+        {/* Color options - shown if product has color metadata */}
         {product.metadata && Object.entries(product.metadata).length > 0 && (
-          <div className="mt-auto pt-3">
+          <div className="pt-3 mt-auto">
             <ul className="flex items-center gap-x-1">
               {Object.entries(product.metadata).map(([key, value], index) => (
                 <li key={index}>
                   <div 
-                    className="w-6 h-6 rounded-full border border-gray-200 shadow-sm cursor-pointer transition-transform hover:scale-110" 
+                    className="w-6 h-6 transition-transform border border-gray-200 rounded-full shadow-sm cursor-pointer hover:scale-110" 
                     style={{ backgroundColor: `${value}` }}
                     title={key}
                   ></div>
@@ -108,6 +119,6 @@ export default async function ProductPreview({
           </div>
         )}
       </div>
-    </LocalizedClientLink>
+ 
   )
 }
