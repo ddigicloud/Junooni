@@ -96,11 +96,12 @@ export default async function Nav() {
               <UserCircle className="w-5 h-5"/>
             </LocalizedClientLink>
             <LocalizedClientLink
-              className="transition-colors duration-300"
+              className="transition-colors duration-300 "
               href="/wishlist"
               data-testid="nav-account-link"
             >
               <Heart className="w-5 h-5"/>
+             
             </LocalizedClientLink>
             <Suspense
               fallback={

@@ -40,6 +40,9 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
       })
   }
 
+
+  console.log(item)
+
   // TODO: Update this to grab the actual max inventory
   const maxQtyFromInventory = 10
   const maxQuantity = item.variant?.manage_inventory ? 10 : maxQtyFromInventory

@@ -68,7 +68,7 @@ const ProductPage = () => {
     colors: [
       { id: 1, name: "Black", hex: "#000000", available: true },
       { id: 2, name: "White", hex: "#FFFFFF", available: true },
-      { id: 3, name: "Navy", hex: "#000080", available: false }
+      { id: 3, name: "Navy", hex: "#000080", available:   false }
     ],
     storyContent: {
       title: "The Story Behind The Design",

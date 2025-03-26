@@ -4,24 +4,23 @@ import { usePathname } from 'next/navigation';
 import { NavContainer } from "@modules/layout/templates/nav/NavContainer";
 import { ReactNode } from 'react';
 
-
-
 export default function ClientNavContainer({ children }: { children: ReactNode }) {
- 
   const pathname = usePathname();
 
-
-  // Check if current page is home page 
-  // In your [countryCode]/(main) structure, the home page would just have the country code
-  // e.g., /us/ or /uk/ would be home pages
+  // Check if current page is home page or wishlist page
   const pathParts = pathname.split('/').filter(Boolean);
-  const isHomePage = pathParts.length === 1; // Only the country code segment exists
   
- 
-
+  // Original home page check (only country code exists)
+  const isHomePage = pathParts.length === 1;
+  
+  // Check if it's the wishlist page
+  const isWishlistPage = pathParts.length === 2 && pathParts[1].toLowerCase() === 'wishlist';
+  
+  // Apply the same properties if it's either home page or wishlist page
+  const shouldApplyHomePageProps = isHomePage ;
 
   return (
-    <NavContainer isHomePage={isHomePage}>
+    <NavContainer isHomePage={shouldApplyHomePageProps}>
       {children}
     </NavContainer>
   );

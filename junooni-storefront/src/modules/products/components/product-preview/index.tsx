@@ -5,8 +5,8 @@ import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Thumbnail from "../thumbnail"
 import PreviewPrice from "./price"
-import { Heart } from "lucide-react"
-import WishlistButton from "./wishListButtons"
+
+import WishlistButton from "@modules/wishlists/components/wishlist-button"
 
 export default async function ProductPreview({
   product,
@@ -32,20 +32,14 @@ export default async function ProductPreview({
     product,
   })
 
+
   return (
     
       <div data-testid="product-wrapper" className="relative flex flex-col h-full group">
         {/* Product image container with overlay effects - controls the aspect ratio */}
         <div className="relative overflow-hidden rounded-lg bg-gray-50 aspect-[4/5] mb-4">
           {/* Wishlist button */}
-          {/* <button 
-            className="absolute z-10 p-2 transition-all duration-300 bg-white rounded-full shadow-md opacity-0 right-3 top-3 group-hover:opacity-100 hover:bg-gray-50"
-            aria-label="Add to wishlist"
-            
-          >
-            <Heart className="w-5 h-5 text-gray-700 transition-all hover:text-black hover:fill-current" />
-          </button>
-          */}
+         
 
           <WishlistButton variantId={product.variants?.[0]?.id}/>
           

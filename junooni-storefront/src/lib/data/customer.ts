@@ -284,29 +284,111 @@ export const wishListCreate =
 
 
   // wishlist addItem
+/**
+ * Adds an item to the customer's wishlist
+ * @param variant_id - The ID of the product variant to add to the wishlist
+ * @returns The API response or null if an error occurs
+ */
+export const wishlistAddItem = async (variant_id: string): Promise<any> => {
+  console.log(variant_id)
 
-  export const wishlistAddItem =
-  async (variant_id) => {
-
-    console.log(variant_id)
-
-    const cookies = await nextCookies()
-    const token = cookies.get("_medusa_jwt")?.value
-    if(!token){
-        return console.log("please login")
-    }
-    return await sdk.client
-      .fetch(`/store/customers/me/wishlists/items`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
-        },
-        body:{
-          "variant_id" : `${variant_id}`
-        }
-      })
-      .then((res) => console.log(res))
-      .catch(() => null)
+  const cookies = await nextCookies()
+  const token = cookies.get("_medusa_jwt")?.value
+  
+  if (!token) {
+    console.log("please login")
+    return "please login"
   }
+  
+  return await sdk.client
+    .fetch(`/store/customers/me/wishlists/items`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+      },
+      body: {
+        "variant_id": `${variant_id}`
+      }
+    })
+    .then((res) => res)
+    .catch(() => null)
+}
+
+/**
+ * Retrieves the customer's wishlist
+ * @returns The wishlist data or null if an error occurs
+ */
+export const wishlistItems = async (): Promise<any> => {
+  const cookies = await nextCookies()
+  const token = cookies.get("_medusa_jwt")?.value
+  
+  if (!token) {
+    console.log("please login")
+    return "please login"
+  }
+  
+  return await sdk.client
+    .fetch(`/store/customers/me/wishlists`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+      }
+    })
+    .then((res) => res)
+    .catch(() => null)
+}
+
+/**
+ * Deletes an item from the customer's wishlist
+ * @param itemId - The ID of the wishlist item to delete
+ * @returns The API response or null if an error occurs
+ */
+export const ItemDelete = async (itemId: string): Promise<any> => {
+  const cookies = await nextCookies()
+  const token = cookies.get("_medusa_jwt")?.value
+  
+  if (!token) {
+    console.log("please login")
+    return "please login"
+  }
+  
+  return await sdk.client
+    .fetch(`/store/customers/me/wishlists/items/${itemId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+      }
+    })
+    .then((res) => res)
+    .catch(() => null)
+}
+
+
+
+export const matchItemWithVariant = async (productId: string): Promise<any> => {
+  const cookies = await nextCookies()
+  const token = cookies.get("_medusa_jwt")?.value
+  
+  if (!token) {
+    console.log("please login")
+    return "please login"
+  }
+  
+  return await sdk.client
+    .fetch(`/store/products/${productId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+      }
+    })
+    .then((res) => res)
+    .catch(() => null)
+}

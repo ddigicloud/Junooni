@@ -1,4 +1,4 @@
-import { 
+/*import { 
     createWorkflow,
     WorkflowResponse
   } from "@medusajs/framework/workflows-sdk"
@@ -30,7 +30,7 @@ import {
    * Workflow for updating a vendor and its associated admins.
    * Following the same pattern as createVendorAdminWorkflow.
    */
-  const updateVendorWorkflow = createWorkflow(
+  /*const updateVendorWorkflow = createWorkflow(
     "update-vendor",
     function (input: UpdateVendorWorkflowInput) {
       // Step 1: Update the basic vendor information
@@ -72,3 +72,50 @@ import {
   )
   
   export default updateVendorWorkflow
+  */
+ 
+ // workflows/marketplace/update-vendor/index.ts
+import { 
+  createWorkflow,
+  WorkflowResponse
+} from "@medusajs/framework/workflows-sdk"
+import { 
+  useQueryGraphStep
+} from "@medusajs/medusa/core-flows"
+import updateVendorStep from "./steps/update-vendor"
+
+export type UpdateVendorWorkflowInput = {
+  vendorId: string
+  name?: string
+  handle?: string
+  logo?: string
+}
+
+const updateVendorWorkflow = createWorkflow(
+  "update-vendor",
+  function (input: UpdateVendorWorkflowInput) {
+    // Update the vendor using the dedicated step
+    const updatedVendor = updateVendorStep({
+      vendorId: input.vendorId,
+      name: input.name,
+      handle: input.handle,
+      logo: input.logo,
+    })
+    
+    // Retrieve the updated vendor with admins relation for the response
+    const { data: vendorWithAdmins } = useQueryGraphStep({
+      entity: "vendor",
+      fields: ["id", "name", "handle", "logo", "admins.*"],
+      filters: {
+        id: input.vendorId,
+      },
+    })
+    
+    // Return the updated vendor with its relations
+    return new WorkflowResponse({
+      vendor: vendorWithAdmins[0],
+    })
+  }
+)
+
+export default updateVendorWorkflow

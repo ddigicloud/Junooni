@@ -4,7 +4,7 @@ import kids from "./kids.jpeg"
 import merch from "./merch.webp"
 import vendor1 from "./vendor1.png"
 import vendor2 from "./vendor2.png"
-
+import wishlistBanner from "./wishlistBanner.jpg"
 
 
 export const assets = {
@@ -16,7 +16,8 @@ export const assets = {
     video2:"/videos/video2.mp4",
     video3:"/videos/video3.mp4",
     vendor1,
-    vendor2
+    vendor2,
+    wishlistBanner
 
     
 }

@@ -1,123 +1,446 @@
 "use client"
 
-import Back from "@modules/common/icons/back"
-import FastDelivery from "@modules/common/icons/fast-delivery"
-import Refresh from "@modules/common/icons/refresh"
-
-import Accordion from "./accordion"
 import { HttpTypes } from "@medusajs/types"
-import ProductReviews from "../product-review"
+import { useState } from "react"
+import { Calendar, Star, RefreshCw, Clock, Truck } from "lucide-react"
+import ProductReviews from "../product-reviews"
 
 type ProductTabsProps = {
   product: HttpTypes.StoreProduct
 }
 
-const ProductTabs = ({ product }: ProductTabsProps) => {
-  const tabs = [
-    {
-      label: "Product Information",
-      component: <ProductInfoTab product={product} />,
-    },
-    {
-      label: "Shipping & Returns",
-      component: <ShippingInfoTab />,
-    },
-    {
-      label: "Product review",
-      component: <ProductReviews/>,
-    },
+const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
+  const [activeTab, setActiveTab] = useState('description')
+  
+  // Hardcoded product details - these could be supplemented with product data
+  const productDetails = [
+    "Premium weight 100% organic cotton",
+    "Ribbed crewneck collar",
+    "Printed with eco-friendly inks",
+    "Limited production run"
   ]
-
+  
+  // Hardcoded story content
+  const storyTitle = "The Story Behind The Design"
+  const storyText = "This design was created during our latest product development cycle. Inspired by customer feedback and industry trends, our team sketched the initial concept and refined it through multiple iterations.\n\nThe circular elements represent the connection between our brand and our customers, while the patterns symbolize our commitment to quality. Each piece is made with attention to detail and sustainability in mind."
+  const storyImage = "https://placehold.co/500/300"
+  const storyProcess = [
+    "Hand-sketched initial design",
+    "Digital refinement with customer input",
+    "Small-batch production with eco-friendly materials",
+    "Quality testing and assurance"
+  ]
+    
+  // Hardcoded shipping details
+  const freeThreshold = "100"
+  const estimatedDelivery = "5-7 business days"
+  const returnPeriod = "30"
+  
+  // Hardcoded reviews
+  const reviews = [
+    {
+      id: 1,
+      author: "JamieL",
+      rating: 5,
+      date: "March 10, 2025",
+      title: "High quality and unique design",
+      content: "I love how soft this product is while still being durable. The design is so unique and I've gotten tons of compliments when using it. Definitely worth the price for something so exclusive.",
+      verified: true
+    },
+    {
+      id: 2,
+      author: "Customer22",
+      rating: 4,
+      date: "March 5, 2025",
+      title: "Great quality, shipping took a while",
+      content: "The product quality is perfect and exactly as pictured. My only complaint is that shipping took longer than expected. Still, I'm happy with my purchase and would buy from this store again.",
+      verified: true
+    }
+  ]
+  
   return (
-    <div className="w-full">
-      <Accordion type="multiple">
-        {tabs.map((tab, i) => (
-          <Accordion.Item
-            key={i}
-            title={tab.label}
-            headingSize="medium"
-            value={tab.label}
+    <div className="overflow-hidden bg-white rounded-lg shadow-sm">
+      {/* Responsive Tab Navigation */}
+      <div className="border-b">
+        <div className="flex w-full overflow-x-auto scrollbar-hide">
+          <button
+            className={`px-3 py-2 text-xs sm:text-sm md:text-base font-medium whitespace-nowrap transition-colors border-b-2 flex-1 min-w-[80px] sm:min-w-0 sm:flex-none sm:px-6 sm:py-3 ${
+              activeTab === 'description'
+                ? 'border-[#e65100] text-[#e65100]'
+                : 'border-transparent hover:border-gray-300'
+            }`}
+            onClick={() => setActiveTab('description')}
           >
-            {tab.component}
-          </Accordion.Item>
-        ))}
-      </Accordion>
-    </div>
-  )
-}
+            <span className="block sm:hidden">Info</span>
+            <span className="hidden sm:block">Description & Details</span>
+          </button>
+          
+          <button
+            className={`px-3 py-2 text-xs sm:text-sm md:text-base font-medium whitespace-nowrap transition-colors border-b-2 flex-1 min-w-[80px] sm:min-w-0 sm:flex-none sm:px-6 sm:py-3 ${
+              activeTab === 'story'
+                ? 'border-[#e65100] text-[#e65100]'
+                : 'border-transparent hover:border-gray-300'
+            }`}
+            onClick={() => setActiveTab('story')}
+          >
+            <span>Story</span>
+          </button>
+          
+          <button
+            className={`px-3 py-2 text-xs sm:text-sm md:text-base font-medium whitespace-nowrap transition-colors border-b-2 flex-1 min-w-[80px] sm:min-w-0 sm:flex-none sm:px-6 sm:py-3 ${
+              activeTab === 'reviews'
+                ? 'border-[#e65100] text-[#e65100]'
+                : 'border-transparent hover:border-gray-300'
+            }`}
+            onClick={() => setActiveTab('reviews')}
+          >
+            <span className="block sm:hidden">Reviews</span>
+            <span className="hidden sm:block">Reviews ({reviews.length})</span>
+          </button>
 
-const ProductInfoTab = ({ product }: ProductTabsProps) => {
-  return (
-    <div className="py-8 text-small-regular">
-      <div className="grid grid-cols-2 gap-x-8">
-        <div className="flex flex-col gap-y-4">
-          <div>
-            <span className="font-semibold">Material</span>
-            <p>{product.material ? product.material : "-"}</p>
-          </div>
-          <div>
-            <span className="font-semibold">Country of origin</span>
-            <p>{product.origin_country ? product.origin_country : "-"}</p>
-          </div>
-          <div>
-            <span className="font-semibold">Type</span>
-            <p>{product.type ? product.type.value : "-"}</p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-y-4">
-          <div>
-            <span className="font-semibold">Weight</span>
-            <p>{product.weight ? `${product.weight} g` : "-"}</p>
-          </div>
-          <div>
-            <span className="font-semibold">Dimensions</span>
-            <p>
-              {product.length && product.width && product.height
-                ? `${product.length}L x ${product.width}W x ${product.height}H`
-                : "-"}
-            </p>
-          </div>
+
+          <button
+            className={`px-3 py-2 text-xs sm:text-sm md:text-base font-medium whitespace-nowrap transition-colors border-b-2 flex-1 min-w-[80px] sm:min-w-0 sm:flex-none sm:px-6 sm:py-3 ${
+              activeTab === 'NewReviews'
+                ? 'border-[#e65100] text-[#e65100]'
+                : 'border-transparent hover:border-gray-300'
+            }`}
+            onClick={() => setActiveTab('NewReviews')}
+          >
+            <span className="block sm:hidden">Reviews</span>
+            <span className="hidden sm:block">Reviews ({reviews.length})</span>
+          </button>
+          
+          <button
+            className={`px-3 py-2 text-xs sm:text-sm md:text-base font-medium whitespace-nowrap transition-colors border-b-2 flex-1 min-w-[80px] sm:min-w-0 sm:flex-none sm:px-6 sm:py-3 ${
+              activeTab === 'shipping'
+                ? 'border-[#e65100] text-[#e65100]'
+                : 'border-transparent hover:border-gray-300'
+            }`}
+            onClick={() => setActiveTab('shipping')}
+          >
+            <span className="block sm:hidden">Shipping</span>
+            <span className="hidden sm:block">Shipping & Returns</span>
+          </button>
         </div>
       </div>
-    </div>
-  )
-}
+      
+      {/* Responsive Content Areas */}
+      <div className="p-3 sm:p-4 md:p-6">
+        {/* Description & Details Tab - Using available product data */}
+        {activeTab === 'description' && (
+          <div>
+            <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
+              <div>
+                <h2 className="mb-2 text-base font-semibold sm:mb-4 sm:text-lg">Description</h2>
+                <p className="mb-4 text-sm text-gray-700 sm:mb-6">
+                  {product.description}
+                </p>
+                
+                {/* Limited edition badge - can be hardcoded or based on stock level */}
+                {(product.inventory_quantity && product.inventory_quantity < 50) && (
+                  <div className="p-3 mb-4 rounded-md bg-gray-50 sm:p-4 sm:mb-6">
+                    <div className="flex items-center mb-1 sm:mb-2">
+                      <Calendar size={16} className="text-[#e65100] mr-2" />
+                      <h3 className="text-sm font-medium sm:text-base">Limited Edition</h3>
+                    </div>
+                    <p className="text-xs text-gray-700 sm:text-sm">
+                      This item is part of a limited production run. 
+                      Once sold out, it may not be restocked.
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <h2 className="mb-2 text-base font-semibold sm:mb-4 sm:text-lg">Product Details</h2>
+                
+                {/* Product specifications using available data */}
+                <div className="mb-4 space-y-3 text-sm sm:mb-6">
+                  {product.material && (
+                    <div className="flex items-start">
+                      <span className="text-[#e65100] mr-2">•</span>
+                      <div>
+                        <span className="font-medium">Material: </span>
+                        <span className="text-gray-700">{product.material}</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {product.origin_country && (
+                    <div className="flex items-start">
+                      <span className="text-[#e65100] mr-2">•</span>
+                      <div>
+                        <span className="font-medium">Country of origin: </span>
+                        <span className="text-gray-700">{product.origin_country}</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {product.type?.value && (
+                    <div className="flex items-start">
+                      <span className="text-[#e65100] mr-2">•</span>
+                      <div>
+                        <span className="font-medium">Type: </span>
+                        <span className="text-gray-700">{product.type.value}</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {product.weight && (
+                    <div className="flex items-start">
+                      <span className="text-[#e65100] mr-2">•</span>
+                      <div>
+                        <span className="font-medium">Weight: </span>
+                        <span className="text-gray-700">{product.weight} g</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {(product.length && product.width && product.height) && (
+                    <div className="flex items-start">
+                      <span className="text-[#e65100] mr-2">•</span>
+                      <div>
+                        <span className="font-medium">Dimensions: </span>
+                        <span className="text-gray-700">{product.length}L x {product.width}W x {product.height}H</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Hardcoded details for elements not available in product data */}
+                <ul className="space-y-2 text-sm">
+                  {productDetails.map((detail, index) => (
+                    <li key={index} className="flex items-start">
+                      <span className="text-[#e65100] mr-2">•</span>
+                      <span className="text-gray-700">{detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* The Story Tab */}
+        {activeTab === 'story' && (
+          <div>
+            <h2 className="mb-3 text-base font-semibold sm:text-xl sm:mb-4">
+              {storyTitle}
+            </h2>
+            
+            <div className="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
+              <div>
+                <p className="mb-4 text-sm text-gray-700 whitespace-pre-line sm:text-base sm:mb-6">
+                  {storyText || "No story content available for this product."}
+                </p>
+                
+                {storyProcess.length > 0 && (
+                  <>
+                    <h3 className="mb-2 text-sm font-medium sm:text-base sm:mb-3">The Process</h3>
+                    <ul className="space-y-2">
+                      {storyProcess.map((step, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="flex-shrink-0 flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#e65100] text-white text-xs font-bold mr-2">
+                            {index + 1}
+                          </span>
+                          <span className="text-xs text-gray-700 sm:text-sm">{step}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+              
+              <div>
+                <div className="mb-3 overflow-hidden rounded-lg sm:mb-4">
+                  {/* Use first product image as fallback if available */}
+                  <img 
+                    src={product.images?.[0]?.url || storyImage} 
+                    alt="Behind the design" 
+                    className="w-full h-auto object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                
+                <div className="p-3 rounded-md bg-gray-50 sm:p-4">
+                  <h3 className="mb-1 text-sm font-medium sm:text-base sm:mb-2">A Message from the Creator</h3>
+                  <p className="text-xs italic text-gray-700 sm:text-sm">
+                    "We're proud to offer this product as part of our latest collection. Each item is crafted with care and designed to exceed your expectations."
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Reviews Tab */}
+        {activeTab === 'NewReviews' && (
+          <div>
+            <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+              {/* Review Summary */}
+              <div className="w-full lg:w-1/3">
+                <div className="p-3 mb-3 rounded-lg bg-gray-50 sm:p-4 sm:mb-4">
+                  <h3 className="mb-1 text-xl font-bold text-center sm:text-2xl sm:mb-2">4.5</h3>
+                  <div className="flex justify-center mb-1 text-yellow-400 sm:mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i}
+                        fill={i < 4 ? "currentColor" : "none"} 
+                        size={16}
+                        className={i < 4 ? "text-yellow-400" : "text-gray-300"}
+                      />
+                    ))}
+                  </div>
+                  <p className="mb-2 text-xs text-center text-gray-600 sm:text-sm sm:mb-4">
+                    Based on {reviews.length} reviews
+                  </p>
+                </div>
+                
+                <button className="w-full bg-[#e65100] text-white py-2 rounded-md text-sm font-medium hover:bg-[#d84315] transition">
+                  Write a Review
+                </button>
+              </div>
+              
+              {/* Review List */}
+              <div className="w-full lg:w-2/3">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h3 className="text-sm font-medium sm:text-base">Customer Reviews</h3>
+                  <select className="p-1 text-xs border rounded sm:text-sm">
+                    <option>Most Recent</option>
+                    <option>Highest Rated</option>
+                    <option>Lowest Rated</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-4 sm:space-y-6">
+                  {reviews.length > 0 ? (
+                    reviews.map((review: any, index: number) => (
+                      <div key={index} className="pb-4 border-b sm:pb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+                          <div className="flex items-center mb-1 sm:mb-0">
+                            <div className="mr-2 text-sm font-medium">{review.author}</div>
+                            {review.verified && (
+                              <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded">
+                                Verified
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 sm:text-sm">{review.date}</div>
+                        </div>
+                        
+                        <div className="flex mb-1 text-yellow-400 sm:mb-2">
+                          {[...Array(5)].map((_, i) => (
+                            <Star 
+                              key={i} 
+                              size={14} 
+                              fill={i < review.rating ? "currentColor" : "none"}
+                              className={i < review.rating ? "text-yellow-400" : "text-gray-300"}
+                            />
+                          ))}
+                        </div>
+                        
+                        <h4 className="mb-1 text-sm font-medium sm:mb-2">{review.title}</h4>
+                        <p className="mb-3 text-xs text-gray-700 sm:text-sm sm:mb-4">{review.content}</p>
+                        
+                        {review.image && (
+                          <div className="mb-2 sm:mb-4">
+                            <img 
+                              src={review.image} 
+                              alt={`Review by ${review.author}`} 
+                              className="object-cover w-16 h-16 rounded sm:w-20 sm:h-20"
+                              loading="lazy"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-xs text-gray-500 sm:text-sm sm:py-8">
+                      No reviews yet. Be the first to review this product!
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-const ShippingInfoTab = () => {
-  return (
-    <div className="py-8 text-small-regular">
-      <div className="grid grid-cols-1 gap-y-8">
-        <div className="flex items-start gap-x-2">
-          <FastDelivery />
-          <div>
-            <span className="font-semibold">Fast delivery</span>
-            <p className="max-w-sm">
-              Your package will arrive in 3-5 business days at your pick up
-              location or in the comfort of your home.
-            </p>
-          </div>
+         {/* Reviews Tab */}
+         {activeTab === 'reviews' && (
+          <div className="content-container my-16 small:my-32">
+          <ProductReviews productId={product.id} />
         </div>
-        <div className="flex items-start gap-x-2">
-          <Refresh />
-          <div>
-            <span className="font-semibold">Simple exchanges</span>
-            <p className="max-w-sm">
-              Is the fit not quite right? No worries - we&apos;ll exchange your
-              product for a new one.
-            </p>
+        )}
+        
+        {/* Shipping & Returns Tab */}
+        {activeTab === 'shipping' && (
+          <div className="w-full mx-auto">
+            <h2 className="mb-4 text-base font-semibold sm:text-xl sm:mb-6">
+              Shipping & Returns Information
+            </h2>
+            
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+              <div>
+                <h3 className="flex items-center mb-2 text-sm font-medium sm:text-lg sm:mb-3">
+                  <Truck size={16} className="text-[#e65100] mr-2 sm:size-18" />
+                  Shipping Details
+                </h3>
+                <div className="p-3 space-y-3 rounded-md bg-gray-50 sm:p-4 sm:space-y-4">
+                  <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                    <div>
+                      <h4 className="text-xs font-medium sm:text-sm">Standard Shipping</h4>
+                      <p className="text-xs text-gray-700 sm:text-sm">{estimatedDelivery}</p>
+                      <p className="text-xs text-gray-500 sm:text-sm">
+                        Free for orders over ${freeThreshold}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-medium sm:text-sm">Express Shipping</h4>
+                      <p className="text-xs text-gray-700 sm:text-sm">2-3 business days</p>
+                      <p className="text-xs text-gray-500 sm:text-sm">
+                        Additional fees apply
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="mb-1 text-xs font-medium sm:text-sm">Delivery Tracking</h4>
+                      <p className="text-xs text-gray-700 sm:text-sm">
+                        All orders include tracking information sent via email once your order ships.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="flex items-center mb-2 text-sm font-medium sm:text-lg sm:mb-3">
+                  <RefreshCw size={16} className="text-[#e65100] mr-2 sm:size-18" />
+                  Returns Policy
+                </h3>
+                <div className="p-3 space-y-3 rounded-md bg-gray-50 sm:p-4 sm:space-y-4">
+                  <p className="text-xs text-gray-700 sm:text-sm">
+                    We offer a {returnPeriod}-day return policy for most items. To be eligible for a return:
+                  </p>
+                  
+                  <ul className="space-y-2 text-xs text-gray-700 sm:text-sm">
+                    <li className="flex items-start">
+                      <span className="text-[#e65100] mr-2">•</span>
+                      <span>Items must be unused and in the original packaging</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-[#e65100] mr-2">•</span>
+                      <span>Include the original receipt or proof of purchase</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-[#e65100] mr-2">•</span>
+                      <span>Initiate the return within {returnPeriod} days of delivery</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex items-start gap-x-2">
-          <Back />
-          <div>
-            <span className="font-semibold">Easy returns</span>
-            <p className="max-w-sm">
-              Just return your product and we&apos;ll refund your money. No
-              questions asked – we&apos;ll do our best to make sure your return
-              is hassle-free.
-            </p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   )

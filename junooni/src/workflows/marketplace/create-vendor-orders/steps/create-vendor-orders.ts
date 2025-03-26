@@ -1,33 +1,39 @@
-import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
-import {
-  CartLineItemDTO,
+import { 
+  createStep,
+  StepResponse,
+} from "@medusajs/framework/workflows-sdk"
+import { 
+  CartLineItemDTO, 
   OrderDTO,
   LinkDefinition,
-  InferTypeOf,
-} from "@medusajs/framework/types";
-import { Modules } from "@medusajs/framework/utils";
-import {
-  createOrdersWorkflow,
+  InferTypeOf
+} from "@medusajs/framework/types"
+import { Modules, promiseAll } from "@medusajs/framework/utils"
+import { 
   cancelOrderWorkflow,
-} from "@medusajs/medusa/core-flows";
-import MarketplaceModuleService from "../../../../modules/marketplace/service";
-import { MARKETPLACE_MODULE } from "../../../../modules/marketplace";
-import Vendor from "../../../../modules/marketplace/models/vendor";
+  createOrderWorkflow
+} from "@medusajs/medusa/core-flows"
+import MarketplaceModuleService from "../../../../modules/marketplace/service"
+import { MARKETPLACE_MODULE } from "../../../../modules/marketplace"
+import Vendor from "../../../../modules/marketplace/models/vendor"
 
-export type VendorOrder = OrderDTO & {
-  vendor: InferTypeOf<typeof Vendor>;
-};
+export type VendorOrder = (OrderDTO & {
+  vendor: InferTypeOf<typeof Vendor>
+})
 
 type StepInput = {
-  parentOrder: OrderDTO;
-  vendorsItems: Record<string, CartLineItemDTO[]>;
-};
+  parentOrder: OrderDTO
+  vendorsItems: Record<string, CartLineItemDTO[]>
+}
 
-function prepareOrderData(items: CartLineItemDTO[], parentOrder: OrderDTO) {
-  return {
+function prepareOrderData(
+  items: CartLineItemDTO[], 
+  parentOrder: OrderDTO
+) {
+  return  {
     items,
     metadata: {
-      parent_order_id: parentOrder.id,
+      parent_order_id: parentOrder.id
     },
     // use info from parent
     region_id: parentOrder.region_id,
@@ -51,154 +57,115 @@ function prepareOrderData(items: CartLineItemDTO[], parentOrder: OrderDTO) {
         rate: taxLine.rate,
         provider_id: taxLine.provider_id,
         tax_rate_id: taxLine.tax_rate_id,
-        description: taxLine.description,
+        description: taxLine.description
       })),
       adjustments: shippingMethod.adjustments.map((adjustment) => ({
         code: adjustment.code,
         amount: adjustment.amount,
         description: adjustment.description,
         promotion_id: adjustment.promotion_id,
-        provider_id: adjustment.provider_id,
-      })),
+        provider_id: adjustment.provider_id
+      }))
     })),
-  };
+  }
 }
 
 const createVendorOrdersStep = createStep(
   "create-vendor-orders",
-  async ({ vendorsItems, parentOrder }: StepInput, { container, context }) => {
-    const linkDefs: LinkDefinition[] = [];
-    const createdOrders: VendorOrder[] = [];
-    const vendorIds = Object.keys(vendorsItems);
+  async (
+    { vendorsItems, parentOrder }: StepInput, 
+    { container, context }
+  ) => {
+    const linkDefs: LinkDefinition[] = []
+    const createdOrders: VendorOrder[] = []
+    const vendorIds = Object.keys(vendorsItems)
 
-    const marketplaceModuleService =
-      container.resolve<MarketplaceModuleService>(MARKETPLACE_MODULE);
+    const marketplaceModuleService: MarketplaceModuleService =
+      container.resolve(MARKETPLACE_MODULE)
 
     const vendors = await marketplaceModuleService.listVendors({
-      id: vendorIds,
-    });
+      id: vendorIds
+    })
 
-    // TODO create child orders
     if (vendorIds.length === 1) {
       linkDefs.push({
         [MARKETPLACE_MODULE]: {
-          vendor_id: vendors[0].id,
+          vendor_id: vendors[0].id
         },
         [Modules.ORDER]: {
-          order_id: parentOrder.id,
-        },
-      });
+          order_id: parentOrder.id
+        }
+      })
 
       createdOrders.push({
         ...parentOrder,
-        vendor: vendors[0],
-      });
-
-      return new StepResponse(
-        {
-          orders: createdOrders,
-          linkDefs,
-        },
-        {
-          created_orders: [],
-        }
-      );
+        vendor: vendors[0]
+      })
+      
+      return new StepResponse({
+        orders:  createdOrders,
+        linkDefs
+      }, {
+        // to avoid canceling the order, as 
+        // this order isn't technically a child order.
+        created_orders: []
+      })
     }
 
-    // TODO create multiple child orders
-    if (vendorIds.length === 1) {
-      linkDefs.push({
-        [MARKETPLACE_MODULE]: {
-          vendor_id: vendors[0].id,
-        },
-        [Modules.ORDER]: {
-          order_id: parentOrder.id,
-        },
-      });
-
-      createdOrders.push({
-        ...parentOrder,
-        vendor: vendors[0],
-      });
-
-      return new StepResponse(
-        {
-          orders: createdOrders,
-          linkDefs,
-        },
-        {
-          created_orders: [],
-        }
-      );
-    }
-
-    // TODO create multiple child orders
     try {
-      await Promise.all(
+      await promiseAll(
         vendorIds.map(async (vendorId) => {
-          const items = vendorsItems[vendorId];
-          const vendor = vendors.find((v) => v.id === vendorId)!;
+          const items = vendorsItems[vendorId]
+          const vendor = vendors.find(v => v.id === vendorId)!
 
-          const { result: childOrder } = (await createOrdersWorkflow(
+          const {result: childOrder} = await createOrderWorkflow(
             container
-          ).run({
+          )
+          .run({
             input: prepareOrderData(items, parentOrder),
             context,
-          })) as unknown as { result: VendorOrder };
+          }) as unknown as { result: VendorOrder }
 
-          childOrder.vendor = vendor;
-          createdOrders.push(childOrder);
-
+          childOrder.vendor = vendor
+          createdOrders.push(childOrder)
+          
           linkDefs.push({
             [MARKETPLACE_MODULE]: {
-              vendor_id: vendor.id,
+              vendor_id: vendor.id
             },
             [Modules.ORDER]: {
-              order_id: childOrder.id,
-            },
-          });
+              order_id: childOrder.id
+            }
+          })
         })
-      );
+      )
     } catch (e) {
-      await Promise.all(
-        createdOrders.map((createdOrder) => {
-          return cancelOrderWorkflow(container).run({
-            input: {
-              order_id: createdOrder.id,
-            },
-            context,
-            container,
-          });
-        })
-      );
-
-      throw e;
+      return StepResponse.permanentFailure(
+        `An error occured while creating vendor orders: ${e}`,
+        {
+          created_orders: createdOrders
+        }
+      )
     }
-
-    return new StepResponse(
-      {
-        orders: createdOrders,
-        linkDefs,
-      },
-      {
-        created_orders: createdOrders,
-      }
-    );
+    
+    return new StepResponse({ 
+      orders: createdOrders, 
+      linkDefs
+    }, {
+      created_orders: createdOrders
+    })
   },
-  async ({ created_orders }, { container, context }) => {
-    // TODO add compensation function
-    await Promise.all(
-      created_orders.map((createdOrder) => {
-        return cancelOrderWorkflow(container).run({
-          input: {
-            order_id: createdOrder.id,
-          },
-          context,
-          container,
-        });
+  async ({ created_orders }, { container, context }) => {  
+    await Promise.all(created_orders.map((createdOrder) => {
+      return cancelOrderWorkflow(container).run({
+        input: {
+          order_id: createdOrder.id,
+        },
+        context,
+        container,
       })
-    );
+    }))
   }
-);
+)
 
-export default createVendorOrdersStep;
+export default createVendorOrdersStep
