@@ -5,49 +5,61 @@ import {
   ChevronDown, Search, Eye, Download, Star, MessageCircle, Share2, Clock, 
   CreditCard, LogOut, AlertCircle, Check, X, MapPin, Truck
 } from 'lucide-react';
+import Link from 'next/link';
+import { assets } from '@assets/assets';
+import Image from 'next/image';
+import { WishlistProducts } from '@modules/wishlists/components/wishlist';
 
-const CustomerDashboard = () => {
+
+const CustomerAccount = ({ customer, order, creatorList }) => {
   // State management
   const [activeTab, setActiveTab] = useState('overview');
   const [activeOrder, setActiveOrder] = useState(null);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   
-  // Sample user data
+
+  const newList = creatorList.follow?.creators
+  console.log(newList)
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+  
+  // Sample user data - integrating dynamic customer data where available
   const user = {
-    id: 'usr-12345',
-    name: 'Jamie Smith',
-    email: 'jamie.smith@example.com',
+    id: customer?.id || 'cus-12345',
+    name: customer ? `${customer.first_name} ${customer.last_name}` : 'Jamie Smith',
+    email: customer?.email || 'jamie.smith@example.com',
     avatar: '/api/placeholder/100/100',
     membershipTier: 'Gold Fan',
-    joinDate: 'December 2023',
+    joinDate: customer?.created_at ? formatDate(customer.created_at) : 'March 15, 2025',
     points: 2450,
-    following: [
-      { id: 'cr-1', name: 'Alex Rivera', avatar: '/api/placeholder/50/50' },
-      { id: 'cr-2', name: 'Maya Johnson', avatar: '/api/placeholder/50/50' },
-      { id: 'cr-3', name: 'DJ Cosmos', avatar: '/api/placeholder/50/50' }
-    ],
-    addresses: [
+    following: newList,
+    addresses: customer?.addresses && customer.addresses.length > 0 ? customer.addresses : [
       { 
         id: 'addr-1', 
         default: true,
-        name: 'Jamie Smith',
+        name: customer ? `${customer.first_name} ${customer.last_name}` : 'Jamie Smith',
         street: '123 Main Street',
         city: 'Los Angeles',
         state: 'CA',
         zipCode: '90210',
         country: 'United States',
-        phone: '(555) 123-4567'
+        phone: customer?.phone || '(555) 123-4567'
       },
       { 
         id: 'addr-2', 
         default: false,
-        name: 'Jamie Smith',
+        name: customer ? `${customer.first_name} ${customer.last_name}` : 'Jamie Smith',
         street: '456 Work Avenue, Suite 7B',
         city: 'Los Angeles',
         state: 'CA',
         zipCode: '90001',
         country: 'United States',
-        phone: '(555) 987-6543'
+        phone: customer?.phone || '(555) 123-4567'
       }
     ],
     paymentMethods: [
@@ -65,11 +77,12 @@ const CustomerDashboard = () => {
         lastFour: '8790',
         expiryDate: '12/25'
       }
-    ]
+    ],
+    company: customer?.company_name || 'Personal Account'
   };
   
-  // Sample orders data
-  const orders = [
+  // Sample orders data - using order prop if available
+  const orders = customer?.orders && customer.orders.length > 0 ? customer.orders : [
     {
       id: 'ORD-9876',
       date: 'March 15, 2025',
@@ -105,7 +118,7 @@ const CustomerDashboard = () => {
         }
       ],
       shippingAddress: {
-        name: 'Jamie Smith',
+        name: customer ? `${customer.first_name} ${customer.last_name}` : 'Jamie Smith',
         street: '123 Main Street',
         city: 'Los Angeles',
         state: 'CA',
@@ -147,7 +160,7 @@ const CustomerDashboard = () => {
         }
       ],
       shippingAddress: {
-        name: 'Jamie Smith',
+        name: customer ? `${customer.first_name} ${customer.last_name}` : 'Jamie Smith',
         street: '123 Main Street',
         city: 'Los Angeles',
         state: 'CA',
@@ -183,7 +196,7 @@ const CustomerDashboard = () => {
         }
       ],
       shippingAddress: {
-        name: 'Jamie Smith',
+        name: customer ? `${customer.first_name} ${customer.last_name}` : 'Jamie Smith',
         street: '123 Main Street',
         city: 'Los Angeles',
         state: 'CA',
@@ -202,7 +215,7 @@ const CustomerDashboard = () => {
     }
   ];
   
-  // Sample notifications
+  // Rest of the sample data remains unchanged
   const notifications = [
     {
       id: 'notif-1',
@@ -336,100 +349,7 @@ const CustomerDashboard = () => {
   };
   
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="container px-4 py-4 mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="text-2xl font-bold">
-              junooni
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {/* Notification Bell */}
-              <div className="relative">
-                <button 
-                  className="p-2 rounded-full hover:bg-gray-100"
-                  onClick={() => setShowNotificationCenter(!showNotificationCenter)}
-                >
-                  <Bell size={20} />
-                  {notifications.some(n => !n.read) && (
-                    <span className="absolute top-0 right-0 w-2 h-2 bg-[#e65100] rounded-full"></span>
-                  )}
-                </button>
-                
-                {/* Notification Dropdown */}
-                {showNotificationCenter && (
-                  <div className="absolute right-0 z-50 mt-2 bg-white rounded-md shadow-lg w-80">
-                    <div className="p-4 border-b">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">Notifications</h3>
-                        <button className="text-sm text-[#e65100] hover:underline">
-                          Mark all as read
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="overflow-y-auto max-h-96">
-                      {notifications.length > 0 ? (
-                        <div className="divide-y">
-                          {notifications.map(notification => (
-                            <div 
-                              key={notification.id} 
-                              className={`p-4 hover:bg-gray-50 ${notification.read ? '' : 'bg-orange-50'}`}
-                            >
-                              <div className="flex gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                  notification.type === 'shipping' ? 'bg-blue-100 text-blue-500' :
-                                  notification.type === 'creator' ? 'bg-purple-100 text-purple-500' :
-                                  notification.type === 'order' ? 'bg-green-100 text-green-500' :
-                                  'bg-yellow-100 text-yellow-500'
-                                }`}>
-                                  {notification.type === 'shipping' && <Truck size={18} />}
-                                  {notification.type === 'creator' && <Star size={18} />}
-                                  {notification.type === 'order' && <Package size={18} />}
-                                  {notification.type === 'membership' && <Gift size={18} />}
-                                </div>
-                                
-                                <div>
-                                  <h4 className="text-sm font-medium">{notification.title}</h4>
-                                  <p className="text-sm text-gray-600">{notification.message}</p>
-                                  <p className="mt-1 text-xs text-gray-400">{notification.time}</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="p-4 text-center text-gray-500">
-                          No notifications
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="p-2 text-center border-t">
-                      <button className="text-sm text-[#e65100] hover:underline">
-                        View all notifications
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* User Menu */}
-              <div className="flex items-center">
-                <img 
-                  src={user.avatar} 
-                  alt={user.name} 
-                  className="object-cover w-8 h-8 rounded-full"
-                />
-                <span className="ml-2 font-medium">{user.name}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-      
+    <div className="min-h-screen bg-gray-100">      
       <div className="container px-4 py-8 mx-auto">
         <div className="flex flex-col gap-6 md:flex-row">
           {/* Sidebar Navigation */}
@@ -596,23 +516,26 @@ const CustomerDashboard = () => {
                     
                     <div className="flex flex-wrap gap-2">
                       {user.following.map(creator => (
-                        <a key={creator.id} href="#" className="flex flex-col items-center">
+                        <Link key={creator.id} href={`creator/${creator.vendor?.handle}`} className="flex flex-col items-center">
+                            
                           <div className="relative">
-                            <img 
-                              src={creator.avatar} 
-                              alt={creator.name} 
+                            <Image 
+                              src={creator.vendor?.logo ? creator.vendor?.logo : assets.rabit} 
+                              alt={creator.vendor?.name} 
                               className="object-cover w-10 h-10 rounded-full"
+                              width={100}
+                              height={10}
                             />
                             <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                           </div>
-                          <span className="mt-1 text-xs">{creator.name.split(' ')[0]}</span>
-                        </a>
+                          
+                        </Link>
                       ))}
-                      <button className="flex items-center justify-center w-10 h-10 text-gray-400 border-2 border-gray-300 border-dashed rounded-full hover:border-gray-400 hover:text-gray-500">
+                      <Link href="/ourcreators" className="flex items-center justify-center w-10 h-10 text-gray-400 border-2 border-gray-300 border-dashed rounded-full hover:border-gray-400 hover:text-gray-500">
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
                         </svg>
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -766,6 +689,7 @@ const CustomerDashboard = () => {
               </div>
             )}
             
+            {/* Rest of the component remains unchanged */}
             {/* Orders History */}
             {activeTab === 'orders' && (
               <div>
@@ -999,115 +923,15 @@ const CustomerDashboard = () => {
               </div>
             )}
             
+            {/* More tabs (wishlist, membership, settings) would continue here */}
+            {/* These are omitted for brevity but would be implemented similarly */}
+            
             {/* Wishlist */}
             {activeTab === 'wishlist' && (
-              <div>
-                <div className="p-6 mb-6 bg-white rounded-lg shadow-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <h1 className="text-2xl font-bold">My Wishlist</h1>
-                    
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-500">{wishlistItems.length} items</span>
-                      
-                      <div className="relative">
-                        <input 
-                          type="text" 
-                          placeholder="Search wishlist..." 
-                          className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e65100] focus:border-transparent"
-                        />
-                        <Search className="absolute text-gray-400 transform -translate-y-1/2 left-3 top-1/2" size={18} />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                    {wishlistItems.map(item => (
-                      <div key={item.id} className="transition border border-gray-200 rounded-lg group hover:border-gray-300">
-                        <div className="relative overflow-hidden bg-gray-100 rounded-t-lg aspect-square">
-                          <img 
-                            src={item.image} 
-                            alt={item.name} 
-                            className="object-cover w-full h-full transition duration-300 group-hover:scale-105"
-                          />
-                          
-                          {!item.inStock && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                              <span className="px-3 py-1 text-sm text-white bg-black rounded bg-opacity-70">
-                                Out of Stock
-                              </span>
-                            </div>
-                          )}
-                          
-                          <div className="absolute flex gap-1 top-2 right-2">
-                            <button className="flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm hover:bg-gray-100">
-                              <Share2 size={14} />
-                            </button>
-                            <button className="flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm hover:bg-gray-100">
-                              <X size={14} />
-                            </button>
-                          </div>
-                        </div>
-                        
-                        <div className="p-4">
-                          <div className="mb-1 text-sm text-gray-500">{item.creator}</div>
-                          <h3 className="mb-2 font-medium">{item.name}</h3>
-                          <div className="flex items-center justify-between">
-                            <div className="font-semibold">{formatPrice(item.price)}</div>
-                            
-                            <button 
-                              className={`px-3 py-1.5 rounded text-sm font-medium ${
-                                item.inStock 
-                                  ? 'bg-[#e65100] text-white hover:bg-[#d84315]' 
-                                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                              } transition`}
-                              disabled={!item.inStock}
-                            >
-                              {item.inStock ? 'Add to Cart' : 'Out of Stock'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Saved for Later */}
-                <div className="p-6 bg-white rounded-lg shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold">Recommended Based on Your Wishlist</h2>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                    {[1, 2, 3, 4].map(i => (
-                      <div key={i} className="transition border border-gray-200 rounded-lg group hover:border-gray-300">
-                        <div className="relative overflow-hidden bg-gray-100 rounded-t-lg aspect-square">
-                          <img 
-                            src={`/api/placeholder/${300}/${300}`} 
-                            alt={`Recommended item ${i}`} 
-                            className="object-cover w-full h-full transition duration-300 group-hover:scale-105"
-                          />
-                          
-                          <button className="absolute flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm top-2 right-2 hover:bg-gray-100">
-                            <Heart size={14} />
-                          </button>
-                        </div>
-                        
-                        <div className="p-4">
-                          <div className="mb-1 text-sm text-gray-500">Creator Name</div>
-                          <h3 className="mb-2 font-medium">Recommended Item {i}</h3>
-                          <div className="flex items-center justify-between">
-                            <div className="font-semibold">{formatPrice(49.99 + i * 10)}</div>
-                            
-                            <button className="px-3 py-1.5 bg-[#e65100] text-white rounded text-sm font-medium hover:bg-[#d84315] transition">
-                              Add to Cart
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div className='w-full'>
+                 <WishlistProducts />
+            </div>
+            
             )}
             
             {/* Fan Membership */}
@@ -1354,7 +1178,7 @@ const CustomerDashboard = () => {
                             <input 
                               type="text" 
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent"
-                              defaultValue="Jamie"
+                              defaultValue={customer.first_name}
                             />
                           </div>
                           
@@ -1365,7 +1189,7 @@ const CustomerDashboard = () => {
                             <input 
                               type="text" 
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent"
-                              defaultValue="Smith"
+                              defaultValue={customer.last_name}
                             />
                           </div>
                           
@@ -1376,7 +1200,7 @@ const CustomerDashboard = () => {
                             <input 
                               type="email" 
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent"
-                              defaultValue="jamie.smith@example.com"
+                              defaultValue={customer.email}
                             />
                           </div>
                           
@@ -1387,7 +1211,7 @@ const CustomerDashboard = () => {
                             <input 
                               type="tel" 
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent"
-                              defaultValue="(555) 123-4567"
+                              defaultValue={customer.phone}
                             />
                           </div>
                         </div>
@@ -1659,6 +1483,8 @@ const CustomerDashboard = () => {
                 </div>
               </div>
             )}
+
+
           </main>
         </div>
       </div>
@@ -1666,4 +1492,4 @@ const CustomerDashboard = () => {
   );
 };
 
-export default CustomerDashboard;
+export default CustomerAccount;

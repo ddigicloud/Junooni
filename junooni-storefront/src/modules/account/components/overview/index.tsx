@@ -14,7 +14,7 @@ const Overview = ({ customer, orders }: OverviewProps) => {
   return (
     <div data-testid="overview-page-wrapper">
       <div className="hidden small:block">
-        <div className="text-xl-semi flex justify-between items-center mb-4">
+        <div className="flex items-center justify-between mb-4 text-xl-semi">
           <span data-testid="welcome-message" data-value={customer?.first_name}>
             Hello {customer?.first_name}
           </span>
@@ -30,13 +30,13 @@ const Overview = ({ customer, orders }: OverviewProps) => {
           </span>
         </div>
         <div className="flex flex-col py-8 border-t border-gray-200">
-          <div className="flex flex-col gap-y-4 h-full col-span-1 row-span-2 flex-1">
-            <div className="flex items-start gap-x-16 mb-6">
+          <div className="flex flex-col flex-1 h-full col-span-1 row-span-2 gap-y-4">
+            <div className="flex items-start mb-6 gap-x-16">
               <div className="flex flex-col gap-y-4">
                 <h3 className="text-large-semi">Profile</h3>
                 <div className="flex items-end gap-x-2">
                   <span
-                    className="text-3xl-semi leading-none"
+                    className="leading-none text-3xl-semi"
                     data-testid="customer-profile-completion"
                     data-value={getProfileCompletion(customer)}
                   >
@@ -52,7 +52,7 @@ const Overview = ({ customer, orders }: OverviewProps) => {
                 <h3 className="text-large-semi">Addresses</h3>
                 <div className="flex items-end gap-x-2">
                   <span
-                    className="text-3xl-semi leading-none"
+                    className="leading-none text-3xl-semi"
                     data-testid="addresses-count"
                     data-value={customer?.addresses?.length || 0}
                   >
@@ -84,8 +84,8 @@ const Overview = ({ customer, orders }: OverviewProps) => {
                         <LocalizedClientLink
                           href={`/account/orders/details/${order.id}`}
                         >
-                          <Container className="bg-gray-50 flex justify-between items-center p-4">
-                            <div className="grid grid-cols-3 grid-rows-2 text-small-regular gap-x-4 flex-1">
+                          <Container className="flex items-center justify-between p-4 bg-gray-50">
+                            <div className="grid flex-1 grid-cols-3 grid-rows-2 text-small-regular gap-x-4">
                               <span className="font-semibold">Date placed</span>
                               <span className="font-semibold">
                                 Order number

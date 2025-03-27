@@ -1,15 +1,19 @@
-import React from 'react';
-import { Vendor } from 'types/vendor';
-import CreatorStorePage from '@modules/vendorCreator/components/CreatorStorePage';
+// src/modules/vendorCreator/templates/index.tsx
+import CreatorStorePage from '../components/CreatorStorePage'
 
-type VendorTemplateProps = {
-  vendor: Vendor,
-  
+export default function VendorTemplate({ 
+  vendor, 
+  region 
+}: { 
+  vendor: any, 
+  region: any 
+}) {
+  return (
+    <div>
+      <CreatorStorePage 
+        vendor={vendor} 
+        region={region} 
+      />
+    </div>
+  )
 }
-
-const VendorTemplate = ({ vendor, region }: VendorTemplateProps) => {
-  // Simply pass the vendor to the CreatorStorePage component
-  return <CreatorStorePage vendor={vendor} region={region} />;
-};
-
-export default VendorTemplate;

@@ -65,3 +65,32 @@ export async function getVendorByHandle(handle: string): Promise<Vendor | undefi
   return vendors.find(vendor => vendor.handle === handle);
 }
 
+
+
+export const retriveVendorsFollowers = async (vendor_id) => {
+  const headers = {
+    ...(await getAuthHeaders()),
+  };
+
+  const next = {
+    ...(await getCacheOptions("vendors")),
+  };
+
+  return sdk.client
+    .fetch<VendorResponse>(`/vendors/${vendor_id}/followers`, {
+      method: "GET",
+      query: {
+        fields: "*",
+      },
+      headers,
+      next,
+    })
+    .then((followers) => followers )
+    .catch(() => null);
+};
+
+
+
+
+
+

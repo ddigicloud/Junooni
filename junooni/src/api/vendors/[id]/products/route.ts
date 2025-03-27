@@ -34,7 +34,7 @@ import {
       data: [vendor],
     } = await query.graph({
       entity: "vendor",
-      fields: ["products.*", "products.variants.*","products.options.*","products.variants.options.*","products.variants.prices.*"],
+      fields: ["products.*", "products.variants.*","products.options.*","products.variants.options.*","products.variants.prices.*", "products.tags.*"],
       filters: {
         id: vendorId,
       },

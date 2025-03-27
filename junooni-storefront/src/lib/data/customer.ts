@@ -98,8 +98,8 @@ export async function signup(_currentState: unknown, formData: FormData) {
     await transferCart()
    
     if(createdCustomer){
-      
       await wishListCreate();
+      await followerCreate();
     }
 
     return createdCustomer
@@ -258,15 +258,96 @@ export const updateCustomerAddress = async (
 }
 
 
+// follwer list create
+
+export const followerCreate =
+  async () => {
+    const cookies = await nextCookies()
+    const token = cookies.get("_medusa_jwt")?.value
+    console.log(token)
+
+    return await sdk.client
+      .fetch(`/store/customers/me/follow`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+        },
+      })
+      .then((follow) => follow)
+      .catch(() => null)
+  }
+
+  export const Addfollower =
+  async (vendor_id) => {
+    const cookies = await nextCookies()
+    const token = cookies.get("_medusa_jwt")?.value
+    console.log(token)
+
+    return await sdk.client
+      .fetch(`/store/customers/me/follow/lists`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+        },
+        body:{
+         "vendor_id": `${vendor_id}`
+        }
+      })
+      .then((follow) => follow)
+      .catch(() => null)
+  }
+
+  export const deletefollower =
+  async (vendor_id) => {
+    const cookies = await nextCookies()
+    const token = cookies.get("_medusa_jwt")?.value
+    console.log(token)
+
+    return await sdk.client
+      .fetch(`/store/customers/me/follow/lists/${vendor_id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+        },
+      })
+      .then((follow) => follow)
+      .catch(() => null)
+  }
+
+
+  export const followerList =
+  async () => {
+    const cookies = await nextCookies()
+    const token = cookies.get("_medusa_jwt")?.value
+   return await sdk.client
+      .fetch(`/store/customers/me/follow`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+        },
+      })
+      .then((follow) => follow)
+      .catch(() => null)
+  }
+
+
   // wishlist create 
 
 export const wishListCreate =
   async () => {
     const cookies = await nextCookies()
     const token = cookies.get("_medusa_jwt")?.value
-    console.log(token)
 
-     await sdk.client
+
+    await sdk.client
       .fetch(`/store/customers/me/wishlists`, {
         method: "POST",
         headers: {
@@ -275,10 +356,7 @@ export const wishListCreate =
           "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
         },
       })
-      .then((customer) =>{
-         console.log(token)
-         console.log(customer)
-      })
+      .then((customer) => customer)
       .catch(() => null)
   }
 
@@ -290,7 +368,7 @@ export const wishListCreate =
  * @returns The API response or null if an error occurs
  */
 export const wishlistAddItem = async (variant_id: string): Promise<any> => {
-  console.log(variant_id)
+ 
 
   const cookies = await nextCookies()
   const token = cookies.get("_medusa_jwt")?.value

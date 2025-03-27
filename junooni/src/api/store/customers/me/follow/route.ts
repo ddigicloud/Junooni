@@ -28,7 +28,7 @@ export async function GET(
 
   const { data } = await query.graph({
     entity: "follow",
-    fields: ["*", "creators.*"],
+    fields: ["*", "creators.*","creators.vendor.*"],
     filters: {
       customer_id: req.auth_context.actor_id
     }

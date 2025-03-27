@@ -5,7 +5,8 @@ import merch from "./merch.webp"
 import vendor1 from "./vendor1.png"
 import vendor2 from "./vendor2.png"
 import wishlistBanner from "./wishlistBanner.jpg"
-
+import rabit from "./rabbit.png"
+import user from "./user.png"
 
 export const assets = {
     mens,
@@ -17,8 +18,9 @@ export const assets = {
     video3:"/videos/video3.mp4",
     vendor1,
     vendor2,
-    wishlistBanner
-
+    wishlistBanner,
+    user,
+    rabit
     
 }
 

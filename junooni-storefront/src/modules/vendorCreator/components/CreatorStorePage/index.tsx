@@ -22,10 +22,9 @@ import {
   Sparkles,
   ShoppingBag
 } from 'lucide-react';
-import { retriveVendorsProducts } from '@lib/data/vendors';
+import { retriveVendorsFollowers, retriveVendorsProducts } from '@lib/data/vendors';
 import {
   CreatorStorePageProps,
-  TabButtonProps,
   FAQItemProps,
   DynamicProductCardProps,
   Vendor,
@@ -36,13 +35,68 @@ import {
   fadeIn,
   slideIn,
   staggerContainer
-} from '../../../../types/vendor'
+} from '../../../../types/vendor';
+import { getProductPrice } from '@lib/util/get-product-price';
+import { assets } from '@assets/assets';
+import { Addfollower, deletefollower, retrieveCustomer } from '@lib/data/customer';
+
+// Updated DynamicProductCardProps to include region
+interface ExtendedProductCardProps extends DynamicProductCardProps {
+  region: any;
+}
 
 const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) => {
   const [vendorProducts, setVendorProducts] = useState<Product[]>([]);
-  const [productCategories, setProductCategories] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('all');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [followers, setFollowers] = useState([]);
+
+
+
+
+  useEffect(() => {
+    const fetchFollowers = async () => {
+      try {
+        console.log("Fetching followers for vendor ID:", vendor.id);
+        const vendorFollowers = await retriveVendorsFollowers(vendor.id);
+        
+        // Check if the response is an array or needs to be converted
+        const followersArray = Array.isArray(vendorFollowers) 
+          ? vendorFollowers 
+          : [vendorFollowers];
+        
+        // Filter out any undefined or null entries
+        const validFollowers = followersArray.filter(f => f && f.follow);
+        
+        console.log("Processed followers:", validFollowers);
+        setFollowers(validFollowers);
+      } catch (e) {
+        console.error("Error fetching followers:", e);
+        setFollowers([]);
+      }
+    };
+  
+    if (vendor && vendor.id) {
+      fetchFollowers();
+    }
+  }, [vendor]);
+  
+  // Optional: Helper function to generate avatar colors based on user ID
+  // Place this function outside your component
+  const generateAvatarColor = (userId: string): string => {
+    // Simple hash function to generate a consistent color for a user
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Convert to RGB format
+    const r = (hash & 0xFF) % 200 + 55; // Avoid too dark colors
+    const g = ((hash >> 8) & 0xFF) % 200 + 55;
+    const b = ((hash >> 16) & 0xFF) % 200 + 55;
+    
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
 
   // Fetch vendor products
   useEffect(() => {
@@ -64,33 +118,6 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
           }
           
           setVendorProducts(products);
-          
-          // Extract unique categories from products
-          if (Array.isArray(products) && products.length > 0) {
-            const categories = new Set<string>();
-            products.forEach((product: Product) => {
-              // Extract collections
-              if (product.collection && product.collection.id) {
-                categories.add('collection');
-              }
-              
-              // Extract product types
-              if (product.type) {
-                categories.add(product.type.toLowerCase());
-              }
-              
-              // Extract categories from options (like "Color", "Size")
-              if (product.options && Array.isArray(product.options)) {
-                product.options.forEach((option: ProductOption) => {
-                  if (option && option.title) {
-                    categories.add(option.title.toLowerCase());
-                  }
-                });
-              }
-            });
-            
-            setProductCategories(Array.from(categories));
-          }
         }
       } catch (error) {
         console.error("Error fetching vendor products:", error);
@@ -101,7 +128,11 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
     };
     
     fetchProducts();
+
   }, [vendor]);
+
+
+ 
 
   // If this is the main page showing multiple vendors
   if (Array.isArray(vendor)) {
@@ -134,7 +165,6 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
                     />
                   </div>
                   <div className="flex items-center p-5">
-                    {/* Fixed logo styling with proper containment */}
                     <div className="relative w-16 h-16 mr-4 overflow-hidden border-2 border-white rounded-full shadow">
                       <div className="relative w-full h-full">
                         <img 
@@ -161,6 +191,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
   // States for various interactive elements
   const [showFullBio, setShowFullBio] = useState<boolean>(false);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
+  const [currentCustomer, setCurrentCustomer] = useState(null);
   const [showShareOptions, setShowShareOptions] = useState<boolean>(false);
   
   // Merge API data with sample data for missing fields
@@ -194,22 +225,62 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
     }
   };
   
-  // Filter products based on active tab - with safety checks
-  const filteredProducts: Product[] = activeTab === 'all' 
-    ? (Array.isArray(vendorProducts) ? vendorProducts : [])
-    : (Array.isArray(vendorProducts) ? vendorProducts.filter(product => {
-        // Filter based on the selected category
-        if (product.options && Array.isArray(product.options) && product.options.length > 0) {
-          return product.options.some(option => 
-            option && option.title && option.title.toLowerCase() === activeTab.toLowerCase()
-          );
-        }
-        if (product.type && product.type.toLowerCase() === activeTab.toLowerCase()) {
-          return true;
-        }
-        return false;
-      }) : []);
+
+
+
+// Fetch current customer and check following status
+useEffect(() => {
+  const checkFollowingStatus = async () => {
+    try {
+      // Get current customer
+      const customer = await retrieveCustomer();
+      setCurrentCustomer(customer);
+      
+      if (customer && followers.length > 0) {
+        // Check if this customer is already following the vendor
+        const isAlreadyFollowing = followers.some(
+          item => item.follow.follow?.customer_id === customer.id
+        );
+        console.log("successfully matched")
+        setIsFollowing(isAlreadyFollowing);
+        
+      }
+    } catch (error) {
+      console.error("Error checking following status:", error);
+    }
+  };
   
+  if (followers.length > 0) {
+    checkFollowingStatus();
+  }
+}, [followers]);
+
+// Updated follow handler function
+const handleFollowToggle = async () => {
+  try {
+    if (!currentCustomer) {
+      console.log("User needs to be logged in to follow");
+      return;
+    }
+    
+    if (isFollowing) {
+      console.log("Unfollowing vendor:", vendor.id);
+      setIsFollowing(false);
+      await deletefollower(vendor.id)
+    } else {
+      console.log("Following vendor:", vendor.id);
+      await Addfollower(vendor.id)
+      setIsFollowing(true);
+    }
+  } catch (error) {
+    console.error("Error toggling follow status:", error);
+    setIsFollowing(!isFollowing);
+  }
+};
+
+
+
+
   // Format large numbers with K/M suffix
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -239,20 +310,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
     }
   };
 
-  // Function to get product price safely
-  const getProductPrice = (product: Product): number => {
-    if (product && product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
-      // Get the first variant with pricing, defaulting to the first variant if none have prices
-      const variantWithPrice = product.variants[0];
-      if (variantWithPrice) {
-        // Return a default price if no pricing is available
-        return variantWithPrice.price || 0;
-      }
-    }
-    return 0;
-  };
-
-  // Function to check if a product has a certain badge characteristic - with safety checks
+  // Function to check if a product has a certain badge characteristic
   const hasProductBadge = (product: Product, badgeType: string): boolean => {
     if (!product) return false;
     
@@ -370,7 +428,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => setIsFollowing(!isFollowing)}
+                          onClick={handleFollowToggle}
                           className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition ${
                             isFollowing 
                               ? 'bg-gray-200 text-gray-800 hover:bg-gray-300' 
@@ -470,7 +528,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
                         variants={slideIn}
                         whileHover={{ scale: 1.2, rotate: 5 }}
                         whileTap={{ scale: 0.9 }}
-                        href={formatSocialUrl('instagram', creator.socialMedia.instagram)}
+                        href={formatSocialUrl('instagram', creator.socialMedia.instagram) || undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-gray-600 transition-colors hover:text-[#E1306C]"
@@ -484,7 +542,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
                         variants={slideIn}
                         whileHover={{ scale: 1.2, rotate: 5 }}
                         whileTap={{ scale: 0.9 }}
-                        href={formatSocialUrl('twitter', creator.socialMedia.twitter)}
+                        href={formatSocialUrl('twitter', creator.socialMedia.twitter) || undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-gray-600 transition-colors hover:text-[#1DA1F2]"
@@ -498,7 +556,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
                         variants={slideIn}
                         whileHover={{ scale: 1.2, rotate: 5 }}
                         whileTap={{ scale: 0.9 }}
-                        href={formatSocialUrl('youtube', creator.socialMedia.youtube)}
+                        href={formatSocialUrl('youtube', creator.socialMedia.youtube) || undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-gray-600 transition-colors hover:text-[#FF0000]"
@@ -512,7 +570,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
                         variants={slideIn}
                         whileHover={{ scale: 1.2, rotate: 5 }}
                         whileTap={{ scale: 0.9 }}
-                        href={formatSocialUrl('website', creator.socialMedia.website)}
+                        href={formatSocialUrl('website', creator.socialMedia.website) || undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-gray-600 transition-colors hover:text-[#e65100]"
@@ -533,7 +591,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setIsFollowing(!isFollowing)}
+                  onClick={handleFollowToggle}
                   className={`flex-1 flex items-center justify-center px-4 py-2 rounded-full text-sm font-medium transition ${
                     isFollowing 
                       ? 'bg-gray-200 text-gray-800 hover:bg-gray-300' 
@@ -594,36 +652,102 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
                 </motion.div>
               </motion.div>
             )}
-            
-            {/* Product Categories Tabs */}
-            <motion.div 
-              variants={fadeIn}
-              className="mt-6 border-t"
-            >
-              <div className="overflow-x-auto">
-                <div className="flex px-4 py-2 whitespace-nowrap">
-                  <TabButton 
-                    active={activeTab === 'all'} 
-                    onClick={() => setActiveTab('all')}
-                  >
-                    All Products
-                  </TabButton>
-                  
-                  {/* Dynamic category tabs based on available categories */}
-                  {Array.isArray(productCategories) && productCategories.map((category: string) => (
-                    <TabButton 
-                      key={category}
-                      active={activeTab === category} 
-                      onClick={() => setActiveTab(category)}
-                    >
-                      {category.charAt(0).toUpperCase() + category.slice(1)}
-                    </TabButton>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
           </div>
         </motion.div>
+
+         {/* Fan Testimonials Banner */}
+{/* Fan Testimonials Banner with Default Avatar */}
+<motion.div 
+  variants={fadeIn}
+  className="mb-8 bg-gradient-to-r from-[#e65100] to-[#ff9800] rounded-lg overflow-hidden shadow-md"
+>
+  <div className="flex flex-col items-center justify-between px-6 py-8 text-white md:flex-row">
+    <div className="mb-4 md:mb-0">
+      <h2 className="mb-2 text-xl font-bold">From the Fans</h2>
+      <p>
+        Join {followers.length > 0 ? followers.length : "thousands of"} fans who love {creator.name}'s exclusive merchandise
+      </p>
+      
+      {followers.length > 3 && (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="mt-3 px-4 py-1.5 bg-white text-[#e65100] rounded-full text-sm font-medium flex items-center"
+        >
+          View All Fans <ArrowRight size={14} className="ml-1" />
+        </motion.button>
+      )}
+    </div>
+    
+    <div className="flex -space-x-4">
+      {followers && followers.length > 0 ? (
+        // Map through actual followers
+        followers.slice(0, 5).map((followerData, i) => {
+          // Get the follower's customer data
+          const follower = followerData.follow?.customer;
+          if (!follower) return null;
+          
+          // Default avatar path - you can change this to your actual default avatar path
+          const defaultAvatar = assets.rabit;
+          
+          return (
+            <motion.div 
+              key={follower.id} 
+              whileHover={{ y: -5, zIndex: 10 }}
+              className="relative w-10 h-10 overflow-hidden transition-all border-2 border-white rounded-full cursor-pointer"
+              title={`${follower.first_name} ${follower.last_name}`}
+            >
+              {/* Use profile image if available, otherwise use default avatar */}
+              <img 
+                src={follower.profile_image || defaultAvatar} 
+                alt={`${follower.first_name} ${follower.last_name}`}
+                className="object-cover w-full h-full" 
+                onError={(e) => {
+                  // If the profile image or default avatar fails to load, use placeholder
+                  e.currentTarget.src = `${defaultAvatar}`;
+                }}
+              />
+              
+              {/* Tooltip with more info on hover */}
+              <div className="absolute z-20 w-32 p-2 text-xs text-gray-800 transition-opacity transform -translate-x-1/2 bg-white rounded shadow-md opacity-0 pointer-events-none hover:opacity-100 -bottom-16 left-1/2">
+                <p className="font-semibold text-center">{follower.first_name} {follower.last_name}</p>
+                <p className="text-center text-gray-500 truncate">{follower.email}</p>
+              </div>
+            </motion.div>
+          );
+        })
+      ) : (
+        // Fallback if no followers data is available
+        [1, 2, 3].map((i) => (
+          <motion.div 
+            key={i} 
+            className="w-10 h-10 overflow-hidden border-2 border-white rounded-full"
+            whileHover={{ y: -3 }}
+          >
+            <img 
+              src="/images/default-avatar.png" 
+              alt={`Fan ${i}`} 
+              className="object-cover w-full h-full" 
+              onError={(e) => {
+                e.currentTarget.src = "/api/placeholder/50/50";
+              }}
+            />
+          </motion.div>
+        ))
+      )}
+      
+      {/* Show the follower count */}
+      <motion.div 
+        whileHover={{ scale: 1.1 }}
+        className="w-10 h-10 rounded-full bg-white text-[#e65100] font-bold flex items-center justify-center text-sm border-2 border-white"
+      >
+        {followers && followers.length > 5 
+          ? `+${followers.length - 5}` 
+          : "+"}
+      </motion.div>
+    </div>
+  </div>
+</motion.div>
         
         {/* Products Grid */}
         <motion.div 
@@ -631,15 +755,13 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
           className="mb-12"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">
-              {activeTab === 'all' ? 'All Products' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-            </h2>
+            <h2 className="text-2xl font-bold">All Products</h2>
             
             <div className="flex items-center">
               <span className="mr-2 text-sm text-gray-500">
-                {Array.isArray(filteredProducts) ? filteredProducts.length : 0} items
+                {Array.isArray(vendorProducts) ? vendorProducts.length : 0} items
               </span>
-              <select className="border rounded-md  p-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#e65100]">
+              <select className="border rounded-md p-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#e65100]">
                 <option>Sort: Featured</option>
                 <option>Newest</option>
                 <option>Price: Low to High</option>
@@ -653,20 +775,21 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
               <div className="w-12 h-12 border-4 border-t-4 border-gray-200 rounded-full border-t-[#e65100] animate-spin"></div>
             </div>
           ) : (
-            !Array.isArray(filteredProducts) || filteredProducts.length === 0 ? (
+            !Array.isArray(vendorProducts) || vendorProducts.length === 0 ? (
               <div className="py-12 text-center">
-                <p className="text-lg text-gray-500">No products found in this category.</p>
+                <p className="text-lg text-gray-500">No products found.</p>
               </div>
             ) : (
               <motion.div 
                 variants={staggerContainer}
                 className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6"
               >
-                {filteredProducts.map((product: Product) => (
+                {vendorProducts.map((product: Product) => (
                   <DynamicProductCard 
                     key={product.id} 
                     product={product} 
-                    hasProductBadge={hasProductBadge} 
+                    hasProductBadge={hasProductBadge}
+                    region={region}
                   />
                 ))}
               </motion.div>
@@ -675,24 +798,6 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
         </motion.div>
       </div>
     </motion.div>
-  );
-};
-
-// Component for Tab Buttons
-const TabButton: React.FC<TabButtonProps> = ({ active, onClick, children }) => {
-  return (
-    <motion.button
-      whileHover={{ y: -1 }}
-      whileTap={{ y: 1 }}
-      className={`px-4 py-2 mx-1 font-medium text-sm transition-colors border-b-2 ${
-        active
-          ? 'border-[#e65100] text-[#e65100]'
-          : 'border-transparent hover:border-gray-300'
-      }`}
-      onClick={onClick}
-    >
-      {children}
-    </motion.button>
   );
 };
 
@@ -728,8 +833,46 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, children }) => {
   );
 };
 
+// Currency utility functions
+function getCurrencySymbol(code: string | undefined): string {
+  if (!code) return '$'; // Default to USD symbol
+  
+  switch (code.toLowerCase()) {
+    case 'usd':
+      return '$';
+    case 'eur':
+      return '€';
+    case 'gbp':
+      return '£';
+    case 'jpy':
+      return '¥';
+    case 'inr':
+      return '₹';
+    case 'aud':
+      return 'A$';
+    case 'cad':
+      return 'C$';
+    case 'cny':
+    case 'rmb':
+      return '¥';
+    default:
+      return code.toUpperCase() + ' ';
+  }
+}
+
+function formatPrice(amount: number, currencyCode: string | undefined): string {
+  if (amount === 0) return '0.00';
+  
+  // For JPY, no decimal places are typically shown
+  if (currencyCode && currencyCode.toLowerCase() === 'jpy') {
+    return Math.round(amount).toString();
+  }
+  
+  return amount.toFixed(2);
+}
+
 // Dynamic Product Card Component 
-const DynamicProductCard: React.FC<DynamicProductCardProps> = ({ product, hasProductBadge }) => {
+const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({ product, hasProductBadge, region }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
   
   // Extract required info from product with safety checks
@@ -737,119 +880,200 @@ const DynamicProductCard: React.FC<DynamicProductCardProps> = ({ product, hasPro
   const productImage = product?.thumbnail || '/api/placeholder/500/650';
   const productHandle = product?.handle || '';
   
-  // Get price (fixed since actual price may not be in the data)
-  const price = 45.99;
+  // Get price from product variants based on region currency
+  const getPriceData = () => {
+    if (product?.variants?.length > 0) {
+      const variant = product.variants[0];
+      if (variant?.prices?.length > 0) {
+        // Get current region's currency code
+        const currencyCode = region?.currency_code || 'usd';
+        
+        // Try to find matching price
+        const matchingPrice = variant.prices.find(p => 
+          p.currency_code?.toLowerCase() === currencyCode.toLowerCase()
+        );
+        
+        // Use matching price or fall back to first price
+        const price = matchingPrice || variant.prices[0];
+        
+        if (price && typeof price.amount === 'number') {
+          return {
+            amount: price.amount,
+            currencyCode: price.currency_code || currencyCode
+          };
+        }
+      }
+    }
+    return { amount: 0, currencyCode: region?.currency_code || 'usd' };
+  };
+  
+  const priceData = getPriceData();
+  
+  // Price component with currency formatting
+  const PreviewPrice = ({ price }) => {
+    const { amount, currencyCode } = price;
+    const symbol = getCurrencySymbol(currencyCode);
+    const formattedPrice = formatPrice(amount, currencyCode);
+    
+    return <span>{symbol}{formattedPrice}</span>;
+  };
+  
+  // UI Components with proper type definitions
+  const WishlistButton: React.FC<{variantId: string | undefined}> = ({ variantId }) => (
+    <motion.button 
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      className="absolute z-20 p-2 bg-white rounded-full shadow-md right-3 top-3"
+    >
+      <Heart size={18} className="text-gray-700 hover:text-red-500" />
+    </motion.button>
+  );
+  
+  interface ThumbnailProps {
+    thumbnail: string | null;
+    images: any[];
+    size: string;
+    isFeatured: boolean;
+  }
+  
+  const Thumbnail: React.FC<ThumbnailProps> = ({ thumbnail, images, size, isFeatured }) => (
+    <img 
+      src={thumbnail || '/api/placeholder/500/650'} 
+      alt={productName} 
+      className="object-cover w-full h-full"
+    />
+  );
+  
+  interface TextProps {
+    className: string;
+    children: React.ReactNode;
+    [key: string]: any;
+  }
+  
+  const Text: React.FC<TextProps> = ({ className, children, ...props }) => (
+    <p className={className} {...props}>{children}</p>
+  );
+  
+  interface LinkProps {
+    href: string;
+    children: React.ReactNode;
+  }
+  
+  const LocalizedClientLink: React.FC<LinkProps> = ({ href, children }) => (
+    <Link href={href}>{children}</Link>
+  );
+  
+  // Extract tags from product if available
+  const productTags = product?.tags || [];
+  
+  // Determine vendor name
+  const vendorName = product?.vendor?.name || "Junooni";
   
   return (
     <motion.div 
       variants={slideIn}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      className="overflow-hidden bg-white rounded-lg shadow-sm group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      data-testid="product-wrapper"
+      className="relative flex flex-col h-full group"
     >
-      {/* Product Image */}
-      <div className="relative overflow-hidden">
-        <Link href={`/products/${productHandle}`}>
-          <div className="aspect-[3/4]">
-            <motion.img 
-              animate={{ scale: isHovered ? 1.05 : 1 }}
-              transition={{ duration: 0.5 }}
-              src={productImage} 
-              alt={productName} 
-              className="object-cover w-full h-full"
-            />
-          </div>
-        </Link>
+      {/* Product image container with overlay effects */}
+      <div className="relative overflow-hidden rounded-lg bg-gray-50 aspect-[4/5] mb-4">
+        {/* Wishlist button */}
+        <WishlistButton variantId={product.variants?.[0]?.id} />
         
-        {/* Badges */}
-        <div className="absolute flex flex-col gap-2 left-3 top-3">
-          {hasProductBadge(product, 'isNew') && (
-            <motion.span 
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="px-2 py-1 text-xs text-white bg-black rounded"
+        {/* Product tags */}
+        <div className="absolute z-10 flex flex-wrap gap-2 left-3 top-3 max-w-[85%]">
+          {productTags.map((tag) => (
+            <span 
+              key={tag.id} 
+              className="px-2 py-1 text-xs font-medium text-white rounded bg-[#e65100] whitespace-nowrap"
             >
+              {tag.value}
+            </span>
+          ))}
+          {hasProductBadge(product, 'isNew') && (
+            <span className="px-2 py-1 text-xs font-medium text-white bg-black rounded whitespace-nowrap">
               New
-            </motion.span>
+            </span>
           )}
           {hasProductBadge(product, 'isLimited') && (
-            <motion.span 
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="bg-[#e65100] text-white text-xs px-2 py-1 rounded"
-            >
+            <span className="px-2 py-1 text-xs font-medium text-white rounded bg-[#e65100] whitespace-nowrap">
               Limited
-            </motion.span>
+            </span>
           )}
           {hasProductBadge(product, 'isSigned') && (
-            <motion.span 
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="px-2 py-1 text-xs text-white bg-purple-600 rounded"
-            >
+            <span className="px-2 py-1 text-xs font-medium text-white bg-purple-600 rounded whitespace-nowrap">
               Signed
-            </motion.span>
+            </span>
           )}
         </div>
         
-        {/* Quick actions */}
-        <motion.div 
-          animate={{ opacity: isHovered ? 1 : 0 }}
-          className="absolute right-3 top-3"
-        >
-          <motion.button 
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="p-2 bg-white rounded-full shadow-md"
-          >
-            <Heart size={18} className="text-gray-700 hover:text-red-500" />
-          </motion.button>
-        </motion.div>
+        {/* Image container with transform effect */}
+        <div className="w-full h-full transition-transform duration-500 group-hover:scale-105">
+          <Thumbnail
+            thumbnail={productImage}
+            images={product.images || []}
+            size="full"
+            isFeatured={false}
+          />
+        </div>
         
-        {/* Quick Add */}
+        {/* Quick view overlay - appears on hover */}
         <motion.div 
+          className="absolute inset-x-0 bottom-0 flex items-center justify-center p-2 transition-all bg-white/90"
+          initial={{ translateY: "100%", opacity: 0 }}
           animate={{ 
-            opacity: isHovered ? 1 : 0,
-            y: isHovered ? 0 : 10
+            translateY: isHovered ? 0 : "100%", 
+            opacity: isHovered ? 1 : 0 
           }}
           transition={{ duration: 0.3 }}
-          className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black to-transparent"
         >
-          <Link href={`/products/${productHandle}`}>
-            <motion.button 
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="flex items-center justify-center w-full py-2 font-medium text-black transition bg-white rounded-md hover:bg-gray-100"
-            >
-              <ShoppingBag size={16} className="mr-2" />
-              View Product
-            </motion.button>
-          </Link>
+          <LocalizedClientLink href={`/products/${productHandle}`}>
+            <span className="text-sm font-medium">Quick view</span>
+          </LocalizedClientLink>
         </motion.div>
       </div>
       
-      {/* Product Info */}
-      <div className="p-4">
-        <h3 className="mb-1 text-lg font-medium">{productName}</h3>
-        {product?.variants && Array.isArray(product.variants) && product.variants.length > 0 ? (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {product.variants.slice(0, 3).map((variant: ProductVariant, index: number) => (
-              <div key={variant.id} className="px-2 py-1 text-xs bg-gray-100 rounded">
-                {variant.title}
-              </div>
-            ))}
-            {product.variants.length > 3 && (
-              <div className="px-2 py-1 text-xs bg-gray-100 rounded">
-                +{product.variants.length - 3} more
-              </div>
-            )}
+      {/* Product info section */}
+      <div className="flex-grow">
+        {/* Vendor name */}
+        <div className="mb-1 text-xs text-gray-500">
+          By {vendorName}
+        </div>
+        
+        {/* Product title and price */}
+        <div className="flex items-start justify-between mb-2">
+          <LocalizedClientLink href={`/products/${productHandle}`}>
+            <Text 
+              className="pr-2 text-base font-medium leading-tight line-clamp-2" 
+              data-testid="product-title"
+            >
+              {productName}
+            </Text>
+          </LocalizedClientLink>
+          <div className="font-semibold text-gray-900 whitespace-nowrap">
+            <PreviewPrice price={priceData} />
           </div>
-        ) : null}
-        <p className="font-semibold text-gray-900">${price.toFixed(2)}</p>
+        </div>
       </div>
+      
+      {/* Color options - shown if product has color metadata */}
+      {product.metadata && Object.entries(product.metadata).length > 0 && (
+        <div className="pt-3 mt-auto">
+          <ul className="flex items-center gap-x-1">
+            {Object.entries(product.metadata).map(([key, value], index) => (
+              <li key={index}>
+                <div 
+                  className="w-6 h-6 transition-transform border border-gray-200 rounded-full shadow-sm cursor-pointer hover:scale-110" 
+                  style={{ backgroundColor: `${value}` }}
+                  title={key}
+                ></div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </motion.div>
   );
 };
