@@ -46,6 +46,7 @@ const ProfilePassword: React.FC<MyInformationProps> = ({ customer }) => {
             required
             type="password"
             data-testid="old-password-input"
+            
           />
           <Input
             label="New password"

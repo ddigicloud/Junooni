@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { 
   Heart, 
-  ShoppingCart, 
   Share2, 
   Bell, 
   Instagram, 
@@ -20,7 +19,6 @@ import {
   ArrowRight,
   MessageCircleMore,
   Sparkles,
-  ShoppingBag
 } from 'lucide-react';
 import { retriveVendorsFollowers, retriveVendorsProducts } from '@lib/data/vendors';
 import {
@@ -30,13 +28,10 @@ import {
   Vendor,
   Product,
   Creator,
-  ProductOption,
-  ProductVariant,
   fadeIn,
   slideIn,
   staggerContainer
 } from '../../../../types/vendor';
-import { getProductPrice } from '@lib/util/get-product-price';
 import { assets } from '@assets/assets';
 import { Addfollower, deletefollower, retrieveCustomer } from '@lib/data/customer';
 
@@ -159,7 +154,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
                 <div className="overflow-hidden transition-shadow bg-white rounded-lg shadow-md hover:shadow-xl">
                   <div className="overflow-hidden h-52">
                     <img 
-                      src={vendorItem.coverphoto || "/api/placeholder/800/400"} 
+                      src={vendorItem.coverphoto} 
                       alt={`${vendorItem.name} cover`} 
                       className="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
                     />
@@ -168,7 +163,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
                     <div className="relative w-16 h-16 mr-4 overflow-hidden border-2 border-white rounded-full shadow">
                       <div className="relative w-full h-full">
                         <img 
-                          src={vendorItem.logo || "/api/placeholder/100/100"} 
+                          src={vendorItem.logo} 
                           alt={vendorItem.name} 
                           className="absolute inset-0 object-cover object-center w-full h-full" 
                         />
@@ -206,8 +201,8 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
     shortBio: vendor.creator_bio 
       ? (vendor.creator_bio.length > 150 ? vendor.creator_bio.substring(0, 150) + "..." : vendor.creator_bio)
       : "Artist bio not provided.",
-    profileImage: vendor.logo || "/api/placeholder/800/800",
-    coverImage: vendor.coverphoto || "/api/placeholder/1600/600",
+    profileImage: vendor.logo,
+    coverImage: vendor.coverphoto,
     socialMedia: {
       instagram: vendor.instagram || null,
       twitter: vendor.xtwitter || null,
@@ -266,6 +261,9 @@ const handleFollowToggle = async () => {
     if (isFollowing) {
       console.log("Unfollowing vendor:", vendor.id);
       setIsFollowing(false);
+
+      
+
       await deletefollower(vendor.id)
     } else {
       console.log("Following vendor:", vendor.id);
@@ -728,9 +726,7 @@ const handleFollowToggle = async () => {
               src="/images/default-avatar.png" 
               alt={`Fan ${i}`} 
               className="object-cover w-full h-full" 
-              onError={(e) => {
-                e.currentTarget.src = "/api/placeholder/50/50";
-              }}
+             
             />
           </motion.div>
         ))
@@ -877,7 +873,7 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({ product, hasPr
   
   // Extract required info from product with safety checks
   const productName = product?.title || 'Product';
-  const productImage = product?.thumbnail || '/api/placeholder/500/650';
+  const productImage = product?.thumbnail ;
   const productHandle = product?.handle || '';
   
   // Get price from product variants based on region currency
@@ -938,7 +934,7 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({ product, hasPr
   
   const Thumbnail: React.FC<ThumbnailProps> = ({ thumbnail, images, size, isFeatured }) => (
     <img 
-      src={thumbnail || '/api/placeholder/500/650'} 
+      src={thumbnail} 
       alt={productName} 
       className="object-cover w-full h-full"
     />

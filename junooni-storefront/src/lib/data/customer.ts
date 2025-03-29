@@ -294,32 +294,64 @@ export const followerCreate =
           "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
         },
         body:{
-         "vendor_id": `${vendor_id}`
+         "vendor_id": vendor_id
         }
       })
       .then((follow) => follow)
       .catch(() => null)
   }
 
-  export const deletefollower =
-  async (vendor_id) => {
+
+
+  export const deletefollower = async (vendor_id) => {
     const cookies = await nextCookies()
     const token = cookies.get("_medusa_jwt")?.value
-    console.log(token)
-
-    return await sdk.client
-      .fetch(`/store/customers/me/follow/lists/${vendor_id}`, {
-        method: "DELETE",
+    console.log("Deleting follower for vendor:", vendor_id)
+  
+    try {
+      // First, fetch the current follow list to find the correct creator id
+      const followList = await sdk.client.fetch(`/store/customers/me/follow`, {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
           "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
-        },
+        }
       })
-      .then((follow) => follow)
-      .catch(() => null)
+  
+      // Check if we have a follow object with creators
+      if (followList && followList.follow && followList.follow.creators) {
+        // Find the creator entry that matches the vendor_id
+        const creatorToDelete = followList.follow.creators.find(
+          creator => creator.vendor_id === vendor_id
+        )
+  
+        if (creatorToDelete) {
+          // Use the creator's id for deletion
+          return await sdk.client.fetch(
+            `/store/customers/me/follow/lists/${creatorToDelete.id}`, 
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+                "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
+              }
+            }
+          )
+        } else {
+          console.error("Creator with vendor_id", vendor_id, "not found in follow list")
+          return null
+        }
+      } else {
+        console.error("Follow list not found or has no creators")
+        return null
+      }
+    } catch (error) {
+      console.error("Error in deletefollower:", error)
+      return null
+    }
   }
-
 
   export const followerList =
   async () => {

@@ -8,7 +8,7 @@ export async function DELETE(
   const { result } = await UnfollowCreatorWorkflow(req.scope)
     .run({
       input: {
-       follow_list_id: req.params.id,
+       follow_creator_id: req.params.id,
         customer_id: req.auth_context.actor_id
       }
     })

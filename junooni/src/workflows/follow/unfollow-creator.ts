@@ -5,7 +5,7 @@ import { validateVendorInFollowStep } from "./steps/validate-vendor-follow-list"
 import { validateFollowExistsStep } from "./steps/validate-follow-list"
 
 type UnfollowCreatorWorkflowInput = {
-    follow_list_id: string
+    follow_creator_id: string
   customer_id: string
 }
 
@@ -14,7 +14,7 @@ export const UnfollowCreatorWorkflow = createWorkflow(
   (input: UnfollowCreatorWorkflowInput) => {
     const { data: follows } = useQueryGraphStep({
       entity: "follow",
-      fields: ["*", "creators.*"],
+      fields: ["*","creators.*"],
       filters: {
         customer_id: input.customer_id,
       },
@@ -26,7 +26,7 @@ export const UnfollowCreatorWorkflow = createWorkflow(
 
     validateVendorInFollowStep({
         follow: follows[0],
-        follow_list_id: input.follow_list_id
+        follow_creator_id: input.follow_creator_id
     })
 
     unfollowCreatorStep(input)

@@ -276,15 +276,15 @@ const CreatorDiscoveryPage =  () => {
   ];
   
   // Filter followed creators based on search and category
-  const filteredFollowedCreators = followedCreators.filter(creator => {
-    const matchesSearch = creator.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         creator.handle.toLowerCase().includes(searchQuery.toLowerCase());
+  // const filteredFollowedCreators = followedCreators.filter(creator => {
+  //   const matchesSearch = creator.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  //                        creator.handle.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesCategory = activeCategory === 'all' || 
-                           creator.category.toLowerCase() === activeCategory.toLowerCase();
+  //   const matchesCategory = activeCategory === 'all' || 
+  //                          creator.category.toLowerCase() === activeCategory.toLowerCase();
     
-    return matchesSearch && matchesCategory;
-  });
+  //   return matchesSearch && matchesCategory;
+  // });
   
   // Toggle creator favorite status
   const toggleFavorite = (creatorId) => {
@@ -405,7 +405,7 @@ const CreatorDiscoveryPage =  () => {
           
           {/* Followed Creators Grid */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredFollowedCreators.map(creator => (
+            {/* {filteredFollowedCreators.map(creator => (
               <div 
                 key={creator.id} 
                 className="overflow-hidden transition bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
@@ -484,10 +484,94 @@ const CreatorDiscoveryPage =  () => {
                   </div>
                 </div>
               </div>
-            ))}
+            ))} */}
+
+             {customerVendors.map(creator => (
+              <div 
+                key={creator.id} 
+                className="overflow-hidden transition bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
+              >
+                <div className="relative h-24 bg-gray-200">
+                  <Image 
+                    src={creator.vendor.coverphoto} 
+                    alt={`${creator.vendor.handle} banner`} 
+                    className="object-cover w-full h-full"
+                    width={100}
+                          height={100}
+                  />
+                  <button 
+                    className={`absolute top-3 right-3 p-2 rounded-full 
+                         bg-white text-[#e65100]
+                         bg-white/70  hover:bg-white hover:text-[#e65100]
+                    }`}
+                    
+                  >
+                    
+                  </button>
+                </div>
+                
+                <div className="p-4">
+                  <div className="flex items-start">
+                    <div className="relative mr-4 -mt-12">
+                      <div className="w-16 h-16 overflow-hidden bg-white border-2 border-white rounded-full">
+                        <Image 
+                          src={creator.vendor.logo} 
+                          alt={creator.vendor.handle} 
+                          className="object-cover w-full h-full"
+                          width={100}
+                          height={100}
+                        />
+                      </div>
+                      <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white
+                         bg-green-500 
+                      `}></div>
+                    </div>
+                    
+                    <div className="flex-grow mt-1">
+                      <div className="flex items-center">
+                        <h3 className="font-bold">{creator.vendor.name}</h3>
+                        
+                          <span className="ml-1 text-[#e65100]">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                        
+                      </div>
+                      <div className="text-sm text-gray-600">@{creator.vendor.name}</div>
+                    </div>
+                    
+                    <button className="px-4 py-1.5 border border-[#e65100] text-[#e65100] rounded-full text-sm hover:bg-[#e65100] hover:text-white transition">
+                      Following
+                    </button>
+                  </div>
+                  
+                  <p className="mt-3 mb-3 text-sm text-gray-600 line-clamp-2">{creator.vendor.creator_bio}</p>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex gap-4">
+                      {/* <div className="text-gray-600">
+                        <span className="font-semibold text-gray-900">{creator.stats.followers}</span> followers
+                      </div>
+                      <div className="text-gray-600">
+                        <span className="font-semibold text-gray-900">{creator.stats.products}</span> products
+                      </div> */}
+                    </div>
+                    <div className="text-xs px-2 py-0.5 bg-gray-100 rounded-full">
+                      {creator.vendor.creator_title}
+                    </div>
+                  </div>
+                  
+                  <div className="pt-3 mt-4 text-sm border-t">
+                    <div className="text-[#e65100] font-medium">Recent Activity:</div>
+                    <p className="text-gray-600">{creator.recentActivity}</p>
+                  </div>
+                </div>
+              </div>
+            ))} 
           </div>
           
-          {filteredFollowedCreators.length === 0 && (
+          {/* {filteredFollowedCreators.length === 0 && (
             <div className="p-8 text-center bg-white rounded-lg shadow-sm">
               <div className="mb-4 text-gray-400">
                 <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -506,7 +590,9 @@ const CreatorDiscoveryPage =  () => {
                 Clear all filters
               </button>
             </div>
-          )}
+          )} */}
+
+
         </section>
         
         {/* Recommended Creators Section */}

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { Heart } from 'lucide-react'
+import { Heart, Trash } from 'lucide-react'
 import { wishlistAddItem, wishlistItems, ItemDelete } from '@lib/data/customer'
 import { useRouter } from 'next/navigation'
 
@@ -18,10 +18,11 @@ interface WishlistResponse {
 }
 
 interface WishlistButtonProps {
-  variantId: string | undefined
+  variantId: string | undefined;
+  isWishlistPage?: boolean; // New prop to determine if we're on the wishlist page
 }
 
-const WishlistButton: React.FC<WishlistButtonProps> = ({ variantId }) => {
+const WishlistButton: React.FC<WishlistButtonProps> = ({ variantId, isWishlistPage = false }) => {
   const [isInWishlist, setIsInWishlist] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [wishlistItemId, setWishlistItemId] = useState<string | null>(null)
@@ -136,20 +137,35 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({ variantId }) => {
     }
   }, [variantId, isInWishlist, wishlistItemId, isLoading, router]);
 
+  // Determine which button styling to use based on context
+  const getButtonClassNames = () => {
+    if (isWishlistPage) {
+      return "absolute z-10 p-2 transition-all duration-300 bg-white rounded-full shadow-md right-3 top-3 hover:bg-gray-50";
+    }
+    return "absolute z-10 p-2 transition-all duration-300 bg-white rounded-full shadow-md opacity-0 right-3 top-3 group-hover:opacity-100 hover:bg-gray-50";
+  };
+
   return (
     <button
-      className="absolute z-10 p-2 transition-all duration-300 bg-white rounded-full shadow-md opacity-0 right-3 top-3 group-hover:opacity-100 hover:bg-gray-50"
+      className={getButtonClassNames()}
       aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
       onClick={toggleWishlist}
       disabled={isLoading}
     >
-      <Heart
-        className={`w-5 h-5 transition-all ${
-          isInWishlist
-            ? "text-red-500 fill-red-500"
-            : "text-gray-700 hover:text-red-500 hover:fill-red-500"
-        }`}
-      />
+      {isWishlistPage ? (
+        <Trash 
+          className="w-5 h-5 transition-all text-gray-700 hover:text-red-500" 
+          data-testid="remove-from-wishlist"
+        />
+      ) : (
+        <Heart
+          className={`w-5 h-5 transition-all ${
+            isInWishlist
+              ? "text-red-500 fill-red-500"
+              : "text-gray-700 hover:text-red-500 hover:fill-red-500"
+          }`}
+        />
+      )}
     </button>
   )
 }

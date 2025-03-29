@@ -140,13 +140,13 @@ export const WishlistProducts = () => {
 
   return (
     <>
-      <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      <ul className="w-full max-w-[90%] py-8 mx-auto grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {products.map((product) => (
           <li key={product.id} className="flex-shrink-0">
             <div data-testid="product-wrapper" className="relative flex flex-col h-full group">
               {/* Product image container with overlay effects */}
               <div className="relative overflow-hidden rounded-lg bg-gray-50 aspect-[4/5] mb-4">
-                <WishlistButton variantId={product.variants?.[0]?.id} />
+                <WishlistButton isWishlistPage={true} variantId={product.variants?.[0]?.id} />
                 
                 {/* Product tags */}
                 <div className="absolute z-10 flex flex-wrap gap-2 left-3 top-3 max-w-[85%]">
