@@ -28,7 +28,7 @@
 //   return (
 //     <>
 //       <div
-//         className="relative mt-20 flex flex-col gap-10 py-6 content-container small:flex-row small:items-start"
+//         className="relative flex flex-col gap-10 py-6 mt-20 content-container small:flex-row small:items-start"
 //         data-testid="product-container"
 //       >
 //         <div className="relative block w-full">
@@ -67,7 +67,6 @@
 
 // export default ProductTemplate;
 
-
 import React, { Suspense } from "react";
 import { HttpTypes } from "@medusajs/types";
 import { notFound } from "next/navigation";
@@ -78,7 +77,8 @@ import ProductTabs from "@modules/products/components/product-tabs";
 import RelatedProducts from "@modules/products/components/related-products";
 import SkeletonRelatedProducts from "@modules/skeletons/templates/skeleton-related-products";
 import { Heart, Share2, ShieldCheck, Truck, RefreshCw, Clock } from "lucide-react";
-import ProductReviews from "@modules/products/components/product-reviews"
+
+
 
 type ProductTemplateProps = {
   product: HttpTypes.StoreProduct;
@@ -89,27 +89,18 @@ type ProductTemplateProps = {
 const ProductTemplate: React.FC<ProductTemplateProps> = ({
   product,
   region,
-  countryCode,
+  countryCode
 }) => {
   if (!product || !product.id) {
     return notFound();
   }
 
-  // Format currency helper
-  const formatPrice = (price: number) => {
-    return `$${price.toFixed(2)}`;
-  };
 
- 
 
-  // Hardcoded values for product badges
-  const isLimited = true;
-  const isNew = true;
-  const isSigned = false;
 
   return (
-    <div className="min-h-screen  py-20">
-      <div className=" mx-auto">
+    <div className="min-h-screen py-20">
+      <div className="mx-auto ">
       
         
         <div className="mb-10 overflow-hidden bg-white rounded-lg shadow-sm">
@@ -146,19 +137,19 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
              
               
               {/* Product Info */}
-              <Suspense fallback={<div className="h-20 bg-gray-100 animate-pulse rounded mb-4"></div>}>
+              <Suspense fallback={<div className="h-20 mb-4 bg-gray-100 rounded animate-pulse"></div>}>
                 <ProductInfo product={product} />
               </Suspense>
               
               {/* Product Actions */}
-              <Suspense fallback={<div className="h-40 bg-gray-100 animate-pulse rounded my-6"></div>}>
+              <Suspense fallback={<div className="h-40 my-6 bg-gray-100 rounded animate-pulse"></div>}>
                 <ProductActionsWrapper id={product.id} region={region} />
               </Suspense>
               
               
-              
+
               {/* Social Buttons */}
-              <div className="flex gap-2 mb-6 mt-4">
+              <div className="flex gap-2 mt-4 mb-6">
                 <button className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
                   <Heart size={20} />
                 </button>
@@ -208,11 +199,13 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
         
         {/* Product Tabs */}
         <div className="mb-10">
-          <Suspense fallback={<div className="h-60 bg-gray-100 animate-pulse rounded"></div>}>
+          <Suspense fallback={<div className="bg-gray-100 rounded h-60 animate-pulse"></div>}>
             <ProductTabs product={product} />
           </Suspense>
         </div>
         
+       
+
         {/* Related Products */}
         <div className="mb-12">
           <Suspense fallback={<SkeletonRelatedProducts />}>

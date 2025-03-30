@@ -6,7 +6,7 @@ import { HttpTypes } from "@medusajs/types"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { getRegion, retrieveRegion } from "./regions"
-import { StoreProductReview } from "../../types/global"
+import { StoreProductReview } from "types/global"
 
 export const listProducts = async ({
   pageParam = 1,
@@ -170,7 +170,7 @@ export const getProductReviews = async ({
       order: "-created_at",
     },
     next,
-    cache: "force-cache",
+  
   })
 }
 
@@ -192,7 +192,6 @@ export const addProductReview = async (input: {
     body: input,
     next: {
       ...(await getCacheOptions(`product-reviews-${input.product_id}`)),
-    },
-    cache: "no-store",
+    }
   })
 }

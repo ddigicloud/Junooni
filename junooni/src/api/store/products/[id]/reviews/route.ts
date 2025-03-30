@@ -24,7 +24,9 @@ export const GET = async (
     take,
     skip
   } = { count: 0, take: 10, skip: 0 } } = await query.graph({
+
     entity: "review",
+    fields:["*"],
     filters: {
       product_id: id,
       // @ts-ignore

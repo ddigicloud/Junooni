@@ -36,27 +36,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
   const estimatedDelivery = "5-7 business days"
   const returnPeriod = "30"
   
-  // Hardcoded reviews
-  const reviews = [
-    {
-      id: 1,
-      author: "JamieL",
-      rating: 5,
-      date: "March 10, 2025",
-      title: "High quality and unique design",
-      content: "I love how soft this product is while still being durable. The design is so unique and I've gotten tons of compliments when using it. Definitely worth the price for something so exclusive.",
-      verified: true
-    },
-    {
-      id: 2,
-      author: "Customer22",
-      rating: 4,
-      date: "March 5, 2025",
-      title: "Great quality, shipping took a while",
-      content: "The product quality is perfect and exactly as pictured. My only complaint is that shipping took longer than expected. Still, I'm happy with my purchase and would buy from this store again.",
-      verified: true
-    }
-  ]
+ 
   
   return (
     <div className="overflow-hidden bg-white rounded-lg shadow-sm">
@@ -95,21 +75,10 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
             onClick={() => setActiveTab('reviews')}
           >
             <span className="block sm:hidden">Reviews</span>
-            <span className="hidden sm:block">Reviews ({reviews.length})</span>
+            <span className="hidden sm:block">Reviews </span>
           </button>
 
 
-          <button
-            className={`px-3 py-2 text-xs sm:text-sm md:text-base font-medium whitespace-nowrap transition-colors border-b-2 flex-1 min-w-[80px] sm:min-w-0 sm:flex-none sm:px-6 sm:py-3 ${
-              activeTab === 'NewReviews'
-                ? 'border-[#e65100] text-[#e65100]'
-                : 'border-transparent hover:border-gray-300'
-            }`}
-            onClick={() => setActiveTab('NewReviews')}
-          >
-            <span className="block sm:hidden">Reviews</span>
-            <span className="hidden sm:block">Reviews ({reviews.length})</span>
-          </button>
           
           <button
             className={`px-3 py-2 text-xs sm:text-sm md:text-base font-medium whitespace-nowrap transition-colors border-b-2 flex-1 min-w-[80px] sm:min-w-0 sm:flex-none sm:px-6 sm:py-3 ${
@@ -258,7 +227,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                   <img 
                     src={product.images?.[0]?.url || storyImage} 
                     alt="Behind the design" 
-                    className="w-full h-auto object-cover"
+                    className="object-cover w-full h-auto"
                     loading="lazy"
                   />
                 </div>
@@ -274,101 +243,10 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
           </div>
         )}
         
-        {/* Reviews Tab */}
-        {activeTab === 'NewReviews' && (
-          <div>
-            <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-              {/* Review Summary */}
-              <div className="w-full lg:w-1/3">
-                <div className="p-3 mb-3 rounded-lg bg-gray-50 sm:p-4 sm:mb-4">
-                  <h3 className="mb-1 text-xl font-bold text-center sm:text-2xl sm:mb-2">4.5</h3>
-                  <div className="flex justify-center mb-1 text-yellow-400 sm:mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i}
-                        fill={i < 4 ? "currentColor" : "none"} 
-                        size={16}
-                        className={i < 4 ? "text-yellow-400" : "text-gray-300"}
-                      />
-                    ))}
-                  </div>
-                  <p className="mb-2 text-xs text-center text-gray-600 sm:text-sm sm:mb-4">
-                    Based on {reviews.length} reviews
-                  </p>
-                </div>
-                
-                <button className="w-full bg-[#e65100] text-white py-2 rounded-md text-sm font-medium hover:bg-[#d84315] transition">
-                  Write a Review
-                </button>
-              </div>
-              
-              {/* Review List */}
-              <div className="w-full lg:w-2/3">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="text-sm font-medium sm:text-base">Customer Reviews</h3>
-                  <select className="p-1 text-xs border rounded sm:text-sm">
-                    <option>Most Recent</option>
-                    <option>Highest Rated</option>
-                    <option>Lowest Rated</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-4 sm:space-y-6">
-                  {reviews.length > 0 ? (
-                    reviews.map((review: any, index: number) => (
-                      <div key={index} className="pb-4 border-b sm:pb-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
-                          <div className="flex items-center mb-1 sm:mb-0">
-                            <div className="mr-2 text-sm font-medium">{review.author}</div>
-                            {review.verified && (
-                              <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded">
-                                Verified
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-500 sm:text-sm">{review.date}</div>
-                        </div>
-                        
-                        <div className="flex mb-1 text-yellow-400 sm:mb-2">
-                          {[...Array(5)].map((_, i) => (
-                            <Star 
-                              key={i} 
-                              size={14} 
-                              fill={i < review.rating ? "currentColor" : "none"}
-                              className={i < review.rating ? "text-yellow-400" : "text-gray-300"}
-                            />
-                          ))}
-                        </div>
-                        
-                        <h4 className="mb-1 text-sm font-medium sm:mb-2">{review.title}</h4>
-                        <p className="mb-3 text-xs text-gray-700 sm:text-sm sm:mb-4">{review.content}</p>
-                        
-                        {review.image && (
-                          <div className="mb-2 sm:mb-4">
-                            <img 
-                              src={review.image} 
-                              alt={`Review by ${review.author}`} 
-                              className="object-cover w-16 h-16 rounded sm:w-20 sm:h-20"
-                              loading="lazy"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-6 text-xs text-gray-500 sm:text-sm sm:py-8">
-                      No reviews yet. Be the first to review this product!
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
+  
          {/* Reviews Tab */}
          {activeTab === 'reviews' && (
-          <div className="content-container my-16 small:my-32">
+          <div className="my-5 content-container">
           <ProductReviews productId={product.id} />
         </div>
         )}

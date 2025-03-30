@@ -8,7 +8,7 @@ import {
 import Link from 'next/link';
 import { assets } from '@assets/assets';
 import Image from 'next/image';
-import { WishlistProducts } from '@modules/wishlists/components/wishlist';
+import { WishlistProducts } from '@modules/wishlists/components/wishlistProducts';
 
 
 const CustomerAccount = ({ customer, order, creatorList }) => {

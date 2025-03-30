@@ -4,6 +4,7 @@ import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import ProductTemplate from "@modules/products/templates"
 
+
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
 }
@@ -88,11 +89,14 @@ export default async function ProductPage(props: Props) {
     notFound()
   }
 
+
+
   return (
     <ProductTemplate
       product={pricedProduct}
       region={region}
       countryCode={params.countryCode}
+   
     />
   )
 }
