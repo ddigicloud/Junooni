@@ -82,6 +82,9 @@ const AuthenticatedProductCatalogIdLazyImport = createFileRoute(
 const AuthenticatedOrdersIdLazyImport = createFileRoute(
   '/_authenticated/orders/$id',
 )()
+const AuthenticatedDesignerCreateLazyImport = createFileRoute(
+  '/_authenticated/designer/create',
+)()
 const AuthenticatedDesignerIdLazyImport = createFileRoute(
   '/_authenticated/designer/$id',
 )()
@@ -363,6 +366,15 @@ const AuthenticatedOrdersIdLazyRoute = AuthenticatedOrdersIdLazyImport.update({
   import('./routes/_authenticated/orders/$id.lazy').then((d) => d.Route),
 )
 
+const AuthenticatedDesignerCreateLazyRoute =
+  AuthenticatedDesignerCreateLazyImport.update({
+    id: '/designer/create',
+    path: '/designer/create',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/designer/create.lazy').then((d) => d.Route),
+  )
+
 const AuthenticatedDesignerIdLazyRoute =
   AuthenticatedDesignerIdLazyImport.update({
     id: '/designer/$id',
@@ -523,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/designer/$id'
       fullPath: '/designer/$id'
       preLoaderRoute: typeof AuthenticatedDesignerIdLazyImport
+      parentRoute: typeof AuthenticatedRouteImport
+    }
+    '/_authenticated/designer/create': {
+      id: '/_authenticated/designer/create'
+      path: '/designer/create'
+      fullPath: '/designer/create'
+      preLoaderRoute: typeof AuthenticatedDesignerCreateLazyImport
       parentRoute: typeof AuthenticatedRouteImport
     }
     '/_authenticated/orders/$id': {
@@ -700,6 +719,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteLazyRoute: typeof AuthenticatedSettingsRouteLazyRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedDesignerIdLazyRoute: typeof AuthenticatedDesignerIdLazyRoute
+  AuthenticatedDesignerCreateLazyRoute: typeof AuthenticatedDesignerCreateLazyRoute
   AuthenticatedOrdersIdLazyRoute: typeof AuthenticatedOrdersIdLazyRoute
   AuthenticatedProductCatalogIdLazyRoute: typeof AuthenticatedProductCatalogIdLazyRoute
   AuthenticatedProductsIdLazyRoute: typeof AuthenticatedProductsIdLazyRoute
@@ -722,6 +742,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedSettingsRouteLazyRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedDesignerIdLazyRoute: AuthenticatedDesignerIdLazyRoute,
+  AuthenticatedDesignerCreateLazyRoute: AuthenticatedDesignerCreateLazyRoute,
   AuthenticatedOrdersIdLazyRoute: AuthenticatedOrdersIdLazyRoute,
   AuthenticatedProductCatalogIdLazyRoute:
     AuthenticatedProductCatalogIdLazyRoute,
@@ -764,6 +785,7 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503LazyRoute
   '/': typeof AuthenticatedIndexRoute
   '/designer/$id': typeof AuthenticatedDesignerIdLazyRoute
+  '/designer/create': typeof AuthenticatedDesignerCreateLazyRoute
   '/orders/$id': typeof AuthenticatedOrdersIdLazyRoute
   '/productCatalog/$id': typeof AuthenticatedProductCatalogIdLazyRoute
   '/products/$id': typeof AuthenticatedProductsIdLazyRoute
@@ -799,6 +821,7 @@ export interface FileRoutesByTo {
   '/503': typeof errors503LazyRoute
   '/': typeof AuthenticatedIndexRoute
   '/designer/$id': typeof AuthenticatedDesignerIdLazyRoute
+  '/designer/create': typeof AuthenticatedDesignerCreateLazyRoute
   '/orders/$id': typeof AuthenticatedOrdersIdLazyRoute
   '/productCatalog/$id': typeof AuthenticatedProductCatalogIdLazyRoute
   '/products/$id': typeof AuthenticatedProductsIdLazyRoute
@@ -838,6 +861,7 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503LazyRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/designer/$id': typeof AuthenticatedDesignerIdLazyRoute
+  '/_authenticated/designer/create': typeof AuthenticatedDesignerCreateLazyRoute
   '/_authenticated/orders/$id': typeof AuthenticatedOrdersIdLazyRoute
   '/_authenticated/productCatalog/$id': typeof AuthenticatedProductCatalogIdLazyRoute
   '/_authenticated/products/$id': typeof AuthenticatedProductsIdLazyRoute
@@ -877,6 +901,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/'
     | '/designer/$id'
+    | '/designer/create'
     | '/orders/$id'
     | '/productCatalog/$id'
     | '/products/$id'
@@ -911,6 +936,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/'
     | '/designer/$id'
+    | '/designer/create'
     | '/orders/$id'
     | '/productCatalog/$id'
     | '/products/$id'
@@ -948,6 +974,7 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/'
     | '/_authenticated/designer/$id'
+    | '/_authenticated/designer/create'
     | '/_authenticated/orders/$id'
     | '/_authenticated/productCatalog/$id'
     | '/_authenticated/products/$id'
@@ -1031,6 +1058,7 @@ export const routeTree = rootRoute
         "/_authenticated/settings",
         "/_authenticated/",
         "/_authenticated/designer/$id",
+        "/_authenticated/designer/create",
         "/_authenticated/orders/$id",
         "/_authenticated/productCatalog/$id",
         "/_authenticated/products/$id",
@@ -1098,6 +1126,10 @@ export const routeTree = rootRoute
     },
     "/_authenticated/designer/$id": {
       "filePath": "_authenticated/designer/$id.lazy.tsx",
+      "parent": "/_authenticated"
+    },
+    "/_authenticated/designer/create": {
+      "filePath": "_authenticated/designer/create.lazy.tsx",
       "parent": "/_authenticated"
     },
     "/_authenticated/orders/$id": {

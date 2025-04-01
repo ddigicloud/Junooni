@@ -39,6 +39,23 @@ const generateUUID = () => {
   });
 };
 
+
+
+/**
+ * Utility: Generate a unique SKU with timestamp to avoid duplicates.
+ * This ensures SKUs are unique even if the variant names are identical to existing ones.
+ */
+function generateUniqueSku(baseName: string): string {
+  // Get current timestamp in milliseconds
+  const timestamp = new Date().getTime();
+  
+  // Replace non-alphanumeric chars with hyphens and make lowercase
+  const cleanName = baseName.replace(/[^A-Z0-9]/ig, '-').toLowerCase();
+  
+  // Add timestamp to ensure uniqueness
+  return `SKU-${cleanName}-${timestamp}`;
+}
+
 /**
  * Utility: Given an array of option objects (each with an array of values),
  * produce all possible variant combinations (Cartesian product).
@@ -90,8 +107,8 @@ function generateVariantsFromOptions(
     // Create variant title (e.g. "Small / Red / Cotton")
     const title = optionValues.map(opt => opt.value).join(' / ');
     
-    // Create SKU from title, replacing non-alphanumeric chars with hyphens
-    const sku = `SKU-${title.replace(/[^A-Z0-9]/ig, '-')}`;
+    // Create unique SKU with timestamp to avoid duplicates
+    const sku = generateUniqueSku(title);
     
     return {
       id: generateUUID(),
@@ -115,7 +132,6 @@ type ProductFormValues = {
   status: string;
   thumbnail: string;
   discountable: boolean;
-  category: string;
   options: {
     id?: string;
     title: string;
@@ -155,11 +171,7 @@ const CreateProduct = () => {
     { file: File | null; url: string; rank: number; id?: string; isNew?: boolean }[]      
   >([]);
 
-  // Store categories from API
-  const [categories, setCategories] = useState<
-    { id: string; name: string; handle: string }[]
-  >([]);
-
+  
   // For bulk editing variants
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkPrice, setBulkPrice] = useState("");
@@ -179,7 +191,6 @@ const CreateProduct = () => {
       status: 'draft', // Default to draft for new products
       thumbnail: '',
       discountable: true,
-      category: '',
       options: [
         // Start with two common options: Size and Color
         {
@@ -358,18 +369,8 @@ const CreateProduct = () => {
           };
         }
         
-        // For new variants, add default sku and other values
-        const variant = {
-          ...newVariant,
-          sku: `SKU-${newVariant.title.replace(/[^A-Z0-9]/ig, '-')}`,
-          price: 0,
-          stock: 0,
-          allowBackorder: false,
-          manageInventory: true,
-        };
-        
-        console.log("Created new variant:", variant.title);
-        return variant;
+        // For new variants, use the generated unique SKU and other default values
+        return newVariant;
       });
       
       console.log("Final variants to be applied:", variantsWithExistingData);
@@ -450,11 +451,11 @@ const CreateProduct = () => {
     const currentVariants = form.getValues('variants');
     const variantToDuplicate = currentVariants[variantIndex];
     
-    // Create a new copy with a new ID
+    // Create a new copy with a new ID and unique SKU
     const newVariant = {
       ...JSON.parse(JSON.stringify(variantToDuplicate)),
       id: generateUUID(),
-      sku: `${variantToDuplicate.sku}-copy`,
+      sku: generateUniqueSku(`${variantToDuplicate.title}-copy`),
       title: `${variantToDuplicate.title} (Copy)`
     };
     
@@ -545,22 +546,6 @@ const CreateProduct = () => {
     setNewOptionValues(initialOptionValues);
   }, [optionFields.length]);
 
-  // Fetch categories on component mount
-  // useEffect(() => {
-  //   async function loadCategories() {
-  //     try {
-  //       const categoriesData = await fetchCategories();
-  //       if (categoriesData && Array.isArray(categoriesData)) {
-  //         setCategories(categoriesData);
-  //       }
-  //     } catch (error) {
-  //       console.error('Error loading categories:', error);
-  //     }
-  //   }
-    
-  //   loadCategories();
-  // }, []);
-
   // File selection handler (for adding new images).
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -618,8 +603,12 @@ const CreateProduct = () => {
     });
   };
 
-  // Update the submission handler to create a new product - FIXED FOR API FORMAT
+  // Update the submission handler to create a new product - FIXED FOR MEDUSA JS API FORMAT
   const onSubmit = async (values: ProductFormValues) => {
+    console.log('onSubmit triggered with values:', values);
+    console.log('Form valid:', form.formState.isValid);
+    console.log('Form errors:', form.formState.errors);
+    
     // Validate required fields
     if (!values.title.trim()) {
       setError('Product title is required');
@@ -651,11 +640,11 @@ const CreateProduct = () => {
         return;
       }
       
-      // Format options to match API expectations
+      // Format options to match Medusa JS API expectations
       const options = validOptions.map((opt) => {
         return {
           title: opt.title,
-          values: opt.optionValues.map(value => value)  // Array of string values
+          values: opt.optionValues
         };
       });
 
@@ -676,36 +665,40 @@ const CreateProduct = () => {
         return;
       }
       
-      // Transform variants to API format
+      // Transform variants to match Medusa JS API format
       const variants = values.variants.map((variant) => {
         // Format price as number to avoid string issues
         const price = typeof variant.price === 'string' 
           ? parseFloat(variant.price) 
           : (variant.price || 0);
 
-        // Format options according to API expectations
-        const options = {};
+        // Format options according to Medusa JS API expectations
+        // This is the key change - converting optionValues array to an options object
+        const variantOptions = {};
         
-        // Return the variant in API format
+        // Map each option value to the format Medusa expects
+        variant.optionValues.forEach(optVal => {
+          variantOptions[optVal.optionName] = optVal.value;
+        });
+        
+        // Return the variant in the format Medusa JS API expects
         return {
           title: variant.title,
           sku: variant.sku || '',
           manage_inventory: Boolean(variant.manageInventory),
           allow_backorder: Boolean(variant.allowBackorder),
-          // Don't include id, inventory_quantity, or compare_at_price
+          // inventory_quantity: variant.stock || 0,
           prices: [{
             amount: price,
-            currency_code: 'usd'
-          }]
+            currency_code: 'usd'  // You might want to make this configurable
+          }],
+          options: variantOptions  // This is the key difference - using the format Medusa expects
         };
       });
 
-      console.log('Formatted variants:', variants);
-    
-      // Get the selected category ID
-      const categoryId = values.category || null;
+      console.log('Formatted variants with proper options structure:', variants);
       
-      // Construct the product object in API format, conforming to the schema
+      // Construct the product object in Medusa JS API format
       const newProduct = {
         title: values.title.trim(),
         handle: values.handle.trim(),
@@ -713,19 +706,20 @@ const CreateProduct = () => {
         status: values.status,
         thumbnail: values.thumbnail || "",
         discountable: Boolean(values.discountable),
-        // category_id: categoryId, 
         weight: values.weight ? parseInt(values.weight) || 0 : 0,
         length: values.length ? parseInt(values.length) || 0 : 0,
         width: values.width ? parseInt(values.width) || 0 : 0,
         height: values.height ? parseInt(values.height) || 0 : 0,
-        material: values.material || undefined,
-        origin_country: values.origin_country || undefined,
+        // Only include these if they have values
+        ...(values.material ? { material: values.material } : {}),
+        ...(values.origin_country ? { origin_country: values.origin_country } : {}),
         options: options,
         variants: variants,
       };
 
-      // Debug output
+      // Debug output of final API payload
       console.log('Product data being sent to API:', JSON.stringify(newProduct, null, 2));
+      console.log('SKUs being submitted:', variants.map(v => v.sku));
       
       try {
         // Send the create request
@@ -784,6 +778,14 @@ const CreateProduct = () => {
     }
   };
 
+  // For debugging when create button doesn't work
+  const handleManualSubmit = () => {
+    console.log('Manual submit button clicked');
+    console.log('Form state:', form.formState);
+    console.log('Form values:', form.getValues());
+    form.handleSubmit(onSubmit)();
+  };
+
   // Cleanup any object URLs for newly added files when unmounting.
   const mediaRef = useRef(mediaItems);
   useEffect(() => {
@@ -812,6 +814,15 @@ const CreateProduct = () => {
     );
   }
 
+
+  useEffect(()=>{
+    const fetchData = async ()=>{
+      const data = await fetchCategories();
+      console.log(data);
+    }
+    fetchData()
+  })
+
   return (
     <div className="px-6 py-8">
       {/* Header Bar */}
@@ -821,7 +832,10 @@ const CreateProduct = () => {
           <Button variant="outline" onClick={() => navigate({ to: '/products' })}>
             Cancel
           </Button>
-          <Button onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting}>
+          <Button 
+            onClick={handleManualSubmit} 
+            disabled={isSubmitting}
+          >
             {isSubmitting ? 'Creating...' : 'Create Product'}
           </Button>
         </div>
@@ -1435,38 +1449,6 @@ const CreateProduct = () => {
                     )}
                   />
                 </div>
-                <div className="mt-4">
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          {/* <SelectContent>
-                            {categories.length > 0 ? (
-                              categories.map(category => (
-                                <SelectItem key={category.id} value={category.id}>
-                                  {category.name}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="" disabled>
-                                No categories available
-                              </SelectItem>
-                            )}
-                          </SelectContent> */}
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
               </section>
               
               <section className="p-6 bg-white border border-gray-200 rounded">
@@ -1559,7 +1541,7 @@ const CreateProduct = () => {
             <Button variant="outline" onClick={() => navigate({ to: '/products' })}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="button" onClick={handleManualSubmit} disabled={isSubmitting}>
               {isSubmitting ? 'Creating...' : 'Create Product'}
             </Button>
           </div>

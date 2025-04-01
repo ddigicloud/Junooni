@@ -2,6 +2,7 @@ import axios from 'axios';
 
 // Replace with your actual API base URL
 const API_BASE_URL = import.meta.env.VITE_MEDUSA_BACKEND_URL;
+const API_KEY = import.meta.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY;
 
 // Define a Product type (adjust according to your actual product structure)
 interface Product {
@@ -33,6 +34,7 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
     const response = await axios.get(`${API_BASE_URL}/vendors/products/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
+        'x-publishable-api-key':`${API_KEY}`
       },
     });
     console.log("Product fetched:", response.data.product);
@@ -49,23 +51,25 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
  * Fetch categories for product categorization
  * @returns A Promise resolving to an array of categories
  */
-export async function fetchCategories({ id }: { id?: string }): Promise<{ categories: Category[] }> {
-  const token = localStorage.getItem("vendorToken");
+export async function fetchCategories() {
   try {
     // Use a dedicated categories endpoint if available
-    const response = await axios.get(`${API_BASE_URL}/vendors/categories`, {
+    const response = await fetch(`${API_BASE_URL}/store/product-categories`, {
+      credentials: "include",
       headers: {
-        Authorization: `Bearer ${token}`,
+        'x-publishable-api-key':`${API_KEY}`
       },
     });
     
     // Make sure this matches your API's response structure
-    return response.data;
+    return response;
   } catch (error) {
     console.error('Error fetching categories:', error);
     throw error;
   }
 }
+
+
 
 /**
  * Update an existing product
@@ -77,10 +81,10 @@ export async function updateProduct({ product }: { product: Product }): Promise<
   try {
     console.log("Updating product with data:", product);
     
-    const response = await axios.put(`${API_BASE_URL}/vendors/products/${product.id}`, product, {
+    const response = await axios.put(`${API_BASE_URL}/vendors/products/${product}`, product, {
       headers: {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        
       },
     });
     
