@@ -3,7 +3,7 @@ import { assets } from '@assets/assets'
 
 const CollectionBanner = () => {
   return (
-    <section className=" bg-white">
+    <section className="bg-white ">
     <div className="container max-w-full">
       <div className="relative overflow-hidden ">
         <div className="md:aspect-[21/9] aspect-[3/4] bg-gray-800">
@@ -22,7 +22,7 @@ const CollectionBanner = () => {
         </div>
         <div className="absolute inset-0 flex flex-col justify-center px-6 md:px-16">
           <div className="max-w-lg">
-            <span className="inline-block px-3 py-1 text-xs font-semibold bg-[#e65100] text-white rounded-full mb-4">
+            <span className="inline-block px-3 py-1 mb-4 text-xs font-semibold text-white rounded-full bg-orange-primary">
               EXCLUSIVE COLLABORATION
             </span>
             <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">Creator x Creator Collection</h2>

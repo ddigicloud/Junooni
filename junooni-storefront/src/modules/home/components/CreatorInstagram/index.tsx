@@ -2,7 +2,7 @@ import React from 'react'
 
 const CreatorInstagram = () => {
   return (
-    <section className="py-16 bg-purple-50">
+    <section className="py-16 bg-orange-50">
     <div className="container px-4 mx-auto">
       <h2 className="mb-10 text-3xl font-bold text-center">Creator Spotlight</h2>
       
@@ -18,7 +18,7 @@ const CreatorInstagram = () => {
         </div>
         <div className="p-6 md:w-3/5 md:p-10">
           <div className="mb-6">
-            <span className="inline-block px-3 py-1 text-xs font-semibold text-purple-800 bg-purple-100 rounded-full">
+            <span className="inline-block px-3 py-1 text-xs font-semibold bg-orange-100 rounded-full text-orange-primary">
               FEATURED CREATOR
             </span>
           </div>

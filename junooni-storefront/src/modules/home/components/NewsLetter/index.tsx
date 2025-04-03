@@ -16,7 +16,7 @@ const NewsLetter = () => {
               />
               <button 
                 type="submit" 
-                className="px-6 py-3 font-medium text-white transition bg-purple-600 rounded-md hover:bg-purple-700"
+                className="px-6 py-3 font-medium text-white transition rounded-md bg-orange-primary hover:bg-orange-500"
               >
                 Subscribe
               </button>

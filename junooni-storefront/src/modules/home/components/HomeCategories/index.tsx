@@ -52,14 +52,14 @@ const HomeCategories = async () => {
                   )}
                   
                   {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 transition-all duration-300 group-hover:bg-opacity-10 group-hover:scale-105"></div>
+                  <div className="absolute inset-0 transition-all duration-300 bg-black bg-opacity-0 group-hover:bg-opacity-10 group-hover:scale-105"></div>
                 </div>
                 
                 <div className="p-4 text-center">
-                  <h3 className="text-lg font-medium transition-colors duration-300 group-hover:text-indigo-600">
+                  <h3 className="text-lg font-medium transition-colors duration-300 group-hover:text-orange-primary">
                     {category.name}
                   </h3>
-                  <div className="mt-2 h-0.5 w-0 bg-indigo-500 mx-auto transition-all duration-300 group-hover:w-12"></div>
+                  <div className="mt-2 h-0.5 w-0 bg-orange-primary mx-auto transition-all duration-300 group-hover:w-12"></div>
                 </div>
               </div>
             </Link>

@@ -115,7 +115,7 @@ export default defineMiddlewares({
       ]
     },
     {
-      matcher: "/vendors/products",
+      matcher: "/vendors/products*",
       method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
       middlewares: [
         (req, res, next) => {
@@ -125,7 +125,7 @@ export default defineMiddlewares({
             credentials: true,
           })(req, res, next);
         },
-        authenticate(["vendor","admin"], ["session", "bearer"]),
+        authenticate(["vendor","user"], ["session", "bearer"]),
         (req, res, next) => {
           // Apply validation only to POST, PUT, DELETE
           if (["POST", "PUT", "DELETE"].includes(req.method)) {
