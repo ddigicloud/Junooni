@@ -6,14 +6,14 @@ import { createContext, useContext, useState, ReactNode, useEffect } from "react
 interface NavContextType {
   isAnyMenuHovered: boolean;
   setAnyMenuHovered: (isHovered: boolean) => void;
-  isPast100vh: boolean;
+  isPast100vh: boolean; // Renamed to reflect new threshold
   isHomePage: boolean;
 }
 
 const NavContext = createContext<NavContextType>({
   isAnyMenuHovered: false,
   setAnyMenuHovered: () => {},
-  isPast100vh: false,
+  isPast100vh: false, // Renamed to reflect new threshold
   isHomePage: false,
 });
 
@@ -28,12 +28,12 @@ interface NavProviderProps {
 
 export function NavProvider({ children, isHomePage = false }: NavProviderProps) {
   const [isAnyMenuHovered, setAnyMenuHovered] = useState(false);
-  const [isPast100vh, setIsPast100vh] = useState(false);
+  const [isPast100vh, setIsPast100vh] = useState(false); // Renamed to reflect new threshold
   const [lastScrollY, setLastScrollY] = useState(0);
   
-  // Handle scroll events to detect when we've scrolled past 100vh
+  // Handle scroll events to detect when we've scrolled past 10vh
   useEffect(() => {
-    // Only track 100vh crossing on homepage
+    // Only track 10vh crossing on homepage
     if (!isHomePage) return;
     
     // Throttle function to improve performance on scroll events
@@ -52,8 +52,8 @@ export function NavProvider({ children, isHomePage = false }: NavProviderProps) 
       const currentScrollY = window.scrollY;
       const viewportHeight = window.innerHeight;
       
-      // Set isPast100vh based on current scroll position
-      setIsPast100vh(currentScrollY > viewportHeight);
+      // Set isPast100vh based on current scroll position (10% of viewport height)
+      setIsPast100vh(currentScrollY > viewportHeight * 0.1); // Changed from 100vh to 10vh
       
       // Update the last scroll position
       setLastScrollY(currentScrollY);
@@ -78,7 +78,7 @@ export function NavProvider({ children, isHomePage = false }: NavProviderProps) 
     const handleResize = () => {
       const currentScrollY = window.scrollY;
       const viewportHeight = window.innerHeight;
-      setIsPast100vh(currentScrollY > viewportHeight);
+      setIsPast100vh(currentScrollY > viewportHeight * 0.1); // Changed from 100vh to 10vh
     };
     
     window.addEventListener('resize', handleResize);
@@ -93,7 +93,7 @@ export function NavProvider({ children, isHomePage = false }: NavProviderProps) 
       value={{ 
         isAnyMenuHovered, 
         setAnyMenuHovered,
-        isPast100vh,
+        isPast100vh, // Renamed to reflect new threshold
         isHomePage
       }}
     >

@@ -45,9 +45,11 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({ vendor, region }) =
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [followers, setFollowers] = useState([]);
 
+  const followerCounting = followers.map((item)=>{
+    return item.follow
+  })
 
-
-
+console.log(followerCounting)
   useEffect(() => {
     const fetchFollowers = async () => {
       try {
@@ -229,6 +231,7 @@ useEffect(() => {
     try {
       // Get current customer
       const customer = await retrieveCustomer();
+      
       setCurrentCustomer(customer);
       
       if (customer && followers.length > 0) {
@@ -253,6 +256,9 @@ useEffect(() => {
 // Updated follow handler function
 const handleFollowToggle = async () => {
   try {
+
+    console.log(currentCustomer)
+
     if (!currentCustomer) {
       console.log("User needs to be logged in to follow");
       return;
@@ -390,16 +396,7 @@ const handleFollowToggle = async () => {
                       />
                     </div>
                   </div>
-                  {creator.verified && (
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
-                      className="absolute bottom-0 right-0 bg-[#e65100] text-white p-1.5 rounded-full"
-                    >
-                      <Sparkles size={16} />
-                    </motion.div>
-                  )}
+                  
                 </motion.div>
                 
                 <div className="flex-grow">

@@ -281,6 +281,7 @@ export const followerCreate =
 
   export const Addfollower =
   async (vendor_id) => {
+    console.log(`In api req vendor_id : ${vendor_id}` )
     const cookies = await nextCookies()
     const token = cookies.get("_medusa_jwt")?.value
     console.log(token)
@@ -294,7 +295,7 @@ export const followerCreate =
           "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`
         },
         body:{
-         "vendor_id": vendor_id
+         "vendor_id": `${vendor_id}`
         }
       })
       .then((follow) => follow)

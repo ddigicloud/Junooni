@@ -21,7 +21,7 @@ const LineItemUnitPrice = ({
   )
 
   return (
-    <div className="flex flex-col text-ui-fg-muted justify-center h-full">
+    <div className="flex flex-col justify-center h-full text-ui-fg-muted">
       {hasReducedPrice && (
         <>
           <p>

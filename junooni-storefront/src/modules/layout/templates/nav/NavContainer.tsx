@@ -24,7 +24,7 @@ export function NavContainer({ children, isHomePage = false }: NavContainerProps
   const [isAnyMenuHovered, setAnyMenuHovered] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
-  const [isPast100vh, setIsPast100vh] = useState(false)
+  const [isPast10vh, setIsPast10vh] = useState(false) // Renamed to reflect new threshold
   
   // Handle scroll events to control navbar visibility and background
   useEffect(() => {
@@ -44,11 +44,11 @@ export function NavContainer({ children, isHomePage = false }: NavContainerProps
       const currentScrollY = window.scrollY
       const viewportHeight = window.innerHeight
       
-      // Check if scrolled past 100vh - only track this on home page
+      // Check if scrolled past 10vh - only track this on home page
       if (isHomePage) {
-        setIsPast100vh(currentScrollY > viewportHeight)
+        setIsPast10vh(currentScrollY > viewportHeight * 0.1) // Changed from 100vh to 10vh
       } else {
-        setIsPast100vh(false) // Always false on non-home pages
+        setIsPast10vh(false) // Always false on non-home pages
       }
       
       // Determine if scrolling up or down - this applies to all pages
@@ -84,7 +84,7 @@ export function NavContainer({ children, isHomePage = false }: NavContainerProps
     const handleResize = () => {
       const currentScrollY = window.scrollY
       const viewportHeight = window.innerHeight
-      setIsPast100vh(currentScrollY > viewportHeight)
+      setIsPast10vh(currentScrollY > viewportHeight * 0.1) // Changed from 100vh to 10vh
     }
     
     window.addEventListener('resize', handleResize)
@@ -102,7 +102,7 @@ export function NavContainer({ children, isHomePage = false }: NavContainerProps
         <header 
           className={`relative h-16 mx-auto duration-100 transition-all w-full ${
             isHomePage 
-              ? isAnyMenuHovered || isPast100vh
+              ? isAnyMenuHovered || isPast10vh // Updated variable name
                 ? 'bg-white text-black shadow-sm' 
                 : 'bg-transparent text-white hover:text-black hover:bg-white'
               : 'bg-white text-black shadow-sm' // Always white background with black text on non-home pages

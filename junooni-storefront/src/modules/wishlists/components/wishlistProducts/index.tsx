@@ -266,24 +266,33 @@ export const WishlistProducts = () => {
     );
   }
 
-
-
-  
-
   return (
     <>
       <ul className="w-full max-w-[90%] py-8 mx-auto grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {visibleProducts.map((product) => {
-          console.log(product)
-          return <li key={product.id} className="flex-shrink-0">
+        {visibleProducts.map((product) => (
+          <li key={product.id} className="flex-shrink-0">
             <div data-testid="product-wrapper" className="relative flex flex-col h-full group">
+              {/* Wrap entire card with a link while maintaining relative positioning */}
+              <LocalizedClientLink 
+                href={`/products/${product.handle}`} 
+                className="absolute inset-0 z-10 w-full h-full"
+                aria-label={`View ${product.title} details`}
+              >
+                <span className="sr-only">View product details</span>
+              </LocalizedClientLink>
+              
               {/* Product image container with overlay effects */}
               <div className="relative overflow-hidden rounded-lg bg-gray-50 aspect-[4/5] mb-4">
-                <WishlistButton 
-                  isWishlistPage={true} 
-                  variantId={product.variants?.[0]?.id} 
-                  onRemove={handleVariantRemove}
-                />
+                {/* Wishlist button - placed in higher z-index with pointer-events enabled */}
+                <div className="absolute top-0 right-0 z-20">
+                  <div className="pointer-events-auto">
+                    <WishlistButton 
+                      isWishlistPage={true} 
+                      variantId={product.variants?.[0]?.id} 
+                      onRemove={handleVariantRemove}
+                    />
+                  </div>
+                </div>
                 
                 {/* Product tags */}
                 <div className="absolute z-10 flex flex-wrap gap-2 left-3 top-3 max-w-[85%]">
@@ -305,32 +314,23 @@ export const WishlistProducts = () => {
                     size="full"
                   />
                 </div>
-                
-                {/* Quick add overlay */}
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-center p-2 transition-all translate-y-full opacity-0 bg-white/90 group-hover:translate-y-0 group-hover:opacity-100">
-                  <LocalizedClientLink href={`/products/${product.handle}`}>
-                    <span className="text-sm font-medium">Quick view</span>
-                  </LocalizedClientLink>
-                </div>
               </div>
               
-              {/* Product info section */}
-              <div className="flex-grow">
+              {/* Product info section - now uses pointer-events-none to let clicks pass through to the card link */}
+              <div className="flex-grow pointer-events-none">
                 {/* Vendor name */}
                 <div className="mb-1 text-xs text-gray-500">
                   By {product.vendor ? product.vendor.name : "Junooni"}
                 </div>
                 
-                {/* Product title and price */}
+                {/* Product title and price - removed the nested link since the whole card is now clickable */}
                 <div className="flex items-start justify-between mb-2">
-                  <LocalizedClientLink href={`/products/${product.handle}`}>
-                    <Text 
-                      className="pr-2 text-base font-medium leading-tight line-clamp-2" 
-                      data-testid="product-title"
-                    >
-                      {product.title}
-                    </Text>
-                  </LocalizedClientLink>
+                  <Text 
+                    className="pr-2 text-base font-medium leading-tight line-clamp-2" 
+                    data-testid="product-title"
+                  >
+                    {product.title}
+                  </Text>
                   <div className="font-semibold text-gray-900 whitespace-nowrap">
                     {product.variants?.[0]?.prices && (
                       <PreviewPrice 
@@ -342,26 +342,26 @@ export const WishlistProducts = () => {
                   </div>
                 </div>
               
+                {/* Color options - with pointer-events-none to allow clicks to pass through */}
                 {product.metadata && Object.entries(product.metadata).length > 0 && (
-                <div className="pt-3 mt-auto">
+                  <div className="pt-3 mt-auto">
                     <ul className="flex items-center gap-x-1">
-                    {Object.entries(product.metadata).map(([key, value], index) => (
+                      {Object.entries(product.metadata).map(([key, value], index) => (
                         <li key={index}>
-                        <div 
+                          <div 
                             className="w-6 h-6 transition-transform border border-gray-200 rounded-full shadow-sm cursor-pointer hover:scale-110" 
                             style={{ backgroundColor: `${value}` }}
                             title={key}
-                        ></div>
+                          ></div>
                         </li>
-                    ))}
+                      ))}
                     </ul>
-                </div>
+                  </div>
                 )}
-
               </div>
             </div>
           </li>
-        })}
+        ))}
       </ul>
       
       {/* Footer Actions */}

@@ -2,7 +2,7 @@ import "server-only"
 import { cookies as nextCookies } from "next/headers"
 
 export const getAuthHeaders = async (): Promise<
-  { authorization: string, key:string } | {}
+  { authorization: string } | {}
 > => {
   const cookies = await nextCookies()
   const token = cookies.get("_medusa_jwt")?.value

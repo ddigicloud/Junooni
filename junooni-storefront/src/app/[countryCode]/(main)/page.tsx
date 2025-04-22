@@ -11,6 +11,7 @@ import NewsLetter from "@modules/home/components/NewsLetter"
 import FeaturedProducts from "@modules/home/components/featured-products"
 import Hero from "@modules/home/components/hero"
 import VendorList from "@modules/home/components/VendorList"
+import { retriveVendors } from "@lib/data/vendors"
 
 
 export const metadata: Metadata = {
@@ -36,6 +37,11 @@ export default async function Home(props: {
     return null
   }
 
+
+  const vendorsList  = await retriveVendors()
+
+
+
   return (
     <>
       
@@ -59,7 +65,7 @@ export default async function Home(props: {
               </div>
 
               <Features />
-              <CreatorInstagram />
+              <CreatorInstagram vendorsList={vendorsList} />
               <FanContent />
               <NewsLetter />
             </main>

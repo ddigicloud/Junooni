@@ -1,6 +1,12 @@
 import React from 'react'
 
-const CreatorInstagram = () => {
+const CreatorInstagram = ({vendorsList}) => {
+
+console.log(vendorsList)
+
+  
+  
+
   return (
     <section className="py-16 bg-orange-50">
     <div className="container px-4 mx-auto">

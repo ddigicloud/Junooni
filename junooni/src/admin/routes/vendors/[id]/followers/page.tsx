@@ -30,75 +30,57 @@ const CreatorFollowersTab = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // Use the exact URL from your successful request
+  
       const url = `/vendors/${id}/followers?limit=10&offset=0`;
       console.log(`Fetching followers from: ${url}`);
-      
+  
       const response = await fetch(url, {
         credentials: "include",
       });
-      
+  
       console.log("API response status:", response.status);
-
-      // Handle response status
+  
       if (response.status === 404) {
         console.log("404 response - no followers");
         setFollowers([]);
         setTotalFollowers(0);
         return;
       }
-
+  
       if (!response.ok) {
         throw new Error(`Failed to fetch followers: ${response.status}`);
       }
-
-      // Get the raw data
+  
       const data = await response.json();
       console.log("Full API response:", JSON.stringify(data, null, 2));
-      
-      // Store raw response for debugging
       setRawResponse(data);
-      
-      // Check for valid response
-      if (!data) {
-        console.log("Empty response received");
+  
+      if (!data || !Array.isArray(data.follow)) {
+        console.log("Invalid or missing follow array");
         setFollowers([]);
         setTotalFollowers(0);
         return;
       }
-      
-      // Get the keys to understand the structure
-      console.log("Top-level keys:", Object.keys(data));
-      
-      // Based on the raw response we see in the UI, the structure is:
-      // { follow: { id, vendor_id, follow_id, follow: { id, customer_id, customer: {...} } } }
-      if (data && data.follow && data.follow.follow && data.follow.follow.customer) {
-        // The actual customer is two levels deep: data.follow.follow.customer
-        console.log("Found nested follow object with customer:", data.follow.follow.customer);
-        
-        const customer = data.follow.follow.customer;
-        const followerDisplay: FollowerDisplay = {
-          id: data.follow.id || "unknown-id",
-          customer_id: data.follow.follow.customer_id || "unknown-customer",
-          created_at: data.follow.created_at || new Date().toISOString(),
+  
+      const parsedFollowers: FollowerDisplay[] = data.follow.map((f: any) => {
+        const customer = f.follow?.customer || {};
+        const name = `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
+        const initials = `${(customer.first_name || "").charAt(0)}${(customer.last_name || "").charAt(0)}`.toUpperCase() || "UC";
+  
+        return {
+          id: f.id || "unknown-id",
+          customer_id: customer.id || "unknown-customer",
+          created_at: f.created_at || new Date().toISOString(),
           customer_info: {
-            name: `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || "Unknown Customer",
+            name: name || customer.email || "Unknown Customer",
             email: customer.email,
-            initials: `${(customer.first_name || "").charAt(0) || ""}${(customer.last_name || "").charAt(0) || ""}`.toUpperCase() || "UC"
+            initials: initials || "UC"
           }
         };
-        
-        console.log("Created follower display object:", followerDisplay);
-        
-        // Set state with the follower
-        setFollowers([followerDisplay]);
-        setTotalFollowers(1);
-      } else {
-        console.log("Follow object or customer not found in the response");
-        setFollowers([]);
-        setTotalFollowers(0);
-      }
+      });
+  
+      setFollowers(parsedFollowers);
+      setTotalFollowers(parsedFollowers.length);
     } catch (error) {
       console.error("Error fetching creator followers:", error);
       setError(error instanceof Error ? error.message : "Unknown error occurred");
@@ -108,6 +90,7 @@ const CreatorFollowersTab = () => {
       setIsLoading(false);
     }
   };
+  
 
   const formatDate = (dateString: string) => {
     try {
@@ -195,3 +178,4 @@ const CreatorFollowersTab = () => {
 };
 
 export default CreatorFollowersTab;
+

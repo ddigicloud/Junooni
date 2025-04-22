@@ -142,13 +142,13 @@ function FreeShippingInline({
   }
 }) {
   return (
-    <div className="bg-neutral-100 p-2 rounded-lg border">
+    <div className="p-2 border rounded-lg bg-neutral-100">
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs text-neutral-600">
           <div>
             {price.target_reached ? (
               <div className="flex items-center gap-1.5">
-                <CheckCircleSolid className="text-green-500 inline-block" />{" "}
+                <CheckCircleSolid className="inline-block text-green-500" />{" "}
                 Free Shipping unlocked!
               </div>
             ) : (
@@ -181,7 +181,7 @@ function FreeShippingInline({
             )}
             style={{ width: `${price.remaining_percentage}%` }}
           ></div>
-          <div className="bg-neutral-300 h-1 rounded-full w-fit flex-grow"></div>
+          <div className="flex-grow h-1 rounded-full bg-neutral-300 w-fit"></div>
         </div>
       </div>
     </div>
@@ -224,7 +224,7 @@ function FreeShippingPopup({
               <div>
                 {price.target_reached ? (
                   <div className="flex items-center gap-1.5">
-                    <CheckCircleSolid className="text-green-500 inline-block" />{" "}
+                    <CheckCircleSolid className="inline-block text-green-500" />{" "}
                     Free Shipping unlocked!
                   </div>
                 ) : (

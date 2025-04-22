@@ -35,6 +35,8 @@ const VendorList: React.FC = () => {
     fetchVendors();
   }, []);
 
+console.log(vendorsData)  
+
   return (
     <section className="relative py-20 bg-gray-50">
       <div className="container px-5 mx-auto">
@@ -138,7 +140,9 @@ const VendorList: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                    <h3 className="font-medium text-md">{vendor.name}</h3>
+                    <h3 className="font-medium text-md text-start">{vendor.name}</h3>
+
+                    <p className="text-sm text-start">{vendor.creator_bio}</p>
                   </Link>
                 </SwiperSlide>
               ))}

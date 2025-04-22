@@ -70,6 +70,6 @@ import {
       }
     
       return res.json({
-        follow: data[0]
+        follow: data
       })
     }
