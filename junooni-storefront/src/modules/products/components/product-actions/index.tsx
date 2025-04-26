@@ -235,6 +235,8 @@ import { useParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import MobileActions from "./mobile-actions"
+import { Heart, Share2, ShoppingCart} from "lucide-react";
+import ShareButton from "./ShareButton"; // (top of your file, add import)
 
 type ProductActionsProps = {
   product: HttpTypes.StoreProduct
@@ -242,6 +244,10 @@ type ProductActionsProps = {
   disabled?: boolean
 }
 
+function stripHtml(html: string): string {
+  if (!html) return ""
+  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim()
+}
 // Helper function to convert variant options into a key-value map
 const optionsAsKeymap = (
   variantOptions?: HttpTypes.StoreProductVariant["options"]
@@ -369,6 +375,13 @@ export default function ProductActions({
         <div>
           {(product.variants?.length ?? 0) > 1 && (
             <div className="flex flex-col gap-4 gap-y-4">
+              <ProductPrice product={product} variant={selectedVariant} />
+              {/* Subtitle (show only if available, otherwise display: none) */}
+              <p
+                className="mb-2 text-gray-700"
+                style={{ display: product.subtitle && stripHtml(product.subtitle).trim() ? "block" : "none" }}
+                dangerouslySetInnerHTML={{ __html: product.subtitle }}
+              />
               {(product.options || []).map((option) => {
                 return (
                   <div key={option.id}>
@@ -413,50 +426,67 @@ export default function ProductActions({
           )}
         </div>
 
-        <ProductPrice product={product} variant={selectedVariant} />
+        {/* <ProductPrice product={product} variant={selectedVariant} /> */}
 
-        <div className="flex items-center justify-between gap-3">
-          <Button
-            onClick={handleAddToCart}
-            disabled={
-              !inStock ||
-              !selectedVariant ||
-              !!disabled ||
-              isAdding ||
-              !isValidVariant
-            }
-            variant="primary"
-            className="w-full h-10"
-            isLoading={isAdding}
-            data-testid="add-product-button"
-          >
-            {!selectedVariant && !options
-              ? "Select variant"
-              : !inStock || !isValidVariant
-              ? "Out of stock"
-              : "Add to cart"}
-          </Button>
-
-          {inStock && (
-            <Button
-              variant="primary"
-              className="w-full h-10"
-              disabled={
-                !inStock ||
-                !selectedVariant ||
-                !!disabled ||
-                isAdding ||
-                !isValidVariant
-              }
-            >
-              {!selectedVariant && !options
-                ? "Select variant"
-                : !inStock || !isValidVariant
-                ? "Out of stock"
-                : "Buy it now"}
-            </Button>
-          )}
-        </div>
+        <div className="flex items-center justify-start gap-3">
+                  <Button
+                    onClick={handleAddToCart}
+                    disabled={
+                      !inStock ||
+                      !selectedVariant ||
+                      !!disabled ||
+                      isAdding ||
+                      !isValidVariant
+                    }
+                    variant="primary"
+                    // className="w-1/2 h-10"
+                    className="text-lg font-medium mb-2 w-full h-12 text-white bg-[#E65100] hover:bg-[#d84315] shadow-none hover:shadow-none focus:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    isLoading={isAdding}
+                    data-testid="add-product-button"
+                  >
+                    {!selectedVariant && !options
+                      ? "Select variant"
+                      : !inStock || !isValidVariant
+                      ? "Out of stock"
+                      : (
+                        <>
+                          <ShoppingCart size={18} className="mr-2" />
+                          Add to Cart
+                        </>
+                      )}
+                  </Button>
+        
+                  {/* Social Buttons */}
+                    <div className="flex items-center gap-2 mt-4 mb-6">
+                      <button className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
+                        <Heart size={20} />
+                      </button>
+                       <ShareButton url={typeof window !== "undefined" ? window.location.href : ""} title={product.title} />
+                      {/* <button className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
+                        <Share2 size={20} />
+                      </button> */}
+                    </div>
+        
+                  {/* {inStock && (
+                    <Button
+                      variant="primary"
+                      className="w-full h-10"
+                      disabled={
+                        !inStock ||
+                        !selectedVariant ||
+                        !!disabled ||
+                        isAdding ||
+                        !isValidVariant
+                      }
+                    >
+                      {!selectedVariant && !options
+                        ? "Select variant"
+                        : !inStock || !isValidVariant
+                        ? "Out of stock"
+                        : "Buy it now"}
+                    </Button>
+                  )} */}
+                </div>
 
         <MobileActions
           product={product}

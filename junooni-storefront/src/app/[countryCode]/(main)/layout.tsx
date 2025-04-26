@@ -9,6 +9,7 @@ import Nav from "@modules/layout/templates/nav"
 import { NavProvider } from "@modules/layout/templates/nav/NavContext"
 import ClientNavContainer from "@modules/layout/templates/nav/ClientNavContainer"
 import FreeShippingPriceNudge from "@modules/shipping/components/free-shipping-price-nudge"
+import { ToastContainer } from "react-toastify"
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
@@ -45,6 +46,7 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
       )}
       {props.children}
       <Footer />
+      <ToastContainer/>
     </>
   )
 }

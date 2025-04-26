@@ -94,6 +94,20 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   if (!product || !product.id) {
     return notFound();
   }
+  const extendedProduct = {
+    ...product,
+    vendor: product.vendor ?? {
+      name: "Junooni",
+      handle: "junooni",
+      logo: "" // Replace with actual Junooni logo if available
+    }
+  } as HttpTypes.StoreProduct & {
+    vendor: {
+      name: string
+      handle: string
+      logo: string
+    }
+  }
 
 
 
@@ -115,24 +129,33 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
             {/* Product Details Section */}
             <div className="p-4 md:p-8">
               {/* Hardcoded Creator Info */}
+              {/* Vendor Info */}
+              {extendedProduct.vendor && (
               <div className="flex items-center mb-4">
-                <img 
-                  src="https://placehold.co/80/80" 
-                  alt="Creator" 
-                  className="object-cover w-8 h-8 mr-2 rounded-full"
-                />
-                <div>
-                  <div className="flex items-center">
-                    <h4 className="text-sm font-medium">Store Official</h4>
+                {extendedProduct.vendor.logo ? (
+                  <img 
+                    src={extendedProduct.vendor.logo} 
+                    alt={extendedProduct.vendor.name || "Vendor"} 
+                    className="object-cover w-8 h-8 mr-2 rounded-full"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-8 h-8 mr-2 text-white bg-[#e65100] rounded-full text-sm font-semibold uppercase">
+                    {extendedProduct.vendor.name?.slice(0, 1) || "V"}
+                  </div>
+                )}
+                <div className="leading-tight">
+                  <div className="flex items-center -mt-1">
+                    <h4 className="text-sm font-medium">{extendedProduct.vendor.name || "Unknown Vendor"}</h4>
                     <span className="ml-1 text-[#e65100]">
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     </span>
                   </div>
-                  <span className="text-xs text-gray-500">@official</span>
+                  <span className="block -mt-1 text-xs text-gray-500">@{extendedProduct.vendor.handle || "vendor"}</span>
                 </div>
               </div>
+            )}
 
              
               
@@ -149,14 +172,14 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
               
 
               {/* Social Buttons */}
-              <div className="flex gap-2 mt-4 mb-6">
+              {/* <div className="flex gap-2 mt-4 mb-6">
                 <button className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
                   <Heart size={20} />
                 </button>
                 <button className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
                   <Share2 size={20} />
                 </button>
-              </div>
+              </div> */}
               
               {/* Shipping & Returns */}
               <div className="py-6 mb-6 border-t border-b">

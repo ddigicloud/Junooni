@@ -90,12 +90,16 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
       </div>
      
       {/* Short Description */}
-      <p className="mb-6 text-gray-700">
+      {/* <p className="mb-6 text-gray-700">
         {product.description}
-      </p>
+      </p> */}
+      {/* <p
+        className="mb-6 text-gray-700"
+        dangerouslySetInnerHTML={{ __html: product.subtitle }}
+      /> */}
      
       {/* Collection Link (if available) */}
-      {product.collection && (
+      {/* {product.collection && (
         <div className="mb-4">
           <span className="text-sm text-gray-600">Collection: </span>
           <LocalizedClientLink
@@ -105,7 +109,7 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
             {product.collection.title}
           </LocalizedClientLink>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

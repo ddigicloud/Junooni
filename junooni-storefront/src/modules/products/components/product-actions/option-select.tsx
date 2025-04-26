@@ -85,34 +85,24 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
   const filteredOptions = (option.values ?? []).map((v) => v.value)
   
   // Function to get color hex code from product metadata
-  const getColorHex = (colorName: string) => {
-    if (!product || !product.metadata) {
-      return null
+  const getColorHex = (colorName: string): string => {
+    let colorHexArray: any[] = [];
+  
+    try {
+      const raw = product?.metadata?.color_hex_values;
+      colorHexArray = typeof raw === "string" ? JSON.parse(raw) : raw;
+    } catch (e) {
+      console.warn("Failed to parse color_hex_values:", e);
+      return "#CCCCCC";
     }
-    
-    // Check for direct color in metadata (following the pattern "Color_colorname")
-    const colorKey = `Color_${colorName.toLowerCase()}`
-    if (product.metadata[colorKey]) {
-      return product.metadata[colorKey]
-    }
-    
-    // Fallback hex colors for common colors if not found in metadata
-    const fallbackColors: Record<string, string> = {
-      "red": "#FF0000",
-      "blue": "#0000FF",
-      "black": "#000000",
-      "white": "#FFFFFF",
-      "green": "#008000",
-      "yellow": "#FFFF00",
-      "purple": "#800080",
-      "orange": "#FFA500",
-      "pink": "#FFC0CB",
-      "gray": "#808080"
-    }
-    
-    return fallbackColors[colorName.toLowerCase()] || "#CCCCCC"
-  }
-
+  
+    const match = colorHexArray.find(
+      (entry: any) => entry.name.toLowerCase() === colorName.toLowerCase()
+    );
+  
+    return match?.hex || "#CCCCCC";
+  };
+  
   return (
     <div className="flex flex-col gap-y-3">
       <span className="text-sm">Select {title}</span>
@@ -125,49 +115,56 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
               const colorHex = getColorHex(v)
               
               return (
-                <button
-                  onClick={() => updateOption(option.id, v, { colorHex: colorHex || '#CCCCCC' })}
-                  key={v}
-                  className={clx(
-                    "rounded-full w-8 h-8 border border-gray-300 relative",
-                    {
-                      "ring-2 ring-offset-2 ring-black": v === current,
-                      "hover:shadow-elevation-card-rest transition-shadow ease-in-out duration-150":
-                        v !== current,
-                    }
-                  )}
-                  style={{ 
-                    backgroundColor: colorHex || '#CCCCCC'
-                  }}
-                  disabled={disabled}
-                  data-testid="option-button"
-                  title={v} // Add title attribute for accessibility
-                >
-                  {v === current && (
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      <svg 
-                        width="16" 
-                        height="16" 
-                        viewBox="0 0 16 16" 
-                        fill="none" 
-                        xmlns="http://www.w3.org/2000/svg"
-                        className={getColorHex(v) && ['#FFFFFF', '#FFF', '#FFFFFFF'].includes(getColorHex(v)) ? 'text-black' : 'text-white'}
-                      >
-                        <path d="M13.3334 4L6.00008 11.3333L2.66675 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </span>
-                  )}
-                </button>
-              )
+                <div key={v} className="relative group">
+                  {/* Custom styled tooltip */}
+                  <span className="absolute left-1/2 -bottom-4 -translate-x-1/2 px-2 py-1 text-xs text-white bg-[#E65100] rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                    {v}
+                  </span>
+              
+                  <button
+                    onClick={() => updateOption(option.id, v, { colorHex: colorHex || '#CCCCCC' })}
+                    className={clx(
+                      "rounded-full w-10 h-10 border border-gray-300 relative",
+                      {
+                        "ring-2 ring-offset-2 ring-[#E65100]": v === current,
+                        "hover:shadow-elevation-card-rest transition-shadow ease-in-out duration-150":
+                          v !== current,
+                      }
+                    )}
+                    style={{ backgroundColor: colorHex || '#CCCCCC' }}
+                    disabled={disabled}
+                    data-testid="option-button"
+                  >
+                    {v === current && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <svg 
+                          width="16" 
+                          height="16" 
+                          viewBox="0 0 16 16" 
+                          fill="none" 
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={getColorHex(v) &&
+                            ['#FFFFFF', '#FFF', '#FFFFFFF'].includes(getColorHex(v).toUpperCase())
+                            ? 'text-black'
+                            : 'text-white'}
+                        >
+                          <path d="M13.3334 4L6.00008 11.3333L2.66675 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    )}
+                  </button>
+                </div>
+              );
             } else {
               return (
                 <button
                   onClick={() => updateOption(option.id, v)}
                   key={v}
                   className={clx(
-                    "border-ui-border-base border text-small-regular w-12 h-10",
+                    "border-ui-border-base border rounded-md text-small-regular w-12 h-10",
                     {
-                      "bg-black text-white border-4 border-black": v === current,
+                      "bg-[#E65100] text-white border-4 border-[#E65100]": v === current,
+                      "border-ui-border-base hover:border-[#E65100]": v !== current,
                       "transition-shadow ease-in-out duration-150":
                         v !== current,
                     }

@@ -70,6 +70,7 @@ import {
       }
     
       return res.json({
+        count: data.length,
         follow: data
       })
     }

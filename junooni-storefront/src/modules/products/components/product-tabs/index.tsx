@@ -102,9 +102,13 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
             <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
               <div>
                 <h2 className="mb-2 text-base font-semibold sm:mb-4 sm:text-lg">Description</h2>
-                <p className="mb-4 text-sm text-gray-700 sm:mb-6">
+                {/* <p className="mb-4 text-sm text-gray-700 sm:mb-6">
                   {product.description}
-                </p>
+                </p> */}
+                <p
+                  className="mb-4 text-sm text-gray-700 sm:mb-6"
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                />
                 
                 {/* Limited edition badge - can be hardcoded or based on stock level */}
                 {(product.inventory_quantity && product.inventory_quantity < 50) && (
@@ -178,6 +182,14 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                 </div>
                 
                 {/* Hardcoded details for elements not available in product data */}
+                {/* <ul className="space-y-2 text-sm">
+                  {productDetails.map((detail, index) => (
+                    <li key={index} className="flex items-start">
+                      <span className="text-[#e65100] mr-2">•</span>
+                      <span className="text-gray-700">{detail}</span>
+                    </li>
+                  ))}
+                </ul> */}
                 <ul className="space-y-2 text-sm">
                   {productDetails.map((detail, index) => (
                     <li key={index} className="flex items-start">
@@ -200,9 +212,10 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
             
             <div className="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-2">
               <div>
-                <p className="mb-4 text-sm text-gray-700 whitespace-pre-line sm:text-base sm:mb-6">
-                  {storyText || "No story content available for this product."}
-                </p>
+                <p
+                className="mb-4 text-sm text-gray-700 whitespace-pre-line sm:text-base sm:mb-6"
+                dangerouslySetInnerHTML={{ __html: product.metadata?.description_story || "No story content available for this product." }}
+              />
                 
                 {storyProcess.length > 0 && (
                   <>
