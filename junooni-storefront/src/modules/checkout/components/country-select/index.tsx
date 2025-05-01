@@ -1,50 +1,93 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef } from "react"
+"use client"
 
-import NativeSelect, {
-  NativeSelectProps,
-} from "@modules/common/components/native-select"
+import { useState, useEffect } from "react"
+import { clx } from "@medusajs/ui"
 import { HttpTypes } from "@medusajs/types"
+import { ChevronDown } from "@medusajs/icons"
 
-const CountrySelect = forwardRef<
-  HTMLSelectElement,
-  NativeSelectProps & {
-    region?: HttpTypes.StoreRegion
-  }
->(({ placeholder = "Country", region, defaultValue, ...props }, ref) => {
-  const innerRef = useRef<HTMLSelectElement>(null)
+type CountrySelectProps = {
+  region: HttpTypes.StoreRegion
+  name: string
+  required?: boolean
+  autoComplete?: string
+  defaultValue?: string
+  className?: string
+  "data-testid"?: string
+}
 
-  useImperativeHandle<HTMLSelectElement | null, HTMLSelectElement | null>(
-    ref,
-    () => innerRef.current
+const CountrySelect = ({
+  region,
+  name,
+  required = false,
+  autoComplete,
+  defaultValue,
+  className,
+  "data-testid": testId,
+  ...props
+}: CountrySelectProps) => {
+  const [isFocused, setIsFocused] = useState(false)
+  const [selectedCountry, setSelectedCountry] = useState<string | undefined>(
+    defaultValue
   )
 
-  const countryOptions = useMemo(() => {
-    if (!region) {
-      return []
-    }
+  const countries =
+    region?.countries?.map((c) => ({
+      value: c.iso_2,
+      label: c.display_name,
+    })) || []
 
-    return region.countries?.map((country) => ({
-      value: country.iso_2,
-      label: country.display_name,
-    }))
-  }, [region])
+  useEffect(() => {
+    if (defaultValue) {
+      setSelectedCountry(defaultValue)
+    }
+  }, [defaultValue])
 
   return (
-    <NativeSelect
-      ref={innerRef}
-      placeholder={placeholder}
-      defaultValue={defaultValue}
-      {...props}
-    >
-      {countryOptions?.map(({ value, label }, index) => (
-        <option key={index} value={value}>
-          {label}
-        </option>
-      ))}
-    </NativeSelect>
+    <div className="flex flex-col w-full">
+      <div className="flex items-center justify-between mb-1">
+        <label
+          htmlFor={name}
+          className={clx("text-sm font-medium transition-colors", {
+            "text-[#e65100]": isFocused,
+            "text-gray-700": !isFocused,
+          })}
+        >
+          Country
+          {required && <span className="ml-1 text-rose-500">*</span>}
+        </label>
+      </div>
+      <div className="relative">
+        <select
+          name={name}
+          autoComplete={autoComplete}
+          defaultValue={selectedCountry}
+          required={required}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          className={clx(
+            "appearance-none w-full px-4 py-2.5 border rounded-md text-gray-900 text-base transition-all focus:outline-none",
+            {
+              "border-[#e65100] ring-1 ring-[#e65100]/20": isFocused,
+              "border-ui-border-base": !isFocused,
+            },
+            className
+          )}
+          data-testid={testId}
+          {...props}
+        >
+          <option value="">Select a country</option>
+          {countries.map((country, index) => (
+            <option key={index} value={country.value}>
+              {country.label}
+            </option>
+          ))}
+        </select>
+        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+          <ChevronDown className="w-4 h-4 text-gray-500" />
+        </div>
+      </div>
+    </div>
   )
-})
-
-CountrySelect.displayName = "CountrySelect"
+}
 
 export default CountrySelect

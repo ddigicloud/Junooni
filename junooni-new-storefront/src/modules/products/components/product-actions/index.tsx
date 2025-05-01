@@ -380,11 +380,17 @@ export default function ProductActions({
             <div className="flex flex-col gap-4 gap-y-4">
               <ProductPrice product={product} variant={selectedVariant} />
               {/* Subtitle (show only if available, otherwise display: none) */}
+              {product.subtitle && stripHtml(product.subtitle).trim() && (
               <p
+                className="mb-2 text-gray-700"
+                dangerouslySetInnerHTML={{ __html: product.subtitle }}
+              />
+            )}
+              {/* <p
                 className="mb-2 text-gray-700"
                 style={{ display: product.subtitle && stripHtml(product.subtitle).trim() ? "block" : "none" }}
                 dangerouslySetInnerHTML={{ __html: product.subtitle }}
-              />
+              /> */}
 
               {(product.options || []).map((option) => {
                 return (

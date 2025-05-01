@@ -70,7 +70,7 @@ export default async function Home(props: {
               <NewsLetter />
             </main>
           </div>
-       
+          
     </>
   )
 }

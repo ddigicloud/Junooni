@@ -94,7 +94,7 @@ const CustomerAvatar = ({
         />
       ) : (
         <div
-          className="flex items-center justify-center w-full h-full text-white font-medium"
+          className="flex items-center justify-center w-full h-full font-medium text-white"
           style={{
             backgroundColor: bgColor,
             fontSize: `${fontSize}px`,

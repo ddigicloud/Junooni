@@ -5,7 +5,7 @@ import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Thumbnail from "../thumbnail"
 import PreviewPrice from "./price"
-
+import ColorSwatches from "@modules/products/components/product-preview/color-swatches"
 import WishlistButton from "@modules/wishlists/components/wishlist-button"
 
 export default async function ProductPreview({
@@ -97,7 +97,8 @@ export default async function ProductPreview({
       </div>
       
       {/* Color options - shown if product has color metadata */}
-      {product.metadata && Object.entries(product.metadata).length > 0 && (
+      <ColorSwatches product={product} />
+      {/* {product.metadata && Object.entries(product.metadata).length > 0 && (
         <div className="pt-3 mt-auto pointer-events-none">
           <ul className="flex items-center gap-x-1">
             {Object.entries(product.metadata).map(([key, value], index) => (
@@ -111,7 +112,7 @@ export default async function ProductPreview({
             ))}
           </ul>
         </div>
-      )}
+      )} */}
     </div>
   )
 }

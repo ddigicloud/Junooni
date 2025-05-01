@@ -14,6 +14,7 @@ import {PostStoreCreateFollowList} from "./store/customers/me/follow/lists/valid
 import { PostVendorCreateSchema } from "./vendors/route"
 import { GetAdminReviewsSchema } from "./admin/reviews/route"
 import { PostAdminUpdateReviewsStatusSchema } from "./admin/reviews/status/route"
+import { SearchSchema } from "./store/products/search/route"
 import {PostStoreReviewSchema} from "./store/reviews/route"
 
 
@@ -189,6 +190,13 @@ export default defineMiddlewares({
       method: "POST",
       middlewares: [
         validateAndTransformBody(PostStoreCreateFollowList),
+      ],
+    },
+    {
+      matcher: "/store/products/search",
+      method: ["POST"],
+      middlewares: [
+        validateAndTransformBody(SearchSchema),
       ],
     },
     {

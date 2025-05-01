@@ -11,15 +11,18 @@ export enum LOGIN_VIEW {
 }
 
 const LoginTemplate = () => {
-  const [currentView, setCurrentView] = useState("sign-in")
+  const [currentView, setCurrentView] = useState<string>("sign-in")
 
   return (
-    <div className="w-full flex justify-center px-8 py-8">
-      {currentView === "sign-in" ? (
-        <Login setCurrentView={setCurrentView} />
-      ) : (
-        <Register setCurrentView={setCurrentView} />
-      )}
+    <div className="flex items-center justify-center w-full min-h-screen px-4 py-8" 
+         style={{ backgroundColor: "#fdf7ec" }}>
+      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-sm">
+        {currentView === "sign-in" ? (
+          <Login setCurrentView={setCurrentView} />
+        ) : (
+          <Register setCurrentView={setCurrentView} />
+        )}
+      </div>
     </div>
   )
 }

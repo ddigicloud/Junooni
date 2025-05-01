@@ -39,6 +39,8 @@ type RefinementListProps = {
   categories?: Array<{id: string; name: string; handle: string; parent_category?: any}>
   brands?:  Array<{vendor_id: string; vendor_name: string; vendor_handle: string;}>
   products?: any
+  parents?: Array<{id: string; name: string; handle: string;}>
+  categoryChildren?: Array<{ id: string; name: string; handle: string }> 
 }
 
 const RefinementList = ({ 
@@ -46,6 +48,8 @@ const RefinementList = ({
   categories = [],
   brands = [],
   products,
+  parents,
+  categoryChildren = [],
   'data-testid': dataTestId 
 }: RefinementListProps) => {
   const router = useRouter()
@@ -130,19 +134,20 @@ const RefinementList = ({
       <div className="flex flex-col gap-6">
         <Text className="txt-compact-medium-plus text-ui-fg-base">Filters</Text>
         
-        <SortProducts 
+        {/* <SortProducts 
           sortBy={sortBy} 
           setQueryParams={setQueryParams} 
           data-testid={`${dataTestId}-sort`} 
-        />
+        /> */}
         
         <CategoryFilter 
-          categories={formattedCategories} 
-          categoryId={categoryId} 
-          setQueryParams={setQueryParams} 
-          data-testid={`${dataTestId}-category`} 
-        />
-        
+        categories={formattedCategories} 
+        categoryId={categoryId} 
+        setQueryParams={setQueryParams} 
+        parents={parents}  
+        categoryChildren={categoryChildren} 
+        data-testid={`${dataTestId}-category`} 
+      />
         <BrandFilter 
           brands={formattedBrands} 
           selectedBrands={selectedBrands} 

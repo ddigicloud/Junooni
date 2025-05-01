@@ -503,3 +503,45 @@ export const matchItemWithVariant = async (productId: string): Promise<any> => {
     .then((res) => res)
     .catch(() => null)
 }
+
+
+
+
+// loyalty points
+
+export const loyaltyPoints = async () => {
+  const cookies = await nextCookies()
+  const token = cookies.get("_medusa_jwt")?.value
+
+  return await sdk.client
+    .fetch(`/store/customers/me/loyalty-points`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`,
+      },
+    })
+    .then((res) => res)
+    .catch(() => null)
+}
+
+
+export const updateEmail = async (email) => {
+  const cookies = await nextCookies()
+  const token = cookies.get("_medusa_jwt")?.value
+  return await sdk.client
+    .fetch("/store/customers/me", {
+      method: "UPDATE",
+      body: {
+        email: `${email}`,
+      },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-publishable-api-key": `${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}`,
+      },
+    })
+    .then((customer) => customer)
+    .catch(medusaError)
+}

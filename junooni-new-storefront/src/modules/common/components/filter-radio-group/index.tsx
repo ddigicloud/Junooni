@@ -20,7 +20,7 @@ const FilterRadioGroup = ({
   "data-testid": dataTestId,
 }: FilterRadioGroupProps) => {
   return (
-    <div className="flex gap-x-3 flex-col gap-y-3">
+    <div className="flex flex-col gap-x-3 gap-y-3">
       <Text className="txt-compact-small-plus text-ui-fg-muted">{title}</Text>
       <RadioGroup data-testid={dataTestId} onValueChange={handleChange}>
         {items?.map((i) => (
@@ -33,7 +33,7 @@ const FilterRadioGroup = ({
             {i.value === value && <EllipseMiniSolid />}
             <RadioGroup.Item
               checked={i.value === value}
-              className="hidden peer"
+              className="peer"
               id={i.value}
               value={i.value}
             />

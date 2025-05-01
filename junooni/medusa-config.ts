@@ -35,6 +35,9 @@ module.exports = defineConfig({
     },
     {
       resolve: "./src/modules/follow",
+    },
+    {
+      resolve: "./src/modules/loyalty",
     }
   ]
 })

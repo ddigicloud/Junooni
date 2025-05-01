@@ -185,12 +185,12 @@ const PriceRangeSlider = ({
       </div>
       
       {/* Slider */}
-      <div className="relative w-full h-6" ref={sliderRef}>
+      <div className="relative w-3/4 h-6" ref={sliderRef}>
         {/* Slider track */}
-        <div className="absolute w-full h-1 -translate-y-1/2 rounded-full top-1/2 bg-ui-border-base">
+        <div className="absolute w-full h-2 -translate-y-1/2 rounded-full top-1/2 bg-[#e65100]">
           {/* Active range */}
           <div 
-            className="absolute h-full rounded-full bg-ui-border-interactive"
+            className="absolute h-full rounded-full bg-[#e65100]"
             style={{
               left: `${minThumbPosition}%`,
               right: `${100 - maxThumbPosition}%`
@@ -200,7 +200,7 @@ const PriceRangeSlider = ({
         
         {/* Min thumb */}
         <div
-          className="absolute w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full top-1/2 cursor-grab bg-ui-bg-interactive active:cursor-grabbing"
+          className="absolute w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full top-1/2 cursor-grab bg-[#e65100] active:cursor-grabbing"
           style={{ left: `${minThumbPosition}%` }}
           onMouseDown={() => setIsDraggingMin(true)}
           onTouchStart={() => setIsDraggingMin(true)}
@@ -213,7 +213,7 @@ const PriceRangeSlider = ({
         
         {/* Max thumb */}
         <div
-          className="absolute w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full top-1/2 cursor-grab bg-ui-bg-interactive active:cursor-grabbing"
+          className="absolute w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full top-1/2 cursor-grab bg-[#e65100] active:cursor-grabbing"
           style={{ left: `${maxThumbPosition}%` }}
           onMouseDown={() => setIsDraggingMax(true)}
           onTouchStart={() => setIsDraggingMax(true)}
@@ -226,7 +226,7 @@ const PriceRangeSlider = ({
       </div>
       
       {/* Price range labels */}
-      <div className="w-full flex justify-between">
+      <div className="flex justify-between w-3/4">
         <Text className="text-ui-fg-subtle txt-compact-small">{minPrice}</Text>
         <Text className="text-ui-fg-subtle txt-compact-small">{maxPrice}</Text>
       </div>

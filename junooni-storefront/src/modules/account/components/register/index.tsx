@@ -1,106 +1,167 @@
 "use client"
 
+import { useState } from "react"
 import { useActionState } from "react"
-import Input from "@modules/common/components/input"
-import { LOGIN_VIEW } from "@modules/account/templates/login-template"
+import { signup } from "@lib/data/customer"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { signup } from "@lib/data/customer"
+import Link from "next/link"
 
 type Props = {
-  setCurrentView: (view: LOGIN_VIEW) => void
+  setCurrentView: (view: string) => void
 }
 
-const Register = async ({ setCurrentView }: Props) => {
+const Register = ({ setCurrentView }: Props) => {
   const [message, formAction] = useActionState(signup, null)
-
-
+  const [showPassword, setShowPassword] = useState(false)
 
   return (
-    <div
-      className="flex flex-col items-center max-w-sm"
-      data-testid="register-page"
-    >
-      <h1 className="mb-6 uppercase text-large-semi">
-        Become a Medusa Store Member
-      </h1>
-      <p className="mb-4 text-center text-base-regular text-ui-fg-base">
-        Create your Medusa Store Member profile, and get access to an enhanced
-        shopping experience.
+    <div className="flex flex-col items-center w-full">
+      <h1 className="text-2xl font-bold text-[#e65100] mb-2">Create Your Account</h1>
+      <p className="mb-6 text-center text-gray-600">
+        Join us for an enhanced shopping experience with exclusive benefits
       </p>
-      <form className="flex flex-col w-full" action={formAction}>
-        <div className="flex flex-col w-full gap-y-2">
-          <Input
-            label="First name"
-            name="first_name"
-            required
-            autoComplete="given-name"
-            data-testid="first-name-input"
-          />
-          <Input
-            label="Last name"
-            name="last_name"
-            required
-            autoComplete="family-name"
-            data-testid="last-name-input"
-          />
-          <Input
-            label="Email"
+      
+      <form className="w-full space-y-4" action={formAction}>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col">
+            <label htmlFor="first_name" className="mb-1 text-sm text-gray-700">
+              First Name<span className="text-[#e65100]">*</span>
+            </label>
+            <input
+              id="first_name"
+              name="first_name"
+              type="text"
+              required
+              autoComplete="given-name"
+              placeholder="Your first name"
+              className="px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#e65100] focus:border-[#e65100]"
+            />
+          </div>
+          
+          <div className="flex flex-col">
+            <label htmlFor="last_name" className="mb-1 text-sm text-gray-700">
+              Last Name<span className="text-[#e65100]">*</span>
+            </label>
+            <input
+              id="last_name"
+              name="last_name"
+              type="text"
+              required
+              autoComplete="family-name"
+              placeholder="Your last name"
+              className="px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#e65100] focus:border-[#e65100]"
+            />
+          </div>
+        </div>
+        
+        <div className="flex flex-col">
+          <label htmlFor="email" className="mb-1 text-sm text-gray-700">
+            Email<span className="text-[#e65100]">*</span>
+          </label>
+          <input
+            id="email"
             name="email"
-            required
             type="email"
+            required
             autoComplete="email"
-            data-testid="email-input"
+            placeholder="your.email@example.com"
+            className="px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#e65100] focus:border-[#e65100]"
           />
-          <Input
-            label="Phone"
+        </div>
+        
+        <div className="flex flex-col">
+          <label htmlFor="phone" className="mb-1 text-sm text-gray-700">
+            Phone (Optional)
+          </label>
+          <input
+            id="phone"
             name="phone"
             type="tel"
             autoComplete="tel"
-            data-testid="phone-input"
-          />
-          <Input
-            label="Password"
-            name="password"
-            required
-            type="password"
-            autoComplete="new-password"
-            data-testid="password-input"
+            placeholder="+1 (123) 456-7890"
+            className="px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#e65100] focus:border-[#e65100]"
           />
         </div>
+        
+        <div className="flex flex-col">
+          <label htmlFor="password" className="mb-1 text-sm text-gray-700">
+            Password<span className="text-[#e65100]">*</span>
+          </label>
+          <div className="relative">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              required
+              autoComplete="new-password"
+              placeholder="Choose a secure password"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#e65100] focus:border-[#e65100]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute text-gray-500 transform -translate-y-1/2 right-3 top-1/2"
+            >
+              {showPassword ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9.9 4.24c.4-.13.82-.24 1.24-.25C15.57 3.86 19.27 7.1 21.47 12.1c.32.73.32 1.56 0 2.29-.16.36-.33.71-.51 1.05-.18.33-.69.44-1.02.26-.33-.17-.44-.69-.26-1.02.15-.29.29-.58.42-.88.22-.52.22-1.08 0-1.6-1.98-4.51-5.13-7.31-8.76-7.17-.6.02-1.18.13-1.76.32-.34.11-.72-.08-.83-.42-.11-.34.08-.72.42-.83 0 0 .48-.16.73-.22ZM2.78 7.29c.17-.34.67-.48 1.01-.31.34.17.48.67.31 1.01-1.63 3.29-1.87 6.56-.45 9.28 2 3.78 6.02 5.74 10.35 5.23.35-.04.8.23.8.71 0 .35-.28.64-.63.69-4.98.6-9.65-1.73-11.96-6.13-1.62-3.07-1.37-6.77.43-10.42l.14-.06ZM12.02 8.55c.33 0 .66.03.98.1.36.08.59.44.51.8-.08.36-.44.59-.8.51-.57-.13-1.17-.13-1.74 0-.59.14-1.12.42-1.59.83-.29.26-.74.23-1-.06-.26-.29-.23-.74.06-1 .64-.56 1.39-.95 2.2-1.14.46-.03.92-.04 1.38-.04ZM21.4 4.17c.32-.28.8-.25 1.08.07.28.32.25.8-.07 1.08l-17.7 15.3c-.32.28-.8.25-1.08-.07-.28-.32-.25-.8.07-1.08 0 0 17.7-15.3 17.7-15.3Z" fill="currentColor"/>
+                </svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 4.5c4.44 0 8.13 3.24 10.35 8.21.23.53.23 1.14 0 1.66-2.22 4.98-5.91 8.23-10.35 8.23s-8.13-3.25-10.35-8.21c-.23-.54-.23-1.15 0-1.68C3.87 7.73 7.56 4.5 12 4.5Zm0 2c-3.26 0-6.18 2.58-8.04 6.71-.09.21-.09.39 0 .58C5.82 17.93 8.74 20.5 12 20.5s6.18-2.57 8.04-6.73c.09-.18.09-.39 0-.6C18.18 9.04 15.26 6.5 12 6.5Zm0 3.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2Zm0-2c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4Z" fill="currentColor"/>
+                </svg>
+              )}
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Must be at least 8 characters long
+          </p>
+        </div>
+        
+        <div className="flex items-start mt-2">
+          <div className="flex items-center h-5 mt-1">
+            <input
+              id="terms"
+              name="terms"
+              type="checkbox"
+              required
+              className="w-4 h-4 text-[#e65100] border-gray-300 rounded focus:ring-[#e65100]"
+            />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="terms" className="text-gray-600">
+              I agree to the{" "}
+              <Link href="/privacy-policy" className="text-[#e65100] hover:underline">
+                Privacy Policy
+              </Link>{" "}
+              and{" "}
+              <Link href="/terms-of-use" className="text-[#e65100] hover:underline">
+                Terms of Use
+              </Link>
+            </label>
+          </div>
+        </div>
+        
         <ErrorMessage error={message} data-testid="register-error" />
-        <span className="mt-6 text-center text-ui-fg-base text-small-regular">
-          By creating an account, you agree to Medusa Store&apos;s{" "}
-          <LocalizedClientLink
-            href="/content/privacy-policy"
-            className="underline"
-          >
-            Privacy Policy
-          </LocalizedClientLink>{" "}
-          and{" "}
-          <LocalizedClientLink
-            href="/content/terms-of-use"
-            className="underline"
-          >
-            Terms of Use
-          </LocalizedClientLink>
-          .
-        </span>
-        <SubmitButton className="w-full mt-6" data-testid="register-button">
-          Join
-        </SubmitButton>
+        
+        <button 
+          type="submit"
+          className="w-full bg-[#e65100] hover:bg-[#d84315] text-white py-3 rounded-md font-medium transition-colors mt-2"
+        >
+          Create account
+        </button>
       </form>
-      <span className="mt-6 text-center text-ui-fg-base text-small-regular">
-        Already a member?{" "}
+      
+      <p className="mt-6 text-center text-gray-600">
+        Already have an account?{" "}
         <button
-          onClick={() => setCurrentView(LOGIN_VIEW.SIGN_IN)}
-          className="underline"
+          onClick={() => setCurrentView("sign-in")}
+          className="text-[#e65100] hover:underline font-medium"
         >
           Sign in
         </button>
-        .
-      </span>
+      </p>
     </div>
   )
 }

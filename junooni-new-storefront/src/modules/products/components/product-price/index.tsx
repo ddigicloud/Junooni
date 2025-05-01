@@ -17,8 +17,21 @@ export default function ProductPrice({
 
   const selectedPrice = variant ? variantPrice : cheapestPrice
 
-  if (!selectedPrice) {
-    return <div className="block w-32 h-9 bg-gray-100 animate-pulse" />
+  // if (!selectedPrice) {
+  //   return <div className="block w-32 bg-gray-100 h-9 animate-pulse" />
+  // }
+  // Check if price is available
+  if (!selectedPrice || selectedPrice.calculated_price_number <= 0) {
+    return (
+      <div className="flex flex-col text-ui-fg-base">
+         <span
+          className="text-xl-semi"
+          style={{ color: "#e65100" }} // Setting the color to #e65100
+        >
+          Free
+        </span>
+      </div>
+    )
   }
 
   return (
