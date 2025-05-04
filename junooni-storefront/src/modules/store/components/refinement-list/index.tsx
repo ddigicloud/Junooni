@@ -2,85 +2,115 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback } from "react"
+import { HttpTypes } from "@medusajs/types"
 
 import SortProducts, { SortOptions } from "./sort-products"
 import CategoryFilter from "@modules/store/components/category-filter"
-import BrandFilter from "@modules/store/components/brand-filter"
+import CreatorFilter from "@modules/store/components/creator-filter"
 import ColorFilter from "@modules/store/components/color-filter"
 import PriceFilter from "@modules/store/components/price-filter"
 import { Text } from "@medusajs/ui"
 
-interface CategoryLevel3 {
+type Category = {
+  id: string;
+  name: string;
+  handle: string;
+  parent_category_id?: string;
+  category_children?: Category[];
+  mpath?: string;
+}
+
+type Creator = {
   id: string;
   name: string;
   handle: string;
 }
-
-interface CategoryLevel2 {
-  id: string;
-  name: string;
-  handle: string;
-  category_children?: CategoryLevel3[];
-}
-
-interface CategoryLevel1 {
-  id: string;
-  name: string;
-  handle: string;
-  parent_category?: any;
-  category_children?: CategoryLevel2[];
-}
-
 
 type RefinementListProps = {
   sortBy: SortOptions
   search?: boolean
   'data-testid'?: string
-  categories?: Array<{id: string; name: string; handle: string; parent_category?: any}>
-  brands?:  Array<{vendor_id: string; vendor_name: string; vendor_handle: string;}>
-  products?: any
+  categories?: Category[]
+  creators?: Creator[]
+  products?: HttpTypes.StoreProduct[]
 }
 
 const RefinementList = ({ 
   sortBy,
   categories = [],
-  brands = [],
+  creators = [],
   products,
   'data-testid': dataTestId 
 }: RefinementListProps) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  
-  // Format categories with handle as value and name as label
-  const formattedCategories = [
-    { value: "", label: "All Categories" },
-    ...(Array.isArray(categories) ? categories.map(category => ({
-      value: category.handle,
-      label: category.name
-    })) : [])
-  ]
 
-  // Process brands to ensure unique handles
-  const formattedBrands = (() => {
-    const handleCounts = {};
-    const result = [{ value: "", label: "All brands" }];
+  console.log(products)
+  
+  // Function to flatten nested categories with proper hierarchy
+  const flattenCategories = (categoryList: Category[]): { value: string; label: string }[] => {
+    const result: { value: string; label: string }[] = [
+      { value: "", label: "All Categories" }
+    ];
     
-    // Process each brand to create unique handles
-    brands.forEach(brand => {
-      const { vendor_handle, vendor_name } = brand;
+    // Keep track of processed categories to avoid duplicates
+    const processedCategories = new Set<string>();
+    
+    const processCategory = (category: Category, level: number = 0) => {
+      // Skip if we've already processed this category
+      if (processedCategories.has(category.id)) {
+        return;
+      }
       
-      // Initialize or increment the count for this handle
-      handleCounts[vendor_handle] = (handleCounts[vendor_handle] || 0) + 1;
+      processedCategories.add(category.id);
       
-      // Create a unique value based on the handle and its count
-      const uniqueValue = handleCounts[vendor_handle] === 1 
-        ? vendor_handle 
-        : `${vendor_handle}-${handleCounts[vendor_handle]}`;
+      // Add spaces for visual indentation in UI
+      const indent = "—".repeat(level);
       
+      // Use category handle as the value
       result.push({
-        value: uniqueValue,
-        label: vendor_name
+        value: category.handle,
+        label: `${indent} ${category.name}`
+      });
+      
+      // Process child categories recursively
+      if (category.category_children && category.category_children.length > 0) {
+        category.category_children.forEach(child => {
+          processCategory(child, level + 1);
+        });
+      }
+    };
+    
+    // Process all categories
+    categoryList.forEach(category => {
+      processCategory(category);
+    });
+    
+    return result;
+  };
+
+  // Format categories with handle as value and name as label
+  const formattedCategories = flattenCategories(categories);
+
+  // Process creators to use vendor IDs for filtering
+  const formattedCreators = (() => {
+    const result = [{ value: "", label: "All Creators" }];
+    
+    // Ensure unique creators based on ID
+    const uniqueCreators = new Map<string, Creator>();
+    
+    creators.forEach(creator => {
+      if (!uniqueCreators.has(creator.id)) {
+        uniqueCreators.set(creator.id, creator);
+      }
+    });
+    
+    // Add each unique creator with ID as value
+    uniqueCreators.forEach(creator => {
+      result.push({
+        value: creator.id,
+        label: creator.name
       });
     });
     
@@ -88,42 +118,43 @@ const RefinementList = ({
   })();
 
   // Extract filter values from URL
-  const categoryId = searchParams.get("category") || ""
+  const categoryHandle = searchParams.get("category") || ""
   const colorsParam = searchParams.get("colors") || ""
   const selectedColors = colorsParam ? colorsParam.split(",") : []
-  const brandsParam = searchParams.get("brands") || ""
-  const selectedBrands = brandsParam ? brandsParam.split(",") : []
+  const creatorsParam = searchParams.get("creators") || ""
+  const selectedCreators = creatorsParam ? creatorsParam.split(",") : []
   
   // Extract price range values from URL
   const priceParam = searchParams.get("price") || ""
   const [minPrice, maxPrice] = priceParam 
     ? priceParam.split("-").map(p => parseInt(p, 10)) 
-    : [0, 1000] // Default price range - adjust based on your product prices
+    : [0, 1000]
   
-  // Shop-wide price range - should ideally come from your API
+  // Shop-wide price range
   const PRICE_MIN = 0
   const PRICE_MAX = 1000
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
-      const params = new URLSearchParams(searchParams)
+      const params = new URLSearchParams(searchParams);
       
       // If value is empty, remove the parameter
       if (value === "") {
-        params.delete(name)
+        params.delete(name);
       } else {
-        params.set(name, value)
+        // For multi-select filters (creators, colors)
+        params.set(name, value);
       }
 
-      return params.toString()
+      return params.toString();
     },
     [searchParams]
-  )
+  );
 
   const setQueryParams = (name: string, value: string) => {
-    const query = createQueryString(name, value)
-    router.push(`${pathname}?${query}`)
-  }
+    const query = createQueryString(name, value);
+    router.push(`${pathname}?${query}`, { scroll: false });
+  };
 
   return (
     <div className="flex small:flex-col gap-12 py-4 mb-8 small:px-0 pl-6 small:min-w-[250px] small:ml-[1.675rem]">
@@ -136,19 +167,23 @@ const RefinementList = ({
           data-testid={`${dataTestId}-sort`} 
         />
         
-        <CategoryFilter 
-          categories={formattedCategories} 
-          categoryId={categoryId} 
-          setQueryParams={setQueryParams} 
-          data-testid={`${dataTestId}-category`} 
-        />
+        {formattedCategories.length > 1 && (
+          <CategoryFilter 
+            categories={formattedCategories} 
+            categoryId={categoryHandle} 
+            setQueryParams={setQueryParams} 
+            data-testid={`${dataTestId}-category`} 
+          />
+        )}
         
-        <BrandFilter 
-          brands={formattedBrands} 
-          selectedBrands={selectedBrands} 
-          setQueryParams={setQueryParams} 
-          data-testid={`${dataTestId}-brand`} 
-        />
+        {formattedCreators.length > 1 && (
+          <CreatorFilter 
+            creators={formattedCreators} 
+            selectedCreators={selectedCreators} 
+            setQueryParams={setQueryParams} 
+            data-testid={`${dataTestId}-creator`} 
+          />
+        )}
         
         <ColorFilter 
           collection={products} 
@@ -160,8 +195,8 @@ const RefinementList = ({
         <PriceFilter
           min={PRICE_MIN}
           max={PRICE_MAX}
-          currentMin={minPrice}
-          currentMax={maxPrice}
+          currentMin={minPrice || PRICE_MIN}
+          currentMax={maxPrice || PRICE_MAX}
           setQueryParams={setQueryParams}
           data-testid={`${dataTestId}-price`}
         />

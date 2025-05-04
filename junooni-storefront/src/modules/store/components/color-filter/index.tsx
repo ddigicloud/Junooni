@@ -2,10 +2,11 @@
 
 import ColorSelector from "@modules/store/components/color-selector"
 import { useMemo } from "react"
+import { HttpTypes } from "@medusajs/types"
 
 type ColorFilterProps = {
   selectedColors: string[]
-  collection?: any[] // Array of products
+  collection?: HttpTypes.StoreProduct[] // Array of products
   setQueryParams: (name: string, value: string) => void
   "data-testid"?: string
 }
@@ -22,35 +23,74 @@ const ColorFilter = ({
     if (!Array.isArray(collection) || collection.length === 0) {
       return [];
     }
-
+    
     // Use Map to ensure uniqueness of colors
     const colorMap = new Map();
-
+    
     // Process each product in the collection
     collection.forEach(product => {
       if (product.metadata) {
-        // Extract colors from metadata
+        // First, try to parse color_hex_values JSON
+        if (product.metadata.color_hex_values) {
+          try {
+            const parsedColors = JSON.parse(product.metadata.color_hex_values);
+            if (Array.isArray(parsedColors)) {
+              parsedColors.forEach(color => {
+                if (color && color.name && color.hex) {
+                  colorMap.set(color.name.toLowerCase(), {
+                    value: color.name.toLowerCase(),
+                    label: color.name.charAt(0).toUpperCase() + color.name.slice(1),
+                    color: color.hex
+                  });
+                }
+              });
+            }
+          } catch (e) {
+            console.error('Failed to parse color_hex_values:', e);
+          }
+        }
+        
+        // Also process Color_ prefixed metadata as fallback
         Object.entries(product.metadata).forEach(([key, value]) => {
-          if (key.startsWith("Color_")) {
+          if (key.startsWith("Color_") && value) {
             const colorName = key.replace("Color_", "").toLowerCase();
-            const colorValue = String(value);
+            // Default color to black if not specified
+            const colorValue = String(value) || "#000000";
             
-            // Format label with capitalized first letter
-            const label = colorName.charAt(0).toUpperCase() + colorName.slice(1);
-            
-            // Add to map (this automatically handles duplicates)
             colorMap.set(colorName, {
               value: colorName,
-              label: label,
+              label: colorName.charAt(0).toUpperCase() + colorName.slice(1),
               color: colorValue
             });
           }
         });
       }
+      
+      // Check product variant options for color info
+      if (product.options) {
+        const colorOptions = product.options.filter(option => 
+          option.title.toLowerCase() === "color"
+        );
+        
+        colorOptions.forEach(option => {
+          if (option.values) {
+            option.values.forEach(value => {
+              if (value.value) {
+                const colorName = value.value.toLowerCase();
+                colorMap.set(colorName, {
+                  value: colorName,
+                  label: value.value, // Use original value for label
+                  color: "#000000" // Default color if not specified
+                });
+              }
+            });
+          }
+        });
+      }
     });
-
-    // Convert map to array for component consumption
-    return Array.from(colorMap.values());
+    
+    // Convert map to array for component consumption and sort alphabetically
+    return Array.from(colorMap.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [collection]);
 
   const handleChange = (values: string[]) => {

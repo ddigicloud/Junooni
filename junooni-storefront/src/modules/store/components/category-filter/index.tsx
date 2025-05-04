@@ -31,6 +31,8 @@ const CategoryFilter = ({
   const additionalCategories = categories.slice(6)
   
   const handleChange = (value: string) => {
+    // Simply pass the string value of the category handle
+    console.log("Category selected:", value)
     setQueryParams("category", value)
   }
 
@@ -66,7 +68,6 @@ const CategoryFilter = ({
               value={categoryId || ""}
               handleChange={handleChange}
               data-testid={`${dataTestId}-additional`}
-              
             />
           </motion.div>
         )}

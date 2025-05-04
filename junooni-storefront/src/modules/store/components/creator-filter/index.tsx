@@ -1,37 +1,38 @@
-// components/brand-filter/index.tsx
 "use client"
 
 import FilterCheckboxGroup from "@modules/store/components/filter-checkbox"
 
-type BrandFilterProps = {
-  brands: {
+type CreatorFilterProps = {
+  creators: {
     value: string
     label: string
   }[]
-  selectedBrands: string[]
+  selectedCreators: string[]
   setQueryParams: (name: string, value: string) => void
   "data-testid"?: string
 }
 
-const BrandFilter = ({
-  brands,
-  selectedBrands,
+const CreatorFilter = ({
+  creators,
+  selectedCreators,
   setQueryParams,
   "data-testid": dataTestId,
-}: BrandFilterProps) => {
+}: CreatorFilterProps) => {
   const handleChange = (values: string[]) => {
-    setQueryParams("brands", values.join(","))
+    console.log("Selected creators:", values)
+    // Join the creator IDs with commas
+    setQueryParams("creators", values.join(","))
   }
 
   return (
     <FilterCheckboxGroup
-      title="Brands"
-      items={brands}
-      values={selectedBrands}
+      title="Creators"
+      items={creators}
+      values={selectedCreators}
       handleChange={handleChange}
       data-testid={dataTestId}
     />
   )
 }
 
-export default BrandFilter
+export default CreatorFilter

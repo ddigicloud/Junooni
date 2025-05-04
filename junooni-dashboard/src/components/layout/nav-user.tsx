@@ -1,4 +1,6 @@
 import { Link } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
+
 import {
   BadgeCheck,
   Bell,
@@ -23,6 +25,14 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { useEffect, useState } from 'react'
+
+type Vendor = {
+  name: string
+  handle: string
+  logo?: string 
+}
+
 
 export function NavUser({
   user,
@@ -34,6 +44,33 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const [vendor, setVendor] = useState<Vendor | null>(null)
+  const navigate = useNavigate()
+  const handleLogout = () => {
+    localStorage.clear() // or remove specific keys like 'auth_token' & 'vendorToken'
+    navigate({ to: '/sign-in-2' })
+  }
+  
+useEffect(() => {
+  const fetchVendor = async () => {
+    const token = localStorage.getItem("vendorToken")
+    try {
+      const res = await fetch("http://localhost:9000/vendors/01JN475VCB34HJ702Q242JCDEZ", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const data = await res.json()
+      setVendor(data.vendor) // or setVendor(data) if it's a flat object
+    } catch (err) {
+      console.error("Failed to load vendor:", err)
+    }
+  }
+
+  fetchVendor()
+}, [])
+
 
   return (
     <SidebarMenu >
@@ -44,13 +81,17 @@ export function NavUser({
               size='lg'
               className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
             >
-              <Avatar className='h-8 w-8 rounded-lg'>
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className='rounded-lg'>SN</AvatarFallback>
+              <Avatar className='w-8 h-8 rounded-lg'>
+                {/* <AvatarImage src={user.avatar} alt={user.name} /> */}
+                {/* <AvatarFallback className='rounded-lg'>SN</AvatarFallback> */}
               </Avatar>
-              <div className='grid flex-1 text-left text-sm leading-tight'>
-                <span className='truncate font-semibold'>{user.name}</span>
-                <span className='truncate text-xs'>{user.email}</span>
+              <div className='grid flex-1 text-sm leading-tight text-left'>
+              <span className='font-semibold truncate'>
+                {vendor?.name || 'Loading...'}
+              </span>
+              <span className='text-xs truncate'>
+                @{vendor?.handle || '...'}
+              </span>
               </div>
               <ChevronsUpDown className='ml-auto size-4' />
             </SidebarMenuButton>
@@ -63,13 +104,19 @@ export function NavUser({
           >
             <DropdownMenuLabel className='p-0 font-normal'>
               <div className='flex items-center gap-2 px-1 py-1.5 text-left text-sm'>
-                <Avatar className='h-8 w-8 rounded-lg'>
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className='rounded-lg'>SN</AvatarFallback>
+                <Avatar className='w-8 h-8 rounded-lg'>
+                <AvatarImage src={vendor?.logo || ''} alt={vendor?.name || 'Vendor'} />
+                  <AvatarFallback className='rounded-lg'>
+                    {vendor?.name?.charAt(0).toUpperCase() || 'V'}       
+                  </AvatarFallback>
                 </Avatar>
-                <div className='grid flex-1 text-left text-sm leading-tight'>
-                  <span className='truncate font-semibold'>{user.name}</span>
-                  <span className='truncate text-xs'>{user.email}</span>
+                <div className='grid flex-1 text-sm leading-tight text-left'>
+                  <span className='font-semibold truncate'>
+                    {vendor?.name || 'Loading...'}
+                  </span>
+                  <span className='text-xs truncate'>
+                    @{vendor?.handle || '...'}
+                  </span>
                 </div>
               </div>
             </DropdownMenuLabel>
@@ -102,7 +149,7 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut />
               Log out
             </DropdownMenuItem>

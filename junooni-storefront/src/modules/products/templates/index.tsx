@@ -90,10 +90,12 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   product,
   region,
   countryCode
-}) => {
+}
+) => {
   if (!product || !product.id) {
     return notFound();
   }
+  
   const extendedProduct = {
     ...product,
     vendor: product.vendor ?? {
@@ -109,7 +111,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
     }
   }
 
-
+  console.log("Extended Product:", extendedProduct)
 
 
   return (
@@ -155,9 +157,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                   <span className="block -mt-1 text-xs text-gray-500">@{extendedProduct.vendor.handle || "vendor"}</span>
                 </div>
               </div>
-            )}
-
-             
+            )}     
               
               {/* Product Info */}
               <Suspense fallback={<div className="h-20 mb-4 bg-gray-100 rounded animate-pulse"></div>}>

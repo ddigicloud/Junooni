@@ -88,7 +88,13 @@ const CartDropdown = ({
             className="relative flex hover:text-ui-fg-base"
             href="/cart"
             data-testid="nav-cart-link"
-          ><ShoppingCart className="w-5 h-5"/> </LocalizedClientLink>
+          ><ShoppingCart className="w-5 h-5"/>
+          {totalItems > 0 && (
+            <span className="absolute -top-2 right-[-12px] bg-[#e65100] text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">
+              {totalItems}
+            </span>
+          )}
+           </LocalizedClientLink>
           {/* <span className="absolute px-1 text-xs text-white bg-black rounded-full -bottom-1 -right-1"> {totalItems}</span> */}
         </PopoverButton>
         <Transition
@@ -111,7 +117,7 @@ const CartDropdown = ({
             </div>
             {cartState && cartState.items?.length ? (
               <>
-                <div className="overflow-y-scroll max-h-[402px] px-4 grid grid-cols-1 gap-y-8 no-scrollbar p-px">
+                <div className="overflow-y-scroll max-h-[280px] px-4 grid grid-cols-1 gap-y-8 scrollbar p-px">
                   {cartState.items
                     .sort((a, b) => {
                       return (a.created_at ?? "") > (b.created_at ?? "")
@@ -143,7 +149,7 @@ const CartDropdown = ({
                                     href={`/products/${item.product_handle}`}
                                     data-testid="product-link"
                                   >
-                                    {item.title}
+                                    {item.product_title}
                                   </LocalizedClientLink>
                                 </h3>
                                 <LineItemOptions
@@ -197,7 +203,7 @@ const CartDropdown = ({
                   </div>
                   <LocalizedClientLink href="/cart" passHref>
                     <Button
-                      className="w-full"
+                      className="w-full bg-[#e65100] text-white hover:bg-[#d84315] border-none outline-none shadow-none"
                       size="large"
                       data-testid="go-to-cart-button"
                     >

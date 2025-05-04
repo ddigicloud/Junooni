@@ -112,6 +112,8 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
     }
   }
 
+  console.log("Product Template - Extended Product:", extendedProduct);
+  
   return (
     <div className="min-h-screen py-20">
       <div className="mx-auto ">

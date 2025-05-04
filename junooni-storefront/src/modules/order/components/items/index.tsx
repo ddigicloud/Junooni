@@ -97,7 +97,7 @@ type ItemsProps = {
   showStatus?: boolean
 }
 
-const Items = ({ order, showStatus = false }: ItemsProps) => {
+const Items = ({order, showStatus = false }: ItemsProps) => {
   const getAmount = (amount?: number) => {
     if (!amount) {
       return "0"
@@ -150,14 +150,29 @@ const Items = ({ order, showStatus = false }: ItemsProps) => {
                 <div className="flex justify-between">
                   <div>
                     <h3 className="text-base font-medium text-gray-900">
-                      {item.title}
+                      {item.product_title}
                     </h3>
-                    {item.variant?.title &&
+                    {item.variant?.options?.length && item.product?.options?.length ? (
+                      <p className="mt-1 text-sm text-gray-500">
+                        {item.variant.options
+                          .map((opt) => {
+                            const title =
+                              item.product?.options?.find((o) => o.id === opt.option_id)?.title || "Option"
+                            return `${title}: ${opt.value}`
+                          })
+                          .join(" / ")}
+                      </p>
+                    ) : item.variant?.title && item.variant.title !== "Default Variant" ? (
+                      <p className="mt-1 text-sm text-gray-500">{item.variant.title}</p>
+                    ) : null}
+
+
+                    {/* {item.variant?.title &&
                       item.variant.title !== "Default Variant" && (
                         <p className="mt-1 text-sm text-gray-500">
-                          Variant: {item.variant.title}
+                          {item.variant.title}
                         </p>
-                      )}
+                      )} */}
                     <p className="mt-1 text-sm text-gray-500">
                       Quantity: {item.quantity}
                     </p>

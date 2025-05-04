@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Heart, ShoppingCart, Share2, Bell, Instagram, Twitter, Youtube, ExternalLink, Calendar, Tag, Users, ChevronRight, ArrowRight } from 'lucide-react';
+import ShareButton from "./creatorshare";
 
 const creatorTest = () => {
   // States for various interactive elements
@@ -123,6 +124,23 @@ const creatorTest = () => {
     }
   ];
   
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+const handleCopyLink = async () => {
+  try {
+    await navigator.clipboard.writeText(currentUrl);
+    alert("Link copied to clipboard!");
+  } catch (err) {
+    alert("Failed to copy link");
+  }
+};
+
+const shareLinks = {
+  whatsapp: `https://wa.me/?text=${encodeURIComponent(currentUrl)}`,
+  twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent("Check this out!")}`,
+  facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`
+};
+
   // Filter products based on active tab
   const filteredProducts = activeTab === 'all' 
     ? products 
@@ -223,21 +241,40 @@ const creatorTest = () => {
                           {showShareOptions && (
                             <div className="absolute right-0 z-10 w-48 mt-2 bg-white rounded-md shadow-lg">
                               <div className="py-1">
-                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <button
+                                  onClick={handleCopyLink}
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-[#e65100] hover:text-white"
+                                >
                                   Copy Link
+                                </button>
+                                <a
+                                  href={shareLinks.whatsapp}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#e65100] hover:text-white"
+                                >
+                                  Share on WhatsApp
                                 </a>
-                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a
+                                  href={shareLinks.twitter}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#e65100] hover:text-white"
+                                >
                                   Share on Twitter
                                 </a>
-                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a
+                                  href={shareLinks.facebook}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#e65100] hover:text-white"
+                                >
                                   Share on Facebook
-                                </a>
-                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                  Email
                                 </a>
                               </div>
                             </div>
                           )}
+
                         </div>
                       </div>
                     </div>

@@ -6,6 +6,8 @@ import { Heart, Search, UserCircle } from "lucide-react";
 import { listCategories } from "@lib/data/categories";
 import { CategoryMegaMenu } from "./CategoryMegaMenu";
 import MobileMenu from "./MobileMenu";
+import { ShoppingCart } from "lucide-react"
+
 import SearchBar from "@modules/layout/components/search-button";
 
 
@@ -129,6 +131,7 @@ export default async function Nav() {
               href="/cart"
               data-testid="nav-cart-link"
             >
+            <ShoppingCart className="w-5 h-5" />
             </LocalizedClientLink>
           }
         >

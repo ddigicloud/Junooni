@@ -6,6 +6,7 @@ import { Heart, Search, UserCircle } from "lucide-react";
 import { listCategories } from "@lib/data/categories";
 import { CategoryMegaMenu } from "./CategoryMegaMenu";
 import MobileMenu from "./MobileMenu";
+import SearchBar from "@modules/layout/components/search-button";
 
 export default async function Nav() {
   const allCategories = await listCategories();
@@ -87,13 +88,14 @@ export default async function Nav() {
       <CategoryMegaMenu categories={allCategories} />
       
       <div className="items-center hidden h-full md:flex gap-x-4">
-        <LocalizedClientLink
+        {/* <LocalizedClientLink
           className="transition-colors duration-300"
           href="/search"
           data-testid="nav-search-link"
         >
           <Search className="w-5 h-5"/>
-        </LocalizedClientLink>
+        </LocalizedClientLink> */}
+        <SearchBar categories={allCategories} />
         
         {/* Replace this with the new AccountButton */}
         <Suspense

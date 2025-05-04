@@ -235,7 +235,7 @@ import { useParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import MobileActions from "./mobile-actions"
-import { Heart, Share2, ShoppingCart} from "lucide-react";
+import { Heart, Share2, ShoppingCart,ArrowRight} from "lucide-react";
 import ShareButton from "./ShareButton"; // (top of your file, add import)
 
 type ProductActionsProps = {
@@ -267,7 +267,8 @@ export default function ProductActions({
   const [quantity, setQuantity] = useState(1) // Quantity state
   const [optionMetadata, setOptionMetadata] = useState<Record<string, any>>({}) // Store color metadata
   const countryCode = useParams().countryCode as string
-
+  const [addedVariantIds, setAddedVariantIds] = useState<string[]>([])
+  
   useEffect(() => {
     // Ensure product.variants is not null or undefined before accessing it
     if (product.variants && product.variants.length > 0) {
@@ -356,9 +357,12 @@ export default function ProductActions({
       metadata: Object.keys(lineItemMetadata).length > 0 ? lineItemMetadata : undefined
     })
 
+     // Track this variant as added
+    setAddedVariantIds((prev) => [...new Set([...prev, selectedVariant.id])])
     setIsAdding(false)
   }
-
+  
+  
   // Increase quantity
   const increaseQuantity = () => {
     setQuantity((prev) => prev + 1)
@@ -369,6 +373,9 @@ export default function ProductActions({
     setQuantity((prev) => (prev > 1 ? prev - 1 : 1))
   }
 
+  const isVariantInCart = selectedVariant ? addedVariantIds.includes(selectedVariant.id) : false
+  
+  
   return (
     <>
       <div className="flex flex-col gap-y-2" ref={actionsRef}>
@@ -428,8 +435,42 @@ export default function ProductActions({
 
         {/* <ProductPrice product={product} variant={selectedVariant} /> */}
 
-        <div className="flex items-center justify-start gap-3">
-                  <Button
+                <div className="flex items-center justify-start gap-3">
+                    <Button
+                      onClick={isVariantInCart ? () => window.location.href = '/cart' : handleAddToCart}
+                      disabled={
+                        !inStock ||
+                        !selectedVariant ||
+                        !!disabled ||
+                        isAdding ||
+                        !isValidVariant
+                      }
+                      variant="primary"
+                      className="text-lg font-medium mb-2 w-full h-12 text-white bg-[#e65100] hover:bg-[#d84315] shadow-none border-none"
+                      isLoading={isAdding}
+                      data-testid="add-product-button"
+                    >
+                      {!selectedVariant && !options
+                        ? "Select variant"
+                        : !inStock || !isValidVariant
+                        ? "Out of stock"
+                        : (
+                          <>
+                          <ShoppingCart size={18} className="mr-2" />
+                          {isVariantInCart ? (
+                            <>
+                              Go to Cart
+                              <ArrowRight size={24} className="ml-2 " />
+                            </>
+                          ) : (
+                            "Add to Cart"
+                          )}
+                        </>
+                        
+                        )}
+                    </Button>
+          
+                  {/* <Button
                     onClick={handleAddToCart}
                     disabled={
                       !inStock ||
@@ -454,7 +495,7 @@ export default function ProductActions({
                           Add to Cart
                         </>
                       )}
-                  </Button>
+                  </Button> */}
         
                   {/* Social Buttons */}
                     <div className="flex items-center gap-2 mt-4 mb-6">

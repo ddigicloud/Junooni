@@ -3,10 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+
 import { 
   Heart, 
   Share2, 
+  Facebook,
   Bell, 
+  Copy,
+  MessageCircle,
   Instagram, 
   Twitter, 
   Youtube, 
@@ -223,7 +227,36 @@ console.log(followerCounting)
   };
   
 
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
 
+const [copied, setCopied] = useState(false)
+const [copyPosition, setCopyPosition] = useState<{ x: number; y: number } | null>(null)
+
+
+const handleCopy = async (e: React.MouseEvent) => {
+  try {
+    await navigator.clipboard.writeText(currentUrl)
+    const rect = (e.target as HTMLElement).getBoundingClientRect()
+    setCopyPosition({ x: rect.left + rect.width / 2, y: rect.top })
+    setCopied(true)
+    setShowShareOptions(false) // close dropdown
+    setTimeout(() => {
+      setCopied(false)
+      setCopyPosition(null)
+    }, 1200)
+  } catch (error) {
+    console.error("Failed to copy:", error)
+  }
+}
+
+
+  
+  const shareLinks = {
+    whatsapp: `https://wa.me/?text=${encodeURIComponent(currentUrl)}`,
+    twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent("Check out this creator on Junooni!")}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`
+  }
+  
 
 // Fetch current customer and check following status
 useEffect(() => {
@@ -450,28 +483,62 @@ const handleFollowToggle = async () => {
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: 10 }}
-                              className="absolute right-0 z-10 w-48 mt-2 bg-white rounded-md shadow-lg"
+                              className="absolute right-0 z-10 mt-2 bg-white rounded-md shadow-lg w-52"
                             >
-                              <div className="py-1">
-                                <a href="#" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                  <MessageCircleMore size={16} className="mr-2" />
+                              <div className="py-1 text-sm text-gray-700">
+                                <button
+                                  onClick={handleCopy}
+                                  className="flex items-center w-full px-4 py-2 hover:bg-[#e65100] hover:text-white"
+                                >
+                                  <Copy size={16} className="mr-2" />
                                   Copy Link
+                                </button>
+                                <a
+                                  href={shareLinks.whatsapp}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => setShowShareOptions(false)}
+                                  className="flex items-center px-4 py-2 hover:bg-[#e65100] hover:text-white"
+                                >
+                                  <MessageCircle size={16} className="mr-2" />
+                                  Share on WhatsApp
                                 </a>
-                                <a href="#" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a
+                                  href={shareLinks.twitter}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => setShowShareOptions(false)}
+                                  className="flex items-center px-4 py-2 hover:bg-[#e65100] hover:text-white"
+                                >
                                   <Twitter size={16} className="mr-2" />
                                   Share on Twitter
                                 </a>
-                                <a href="#" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                  <ExternalLink size={16} className="mr-2" />
+                                <a
+                                  href={shareLinks.facebook}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => setShowShareOptions(false)}
+                                  className="flex items-center px-4 py-2 hover:bg-[#e65100] hover:text-white"
+                                >
+                                  <Facebook size={16} className="mr-2" />
                                   Share on Facebook
-                                </a>
-                                <a href="#" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                  <Mail size={16} className="mr-2" />
-                                  Email
                                 </a>
                               </div>
                             </motion.div>
                           )}
+                          {copied && copyPosition && (
+                          <div
+                            className="fixed z-50 px-3 py-1 text-xs font-medium text-white rounded-md shadow"
+                            style={{
+                              top: `${copyPosition.y - 6}px`,
+                              left: `${copyPosition.x}px`,
+                              backgroundColor: "#e65100",
+                              transform: "translateX(-50%)"
+                            }}
+                          >
+                            Copied!
+                          </div>
+                        )}
                         </div>
                       </motion.div>
                     </div>

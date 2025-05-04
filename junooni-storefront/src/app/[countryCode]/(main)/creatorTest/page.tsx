@@ -223,17 +223,17 @@ const creatorTest = () => {
                           {showShareOptions && (
                             <div className="absolute right-0 z-10 w-48 mt-2 bg-white rounded-md shadow-lg">
                               <div className="py-1">
-                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#e65100]">
                                   Copy Link
                                 </a>
-                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#e65100]">
+                                  Share on Whatsapp
+                                </a>
+                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#e65100]">
                                   Share on Twitter
                                 </a>
-                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#e65100]">
                                   Share on Facebook
-                                </a>
-                                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                  Email
                                 </a>
                               </div>
                             </div>

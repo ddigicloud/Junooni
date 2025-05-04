@@ -97,7 +97,7 @@ export default defineMiddlewares({
     },
     {
       matcher: "/vendors/*",
-      method: ["OPTIONS", "POST", "PUT", "DELETE"],
+      method: ["GET","OPTIONS", "POST", "PUT", "DELETE"],
       middlewares: [
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule");

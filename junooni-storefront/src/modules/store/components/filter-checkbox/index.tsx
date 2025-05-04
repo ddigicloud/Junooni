@@ -1,4 +1,3 @@
-// components/filter-checkbox-group/index.tsx
 "use client"
 
 import { useState } from "react"
@@ -23,11 +22,19 @@ const FilterCheckboxGroup = ({
   "data-testid": dataTestId,
 }: FilterCheckboxGroupProps) => {
   const toggleItem = (item: string) => {
+    // Create a new array to avoid reference issues
+    let newValues = [...values]
+    
     if (values.includes(item)) {
-      handleChange(values.filter((v) => v !== item))
+      // Remove item if already selected
+      newValues = newValues.filter((v) => v !== item)
     } else {
-      handleChange([...values, item])
+      // Add item if not selected
+      newValues.push(item)
     }
+    
+    // Update parent component with new values
+    handleChange(newValues)
   }
 
   return (

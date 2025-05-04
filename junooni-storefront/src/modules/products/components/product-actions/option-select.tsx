@@ -85,23 +85,29 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
   const filteredOptions = (option.values ?? []).map((v) => v.value)
   
   // Function to get color hex code from product metadata
-  const getColorHex = (colorName: string): string => {
-    let colorHexArray: any[] = [];
-  
-    try {
-      const raw = product?.metadata?.color_hex_values;
-      colorHexArray = typeof raw === "string" ? JSON.parse(raw) : raw;
-    } catch (e) {
-      console.warn("Failed to parse color_hex_values:", e);
-      return "#CCCCCC";
+    const getColorHex = (colorName: string): string => {
+      try {
+        const raw = product?.metadata?.color_hex_values
+        const colorHexArray = raw
+          ? typeof raw === "string"
+            ? JSON.parse(raw)
+            : Array.isArray(raw)
+            ? raw
+            : []
+          : []
+    
+        const match = colorHexArray.find(
+          (entry: any) =>
+            entry?.name?.toLowerCase?.() === colorName.toLowerCase()
+        )
+    
+        return match?.hex || "#CCCCCC"
+      } catch (e) {
+        console.warn("Failed to parse or access color_hex_values:", e)
+        return "#CCCCCC"
+      }
     }
-  
-    const match = colorHexArray.find(
-      (entry: any) => entry.name.toLowerCase() === colorName.toLowerCase()
-    );
-  
-    return match?.hex || "#CCCCCC";
-  };
+    
   
   return (
     <div className="flex flex-col gap-y-3">
