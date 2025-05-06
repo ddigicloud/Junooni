@@ -2,35 +2,35 @@
 
 import FilterCheckboxGroup from "@modules/store/components/filter-checkbox"
 
-type CreatorFilterProps = {
-  creators: {
+type VendorFilterProps = {
+  vendors: {
     value: string
     label: string
   }[]
-  selectedCreators: string[]
+  selectedVendors: string[]
   setQueryParams: (name: string, value: string) => void
   "data-testid"?: string
 }
 
-const CreatorFilter = ({
-  creators,
-  selectedCreators,
+const VendorFilter = ({
+  vendors,
+  selectedVendors,
   setQueryParams,
   "data-testid": dataTestId,
-}: CreatorFilterProps) => {
+}: VendorFilterProps) => {
   const handleChange = (values: string[]) => {
-    setQueryParams("creators", values.join(","))
+    setQueryParams("vendors", values.join(","))
   }
 
   return (
     <FilterCheckboxGroup
-      title="Creators"
-      items={creators}
-      values={selectedCreators}
+      title="Vendors"
+      items={vendors}
+      values={selectedVendors}
       handleChange={handleChange}
       data-testid={dataTestId}
     />
   )
 }
 
-export default CreatorFilter
+export default VendorFilter

@@ -13,7 +13,7 @@ const getInitials = (firstName, lastName) => {
 
   // Get first character of first name if it exists
   if (firstName && typeof firstName === "string" && firstName.length > 0) {
-    initials += firstName.charAt(0).toUpperCase()
+  initials += firstName.charAt(0).toUpperCase()
   }
 
   // Get first character of last name if it exists
@@ -84,15 +84,7 @@ const CustomerAvatar = ({
       className={`relative overflow-hidden rounded-full ${className}`}
       style={{ width: size, height: size }}
     >
-      {imageUrl ? (
-        <Image
-          src={imageUrl}
-          alt={fullName || "User"}
-          className="object-cover w-full h-full"
-          width={size}
-          height={size}
-        />
-      ) : (
+     
         <div
           className="flex items-center justify-center w-full h-full font-medium text-white"
           style={{
@@ -103,7 +95,7 @@ const CustomerAvatar = ({
         >
           {initials}
         </div>
-      )}
+      
     </div>
   )
 }

@@ -26,7 +26,7 @@ export const GET = async (
     data: [vendor],
   } = await query.graph({
     entity: "vendor",
-    fields: ["orders.*"],
+    fields: ["orders.*", "orders.customer.*"],
     filters: {
       id: vendorAdmin.vendor.id,
     },
@@ -49,6 +49,7 @@ export const GET = async (
         "shipping_methods",
         "payment_collections",
         "fulfillments",
+        "customer.*"
       ],
       variables: {
         filters: {

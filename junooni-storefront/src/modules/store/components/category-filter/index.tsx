@@ -23,27 +23,21 @@ const CategoryFilter = ({
 }: CategoryFilterProps) => {
   const [showAll, setShowAll] = useState(false)
   
-  // Determine if we need a "Show More" button
   const hasMoreThan6 = categories.length > 6
   
-  // Get initial and additional categories
   const initialCategories = categories.slice(0, 6)
   const additionalCategories = categories.slice(6)
   
   const handleChange = (value: string) => {
-    // Simply pass the string value of the category handle
-    console.log("Category selected:", value)
     setQueryParams("category", value)
   }
 
-  // Handle the "Show More" button click
   const toggleShowAll = () => {
     setShowAll(!showAll)
   }
 
   return (
     <div className="flex flex-col gap-0">
-      {/* Always show first 6 categories */}
       <FilterRadioGroup
         title="Categories"
         items={initialCategories}
@@ -52,7 +46,6 @@ const CategoryFilter = ({
         data-testid={dataTestId}
       />
       
-      {/* Animated container for additional categories */}
       <AnimatePresence>
         {showAll && hasMoreThan6 && (
           <motion.div
@@ -73,7 +66,6 @@ const CategoryFilter = ({
         )}
       </AnimatePresence>
       
-      {/* Show More/Less button */}
       {hasMoreThan6 && (
         <motion.div
           whileHover={{ scale: 1.02 }}

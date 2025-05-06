@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import {
   Package,
   ShoppingBag,
@@ -9,7 +9,117 @@ import {
 import Link from "next/link"
 import Image from "next/image"
 import { WishlistProducts } from "@modules/wishlists/components/wishlistProducts"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
+/**
+ * CreatorAvatar Component
+ * Fixed version that ensures consistent sizing between images and initials
+ */
+const CreatorAvatar = ({ creator, size = 40 }) => {
+  const [imageError, setImageError] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  
+  // Extract vendor information with safe fallbacks
+  const vendorName = creator.vendor?.name || "Creator"
+  const nameParts = vendorName.split(" ")
+  const firstName = nameParts[0] || ""
+  const lastName = nameParts.slice(1).join(" ") || ""
+
+  // Helper function to generate initials
+  const getInitials = (firstName, lastName) => {
+    let initials = ""
+    
+    if (firstName) initials += firstName.charAt(0).toUpperCase()
+    if (lastName) initials += lastName.charAt(0).toUpperCase()
+    
+    return initials || "C" // "C" for Creator
+  }
+
+  // Helper function to generate a consistent color based on name
+  const getAvatarColor = (name) => {
+    let hash = 0
+    if (!name) return "#e65100" // Default brand color
+
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash)
+    }
+
+    let color = "#"
+    for (let i = 0; i < 3; i++) {
+      const value = (hash >> (i * 8)) & 0xff
+      color += ("00" + value.toString(16)).substr(-2)
+    }
+
+    return color
+  }
+
+  // Generate initials and color for the fallback display
+  const initials = getInitials(firstName, lastName)
+  const bgColor = getAvatarColor(vendorName)
+  
+  // Calculate proportional font size
+  const fontSize = Math.max(Math.floor(size * 0.4), 12)
+
+  // Check if we should display an image or initials
+  const hasValidLogo = creator.vendor?.logo && !imageError
+
+  // Common container styles for both image and initials
+  const containerStyle = {
+    width: size,
+    height: size,
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: '50%',
+    flexShrink: 0
+  }
+
+  return (
+    <div style={containerStyle}>
+      {hasValidLogo ? (
+        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+          <Image
+            src={creator.vendor.logo}
+            alt={vendorName}
+            fill
+            className="object-cover"
+            sizes={`${size}px`}
+            onLoad={() => setIsLoading(false)}
+            onError={() => {
+              setImageError(true)
+              setIsLoading(false)
+            }}
+            style={{
+              opacity: isLoading ? 0 : 1,
+              transition: 'opacity 0.2s ease-in-out',
+              objectFit: 'cover'
+            }}
+          />
+        </div>
+      ) : (
+        <div
+          className="flex items-center justify-center font-medium text-white"
+          style={{
+            backgroundColor: bgColor,
+            fontSize: `${fontSize}px`,
+            width: '100%',
+            height: '100%',
+            position: 'absolute',
+            top: 0,
+            left: 0
+          }}
+        >
+          {initials}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * DashboardTab Component
+ * The main dashboard view for customer accounts, showing recent orders, 
+ * followed creators, and upcoming events.
+ */
 const DashboardTab = ({
   user,
   orders,
@@ -24,12 +134,13 @@ const DashboardTab = ({
   const safeUpcomingEvents = upcomingEvents || []
 
   // Helper function to get most recent order display
+  // This handles both API and fallback data formats
   const getRecentOrderDisplay = () => {
     if (!safeOrders || safeOrders.length === 0) return null
 
     const recentOrder = safeOrders[0]
 
-    // Handle both API and fallback data formats
+    // Extract order information with proper fallbacks
     const orderId = recentOrder.display_id || recentOrder.id
     const orderDate = recentOrder.created_at
       ? new Date(recentOrder.created_at).toLocaleDateString()
@@ -76,9 +187,13 @@ const DashboardTab = ({
         <div className="p-5 bg-white rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-medium">Recent Order</h3>
-            <button className="text-sm text-[#e65100] hover:underline">
+            {/* Updated View All button to navigate to orders page */}
+            <LocalizedClientLink 
+              href="/account/orders"
+              className="text-sm text-[#e65100] hover:underline"
+            >
               View All
-            </button>
+            </LocalizedClientLink>
           </div>
 
           {safeOrders && safeOrders.length > 0 ? (
@@ -106,19 +221,7 @@ const DashboardTab = ({
                   href={`/creator/${creator.vendor?.handle || ""}`}
                   className="flex flex-col items-center"
                 >
-                  <div className="relative">
-                    <Image
-                      src={
-                        creator.vendor?.logo
-                          ? creator.vendor?.logo
-                          : "/api/placeholder/40/40"
-                      }
-                      alt={creator.vendor?.name || "Creator"}
-                      className="object-cover w-10 h-10 rounded-full"
-                      width={40}
-                      height={40}
-                    />
-                   </div>
+                  <CreatorAvatar creator={creator} size={40} />
                 </Link>
               ))}
             <Link
@@ -301,12 +404,13 @@ const DashboardTab = ({
       <div className="p-6 bg-white rounded-lg shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Your Wishlist</h2>
-          <button
+          {/* Updated View All button to navigate to wishlist page */}
+          <LocalizedClientLink
+            href="/account/wishlist"
             className="text-sm text-[#e65100] hover:underline"
-            onClick={() => setActiveTab && setActiveTab("/account/wishlist")}
           >
             View All
-          </button>
+          </LocalizedClientLink>
         </div>
 
         <div className="">

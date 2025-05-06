@@ -22,19 +22,11 @@ const FilterCheckboxGroup = ({
   "data-testid": dataTestId,
 }: FilterCheckboxGroupProps) => {
   const toggleItem = (item: string) => {
-    // Create a new array to avoid reference issues
-    let newValues = [...values]
-    
     if (values.includes(item)) {
-      // Remove item if already selected
-      newValues = newValues.filter((v) => v !== item)
+      handleChange(values.filter((v) => v !== item))
     } else {
-      // Add item if not selected
-      newValues.push(item)
+      handleChange([...values, item])
     }
-    
-    // Update parent component with new values
-    handleChange(newValues)
   }
 
   return (

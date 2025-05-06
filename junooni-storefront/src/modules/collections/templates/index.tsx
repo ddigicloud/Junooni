@@ -13,7 +13,7 @@ type CollectionTemplateProps = {
   page?: string
   countryCode: string
   categoryHandle?: string
-  creators?: string
+  vendors?: string
   colors?: string
   price?: string
 }
@@ -24,7 +24,7 @@ export default async function CollectionTemplate({
   page,
   countryCode,
   categoryHandle,
-  creators,
+  vendors,
   colors,
   price,
 }: CollectionTemplateProps) {
@@ -33,21 +33,24 @@ export default async function CollectionTemplate({
   
   // Fetch categories and vendors
   const categories = await listCategories()
-  const vendors = await retriveVendors() || []
+  const vendorsData = await retriveVendors()
   
-  console.log("Loaded categories:", categories.length)
-  console.log("Loaded vendors:", vendors.length)
-  console.log("loaded products:", collection)
-  
-  // Map vendors to creator format
-  const creatorData = vendors.map(vendor => ({
+  // Map vendors to the format expected by the UI
+  const formattedVendors = vendorsData.map(vendor => ({
     id: vendor.id,
     name: vendor.name,
     handle: vendor.handle
   }))
   
-  // Parse filter parameters
-  const creatorArray = creators ? creators.split(",") : []
+  // Convert vendor names from URL to handles for filtering
+  let vendorHandles: string[] = []
+  if (vendors) {
+    const vendorNames = vendors.split(",")
+    vendorHandles = vendorsData
+      .filter(vendor => vendorNames.includes(vendor.name))
+      .map(vendor => vendor.handle)
+  }
+  
   const colorArray = colors ? colors.split(",") : []
   
   let minPrice, maxPrice
@@ -56,20 +59,13 @@ export default async function CollectionTemplate({
     minPrice = min
     maxPrice = max
   }
-  
-  console.log("Filter parameters:", {
-    categoryHandle,
-    creators: creatorArray,
-    colors: colorArray,
-    price
-  })
 
   return (
-    <div className="flex mt-16 gap-8 flex-col py-6 small:flex-row small:items-start content-container">
+    <div className="flex flex-col gap-8 py-6 mt-16 small:flex-row small:items-start content-container">
       <RefinementList
         sortBy={sort}
         categories={categories}
-        creators={creatorData}
+        vendors={formattedVendors}
         products={collection.products}
       />
       <div className="w-full">
@@ -89,8 +85,8 @@ export default async function CollectionTemplate({
             collectionId={collection.id}
             countryCode={countryCode}
             categoryHandle={categoryHandle}
-            creators={creatorArray.length > 0 ? creatorArray : undefined}
-            colors={colorArray.length > 0 ? colorArray : undefined}
+            vendors={vendorHandles}
+            colors={colorArray}
             minPrice={minPrice}
             maxPrice={maxPrice}
           />
@@ -99,3 +95,4 @@ export default async function CollectionTemplate({
     </div>
   )
 }
+

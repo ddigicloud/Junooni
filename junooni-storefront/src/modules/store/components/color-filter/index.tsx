@@ -50,20 +50,7 @@ const ColorFilter = ({
           }
         }
         
-        // Also process Color_ prefixed metadata as fallback
-        Object.entries(product.metadata).forEach(([key, value]) => {
-          if (key.startsWith("Color_") && value) {
-            const colorName = key.replace("Color_", "").toLowerCase();
-            // Default color to black if not specified
-            const colorValue = String(value) || "#000000";
-            
-            colorMap.set(colorName, {
-              value: colorName,
-              label: colorName.charAt(0).toUpperCase() + colorName.slice(1),
-              color: colorValue
-            });
-          }
-        });
+    
       }
       
       // Check product variant options for color info

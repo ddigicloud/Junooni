@@ -78,7 +78,9 @@ interface Order {
     first_name: string
     last_name: string
     email: string
+    phone?: string
   }
+  
   created_at: string
   total: number
   items: OrderItem[]
@@ -320,16 +322,40 @@ export default function OrdersPage() {
               amount: typeof pc.amount === 'number' ? pc.amount : 
                 (pc.amount?.value ? parseFloat(pc.amount.value) : 0)
             }));
-            
-            return {
+             // Get display_id - default to offset + index + 1 to ensure uniqueness
+             const baseIndex = (page - 1) * limit;
+             let display_id;
+             
+             // Try to extract a unique number from the order ID
+             // Extract all numbers and use the last one for uniqueness
+             const allNumbers = order.id.match(/\d+/g);
+             if (allNumbers && allNumbers.length > 0) {
+               // Use the last number found as it's more likely to be unique
+               display_id = parseInt(allNumbers[allNumbers.length - 1]);
+             } else {
+               // Fallback to a unique incrementing number
+               display_id = baseIndex + index + 1;
+             }
+             return {
               id: order.id,
-              display_id: parseInt(order.id.split('_')[1] || '0') || (1000 + index),
+              display_id: display_id,
               customer: {
-                first_name: "Customer",
-                last_name: "",
-                email: "customer@example.com"
+                first_name: order.customer?.first_name || order.customer?.billing_address?.first_name || order.billing_address?.first_name || "Guest",
+                last_name: order.customer?.last_name || order.customer?.billing_address?.last_name || order.billing_address?.last_name || "",
+                email: order.customer?.email || order.email || "—",
+                phone: order.customer?.phone || order.phone || order.billing_address?.phone || order.shipping_address?.phone || undefined
               },
-              created_at: order.created_at || new Date().toISOString(),
+            // return {
+            //   id: order.id,
+            //   display_id: parseInt(order.id.split('_')[1] || '0') || (1000 + index),
+            //   customer: {
+            //     first_name: "Customer",
+            //     last_name: "",
+            //     email: "customer@example.com"
+            //   },
+              // created_at: order.created_at || new Date().toISOString(),
+              created_at: order.created_at || order.createdAt || order.date_created || 
+                (order.items?.[0]?.created_at) || null,
               total: totalAmount,
               shipping_total: shippingTotal,
               status: order.status || "pending",
@@ -419,6 +445,7 @@ export default function OrdersPage() {
       day: "numeric",
     }).format(d)
   }
+ 
   
   
 
@@ -554,7 +581,9 @@ export default function OrdersPage() {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-[100px]">Order #</TableHead>
-                    <TableHead>Customer</TableHead>
+                    <TableHead>Customer Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-center w-[80px]">Items</TableHead>
@@ -578,10 +607,13 @@ export default function OrdersPage() {
                             #{order.display_id}
                           </Link>
                         </TableCell>
-                        <TableCell>
+                        <TableCell>{order.customer.first_name} {order.customer.last_name}</TableCell>
+                        <TableCell>{order.customer.email}</TableCell>
+                        <TableCell>{order.customer.phone || "N/A"}</TableCell>
+                        {/* <TableCell>
                           <div>{`${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.trim() || 'Guest'}</div>
                           <div className="text-xs text-muted-foreground">{order.customer?.email || 'N/A'}</div>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell>{formatDate(order.created_at)}</TableCell>
                         <TableCell className="font-medium text-right">
                           {formatPrice(order.total, order.currency_code)}

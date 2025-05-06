@@ -276,7 +276,9 @@ const transformedItems: OrderItem[] = (orderData.items || []).map((item: any, in
         last_name: "",
         email: "customer@example.com"
       },
-      created_at: orderData.created_at || new Date().toISOString(),
+      // created_at: orderData.created_at || new Date().toISOString(),
+      created_at: orderData.created_at || orderData.createdAt || orderData.date_created || 
+        (orderData.items?.[0]?.created_at) || null,
       total: totalAmount,
       shipping_total: shippingTotal,
       status: orderData.status || "pending",

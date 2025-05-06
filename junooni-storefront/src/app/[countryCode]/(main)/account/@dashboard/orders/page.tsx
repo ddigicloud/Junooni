@@ -126,7 +126,7 @@ export default async function Orders() {
       </div>
 
       {/* Transfer Request Section */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      {/* <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="p-6">
           <div className="flex items-center mb-6">
             <h2 className="text-lg font-semibold text-gray-800">
@@ -144,7 +144,7 @@ export default async function Orders() {
 
           <TransferRequestForm />
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }
