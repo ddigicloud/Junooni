@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard"; // Import the ProductCard component
 import Navbar from "./Navbar";
+import { useToast } from "@/hooks/use-toast";
 
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
 
@@ -66,6 +67,26 @@ const Products = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [productMetadata, setProductMetadata] = useState<ProductMetadataMap>({});
 
+   const { toast } = useToast();
+    // Add this useEffect near the top of your component, right after your state declarations
+  useEffect(() => {
+    // Check if user is authenticated by looking for token
+    const token = localStorage.getItem('vendorToken');
+    
+    // If no token is found, redirect to sign-in page
+    if (!token) {
+      // Show a toast notification
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to access your profile.",
+        variant: "destructive",
+      });
+      
+      // Redirect to sign-in page
+      window.location.href = '/sign-in';
+      return;
+    }
+  }, []); // Empty dependency array means this runs once when component mounts
   useEffect(() => {
     const fetchProducts = async () => {
       try {

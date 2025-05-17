@@ -1,8 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { useForm, useFieldArray, UseFormReturn } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IconCirclePlus, IconX, IconLink, IconUpload, IconCopy } from '@tabler/icons-react';
+import { 
+  IconCirclePlus, 
+  IconX, 
+  IconLink, 
+  IconUpload, 
+  IconCopy, 
+  IconEdit, 
+  IconCheck, 
+  IconTrash, 
+  IconPhotoPlus,
+  IconInfoCircle,
+  IconTruck,
+  IconClock,
+  IconColorSwatch,
+  IconExternalLink,
+  IconPackage
+} from '@tabler/icons-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,252 +37,190 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { ChevronsRightLeft, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
 
-import { ProductSchema, ApiOption, ApiVariant } from '../data/schema';
-import { fetchProduct, updateProduct, uploadProductImage } from '../context/fetchApi';
+// Import components from our product modules
+import { StreamlinedImageManager } from '../context/product-modules/ImageManager';
+import { EnhancedOptionComponent } from '../context/product-modules/OptionComponents';
+import SimplifiedColorSelector from '../context/color-selection';
+import InventoryManagementModal from '../context/product-modules/InventoryManagementModel';
 
-// Define TypeScript interfaces for our data structures
-interface OptionValue {
-  optionId?: string;
-  optionName: string;
-  value: string;
-}
+// Import a rich text editor component
+import { TipTapEditor } from '../context/editor';
 
-interface Variant {
-  id: string;
-  title: string;
-  price: number;
-  compareAtPrice?: number;
-  stock: number;
-  sku: string;
-  allowBackorder: boolean;
-  manageInventory: boolean;
-  optionValues: OptionValue[];
-}
+import { ProductSchema } from '../data/schema';
+import { 
+  fetchProduct, 
+  updateProduct, 
+  uploadProductImage, 
+  fetchCategories, 
+  batchUpdateVariants, 
+  fetchInventoryLevels, 
+  batchUpdateInventoryLevels,
+  getVariantInventoryItemId
+} from '../context/fetchApi';
+import HierarchicalCategorySelector from '../context/HierarchicalCategorySelector';
 
-interface Option {
-  id?: string;
-  title: string;
-  optionValues: string[];
-}
+// Import types and utilities
+import { 
+  MediaItem, 
+  VariantInfo, 
+  ProductFormProps, 
+  ProductFormValues,
+  Option,
+  Variant,
+  OptionValue,
+  ProductDetail
+} from '../context/product-modules/types';
 
-interface MediaItem {
-  file: File | null;
-  url: string;
-  rank: number;
-  id?: string;
-  isNew?: boolean;
-}
+import { 
+  generateUUID,
+  generateUniqueSku, 
+  generateVariantsFromOptions,
+  isColorOption,
+  prepareVariantImageMetadata,
+  getColorImagesMetadata
+} from '../context/product-modules/utils';
 
-interface UploadResult {
-  url: string;
-  id: string;
-}
-
-interface ProductFormValues {
-  title: string;
-  handle: string;
-  description: string;
-  status: string;
-  thumbnail: string;
-  discountable: boolean;
-  options: Option[];
-  variants: Variant[];
-  weight: string;
-  length: string;
-  width: string;
-  height: string;
-  material?: string;
-  origin_country?: string;
-}
-
-/** Utility: Generate a random UUID. */
-const generateUUID = (): string => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
-
-/**
- * Utility: Generate a unique SKU with timestamp to avoid duplicates.
- * This ensures SKUs are unique even if the variant names are identical to existing ones.
- */
-function generateUniqueSku(baseName: string): string {
-  // Get current timestamp in milliseconds
-  const timestamp = new Date().getTime();
-  
-  // Replace non-alphanumeric chars with hyphens and make lowercase
-  const cleanName = baseName.replace(/[^A-Z0-9]/ig, '-').toLowerCase();
-  
-  // Add timestamp to ensure uniqueness
-  return `SKU-${cleanName}-${timestamp}`;
-}
-
-/**
- * Utility: Extract color and size from variant title if not available in options
- */
-const extractVariantOptions = (title: string, availableOptions: Option[]): OptionValue[] => {
-  // Common color values to check in the title
-  const commonColors = [
-    'black', 'white', 'red', 'blue', 'green', 'yellow', 'orange', 'purple', 
-    'pink', 'brown', 'gray', 'grey', 'navy', 'teal', 'turquoise', 'silver',
-    'gold', 'beige', 'maroon', 'olive'
-  ];
-  
-  // Common size values to check in the title
-  const commonSizes = [
-    'xs', 'small', 's', 'medium', 'm', 'large', 'l', 'xl', 'xxl', '2xl', 'xxxl', '3xl',
-    'one size', 'onesize', 'one-size', 'os'
-  ];
-  
-  const result: OptionValue[] = [];
-  const lowerTitle = title.toLowerCase();
-  const words = lowerTitle.split(/\s+/);
-  
-  // Find color option
-  const colorOption = availableOptions.find(opt => 
-    opt.title.toLowerCase() === 'color' || opt.title.toLowerCase().includes('color')
-  );
-  
-  if (colorOption) {
-    const foundColor = commonColors.find(color => words.includes(color));
-    if (foundColor) {
-      // Capitalize first letter for display
-      const formattedColor = foundColor.charAt(0).toUpperCase() + foundColor.slice(1);
-      result.push({
-        optionId: colorOption.id,
-        optionName: colorOption.title,
-        value: formattedColor
-      });
-    }
-  }
-  
-  // Find size option
-  const sizeOption = availableOptions.find(opt => 
-    opt.title.toLowerCase() === 'size' || opt.title.toLowerCase().includes('size')
-  );
-  
-  if (sizeOption) {
-    const foundSize = commonSizes.find(size => words.includes(size));
-    if (foundSize) {
-      // Format size appropriately
-      let formattedSize = foundSize.toUpperCase();
-      if (foundSize === 'small') formattedSize = 'Small';
-      if (foundSize === 'medium') formattedSize = 'Medium';
-      if (foundSize === 'large') formattedSize = 'Large';
-      
-      result.push({
-        optionId: sizeOption.id,
-        optionName: sizeOption.title,
-        value: formattedSize
-      });
-    }
-  }
-  
-  return result;
-};
-
-/**
- * Utility: Given an array of option objects (each with an array of values),
- * produce all possible variant combinations (Cartesian product).
- */
-function generateVariantsFromOptions(
-  options: { optionId: string; optionName: string; optionValues: string[] }[]
-): Variant[] {
-  if (!options.length) return [];
-
-  console.log("Generating variants from options:", options);
-
-  // Helper function for the Cartesian product
-  const cartesian = (arrays: string[][]): string[][] => {
-    return arrays.reduce<string[][]>(
-      (results, current) => {
-        return results
-          .map(result => current.map(item => [...result, item]))
-          .reduce((subResults, slice) => [...subResults, ...slice], []);
-      },
-      [[]]
-    );
-  };
-
-  // Extract value arrays from each option
-  const valueArrays = options.map(opt => opt.optionValues);
-  
-  // Generate all combinations of values
-  const combinations = cartesian(valueArrays);
-  
-  // Map combinations to variant objects
-  return combinations.map(combo => {
-    // Create option value objects for each value in the combination
-    const optionValues = combo.map((value, index) => ({
-      optionId: options[index].optionId,
-      optionName: options[index].optionName,
-      value: value
-    }));
-    
-    // Create variant title (e.g. "Small / Red / Cotton")
-    const title = optionValues.map(opt => opt.value).join(' / ');
-    
-    // Create unique SKU with timestamp to avoid duplicates
-    const sku = generateUniqueSku(title);
-    
-    return {
-      id: generateUUID(),
-      title,
-      price: 0,
-      compareAtPrice: 0,
-      stock: 0,
-      sku,
-      allowBackorder: false,
-      manageInventory: true,
-      optionValues,
-    };
-  });
-}
-
+// Define the base API URL for images
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:9000';
+// Define the storefront domain for product view links
+const STOREFRONT_DOMAIN = 'https://www.junooni.com';
+// Default location ID for inventory management
+const DEFAULT_LOCATION_ID = "sloc_01JKWDDGKGCQFJANXV0CVJN2QW";
 const EditProduct = () => {
   const { id } = useParams({ from: "/_authenticated/products/$id" });
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeImageTab, setActiveImageTab] = useState<string>("upload");
-  const [newImageUrl, setNewImageUrl] = useState<string>("");
+  const [activeImageTab, setActiveImageTab] = useState("upload");
+  const [newImageUrl, setNewImageUrl] = useState("");
+  const [productLoaded, setProductLoaded] = useState(false);
+  
+  // For the product URL
+  const [productViewUrl, setProductViewUrl] = useState("");
   
   // For managing the new option value being added for each option
   const [newOptionValues, setNewOptionValues] = useState<Record<number, string>>({});
 
   // For images, we store objects with a file (if newly added) and URL and rank.
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  
+  // For storing uploaded image mappings (old URL to new ID)
+  const [uploadedImageMap, setUploadedImageMap] = useState<Record<string, string>>({});
+  
+  // For variant toggle
+  const [hasVariants, setHasVariants] = useState(false);
 
   // For bulk editing variants
-  const [bulkEditMode, setBulkEditMode] = useState<boolean>(false);
-  const [bulkPrice, setBulkPrice] = useState<string>("");
-  const [bulkStock, setBulkStock] = useState<string>("");
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [bulkPrice, setBulkPrice] = useState("");
   const [selectedVariants, setSelectedVariants] = useState<string[]>([]);
+
+  // For fulfillment info
+  const [fulfillmentType, setFulfillmentType] = useState("");
+  const [fulfillmentData, setFulfillmentData] = useState<{
+    handling_time?: string;
+    shipping_time?: string;
+    type?: string;
+  } | null>(null);
+   const { toast } = useToast();
+  // Stock management modal
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [hasUnsavedVariantChanges, setHasUnsavedVariantChanges] = useState(false);
 
   // Ref for the hidden file input for drag‑and‑drop.
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Keep track of the original options/variants for reconciliation
-  const [originalData, setOriginalData] = useState<{
-    options?: ApiOption[];
-    variants?: ApiVariant[];
-  }>({});
+  const [originalData, setOriginalData] = useState<any>({});
+  
+  // State for storing categories from API
+  const [productCategories, setProductCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
+  // For tracking variant changes for batch update
+  const [originalVariantIds, setOriginalVariantIds] = useState<string[]>([]);
+  const [deletedVariantIds, setDeletedVariantIds] = useState<string[]>([]);
+  
+  // For inventory management
+  const [inventoryLevels, setInventoryLevels] = useState<Record<string, any>>({});
+  const [isLoadingInventory, setIsLoadingInventory] = useState(false);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
+
+  // For image associations
+  const [imageAssociatedOptions, setImageAssociatedOptions] = useState<Option[]>([]);
+  
+  // State to track selected option and value for variant image display
+  const [selectedOption, setSelectedOption] = useState<Option | null>(null);
+  const [selectedOptionValue, setSelectedOptionValue] = useState<string | null>(null);
+
+  // For tracking inventory changes
+  const [inventoryChanges, setInventoryChanges] = useState<{
+    create: {
+      location_id: string;
+      inventory_item_id: string;
+      stocked_quantity: number;
+      incoming_quantity?: number;
+    }[];
+    update: {
+      location_id: string;
+      inventory_item_id: string;
+      stocked_quantity: number;
+      incoming_quantity?: number;
+    }[];
+    delete: string[];
+  }>({
+    create: [],
+    update: [],
+    delete: []
+  });
+
+  const inventoryChangesRef = useRef(inventoryChanges);
+
+  useEffect(() => {
+    inventoryChangesRef.current = inventoryChanges;
+  }, [inventoryChanges]);
+
+  const inventoryLevelsRef = useRef(inventoryLevels);
+
+  useEffect(() => {
+    inventoryLevelsRef.current = inventoryLevels;
+  }, [inventoryLevels]);
+  
   // Initialize the form with default values based on the schema
+  useEffect(() => {
+    if (productLoaded && hasVariants) {
+      loadInventoryLevels();
+    }
+  }, [productLoaded, hasVariants]);
+  
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
     defaultValues: {
       title: '',
+      subtitle: '',
       handle: '',
       description: '',
       status: 'published',
@@ -279,6 +234,12 @@ const EditProduct = () => {
       height: '',
       material: '',
       origin_country: '',
+      category_id: '',
+      productDetails: [{ id: generateUUID(), text: '' }],
+      storyBehindDesign: '',
+      shippingDays: '7-10',
+      handlingTime: '2-3',
+      locationId: DEFAULT_LOCATION_ID
     },
   });
 
@@ -302,6 +263,933 @@ const EditProduct = () => {
     control: form.control,
     name: 'variants',
   });
+  
+  // Field array for product details (bullet points)
+  const {
+    fields: productDetailFields,
+    append: appendProductDetail,
+    remove: removeProductDetail,
+  } = useFieldArray({
+    control: form.control,
+    name: 'productDetails',
+  });
+  // Function to format image URLs
+  const getImageDisplayUrl = (item: MediaItem): string => {
+    if (!item || !item.url) return '';
+    
+    // If it's already a blob URL (from file input), use it as is
+    if (item.url.startsWith('blob:')) {
+      return item.url;
+    }
+    
+    // If it's a full URL (including protocol), use it as is
+    if (item.url.startsWith('http://') || item.url.startsWith('https://')) {
+      return item.url;
+    }
+    
+    // If it starts with a slash, append it to the API base URL
+    if (item.url.startsWith('/')) {
+      return `${API_BASE_URL}${item.url}`;
+    }
+    
+    // Otherwise, assume it's a path relative to the static directory
+    return `${API_BASE_URL}/static/${item.url}`;
+  };
+  
+  // Get options that have image associations
+  const getImageAssociatedOptions = () => {
+    const currentOptions = form.getValues('options');
+    return currentOptions.filter(opt => 
+      opt.title && 
+      opt.optionValues && 
+      opt.optionValues.length > 0 && 
+      opt.imageAssociation === true
+    );
+  };
+  
+  // Update imageAssociatedOptions when options change
+  useEffect(() => {
+    const subscription = form.watch((formValues, { name, type }) => {
+      // Update imageAssociatedOptions when options change
+      if (name && (name.includes('options') || name.includes('imageAssociation'))) {
+        const options = getImageAssociatedOptions();
+        setImageAssociatedOptions(options);
+        
+        // Set selectedOption to the first one with image association if none selected
+        if (options.length > 0 && (!selectedOption || !options.some(opt => opt.id === selectedOption.id))) {
+          setSelectedOption(options[0]);
+          if (options[0].optionValues && options[0].optionValues.length > 0) {
+            setSelectedOptionValue(options[0].optionValues[0]);
+          }
+        }
+      }
+    });
+    
+    // Initial setting
+    setImageAssociatedOptions(getImageAssociatedOptions());
+    
+    // Cleanup subscription on component unmount
+    return () => subscription.unsubscribe();
+  }, [form, selectedOption]);
+
+  // Normalizes an image ID by removing common prefixes
+  const normalizeImageId = (id: string): string => {
+    if (!id) return '';
+    
+    // If it's already a proper image ID, return it
+    if (id.startsWith('img_')) return id;
+    
+    // Try to extract a filename from a path
+    const parts = id.split('/');
+    const filename = parts[parts.length - 1];
+    
+    return filename;
+  };
+
+  // Add this function to synchronize variant stock changes with inventory
+const syncStockToInventory = (variantIndex, stockValue) => {
+  const currentVariants = form.getValues('variants');
+  const variant = currentVariants[variantIndex];
+  
+  // Skip if no inventory item ID or management is disabled
+  if (!variant.manageInventory || !variant.inventoryItemId) return;
+  
+  // Call handleInventoryChange to update both UI and track changes
+  handleInventoryChange(
+    variant.inventoryItemId,
+    DEFAULT_LOCATION_ID,
+    'stocked_quantity',
+    stockValue
+  );
+};
+// Determine if a variant is new based on ID pattern or explicit flag
+const isNewVariant = (variant) => {
+  // Check for explicit flag from generateVariants function
+  if (variant.isNewVariant === true) return true;
+  
+  // Check if this is a newly generated ID (not from the server)
+  if (variant.id && !originalVariantIds.includes(variant.id)) return true;
+  
+  return false;
+};
+
+  // Extracts a proper image ID from a server URL
+  const extractImageIdFromUrl = (url: string): string | null => {
+    if (!url) return null;
+    
+    // Try to match image ID pattern in the URL
+    const imgIdMatch = url.match(/img_[a-zA-Z0-9]+/);
+    if (imgIdMatch) return imgIdMatch[0];
+    
+    // Otherwise, try to extract just the filename
+    const parts = url.split('/');
+    const filename = parts[parts.length - 1];
+    
+    return filename || null;
+  };
+
+  // Checks if two image IDs might refer to the same image
+  const imageIdsMatch = (id1: string, id2: string): boolean => {
+    if (!id1 || !id2) return false;
+    
+    // Normalize both IDs
+    const norm1 = normalizeImageId(id1);
+    const norm2 = normalizeImageId(id2);
+    
+    // Direct match
+    if (norm1 === norm2) return true;
+    
+    // One contains the other
+    if (norm1.includes(norm2) || norm2.includes(norm1)) return true;
+    
+    return false;
+  };
+
+  // Check if we have images for a specific option value
+  const hasImagesForOption = (optionName: string, value: string): boolean => {
+    return mediaItems.some(item => 
+      item.variantInfo?.optionName === optionName && 
+      item.variantInfo?.optionValues?.includes(value)
+    );
+  };
+  
+  // Fetch the product details when the component mounts, but only once
+  useEffect(() => {
+    // Prevent multiple API calls
+    if (!id || productLoaded) return;
+    
+    async function loadProduct() {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Fetch product data
+        const response = await fetchProduct({id});
+        
+        // Parse response if it's a string (JSON)
+        let product;
+        if (typeof response === 'string') {
+          try {
+            product = JSON.parse(response);
+            // The actual product might be nested under a 'product' key
+            if (product.product) {
+              product = product.product;
+            }
+          } catch (parseError) {
+            console.error('Error parsing product data:', parseError);
+            throw new Error('Invalid product data format');
+          }
+        } else {
+          product = response;
+        }
+        
+        // Defensive check to ensure we have a valid product
+        if (!product) {
+          throw new Error('Product data is empty or invalid');
+        }
+        
+        console.log("Loaded product data:", product);
+        
+        // Set product view URL
+        setProductViewUrl(`${STOREFRONT_DOMAIN}/products/${product.handle}`);
+        
+        // Parse metadata for fulfillment info
+        const metadata = product.metadata || {};
+        console.log("Product metadata:", metadata);
+        setFulfillmentType(metadata.fulfillment_type || '');
+        
+        // Parse fulfillment data from metadata
+        if (metadata.fulfillment_type) {
+          let fulfillmentDataObj;
+          try {
+            fulfillmentDataObj = parseFulfillmentData(metadata.fulfillment_type);
+            setFulfillmentData(fulfillmentDataObj);
+          } catch (e) {
+            console.error("Error parsing fulfillment data:", e);
+          }
+        }
+        
+        // Save original data for reference
+        setOriginalData({
+          options: product.options,
+          variants: product.variants,
+          metadata: product.metadata || {} // Store original metadata
+        });
+        
+        // Store original variant IDs for tracking changes
+        const originalIds = product.variants?.map((v: any) => v.id) || [];
+        setOriginalVariantIds(originalIds);
+
+        // Check if the product has variants
+        setHasVariants(product.variants && product.variants.length > 1);
+
+        // Transform options to match component format
+        let transformedOptions: Option[] = [];
+        
+        if (product.options && product.options.length > 0) {
+          // Transform options to match component format with array-based values
+          transformedOptions = product.options.map((opt: any) => {
+            // Extract values from option
+            const optionValues = opt.values?.map((value: any) => 
+              typeof value === 'object' ? value.value : value
+            ) || [];
+            
+            // Initialize with explicitly false imageAssociation (will be updated later)
+            const result: Option = {
+              id: opt.id, // Keep the original option ID
+              title: opt.title,
+              optionValues: optionValues,
+              imageAssociation: false // Default value, will be updated from metadata
+            };
+            
+            // Extract color hex values from metadata if this is a color option
+            if (isColorOption(opt.title)) {
+              const colorHexValues: Record<string, string> = {};
+              
+              // Look for color hex values in metadata
+              if (product.metadata && product.metadata.color_hex_values) {
+                try {
+                  const colorHexArray = JSON.parse(product.metadata.color_hex_values);
+                  if (Array.isArray(colorHexArray)) {
+                    colorHexArray.forEach(item => {
+                      if (item.name && item.hex) {
+                        colorHexValues[item.name] = item.hex;
+                      }
+                    });
+                  }
+                } catch (e) {
+                  console.error("Failed to parse color_hex_values:", e);
+                }
+              }
+              
+              // FALLBACK: Look for legacy colorhex_ entries if no values found
+              if (Object.keys(colorHexValues).length === 0 && product.metadata) {
+                Object.entries(product.metadata).forEach(([key, value]) => {
+                  // Look for keys like "colorhex_red", "colorhex_blue", etc.
+                  if (key.startsWith('colorhex_') && typeof value === 'string') {
+                    const colorName = key.replace('colorhex_', '').replace(/_/g, ' ');
+                    
+                    // Only add colors that are in this option's values
+                    const normalizedOptionValues = optionValues.map(v => v.toLowerCase());
+                    const normalizedColorName = colorName.toLowerCase();
+                    
+                    if (normalizedOptionValues.includes(normalizedColorName)) {
+                      colorHexValues[colorName] = value;
+                    }
+                  }
+                });
+              }
+              
+              // Add color hex values to the option if any were found
+              if (Object.keys(colorHexValues).length > 0) {
+                result.colorHexValues = colorHexValues;
+              }
+            }
+            
+            return result;
+          });
+          
+          // Parse image association settings from metadata
+          if (product.metadata && product.metadata.variant_specific_image_option) {
+            try {
+              let imageAssociationSettings;
+              
+              // Handle string or object format
+              if (typeof product.metadata.variant_specific_image_option === 'string') {
+                imageAssociationSettings = JSON.parse(product.metadata.variant_specific_image_option);
+              } else {
+                imageAssociationSettings = product.metadata.variant_specific_image_option;
+              }
+              
+              console.log("Image association settings from metadata:", imageAssociationSettings);
+              
+              if (Array.isArray(imageAssociationSettings)) {
+                // Update each option with its image association setting
+                transformedOptions = transformedOptions.map(opt => {
+                  // Try different ways to match the option with its setting
+                  let setting = imageAssociationSettings.find(s => {
+                    // 1. Exact ID match
+                    if (s.option_id === opt.id) return true;
+                    
+                    // 2. Normalize IDs by removing potential prefixes
+                    const normalizedSettingId = s.option_id.replace(/^opt_/, '');
+                    const normalizedOptId = opt.id.replace(/^opt_/, '');
+                    if (normalizedSettingId === normalizedOptId) return true;
+                    
+                    // 3. Name match (case insensitive)
+                    if (s.option_name && opt.title && 
+                        s.option_name.toLowerCase() === opt.title.toLowerCase()) return true;
+                    
+                    return false;
+                  });
+                  
+                  console.log(`Option ${opt.title} (${opt.id}) association setting:`, setting);
+                  
+                  if (setting) {
+                    // Convert to explicit boolean to avoid any "undefined" issues
+                    const isEnabled = setting.enabled === true || setting.enabled === "true";
+                    return {
+                      ...opt,
+                      imageAssociation: isEnabled
+                    };
+                  }
+                  
+                  // Explicitly set to false if no setting found
+                  return {
+                    ...opt,
+                    imageAssociation: false
+                  };
+                });
+              }
+            } catch (e) {
+              console.error("Failed to parse image association settings:", e);
+              
+              // Ensure all options have explicit imageAssociation value
+              transformedOptions = transformedOptions.map(opt => ({
+                ...opt,
+                imageAssociation: false
+              }));
+            }
+          } else {
+            // If no image association settings found, ensure all options have explicit imageAssociation set to false
+            transformedOptions = transformedOptions.map(opt => ({
+              ...opt,
+              imageAssociation: false
+            }));
+          }
+          
+          // Log all options after processing
+          console.log("Transformed options with association settings:", transformedOptions);
+        } else {
+          // Create default Color and Size options if none exist
+          transformedOptions = [
+            {
+              id: generateUUID(),
+              title: 'Color',
+              optionValues: [],
+              imageAssociation: false
+            },
+            {
+              id: generateUUID(),
+              title: 'Size',
+              optionValues: [],
+              imageAssociation: false
+            }
+          ];
+        }
+        
+        // Add at least one empty option if none exist
+        if (transformedOptions.length === 0) {
+          transformedOptions.push({
+            id: generateUUID(),
+            title: '',
+            optionValues: [],
+            imageAssociation: false
+          });
+        }
+        
+        // Extract shipping info from metadata
+        let shippingDays = '7-10';
+        let handlingTime = '2-3';
+        
+        if (product.metadata && product.metadata.fulfillment_type) {
+          try {
+            const fulfillmentInfo = JSON.parse(product.metadata.fulfillment_type);
+            if (typeof fulfillmentInfo === 'object') {
+              shippingDays = fulfillmentInfo.shipping_time || '7-10';
+              handlingTime = fulfillmentInfo.handling_time || '2-3';
+            }
+          } catch (e) {
+            console.error("Error parsing fulfillment_type:", e);
+          }
+        }
+        // Transform variants to match component format
+        const transformedVariants: Variant[] = [];
+        
+        if (product.variants && product.variants.length > 0) {
+          // Create a mapping of option IDs to their titles for easier reference
+          const optionMap: Record<string, string> = {};
+          if (product.options) {
+            product.options.forEach((opt: any) => {
+              optionMap[opt.id] = opt.title;
+            });
+          }
+
+          const newInventoryLevels: Record<string, any[]> = {};
+          
+          // Now process each variant
+          for (const variant of product.variants) {
+            // Extract price from the calculated_price in the variant
+            let price = 0;
+            let prices: any[] = [];
+            
+            // Check for calculated_price structure first
+            if (variant.calculated_price && variant.calculated_price.calculated_amount) {
+              price = variant.calculated_price.calculated_amount;
+              prices = [{
+                amount: price,
+                currency_code: variant.calculated_price.currency_code || 'inr'
+              }];
+            } 
+            // Fall back to direct prices array if available
+            else if (variant.prices && Array.isArray(variant.prices) && variant.prices.length > 0) {
+              prices = variant.prices.map((p: any) => ({
+                amount: p.amount,
+                currency_code: p.currency_code || 'inr'
+              }));
+              
+              // Find the INR price if possible
+              const inrPrice = prices.find(p => p.currency_code === 'inr');
+              if (inrPrice) {
+                price = inrPrice.amount;
+              } else {
+                price = prices[0].amount;
+              }
+            } else {
+              price = 0;
+              prices = [{
+                amount: 0,
+                currency_code: 'inr'
+              }];
+            }
+            
+            // Extract inventory/stock quantity from proper field
+            let stock = 0;          
+            const inventoryItemId = variant.inventory_items?.[0]?.inventory_item_id || null;
+
+            if (inventoryItemId) {
+              try {
+                const invRes = await fetchInventoryLevels({ inventoryItemId });
+                const invLevel = invRes.inventory_levels?.[0];
+                if (invLevel) {
+                  stock = invLevel.stocked_quantity ?? 0;
+
+                  // Track inventory level for later sync
+                  newInventoryLevels[inventoryItemId] = [invLevel];
+                }
+              } catch (invErr) {
+                console.log(`Failed to fetch inventory for variant ${variant.id}:`, invErr);
+              }
+            } else if (variant.inventory_quantity !== undefined) {
+              stock = variant.inventory_quantity;
+            }
+            
+            // Extract option values from the variant - handle different API formats
+            let optionValues: OptionValue[] = [];
+            
+            if (variant.options) {
+              if (Array.isArray(variant.options)) {
+                optionValues = variant.options.map((optVal: any) => {
+                  return {
+                    optionId: optVal.option_id || (optVal.option && optVal.option.id),
+                    optionName: (optVal.option && optVal.option.title) || 
+                              optionMap[optVal.option_id] || 'Option',
+                    value: optVal.value
+                  };
+                });
+              } else if (typeof variant.options === 'object') {
+                // Handle object format of options
+                optionValues = Object.entries(variant.options).map(([key, value]) => {
+                  const matchingOption = transformedOptions.find(opt => opt.title === key);
+                  return {
+                    optionId: matchingOption?.id || '',
+                    optionName: key,
+                    value: String(value)
+                  };
+                });
+              }
+            } else {
+              // Try to parse from the variant title if needed
+              const titleParts = variant.title.split(/\s*\/\s*/).map((part: string) => part.trim());
+              
+              if (transformedOptions.length === titleParts.length) {
+                optionValues = transformedOptions.map((option, index) => {
+                  return {
+                    optionId: option.id,
+                    optionName: option.title,
+                    value: titleParts[index]
+                  };
+                });
+              }
+            }
+            
+            transformedVariants.push({
+              id: variant.id,
+              title: variant.title,
+              price: price,
+              prices: prices,
+              stock: stock,
+              sku: variant.sku || '',
+              allowBackorder: Boolean(variant.allow_backorder),
+              manageInventory: variant.manage_inventory !== false,
+              optionValues,
+              inventoryItemId,
+              metadata: variant.metadata || {} // Store original metadata
+            });
+          }
+        }
+        
+        // Make sure all option values discovered in variants are added to options
+        const completeTransformedOptions = addMissingOptionValues(transformedOptions, transformedVariants);
+
+        // Transform images (regular product images)
+        const transformedMedia: MediaItem[] = product.images?.map((img: any, index: number) => {
+          // Ensure we have the full URL for each image
+          let imgUrl = img.url;
+          
+          console.log(`Processing image ${index}:`, img);
+          
+          return {
+            file: null,
+            url: imgUrl,
+            rank: img.rank || index,
+            id: img.id, // Keep the image ID
+            isNew: false,
+            colorValue: img.metadata?.color // Add color association if available
+          };
+        }) || [];
+
+        console.log("Product Images:", product.images);
+        console.log("Transformed Media Initial:", transformedMedia);
+        // Process variant-specific image associations
+        const variantSpecificImages: MediaItem[] = [];
+
+        if (product.variants && Array.isArray(product.variants)) {
+          // Process each variant to look for image associations
+          product.variants.forEach(variant => {
+            console.log(`Processing variant ${variant.id} for image associations:`, variant);
+            
+            // First check if this variant has any direct image associations in its metadata
+            let variantImageIds: string[] = [];
+            let variantImageUrls: string[] = [];
+            
+            if (variant.metadata) {
+              console.log(`Variant ${variant.id} metadata:`, variant.metadata);
+              
+              // Try to get image IDs first (preferred)
+              if (variant.metadata.variant_image_ids) {
+                try {
+                  const parsedIds = typeof variant.metadata.variant_image_ids === 'string' 
+                    ? JSON.parse(variant.metadata.variant_image_ids) 
+                    : variant.metadata.variant_image_ids;
+                    
+                  if (Array.isArray(parsedIds)) {
+                    variantImageIds = parsedIds;
+                  }
+                } catch (e) {
+                  console.error(`Failed to parse variant_image_ids for variant ${variant.id}:`, e);
+                }
+              }
+              
+              // Fall back to URLs if IDs not available
+              if (variant.metadata.variant_images) {
+                try {
+                  const parsedUrls = typeof variant.metadata.variant_images === 'string' 
+                    ? JSON.parse(variant.metadata.variant_images) 
+                    : variant.metadata.variant_images;
+                    
+                  if (Array.isArray(parsedUrls)) {
+                    variantImageUrls = parsedUrls;
+                  }
+                } catch (e) {
+                  console.error(`Failed to parse variant_images for variant ${variant.id}:`, e);
+                }
+              }
+              
+              // Handle color_images array
+              if (variant.metadata.color_images) {
+                try {
+                  let colorImages;
+                  
+                  if (typeof variant.metadata.color_images === 'string') {
+                    colorImages = JSON.parse(variant.metadata.color_images);
+                  } else {
+                    colorImages = variant.metadata.color_images;
+                  }
+                  
+                  console.log(`Color images for variant ${variant.id}:`, colorImages);
+                  
+                  if (Array.isArray(colorImages)) {
+                    // Extract the image IDs and URLs
+                    colorImages.forEach(colorImg => {
+                      if (colorImg.imageId) {
+                        // Find a matching option value for this color
+                        const colorOption = variant.options?.find(ov => 
+                          isColorOption(ov.option?.title || ov.option_name || '') && 
+                          ov.value === colorImg.color
+                        );
+                        
+                        const colorOptionName = colorOption?.option?.title || 
+                                              colorOption?.option_name || 
+                                              'Color';
+                        
+                        if (colorOption) {
+                          console.log(`Found color option match for ${colorImg.color}:`, colorOption);
+                          
+                          // Try to find a matching image in the main images array first
+                          let matchingImage = transformedMedia.find(img => {
+                            // Try various match methods
+                            if (img.id && colorImg.imageId) {
+                              return imageIdsMatch(img.id, colorImg.imageId);
+                            }
+                            
+                            // If URLs are available, try matching by URL
+                            if (img.url && colorImg.url) {
+                              return img.url === colorImg.url;
+                            }
+                            
+                            return false;
+                          });
+                          
+                          if (matchingImage) {
+                            console.log(`Found matching image for color ${colorImg.color}:`, matchingImage);
+                            
+                            // Add option association to existing image
+                            matchingImage.variantInfo = matchingImage.variantInfo || {};
+                            matchingImage.variantInfo.optionName = colorOptionName;
+                            matchingImage.variantInfo.optionValues = [colorImg.color];
+                            matchingImage.colorValue = colorImg.color;
+                          } else {
+                            console.log(`No matching image found for color ${colorImg.color}, adding as new`);
+                            
+                            // Use imageId from colorImg if available, otherwise use a URL
+                            let imageUrl = colorImg.url || '';
+                            
+                            // Skip blob URLs or construct a proper URL
+                            if (imageUrl.startsWith('blob:')) {
+                              // Try to find a server URL in product.images
+                              const serverImage = product.images?.find(img => {
+                                return img.id === colorImg.imageId;
+                              });
+                              
+                              if (serverImage) {
+                                imageUrl = serverImage.url;
+                              } else {
+                                console.warn(`Could not find server URL for color image ${colorImg.imageId}`);
+                                // Try to construct URL from image ID
+                                imageUrl = `${API_BASE_URL}/static/${colorImg.imageId}`;
+                              }
+                            }
+                            
+                            if (imageUrl && !imageUrl.startsWith('blob:')) {
+                              variantSpecificImages.push({
+                                file: null,
+                                url: imageUrl,
+                                rank: transformedMedia.length + variantSpecificImages.length,
+                                id: colorImg.imageId || `color-${colorImg.color}-${Date.now()}`,
+                                isNew: false,
+                                colorValue: colorImg.color,
+                                variantInfo: {
+                                  optionName: colorOptionName,
+                                  optionValues: [colorImg.color]
+                                }
+                              });
+                            }
+                          }
+                        }
+                      }
+                    });
+                  }
+                } catch (e) {
+                  console.error("Failed to parse color images:", e);
+                }
+              }
+            }
+            
+            console.log(`Variant ${variant.id} image associations:`, {
+              ids: variantImageIds,
+              urls: variantImageUrls
+            });
+            
+            // Process direct variant-specific image IDs
+            if (variantImageIds.length > 0) {
+              variantImageIds.forEach(imageId => {
+                if (!imageId) return;
+                
+                // Find the image in the already loaded images by ID or pattern match
+                const matchingImage = transformedMedia.find(img => {
+                  if (!img.id || !imageId) return false;
+                  return imageIdsMatch(img.id, imageId);
+                });
+                
+                if (matchingImage) {
+                  // Add variant association to this image
+                  matchingImage.variantInfo = matchingImage.variantInfo || {};
+                  matchingImage.variantInfo.variantId = variant.id;
+                  console.log(`Associated image ${imageId} with variant ${variant.id}`);
+                } else {
+                  console.warn(`Image ${imageId} not found in loaded images, will check URLs instead`);
+                  
+                  // Try to find this image in the product images by ID
+                  const serverImage = product.images?.find(img => imageIdsMatch(img.id, imageId));
+                  
+                  if (serverImage) {
+                    // Add as a new media item
+                    variantSpecificImages.push({
+                      file: null,
+                      url: serverImage.url,
+                      rank: transformedMedia.length + variantSpecificImages.length,
+                      id: serverImage.id,
+                      isNew: false,
+                      variantInfo: { variantId: variant.id }
+                    });
+                  }
+                }
+              });
+            }
+
+   // Fall back to URLs if IDs didn't match or aren't available
+   if (variantImageUrls.length > 0) {
+    variantImageUrls.forEach(imageUrl => {
+      if (!imageUrl) return;
+      
+      // Skip blob URLs as they won't be valid anymore
+      if (imageUrl.startsWith('blob:')) {
+        console.warn(`Skipping blob URL: ${imageUrl}`);
+        return;
+      }
+      
+      // Find the image in the already loaded images by URL
+      const matchingImage = transformedMedia.find(img => img.url === imageUrl);
+      
+      if (matchingImage) {
+        // Add variant association to this image
+        matchingImage.variantInfo = matchingImage.variantInfo || {};
+        matchingImage.variantInfo.variantId = variant.id;
+        console.log(`Associated image with URL ${imageUrl} with variant ${variant.id}`);
+      } else {
+        // If the image isn't in the gallery, add it as a new item
+        console.log(`Adding new image with URL ${imageUrl} for variant ${variant.id}`);
+        
+        // Try to find a proper image ID from product.images
+        const serverImage = product.images?.find(img => img.url === imageUrl);
+        
+        variantSpecificImages.push({
+          file: null,
+          url: imageUrl,
+          rank: transformedMedia.length + variantSpecificImages.length,
+          id: serverImage?.id || `variant-${variant.id}-${Date.now()}`,
+          isNew: false,
+          variantInfo: { variantId: variant.id }
+        });
+      }
+    });
+  }
+});
+}
+
+// Combine regular images with variant-specific images, avoiding duplicates
+const allMediaItems = [...transformedMedia];
+
+// Only add variant-specific images that don't already exist in the gallery
+variantSpecificImages.forEach(vsImage => {
+// Check if this image URL already exists in allMediaItems
+const exists = allMediaItems.some(item => item.url === vsImage.url);
+if (!exists) {
+  allMediaItems.push(vsImage);
+}
+});
+
+console.log("Final media items after processing:", allMediaItems);
+
+// Set the combined images to the state
+setMediaItems(allMediaItems);
+
+// Process product details from metadata
+let productDetails: ProductDetail[] = [{ id: generateUUID(), text: '' }];
+let storyBehindDesign = '';
+
+if (product.metadata) {
+// Extract product details
+if (product.metadata.product_details) {
+  try {
+    const parsedDetails = JSON.parse(product.metadata.product_details);
+    if (Array.isArray(parsedDetails) && parsedDetails.length > 0) {
+      productDetails = parsedDetails.map(detail => ({
+        id: generateUUID(),
+        text: detail
+      }));
+    }
+  } catch (e) {
+    console.error("Failed to parse product details:", e);
+  }
+}
+
+// Extract story behind design
+if (product.metadata.description_story) {
+  storyBehindDesign = product.metadata.description_story;
+}
+}
+
+// Reset form with fetched values
+form.reset({
+title: product.title || '',
+subtitle: product.subtitle || '',
+handle: product.handle || '',
+description: product.description || '',
+status: product.status || 'published',
+thumbnail: product.thumbnail || '',
+discountable: product.discountable ?? true,
+options: completeTransformedOptions,
+variants: transformedVariants,
+weight: product.weight?.toString() || '',
+length: product.length?.toString() || '',
+width: product.width?.toString() || '',
+height: product.height?.toString() || '',
+material: product.material || '',
+origin_country: product.origin_country || '',
+category_id: product.categories && product.categories.length > 0 ? product.categories[0].id : '',
+productDetails,
+storyBehindDesign,
+shippingDays,
+handlingTime,
+locationId: DEFAULT_LOCATION_ID
+});
+
+// Log the options after form reset
+console.log("Options after form reset:", form.getValues('options'));
+
+// Log the image association options
+const associatedOptions = getImageAssociatedOptions();
+console.log("Image associated options after load:", associatedOptions);
+setImageAssociatedOptions(associatedOptions);
+
+// Set initial selected option and value if we have options with image associations
+if (associatedOptions.length > 0) {
+setSelectedOption(associatedOptions[0]);
+if (associatedOptions[0].optionValues && associatedOptions[0].optionValues.length > 0) {
+  setSelectedOptionValue(associatedOptions[0].optionValues[0]);
+}
+}
+
+// Reset the unsaved changes flag after loading
+setHasUnsavedVariantChanges(false);
+
+// Mark product as loaded to prevent multiple fetches
+setProductLoaded(true);
+setIsLoading(false);
+} catch (error: any) {
+console.error('Error loading product:', error);
+setError('Failed to load product. Please try again.');
+setIsLoading(false);
+}
+}
+
+if (id) {
+loadProduct();
+}
+}, [id, form, productLoaded]);
+
+  // Helper function to ensure all option values are correctly added to the options
+  const addMissingOptionValues = (options: Option[], variants: Variant[]): Option[] => {
+    // Create map of option title to array of values
+    const optionValuesMap: Record<string, Set<string>> = {};
+    
+    // Initialize map with existing option values
+    options.forEach(opt => {
+      optionValuesMap[opt.title] = new Set(opt.optionValues);
+    });
+    
+    // Add any missing values from variants
+    variants.forEach(variant => {
+      if (variant.optionValues && Array.isArray(variant.optionValues)) {
+        variant.optionValues.forEach(optVal => {
+          if (optVal.optionName && optVal.value) {
+            if (!optionValuesMap[optVal.optionName]) {
+              optionValuesMap[optVal.optionName] = new Set<string>();
+            }
+            optionValuesMap[optVal.optionName].add(optVal.value);
+          }
+        });
+      }
+    });
+    
+    // Update options with complete value lists
+    return options.map(opt => ({
+      ...opt,
+      optionValues: Array.from(optionValuesMap[opt.title] || new Set<string>())
+    }));
+  };
+
+  // Parse fulfillment data
+  const parseFulfillmentData = (dataString: string) => {
+    try {
+      if (!dataString) return null;
+      
+      let parsedData;
+      try {
+        parsedData = JSON.parse(dataString);
+      } catch (e) {
+        console.error("Failed to parse fulfillment_data JSON:", e);
+        return null;
+      }
+      
+      return parsedData;
+    } catch (e) {
+      console.error("Error parsing fulfillment data:", e);
+      return null;
+    }
+  };
 
   // Add a new option value for a specific option
   const handleAddOptionValue = (optionIndex: number) => {
@@ -366,9 +1254,13 @@ const EditProduct = () => {
       [optionIndex]: value
     }));
   };
-
+  
   // Generate variants from options - using useCallback to avoid infinite loops
+  // Fixed handleGenerateVariants function
   const handleGenerateVariants = useCallback(() => {
+    // Don't generate variants during initial load
+    if (!productLoaded) return;
+    
     const currentOptions = form.getValues('options');
     
     // Filter out options without name or values
@@ -377,8 +1269,6 @@ const EditProduct = () => {
     );
     
     if (validOptions.length > 0) {
-      console.log("Generating variants from options:", validOptions);
-      
       const parsedOptions = validOptions.map((opt) => ({
         optionId: opt.id || generateUUID(),
         optionName: opt.title,
@@ -386,10 +1276,8 @@ const EditProduct = () => {
       }));
       
       const currentVariants = form.getValues('variants');
-      console.log("Current variants before generation:", currentVariants);
       
       const newVariants = generateVariantsFromOptions(parsedOptions);
-      console.log("Generated new variants:", newVariants);
       
       // Preserve existing variant data (prices, stock, etc.) where possible
       const variantsWithExistingData = newVariants.map(newVariant => {
@@ -398,7 +1286,9 @@ const EditProduct = () => {
           // Skip if lengths don't match or if optionValues is not an array
           if (!existing.optionValues || 
               !Array.isArray(existing.optionValues) || 
-              existing.optionValues.length !== newVariant.optionValues.length) return false;
+              existing.optionValues.length !== newVariant.optionValues.length) {
+            return false;
+          }
           
           // Check if all option values match
           const allValuesMatch = newVariant.optionValues.every(newOptVal => 
@@ -412,11 +1302,6 @@ const EditProduct = () => {
         });
         
         if (existingVariant) {
-          console.log("Found existing variant match:", {
-            new: newVariant.title,
-            existing: existingVariant.title
-          });
-          
           // Keep existing data but update title and optionValues
           return {
             ...existingVariant,
@@ -437,25 +1322,357 @@ const EditProduct = () => {
           };
         }
         
-        // For new variants, add default sku and other values
-        return newVariant;
+        
+        // For new variants, use default values and a generated ID
+        // Preserve existing inventory item ID mapping if possible
+        const variantId = generateUUID();
+        
+        // Find a previous variant that might have relevant data
+        // This helps when adding a new option but wanting to keep pricing data
+        const singleOptionMatches = currentVariants.filter(existing => {
+          if (!existing.optionValues || !Array.isArray(existing.optionValues)) return false;
+          
+          // Check if ANY option value matches (not all, since we're adding options)
+          return newVariant.optionValues.some(newOptVal =>
+            existing.optionValues.some(existingOptVal =>
+              existingOptVal.optionName === newOptVal.optionName &&
+              existingOptVal.value === newOptVal.value
+            )
+          );
+        });
+
+        
+        // Use the first matching variant's data as defaults
+        const matchingOldVariant = singleOptionMatches[0];
+        
+        return {
+          ...newVariant,
+          id: variantId,
+          price: matchingOldVariant?.price || 0,
+          stock: matchingOldVariant?.stock || 0,
+          sku: generateUniqueSku(`${newVariant.title}`),
+          // Mark as a new variant for inventory tracking
+          isNewVariant: true
+        };
       });
+
+
+      // After generating all variants, ensure their stock values are properly synced to inventory
+      // This should be added at the end of the handleGenerateVariants function
+      const syncNewVariantsInventory = () => {
+        variantsWithExistingData.forEach((variant, index) => {
+          // Only process variants with management enabled and a stock value
+          if (variant.manageInventory !== false && (variant.stock || variant.stock === 0)) {
+            // We need to ensure the inventoryItemId exists
+            if (!variant.inventoryItemId && variant.isNewVariant) {
+              variant.inventoryItemId = `temp_item_${variant.id}`;
+            }
+            
+            // Only if the variant has an inventory item ID, sync the stock value
+            if (variant.inventoryItemId) {
+              // This will generate the proper inventory change entry
+              handleInventoryChange(
+                variant.inventoryItemId,
+                DEFAULT_LOCATION_ID,
+                'stocked_quantity',
+                parseInt(variant.stock) || 0
+              );
+              
+              console.log(`Synced new variant ${variant.id} stock ${variant.stock} to inventory item ${variant.inventoryItemId}`);
+            }
+          }
+        });
+      };
+
+      // Call the function to sync inventory for new variants
+      syncNewVariantsInventory();
+
       
-      console.log("Final variants to be applied:", variantsWithExistingData);
+      console.log("Generated variants:", variantsWithExistingData);
       
-      // Replace variants in the form
+      // Flag that we have unsaved variant changes
+      setHasUnsavedVariantChanges(true);
+      
+      // Replace all variants with the newly generated ones
+      // This ensures incomplete variants are removed
       replaceVariants(variantsWithExistingData);
       
-      // Log variants after replacement to verify
-      setTimeout(() => {
-        console.log("Variants after replacement:", form.getValues('variants'));
-      }, 0);
+      // Track deleted variants for inventory tracking
+      const existingVariantIds = currentVariants
+        .filter(v => originalVariantIds.includes(v.id))
+        .map(v => v.id);
+        
+      const newVariantIds = variantsWithExistingData
+        .filter(v => !v.isNewVariant)
+        .map(v => v.id);
+        
+      // Find variants that were removed by the regeneration
+      const removedVariantIds = existingVariantIds.filter(id => !newVariantIds.includes(id));
+      
+      // Add these to the deletedVariantIds for batch update
+      if (removedVariantIds.length > 0) {
+        setDeletedVariantIds(prev => [...prev, ...removedVariantIds]);
+      }
+      
     } else {
-      console.log("No valid options found, clearing variants");
       // If there are no valid options, clear the variants
       replaceVariants([]);
     }
-  }, [form, replaceVariants]);
+  }, [form, replaceVariants, productLoaded, originalVariantIds]);
+
+  // Load inventory levels for all variants with inventory items
+  const loadInventoryLevels = async () => {
+    setIsLoadingInventory(true);
+    setInventoryError(null);
+    
+    try {
+      const variantInventoryPromises = [];
+      const currentVariants = form.getValues('variants');
+      const inventoryItemVariantMap: Record<string, number> = {}; // Map inventory item IDs to variant index
+      
+      // Reset inventory changes
+      setInventoryChanges({
+        create: [],
+        update: [],
+        delete: []
+      });
+      
+      // Create a map of inventory item IDs to variant indices and collect fetch promises
+      for (let i = 0; i < currentVariants.length; i++) {
+        const variant = currentVariants[i];
+        
+        // Skip variants that don't have manage_inventory enabled
+        if (!variant.manageInventory) continue;
+        
+        // Get inventory item ID from the variant
+        const inventoryItemId = getVariantInventoryItemId(variant);
+        
+        if (inventoryItemId) {
+          inventoryItemVariantMap[inventoryItemId] = i;
+          variantInventoryPromises.push(
+            fetchInventoryLevels({ inventoryItemId })
+              .then(response => ({ 
+                inventoryItemId, 
+                data: response 
+              }))
+              .catch(error => ({ 
+                inventoryItemId, 
+                error 
+              }))
+          );
+        }
+      }
+      
+      // Fetch all inventory levels in parallel
+      const results = await Promise.all(variantInventoryPromises);
+      
+      // Process results
+      const newInventoryLevels: Record<string, any> = {};
+      
+      results.forEach(result => {
+        if ('data' in result && result.data) {
+          newInventoryLevels[result.inventoryItemId] = result.data.inventory_levels || [];
+        } else if ('error' in result) {
+          console.error(`Error fetching inventory for ${result.inventoryItemId}:`, result.error);
+        }
+      });
+      
+      setInventoryLevels(newInventoryLevels);
+      setIsLoadingInventory(false);
+    } catch (error) {
+      console.error('Error loading inventory levels:', error);
+      setInventoryError('Failed to load inventory data. Please try again.');
+      setIsLoadingInventory(false);
+    }
+  };
+
+  // When opening the stock management modal
+  const handleOpenStockModal = async () => {
+    // Only disable the stock management modal when there are unsaved variant changes
+    if (hasUnsavedVariantChanges) {
+      // Do not open the modal if there are unsaved changes
+      return;
+    }
+    
+    setIsStockModalOpen(true);
+    await loadInventoryLevels();
+  };
+
+  // Use InventoryManagementModal instead of the built-in StockManagementModal
+  const renderInventoryManagementModal = () => {
+    if (!isStockModalOpen) return null;
+    
+    return (
+      <Dialog open={isStockModalOpen} onOpenChange={(open) => !open && setIsStockModalOpen(false)}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Inventory Management</DialogTitle>
+            <DialogDescription>
+              Manage stock levels for all variants
+            </DialogDescription>
+          </DialogHeader>
+          
+          <InventoryManagementModal
+            variants={form.getValues('variants')}
+            inventoryLevels={inventoryLevels}
+            isLoadingInventory={isLoadingInventory}
+            inventoryError={inventoryError}
+            handleInventoryChange={handleInventoryChange}
+            updateVariant={updateVariant}
+            defaultLocationId={DEFAULT_LOCATION_ID}
+            batchUpdateInventoryLevels={batchUpdateInventoryLevels}
+            inventoryChanges={inventoryChanges}
+            onClose={() => setIsStockModalOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  // Handle updating inventory quantity - modified for stocked quantity only
+  const handleInventoryChange = (
+    inventoryItemId: string, 
+    locationId: string, 
+    field: 'stocked_quantity', 
+    value: number
+  ) => {
+    // Ensure we have numeric values
+    const numericValue = typeof value === 'string' ? parseInt(value) || 0 : value;
+    
+    // Ensure location ID is always set
+    const actualLocationId = locationId || DEFAULT_LOCATION_ID;
+    
+    // First update the inventoryLevels state for UI display
+    setInventoryLevels(prev => {
+      const updatedLevels = { ...prev };
+      const levels = updatedLevels[inventoryItemId] || [];
+      const levelIndex = levels.findIndex(level => level.location_id === actualLocationId);
+    
+      if (levelIndex >= 0) {
+        // Update existing level
+        levels[levelIndex] = {
+          ...levels[levelIndex],
+          [field]: numericValue
+        };
+      } else {
+        // Create a new level if it doesn't exist
+        levels.push({
+          id: `temp_${inventoryItemId}_${actualLocationId}`,
+          inventory_item_id: inventoryItemId,
+          location_id: actualLocationId,
+          stocked_quantity: numericValue,
+          reserved_quantity: 0,
+          available_quantity: numericValue
+        });
+      }
+    
+      updatedLevels[inventoryItemId] = levels;
+      return updatedLevels;
+    });
+
+    // Track changes in inventoryChanges state
+    setInventoryChanges(prev => {
+      const changes = { ...prev };
+      
+      // For new inventory items (those starting with temp_), always go to create
+      const isNewInventoryItem = inventoryItemId.startsWith('temp_') || 
+                                !inventoryLevelsRef.current[inventoryItemId];
+      
+      // Prepare the inventory entry with numeric values
+      const inventoryEntry = {
+        inventory_item_id: inventoryItemId,
+        location_id: actualLocationId,
+        stocked_quantity: numericValue
+      };
+      
+      if (isNewInventoryItem) {
+        // Check if already in create queue
+        const createIndex = changes.create.findIndex(item => 
+          item.inventory_item_id === inventoryItemId && item.location_id === actualLocationId
+        );
+        
+        if (createIndex >= 0) {
+          // Update existing create entry
+          changes.create[createIndex] = { 
+            ...changes.create[createIndex], 
+            [field]: numericValue 
+          };
+        } else {
+          // Add new create entry
+          changes.create.push(inventoryEntry);
+        }
+        
+        // Remove from update queue if present
+        changes.update = changes.update.filter(item => 
+          !(item.inventory_item_id === inventoryItemId && item.location_id === actualLocationId)
+        );
+      } else {
+        // Regular case for existing inventory items
+        const existsInCreate = changes.create.some(
+          item => item.inventory_item_id === inventoryItemId && item.location_id === actualLocationId
+        );
+        
+        const existsInUpdate = changes.update.some(
+          item => item.inventory_item_id === inventoryItemId && item.location_id === actualLocationId
+        );
+        
+        if (existsInCreate) {
+          // Update in create queue
+          const createIndex = changes.create.findIndex(item => 
+            item.inventory_item_id === inventoryItemId && item.location_id === actualLocationId
+          );
+          changes.create[createIndex] = { 
+            ...changes.create[createIndex], 
+            [field]: numericValue 
+          };
+        } else if (existsInUpdate) {
+          // Update in update queue
+          const updateIndex = changes.update.findIndex(item => 
+            item.inventory_item_id === inventoryItemId && item.location_id === actualLocationId
+          );
+          changes.update[updateIndex] = { 
+            ...changes.update[updateIndex], 
+            [field]: numericValue 
+          };
+        } else {
+          // Add to update queue
+          changes.update.push(inventoryEntry);
+        }
+      }
+      
+      return changes;
+    });
+    
+    // Also update the variant's stock field for UI consistency
+    if (field === 'stocked_quantity') {
+      const currentVariants = form.getValues('variants');
+      const variantIndex = currentVariants.findIndex(v => {
+        const itemId = getVariantInventoryItemId(v);
+        return itemId === inventoryItemId;
+      });
+    
+      if (variantIndex >= 0) {
+        // Update variant but avoid calling this function again (to prevent infinite loop)
+        const updatedVariant = {...currentVariants[variantIndex], stock: numericValue};
+        updateVariant(variantIndex, updatedVariant);
+      }
+    }
+  };
+  
+  // Get images for a variant
+  const getVariantSpecificImages = (variantId: string): MediaItem[] => {
+    return mediaItems.filter(item => 
+      item.variantInfo?.variantId === variantId
+    );
+  };
+
+  // Get images for a specific option value
+  const getOptionValueImages = (optionName: string, value: string): MediaItem[] => {
+    return mediaItems.filter(item => 
+      item.variantInfo?.optionName === optionName && 
+      item.variantInfo?.optionValues?.includes(value)
+    );
+  };
 
   // Update a specific variant field
   const handleVariantFieldChange = (variantIndex: number, field: string, value: any) => {
@@ -466,10 +1683,10 @@ const EditProduct = () => {
     const updatedVariant = JSON.parse(JSON.stringify(currentVariant));
     updatedVariant[field] = value;
     
-    // Log for debugging
-    console.log(`Updating variant ${variantIndex}, field ${field}:`, value);
-    
     updateVariant(variantIndex, updatedVariant);
+    
+    // Mark that we have unsaved variant changes
+    setHasUnsavedVariantChanges(true);
   };
 
   // Handle bulk edit of variants
@@ -483,12 +1700,44 @@ const EditProduct = () => {
       const variantIndex = currentVariants.findIndex(v => v.id === variantId);
       if (variantIndex !== -1) {
         handleVariantFieldChange(variantIndex, field, value);
+        
+        // If updating price, also update the prices array
+        if (field === 'price') {
+          const currentVariant = currentVariants[variantIndex];
+          if (currentVariant.prices && Array.isArray(currentVariant.prices)) {
+            const updatedPrices = currentVariant.prices.map(p => ({
+              ...p,
+              amount: value
+            }));
+            handleVariantFieldChange(variantIndex, 'prices', updatedPrices);
+          }
+        }
       }
     });
     
     // Clear bulk edit values after applying
     if (field === 'price') setBulkPrice('');
-    if (field === 'stock') setBulkStock('');
+    
+    // Mark that we have unsaved variant changes
+    setHasUnsavedVariantChanges(true);
+  };
+
+  // Handle bulk inventory management toggle
+  const handleBulkInventoryToggle = (value: boolean) => {
+    if (!selectedVariants.length) return;
+    
+    const currentVariants = form.getValues('variants');
+    
+    // Update each selected variant
+    selectedVariants.forEach(variantId => {
+      const variantIndex = currentVariants.findIndex(v => v.id === variantId);
+      if (variantIndex !== -1) {
+        handleVariantFieldChange(variantIndex, 'manageInventory', value);
+      }
+    });
+    
+    // Mark that we have unsaved variant changes
+    setHasUnsavedVariantChanges(true);
   };
 
   // Handle selecting all variants
@@ -532,6 +1781,136 @@ const EditProduct = () => {
     updatedVariants.splice(variantIndex + 1, 0, newVariant);
     
     replaceVariants(updatedVariants);
+    
+    // Mark that we have unsaved variant changes
+    setHasUnsavedVariantChanges(true);
+  };
+
+  // Handle removing a variant with tracking for batch update
+  const handleRemoveVariant = (index: number) => {
+    const variant = form.getValues(`variants.${index}`);
+    
+    // If this is an existing variant (has an ID and was in the original data), track for deletion
+    if (variant.id && originalVariantIds.includes(variant.id)) {
+      setDeletedVariantIds(prev => [...prev, variant.id]);
+    }
+    
+    // Remove from the form
+    removeVariant(index);
+    
+    // Mark that we have unsaved variant changes
+    setHasUnsavedVariantChanges(true);
+  };
+  
+  // Handle file change for standard and variant-specific uploads
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement> | HTMLInputElement, 
+    variantInfo?: VariantInfo
+  ): void => {
+    try {
+      const fileInput = e.target || e;
+      if (fileInput.files && fileInput.files.length > 0) {
+        // Create new media items with proper association metadata
+        const newMedia = Array.from(fileInput.files).map((file, index) => {
+          const mediaItem: MediaItem = {
+            file,
+            url: URL.createObjectURL(file),
+            rank: mediaItems.length + index,
+            isNew: true
+          };
+          
+          // IMPORTANT: If variantInfo is provided, add it directly to the mediaItem
+          if (variantInfo) {
+            mediaItem.variantInfo = variantInfo;
+            
+            // For color options, also set the colorValue property
+            if (variantInfo.optionName && 
+                variantInfo.optionValues && 
+                variantInfo.optionValues.length > 0 && 
+                isColorOption(variantInfo.optionName)) {
+              mediaItem.colorValue = variantInfo.optionValues[0];
+            }
+          }
+          
+          return mediaItem;
+        });
+        
+        // Add the new media items to the existing ones
+        setMediaItems(prev => [...prev, ...newMedia]);
+        
+        // Clear the file input
+        fileInput.value = '';
+      }
+    } catch (error) {
+      console.error("Error handling file upload:", error);
+      alert("Error uploading files. Please try again.");
+    }
+  };
+
+  // FIXED: Added this function to handle file uploads specifically for variant/option associated images
+  const handleAssociatedFileUpload = (files: FileList, associationType: 'variant' | 'option', associationValue: { 
+    variantId?: string, 
+    optionName?: string, 
+    optionValue?: string 
+  }) => {
+    if (!files || files.length === 0) return;
+    
+    const newMedia = Array.from(files).map((file, index) => {
+      const mediaItem: MediaItem = {
+        file,
+        url: URL.createObjectURL(file),
+        rank: mediaItems.length + index,
+        isNew: true,
+        variantInfo: {}
+      };
+
+      if (associationType === 'variant' && associationValue.variantId) {
+        mediaItem.variantInfo = {
+          variantId: associationValue.variantId
+        };
+      } else if (associationType === 'option' && associationValue.optionName && associationValue.optionValue) {
+        mediaItem.variantInfo = {
+          optionName: associationValue.optionName,
+          optionValues: [associationValue.optionValue]
+        };
+        // For color options, also set colorValue
+        if (isColorOption(associationValue.optionName)) {
+          mediaItem.colorValue = associationValue.optionValue;
+        }
+      }
+      
+      return mediaItem;
+    });
+    
+    setMediaItems(prev => [...prev, ...newMedia]);
+  };
+
+  const handleDirectVariantUpload = (files: FileList, variantId: string) => {
+    if (!files || files.length === 0) return;
+    
+    const fileInput = { files, value: '' } as HTMLInputElement;
+    handleFileChange(fileInput, { variantId });
+  };
+
+  // To handle option-specific uploads directly from the ImageManager
+  const handleDirectOptionUpload = (files: FileList, optionName: string, optionValue: string) => {
+    if (!files || files.length === 0) return;
+    
+    const fileInput = { files, value: '' } as HTMLInputElement;
+    handleFileChange(fileInput, { 
+      optionName, 
+      optionValues: [optionValue] 
+    });
+  };
+
+  // FIXED: Added new function to handle file uploads for variant/option images
+  const handleVariantImageUpload = (files: FileList, variantId: string) => {
+    handleAssociatedFileUpload(files, 'variant', { variantId });
+  };
+
+  // FIXED: Added new function to handle file uploads for option value images
+  const handleOptionImageUpload = (files: FileList, optionName: string, optionValue: string) => {
+    handleAssociatedFileUpload(files, 'option', { optionName, optionValue });
   };
 
   // Handle adding a new image via URL
@@ -562,250 +1941,23 @@ const EditProduct = () => {
     }
   };
 
-  // Monitor option changes to update variants
-  useEffect(() => {
-    const subscription = form.watch((formValues, { name, type }) => {
-      console.log('Form changed:', { name, type, formValues });
-      
-      // Check if the changed field is an option field
-      if (name && (name.includes('options') || name.includes('title'))) {
-        const currentOptions = form.getValues('options');
-        console.log('Current options after change:', currentOptions);
-        
-        // If the last option has values and we have fewer than 3 options
-        if (currentOptions.length > 0) {
-          const lastOption = currentOptions[currentOptions.length - 1];
-          const hasValues = lastOption?.optionValues && 
-                          Array.isArray(lastOption.optionValues) && 
-                          lastOption.optionValues.length > 0;
-          
-          if (hasValues && currentOptions.length < 3) {
-            // Check if we don't already have an empty option at the end
-            const hasEmptyOption = currentOptions.some(opt => 
-              opt.title === '' && (!opt.optionValues || 
-              (Array.isArray(opt.optionValues) && opt.optionValues.length === 0))
-            );
-            
-            if (!hasEmptyOption) {
-              // Add a new empty option
-              appendOption({ title: '', optionValues: [] });
-            }
-          }
-        }
-        
-        // Only regenerate variants if we have a meaningful change to options
-        // This prevents unnecessary regeneration during initial form setup
-        if (isLoading) return;
-        
-        // If the change is significant, regenerate the variants
-        if (type === 'change') {
-          console.log('Regenerating variants due to option change');
-          handleGenerateVariants();
-        }
-      }
-    });
+  // Handle option value selection for variant images
+  const handleOptionValueSelect = (optionId: string, value: string) => {
+    const options = form.getValues('options');
+    const option = options.find(opt => opt.id === optionId);
     
-    // Cleanup subscription on component unmount
-    return () => subscription.unsubscribe();
-  }, [appendOption, form, isLoading, handleGenerateVariants]);
-
-  // Fetch the product details when the component mounts.
-  useEffect(() => {
-    async function loadProduct() {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // Fetch product data
-        const product = await fetchProduct({id});
-        
-        // Defensive check to ensure we have a valid product
-        if (!product) {
-          throw new Error('Product data is empty or invalid');
-        }
-
-        console.log('Loaded product data:', product);
-        
-        // Save original data for reference
-        setOriginalData({
-          options: product.options,
-          variants: product.variants
-        });
-
-        // Prepare default options if none exist
-        let transformedOptions: Option[] = [];
-        
-        if (product.options && product.options.length > 0) {
-          // Transform options to match component format with array-based values
-          transformedOptions = product.options.map((opt) => {
-            // Get all values for this option
-            const optionValues = opt.values?.map(value => value.value) || [];
-            
-            return {
-              id: opt.id, // Keep the original option ID
-              title: opt.title,
-              optionValues: optionValues
-            };
-          });
-        } else {
-          // Create default Color and Size options if none exist
-          transformedOptions = [
-            {
-              id: generateUUID(),
-              title: 'Color',
-              optionValues: []
-            },
-            {
-              id: generateUUID(),
-              title: 'Size',
-              optionValues: []
-            }
-          ];
-        }
-        
-        // Add at least one empty option if none exist
-        if (transformedOptions.length === 0) {
-          transformedOptions.push({
-            id: generateUUID(),
-            title: '',
-            optionValues: []
-          });
-        }
-        
-        // Transform variants to match component format
-        const transformedVariants: Variant[] = [];
-        
-        if (product.variants && product.variants.length > 0) {
-          for (const variant of product.variants) {
-            // Extract price if available - handle potential undefined structures
-            let price = 0;
-            if (variant.prices && variant.prices.length > 0) {
-              price = variant.prices[0].amount;
-            }
-            
-            // Extract option values from the variant
-            let optionValues: OptionValue[] = [];
-            
-            // First try to get options from the variant's options array
-            if (variant.options && variant.options.length > 0) {
-              optionValues = variant.options.map(optVal => ({
-                optionId: optVal.option?.id,
-                optionName: optVal.option?.title || '',
-                value: optVal.value
-              }));
-            } 
-            // If no options, try to parse from the title
-            else if (variant.title) {
-              // Try to extract color and size info from the title
-              optionValues = extractVariantOptions(variant.title, transformedOptions);
-            }
-            
-            // If still no options but we have default ones, create placeholder values
-            if (optionValues.length === 0 && transformedOptions.length > 0) {
-              const variantWords = variant.title.split(' ');
-              
-              // Try to add a placeholder for each option
-              transformedOptions.forEach((opt, idx) => {
-                const placeholderValue = idx < variantWords.length ? 
-                  variantWords[idx] : `Option ${idx + 1}`;
-                
-                optionValues.push({
-                  optionId: opt.id,
-                  optionName: opt.title,
-                  value: placeholderValue
-                });
-                
-                // Add this value to the option's values if not already there
-                if (!opt.optionValues.includes(placeholderValue)) {
-                  opt.optionValues.push(placeholderValue);
-                }
-              });
-            }
-            
-            console.log(`Variant ${variant.title} option values:`, optionValues);
-            
-            transformedVariants.push({
-              id: variant.id,
-              title: variant.title,
-              price: price,
-              compareAtPrice: variant.compare_at_price || 0,
-              stock: variant.inventory_quantity || 0,
-              sku: variant.sku || generateUniqueSku(variant.title),
-              allowBackorder: variant.allow_backorder || false,
-              manageInventory: variant.manage_inventory || true,
-              optionValues
-            });
-          }
-        }
-        
-        // Transform images
-        const transformedMedia: MediaItem[] = product.images?.map((img) => ({
-          file: null,
-          url: img.url,
-          rank: img.rank || 0,
-          id: img.id // Keep the image ID
-        })) || [];
-        
-        // Prepare default new option values
-        const initialOptionValues: Record<number, string> = {};
-        transformedOptions.forEach((_, index) => {
-          initialOptionValues[index] = '';
-        });
-        setNewOptionValues(initialOptionValues);
-        
-        // Reset form with fetched values
-        form.reset({
-          title: product.title || '',
-          handle: product.handle || '',
-          description: product.description || '',
-          status: product.status || 'published',
-          thumbnail: product.thumbnail || '',
-          discountable: product.discountable ?? true,
-          options: transformedOptions,
-          variants: transformedVariants,
-          weight: product.weight?.toString() || '',
-          length: product.length?.toString() || '',
-          width: product.width?.toString() || '',
-          height: product.height?.toString() || '',
-          material: product.material || '',
-          origin_country: product.origin_country || '',
-        });
-        
-        // Set media items
-        setMediaItems(transformedMedia);
-        
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error loading product:', error);
-        setError('Failed to load product. Please try again.');
-        setIsLoading(false);
-      }
-    }
-
-    if (id) {
-      loadProduct();
-    }
-  }, [id, form]);
-
-  // File selection handler (for adding new images).
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newMedia = Array.from(e.target.files).map((file, index) => ({
-        file,
-        url: URL.createObjectURL(file),
-        rank: mediaItems.length + index, // Assign new ranks
-        isNew: true
-      }));
-      setMediaItems((prev) => [...prev, ...newMedia]);
+    if (option) {
+      setSelectedOption(option);
+      setSelectedOptionValue(value);
     }
   };
 
-  // Trigger the hidden file input when clicking the dropzone.
+  // Trigger the hidden file input when clicking the dropzone
   const handleDropzoneClick = () => {
     fileInputRef.current?.click();
   };
 
-  // Remove an image and revoke its object URL if necessary.
+  // Remove an image and revoke its object URL if necessary
   const handleRemoveImage = (index: number) => {
     setMediaItems((prev) => {
       const removed = prev[index];
@@ -844,21 +1996,51 @@ const EditProduct = () => {
     });
   };
 
-  // Upload a single file to the server
-  const uploadFile = async (file: File): Promise<UploadResult> => {
+  // Upload a single file to the server with better metadata handling
+  const uploadFile = async (file: File, variantInfo?: VariantInfo): Promise<{url: string, id: string}> => {
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('files', file);
+      
+      // Add explicit metadata for variant associations
+      if (variantInfo) {
+        const metadata: Record<string, any> = {};
+        
+        if (variantInfo.variantId) {
+          metadata.variant_id = variantInfo.variantId;
+        }
+        
+        if (variantInfo.optionName && variantInfo.optionValues) {
+          metadata.option_values = [{
+            option_name: variantInfo.optionName,
+            values: variantInfo.optionValues
+          }];
+        }
+        
+        // Add metadata to formData as a separate field
+        if (Object.keys(metadata).length > 0) {
+          formData.append('metadata', JSON.stringify(metadata));
+          console.log('Uploading image with variant metadata:', metadata);
+        }
+      }
       
       const response = await uploadProductImage({
         productId: id,
         formData
       });
       
-      if (response && response.id) {
+      if (response && 'id' in response) {
+        console.log('Image upload successful, received ID:', response.id);
+        // Store the mapping from original URL to new ID
+        const originalUrl = URL.createObjectURL(file);
+        setUploadedImageMap(prev => ({
+          ...prev,
+          [originalUrl]: response.id
+        }));
+        
         return {
-          url: response.url || response.originalPath || response.path,
-          id: response.id // Store the image ID returned from the API
+          url: response.url || (response as any).originalPath || (response as any).path,
+          id: response.id
         };
       }
       
@@ -868,16 +2050,147 @@ const EditProduct = () => {
       throw error;
     }
   };
+  
+  // Add new product detail bullet point
+  const handleAddProductDetail = () => {
+    appendProductDetail({ id: generateUUID(), text: '' });
+  };
 
   // For debugging when update button doesn't work
   const handleManualSubmit = () => {
     console.log('Manual submit button clicked');
     console.log('Form state:', form.formState);
     console.log('Form values:', form.getValues());
+    console.log('Media items:', mediaItems);
     form.handleSubmit(onSubmit)();
   };
 
-  // Update the submission handler to match the schema
+  // Open product in storefront
+  const handleViewProduct = () => {
+    if (productViewUrl) {
+      window.open(productViewUrl, '_blank');
+    }
+  };
+
+  // Reset unsaved changes flag after successful save
+  const resetUnsavedChangesFlag = () => {
+    setHasUnsavedVariantChanges(false);
+  };
+
+  // Monitor option changes to update variants, but only after initial load
+  useEffect(() => {
+    // Skip this effect until product is fully loaded
+    if (!productLoaded) return;
+    
+    const subscription = form.watch((formValues, { name, type }) => {
+      // Check if the changed field is an option field
+      if (name && (name.includes('options'))) {
+        console.log(`Form field changed: ${name}, type: ${type}`);
+        const currentOptions = form.getValues('options');
+        
+        // If the last option has values and we have fewer than 3 options
+        if (currentOptions.length > 0) {
+          const lastOption = currentOptions[currentOptions.length - 1];
+          const hasValues = lastOption?.optionValues && 
+                          Array.isArray(lastOption.optionValues) && 
+                          lastOption.optionValues.length > 0;
+          
+          if (hasValues && currentOptions.length < 3) {
+            // Check if we don't already have an empty option at the end
+            const hasEmptyOption = currentOptions.some(opt => 
+              opt.title === '' && (!opt.optionValues || 
+              (Array.isArray(opt.optionValues) && opt.optionValues.length === 0))
+            );
+            
+            if (!hasEmptyOption) {
+              // Add a new empty option with explicit imageAssociation=false
+              appendOption({ 
+                id: generateUUID(),
+                title: '', 
+                optionValues: [],
+                imageAssociation: false  // Explicitly set to false
+              });
+            }
+          }
+        }
+        
+        // If the change is significant, regenerate the variants
+        if (type === 'change') {
+          handleGenerateVariants();
+        }
+      }
+    });
+    
+    // Cleanup subscription on component unmount
+    return () => subscription.unsubscribe();
+  }, [appendOption, form, handleGenerateVariants, productLoaded]);
+
+  // Fetch categories when component mounts
+  useEffect(() => {
+    const loadCategories = async () => {
+      setIsLoadingCategories(true);
+      setCategoryError(null);
+      try {
+        const response = await fetchCategories();
+        
+        if (!response) {
+          throw new Error('Failed to fetch categories');
+        }
+        
+        const jsonData = await response.json();
+        
+        if (jsonData && jsonData.product_categories) {
+          setProductCategories(jsonData.product_categories);
+        } else {
+          setCategoryError('Received invalid category data from server');
+        }
+      } catch (error) {
+        setCategoryError('Failed to load categories. Please try again.');
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+    
+    loadCategories();
+  }, []);
+
+  // Cleanup any object URLs for newly added files when unmounting
+  const mediaRef = useRef(mediaItems);
+  useEffect(() => {
+    mediaRef.current = mediaItems;
+  }, [mediaItems]);
+
+  useEffect(() => {
+    return () => {
+      mediaRef.current.forEach((item) => {
+        if (item.file) URL.revokeObjectURL(item.url);
+      });
+    };
+  }, []);
+
+  // Log current media items for debugging
+  useEffect(() => {
+    console.log("Current media items:", mediaItems);
+    
+    // For each option with image association, log whether images exist
+    const options = form.getValues('options');
+    const optionsWithImageAssoc = options.filter(opt => opt.imageAssociation === true);
+    
+    optionsWithImageAssoc.forEach(option => {
+      if (option.optionValues) {
+        option.optionValues.forEach(value => {
+          const imagesForValue = mediaItems.filter(item => 
+            item.variantInfo?.optionName === option.title && 
+            item.variantInfo?.optionValues?.includes(value)
+          );
+          
+          console.log(`Images for ${option.title}: ${value}:`, imagesForValue.length, imagesForValue);
+        });
+      }
+    });
+  }, [mediaItems, form]);
+
+  // Update the submission handler with improved image handling
   const onSubmit = async (values: ProductFormValues) => {
     // Validate required fields
     if (!values.title.trim()) {
@@ -885,12 +2198,37 @@ const EditProduct = () => {
       return;
     }
     
+    if (!id) {
+      setError('Product ID is missing. Cannot update product.');
+      return;
+    }
+    
     setIsSubmitting(true);
     setError(null);
     
+    // Check if product was originally published (from the original data)
+  // This is important to check against the original state, not the current form value
+  const wasPublished = originalData?.metadata?.status === 'published' || form.getValues('status') === 'published';
+  
+  // Automatically change status to "proposed" if the product was published
+  // and the vendor made changes
+  if (wasPublished) {
+    // Set status to proposed in the values being submitted
+    values.status = 'proposed';
+    
+    // Also update the form UI to reflect this change
+    form.setValue('status', 'proposed');
+    
+    // Show a notification to the vendor
+    // alert("Your changes have been submitted for approval. Product status changed to Proposed.");
+    toast({
+      title: "Changes Submitted for Approval",
+      description: "Your product status has been changed to Proposed and is awaiting approval.",
+      variant: "default",
+    });
+  }
+    
     try {
-      console.log('Form values for submission:', values);
-      
       // Generate a handle if none provided
       if (!values.handle.trim()) {
         values.handle = values.title.toLowerCase().replace(/\s+/g, '-');
@@ -899,41 +2237,50 @@ const EditProduct = () => {
       // Step 1: Upload any new image files first
       const updatedMedia = [...mediaItems];
       
-      // Find items with file property (newly added files)
-      const newFileItems = mediaItems.filter(item => item.file || item.isNew);
-      
-      if (newFileItems.length > 0) {
-        try {
-          // Upload each file and update the URL
-          for (const [index, item] of mediaItems.entries()) {
-            if (item.file) {
-              // Upload file to server
-              const uploadResult = await uploadFile(item.file);
-              
-              // Update the media item with the new URL and ID from server
-              updatedMedia[index] = {
-                ...updatedMedia[index],
-                url: uploadResult.url,
-                id: uploadResult.id, // Store the new image ID
-                file: null, // Clear the file reference
-                isNew: false
-              };
-            }
+      // Upload each new image file first and update IDs
+      for (let i = 0; i < updatedMedia.length; i++) {
+        const item = updatedMedia[i];
+        
+        if (item.file) {
+          try {
+            console.log(`Uploading image ${i} with variant info:`, item.variantInfo);
+            const uploadResult = await uploadFile(item.file, item.variantInfo);
+            
+            // Update the media item with server values
+            updatedMedia[i] = {
+              ...updatedMedia[i],
+              url: uploadResult.url,
+              id: uploadResult.id,
+              file: null,
+              isNew: false
+            };
+            
+            console.log(`Updated image ${i} with new ID: ${uploadResult.id}`);
+          } catch (uploadError) {
+            console.error(`Failed to upload image ${i}:`, uploadError);
+            setError(`Failed to upload image: ${uploadError.message || 'Unknown error'}`);
+            setIsSubmitting(false);
+            return;
           }
-        } catch (uploadError) {
-          console.error('Error uploading images:', uploadError);
-          setError('Failed to upload images. Please try again.');
-          setIsSubmitting(false);
-          return;
         }
       }
       
-      // Prepare images in the API format - ensure it's an array
-      const images = updatedMedia.map((item) => ({
-        id: item.id, // Include image id if it exists
-        url: item.url,
-        rank: item.rank,
-      }));
+      // Update mediaItems with the uploaded images
+      setMediaItems(updatedMedia);
+      
+      // Prepare images in the API format - ensure they all have proper IDs
+      const images = updatedMedia
+        .filter(item => !item.url.startsWith('blob:')) // Filter out any remaining blob URLs
+        .map((item) => ({
+          url: item.url,
+          rank: item.rank,
+          id: item.id, // Include ID if available
+          // Include color association if available
+          ...(item.colorValue ? { metadata: { color: item.colorValue } } : {}),
+        }));
+      
+      // Log final image data to be sent to API
+      console.log("Final images to be sent to API:", images);
       
       // Filter and transform options to API format (remove empty ones)
       const validOptions = values.options.filter(opt => 
@@ -951,16 +2298,19 @@ const EditProduct = () => {
       
       // Format options to match API expectations 
       const options = validOptions.map((opt) => {
-        return {
-          id: opt.id || generateUUID(),
+        const option = {
           title: opt.title,
-          values: opt.optionValues.map(value => ({
-            value,
-          })),
+          values: opt.optionValues
         };
+        
+        // Include original ID only if editing an existing option
+        if (opt.id) {
+          // @ts-ignore
+          option.id = opt.id;
+        }
+        
+        return option;
       });
-
-      console.log('Formatted options:', options);
       
       // Validate variants - make sure each has at least a title and SKU
       const invalidVariants = values.variants.filter(v => !v.title || !v.sku);
@@ -977,75 +2327,241 @@ const EditProduct = () => {
         return;
       }
       
-      // Transform variants to API format
-      const variants = values.variants.map((variant) => {
-        // Format price as number to avoid string issues
-        const price = typeof variant.price === 'string' 
-          ? parseFloat(variant.price) 
-          : (variant.price || 0);
-          
-        // Format stock as integer
-        const stock = typeof variant.stock === 'string'
-          ? parseInt(variant.stock)
-          : (variant.stock || 0);
-          
-        // Find matching variant in original data if exists
-        const originalVariant = originalData.variants?.find(v => v.id === variant.id);
+      // Prepare metadata with product details and story
+      const metadata: Record<string, any> = { 
+        ...originalData.metadata    // ← start with everything you loaded
+      };
+
+      // Process product details - extract text values from the array
+      if (values.productDetails && Array.isArray(values.productDetails)) {
+        const validDetails = values.productDetails
+          .filter(detail => detail && detail.text && detail.text.trim() !== '')
+          .map(detail => detail.text.trim());
         
-        // Format options according to API expectations
-        const variantOptions = variant.optionValues.map(optVal => {
+        if (validDetails.length > 0) {
+          metadata.product_details = JSON.stringify(validDetails);
+        }
+      }
+
+      // Process story behind design - handle HTML content
+      if (values.storyBehindDesign && typeof values.storyBehindDesign === 'string') {
+        metadata.description_story = values.storyBehindDesign.trim();
+      }
+      
+      // Process fulfillment data (creator fulfillment)
+      const fulfillmentData = {
+        type: "Creator-fulfilment",
+        handling_time: values.handlingTime || '2-3',
+        shipping_time: values.shippingDays || '7-10'
+      };
+      metadata.fulfillment_type = JSON.stringify(fulfillmentData);
+
+      // Process color hex values if present
+      const formData = form.getValues();
+      const formColorOption = formData.options?.find(opt => 
+        opt.title?.toLowerCase() === 'color' || opt.title?.toLowerCase() === 'colour'
+      );
+      
+
+      if (formColorOption && formColorOption.colorHexValues) {
+        // Convert the color hex values object to an array of {name, hex} pairs
+        const colorHexArray = Object.entries(formColorOption.colorHexValues).map(
+          ([colorName, hexValue]) => ({
+            name: colorName,
+            hex: hexValue
+          })
+        );
+        
+        // Store as a single JSON string in metadata
+        metadata.color_hex_values = JSON.stringify(colorHexArray);
+      }
+      
+      // Store image association settings - this is the key fix!
+      const imageAssociationSettings = values.options
+        .filter(opt => opt.title && Array.isArray(opt.optionValues) && opt.optionValues.length > 0)
+        .map(opt => {
+          // Ensure imageAssociation is a proper boolean
+          const isEnabled = opt.imageAssociation === true;
           return {
-            value: optVal.value,
-            option: {
-              id: optVal.optionId,
-              title: optVal.optionName
-            }
+            option_id: opt.id,
+            option_name: opt.title,
+            enabled: isEnabled // Always use proper boolean here
           };
         });
-        
-        // Build the variant object, preserving original properties where appropriate
-        const variantObj: any = {
-          id: variant.id || generateUUID(),
-          title: variant.title,
-          sku: variant.sku || '',
-          inventory_quantity: stock,
-          allow_backorder: Boolean(variant.allowBackorder),
-          manage_inventory: Boolean(variant.manageInventory),
-          options: variantOptions
-        };
-        
-        // Handle prices properly - either use original prices or create new ones
-        if (originalVariant && originalVariant.prices && originalVariant.prices.length > 0) {
-          // Update existing prices with new amount but keep ID and currency
-          variantObj.prices = originalVariant.prices.map((origPrice: any) => ({
-            id: origPrice.id,
-            amount: price,
-            currency_code: origPrice.currency_code || 'usd'
-          }));
-        } else {
-          // Create new price
-          variantObj.prices = [{
-            amount: price,
-            currency_code: 'usd'
-          }]; 
-        }
-        
-        // Include compareAtPrice if it exists and is valid
-        if (variant.compareAtPrice !== undefined && variant.compareAtPrice !== null && !isNaN(Number(variant.compareAtPrice))) {
-          variantObj.compare_at_price = typeof variant.compareAtPrice === 'string'
-            ? parseFloat(variant.compareAtPrice)
-            : variant.compareAtPrice;
-        }
-        
-        return variantObj;
+      
+      // Log the image association settings being saved
+      console.log("Saving image association settings:", imageAssociationSettings);
+      
+      metadata.variant_specific_image_option = JSON.stringify(imageAssociationSettings);
+      
+      // Process image associations metadata
+      const imageMetadata = prepareVariantImageMetadata(formData.options, updatedMedia);
+      Object.entries(imageMetadata).forEach(([key, value]) => {
+        metadata[key] = value;
       });
 
-      console.log('Formatted variants:', variants);
-    
-      // Construct the product object in API format
-      const updatedProduct = {
-        id,
+      // Fallback to direct form access if needed
+      if (!metadata.product_details || !metadata.description_story) {
+        console.log("Using fallback method to get metadata fields");
+        
+        // Add product details if missing
+        if (!metadata.product_details && formData.productDetails) {
+          const validDetails = formData.productDetails
+            .filter(detail => detail && detail.text && detail.text.trim() !== '')
+            .map(detail => detail.text.trim());
+          
+          if (validDetails.length > 0) {
+            console.log("Added product details from form data:", validDetails);
+            metadata.product_details = JSON.stringify(validDetails);
+          }
+        }
+        
+        // Add story if missing
+        if (!metadata.description_story && formData.storyBehindDesign) {
+          metadata.description_story = formData.storyBehindDesign.trim();
+          console.log("Added story from form data");
+        }
+      }
+
+      metadata.fulfillment_type = JSON.stringify({
+        type: "Creator-fulfilment",
+        handling_time: formData.handlingTime,
+        shipping_time: formData.shippingDays
+      });
+
+      metadata.variant_specific_image_option = JSON.stringify(
+        formData.options
+          .filter(opt => opt.title && Array.isArray(opt.optionValues) && opt.optionValues.length > 0)
+          .map(opt => ({
+            option_id:   opt.id,
+            option_name: opt.title,
+            enabled:     Boolean(opt.imageAssociation),
+          }))
+      );      
+      
+      // Prepare variants data for batch update API
+      const allVariants = values.variants;
+      
+      // Format variant data for API submission
+      const formatVariantForApi = (variant: Variant) => {
+        // Convert option values to the format expected by the API
+        const options = Array.isArray(variant.optionValues) 
+          ? variant.optionValues.reduce((acc: Record<string, string>, opt) => {
+              if (opt.optionName && opt.value) {
+                acc[opt.optionName] = opt.value;
+              }
+              return acc;
+            }, {})
+          : {};
+        
+        const price = typeof variant.price === 'string' ? parseFloat(variant.price) : (variant.price || 0);
+        
+        // FIXED: Improved variant image association logic
+        // Get all images associated with this variant through:
+        // 1. Direct variant association (variantInfo.variantId)
+        // 2. Option value association (variantInfo.optionName + optionValues)
+        const variantAssociatedImages = updatedMedia.filter(item => {
+          // Direct variant association
+          if (item.variantInfo?.variantId === variant.id) return true;
+          
+          // Option value association - check each option value
+          if (item.variantInfo?.optionName && item.variantInfo?.optionValues) {
+            return variant.optionValues.some(optVal => 
+              optVal.optionName === item.variantInfo.optionName && 
+              item.variantInfo.optionValues.includes(optVal.value)
+            );
+          }
+          
+          return false;
+        }).filter(item => item.id); // Only include items with valid IDs
+        
+        // Extract image IDs and URLs correctly
+        const associatedImageUrls = variantAssociatedImages
+          .map(item => item.url)
+          .filter(url => !url.startsWith('blob:')); // Skip blob URLs
+        
+        const associatedImageIds = variantAssociatedImages
+          .map(item => item.id)
+          .filter(id => id && typeof id === 'string');
+        
+        console.log(`Variant ${variant.id} has ${associatedImageIds.length} image IDs:`, associatedImageIds);
+        
+        // Prepare variant metadata
+        const variantMetadata: Record<string, any> = {
+          ...(variant.metadata || {}) // Preserve existing metadata
+        };
+
+        // Store associated images in variant metadata
+        if (associatedImageUrls.length > 0) {
+          variantMetadata.variant_images = JSON.stringify(associatedImageUrls);
+        }
+        
+        // Store image IDs in variant metadata - VERY IMPORTANT
+        if (associatedImageIds.length > 0) {
+          variantMetadata.variant_image_ids = JSON.stringify(associatedImageIds);
+        }
+        
+        // Handle special case for color images
+        const colorOption = variant.optionValues?.find(opt => isColorOption(opt.optionName));
+        if (colorOption) {
+          // Find all color-specific images
+          const colorImages = updatedMedia
+            .filter(item => 
+              item.variantInfo?.optionName === colorOption.optionName && 
+              item.variantInfo?.optionValues?.includes(colorOption.value) &&
+              item.id // Must have an ID
+            )
+            .map(item => ({
+              color: colorOption.value,
+              url: item.url,
+              imageId: item.id // Use the proper image ID
+            }));
+          
+          if (colorImages.length > 0) {
+            variantMetadata.color_images = JSON.stringify(colorImages); // FIXED: Make sure to stringify
+            console.log(`Color images for variant ${variant.id}:`, colorImages);
+          }
+        }
+        
+        return {
+          id: variant.id,
+          title: variant.title,
+          sku: variant.sku || '',
+          allow_backorder: Boolean(variant.allowBackorder),
+          manage_inventory: Boolean(variant.manageInventory),
+          options,
+          prices: [
+            {
+              amount: price,
+              currency_code: 'inr'
+            }
+          ],
+          metadata: variantMetadata
+        };
+      };
+      // Format all variants
+      const formattedVariants = allVariants.map(formatVariantForApi);
+        
+      // Identify new variants (not in original variant IDs)
+      const createdVariants = formattedVariants
+        .filter(v => !originalVariantIds.includes(v.id));
+        
+      // Identify updated variants (in original variant IDs and not deleted)
+      const updatedVariants = formattedVariants
+        .filter(v => originalVariantIds.includes(v.id));
+      
+      // Log variant changes
+      console.log("Variant changes:", {
+        create: createdVariants.length,
+        update: updatedVariants.length,
+        delete: deletedVariantIds.length
+      });
+      
+
+      // Construct the product object in API format (without variants)
+      const productData = {
         title: values.title.trim(),
+        subtitle: values.subtitle?.trim() || "",
         handle: values.handle.trim() || values.title.toLowerCase().replace(/\s+/g, '-'),
         description: values.description.trim() || "",
         status: values.status,
@@ -1058,20 +2574,163 @@ const EditProduct = () => {
         material: values.material || undefined,
         origin_country: values.origin_country || undefined,
         options,
-        variants,
         images,
+        // Add category if selected
+        categories: values.category_id ? [{ id: values.category_id }] : [],
+        metadata : metadata
       };
-
-      // Debug output of final API payload
-      console.log('Product data being sent to API:', JSON.stringify(updatedProduct, null, 2));
+      
+      console.log("Updating product with data:", productData);
       
       try {
-        // Send the update request
-        const result = await updateProduct({ product: updatedProduct });
-        console.log('Update result:', result);
+        // First, update the main product
+        const result = await updateProduct({ 
+          product: {
+            id, // This is used to construct the URL in fetchApi.js
+            ...productData // This is the actual payload (without the id field inside it)
+          } 
+        });
+        
+        console.log("Product update result:", result);
+        
+        // Then, handle variants separately with batch API
+        if (createdVariants.length > 0 || updatedVariants.length > 0 || deletedVariantIds.length > 0) {
+          // For the batchUpdateVariants function, make sure you include currency_code in the variant changes
+          const variantResult = await batchUpdateVariants({
+            productId: id,
+            variantChanges: {
+              create: createdVariants.length > 0 ? createdVariants : undefined,
+              update: updatedVariants.length > 0 ? updatedVariants : undefined,
+              delete: deletedVariantIds.length > 0 ? deletedVariantIds : undefined,
+            }
+          });
+          
+          console.log("Variant update result:", variantResult);
+        }
+        
+
+        // Pull the latest inventoryChanges from the ref
+        // Improved inventory processing in onSubmit
+        // First ensure we have inventory data loaded
+        if (!isLoadingInventory) {
+          const currentVariants = form.getValues('variants');
+          
+          // Create or update inventory items based on variant stock values
+          const inventoryOperations = {
+            create: [],
+            update: []
+          };
+          
+
+          // Process each variant with inventory management enabled
+        currentVariants.forEach(variant => {
+          if (variant.manageInventory) {
+            // Get or generate inventory item ID
+            const inventoryItemId = variant.inventoryItemId || `temp_item_${variant.id}`;
+            
+            // Determine if this is a create or update operation
+            // NEW VARIANTS ALWAYS GO TO CREATE
+            const isNew = isNewVariant(variant);
+            
+            const inventoryEntry = {
+              inventory_item_id: inventoryItemId,
+              location_id: DEFAULT_LOCATION_ID,
+              stocked_quantity: parseInt(variant.stock) || 0
+            };
+            
+            // New variants always go to create
+            if (isNew) {
+              inventoryOperations.create.push(inventoryEntry);
+              console.log(`New variant ${variant.id} added to CREATE inventory ops`);
+            } else {
+              // For existing variants, check if they already have inventory
+              const inventoryExists = inventoryLevelsRef.current[inventoryItemId]?.some(
+                level => level.location_id === DEFAULT_LOCATION_ID && !level.id?.startsWith('temp_')
+              );
+              
+              if (inventoryExists) {
+                inventoryOperations.update.push(inventoryEntry);
+              } else {
+                inventoryOperations.create.push(inventoryEntry);
+              }
+            }
+          }
+        });
+          
+          // Include any manually tracked changes from inventoryChanges state
+          // This ensures we don't lose any detailed changes made through the UI
+          if (inventoryChangesRef.current) {
+            (inventoryChangesRef.current.create || []).forEach(item => {
+              // Only add if not already included
+              const exists = inventoryOperations.create.some(
+                op => op.inventory_item_id === item.inventory_item_id && op.location_id === item.location_id
+              );
+              
+              if (!exists) {
+                inventoryOperations.create.push(item);
+              }
+            });
+            
+            (inventoryChangesRef.current.update || []).forEach(item => {
+              // Only add if not already included
+              const exists = inventoryOperations.update.some(
+                op => op.inventory_item_id === item.inventory_item_id && op.location_id === item.location_id
+              );
+              
+              if (!exists) {
+                inventoryOperations.update.push(item);
+              }
+            });
+          }
+          
+          // Process inventory operations if we have any
+          if (inventoryOperations.create.length > 0 || inventoryOperations.update.length > 0) {
+            try {
+              console.log("Updating inventory with operations:", inventoryOperations);
+
+              // Validate inventory operation data
+        if (inventoryOperations.create.length > 0 || inventoryOperations.update.length > 0) {
+          // Validate each entry
+          const validationErrors = [];
+          
+          [...inventoryOperations.create, ...inventoryOperations.update].forEach((item, index) => {
+            if (!item.inventory_item_id) {
+              validationErrors.push(`Missing inventory_item_id at index ${index}`);
+            }
+            if (!item.location_id) {
+              validationErrors.push(`Missing location_id at index ${index}`);
+            }
+            if (typeof item.stocked_quantity !== 'number') {
+              validationErrors.push(`Invalid stocked_quantity at index ${index}: ${item.stocked_quantity}`);
+            }
+          });
+          
+          if (validationErrors.length > 0) {
+            console.error("Inventory validation errors:", validationErrors);
+            // If you want to fail fast:
+            // throw new Error(`Invalid inventory data: ${validationErrors.join(', ')}`);
+          }
+          
+          // Log the final payloads for debugging
+          console.log("Final create operations:", inventoryOperations.create);
+          console.log("Final update operations:", inventoryOperations.update);
+        }
+              
+              const inventoryResult = await batchUpdateInventoryLevels(inventoryOperations);
+              console.log("Inventory update result:", inventoryResult);
+            } catch (inventoryError) {
+              console.error("Error updating inventory levels:", inventoryError);
+              // Continue with product update even if inventory update fails
+            }
+          }
+        }
+        
+        // Reset unsaved changes flag
+        setHasUnsavedVariantChanges(false);
         
         // Navigate back to products list on success
-        navigate({ to: '/products' });
+        setError(null);
+        setProductLoaded(false); 
       } catch (apiError: any) {
         console.error('API Error updating product:', apiError);
         
@@ -1110,782 +2769,1459 @@ const EditProduct = () => {
         }
         
         setError(errorMessage);
+        setIsSubmitting(false);
       }
     } catch (error: any) {
       console.error('Error preparing data for update:', error);
       setError(`Failed to update product: ${error?.message || 'Unknown error'}`);
+      setIsSubmitting(false);
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  // Cleanup any object URLs for newly added files when unmounting.
-  const mediaRef = useRef(mediaItems);
-  useEffect(() => {
-    mediaRef.current = mediaItems;
-  }, [mediaItems]);
-
-  useEffect(() => {
-    return () => {
-      mediaRef.current.forEach((item) => {
-        if (item.file) URL.revokeObjectURL(item.url);
+  
+  // Stock Management Modal Component
+  const StockManagementModal = () => {
+    const [localInventoryLevels, setLocalInventoryLevels] = useState(inventoryLevels);
+    const [updating, setUpdating] = useState(false);
+    
+    // Function to handle closing the modal
+    const handleCloseModal = () => {
+      setIsStockModalOpen(false);
+    };
+    
+    // Function to handle stock changes within the modal
+    const handleStockChange = (
+      inventoryItemId: string, 
+      locationId: string, 
+      field: 'stocked_quantity' | 'incoming_quantity', 
+      value: string | number
+    ) => {
+      const numericValue = typeof value === 'string' ? parseInt(value) || 0 : value;
+      
+      // Update local inventory levels
+      setLocalInventoryLevels(prev => {
+        const updatedLevels = { ...prev };
+        const levels = [...(updatedLevels[inventoryItemId] || [])]; 
+        const levelIndex = levels.findIndex(level => level.location_id === locationId);
+        
+        if (levelIndex >= 0) {
+          levels[levelIndex] = {
+            ...levels[levelIndex],
+            [field]: numericValue
+          };
+        } else {
+          levels.push({
+            id: `temp_${inventoryItemId}_${locationId}`,
+            inventory_item_id: inventoryItemId,
+            location_id: locationId,
+            stocked_quantity: field === 'stocked_quantity' ? numericValue : 0,
+            incoming_quantity: field === 'incoming_quantity' ? numericValue : 0,
+            reserved_quantity: 0,
+            available_quantity: field === 'stocked_quantity' ? numericValue : 0
+          });
+        }
+        
+        updatedLevels[inventoryItemId] = levels;
+        return updatedLevels;
       });
     };
-  }, []);
-
+    
+    // Function to save inventory changes
+    const handleSaveInventory = async () => {
+      setUpdating(true);
+      
+      try {
+        // Prepare inventory operations
+        const operations = {
+          create: [],
+          update: []
+        };
+        
+        // Process each inventory item
+        Object.entries(localInventoryLevels).forEach(([inventoryItemId, levels]) => {
+          levels.forEach(level => {
+            const isNew = !level.id || level.id.startsWith('temp_');
+            const entry = {
+              inventory_item_id: inventoryItemId,
+              location_id: level.location_id,
+              stocked_quantity: level.stocked_quantity || 0,
+              incoming_quantity: level.incoming_quantity || 0
+            };
+            
+            if (isNew) {
+              operations.create.push(entry);
+            } else {
+              operations.update.push(entry);
+            }
+          });
+        });
+        
+        // Save to server
+        if (operations.create.length > 0 || operations.update.length > 0) {
+          const result = await batchUpdateInventoryLevels(operations);
+          console.log("Inventory update result:", result);
+          
+          // Update the main inventory levels state
+          setInventoryLevels(localInventoryLevels);
+          
+          // Update variant stock values to match inventory
+          updateVariantStockFromInventory();
+        }
+        
+        // Close modal
+        setIsStockModalOpen(false);
+      } catch (error) {
+        console.error("Error saving inventory:", error);
+        setInventoryError("Failed to save inventory changes");
+      } finally {
+        setUpdating(false);
+      }
+    };
+    
+    // Function to update variant stock values from inventory
+    const updateVariantStockFromInventory = () => {
+      const currentVariants = form.getValues('variants');
+      const updatedVariants = [...currentVariants];
+      
+      currentVariants.forEach((variant, index) => {
+        if (variant.manageInventory && variant.inventoryItemId) {
+          const inventoryItem = localInventoryLevels[variant.inventoryItemId];
+          if (inventoryItem && inventoryItem.length > 0) {
+            // Find the main location's inventory level
+            const mainLocationLevel = inventoryItem.find(
+              level => level.location_id === DEFAULT_LOCATION_ID
+            );
+            
+            if (mainLocationLevel) {
+              updatedVariants[index] = {
+                ...variant,
+                stock: mainLocationLevel.stocked_quantity || 0
+              };
+            }
+          }
+        }
+      });
+      
+      // Update variants in form
+      replaceVariants(updatedVariants);
+    };
+    
+    // Get variant title by inventory item ID
+    const getVariantTitleByInventoryId = (inventoryItemId: string): string => {
+      const variants = form.getValues('variants');
+      const variant = variants.find(v => v.inventoryItemId === inventoryItemId);
+      return variant?.title || 'Unknown Variant';
+    };
+    
+    return (
+      <Dialog open={isStockModalOpen} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Manage Inventory</DialogTitle>
+            <DialogDescription>
+              Update stock levels for all variants. Changes will only be saved when you click "Save Changes".
+            </DialogDescription>
+          </DialogHeader>
+          
+          {isLoadingInventory ? (
+            <div className="flex items-center justify-center p-6">
+              <Loader2 className="w-10 h-10 animate-spin text-[#e65100]" />
+              <p className="ml-3">Loading inventory data...</p>
+            </div>
+          ) : inventoryError ? (
+            <Alert className="my-4 text-red-800 border border-red-200 bg-red-50">
+              <IconInfoCircle className="w-5 h-5" />
+              <AlertDescription>{inventoryError}</AlertDescription>
+            </Alert>
+          ) : Object.keys(localInventoryLevels).length === 0 ? (
+            <div className="p-6 text-center">
+              <p>No inventory data found for this product's variants.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+              <table className="w-full border-collapse">
+                <thead className="sticky top-0 z-10 bg-white">
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Variant</th>
+                    <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Location</th>
+                    <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">In Stock</th>
+                    <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Incoming</th>
+                    <th className="p-3 font-medium text-left text-gray-700">Available</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(localInventoryLevels).map(([inventoryItemId, levels]) => 
+                    levels.map((level, levelIndex) => (
+                      <tr 
+                        key={`${inventoryItemId}-${level.location_id}`}
+                        className={levelIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                      >
+                        {levelIndex === 0 && (
+                          <td 
+                            className="p-3 border-r border-gray-200"
+                            rowSpan={levels.length}
+                          >
+                            {getVariantTitleByInventoryId(inventoryItemId)}
+                          </td>
+                        )}
+                        <td className="p-3 border-r border-gray-200">
+                          {level.location_id === DEFAULT_LOCATION_ID ? 'Default Location' : level.location_id}
+                        </td>
+                        <td className="p-3 border-r border-gray-200">
+                          <Input 
+                            type="number"
+                            min="0"
+                            value={level.stocked_quantity || 0}
+                            onChange={(e) => handleStockChange(
+                              inventoryItemId,
+                              level.location_id,
+                              'stocked_quantity',
+                              e.target.value
+                            )}
+                            className="w-24 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+                          />
+                        </td>
+                        <td className="p-3 border-r border-gray-200">
+                          <Input 
+                            type="number"
+                            min="0"
+                            value={level.incoming_quantity || 0}
+                            onChange={(e) => handleStockChange(
+                              inventoryItemId,
+                              level.location_id,
+                              'incoming_quantity',
+                              e.target.value
+                            )}
+                            className="w-24 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+                          />
+                        </td>
+                        <td className="p-3">
+                          {((level.stocked_quantity || 0) - (level.reserved_quantity || 0)) || 0}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          <DialogFooter className="flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={handleCloseModal}
+              disabled={updating}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveInventory}
+              disabled={updating || isLoadingInventory}
+              className="bg-[#e65100] hover:bg-[#d84315] text-white"
+            >
+              {updating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+  
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto border-t-4 border-b-4 border-blue-500 rounded-full animate-spin"></div>
+          <Loader2 className="w-16 h-16 mx-auto animate-spin text-[#e65100]" />
           <p className="mt-4">Loading product...</p>
         </div>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
-        <div className="text-center">
+        <div className="max-w-2xl px-4 text-center">
           <h2 className="mb-4 text-2xl font-bold text-red-600">Error</h2>
           <p className="mb-6">{error}</p>
-          <Button onClick={() => navigate({ to: '/products' })}>
+          <div className="p-4 mb-6 overflow-auto text-sm text-left bg-gray-100 rounded-md">
+            <pre className="break-words whitespace-pre-wrap">
+              Error details: {error}
+              {"\n"}
+              Product ID: {id}
+            </pre>
+          </div>
+          <Button 
+            onClick={() => navigate({ to: '/products' })}
+            className="bg-[#e65100] hover:bg-[#d84315] text-white"
+          >
             Back to Products
           </Button>
         </div>
       </div>
     );
   }
-
+  // Main component render
   return (
-    <div className="px-6 py-8">
-      {/* Header Bar */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Edit Product</h1>
-        <div className="space-x-2">
-          <Button variant="outline" onClick={() => navigate({ to: '/products' })}>
+    <div className="px-6 py-8 bg-gray-50">
+      {/* Render the Inventory Management Modal */}
+      {renderInventoryManagementModal()}
+      
+      {/* Header Bar with branding */}
+      <div className="flex flex-col justify-between gap-4 p-6 mb-6 bg-white border border-gray-100 rounded-lg shadow-sm md:flex-row md:items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-[#e65100]">
+            Edit Product
+          </h1>
+          <p className="mt-1 text-gray-500">Update product details</p>
+        </div>
+        <div className="flex space-x-3">
+          <Button 
+            variant="outline" 
+            onClick={handleViewProduct}
+            className="border-[#e65100] text-[#e65100] hover:bg-orange-50"
+            disabled={!productViewUrl}
+          >
+            <IconExternalLink size={18} className="mr-2" />
+            View Product
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate({ to: '/products' })}
+            className="text-gray-700 border-gray-300 hover:bg-gray-50"
+          >
             Cancel
           </Button>
           <Button 
+            type="button" 
             onClick={handleManualSubmit} 
             disabled={isSubmitting}
+            className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
           >
-            {isSubmitting ? 'Saving...' : 'Save'}
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {/* Left Column */}
-            <div className="space-y-8 md:col-span-2">
+            <div className="space-y-6 md:col-span-2">
               {/* Title & Description Section */}
-              <section className="p-6 bg-white border border-gray-200 rounded">
-                <div className="mb-4">
+              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <div className="mb-6">
+                  <h2 className="mb-4 text-xl font-semibold text-gray-800">Basic Information</h2>
+                  <Separator className="mb-6" />
+                  
                   <FormField
                     control={form.control}
                     name="title"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Product Title</FormLabel>
+                      <FormItem className="mb-4">
+                        <FormLabel className="font-medium text-gray-700">Product Title*</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="e.g. Winter Hoodie" className="w-full" />
+                          <Input 
+                            {...field} 
+                            placeholder="e.g. Handcrafted Leather Bag" 
+                            className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
+                          />
                         </FormControl>
-                        <FormMessage />
+                        <FormDescription className="text-sm text-gray-500">
+                          The URL slug will be auto-generated from the title
+                        </FormDescription>
+                        <FormMessage className="text-red-500" />
                       </FormItem>
                     )}
                   />
-                </div>
-                <div className="mb-4">
+                  
                   <FormField
                     control={form.control}
-                    name="handle"
+                    name="subtitle"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Handle (URL Slug)</FormLabel>
+                      <FormItem className="mb-4">
+                        <FormLabel className="font-medium text-gray-700">Short Description</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="e.g. winter-hoodie (generated from title if left blank)" className="w-full" />
+                          <Input 
+                            {...field} 
+                            placeholder="Brief product description (displays in listings)" 
+                            className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
+                          />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-red-500" />
                       </FormItem>
                     )}
                   />
-                </div>
-                <div>
+                
                   <FormField
                     control={form.control}
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Description</FormLabel>
+                       <FormLabel className="font-medium text-gray-700">Description</FormLabel>
                         <FormControl>
-                          <textarea
-                            {...field}
-                            rows={6}
-                            placeholder="Write product details..."
-                            className="w-full p-2 border rounded-md"
+                          <Controller
+                            name="description"
+                            control={form.control}
+                            render={({ field }) => (
+                              <TipTapEditor
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                                placeholder="Write product details..."
+                              />
+                            )}
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-red-500" />
                       </FormItem>
                     )}
                   />
                 </div>
               </section>
+      {/* Product Details Section (Bullet Points) */}
+      <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <h2 className="mb-4 text-xl font-semibold text-gray-800">Product Details</h2>
+                  <Separator className="mb-6" />
+                  
+                  <p className="mb-4 text-sm text-gray-500">Add bullet points highlighting key features of your product</p>
+                  
+                  {productDetailFields.map((field, index) => (
+                    <div key={field.id} className="flex items-start gap-2 mb-3">
+                      <span className="mt-2.5 text-[#e65100]">•</span>
+                      <FormField
+                        control={form.control}
+                        name={`productDetails.${index}.text`}
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                placeholder={`Product detail #${index + 1}`}
+                                className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeProductDetail(index)}
+                        className="mt-1 text-gray-500 hover:text-red-500"
+                      >
+                        <IconX size={18} />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddProductDetail}
+                    className="mt-2 text-[#e65100] border-[#e65100] hover:bg-orange-50"
+                  >
+                    <IconCirclePlus className="mr-1.5" size={18} /> 
+                    Add Product Detail
+                  </Button>
+                </section>
 
-              {/* Media Section */}
-              <section className="p-6 bg-white border border-gray-200 rounded">
-                <h2 className="mb-4 text-lg font-semibold">Media</h2>
-                <div className="mb-4">
+                {/* Story Behind Design Section */}
+                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <h2 className="mb-4 text-xl font-semibold text-gray-800">Story Behind the Design</h2>
+                  <Separator className="mb-6" />
+                  
+                  <p className="mb-4 text-sm text-gray-500">Share the inspiration and story behind your product</p>
+                  
                   <FormField
                     control={form.control}
-                    name="thumbnail"
+                    name="storyBehindDesign"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Thumbnail URL</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="https://example.com/image.jpg" className="w-full" />
+                          <Controller
+                            name="storyBehindDesign"
+                            control={form.control}
+                            render={({ field }) => (
+                              <TipTapEditor
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                                placeholder="Share the story behind your design..."
+                              />
+                            )}
+                          />
                         </FormControl>
+                        <FormMessage className="text-red-500" />
                       </FormItem>
                     )}
                   />
-                </div>
-                <h3 className="mb-2 font-medium">Product Images</h3>
-                
-                <Tabs defaultValue="upload" onValueChange={setActiveImageTab} value={activeImageTab}>
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="upload">
-                      <IconUpload size={16} className="mr-2" />
-                      Upload Images
-                    </TabsTrigger>
-                    <TabsTrigger value="url">
-                      <IconLink size={16} className="mr-2" />
-                      Add from URL
-                    </TabsTrigger>
-                  </TabsList>
+                </section>
+      {/* Media Section - IMPROVED VERSION with working variant-specific uploads */}
+      <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <h2 className="mb-4 text-xl font-semibold text-gray-800">Product Images</h2>
+                  <Separator className="mb-6" />
                   
-                  <TabsContent value="upload">
-                    <div
-                      onClick={handleDropzoneClick}
-                      className="flex flex-col items-center justify-center p-6 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-gray-400"
-                    >
-                      <svg
-                        className="w-10 h-10 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 48 48"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M14 22h20M24 12v20"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                  <p className="mb-4 text-sm text-gray-500">
+                    Add images for your product. The first image will be used as the thumbnail.
+                  </p>
+                  
+                  <div className="mb-6">
+                    <Tabs defaultValue="upload" onValueChange={setActiveImageTab} value={activeImageTab} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 p-1 mb-4 bg-gray-100 rounded-md">
+                        <TabsTrigger 
+                          value="upload" 
+                          className="data-[state=active]:bg-white data-[state=active]:text-[#e65100] data-[state=active]:shadow-sm rounded-md"
+                        >
+                          <IconUpload size={16} className="mr-2" />
+                          Upload Images
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="url" 
+                          className="data-[state=active]:bg-white data-[state=active]:text-[#e65100] data-[state=active]:shadow-sm rounded-md"
+                        >
+                          <IconLink size={16} className="mr-2" />
+                          Add from URL
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="upload">
+                        {hasVariants && imageAssociatedOptions.length > 0 ? (
+                          // Show variant-specific upload interface with FIXED functions for image uploads
+                          <StreamlinedImageManager
+                          mediaItems={mediaItems}
+                          setMediaItems={setMediaItems}
+                          options={form.getValues('options')}
+                          variants={form.getValues('variants')}
+                          fileInputRef={fileInputRef}
+                          handleFileChange={handleFileChange}
+                          // FIXED: Use the direct upload handlers
+                          handleVariantImageUpload={handleDirectVariantUpload}
+                          handleOptionImageUpload={handleDirectOptionUpload}
+                          getImageDisplayUrl={getImageDisplayUrl}
                         />
-                      </svg>
-                      <span className="mt-2 text-sm text-gray-600">
-                        Drag and drop images or click to upload
-                      </span>
-                    </div>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      ref={fileInputRef}
-                      className="hidden"
-                    />
-                  </TabsContent>
-                  
-                  <TabsContent value="url">
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        type="url"
-                        value={newImageUrl}
-                        onChange={(e) => setNewImageUrl(e.target.value)}
-                        placeholder="https://example.com/image.jpg"
-                        className="flex-1"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddImageUrl();
-                          }
-                        }}
-                      />
-                      <Button onClick={handleAddImageUrl} type="button">Add Image</Button>
-                    </div>
-                    <p className="mt-2 text-xs text-gray-500">
-                      Enter the URL of an image to add it to the product gallery.
-                    </p>
-                  </TabsContent>
-                </Tabs>
-                
-                {mediaItems.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="mb-2">Current Images ({mediaItems.length})</h4>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                      {mediaItems
-                        .sort((a, b) => a.rank - b.rank)
-                        .map((item, index) => (
+                        ) : (
+                          // Show standard upload interface
                           <div
-                            key={index}
-                            className="relative flex flex-col overflow-hidden bg-gray-100 border rounded"
+                            onClick={handleDropzoneClick}
+                            className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#e65100] hover:bg-orange-50 transition-all duration-200"
                           >
-                            <div className="flex items-center justify-center h-32 overflow-hidden">
-                              <img
-                                src={item.url}
-                                alt={`Preview ${index}`}
-                                className="object-cover w-full h-full"
-                              />
+                            <div className="flex items-center justify-center w-16 h-16 mb-3 bg-orange-100 rounded-full">
+                              <IconPhotoPlus size={28} className="text-[#e65100]" />
                             </div>
-                            <div className="flex items-center justify-between p-2">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap max-w-[120px]">
-                                      {item.file ? item.file.name : item.url.split('/').pop() || `Image ${index + 1}`}
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    {item.isNew ? 'Will be saved on submit' : 'Saved in Medusa'}
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                              <div className="flex space-x-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleMoveImageUp(index)}
-                                  disabled={index === 0}
-                                  className="p-1 text-xs bg-gray-200 rounded disabled:opacity-50"
-                                >
-                                  ↑
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleMoveImageDown(index)}
-                                  disabled={index === mediaItems.length - 1}
-                                  className="p-1 text-xs bg-gray-200 rounded disabled:opacity-50"
-                                >
-                                  ↓
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveImage(index)}
-                                  className="p-1 text-xs text-white bg-red-500 rounded"
-                                >
-                                  ×
-                                </button>
+                            <p className="font-medium text-gray-700">Drag and drop images here</p>
+                            <p className="mt-1 text-sm text-gray-500">
+                              or click to browse your files
+                            </p>
+                            <p className="mt-4 text-xs text-gray-500">
+                              Supports: JPG, PNG, GIF (Max 5MB)
+                            </p>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) => handleFileChange(e.target)}
+                          ref={fileInputRef}
+                          className="hidden"
+                        />
+                      </TabsContent>
+                      
+                      <TabsContent value="url">
+                        <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                          <p className="mb-3 text-sm text-gray-600">
+                            Add images from external URLs to your product gallery
+                          </p>
+                          <div className="flex items-center space-x-2">
+                            <Input
+                              type="url"
+                              value={newImageUrl}
+                              onChange={(e) => setNewImageUrl(e.target.value)}
+                              placeholder="https://example.com/image.jpg"
+                              className="flex-1 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddImageUrl();
+                                }
+                              }}
+                            />
+                            <Button 
+                              onClick={handleAddImageUrl} 
+                              type="button"
+                              className="bg-[#e65100] hover:bg-[#d84315] text-white"
+                            >
+                              Add Image
+                            </Button>
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                  
+                  {/* Show general images only when not in variant-specific mode */}
+                  {(!hasVariants || imageAssociatedOptions.length === 0) && (
+                    mediaItems.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {mediaItems.sort((a, b) => a.rank - b.rank).map((item, index) => (
+                          <div
+                            key={`${item.url}-${index}`}
+                            className="relative flex flex-col overflow-hidden transition-all duration-200 bg-white border rounded-md group hover:shadow-md"
+                          >
+                            <div className="relative flex items-center justify-center h-48 overflow-hidden bg-gray-100">
+                              <img
+                                src={getImageDisplayUrl(item)}
+                                alt={`Product image ${index + 1}`}
+                                className="object-cover w-full h-full"
+                                onError={(e) => {
+                                  console.error(`Failed to load image: ${item.url}`);
+                                  e.currentTarget.src = '/placeholder-image.png';
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center transition-all duration-200 bg-black bg-opacity-0 opacity-0 group-hover:bg-opacity-20 group-hover:opacity-100">
+                                <div className="flex space-x-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveImageUp(index)}
+                                    disabled={index === 0}
+                                    className="p-1 text-white bg-gray-800 rounded-full disabled:opacity-50 hover:bg-gray-700"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveImageDown(index)}
+                                    disabled={index === mediaItems.length - 1}
+                                    className="p-1 text-white bg-gray-800 rounded-full disabled:opacity-50 hover:bg-gray-700"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                            {item.isNew && (
-                              <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 py-0.5">
-                                New
+                            <div className="flex items-center justify-between p-3 border-t">
+                              <div className="flex-1 text-sm text-gray-600 truncate">
+                                {item.file ? item.file.name.substring(0, 20) : `Image ${index + 1}`}
+                                {item.variantInfo && (
+                                  <div className="mt-1">
+                                    <Badge className="bg-[#e65100] text-white text-xs">
+                                      {item.variantInfo.variantTitle || 
+                                      item.variantInfo.optionName && item.variantInfo.optionValues?.[0] ? 
+                                      `${item.variantInfo.optionName}: ${item.variantInfo.optionValues[0]}` : 
+                                      'Variant'}
+                                    </Badge>
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(index)}
+                                className="p-1.5 text-red-500 bg-red-50 rounded-full hover:bg-red-100"
+                              >
+                                <IconTrash size={16} />
+                              </button>
+                            </div>
+                            {index === 0 && (
+                              <div className="absolute top-2 left-2 bg-[#e65100] text-white text-xs px-2 py-1 rounded-md">
+                                Main
                               </div>
                             )}
                           </div>
                         ))}
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              {/* Variants Section - Improved Shopify-like style */}
-              <section className="p-6 bg-white border border-gray-200 rounded">
-                <h2 className="mb-4 text-lg font-semibold">Options & Variants</h2>
-                
-                {/* Options Section */}
-                <div className="mb-6">
-                  <h3 className="mb-3 font-medium">Options</h3>
-                  <div className="p-4 mb-4 rounded-md bg-gray-50">
-                    <p className="text-sm text-gray-600">
-                      Add options like size or color to create variants of this product. Customers will choose from these options during checkout.
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-blue-600">
-                      * Options and values are required for product updates
-                    </p>
-                  </div>
-                  
-                  {optionFields.map((opt, optionIndex) => (
-                    <div key={opt.id} className="p-4 mb-6 border rounded-md">
-                      <div className="flex items-center justify-between mb-4">
-                        <FormField
-                          control={form.control}
-                          name={`options.${optionIndex}.title`}
-                          render={({ field }) => (
-                            <FormItem className="w-full">
-                              <FormLabel>
-                                Option {optionIndex + 1} name
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  placeholder={
-                                    optionIndex === 0 ? "e.g. Size" : 
-                                    optionIndex === 1 ? "e.g. Color" : "e.g. Material"
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        
-                        {/* Don't allow removing the first option or if only one exists */}
-                        {(optionIndex > 0 || optionFields.length > 1) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="mt-6 ml-2"
-                            onClick={() => removeOption(optionIndex)}
-                          >
-                            <IconX size={18} />
-                          </Button>
-                        )}
                       </div>
-                      
-                      {/* Option Values with Pill Style Display */}
-                      <div className="mt-4">
-                        <FormLabel>
-                          Option values
-                        </FormLabel>
-                        
-                        {/* Display existing values as pills */}
-                        <div className="flex flex-wrap gap-2 mt-2 mb-3">
-                          {form.watch(`options.${optionIndex}.optionValues`, []).map((value, valueIndex) => (
-                            <span 
-                              key={valueIndex} 
-                              className="flex items-center px-3 py-1 text-sm bg-gray-100 rounded-full"
-                            >
-                              {value}
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveOptionValue(optionIndex, valueIndex)}
-                                className="ml-1 text-gray-500 hover:text-gray-700"
-                              >
-                                <IconX size={14} />
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                        
-                        {/* Add new value input */}
-                        <div className="flex gap-2">
-                          <Input 
-                            value={newOptionValues[optionIndex] || ''}
-                            onChange={(e) => handleNewOptionValueChange(optionIndex, e.target.value)}
-                            placeholder="Enter a new value..."
-                            className="flex-1"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleAddOptionValue(optionIndex);
-                              }
-                            }}
-                          />
-                          <Button 
-                            type="button" 
-                            size="sm"
-                            onClick={() => handleAddOptionValue(optionIndex)}
-                          >
-                            Add
-                          </Button>
-                        </div>
+                    ) : (
+                      <div className="p-6 text-center border border-gray-300 border-dashed rounded-md bg-gray-50">
+                        <p className="text-gray-500">No images added yet. Add images to showcase your product.</p>
                       </div>
-                    </div>
-                  ))}
-                  
-                  {/* Add another option button (only if fewer than 3 options) */}
-                  {optionFields.length < 3 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        const newOptionIndex = optionFields.length;
-                        appendOption({ title: '', optionValues: [] });
-                        setNewOptionValues(prev => ({
-                          ...prev,
-                          [newOptionIndex]: ''
-                        }));
-                      }}
-                      className="mt-2"
-                    >
-                      <IconCirclePlus className="mr-1" /> 
-                      Add another option
-                    </Button>
+                    )
                   )}
-                </div>
-                
-                {/* Variants Section with Bulk Editing */}
-                {variantFields.length > 0 && (
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium">Variants ({variantFields.length})</h3>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={handleGenerateVariants}
-                        size="sm"
+                </section>
+       {/* Options & Variants Section with styling */}
+       <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <h2 className="mb-4 text-xl font-semibold text-gray-800">Options & Variants</h2>
+                  <Separator className="mb-6" />
+                  
+                  {/* Variant Toggle */}
+                  <div className="mb-6">
+                    <div className="flex items-center mb-4 space-x-2">
+                      <Switch 
+                        checked={hasVariants}
+                        onCheckedChange={setHasVariants}
+                        id="has-variants"
+                        className="data-[state=checked]:bg-[#e65100]"
+                      />
+                      <label 
+                        htmlFor="has-variants" 
+                        className="font-medium text-gray-800 cursor-pointer"
                       >
-                        Regenerate variants
-                      </Button>
+                        This product has multiple variants
+                      </label>
+                    </div>
+                    <div className="pl-10 mb-2 text-sm text-gray-600">
+                      {hasVariants ? 
+                        "Create variants like size or color that customers can choose from" : 
+                        "A single variant will be created automatically"
+                      }
+                    </div>
+                  </div>
+                  
+                  {/* Options Section */}
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-medium text-gray-700">Product Options</h3>
+                      <Badge variant="outline" className="text-[#e65100] border-[#e65100] bg-orange-50">
+                        Required
+                      </Badge>
                     </div>
                     
-                    {/* Bulk Edit Controls */}
-                    <Card className="mb-4">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">Bulk Edit</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex flex-col gap-4">
-                          <div className="flex items-center">
-                            <Switch 
-                              checked={bulkEditMode} 
-                              onCheckedChange={setBulkEditMode} 
-                              id="bulk-edit-mode"
+                    <div className="p-4 mb-5 border border-orange-200 rounded-md bg-orange-50">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mr-3">
+                          <IconInfoCircle className="h-5 w-5 text-[#e65100]" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-700">
+                            Add options like size or color to create variants of this product. Each combination will create a unique variant.
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-[#e65100]">
+                            At least one option with values is required when using variants.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {optionFields.map((opt, optionIndex) => {
+                      // Get the current option directly from form values to ensure we have latest data
+                      const currentOption = form.getValues(`options.${optionIndex}`);
+                      
+                      return (
+                        <div key={opt.id} className="p-5 mb-4 transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
+                          <div className="flex items-center justify-between mb-4">
+                            <FormField
+                              control={form.control}
+                              name={`options.${optionIndex}.title`}
+                              render={({ field }) => (
+                                <FormItem className="w-full">
+                                  <FormLabel className="font-medium text-gray-700">
+                                    Option {optionIndex + 1} name
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder={
+                                        optionIndex === 0 ? "e.g. Size" : 
+                                        optionIndex === 1 ? "e.g. Color" : "e.g. Material"
+                                      }
+                                      className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
                             />
-                            <label htmlFor="bulk-edit-mode" className="ml-2 text-sm">
-                              {bulkEditMode ? 'Exit bulk edit mode' : 'Enable bulk edit mode'}
-                            </label>
+                            
+                            {/* Don't allow removing the first option or if only one exists */}
+                            {(optionIndex > 0 || optionFields.length > 1) && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="mt-6 ml-2 text-gray-500 hover:text-red-500 hover:bg-red-50"
+                                onClick={() => removeOption(optionIndex)}
+                              >
+                                <IconX size={18} />
+                              </Button>
+                            )}
                           </div>
                           
-                          {bulkEditMode && (
-                            <>
-                              <div className="flex items-center mb-2">
-                                <Switch 
-                                  checked={selectedVariants.length === variantFields.length}
-                                  onCheckedChange={handleSelectAllVariants}
-                                  id="select-all-variants" 
-                                />
-                                <label htmlFor="select-all-variants" className="ml-2 text-sm">
-                                  Select all variants ({selectedVariants.length}/{variantFields.length})
-                                </label>
-                              </div>
-                              
-                              {selectedVariants.length > 0 && (
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                  <div>
-                                    <label className="block mb-1 text-sm">Set price for all selected</label>
-                                    <div className="flex gap-2">
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={bulkPrice}
-                                        onChange={(e) => setBulkPrice(e.target.value)}
-                                        placeholder="0.00"
-                                      />
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        onClick={() => handleBulkEdit('price', parseFloat(bulkPrice) || 0)}
-                                        disabled={!bulkPrice}
-                                      >
-                                        Apply
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <label className="block mb-1 text-sm">Set stock for all selected</label>
-                                    <div className="flex gap-2">
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        value={bulkStock}
-                                        onChange={(e) => setBulkStock(e.target.value)}
-                                        placeholder="0"
-                                      />
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        onClick={() => handleBulkEdit('stock', parseInt(bulkStock) || 0)}
-                                        disabled={!bulkStock}
-                                      >
-                                        Apply
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </>
-                          )}
+                          {/* Use Enhanced Option Component for all option types */}
+                          <EnhancedOptionComponent
+                            optionIndex={optionIndex}
+                            currentOption={currentOption}
+                            updateOption={updateOption}
+                            handleGenerateVariants={handleGenerateVariants}
+                            form={form}
+                          />
                         </div>
-                      </CardContent>
-                    </Card>
+                      );
+                    })}
                     
-                    {/* Variants Table */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full mt-4 border-collapse">
-                        <thead>
-                          <tr className="bg-gray-50">
+                    {/* Add another option button (only if fewer than 3 options) */}
+                    {optionFields.length < 3 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const newOptionIndex = optionFields.length;
+                          appendOption({ 
+                            id: generateUUID(),
+                            title: '', 
+                            optionValues: [],
+                            imageAssociation: false  // Explicitly set to false
+                          });
+                          setNewOptionValues(prev => ({
+                            ...prev,
+                            [newOptionIndex]: ''
+                          }));
+                        }}
+                        className="mt-2 text-[#e65100] border-[#e65100] hover:bg-orange-50"
+                      >
+                        <IconCirclePlus className="mr-1.5" size={18} /> 
+                        Add another option
+                      </Button>
+                    )}
+                  </div>
+     {/* Variants Section with Bulk Editing - MODIFIED to remove stock column and add stock management link */}
+     {variantFields.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-5">
+                        <h3 className="font-medium text-gray-700">Product Variants ({variantFields.length})</h3>
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            type="button"
+                            variant="outline" 
+                            onClick={handleGenerateVariants}
+                            size="sm"
+                            className="text-[#e65100] border-[#e65100] hover:bg-orange-50"
+                          >
+                            Regenerate variants
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleOpenStockModal}
+                            disabled={hasUnsavedVariantChanges}
+                            className={
+                              hasUnsavedVariantChanges
+                                ? "text-gray-400 border-gray-300 cursor-not-allowed"
+                                : "text-[#e65100] border-[#e65100] hover:bg-orange-50"
+                            }
+                          >
+                            <IconPackage size={16} className="mr-2" />
+                            Manage Stock
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* Unsaved changes warning */}
+                      {hasUnsavedVariantChanges && (
+                        <Alert className="mb-4 bg-amber-50 border-amber-200">
+                          <IconInfoCircle className="w-4 h-4 text-amber-500" />
+                          <AlertDescription className="text-amber-700">
+                            You have unsaved variant changes. Please save the product before managing stock.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      {/* Bulk Edit Controls */}
+                      <Card className="mb-6 border-gray-200 shadow-sm">
+                        <CardHeader className="pb-3 border-b bg-gray-50">
+                          <CardTitle className="flex items-center text-base text-gray-700">
+                            <IconEdit size={18} className="mr-2 text-[#e65100]" />
+                            Bulk Edit
+                          </CardTitle>
+                          <CardDescription>
+                            Apply changes to multiple variants at once
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                          <div className="flex flex-col gap-4">
+                            <div className="flex items-center">
+                              <Switch 
+                                checked={bulkEditMode} 
+                                onCheckedChange={setBulkEditMode} 
+                                id="bulk-edit-mode"
+                                className="data-[state=checked]:bg-[#e65100]"
+                              />
+                              <label htmlFor="bulk-edit-mode" className="ml-2 text-sm text-gray-700">
+                                {bulkEditMode ? 'Exit bulk edit mode' : 'Enable bulk edit mode'}
+                              </label>
+                            </div>
+                            
                             {bulkEditMode && (
-                              <th className="p-2 text-left border">
-                                <span className="sr-only">Select</span>
-                              </th>
+                              <>
+                                <div className="flex items-center mb-2">
+                                  <Switch 
+                                    checked={selectedVariants.length === variantFields.length}
+                                    onCheckedChange={handleSelectAllVariants}
+                                    id="select-all-variants" 
+                                    className="data-[state=checked]:bg-[#e65100]"
+                                  />
+                                  <label htmlFor="select-all-variants" className="ml-2 text-sm text-gray-700">
+                                    Select all variants ({selectedVariants.length}/{variantFields.length})
+                                  </label>
+                                </div>
+                                
+                                {selectedVariants.length > 0 && (
+                                  <div className="grid grid-cols-1 gap-4 mt-2 md:grid-cols-2">
+                                    <div>
+                                      <label className="block mb-1.5 text-sm text-gray-700">Set price for all selected</label>
+                                      <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                          <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={bulkPrice}
+                                            onChange={(e) => setBulkPrice(e.target.value)}
+                                            placeholder="0.00"
+                                            className="pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+                                          />
+                                        </div>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          onClick={() => handleBulkEdit('price', parseFloat(bulkPrice) || 0)}
+                                          disabled={!bulkPrice}
+                                          className="bg-[#e65100] hover:bg-[#d84315] text-white disabled:bg-gray-300"
+                                        >
+                                          Apply
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block mb-1.5 text-sm text-gray-700">Manage Inventory</label>
+                                      <div className="flex items-center gap-2">
+                                        <Switch
+                                          id="bulk-manage-inventory"
+                                          checked={selectedVariants.length > 0 && form.getValues('variants').filter(v => selectedVariants.includes(v.id)).every(v => v.manageInventory)}
+                                          onCheckedChange={(value) => handleBulkInventoryToggle(value)}
+                                          className="data-[state=checked]:bg-[#e65100]"
+                                        />
+                                        <label htmlFor="bulk-manage-inventory" className="text-sm text-gray-700">
+                                          Track inventory for selected variants
+                                        </label>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
                             )}
-                            <th className="p-2 text-left border">Variant</th>
-                            <th className="p-2 text-left border">SKU</th>
-                            <th className="p-2 text-left border">Price</th>
-                            <th className="p-2 text-left border">Stock</th>
-                            <th className="p-2 text-center border">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {variantFields.map((vf, index) => (
-                            <tr key={vf.id} className={bulkEditMode && selectedVariants.includes(vf.id) ? "bg-blue-50" : ""}>
+                          </div>
+                        </CardContent>
+                      </Card>
+                   
+                      {/* Variants Table - MODIFIED to remove stock column */}
+                      <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="border-b border-gray-200 bg-gray-50">
                               {bulkEditMode && (
-                                <td className="p-2 text-center border">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={selectedVariants.includes(vf.id)} 
-                                    onChange={() => handleToggleVariantSelection(vf.id)}
-                                    className="w-4 h-4"
+                                <th className="p-3 text-left border-r border-gray-200">
+                                  <span className="sr-only">Select</span>
+                                </th>
+                              )}
+                              <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Variant</th>
+                              <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">SKU</th>
+                              <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Price</th>
+                              <th className="p-3 font-medium text-center text-gray-700">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {variantFields.map((vf, index) => (
+                              <tr 
+                                key={vf.id} 
+                                className={`
+                                  ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                                  ${bulkEditMode && selectedVariants.includes(vf.id) ? "bg-orange-50" : ""}
+                                  hover:bg-orange-50 transition-colors duration-150
+                                `}
+                              >
+                                {bulkEditMode && (
+                                  <td className="p-3 text-center border-r border-gray-200">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={selectedVariants.includes(vf.id)} 
+                                      onChange={() => handleToggleVariantSelection(vf.id)}
+                                      className="w-4 h-4 rounded border-gray-300 text-[#e65100] focus:ring-[#e65100]"
+                                    />
+                                  </td>
+                                )}
+                                <td className="p-3 border-r border-gray-200">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-gray-800">{form.watch(`variants.${index}.title`)}</span>
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                      {form.watch(`variants.${index}.optionValues`, []).map((optVal, optIndex) => (
+                                        <Badge 
+                                          key={optIndex} 
+                                          variant="outline" 
+                                          className="text-xs text-[#e65100] border-orange-200 bg-orange-50"
+                                        >
+                                          {optVal.optionName}: {optVal.value}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-3 border-r border-gray-200">
+                                  <Input
+                                    {...form.register(`variants.${index}.sku`)}
+                                    onChange={(e) => handleVariantFieldChange(index, 'sku', e.target.value)}
+                                    className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
                                   />
                                 </td>
-                              )}
-                              <td className="p-2 border">
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{form.watch(`variants.${index}.title`)}</span>
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {form.watch(`variants.${index}.optionValues`).map((optVal, optIndex) => (
-                                      <Badge 
-                                        key={optIndex} 
-                                        variant="outline" 
-                                        className="text-xs"
-                                      >
-                                        {optVal.optionName}: {optVal.value}
-                                      </Badge>
-                                    ))}
+                                <td className="p-3 border-r border-gray-200">
+                                <div className="relative">
+                                  <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    // Replace the current value and onChange with these:
+                                    defaultValue={form.getValues(`variants.${index}.price`) || ''}
+                                    onBlur={(e) => {
+                                      const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                      handleVariantFieldChange(index, 'price', value);
+                                    }}
+                                    className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+                                  />
+                                </div>
+                              </td>
+                                <td className="p-3 text-center">
+                                  <div className="flex justify-center space-x-2">
+                                    <Button 
+                                      type="button"
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => handleDuplicateVariant(index)}
+                                      className="text-gray-600 hover:bg-gray-100"
+                                      title="Duplicate variant"
+                                    >
+                                      <IconCopy size={16} />
+                                    </Button>
+                                    
+                                    <Button 
+                                      type="button"
+                                      variant="ghost" 
+                                      size="sm" 
+                                      onClick={() => handleRemoveVariant(index)}
+                                      className="text-red-500 hover:bg-red-50"
+                                      title="Remove variant"
+                                    >
+                                      <IconX size={16} />
+                                    </Button>
                                   </div>
-                                </div>
-                              </td>
-                              <td className="p-2 border">
-                                <Input
-                                  {...form.register(`variants.${index}.sku`)}
-                                  onChange={(e) => handleVariantFieldChange(index, 'sku', e.target.value)}
-                                  className="w-full"
-                                />
-                              </td>
-                              <td className="p-2 border">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={form.watch(`variants.${index}.price`) || ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value === '' ? '' : parseFloat(e.target.value);
-                                    handleVariantFieldChange(index, 'price', value === '' ? 0 : value);
-                                  }}
-                                  className="w-full"
-                                />
-                              </td>
-                              <td className="p-2 border">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  value={form.watch(`variants.${index}.stock`) || ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value === '' ? '' : parseInt(e.target.value);
-                                    handleVariantFieldChange(index, 'stock', value === '' ? 0 : value);
-                                  }}
-                                  className="w-full"
-                                />
-                              </td>
-                              <td className="p-2 text-center border">
-                                <div className="flex justify-center space-x-1">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm"
-                                          onClick={() => handleDuplicateVariant(index)}
-                                        >
-                                          <IconCopy size={16} />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Duplicate variant</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                  
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          onClick={() => removeVariant(index)}
-                                        >
-                                          <IconX size={16} />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Remove variant</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </section>
-            </div>
-
-            {/* Right Column */}
-            <div className="space-y-8">
-              <section className="p-6 bg-white border border-gray-200 rounded">
-                <h2 className="mb-4 text-lg font-semibold">Status</h2>
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Product Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="published">Published</SelectItem>
-                          <SelectItem value="draft">Draft</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
                   )}
-                />
-                <div className="mt-4">
+                </section>
+              </div>
+    {/* Right Column */}
+    <div className="space-y-6">
+                {/* Status Card */}
+                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-800">Status & Visibility</h2>
+                  <Separator className="mb-6" />
+                  
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem className="mb-5">
+                        <FormLabel className="font-medium text-gray-700">Product Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="draft">
+                              <div className="flex items-center">
+                                <span className="w-2 h-2 mr-2 bg-gray-400 rounded-full"></span>
+                                Draft
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="proposed">
+                              <div className="flex items-center">
+                                <span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>
+                                Proposed
+                              </div>
+                            </SelectItem>
+                            {/* Only show the published option if already published */}
+                            {field.value === "published" && (
+                              <SelectItem value="published">
+                                <div className="flex items-center">
+                                  <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
+                                  Published
+                                </div>
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      
+                        <FormDescription className="text-sm text-gray-500">
+                          Draft products are not visible to customers
+                        </FormDescription>
+                        <FormMessage className="text-red-500" />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Category Selection */}
+                  {isLoadingCategories ? (
+                    <FormField
+                      control={form.control}
+                      name="category_id"
+                      render={({ field }) => (
+                        <FormItem className="mb-5">
+                          <FormLabel className="font-medium text-gray-700">Product Category</FormLabel>
+                          <Select disabled={true}>
+                            <FormControl>
+                              <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
+                                <SelectValue placeholder="Loading categories..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <div className="p-2 text-gray-500">Loading...</div>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription className="text-sm text-gray-500">
+                            Categorize your product to help customers find it
+                          </FormDescription>
+                        </FormItem>
+                      )}
+                    />
+                  ) : categoryError ? (
+                    <FormField
+                      control={form.control}
+                      name="category_id"
+                      render={({ field }) => (
+                        <FormItem className="mb-5">
+                          <FormLabel className="font-medium text-gray-700">Product Category</FormLabel>
+                          <Select disabled={true}>
+                            <FormControl>
+                              <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
+                                <SelectValue placeholder="Error loading categories" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <div className="p-2 text-sm text-red-500">{categoryError}</div>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription className="text-sm text-gray-500">
+                            Categorize your product to help customers find it
+                          </FormDescription>
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <HierarchicalCategorySelector 
+                      form={form} 
+                      categories={productCategories} 
+                      name="category_id" 
+                    />
+                  )}
+
                   <FormField
                     control={form.control}
                     name="discountable"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Discountable</FormLabel>
-                        <Select 
-                          onValueChange={(value) => field.onChange(value === 'true')} 
-                          value={field.value ? 'true' : 'false'}
-                        >
+                      <FormItem className="flex flex-row items-start p-4 space-x-3 space-y-0 border rounded-md">
+                        <FormControl>
+                          <Switch 
+                            checked={field.value} 
+                            onCheckedChange={field.onChange} 
+                            className="data-[state=checked]:bg-[#e65100]"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-gray-700">Discountable</FormLabel>
+                          <FormDescription className="text-sm text-gray-500">
+                            Allow this product to be used in discounts
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </section>
+                
+                {/* Shipping & Fulfillment Info Card */}
+                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
+                  <Separator className="mb-4" />
+                  
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-orange-100 rounded-full text-[#e65100]">
+                      <IconTruck size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-800">Creator Fulfillment</h3>
+                      <p className="text-sm text-gray-600">You'll handle all order shipping</p>
+                    </div>
+                  </div>
+                  
+                  {/* Shipping information */}
+                  <div className="mt-6 space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="shippingDays"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center font-medium text-gray-700">
+                            <IconTruck size={18} className="mr-1.5 text-[#e65100]" />
+                            Shipping Time
+                          </FormLabel>
+                          <Select {...field}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
+                                <SelectValue placeholder="Select shipping time" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="3-5">3-5 business days</SelectItem>
+                              <SelectItem value="5-7">5-7 business days</SelectItem>
+                              <SelectItem value="7-10">7-10 business days</SelectItem>
+                              <SelectItem value="10-14">10-14 business days</SelectItem>
+                              <SelectItem value="14-21">2-3 weeks</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Estimated time for delivery after shipping
+                          </FormDescription>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="handlingTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center font-medium text-gray-700">
+                            <IconClock size={18} className="mr-1.5 text-[#e65100]" />
+                            Handling Time
+                          </FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
+                                <SelectValue placeholder="Select handling time" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="1">1 business day</SelectItem>
+                              <SelectItem value="1-2">1-2 business days</SelectItem>
+                              <SelectItem value="2-3">2-3 business days</SelectItem>
+                              <SelectItem value="3-5">3-5 business days</SelectItem>
+                              <SelectItem value="5-7">5-7 business days</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Time needed to prepare and package the order
+                          </FormDescription>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  {/* Stock Management Info */}
+                  <div className="mt-6">
+                    <h3 className="mb-2 font-medium text-gray-700">Stock Information</h3>
+                    <p className="text-sm text-gray-600">
+                      Track inventory for each variant using the "Manage Stock" button in the variants section.
+                      Changes to inventory are only saved when you save the product.
+                    </p>
+                    
+                    <Alert className="mt-4">
+                      <IconInfoCircle className="w-4 h-4" />
+                      <AlertDescription>
+                        To update stock levels after making variant changes, first save the product and then use the "Manage Stock" button.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                </section>
+                
+                {/* Physical Details Card */}
+                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-800">Physical Details</h2>
+                  <Separator className="mb-6" />
+                  
+                  <div className="space-y-5">
+                    <FormField
+                      control={form.control}
+                      name="weight"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-medium text-gray-700">Weight (g)</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              min="0" 
+                              placeholder="e.g. 400" 
+                              className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
+                            />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="true">Yes</SelectItem>
-                            <SelectItem value="false">No</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </section>
-              
-              <section className="p-6 bg-white border border-gray-200 rounded">
-                <h2 className="mb-4 text-lg font-semibold">Physical Details</h2>
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="weight"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Weight (g)</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" min="0" placeholder="e.g. 400" />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="length"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Length (cm)</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" min="0" placeholder="e.g. 30" />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="width"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Width (cm)</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" min="0" placeholder="e.g. 20" />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="height"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Height (cm)</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" min="0" placeholder="e.g. 5" />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </section>
-              
-              <section className="p-6 bg-white border border-gray-200 rounded">
-                <h2 className="mb-4 text-lg font-semibold">Additional Info</h2>
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="material"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Material</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="e.g. Cotton, Polyester" />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="origin_country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country of Origin</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="e.g. US, China" />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </section>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="grid grid-cols-3 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="length"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-medium text-gray-700">Length(cm)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                min="0" 
+                                placeholder="e.g. 30" 
+                                className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="width"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-medium text-gray-700">Width(cm)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                min="0" 
+                                placeholder="e.g. 20" 
+                                className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="height"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-medium text-gray-700">Heigh(cm)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                min="0" 
+                                placeholder="e.g. 5" 
+                                className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </section>
+     {/* Additional Info Card */}
+     <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-800">Additional Info</h2>
+                  <Separator className="mb-6" />
+                  
+                  <div className="space-y-5">
+                    <FormField
+                      control={form.control}
+                      name="material"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-medium text-gray-700">Material</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="e.g. Cotton, Polyester" 
+                              className="border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]" 
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="origin_country"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-medium text-gray-700">Country of Origin</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value || ''}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
+                                <SelectValue placeholder="Select country" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="IN">India</SelectItem>
+                              <SelectItem value="US">United States</SelectItem>
+                              <SelectItem value="CN">China</SelectItem>
+                              <SelectItem value="JP">Japan</SelectItem>
+                              <SelectItem value="KR">South Korea</SelectItem>
+                              <SelectItem value="GB">United Kingdom</SelectItem>
+                              <SelectItem value="DE">Germany</SelectItem>
+                              <SelectItem value="IT">Italy</SelectItem>
+                              <SelectItem value="FR">France</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </section>
+              </div>
             </div>
-          </div>
-          <div className="flex justify-end mt-8 space-x-2">
-            <Button variant="outline" onClick={() => navigate({ to: '/products' })}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={handleManualSubmit} disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
-  );
-};
-
-export default EditProduct;
+            
+            {/* Bottom Action Bar - Fixed to bottom on mobile */}
+            <div className="fixed bottom-0 left-0 right-0 z-10 p-4 bg-white border-t border-gray-200 md:static md:bg-transparent md:border-0 md:p-0 md:mt-6">
+              <div className="flex justify-end mx-auto space-x-3 max-w-7xl">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate({ to: '/products' })}
+                  className="text-gray-700 border-gray-300 hover:bg-gray-50"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={handleManualSubmit} 
+                  disabled={isSubmitting}
+                  className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </Form>
+      </div>
+    );
+  };
+  
+  export default EditProduct;

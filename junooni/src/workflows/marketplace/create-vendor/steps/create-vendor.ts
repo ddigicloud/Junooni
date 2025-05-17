@@ -1,9 +1,13 @@
-import { 
+import {
   createStep,
   StepResponse,
 } from "@medusajs/framework/workflows-sdk"
 import { MARKETPLACE_MODULE } from "../../../../modules/marketplace"
 import MarketplaceModuleService from "../../../../modules/marketplace/service"
+
+
+import { CreatorCategoryEnum } from "../../../../modules/marketplace/types"
+
 
 enum BankAccountType {
   Saving = "Saving",
@@ -37,15 +41,22 @@ type CreateVendorStepInput = {
   cancelled_checkque?: string
   creator_bio?: string
   creator_title?: string
+  creator_category?: typeof CreatorCategoryEnum[number] | null
+  verified?: "Yes" | "No"
 }
+
+
+
 
 const createVendorStep = createStep(
   "create-vendor",
   async (vendorData: CreateVendorStepInput, { container }) => {
-    const marketplaceModuleService: MarketplaceModuleService = 
+    const marketplaceModuleService: MarketplaceModuleService =
       container.resolve(MARKETPLACE_MODULE)
 
+
     const vendor = await marketplaceModuleService.createVendors(vendorData)
+
 
     return new StepResponse(vendor, vendor.id)
   },
@@ -54,11 +65,16 @@ const createVendorStep = createStep(
       return
     }
 
-    const marketplaceModuleService: MarketplaceModuleService = 
+
+    const marketplaceModuleService: MarketplaceModuleService =
       container.resolve(MARKETPLACE_MODULE)
+
 
       marketplaceModuleService.deleteVendors(vendorId)
   }
 )
 
+
 export default createVendorStep
+
+

@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
-import BrandSettings from "@/features/auth/sign-up/onboarding/components/BrandSettings"
+// import React, { useRef } from 'react';
+import VendorHandleInput from "./VendorHandleInput"; // Adjust the path as needed
+// import BrandSettings from "@/features/auth/sign-up/onboarding/components/BrandSettings"
 import { useNavigate } from "@tanstack/react-router";
+import ChatwootWidget from '@/components/ChatwootWidget'
+import { Link } from "@tanstack/react-router";
 import { 
   Card, 
   CardContent, 
@@ -26,6 +30,8 @@ import {
   IconDeviceFloppy,
   IconArrowRight,
   IconUser,
+  IconInfoCircle,
+  IconMail,
   IconBuilding,
   IconCreditCard,
   IconFileText,
@@ -79,6 +85,13 @@ interface VendorData {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+   // Add the admins property to match API response
+    // Add the admins property to match API response
+  admin: {
+    email: string,
+    first_name: string,
+    last_name: string
+  }[]
 }
 
 // Enhanced steps with more information and visual elements
@@ -187,7 +200,8 @@ const CREATOR_STORIES = [
 ];
 
 // Mock component for the forms - in reality these would be your actual form components
-const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toast}) => {
+const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toast, setVendorData, stepCompletion ,setCurrentStep, handleFileUpload, isUploading,  uploadType,  termsAgreed, setTermsAgreed  }) => {
+  
   const renderFormFields = () => {
     switch (stepId) {
       case "welcome":
@@ -202,7 +216,125 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                 You're about to join a thriving community of creative entrepreneurs. Let's set up your profile together.
               </p>
             </div>
+            {/* <div className="mb-8 text-center">
+              <div className="flex items-center justify-center w-24 h-24 mx-auto mb-4 rounded-full" style={{ background: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.secondary} 100%)` }}>
+                <IconUser className="w-12 h-12 text-white" />
+              </div>
+              <h1 className="mb-2 text-3xl font-bold" style={{ color: brandColors.primary }}>Welcome to Junooni!</h1>
+              <p className="max-w-xl mx-auto text-lg" style={{ color: brandColors.textSecondary }}>
+                Let's get started by setting up your admin profile.
+              </p>
+            </div> */}
             
+            {/* New Admin Information Form
+      <div className="max-w-md p-6 mx-auto bg-white shadow-lg rounded-xl">
+        <h3 className="mb-4 text-xl font-bold" style={{ color: brandColors.secondary }}>Admin Information</h3>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block mb-1 text-sm font-medium">Email Address</label>
+            <div className="flex items-center px-3 py-2 bg-gray-100 rounded-md">
+              <IconMail className="w-5 h-5 mr-2 text-gray-500" />
+              <span className="text-gray-700">
+                {localStorage.getItem('vendorEmail') || "vendor@example.com"}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">This email will be used for account notifications</p>
+          </div>
+          
+          <div>
+            <div className="flex justify-between mb-1">
+              <label className="block text-sm font-medium">First Name <span className="text-red-500">*</span></label>
+              <span className="text-xs text-gray-400">Required</span>
+            </div>
+            <input
+              id="admin-first-name"
+              type="text"
+              value={adminFirstName}
+              onChange={(e) => setAdminFirstName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
+              style={{
+                borderColor: adminFirstName ? 'rgb(229, 231, 235)' : brandColors.error,
+                focusRing: brandColors.primary
+              }}
+              placeholder="Enter your first name"
+            />
+            {!adminFirstName && (
+              <p className="mt-1 text-sm" style={{ color: brandColors.error }}>First name is required</p>
+            )}
+          </div>
+
+          <div>
+            <div className="flex justify-between mb-1">
+              <label className="block text-sm font-medium">Last Name <span className="text-red-500">*</span></label>
+              <span className="text-xs text-gray-400">Required</span>
+            </div>
+            <input
+              id="admin-last-name"
+              type="text"
+              value={adminLastName}
+              onChange={(e) => setAdminLastName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
+              style={{
+                borderColor: adminLastName ? 'rgb(229, 231, 235)' : brandColors.error,
+                focusRing: brandColors.primary
+              }}
+              placeholder="Enter your last name"
+            />
+            {!adminLastName && (
+              <p className="mt-1 text-sm" style={{ color: brandColors.error }}>Last name is required</p>
+            )}
+          </div>
+
+        <div className="flex justify-center pt-4">
+          <button
+            onClick={() => {
+              // First update the local state to vendorData
+              const updatedVendorData = { ...vendorData };
+              const userEmail = localStorage.getItem('vendorEmail') || 'vendor@example.com';
+              
+              if (!updatedVendorData.vendor.admin || !Array.isArray(updatedVendorData.vendor.admin) || updatedVendorData.vendor.admin.length === 0) {
+                updatedVendorData.vendor.admin = [{
+                  email: userEmail,
+                  first_name: adminFirstName,
+                  last_name: adminLastName
+                }];
+              } else {
+                updatedVendorData.vendor.admin[0] = {
+                  ...updatedVendorData.vendor.admin[0],
+                  email: userEmail,
+                  first_name: adminFirstName,
+                  last_name: adminLastName
+                };
+              }
+              
+              // Update parent state
+              setVendorData(updatedVendorData);
+              
+              // Then call the API
+              saveAdminData(adminFirstName, adminLastName);
+            }}
+            className="px-4 py-2 text-white rounded-md"
+            style={{ 
+              background: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.secondary} 100%)`,
+            }}
+            disabled={!adminFirstName || !adminLastName}
+          >
+            Save Admin Information
+          </button>
+        </div>
+      </div>
+        
+        <div className="p-3 mt-4 border border-blue-100 rounded-md bg-blue-50">
+          <div className="flex items-start">
+            <IconInfoCircle className="w-5 h-5 mt-0.5 mr-2 text-blue-500" />
+            <p className="text-sm text-blue-700">
+              This information will be used for all official communications and documents.
+            </p>
+          </div>
+        </div>
+      </div> */}
+
             <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
               <div className="flex flex-col items-center p-4 text-center transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl">
                 <div className="flex items-center justify-center w-12 h-12 mb-4 rounded-full" style={{ background: `${brandColors.primary}22` }}>
@@ -287,13 +419,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         );
 
         case "basic-info":
-          console.log('Rendering basic-info with vendorData:', vendorData); // Debug log
-          
-          // Check if vendorData exists and is structured correctly
-          if (!vendorData) {
-            return <div>Loading vendor data...</div>;
-          }
-          
+
           return (
             <div className="py-4 space-y-6">
               <div className="flex items-center p-4 mb-6 border border-blue-100 rounded-lg bg-blue-50">
@@ -304,6 +430,122 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               </div>
               
               <div className="space-y-6">
+                {/* Email Display Section - Updated for Existing Vendors */}
+                {/* Email Display Section - Works without external isLoading state */}
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <label className="block text-sm font-medium">Your Email ID <span className="text-red-500">*</span></label>
+                    <span className="text-xs text-gray-400">Account Email</span>
+                  </div>
+                  <div className="flex items-center px-3 py-2 bg-gray-100 border border-gray-300 rounded-md">
+                    <IconMail className="w-5 h-5 mr-2 text-gray-500" />
+                    <span className="text-gray-700">
+                      {vendorData ? (
+                        vendorData.vendor && 
+                        vendorData.vendor.admin && 
+                        Array.isArray(vendorData.vendor.admin) && 
+                        vendorData.vendor.admin.length > 0 && 
+                        vendorData.vendor.admin[0].email
+                          ? vendorData.vendor.admin[0].email
+                          : localStorage.getItem('vendorEmail') || "vendor@example.com"
+                      ) : (
+                        "Loading email..."
+                      )}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">This email will be used for account notifications</p>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <label className="block text-sm font-medium">Your First Name <span className="text-red-500">*</span></label>
+                    <span className="text-xs text-gray-400">Required</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={vendorData.vendor.admin && Array.isArray(vendorData.vendor.admin) && vendorData.vendor.admin.length > 0 
+                      ? vendorData.vendor.admin[0].first_name || '' 
+                      : ''}
+                    onChange={(e) => {
+                      // Create a deep copy of the current vendor data
+                      const updatedVendorData = { ...vendorData };
+                      
+                      // Ensure admin array is properly initialized
+                      if (!updatedVendorData.vendor.admin || !Array.isArray(updatedVendorData.vendor.admin) || updatedVendorData.vendor.admin.length === 0) {
+                        updatedVendorData.vendor.admin = [{ email: localStorage.getItem('vendorEmail') || 'vendor@example.com' }];
+                      }
+                      
+                      // Update the first_name property
+                      updatedVendorData.vendor.admin[0].first_name = e.target.value;
+                      
+                      // Set the updated vendor data
+                      setVendorData(updatedVendorData);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
+                    style={{
+                      borderColor: vendorData.vendor.admin && 
+                                  Array.isArray(vendorData.vendor.admin) && 
+                                  vendorData.vendor.admin.length > 0 && 
+                                  vendorData.vendor.admin[0].first_name 
+                        ? 'rgb(229, 231, 235)' 
+                        : brandColors.error,
+                      focusRing: brandColors.primary
+                    }}
+                    placeholder="Enter your First name"
+                  />
+                  {(!vendorData.vendor.admin || 
+                    !Array.isArray(vendorData.vendor.admin) || 
+                    vendorData.vendor.admin.length === 0 ||
+                    !vendorData.vendor.admin[0].first_name) && (
+                    <p className="mt-1 text-sm" style={{ color: brandColors.error }}>First name is required</p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <label className="block text-sm font-medium">Your Last Name <span className="text-red-500">*</span></label>
+                    <span className="text-xs text-gray-400">Required</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={vendorData.vendor.admin && Array.isArray(vendorData.vendor.admin) && vendorData.vendor.admin.length > 0 
+                      ? vendorData.vendor.admin[0].last_name || '' 
+                      : ''}
+                    onChange={(e) => {
+                      // Create a deep copy of the current vendor data
+                      const updatedVendorData = { ...vendorData };
+                      
+                      // Ensure admin array is properly initialized
+                      if (!updatedVendorData.vendor.admin || !Array.isArray(updatedVendorData.vendor.admin) || updatedVendorData.vendor.admin.length === 0) {
+                        updatedVendorData.vendor.admin = [{ email: localStorage.getItem('vendorEmail') || 'vendor@example.com' }];
+                      }
+                      
+                      // Update the last_name property
+                      updatedVendorData.vendor.admin[0].last_name = e.target.value;
+                      
+                      // Set the updated vendor data
+                      setVendorData(updatedVendorData);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
+                    style={{
+                      borderColor: vendorData.vendor.admin && 
+                                  Array.isArray(vendorData.vendor.admin) && 
+                                  vendorData.vendor.admin.length > 0 && 
+                                  vendorData.vendor.admin[0].last_name 
+                        ? 'rgb(229, 231, 235)' 
+                        : brandColors.error,
+                      focusRing: brandColors.primary
+                    }}
+                    placeholder="Enter your Last name"
+                  />
+                  {(!vendorData.vendor.admin || 
+                    !Array.isArray(vendorData.vendor.admin) || 
+                    vendorData.vendor.admin.length === 0 ||
+                    !vendorData.vendor.admin[0].last_name) && (
+                    <p className="mt-1 text-sm" style={{ color: brandColors.error }}>Last name is required</p>
+                  )}
+                </div>
+
                 <div>
                   <div className="flex justify-between mb-2">
                     <label className="block text-sm font-medium">Brand Name <span className="text-red-500">*</span></label>
@@ -324,6 +566,33 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                     <p className="mt-1 text-sm" style={{ color: brandColors.error }}>Brand name is required</p>
                   )}
                 </div>
+
+                <VendorHandleInput 
+                  vendorData={vendorData} 
+                  updateVendorData={updateVendorData} 
+                  brandColors={brandColors} 
+                />
+
+                {/* <div>
+                  <div className="flex justify-between mb-2">
+                    <label className="block text-sm font-medium">Vendor's Handle <span className="text-red-500">*</span></label>
+                    <span className="text-xs text-gray-400">Required</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={vendorData.vendor.handle || ''}
+                    onChange={(e) => updateVendorData('handle', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
+                    style={{
+                      borderColor: vendorData.vendor.handle ? 'rgb(229, 231, 235)' : brandColors.error,
+                      focusRing: brandColors.primary
+                    }}
+                    placeholder="Enter your handle"
+                  />
+                  {!vendorData.vendor.handle && (
+                    <p className="mt-1 text-sm" style={{ color: brandColors.error }}>Vendor's handle is required</p>
+                  )}
+                </div> */}
                 
                 <div className="flex flex-col gap-6 md:flex-row">
                   <div className="w-full">
@@ -375,103 +644,16 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                           <p className="mt-1 text-xs text-gray-500">Supports JPG, PNG, SVG</p>
                         </div>
                       )}
-                      {/* Hidden file input */}
-                      <input
+                     <input
                         id="logo-upload"
                         type="file"
-                        accept="image/jpeg,image/png,image/svg+xml"
+                        accept="image/*"
+                        disabled={isUploading && uploadType === 'logo'}
                         className="hidden"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
-                            const file = e.target.files[0];
-                            const formData = new FormData();
-                            formData.append('file', file);
-                            
-                            // Show loading state
-                            toast({
-                              title: "Uploading...",
-                              description: "Uploading your logo, please wait.",
-                            });
-                            
-                           // Upload the file to your server
-                          // For both logo and coverphoto upload handlers, update the code to:
-                          fetch('http://localhost:9000/vendors/uploads', {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${localStorage.getItem('vendorToken')}`
-                            },
-                            body: formData
-                          })
-                          .then(response => response.json())
-                          .then(data => {
-                            // Log the full response to see its structure
-                            console.log('Server response structure:', data);
-                            
-                            // Try to extract the URL using a more comprehensive approach
-                            let fileUrl = null;
-                            
-                            // Option 1: Direct url property
-                            if (data.url) fileUrl = data.url;
-                            
-                            // Option 2: In files array
-                            else if (data.files && Array.isArray(data.files) && data.files.length > 0) {
-                              const file = data.files[0];
-                              if (file.url) fileUrl = file.url;
-                              else if (file.file_url) fileUrl = file.file_url;
-                              else if (file.path) fileUrl = file.path;
-                            }
-                            
-                            // Option 3: In file object
-                            else if (data.file) {
-                              if (data.file.url) fileUrl = data.file.url;
-                              else if (data.file.path) fileUrl = data.file.path;
-                            }
-                            
-                            // Option 4: Direct data as string URL
-                            else if (typeof data === 'string' && data.startsWith('http')) {
-                              fileUrl = data;
-                            }
-                            
-                            // Option 5: Nested in data property
-                            else if (data.data) {
-                              if (data.data.url) fileUrl = data.data.url;
-                              else if (typeof data.data === 'string' && data.data.startsWith('http')) {
-                                fileUrl = data.data;
-                              }
-                            }
-                            
-                            // If we found a URL, update the vendorData
-                            if (fileUrl) {
-                              console.log('Extracted file URL:', fileUrl);
-                              updateVendorData('logo', fileUrl); // or 'coverphoto' for cover uploads
-                              
-                              toast({
-                                title: "Upload Complete",
-                                description: "Your image has been uploaded successfully.",
-                              });
-                            } else {
-                              // If we couldn't extract a URL, log the error but DON'T throw
-                              // This will prevent the error message you're seeing
-                              console.error('Could not extract file URL from server response:', data);
-                              
-                              toast({
-                                title: "Upload Issue",
-                                description: "File uploaded but couldn't process the server response. Please check console.",
-                                variant: "destructive",
-                              });
-                            }
-                          })
-                          .catch(error => {
-                            console.error('Error uploading file:', error);
-                            toast({
-                              title: "Upload Failed",
-                              description: "Failed to upload your file. Please try again.",
-                              variant: "destructive",
-                            });
-                          });
-
+                            handleFileUpload(e.target.files[0], 'logo');
                           }
-                          // Clear the input value so the same file can be selected again
                           e.target.value = '';
                         }}
                       />
@@ -517,49 +699,15 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                           <p className="mt-1 text-xs text-gray-500">Showcases your brand</p>
                         </div>
                       )}
-                      {/* Hidden file input */}
                       <input
                         id="cover-upload"
                         type="file"
                         accept="image/jpeg,image/png"
+                        disabled={isUploading && uploadType === 'coverphoto'}
                         className="hidden"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
-                            const file = e.target.files[0];
-                            const formData = new FormData();
-                            formData.append('file', file);
-                            
-                            // Show loading state
-                            toast({
-                              title: "Uploading...",
-                              description: "Uploading your cover photo, please wait.",
-                            });
-                            
-                            // Upload the file to your server
-                            fetch('http://localhost:9000/vendors/uploads', {
-                              method: 'POST',
-                              headers: {
-                                'Authorization': `Bearer ${localStorage.getItem('vendorToken')}`
-                              },
-                              body: formData
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                              // Update the coverphoto URL in vendor data
-                              updateVendorData('coverphoto', data.url);
-                              toast({
-                                title: "Upload Complete",
-                                description: "Your cover photo has been uploaded successfully.",
-                              });
-                            })
-                            .catch(error => {
-                              console.error('Error uploading cover photo:', error);
-                              toast({
-                                title: "Upload Failed",
-                                description: "Failed to upload your cover photo. Please try again.",
-                                variant: "destructive",
-                              });
-                            });
+                            handleFileUpload(e.target.files[0], 'coverphoto');
                           }
                           // Clear the input value so the same file can be selected again
                           e.target.value = '';
@@ -594,15 +742,15 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <label className="block mb-1 text-sm font-medium">Instagram</label>
-                      <div className="flex">
-                        <div className="flex items-center justify-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
-                          <span className="text-sm text-gray-500">instagram.com/</span>
+                      <div className="flex overflow-hidden">
+                        <div className="flex items-center justify-center flex-shrink-0 px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
+                          <span className="text-sm text-gray-500 whitespace-nowrap">instagram.com/</span>
                         </div>
                         <input
                           type="text"
                           value={vendorData.vendor.instagram || ''}
                           onChange={(e) => updateVendorData('instagram', e.target.value)}
-                          className="flex-grow px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2"
+                          className="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2"
                           style={{ focusRing: brandColors.primary }}
                           placeholder="yourbrand"
                         />
@@ -611,16 +759,34 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                     
                     <div>
                       <label className="block mb-1 text-sm font-medium">YouTube</label>
-                      <div className="flex">
-                        <div className="flex items-center justify-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
-                          <span className="text-sm text-gray-500">youtube.com/</span>
+                      <div className="flex overflow-hidden">
+                        <div className="flex items-center justify-center flex-shrink-0 px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
+                          <span className="text-sm text-gray-500 whitespace-nowrap">youtube.com/</span>
                         </div>
                         <input
                           type="text"
                           value={vendorData.vendor.youtube || ''}
                           onChange={(e) => updateVendorData('youtube', e.target.value)}
-                          className="flex-grow px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none"
+                          className="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2"
+                          style={{ focusRing: brandColors.primary }}
                           placeholder="@yourchannel"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block mb-1 text-sm font-medium">Twitter</label>
+                      <div className="flex overflow-hidden">
+                        <div className="flex items-center justify-center flex-shrink-0 px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
+                          <span className="text-sm text-gray-500 whitespace-nowrap">twitter.com/</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={vendorData.vendor.xtwitter || ''}
+                          onChange={(e) => updateVendorData('xtwitter', e.target.value)}
+                          className="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2"
+                          style={{ focusRing: brandColors.primary }}
+                          placeholder="@yourhandle"
                         />
                       </div>
                     </div>
@@ -647,7 +813,12 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <div className="flex">
                 <IconAlertCircle className="w-5 h-5 mt-0.5 mr-3 text-amber-500" />
                 <div>
-                  <p className="text-sm font-medium text-amber-800">We use this information for tax reporting and verification purposes only.</p>
+                <p className="text-sm font-medium text-amber-800">
+                  {!vendorData.vendor.id 
+                    ? "Let's add your business details for tax and verification purposes."
+                    : "We use this information for tax reporting and verification purposes only."}
+                </p>
+                  {/* <p className="text-sm font-medium text-amber-800">We use this information for tax reporting and verification purposes only.</p> */}
                   <p className="mt-1 text-xs text-amber-700">All your business information is securely stored and protected.</p>
                 </div>
               </div>
@@ -791,6 +962,44 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         );
         
       case "banking-info":
+        console.log('Rendering banking-info with vendorData:', vendorData);
+  
+        // True loading state - only if vendorData is completely null
+        if (vendorData === null) {
+          return <div>Loading...</div>;
+        }
+        
+        // For missing vendor structure, initialize it rather than showing loading
+        if (!vendorData.vendor) {
+          vendorData = {
+            vendor: {
+              // id: "",
+              handle: "",
+              name: "",
+              bank_account_holder_name: null,
+              bank_account_number: null,
+              bank_account_ifsc_code: null,
+              bank_name: null,
+              bank_account_type: "Saving", // Default value
+              cancelled_checkque: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          };
+        }
+        
+        // Ensure admin property exists and is properly structured
+        if (!vendorData.vendor.admin || !Array.isArray(vendorData.vendor.admin) || vendorData.vendor.admin.length === 0) {
+          console.log('Admin data missing, initializing...');
+          const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+          
+          // Initialize admin array with empty data
+          vendorData.vendor.admin = [{
+            email: userEmail,
+            first_name: '',
+            last_name: ''
+          }];
+        }
         return (
           <div className="py-4 space-y-6">
             <div className="flex items-center p-4 mb-6 border border-blue-100 rounded-lg bg-blue-50">
@@ -798,7 +1007,12 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                 <IconCreditCard className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-blue-800">Your banking details are needed for payouts</p>
+              <p className="text-sm font-medium text-blue-800">
+                {!vendorData.vendor.id 
+                  ? "Please provide your banking details so we can send your earnings."
+                  : "Your banking details are needed for payouts"}
+              </p>
+                {/* <p className="text-sm font-medium text-blue-800">Your banking details are needed for payouts</p> */}
                 <p className="mt-1 text-xs text-blue-700">We'll transfer your earnings to this account when customers purchase your products</p>
               </div>
             </div>
@@ -902,7 +1116,8 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                 </div>
                 <div 
                   className="flex items-center justify-center h-32 transition-colors border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50"
-                  style={{ borderColor: vendorData.cancelled_checkque ? brandColors.success : 'rgb(229, 231, 235)' }}
+                  style={{ borderColor: vendorData.vendor.cancelled_checkque ? brandColors.success : 'rgb(229, 231, 235)' }}
+                  onClick={() => document.getElementById('cheque-upload').click()}
                 >
                   {vendorData.vendor.cancelled_checkque ? (
                     <div className="relative w-full h-full">
@@ -912,7 +1127,13 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                           <span className="text-sm font-medium">cheque_scan.jpg</span>
                         </div>
                       </div>
-                      <div className="absolute p-1 bg-white rounded-full shadow-md top-2 right-2">
+                      <div 
+                        className="absolute p-1 bg-white rounded-full shadow-md cursor-pointer top-2 right-2"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent triggering the parent div's click
+                          updateVendorData('cancelled_checkque', null);
+                        }}
+                      >
                         <IconX className="w-4 h-4 text-gray-500" />
                       </div>
                     </div>
@@ -921,12 +1142,29 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                       <div className="flex items-center justify-center w-12 h-12 mx-auto mb-2 bg-gray-100 rounded-full">
                         <IconFileText className="w-6 h-6 text-gray-400" />
                       </div>
-                      <p className="text-sm font-medium">Drop your file here or <span style={{ color: brandColors.primary }}>browse</span></p>
+                      <p className="text-sm font-medium">
+                        Drop your file here or <span style={{ color: brandColors.primary }}>browse</span>
+                      </p>
                       <p className="mt-1 text-xs text-gray-500">Supports JPG, PNG, PDF (Max: 5MB)</p>
                     </div>
                   )}
+                  {/* Hidden file input for cheque upload */}
+                  <input
+                    id="cheque-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,application/pdf"
+                    disabled={isUploading && uploadType === 'cancelled_checkque'}
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileUpload(e.target.files[0], 'cancelled_checkque');
+                      }
+                      // Clear the input value so the same file can be selected again
+                      e.target.value = '';
+                    }}
+                  />
                 </div>
-              </div>
+                </div>
             </div>
             
             <div className="p-4 bg-white border-l-4 border-blue-400 rounded-lg shadow-sm">
@@ -944,11 +1182,53 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         );
         
       case "creator-profile":
+        console.log('Rendering creator-profile with vendorData:', vendorData);
+  
+        // True loading state - only if vendorData is completely null
+        if (vendorData === null) {
+          return <div>Loading...</div>;
+        }
+        
+        // For missing vendor structure, initialize it rather than showing loading
+        if (!vendorData.vendor) {
+          vendorData = {
+            vendor: {
+              // id: "new",
+              handle: "",
+              name: "",
+              logo: null,
+              coverphoto: null,
+              creator_bio: null,
+              creator_title: null,
+              //creator_category: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          };
+        }
+        
+        // Ensure admin property exists and is properly structured
+        if (!vendorData.vendor.admin || !Array.isArray(vendorData.vendor.admin) || vendorData.vendor.admin.length === 0) {
+          console.log('Admin data missing, initializing...');
+          const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+          
+          // Initialize admin array with empty data
+          vendorData.vendor.admin = [{
+            email: userEmail,
+            first_name: '',
+            last_name: ''
+          }];
+        }
         return (
           <div className="py-4 space-y-6">
             <div className="p-4 mb-6 bg-white border-l-4 rounded-lg shadow-sm" style={{ borderLeftColor: brandColors.primary }}>
-              <p className="text-sm">
+              {/* <p className="text-sm">
                 <span className="font-semibold">Make your profile stand out!</span> This information will be visible to customers browsing the marketplace.
+              </p> */}
+              <p className="text-sm">
+                {!vendorData.vendor.id 
+                  ? "Let's create your creator profile! This is how customers will discover your unique brand story."
+                  : "Make your profile stand out! This information will be visible to customers browsing the marketplace."}
               </p>
             </div>
             
@@ -980,15 +1260,16 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                 onChange={(e) => updateVendorData('creator_category', e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md appearance-none focus:outline-none"
               >
-                <option value="">Select Category</option>
-                <option value="Handmade Crafts">Handmade Crafts</option>
-                <option value="Digital Art">Digital Art</option>
-                <option value="Home Decor">Home Decor</option>
-                <option value="Jewelry">Jewelry</option>
-                <option value="Fashion">Fashion</option>
-                <option value="Beauty & Wellness">Beauty & Wellness</option>
-                <option value="Food & Beverages">Food & Beverages</option>
-                <option value="Art & Collectibles">Art & Collectibles</option>
+                 <option value="">Select Category</option>
+                  <option value="Art">Art</option>
+                  <option value="Music">Music</option>
+                  <option value="Cinema">Cinema</option>
+                  <option value="Fashion">Fashion</option>
+                  <option value="Sports">Sports</option>
+                  <option value="Comedy">Comedy</option>
+                  <option value="Gaming">Gaming</option>
+                  <option value="Influencer">Influencer</option>
+                  <option value="other">Other</option>
                 {/* More categories would be here */}
               </select>
             </div>
@@ -1060,13 +1341,69 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         );
         
       case "final-review":
+        console.log('Rendering final-review with vendorData:', vendorData);
+  
+        // True loading state - only if vendorData is completely null
+        if (vendorData === null) {
+          return <div>Loading...</div>;
+        }
+        
+        // For missing vendor structure, initialize it rather than showing loading
+        if (!vendorData.vendor) {
+          vendorData = {
+            vendor: {
+              // id: "new",
+              handle: "",
+              name: "",
+              logo: null,
+              coverphoto: null,
+              phonenumber: null,
+              GSTIN: null,
+              gst_verification_status: "pending",
+              companyname: null,
+              pan_number: null,
+              city: null,
+              pincode: null,
+              state: null,
+              address: null,
+              bank_account_holder_name: null,
+              bank_account_number: null,
+              bank_account_ifsc_code: null,
+              bank_name: null,
+              bank_account_type: "Saving",
+              cancelled_checkque: null,
+              creator_bio: null,
+              creator_title: null,
+              creator_category: "other",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          };
+        }
+        
+        // Ensure admin property exists and is properly structured
+        if (!vendorData.vendor.admin || !Array.isArray(vendorData.vendor.admin) || vendorData.vendor.admin.length === 0) {
+          console.log('Admin data missing, initializing...');
+          const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+          
+          // Initialize admin array with empty data
+          vendorData.vendor.admin = [{
+            email: userEmail,
+            first_name: '',
+            last_name: ''
+          }];
+        }
         return (
           <div className="py-4 space-y-6">
             <div className="p-4 mb-6 border border-green-100 rounded-lg bg-green-50">
               <div className="flex">
                 <IconCircleCheck className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-green-800">You're almost there!</p>
+                  <p className="text-sm font-medium text-green-800">
+                    {!vendorData.vendor.id 
+                      ? "Let's review your information before submitting"
+                      : "You're almost there!"}
+                  </p>
                   <p className="mt-1 text-xs text-green-700">Review your information before submitting your profile.</p>
                 </div>
               </div>
@@ -1077,6 +1414,10 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                 const isCompleted = stepCompletion[step.id];
                 const StepIcon = step.icon;
                 
+                // For new vendors with no data yet, we show sections as incomplete
+                // but still enable them to proceed if they've filled in required fields
+                const isNewVendor = !vendorData.vendor.id;
+          
                 return (
                   <div key={step.id} className="overflow-hidden border rounded-lg">
                     <div 
@@ -1149,7 +1490,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                             <p className="text-sm text-gray-700">{vendorData.vendor.GSTIN || 'Not provided'}</p>
                           </div>
                           <div>
-                            <p className="mb-1 text-sm font-medium">PANI Number</p>
+                            <p className="mb-1 text-sm font-medium">PAN Number</p>
                             <p className="text-sm text-gray-700">{vendorData.vendor.pan_number || 'Not provided'}</p>
                           </div>
                           <div>
@@ -1219,13 +1560,21 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               })}
             </div>
             
-            <div className="p-4 mt-8 bg-white border border-gray-200 rounded-lg">
-              <label className="flex items-start">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 mt-1 mr-3"
-                  style={{ accentColor: brandColors.primary }}
-                />
+             {/* Updated checkbox with state */}
+             <div className="p-4 mt-8 bg-white border border-gray-200 rounded-lg">
+              <label className="flex items-start cursor-pointer">
+              <input
+                type="checkbox"
+                id="terms-checkbox"
+                className="w-5 h-5 mt-1 mr-3" // Made slightly larger
+                style={{ accentColor: brandColors.primary, cursor: 'pointer' }}
+                checked={termsAgreed}
+                onChange={() => {
+                  console.log("Checkbox clicked - current value:", !termsAgreed);
+                  // Use direct toggle approach
+                  setTermsAgreed(!termsAgreed);
+                }}
+              />
                 <div>
                   <p className="text-sm">I confirm that all the information provided is accurate and complete.</p>
                   <p className="mt-1 text-xs text-gray-500">By submitting, you agree to Junooni's <a href="#" style={{ color: brandColors.primary }}>Terms of Service</a> and <a href="#" style={{ color: brandColors.primary }}>Seller Policy</a>.</p>
@@ -1267,8 +1616,12 @@ const CreatorStoryCard = ({ story, brandColors }) => {
 export default function ImprovedCreatorOnboarding() {
   const [currentStep, setCurrentStep] = useState("welcome");
   const [progress, setProgress] = useState(0);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  // Add these with your other state variables in ImprovedCreatorOnboarding function
+const [isUploading, setIsUploading] = useState(false);
+const [uploadType, setUploadType] = useState<string | null>(null);
+  // const [logoFile, setLogoFile] = useState<File | null>(null);
+  // const [coverFile, setCoverFile] = useState<File | null>(null);
   const [vendorData, setVendorData] = useState<ApiVendorResponse | null>(null);
   const [stepCompletion, setStepCompletion] = useState({
     "welcome": true,
@@ -1284,100 +1637,393 @@ export default function ImprovedCreatorOnboarding() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Add this to your ImprovedCreatorOnboarding component before any function references it
+  // const saveAdminData = async (firstName, lastName) => {
+  //   try {
+  //     // Use the parameters instead of trying to get values from DOM
+  //     const email = localStorage.getItem('vendorEmail') || 'vendor@example.com';
+      
+  //     console.log('Admin data to save:', { firstName, lastName, email });
+      
+  //     // Validate data
+  //     if (!firstName || !lastName) {
+  //       throw new Error('First name and last name are required');
+  //     }
+      
+  //     // Get token and prepare API request
+  //     const token = localStorage.getItem('vendorToken');
+  //     if (!token) {
+  //       throw new Error('Authentication token not found. Please log in again.');
+  //     }
+      
+  //      // Get vendor name from current state if available
+  //   const vendorName = vendorData?.vendor?.name || "New Vendor11"; // Provide a default name
+
+  //   const vendorHandle = vendorData?.vendor?.handle || "New Vendor handle11"; // Provide a default name
+
+  //     // Prepare API payload - simplified to just include admin data
+  //     const payload = {
+  //       name: vendorName, // Add the required name field
+  //       handle: vendorHandle, // Add the required name field
+  //       admin: {
+  //         email: email,
+  //         first_name: firstName,
+  //         last_name: lastName
+  //       }
+  //     };
+      
+  //     console.log('Sending admin data:', payload);
+      
+  //     // Determine if this is a new vendor
+  //     const isNewVendor = vendorData?.vendor?.id === "new";
+      
+  //     // Choose the endpoint based on whether it's a new vendor
+  //     const endpoint = 'http://localhost:9000/vendors';
+      
+  //     console.log('Using endpoint:', endpoint);
+      
+  //     const response = await fetch(endpoint, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': `Bearer ${token}`
+  //       },
+  //       body: JSON.stringify(payload)
+  //     });
+      
+  //     if (!response.ok) {
+  //       const errorText = await response.text();
+  //       console.error('API error response:', errorText);
+  //       throw new Error(`API error: ${response.status} - ${errorText}`);
+  //     }
+      
+  //     const responseData = await response.json();
+  //     console.log('Admin created successfully:', responseData);
+      
+  //     // If we created a new vendor, update the ID in vendorData
+  //     if (responseData.vendor && responseData.vendor.id) {
+  //       setVendorData(prevData => ({
+  //         ...prevData,
+  //         vendor: {
+  //           ...prevData.vendor,
+  //           id: responseData.vendor.id
+  //         }
+  //       }));
+  //     }
+      
+  //     toast({
+  //       title: "Success",
+  //       description: "Admin information saved successfully",
+  //     });
+      
+  //     return responseData;
+  //   } catch (error) {
+  //     console.error('Error saving admin data:', error);
+  //     toast({
+  //       title: "Error",
+  //       description: error.message || "Failed to save admin information",
+  //       variant: "destructive",
+  //     });
+  //     return null;
+  //   }
+  // };
+
+  // Add this useEffect to check for step parameter in URL
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const stepParam = params.get('step');
+  
+  // If a valid step parameter is found, set it as the current step
+  if (stepParam && STEPS.some(step => step.id === stepParam)) {
+    setCurrentStep(stepParam);
+  }
+}, []);
+
+ // Add this useEffect at the top of your component to check authentication
+ useEffect(() => {
+  // Check if user is authenticated by looking for token
+  const token = localStorage.getItem('vendorToken');
+  
+  // If no token is found, redirect to sign-up page
+  if (!token) {
+    // You can also show a toast notification
+    toast({
+      title: "Authentication Required",
+      description: "Please sign up or log in to access the onboarding process.",
+      variant: "destructive",
+    });
+    
+    // Redirect to sign-up page
+    navigate({ to: '/sign-up' });
+  }
+}, [navigate]); // Only run this effect when navigate changes
 
   // Fetch vendor data when component mounts
-  useEffect(() => {
-    const fetchVendorData = async () => {
-      try {
-        // Get authentication token from localStorage or your auth context
-        const token = localStorage.getItem('vendorToken'); 
-        
-        if (!token) {
-          throw new Error('No authentication token found');
+  const [isLoading, setIsLoading] = useState(true);
+   // Fetch vendor data when component mounts
+// Modified version with proper loading state management
+useEffect(() => {
+  let isActive = true;
+
+  // Helper function to set up a new vendor profile
+const setupNewVendorProfile = () => {
+  // Try to get email from an API endpoint if possible
+  // This could be a separate endpoint that returns user details after auth
+  const fetchUserEmail = async () => {
+    try {
+      const token = localStorage.getItem('vendorToken');
+      if (!token) return null;
+      
+      // You might have an endpoint like /user/me that returns basic user info
+      const response = await fetch('http://localhost:9000/vendors/me', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        return null;
+      }
+      
+      const userData = await response.json();
+      return userData.email || null;
+    } catch (error) {
+      console.error('Error fetching user email:', error);
+      return null;
+    }
+  };
+  
+  // Execute this immediately and use it to set up the vendor profile
+  (async () => {
+    // Try to get email from API first, fall back to localStorage
+    const apiEmail = await fetchUserEmail();
+    const userEmail = apiEmail || localStorage.getItem('vendorEmail') || "vendor@example.com";
+    
+    // Store email for future reference if we got it from API
+    if (apiEmail) {
+      localStorage.setItem('vendorEmail', apiEmail);
+    }
+    
+    const defaultData = {
+      vendor: {
+        // id: "new",
+        handle: "",
+        name: "",
+        logo: null,
+        coverphoto: null,
+        youtube: null,
+        instagram: null,
+        xtwitter: null,
+        othersocial: null,
+        phonenumber: null,
+        GSTIN: null,
+        gst_verification_status: "pending",
+        companyname: null,
+        pan_number: null,
+        city: null,
+        pincode: null,
+        state: null,
+        address: null,
+        tan_number: null,
+        bank_account_holder_name: null,
+        bank_account_number: null,
+        bank_account_ifsc_code: null,
+        bank_name: null,
+        bank_account_type: "Saving",
+        cancelled_checkque: null,
+        creator_bio: null,
+        creator_title: null,
+        creator_category: "other",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
+        admin: [{
+          email: userEmail,
+          first_name: '',
+          last_name: ''
+        }]
+      }
+    };
+    
+    // Show a welcome toast
+    toast({
+      title: "Welcome to Junooni!",
+      description: "Complete your profile to start selling.",
+    });
+    
+    if (isActive) {
+      setVendorData(defaultData);
+      
+      // Set initial step completion for new vendor
+      const initialStepCompletion = {
+        "welcome": true,
+        "basic-info": false,
+        "business-details": false,
+        "banking-info": false,
+        "creator-profile": false,
+        "final-review": false
+      };
+      
+      setStepCompletion(initialStepCompletion);
+      
+      // Calculate progress
+      calculateProgress(initialStepCompletion);
+      
+      // IMPORTANT: Set loading to false
+      setIsLoading(false);
+    }
+  })();
+};
+  // Helper function to normalize vendor data
+  const normalizeVendorData = (data) => {
+    if (data && data.vendor) {
+      const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+      
+      // If admins array exists, use it as the source of truth
+      if (data.vendor.admins && Array.isArray(data.vendor.admins) && data.vendor.admins.length > 0) {
+        // Copy data from admins to admin for component compatibility
+        data.vendor.admin = data.vendor.admins;
+      } 
+      // If neither admin nor admins have data, initialize with user's email
+      else if (!data.vendor.admin || !Array.isArray(data.vendor.admin) || data.vendor.admin.length === 0) {
+        data.vendor.admin = [{
+          email: userEmail,
+          first_name: '',
+          last_name: ''
+        }];
+      }
+    }
+    return data; // Return the normalized data
+  };
+  
+  // Helper function to update step completion
+  const updateStepCompletion = (data) => {
+    if (!isActive) return; // Skip if component unmounted
+    
+    // Create a new object without referencing the existing one
+    const newStepCompletion = {
+      "welcome": true,
+      "basic-info": Boolean(data.vendor.name && data.vendor.phonenumber), // Removed logo requirement
+      "business-details": Boolean(data.vendor.GSTIN && data.vendor.companyname && data.vendor.pan_number),
+      "banking-info": Boolean(data.vendor.bank_account_holder_name && data.vendor.bank_account_number),
+      "creator-profile": Boolean(data.vendor.creator_bio && data.vendor.creator_category),
+      "final-review": false
+    };
+    
+    setStepCompletion(newStepCompletion);
+    
+    // Calculate progress
+    calculateProgress(newStepCompletion);
+  };
+  
+  // Mark component as loading
+  setIsLoading(true);
+  
+  // Use an immediately invoked async function (IIFE)
+  (async () => {
+    try {
+      // Get authentication token from localStorage
+      let token = localStorage.getItem('vendorToken');
+      
+      // Skip API call completely if no token exists
+      if (!token) {
+        console.log('No token found in localStorage, immediately creating new vendor profile');
+        setupNewVendorProfile();
+        return; // Exit the function early
+      }
+      
+      console.log('Attempting to fetch vendor data with token');
+      let response = await fetch('http://localhost:9000/vendors/me', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Handle 401 errors as new vendor cases
+      if (response.status === 401) {
+        console.log('Got 401 Unauthorized response, handling as new vendor');
+        setupNewVendorProfile();
+        return;
+      }
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log('Got 404 response, handling as new vendor');
+          setupNewVendorProfile();
+          return;
         }
         
-        const response = await fetch('http://localhost:9000/vendors/me', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-          
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error('Unauthorized. Please log in again.');
-          }
-          throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-          
-        const data = await response.json();
-        
-        // Set the vendor data to state
-        setVendorData(data);
-        console.log('Vendors data:', data);
+        // For other non-200 responses, throw a general error
+        console.log('API returned non-200 status:', response.status);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      // Success path - parse the response data
+      console.log('Successfully fetched vendor data');
+      const data = await response.json();
+      
+      // Normalize admin data for consistent access
+      const normalizedData = normalizeVendorData(data);
+      
+      console.log('Normalized vendor data:', normalizedData);
+      
+      if (isActive) {
+        setVendorData(normalizedData);
         
         // Calculate initial step completion based on data
-        const newStepCompletion = { ...stepCompletion };
-        newStepCompletion["basic-info"] = Boolean(data.name && data.logo && data.phonenumber);
-        newStepCompletion["business-details"] = Boolean(data.GSTIN && data.companyname && data.pan_number);
-        newStepCompletion["banking-info"] = Boolean(data.bank_account_holder_name && data.bank_account_number);
-        newStepCompletion["creator-profile"] = Boolean(data.creator_bio && data.creator_category);
+        updateStepCompletion(normalizedData);
         
-        setStepCompletion(newStepCompletion);
-        
-        // Calculate progress
-        calculateProgress(newStepCompletion);
-      } catch (error) {
-        console.error('Error fetching vendor data:', error);
+        // IMPORTANT: Set loading to false after successful fetch
+        setIsLoading(false);
+      }
+      
+    } catch (error) {
+      console.error('Error fetching vendor data:', error);
+      
+      if (isActive) {
+        // For other errors, show general error message
         toast({
           title: "Error",
           description: "Failed to load your profile data. Please try again.",
           variant: "destructive",
         });
         
-        // For demo purposes - use sample data if API fails
-        // In production, handle this error differently
-        const sampleData = {
-          "id": "01JPX3QMRYAYMZ3KRPTA5FX43R",
-          "handle": "aatires",
-          "name": "aatires",
-          "logo": "http://localhost:9000/static/1742586237698-model-creator.webp",
-          "coverphoto": null,
-          "youtube": null,
-          "instagram": null,
-          "xtwitter": null,
-          "othersocial": null,
-          "phonenumber": null,
-          "GSTIN": null,
-          "gst_verification_status": "pending",
-          "companyname": null,
-          "pan_number": null,
-          "city": null,
-          "pincode": null,
-          "state": null,
-          "address": null,
-          "tan_number": null,
-          "bank_account_holder_name": null,
-          "bank_account_number": null,
-          "bank_account_ifsc_code": null,
-          "bank_name": null,
-          "bank_account_type": "Saving",
-          "cancelled_checkque": null,
-          "creator_bio": null,
-          "creator_title": null,
-          "creator_category": null,
-          "created_at": "2025-03-21T19:43:57.726Z",
-          "updated_at": "2025-03-21T19:43:57.726Z",
-          "deleted_at": null
-        };
-        
-        setVendorData(sampleData as VendorData);
+        // Still set up as new vendor for fallback
+        setupNewVendorProfile();
       }
-    };
+    }
+  })();
+  
+  // Cleanup function
+  return () => {
+    isActive = false;
+  };
+}, [navigate, toast]); // Only depend on navigate and toast
 
-    fetchVendorData();
-  }, []);
+// IMPORTANT: Remove any other useEffect hooks that try to fetch vendor data!  
+  // Add this useEffect after your fetchVendorData useEffect
+useEffect(() => {
+  if (vendorData && vendorData.vendor && (!vendorData.vendor.admin || !Array.isArray(vendorData.vendor.admin))) {
+    console.log('Normalizing admin data structure...');
+    const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+    
+    setVendorData(prevData => ({
+      ...prevData,
+      vendor: {
+        ...prevData.vendor,
+        admin: [{
+          email: userEmail,
+          first_name: '',
+          last_name: ''
+        }]
+      }
+    }));
+  }
+}, [vendorData]);
 
   // Calculate progress
   const calculateProgress = (completion: {[key: string]: boolean}) => {
@@ -1388,94 +2034,335 @@ export default function ImprovedCreatorOnboarding() {
   };
 
   // Auto-save functionality simulation
-  useEffect(() => {
-    if (vendorData && currentStep !== "welcome" && currentStep !== "final-review") {
-      const timer = setTimeout(() => {
-        setAutoSaveIndicator("Saving...");
-        
-        // Simulate API call
-        saveCurrentStepData();
-        
-        setTimeout(() => {
-          setAutoSaveIndicator("All changes saved");
-          
-          setTimeout(() => {
-            setAutoSaveIndicator("");
-          }, 2000);
-        }, 1000);
-      }, 3000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [vendorData, currentStep]);
+  const [shouldAutoSave, setShouldAutoSave] = useState(false);
 
-  // Save current step data - reusing your original function
-  const saveCurrentStepData = async () => {
-    try {
-      const token = localStorage.getItem('vendorToken');
-      setAutoSaveIndicator("Saving...");
-      
-      if (!vendorData || !vendorData.vendor) {
-        console.error('No vendor data available');
-        return null;
-      }
-      
-      // Create an update object with only non-null values
-      // Similar to the example code's approach
-      const updateData = {};
-      Object.entries(vendorData.vendor).forEach(([key, value]) => {
-        if (
-          key !== 'id' && 
-          key !== 'created_at' && 
-          key !== 'updated_at' && 
-          key !== 'deleted_at' &&
-          key !== 'gst_verification_status' &&
-          value !== null && 
-          value !== undefined
-        ) {
-          updateData[key] = value;
-        }
-      });
-      
-      console.log('Sending update data:', updateData);
-      
-      const response = await fetch('http://localhost:9000/vendors/me', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updateData)
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        throw new Error(`API error: ${response.status} - ${errorText}`);
-      }
-      
+// Watch for vendorData changes to trigger auto-save flag
+useEffect(() => {
+  if (vendorData && 
+    currentStep !== "welcome" && 
+    currentStep !== "final-review" &&
+    // Skip auto-save on basic-info if essential fields are missing
+    !(currentStep === "basic-info" && (!vendorData.vendor.name))
+) {
+    // Don't auto-save immediately when mounting or changing steps
+    const timer = setTimeout(() => {
+      setShouldAutoSave(true);
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }
+}, [currentStep]); // Only depend on step changes, not vendorData
+
+// Handle the actual auto-save process
+useEffect(() => {
+  if (shouldAutoSave) {
+    setAutoSaveIndicator("Saving...");
+    
+    // Execute auto-save
+    saveCurrentStepData();
+    
+    // Reset the flag
+    setShouldAutoSave(false);
+    
+    // Update indicator
+    setTimeout(() => {
       setAutoSaveIndicator("All changes saved");
       setTimeout(() => {
         setAutoSaveIndicator("");
       }, 2000);
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error saving vendor data:', error);
-      toast({
-        title: "Error Saving Data",
-        description: error.message || String(error),
-        variant: "destructive",
-      });
-      setAutoSaveIndicator("");
+    }, 1000);
+  }
+}, [shouldAutoSave]);
+
+
+
+// For form field changes, use this debounced approach
+const handleFormChange = () => {
+  // Clear any pending auto-save
+  setShouldAutoSave(false);
+  
+  // Schedule a new auto-save
+  const timer = setTimeout(() => {
+    setShouldAutoSave(true);
+  }, 3000);
+  
+  return () => clearTimeout(timer);
+};
+
+// Add this new function in your ImprovedCreatorOnboarding component
+// 1. First, create a utility function to sanitize vendor data
+const sanitizeVendorData = (vendorData) => {
+  // Make a deep copy to avoid modifying the original
+  const sanitized = JSON.parse(JSON.stringify(vendorData));
+  
+  // Define ALL fields that must be strings
+  const stringFields = [
+    'logo', 'coverphoto', 'name', 'handle', 'phonenumber',
+    'youtube', 'instagram', 'xtwitter', 'othersocial',
+    'GSTIN', 'companyname', 'pan_number', 'city', 'pincode', 'state', 'address', 'tan_number',
+    'bank_account_holder_name', 'bank_account_number', 'bank_account_ifsc_code', 'bank_name', 
+    'cancelled_checkque', 'creator_bio', 'creator_title', 'creator_category'
+  ];
+  
+  // Convert null to empty string for all string fields
+  stringFields.forEach(field => {
+    if (sanitized.vendor[field] === null || sanitized.vendor[field] === undefined) {
+      sanitized.vendor[field] = '';
+    }
+  });
+  
+  return sanitized;
+};
+ // Now update your saveCurrentStepData function to handle admin data separately
+ const saveCurrentStepData = async () => {
+  try {
+    const token = localStorage.getItem('vendorToken');
+    setAutoSaveIndicator("Saving...");
+    
+    if (!vendorData || !vendorData.vendor) {
+      console.error('No vendor data available');
       return null;
     }
-  };
+    
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to save your data.",
+        variant: "destructive",
+      });
+      return null;
+    }
+    
+    // Create a completely new object to send to the API
+    const updateData = {};
+    
+    // Copy specific fields from vendorData.vendor to updateData
+    const fieldsToInclude = [
+      'name', 'handle', 'logo', 'coverphoto', 'phonenumber',
+      'youtube', 'instagram', 'xtwitter', 'othersocial',
+      'GSTIN', 'companyname', 'pan_number', 'city', 'pincode', 'state', 'address', 'tan_number',
+      'bank_account_holder_name', 'bank_account_number', 'bank_account_ifsc_code', 'bank_name', 
+      'bank_account_type', 'cancelled_checkque', 'creator_bio', 'creator_title', 'creator_category'
+    ];
+    
+    // Copy each field and ensure it's a string if needed
+    fieldsToInclude.forEach(field => {
+      // Use empty string for null/undefined values
+      updateData[field] = vendorData.vendor[field] === null || 
+                          vendorData.vendor[field] === undefined ? 
+                          '' : vendorData.vendor[field];
+    });
+    
+    // Determine if this is a new vendor (no ID means it hasn't been created yet)
+    // const isNewVendor = !vendorData.vendor.id;
+    const isNewVendor = !vendorData.vendor.id || vendorData.vendor.id === null;
+    console.log(`Vendor status: ${isNewVendor ? 'NEW' : 'EXISTING'}, ID: ${vendorData.vendor.id || 'none'}`);
+    
+    let method, url;
+    
+    // CREATION LOGIC: New vendor on basic-info page
+    if (isNewVendor && currentStep === "basic-info") {
+      console.log('🔵 CREATING NEW VENDOR - using POST to /vendors');
+      method = 'POST';
+      url = 'http://localhost:9000/vendors';
+      
+      // CRITICAL: For vendor creation, ALWAYS include admin data
+      if (vendorData.vendor.admin && 
+          Array.isArray(vendorData.vendor.admin) && 
+          vendorData.vendor.admin.length > 0) {
+        
+        updateData.admin = {
+          email: vendorData.vendor.admin[0].email || '',
+          first_name: vendorData.vendor.admin[0].first_name || '',
+          last_name: vendorData.vendor.admin[0].last_name || ''
+        };
+      }
+      
+      // Make sure required fields for vendor creation are included
+      if (!updateData.name || !updateData.handle) {
+        console.error('Missing required fields for vendor creation');
+        toast({
+          title: "Missing Information",
+          description: "Brand name and handle are required to create your vendor profile.",
+          variant: "destructive",
+        });
+        setAutoSaveIndicator("");
+        return null;
+      }
+    } else {
+      // UPDATE LOGIC: Either existing vendor OR new vendor on non-basic pages
+      console.log('🟢 UPDATING VENDOR - using PUT to /vendors/me');
+      method = 'PUT';
+      url = 'http://localhost:9000/vendors/me';
+      
+      // Include vendor_id if it exists
+      if (vendorData.vendor.id) {
+        updateData.vendor_id = vendorData.vendor.id;
+      }
+    }
+    
+    console.log(`Using ${method} for step ${currentStep} to URL: ${url}`);
+    console.log('Final payload to be sent:', JSON.stringify(updateData));
+    
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(updateData)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
+      console.error('Current step:', currentStep);
+      console.error('Is new vendor:', isNewVendor);
+      throw new Error(`API error: ${response.status} - ${errorText}`);
+    }
+    
+    const responseData = await response.json();
+    console.log('API response data:', responseData);
+    
+    // CRITICAL: Update local state with server data, especially the ID for new vendors
+    if (responseData.vendor) {
+      console.log('Updating local state with server response:', responseData.vendor);
+      
+      setVendorData(prevData => ({
+        ...prevData,
+        vendor: {
+          ...prevData.vendor,
+          ...responseData.vendor, // Merge all fields from server response
+          // Ensure we have the ID (critical for new vendors)
+          id: responseData.vendor.id || prevData.vendor.id
+        }
+      }));
+      
+      if (isNewVendor && responseData.vendor.id) {
+        console.log('✅ SUCCESS: New vendor created with ID:', responseData.vendor.id);
+        
+        // Show success message for vendor creation
+        toast({
+          title: "Vendor Created",
+          description: "Your vendor profile has been successfully created!",
+        });
+      }
+    }
+    
+    setAutoSaveIndicator("All changes saved");
+    setTimeout(() => {
+      setAutoSaveIndicator("");
+    }, 2000);
+    
+    return responseData;
+  } catch (error) {
+    console.error('Error saving vendor data:', error);
+    toast({
+      title: "Error Saving Data",
+      description: error.message || String(error),
+      variant: "destructive",
+    });
+    setAutoSaveIndicator("");
+    return null;
+  }
+};
   // Handle final submission - reusing your original function
   const handleFinalSubmission = async () => {
     try {
-      // In a real implementation, this would be a final API call to complete onboarding
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Validate token first
+      const token = localStorage.getItem('vendorToken');
+      
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+      
+      // Null check for vendorData
+      if (!vendorData || !vendorData.vendor) {
+        console.error('No vendor data available for submission');
+        toast({
+          title: "Error",
+          description: "Vendor data is missing. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Change how we determine if a vendor is new - check if ID exists instead of "new"
+      const isNewVendor = !vendorData.vendor.id;
+      
+      // Create a complete payload with ALL fields from vendorData.vendor
+      const finalPayload = {
+        // Include ALL vendor data fields
+        name: vendorData.vendor.name,
+        handle: vendorData.vendor.handle,
+        logo: vendorData.vendor.logo || '',
+        coverphoto: vendorData.vendor.coverphoto || '',
+        youtube: vendorData.vendor.youtube || '',
+        instagram: vendorData.vendor.instagram || '',
+        xtwitter: vendorData.vendor.xtwitter || '',
+        othersocial: vendorData.vendor.othersocial || '',
+        phonenumber: vendorData.vendor.phonenumber || '',
+        
+        // Business details
+        GSTIN: vendorData.vendor.GSTIN || '',
+        companyname: vendorData.vendor.companyname || '',
+        pan_number: vendorData.vendor.pan_number || '',
+        city: vendorData.vendor.city || '',
+        pincode: vendorData.vendor.pincode || '',
+        state: vendorData.vendor.state || '',
+        address: vendorData.vendor.address || '',
+        tan_number: vendorData.vendor.tan_number || '',
+        
+        // Banking information
+        bank_account_holder_name: vendorData.vendor.bank_account_holder_name || '',
+        bank_account_number: vendorData.vendor.bank_account_number || '',
+        bank_account_ifsc_code: vendorData.vendor.bank_account_ifsc_code || '',
+        bank_name: vendorData.vendor.bank_name || '',
+        bank_account_type: vendorData.vendor.bank_account_type || 'Saving',
+        cancelled_checkque: vendorData.vendor.cancelled_checkque || '',
+        
+        // Creator profile
+        creator_bio: vendorData.vendor.creator_bio || '',
+        creator_title: vendorData.vendor.creator_title || '',
+        creator_category: vendorData.vendor.creator_category || 'other',
+        
+        // Admin information 
+        admin: {
+          email: vendorData.vendor.admin && vendorData.vendor.admin[0] ? 
+            vendorData.vendor.admin[0].email || '' : '',
+          first_name: vendorData.vendor.admin && vendorData.vendor.admin[0] ? 
+            vendorData.vendor.admin[0].first_name || '' : '',
+          last_name: vendorData.vendor.admin && vendorData.vendor.admin[0] ? 
+            vendorData.vendor.admin[0].last_name || '' : ''
+        }
+      };
+      
+      console.log('Sending final submission with payload:', JSON.stringify(finalPayload));
+      
+      // For final submission, use PUT for existing vendors
+      const method = isNewVendor ? 'POST' : 'PUT';
+      const url = isNewVendor 
+        ? 'http://localhost:9000/vendors' 
+        : 'http://localhost:9000/vendors/me';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(finalPayload)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Final submission error:', errorText);
+        throw new Error(`Failed to complete onboarding: ${response.status}`);
+      }
+      
+      // Capture the response data so we can log it for debugging
+      const responseData = await response.json();
+      console.log('Final submission response:', responseData);
       
       toast({
         title: "Onboarding Complete",
@@ -1488,51 +2375,186 @@ export default function ImprovedCreatorOnboarding() {
       console.error('Error completing onboarding:', error);
       toast({
         title: "Error",
-        description: "Failed to complete onboarding. Please try again.",
+        description: error.message || "Failed to complete onboarding.",
         variant: "destructive",
       });
     }
   };
+  
+  // Add this after handleFinalSubmission and before handleSaveAndContinue
+  // Modify the handleFileUpload function to auto-save basic info first for new vendors
+  const handleFileUpload = async (file: File, fileType: 'logo' | 'coverphoto' | 'cancelled_checkque') => {
+    if (!file) return;
+    
+    try {
+      setIsUploading(true);
+      setUploadType(fileType);
+      const token = localStorage.getItem('vendorToken');
+      
+      if (!token) {
+        throw new Error('Authentication token not found. Please log in again.');
+      }
+      
+      // Show loading state
+      toast({
+        title: "Uploading...",
+        description: `Uploading your ${fileType === 'cancelled_checkque' ? 'cheque' : fileType}, please wait.`,
+      });
+      
+      // For new vendors, we need a different approach - bypass creation and go straight to file upload
+      // Upload the file and get the URL first
+      const formData = new FormData();
+      formData.append('files', file);
+      //formData.append('vendor_id', 'temp'); // Add this in case your API needs it
+      
+      // Try direct upload without vendor creation
+      console.log('Attempting direct file upload...');
+      const response = await fetch('http://localhost:9000/vendors/uploads', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        // If direct upload fails with 401, check if we're on the correct step
+        if (response.status === 401 && currentStep === "basic-info") {
+          // Give helpful message about continuing to next step first
+          throw new Error(`Please complete required fields and click 'Continue' to proceed to the next step, then try uploading files again.`);
+        } else {
+          throw new Error(`Upload failed: ${response.status}`);
+        }
+      }
+      
+      const data = await response.json();
+      console.log('Server response structure:', data);
+      
+      // Extract URL (same logic as before)
+      let fileUrl = null;
+      
+      // Extract URL from various possible response formats
+      if (data.url) fileUrl = data.url;
+      else if (data.files && Array.isArray(data.files) && data.files.length > 0) {
+        const file = data.files[0];
+        if (file.url) fileUrl = file.url;
+        else if (file.file_url) fileUrl = file.file_url;
+        else if (file.path) fileUrl = file.path;
+      } else if (data.file) {
+        if (data.file.url) fileUrl = data.file.url;
+        else if (data.file.path) fileUrl = data.file.path;
+      } else if (typeof data === 'string' && data.startsWith('http')) {
+        fileUrl = data;
+      } else if (data.data) {
+        if (data.data.url) fileUrl = data.data.url;
+        else if (typeof data.data === 'string' && data.data.startsWith('http')) {
+          fileUrl = data.data;
+        }
+      }
+      
+      // Store the URL locally but don't try to update the backend yet
+      if (fileUrl) {
+        console.log(`Extracted ${fileType} URL:`, fileUrl);
+        
+        // Update local state
+        updateVendorData(fileType, fileUrl);
+        
+        // Save reference in localStorage for restoration if needed
+        const uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '{}');
+        uploadedFiles[fileType] = fileUrl;
+        localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
+        
+        toast({
+          title: "Upload Complete",
+          description: `Your ${fileType === 'cancelled_checkque' ? 'cheque' : fileType} has been uploaded successfully.`,
+        });
+      } else {
+        throw new Error('Could not extract file URL from server response');
+      }
+      
+    } catch (error) {
+      console.error(`Error uploading ${fileType}:`, error);
+      
+      toast({
+        title: "Upload Failed",
+        description: `${error.message || `Failed to upload your ${fileType}. Please try again.`}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      setUploadType(null);
+    }
+  };
 // Handle save and continue functionality
 const handleSaveAndContinue = async () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
   try {
-    // First save the current step data
+    // No special case for welcome step anymore - all data is saved together
+    // Validate admin data if on welcome step
+    if (currentStep === "welcome") {
+      // Check if admin data is complete
+      const adminFirst = vendorData?.vendor?.admin?.[0]?.first_name;
+      const adminLast = vendorData?.vendor?.admin?.[0]?.last_name;
+      
+      if (!adminFirst || !adminLast) {
+        toast({
+          title: "Admin Information Required",
+          description: "Please provide both first name and last name to continue.",
+          variant: "destructive",
+        });
+        return; // Stop if admin data incomplete
+      }
+    }
+
+    // Save all data in one call
     await saveCurrentStepData();
     
     // Update step completion status
     const newStepCompletion = { ...stepCompletion };
     
-    if (currentStep === "basic-info") {
-      newStepCompletion["basic-info"] = Boolean(
-        vendorData.vendor.name && 
-        vendorData.vendor.phonenumber
-      );
-    } else if (currentStep === "business-details") {
-      newStepCompletion["business-details"] = Boolean(
-        vendorData.vendor.GSTIN && 
-        vendorData.vendor.companyname && 
-        vendorData.vendor.pan_number
-      );
-    } else if (currentStep === "banking-info") {
-      newStepCompletion["banking-info"] = Boolean(
-        vendorData.vendor.bank_account_holder_name && 
-        vendorData.vendor.bank_account_number && 
-        vendorData.vendor.bank_account_ifsc_code
-      );
-    } else if (currentStep === "creator-profile") {
-      newStepCompletion["creator-profile"] = Boolean(
-        vendorData.vendor.creator_bio && 
-        vendorData.vendor.creator_category
-      );
+    // Add null check before accessing vendorData properties
+    if (vendorData && vendorData.vendor) {
+      if (currentStep === "basic-info") {
+        newStepCompletion["basic-info"] = Boolean(
+          vendorData.vendor.name && 
+          vendorData.vendor.phonenumber
+        );
+      } else if (currentStep === "business-details") {
+        newStepCompletion["business-details"] = Boolean(
+          vendorData.vendor.GSTIN && 
+          vendorData.vendor.companyname && 
+          vendorData.vendor.pan_number
+        );
+      } else if (currentStep === "banking-info") {
+        newStepCompletion["banking-info"] = Boolean(
+          vendorData.vendor.bank_account_holder_name && 
+          vendorData.vendor.bank_account_number && 
+          vendorData.vendor.bank_account_ifsc_code
+        );
+      } else if (currentStep === "creator-profile") {
+        newStepCompletion["creator-profile"] = Boolean(
+          vendorData.vendor.creator_bio && 
+          vendorData.vendor.creator_category
+        );
+      }
     }
     
-    setStepCompletion(newStepCompletion);
-    
+    setStepCompletion(newStepCompletion);    
     // Calculate progress
     calculateProgress(newStepCompletion);
     
     // Handle navigation based on current step
     if (currentStep === "final-review") {
+      // Get the terms agreement status directly from state
+      if (!termsAgreed) {
+        toast({
+          title: "Agreement Required",
+          description: "Please confirm that all information is accurate by checking the box.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Handle final submission
       await handleFinalSubmission();
     } else {
@@ -1561,8 +2583,7 @@ const handleSaveAndContinue = async () => {
       variant: "destructive",
     });
   }
-};
-  // Update vendor data
+};  // Update vendor data
 const updateVendorData = (field: keyof VendorData, value: any) => {
   if (vendorData && vendorData.vendor) {
     setVendorData({
@@ -1576,18 +2597,159 @@ const updateVendorData = (field: keyof VendorData, value: any) => {
   }
 };
 
-  // If vendor data is not loaded yet, show loading state
-  if (!vendorData) {
-    return (
-      <div className="flex items-center justify-center h-screen" style={{ background: `linear-gradient(135deg, ${BRAND.background} 0%, white 100%)` }}>
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 border-t-2 border-b-2 rounded-full animate-spin" style={{ borderColor: BRAND.primary }}></div>
-          <p className="text-lg font-medium" style={{ color: BRAND.textPrimary }}>Loading your profile...</p>
-        </div>
-      </div>
-    );
-  }
+// 1. Replace initializeNewVendor with this improved version
+const createEmptyVendorTemplate = () => {
+  const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+  return {
+    vendor: {
+      // Remove the "new" ID marker completely - let the backend generate the ID
+      handle: "",
+      name: "",
+      logo: "",
+      coverphoto: "",
+      youtube: "",
+      instagram: "",
+      xtwitter: "",
+      othersocial: "",
+      phonenumber: "",
+      GSTIN: "",
+      gst_verification_status: "pending",
+      companyname: "",
+      pan_number: "",
+      city: "",
+      pincode: "",
+      state: "",
+      address: "",
+      tan_number: "",
+      bank_account_holder_name: "",
+      bank_account_number: "",
+      bank_account_ifsc_code: "",
+      bank_name: "",
+      bank_account_type: "Saving",
+      cancelled_checkque: "",
+      creator_bio: "",
+      creator_title: "",
+      creator_category: "other",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
+      admin: [{
+        email: userEmail,
+        first_name: '',
+        last_name: ''
+      }]
+    }
+  };
+};
 
+// Add a loading state to track API request status
+// const [isLoading, setIsLoading] = useState(true);
+
+// In useEffect for fetchVendorData
+// useEffect(() => {
+//   const fetchVendorData = async () => {
+//     setIsLoading(true); // Start loading
+    
+//     try {
+//       // Get authentication token from localStorage
+//       let token = localStorage.getItem('vendorToken');
+      
+//       // Skip API call completely if no token exists
+//       if (!token) {
+//         console.log('No token found in localStorage, immediately creating new vendor profile');
+//         setVendorData(createEmptyVendorTemplate());
+//         setIsLoading(false);
+//         return;
+//       }
+      
+//       // Add a timeout to prevent indefinite loading
+//       const timeoutPromise = new Promise((_, reject) => 
+//         setTimeout(() => reject(new Error('Request timed out')), 5000)
+//       );
+      
+//       // Race the fetch against the timeout
+//       const fetchPromise = fetch('http://localhost:9000/vendors/me', {
+//         method: 'GET',
+//         headers: {
+//           'Content-Type': 'application/json',
+//           'Authorization': `Bearer ${token}`
+//         }
+//       });
+      
+//       // Wait for either the fetch to complete or the timeout to occur
+//       const response = await Promise.race([fetchPromise, timeoutPromise]);
+      
+//       // Handle 401/404 errors as new vendor cases
+//       if (response.status === 401 || response.status === 404) {
+//         console.log(`Got ${response.status} response, handling as new vendor`);
+//         setVendorData(createEmptyVendorTemplate());
+//         setIsLoading(false);
+//         return;
+//       }
+      
+//       if (!response.ok) {
+//         throw new Error(`API error: ${response.status} ${response.statusText}`);
+//       }
+      
+//       // Success path - parse the response data
+//       console.log('Successfully fetched vendor data');
+//       const data = await response.json();
+      
+//       // Normalize admin data
+//       // ... (same code as before)
+      
+//       setVendorData(data);
+//       setIsLoading(false);
+      
+//     } catch (error) {
+//       console.error('Error fetching vendor data:', error);
+//       // For any error, initialize as new vendor instead of showing error
+//       setVendorData(createEmptyVendorTemplate());
+//       setIsLoading(false);
+//     }
+//   };
+  
+//   fetchVendorData();
+  
+  // Important: Add a fallback timeout to ensure loading state is cleared
+//   const fallbackTimer = setTimeout(() => {
+//     setIsLoading(false);
+//     if (!vendorData) {
+//       setVendorData(createEmptyVendorTemplate());
+//     }
+//   }, 8000);
+  
+//   return () => {
+//     clearTimeout(fallbackTimer);
+//   };
+// }, []);
+
+ // ADD THE NEW USEEFFECT HERE
+ useEffect(() => {
+  if (vendorData && !isLoading) {
+    // Sanitize existing data
+    const sanitized = sanitizeVendorData(vendorData);
+    setVendorData(sanitized);
+  }
+}, [isLoading]); // Only run when loading completes
+
+// Modify the loading check to use the isLoading state
+if (isLoading) {
+  return (
+    <div className="flex items-center justify-center h-screen" style={{ background: `linear-gradient(135deg, ${BRAND.background} 0%, white 100%)` }}>
+      <div className="text-center">
+        <div className="w-16 h-16 mx-auto mb-4 border-t-2 border-b-2 rounded-full animate-spin" style={{ borderColor: BRAND.primary }}></div>
+        <p className="text-lg font-medium" style={{ color: BRAND.textPrimary }}>Loading your profile...</p>
+      </div>
+    </div>
+  );
+}
+
+// Default to new vendor data if vendorData is still null after loading
+if (!vendorData) {
+  setVendorData(createEmptyVendorTemplate());
+  return null; // Return null to trigger re-render with new state
+}
   return (
     <div 
       className="min-h-screen"
@@ -1611,7 +2773,9 @@ const updateVendorData = (field: keyof VendorData, value: any) => {
                   className="mr-2 text-2xl font-bold" 
                   style={{ color: BRAND.primary }}
                 >
-                  JUNOONI
+                  <Link to="/dashboard">
+                    <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-8" />
+                  </Link>
                 </div>
                 <span className="hidden text-gray-500 md:inline">|</span>
                 <h1 className="hidden ml-2 text-lg font-semibold md:block" style={{ color: BRAND.secondary }}>
@@ -1690,7 +2854,11 @@ const updateVendorData = (field: keyof VendorData, value: any) => {
                   return (
                     <div key={step.id} className="flex flex-col">
                       <button
-                        onClick={() => setCurrentStep(step.id)}
+                       onClick={() => {
+                        setCurrentStep(step.id);
+                        // Add this line to scroll to the top of the page when a step is clicked
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
                         className={cn(
                           "flex items-center p-3 my-1 rounded-lg text-left transition-all duration-200 ease-out group relative",
                           isCurrent && "shadow-md",
@@ -1826,6 +2994,14 @@ const updateVendorData = (field: keyof VendorData, value: any) => {
                   updateVendorData={updateVendorData} 
                   brandColors={BRAND}
                   toast={toast}
+                  stepCompletion={stepCompletion}  
+                  setCurrentStep={setCurrentStep}
+                  handleFileUpload={handleFileUpload}  
+                  isUploading={isUploading}        
+                  uploadType={uploadType}
+                  termsAgreed={termsAgreed} 
+                  setTermsAgreed={setTermsAgreed}
+                  setVendorData={setVendorData}
                 />
               </CardContent>
               
@@ -2013,6 +3189,7 @@ const updateVendorData = (field: keyof VendorData, value: any) => {
             </div>
           )}
         </div>
+        <ChatwootWidget />
       </div>
       
       {/* Footer */}

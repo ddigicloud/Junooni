@@ -113,19 +113,7 @@ const ColorSwatches = ({
         }
       }
       
-      // Fallback: extract colors from Color_ prefixed metadata
-      Object.entries(product.metadata).forEach(([key, value]) => {
-        if (key.startsWith("Color_") && value) {
-          const colorName = key.replace("Color_", "").toLowerCase()
-          const colorValue = String(value)
-          
-          colorOptions.push({
-            name: colorName,
-            value: colorValue,
-            label: colorName.charAt(0).toUpperCase() + colorName.slice(1)
-          })
-        }
-      })
+  
     }
     
     return colorOptions
@@ -148,7 +136,7 @@ const ColorSwatches = ({
           <button
             key={color.name}
             className={clx(
-              "w-6 h-6 rounded-full border transition-all duration-200",
+              "w-3 h-3 rounded-full border transition-all duration-200",
               "hover:scale-110 hover:border-gray-400",
               selectedColor === color.name && showSelected
                 ? "border-2 border-gray-800 scale-110"

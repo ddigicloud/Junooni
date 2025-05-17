@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { IconBrandFacebook, IconBrandGithub } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
+import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -15,6 +16,8 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
+import { useToast } from '@/hooks/use-toast'
+import { useNavigate } from '@tanstack/react-router'
 
 type SignUpFormProps = HTMLAttributes<HTMLDivElement>
 
@@ -41,6 +44,9 @@ const formSchema = z
 
 export function SignUpForm({ className, ...props }: SignUpFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
+  const navigate = useNavigate()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -51,21 +57,76 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
     },
   })
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
-    setIsLoading(true)
-    // eslint-disable-next-line no-console
-    console.log(data)
-
-    setTimeout(() => {
-      setIsLoading(false)
-    }, 3000)
-  }
-
+    // async function onSubmit(data: z.infer<typeof formSchema>) {
+    //   setIsLoading(true)
+    //   try {
+    //     const response = await axios.post('http://localhost:9000/auth/vendor/emailpass/register', {
+    //       email: data.email,
+    //       password: data.password,
+    //     })
+  
+    //     // Save token from Medusa API response and navigate to dashboard
+    //     localStorage.setItem('vendorToken', response.data.token)
+    //     alert('Login successful!')
+    //     navigate({ to: '/onboarding' }) // Adjust the path if necessary
+    //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    //   } catch (error: any) {
+    //     // eslint-disable-next-line no-console
+    //     console.error('Login error:', error)
+    //     alert(error.response?.data?.message || 'Invalid email or password.')
+    //   } finally {
+    //     setIsLoading(false)
+    //   }
+    // }
+    async function onSubmit(data: z.infer<typeof formSchema>) {
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        console.log('Submitting data:', data)
+        
+        // Use axios just like in your login form
+        const response = await axios.post('http://localhost:9000/auth/vendor/emailpass/register', {
+          email: data.email,
+          password: data.password
+        })
+        
+        console.log('Response data:', response.data)
+        
+        // Save token exactly like your login form does
+        localStorage.setItem('vendorToken', response.data.token)
+        
+        // IMPORTANT: Also save the email for use in onboarding
+        localStorage.setItem('vendorEmail', data.email)
+        
+        // Show success notification
+        toast({
+          title: "Account created successfully",
+          description: "Redirecting you to the onboarding process...",
+        })
+        
+        // Redirect to onboarding or dashboard
+        setTimeout(() => {
+          navigate({ to: '/onboarding' })
+        }, 1000)
+        
+      } catch (error) {
+        console.error('Registration error:', error)
+        const errorMessage = error.response?.data?.message || 'An unknown error occurred'
+        setError(errorMessage)
+      }
+    }
   return (
     <div className={cn('grid gap-6', className)} {...props}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className='grid gap-2'>
+            {error && (
+              <div className="p-3 mb-3 text-sm text-red-500 border border-red-200 rounded-md bg-red-50">
+                {error}
+              </div>
+            )}
+            
             <FormField
               control={form.control}
               name='email'
@@ -106,7 +167,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               )}
             />
             <Button className='mt-2' disabled={isLoading}>
-              Create Account
+              {isLoading ? 'Creating Account...' : 'Create Account'}
             </Button>
 
             <div className='relative my-2'>

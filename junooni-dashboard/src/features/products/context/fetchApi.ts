@@ -2,13 +2,15 @@ import axios from 'axios';
 
 // Replace with your actual API base URL
 const API_BASE_URL = import.meta.env.VITE_MEDUSA_BACKEND_URL;
-const API_KEY = import.meta.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY;
+const API_KEY = import.meta.env.VITE_PUBLIC_MEDUSA_PUBLISHABLE_KEY;
 
 // Define a Product type (adjust according to your actual product structure)
 interface Product {
   id: string;
   title: string;
+  subtitle: string;
   price: number;
+  metadata?: Record<string, any>;
   [key: string]: any; // Allow other dynamic properties
 }
 
@@ -16,11 +18,42 @@ interface Category {
   id: string;
   name: string;
   handle: string;
+  parent_category_id: string | null;
+  category_children?: Category[];
+  parent_category?: Category | null;
 }
 
 interface ImageUploadResponse {
   url: string;
   id: string;
+}
+
+interface InventoryItem {
+  id: string;
+  sku?: string;
+  origin_country?: string;
+  hs_code?: string;
+  mid_code?: string;
+  material?: string;
+  weight?: number;
+  length?: number;
+  height?: number;
+  width?: number;
+  requires_shipping?: boolean;
+  metadata?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
+}
+
+interface InventoryLevel {
+  id: string;
+  inventory_item_id: string;
+  location_id: string;
+  stocked_quantity: number;
+  reserved_quantity: number;
+  available_quantity: number;
+  incoming_quantity: number;
 }
 
 /**
@@ -34,17 +67,166 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
     const response = await axios.get(`${API_BASE_URL}/vendors/products/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        'x-publishable-api-key':`${API_KEY}`
-      },
+        'x-publishable-api-key': `${API_KEY}`
+      }
     });
     console.log("Product fetched:", response.data.product);
-    // Make sure this matches your API's response structure
     return response.data.product;
-    
   } catch (error) {
     console.error('Error fetching product:', error);
     throw error;
   }
+}
+
+/**
+ * Extract inventory item ID based on the specific Medusa API response structure
+ * 
+ * @param variant - The product variant object from API response
+ * @returns The inventory item ID or null if not found
+ */
+export function extractInventoryItemId(variant) {
+  // Check if variant exists
+  if (!variant) return null;
+  
+  // Based on the GET /vendors/products response, we know the structure:
+  // variant.inventory_items[0].inventory_item_id
+  if (variant.inventory_items && 
+      Array.isArray(variant.inventory_items) && 
+      variant.inventory_items.length > 0 &&
+      variant.inventory_items[0].inventory_item_id) {
+    return variant.inventory_items[0].inventory_item_id;
+  }
+  
+  // Fallback: Check if inventory info is nested differently
+  if (variant.inventory_items && 
+      Array.isArray(variant.inventory_items) && 
+      variant.inventory_items.length > 0 &&
+      variant.inventory_items[0].inventory && 
+      variant.inventory_items[0].inventory.id) {
+    return variant.inventory_items[0].inventory.id;
+  }
+  
+  // Final fallback: the id might be directly in inventory
+  if (variant.inventory_items && 
+      Array.isArray(variant.inventory_items) && 
+      variant.inventory_items.length > 0) {
+    const item = variant.inventory_items[0];
+    return item.id || item.inventory_item_id || (item.inventory && item.inventory.id);
+  }
+  
+  return null;
+}
+
+/**
+ * Handle inventory creation after product is created
+ * 
+ * @param result - The product creation result from API
+ * @param formVariants - The variants from the form
+ * @param defaultLocationId - The location ID for inventory
+ * @returns Promise resolving to the inventory creation result
+ */
+export async function handleInventoryCreation(result, formVariants, defaultLocationId) {
+  // Make sure we have variants in the result
+  if (!result || !result.variants || !Array.isArray(result.variants) || result.variants.length === 0) {
+    console.warn("No variants found in product creation result");
+    return null;
+  }
+  
+  console.log(`Processing inventory for ${result.variants.length} variants`);
+  
+  // Create array to store inventory creation operations
+  const inventoryCreations = [];
+  
+  // Process each variant from the API response
+  for (const variant of result.variants) {
+    console.log(`Processing variant ${variant.id}:`, variant.title);
+    
+    // Examine inventory_items structure in detail for debugging
+    if (variant.inventory_items) {
+      console.log(`Variant has ${variant.inventory_items.length} inventory items`);
+    } else {
+      console.log("Variant has no inventory_items array");
+    }
+    
+    // Extract inventory item ID using our extraction function
+    const inventoryItemId = extractInventoryItemId(variant);
+    
+    if (!inventoryItemId) {
+      console.warn(`No inventory item ID found for variant ${variant.id}, skipping inventory creation`);
+      continue;
+    }
+    
+    console.log(`Found inventory_item_id for variant ${variant.id}: ${inventoryItemId}`);
+    
+    // Find the matching form variant to get the stock quantity
+    // Match by title (most reliable in this case)
+    const formVariant = formVariants.find(v => v.title === variant.title) || formVariants[0];
+    const stockQuantity = parseInt(formVariant?.stock || 0);
+    
+    console.log(`Using stock quantity ${stockQuantity} for variant "${variant.title}"`);
+    
+    inventoryCreations.push({
+      inventory_item_id: inventoryItemId,
+      location_id: defaultLocationId,
+      stocked_quantity: stockQuantity,
+      incoming_quantity: 0
+    });
+  }
+  
+  // Log the final payload for debugging
+  console.log(`Prepared ${inventoryCreations.length} inventory creation operations`);
+  
+  if (inventoryCreations.length === 0) {
+    console.warn("No inventory creations to submit");
+    return null;
+  }
+  
+  try {
+    // Prepare the payload for the API
+    const inventoryPayload = {
+      create: inventoryCreations
+    };
+    
+    console.log("Submitting inventory batch creation payload:", inventoryPayload);
+    
+    // Call the batch update function with the prepared payload
+    const response = await batchUpdateInventoryLevels(inventoryPayload);
+    
+    console.log("Inventory batch creation successful:", response);
+    return response;
+  } catch (error) {
+    console.error("Failed to create inventory levels:", error);
+    console.error("Error details:", error.response?.data || error.message);
+    throw error;
+  }
+}
+
+/**
+ * Extract stock information directly from a product variant
+ * @param variant - The product variant
+ * @returns The stock quantity or null if not found
+ */
+export function getVariantStock(variant: any): number | null {
+  // Try inventory_items array first
+  if (variant.inventory_items && Array.isArray(variant.inventory_items) && variant.inventory_items.length > 0) {
+    return variant.inventory_items[0].required_quantity || 0;
+  }
+  
+  // Fall back to direct inventory_quantity if available
+  if (variant.inventory_quantity !== undefined) {
+    return variant.inventory_quantity;
+  }
+  
+  return null;
+}
+
+/**
+ * Extract inventory item ID from a product variant
+ * @param variant - The product variant
+ * @returns The inventory item ID or null if not found
+ */
+export function getVariantInventoryItemId(variant: any): string | null {
+  return variant.inventoryItemId ?? null;
 }
 
 /**
@@ -53,15 +235,13 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
  */
 export async function fetchCategories() {
   try {
-    // Use a dedicated categories endpoint if available
     const response = await fetch(`${API_BASE_URL}/store/product-categories`, {
       credentials: "include",
       headers: {
-        'x-publishable-api-key':`${API_KEY}`
+        'x-publishable-api-key': `${API_KEY}`
       },
     });
     
-    // Make sure this matches your API's response structure
     return response;
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -69,32 +249,78 @@ export async function fetchCategories() {
   }
 }
 
+/**
+ * Batch update product variants (create, update, delete)
+ * @param productId - The product ID
+ * @param variantChanges - Object containing created, updated, and deleted variants
+ * @returns A Promise resolving to the batch update response
+ */
+export async function batchUpdateVariants({ 
+  productId, 
+  variantChanges
+}: {
+  productId: string;
+  variantChanges: {
+    create?: any[];
+    update?: any[];
+    delete?: {
+      ids: string[];
+      object: string;
+      deleted: boolean;
+    };
+  };
+}): Promise<any> {
+  const token = localStorage.getItem("vendorToken");
+
+  // Just to debug
+  console.log("Batch variant update payload:", JSON.stringify(variantChanges, null, 2));
+
+  const response = await axios.post(
+    `${API_BASE_URL}/vendors/products/${productId}/variants/batch`, 
+    variantChanges,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+    }
+  );
+
+  return response.data;
+  
+}
 
 
 /**
  * Update an existing product
- * @param product - The updated product data
+ * @param product - The updated product data with ID
  * @returns A Promise resolving to the updated product
  */
 export async function updateProduct({ product }: { product: Product }): Promise<Product> {
   const token = localStorage.getItem("vendorToken");
-  try {
-    console.log("Updating product with data:", product);
-    
-    const response = await axios.put(`${API_BASE_URL}/vendors/products/${product}`, product, {
+  const { id } = product;
+
+  if (!id) {
+    throw new Error('Product ID is required for update');
+  }
+
+  // Exclude id from body payload
+  const { id: _, ...productDataWithId } = product;
+
+  const response = await axios.put(
+    `${API_BASE_URL}/vendors/products/${id}`,
+    productDataWithId,
+    {
       headers: {
         Authorization: `Bearer ${token}`,
-        
+        'Content-Type': 'application/json',
       },
-    });
-    
-    console.log("Product update response:", response.data);
-    return response.data.product || response.data;
-  } catch (error) {
-    console.error('Error updating product:', error);
-    throw error;
-  }
+    }
+  );
+
+  return response.data.product || response.data;
 }
+
 
 /**
  * Upload and manage product images
@@ -169,6 +395,95 @@ export async function uploadProductImage({
 }
 
 /**
+ * Fetch inventory levels for a specific inventory item
+ * @param inventoryItemId - The inventory item ID
+ * @returns A Promise resolving to the inventory levels
+ */
+export async function fetchInventoryLevels({ inventoryItemId }: { inventoryItemId: string }): Promise<any> {
+  const token = localStorage.getItem("vendorToken");
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/vendors/inventory-items/${inventoryItemId}/location-levels`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    console.log("Inventory levels fetched:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching inventory levels:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch all inventory items
+ * @returns A Promise resolving to inventory items
+ */
+export async function fetchAllInventoryItems(): Promise<InventoryItem[]> {
+  const token = localStorage.getItem("vendorToken");
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/vendors/inventory-items`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    console.log("All inventory items fetched:", response.data);
+    return response.data.inventory_items || [];
+  } catch (error) {
+    console.error('Error fetching all inventory items:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update inventory levels for a specific inventory item
+ * @param inventoryItemId - The inventory item ID
+ * @param locationId - The location ID
+ * @param quantity - The new stocked quantity
+ * @returns A Promise resolving to the updated inventory level
+ */
+export async function updateInventoryLevel({ 
+  inventoryItemId,
+  locationId, 
+  quantity 
+}: { 
+  inventoryItemId: string;
+  locationId: string;
+  quantity: number;
+}): Promise<any> {
+  const token = localStorage.getItem("vendorToken");
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/vendors/inventory-items/${inventoryItemId}/location-levels`,
+      {
+        location_id: locationId,
+        stocked_quantity: quantity
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+    
+    console.log("Inventory level updated:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating inventory level:', error);
+    throw error;
+  }
+}
+
+/**
  * Fetch all products
  * @returns A Promise resolving to an array of products
  */
@@ -179,6 +494,9 @@ export async function fetchProducts(): Promise<Product[]> {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      params: {
+        currency_code: 'inr' // Add currency_code to params to avoid pricing context issues
+      }
     });
     return response.data.products || response.data;
   } catch (error) {
@@ -195,15 +513,68 @@ export async function fetchProducts(): Promise<Product[]> {
 export async function createProduct({ product }: { product: Product }): Promise<Product> {
   const token = localStorage.getItem("vendorToken");
   try {
-    const response = await axios.post(`${API_BASE_URL}/vendors/products`, product, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-    });
+    // Ensure currency_code is present
+   
+    
+    const response = await axios.post(
+      `${API_BASE_URL}/vendors/products`, 
+      product, 
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+    
     return response.data.product;
   } catch (error) {
     console.error('Error creating product:', error);
+    throw error;
+  }
+}
+
+/**
+ * Batch update inventory levels
+ * @param updates - Object containing created, updated, and deleted inventory levels
+ * @returns A Promise resolving to the batch update response
+ */
+/**
+ * Batch update inventory levels with a simplified approach
+ */
+export async function batchUpdateInventoryLevels(payload: {
+  create?: {
+    inventory_item_id: string;
+    location_id: string;
+    stocked_quantity: number;
+    incoming_quantity?: number;
+  }[],
+  update?: {
+    inventory_item_id: string;
+    location_id: string;
+    stocked_quantity: number;
+  }[]
+}): Promise<any> {
+  const token = localStorage.getItem("vendorToken");
+
+  console.log("📦 Inventory batch operation payload:", JSON.stringify(payload, null, 2));
+
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/vendors/inventory-items/location-levels/batch`, 
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+    
+    console.log("✅ Inventory operation success:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error in inventory operation:', error);
     throw error;
   }
 }
@@ -226,3 +597,4 @@ export async function deleteProduct({ id }: { id: string }): Promise<void> {
     throw error;
   }
 }
+

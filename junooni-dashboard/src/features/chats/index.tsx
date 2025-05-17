@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Fragment } from 'react/jsx-runtime'
 import { format } from 'date-fns'
+import { useToast } from "@/hooks/use-toast"
 import {
   IconArrowLeft,
   IconDotsVertical,
@@ -31,6 +32,7 @@ import { conversations } from './data/convo.json'
 
 export default function Chats() {
   const [search, setSearch] = useState('')
+   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<ChatUser | null>(null)
   const [mobileSelectedUser, setMobileSelectedUser] = useState<ChatUser | null>(
     null
@@ -61,6 +63,25 @@ export default function Chats() {
   )
 
   const users = conversations.map(({ messages, ...user }) => user)
+// Add this useEffect near the top of your component, right after your state declarations
+useEffect(() => {
+  // Check if user is authenticated by looking for token
+  const token = localStorage.getItem('vendorToken');
+  
+  // If no token is found, redirect to sign-in page
+  if (!token) {
+    // Show a toast notification
+    toast({
+      title: "Authentication Required",
+      description: "Please sign in to access your profile.",
+      variant: "destructive",
+    });
+    
+    // Redirect to sign-in page
+    window.location.href = '/sign-in';
+    return;
+  }
+}, []); // Empty dependency array means this runs once when component mounts
 
   return (
     <>

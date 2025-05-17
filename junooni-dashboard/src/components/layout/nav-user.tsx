@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useNavigate } from '@tanstack/react-router'
-
+import { IconHelp } from '@tabler/icons-react'
 import {
   BadgeCheck,
   Bell,
@@ -48,29 +48,54 @@ export function NavUser({
   const navigate = useNavigate()
   const handleLogout = () => {
     localStorage.clear() // or remove specific keys like 'auth_token' & 'vendorToken'
-    navigate({ to: '/sign-in-2' })
+    navigate({ to: '/sign-in' })
   }
   
 useEffect(() => {
   const fetchVendor = async () => {
     const token = localStorage.getItem("vendorToken")
+    
+    if (!token) {
+      console.error("No vendor token found")
+      navigate({ to: '/sign-in' })
+      return
+    }
+    
     try {
-      const res = await fetch("http://localhost:9000/vendors/01JN475VCB34HJ702Q242JCDEZ", {
+      // Try to fetch vendor profile directly from /vendors/me
+      const res = await fetch("http://localhost:9000/vendors/me", {
         headers: {
-          Authorization: `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
         },
       })
 
+      // If response is not ok (e.g. 401, 404)
+      if (!res.ok) {
+        console.log("Vendor profile not found. Redirecting to onboarding page.")
+        window.location.href = '/onboarding?step=basic-info'
+        return
+      }
+
       const data = await res.json()
-      setVendor(data.vendor) // or setVendor(data) if it's a flat object
+      
+      // Check if vendor data exists in the response
+      if (!data || !data.vendor) {
+        console.log("Vendor data empty. Redirecting to onboarding page.")
+        window.location.href = '/onboarding?step=basic-info'
+        return
+      }
+      
+      setVendor(data.vendor)
     } catch (err) {
       console.error("Failed to load vendor:", err)
+      // You might want to handle the error differently, maybe show an error state
+      // instead of redirecting immediately
     }
   }
 
   fetchVendor()
 }, [])
-
 
   return (
     <SidebarMenu >
@@ -115,36 +140,36 @@ useEffect(() => {
                     {vendor?.name || 'Loading...'}
                   </span>
                   <span className='text-xs truncate'>
-                    @{vendor?.handle || '...'}
+                    @{vendor?.handle || 'loading...'}
                   </span>
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              {/* <DropdownMenuItem>
                 <Sparkles />
                 Upgrade to Pro
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link to='/settings/account'>
+                <Link to='/profile'>
                   <BadgeCheck />
-                  Account
+                  Profile
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to='/settings'>
                   <CreditCard />
-                  Billing
+                  Payout
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to='/settings/notifications'>
-                  <Bell />
-                  Notifications
+                <Link to='/help-center'>
+                  <IconHelp />
+                  Help Center
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>

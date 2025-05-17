@@ -26,34 +26,34 @@ export function ProfileDropdown() {
   const handleLogout = () => {
     localStorage.removeItem('auth_token')
     localStorage.clear()
-    navigate({ to: '/sign-in-2' })
+    navigate({ to: '/sign-in' })
   }
   useEffect(() => {
     const fetchVendor = async () => {
       const token = localStorage.getItem("vendorToken");
       try {
         const token = localStorage.getItem("vendorToken")
-        console.log("Using token:", token)
+        //console.log("Using token:", token)
       
-        const response = await fetch("http://localhost:9000/vendors/01JN475VCB34HJ702Q242JCDEZ", {
+        const response = await fetch("http://localhost:9000/vendors/me", {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
       
-        console.log("Raw response:", response)
+        //console.log("Raw response:", response)
       
         if (!response.ok) {
           const text = await response.text()
-          console.error("Server returned error:", text)
+          //console.error("Server returned error:", text)
           throw new Error("Failed to fetch vendor")
         }
       
         const data = await response.json()
         setVendor(data.vendor)
       } catch (err) {
-        console.error("Error fetching vendor:", err)
+        //console.error("Error fetching vendor:", err)
       }
           
     };
@@ -61,7 +61,7 @@ export function ProfileDropdown() {
     fetchVendor();
   }, []);
   
-  console.log("Vendor data:", vendor)
+  //console.log("Vendor data:", vendor)
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>

@@ -1,6 +1,6 @@
 import { 
   createWorkflow,
-  WorkflowResponse
+  WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
 import { 
   setAuthAppMetadataStep,
@@ -15,13 +15,6 @@ export type CreateVendorAdminWorkflowInput = {
     vendor_id: string
   }
   authIdentityId: string
-}
-
-type CreateVendorAdminWorkflowOutput = {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
 }
 
 const createVendorAdminWorkflow = createWorkflow(

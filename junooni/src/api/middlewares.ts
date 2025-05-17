@@ -16,6 +16,7 @@ import { GetAdminReviewsSchema } from "./admin/reviews/route"
 import { PostAdminUpdateReviewsStatusSchema } from "./admin/reviews/status/route"
 import { SearchSchema } from "./store/products/search/route"
 import {PostStoreReviewSchema} from "./store/reviews/route"
+import {CheckHandleSchema} from "./vendors/check-handle/route"
 
 
 import { PostCreateBlank } from "./blank/route"
@@ -95,6 +96,86 @@ export default defineMiddlewares({
         validateAndTransformBody(PostVendorCreateSchema),
       ],
     },
+   {
+      matcher: "/vendors/products*",
+      method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
+      middlewares: [
+        // CORS
+        (req, res, next) => {
+          const configModule = req.scope.resolve("configModule")
+          cors({
+            origin: true,
+            credentials: true,
+          })(req, res, next)
+        },
+    
+        // Auth
+        authenticate(["vendor", "user"], ["session", "bearer"]),
+    
+        // Conditional Validation
+        (req, res, next) => {
+          const isModifying = ["POST"].includes(req.method)
+    
+          // Check if path is EXACTLY /vendors/products or /vendors/products/:id
+          const isMainProductRoute = /^\/vendors\/products(\/[^\/]+)?$/.test(req.path)
+    
+          if (isModifying && isMainProductRoute) {
+            validateAndTransformBody(AdminCreateProduct)(req, res, next)
+          } else {
+            next()
+          }
+        }
+      ]
+    },    
+    {
+      matcher: "/vendors/uploads",
+      method: ["OPTIONS", "POST"],
+      middlewares: [
+        (req, res, next) => {
+          const configModule = req.scope.resolve("configModule");
+          cors({
+            origin: true,
+            credentials: true,
+          })(req, res, next);
+        },
+        upload.array("files"),
+        authenticate(["vendor","user"], ["session", "bearer"])
+       
+      ],
+    },
+    {
+      matcher: "/vendors/check-handle",
+      method: ["OPTIONS", "POST"], // Handle preflight OPTIONS and POST
+      middlewares: [
+        // CORS Middleware
+        (req, res, next) => {
+          const configModule = req.scope.resolve("configModule");
+          cors({
+            origin:true,
+            credentials: true,
+            methods: ["POST", "OPTIONS"], // Allow specific methods
+            allowedHeaders: [
+              "Content-Type",
+              "Authorization",
+              "x-publishable-api-key",
+            ], // Add necessary headers
+          })(req, res, next);
+        },
+        // Preflight Response for OPTIONS
+        (req, res, next) => {
+          if (req.method === "OPTIONS") {
+            res.status(204).end(); // Respond to OPTIONS preflight
+            return;
+          }
+          next();
+        },
+        // Authentication Middleware
+        authenticate("vendor", ["session", "bearer"], {
+          allowUnregistered: true, // Allow unauthenticated requests
+        }),
+        validateAndTransformBody(CheckHandleSchema),
+      ],
+    },
     {
       matcher: "/vendors/*",
       method: ["GET","OPTIONS", "POST", "PUT", "DELETE"],
@@ -115,45 +196,6 @@ export default defineMiddlewares({
         authenticate(["vendor","user"], ["session", "bearer"])
       ]
     },
-    {
-      matcher: "/vendors/products*",
-      method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
-      middlewares: [
-        (req, res, next) => {
-          const configModule = req.scope.resolve("configModule");
-          cors({
-            origin: true,
-            credentials: true,
-          })(req, res, next);
-        },
-        authenticate(["vendor","user"], ["session", "bearer"]),
-        (req, res, next) => {
-          // Apply validation only to POST, PUT, DELETE
-          if (["POST", "PUT", "DELETE"].includes(req.method)) {
-            validateAndTransformBody(AdminCreateProduct)(req, res, next);
-          } else {
-            next(); // Skip validation for GET and OPTIONS
-          }
-        }
-      ],
-    },    
-    {
-      matcher: "/vendors/uploads",
-      method: ["OPTIONS", "POST"],
-      middlewares: [
-        (req, res, next) => {
-          const configModule = req.scope.resolve("configModule");
-          cors({
-            origin: true,
-            credentials: true,
-          })(req, res, next);
-        },
-        upload.array("files"),
-        authenticate(["vendor","user"], ["session", "bearer"])
-       
-      ],
-    },
-      
     {
       matcher: "/admin/brand",
       method: "POST",

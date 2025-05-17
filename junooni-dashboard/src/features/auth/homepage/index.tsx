@@ -119,10 +119,11 @@ const JunooniLandingPage = () => {
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center justify-between px-4 py-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
           <div className="flex items-center space-x-3">
-            <div className="bg-[#e65100] text-white p-2 rounded-lg transform transition-transform hover:scale-110 duration-300">
+            {/* <div className="bg-[#e65100] text-white p-2 rounded-lg transform transition-transform hover:scale-110 duration-300">
               <ShoppingBag className="w-6 h-6" />
-            </div>
-            <h1 className="text-xl font-bold text-gray-900">JUNOONI</h1>
+            </div> */}
+            {/* <h1 className="text-xl font-bold text-gray-900"></h1> */}
+            <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-8" />
           </div>
           <div className="space-x-4">
             <Button
@@ -368,10 +369,11 @@ const JunooniLandingPage = () => {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
             <div>
               <div className="flex items-center mb-4 space-x-3">
-                <div className="bg-[#e65100] text-white p-2 rounded-lg">
+                {/* <div className="bg-[#e65100] text-white p-2 rounded-lg">
                   <ShoppingBag className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-bold">JUNOONI</h3>
+                </div> */}
+                {/* <h3 className="text-xl font-bold">JUNOONI</h3> */}
+                <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-8" />
               </div>
               <p className="text-gray-400">
                 The easiest way for creators to sell custom merchandise.

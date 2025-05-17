@@ -6,6 +6,7 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import SkipToMain from '@/components/skip-to-main'
 import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 
 export const Route = createFileRoute('/_authenticated')({
   component: RouteComponent,
@@ -14,6 +15,7 @@ export const Route = createFileRoute('/_authenticated')({
 function RouteComponent() {
   const defaultOpen = Cookies.get('sidebar:state') !== 'false'
   const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
   
   // Correctly detect loading state using TanStack Router's API
   const routerState = useRouterState()
@@ -36,6 +38,64 @@ function RouteComponent() {
     return !shouldHideSidebar
   }, [router.state.location.pathname]) // Only recalculate when the path changes
   
+
+  // Check if vendor exists
+  useEffect(() => {
+    const checkVendorExists = async () => {
+      try {
+        const token = localStorage.getItem('vendorToken')
+        
+        // if (!token) {
+        //   // If no token, redirect to sign-in
+        //   router.navigate({ to: '/sign-up' })
+        //   return
+        // }
+        
+        // Get the current path
+        const path = router.state.location.pathname
+        
+        // Skip vendor check for onboarding and sign-in pages
+        if (path.includes('/onboarding') || path.includes('/sign-in') || path.includes('/')) {
+          setIsLoading(false)
+          return
+        }
+        
+        // Check if vendor exists using vendors/me endpoint
+        const response = await fetch('http://localhost:9000/vendors', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        // If response is not ok or empty, redirect to onboarding
+        if (!response.ok) {
+          console.log("Vendor profile not found. Redirecting to onboarding page.")
+          window.location.href = '/onboarding?step=basic-info'
+          return
+        }
+        
+        const data = await response.json()
+        
+        // Check if vendor data exists in the response
+        if (!data || !data.vendor) {
+          console.log("Vendor data empty. Redirecting to onboarding page.")
+          window.location.href = '/onboarding?step=basic-info'
+          return
+        }
+        
+        setIsLoading(false)
+      } catch (error) {
+        console.error("Error checking vendor existence:", error)
+        setIsLoading(false)
+      }
+    }
+    
+    checkVendorExists()
+  }, [router.state.location.pathname])
+
+
   return (
     <SearchProvider>
       <SidebarProvider defaultOpen={showSidebar ? defaultOpen : false}>

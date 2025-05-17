@@ -50,7 +50,7 @@ export const ProductSchema = z.object({
   description: z.string().optional(),
   
   // Status and categorization
-  status: z.enum(['published', 'draft', 'archived']).default('published'),
+  status: z.enum(['published', 'draft', 'archived','proposed','rejected']).default('published'),
   category: z.string().optional(),
   
   // Pricing and inventory (used mainly for simple products)

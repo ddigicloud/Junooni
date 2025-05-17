@@ -24,6 +24,7 @@ interface Vendor {
   othersocial?: string;
   phonenumber?: string;
   GSTIN?: string;
+  gst_verification_status: "pending"| "verified" | "failed";
   companyname?: string;
   pan_number?: string;
   city?: string;
@@ -60,6 +61,7 @@ interface VendorFormData {
   othersocial?: string;
   phonenumber?: string;
   GSTIN?: string;
+  gst_verification_status: "pending"| "verified" | "failed";
   companyname?: string;
   pan_number?: string;
   city?: string;
@@ -161,6 +163,7 @@ const CreatorEditPage = () => {
           othersocial: data.vendor.othersocial || "",
           phonenumber: data.vendor.phonenumber || "",
           GSTIN: data.vendor.GSTIN || "",
+          gst_verification_status: data.vendor.gst_verification_status || "pending",
           companyname: data.vendor.companyname || "",
           pan_number: data.vendor.pan_number || "",
           city: data.vendor.city || "",
@@ -375,6 +378,7 @@ const CreatorEditPage = () => {
           updateData = {
             companyname: formData.companyname,
             GSTIN: formData.GSTIN,
+            gst_verification_status:formData.gst_verification_status,
             pan_number: formData.pan_number,
             tan_number: formData.tan_number
           };
@@ -1168,6 +1172,22 @@ const CreatorEditPage = () => {
                     onChange={handleFormChange}
                     placeholder="Enter GSTIN"
                   />
+                </div>
+                <div>
+                  <Label htmlFor="gst_verification_status" className="block mb-2">GST Verification</Label>
+                  <div className="relative">
+                    <select
+                      id="gst_verification_status"
+                      name="gst_verification_status"
+                      value={formData.gst_verification_status || 'verified'} 
+                      onChange={handleFormChange}
+                      className="block w-full px-3 py-2 text-sm border border-gray-200 rounded-md placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="verified">Verified</option>
+                      <option value="pending">Pending</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>

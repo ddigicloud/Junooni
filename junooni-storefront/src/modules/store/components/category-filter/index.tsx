@@ -1,89 +1,113 @@
+// "use client"
+
+// import { RadioGroup } from "@headlessui/react"
+// import { useCallback } from "react"
+// import { Heading } from "@medusajs/ui"
+
+// type CategoryFilterProps = {
+//   categories: { value: string; label: string }[]
+//   categoryId: string
+//   setQueryParams: (name: string, value: string) => void
+//   'data-testid'?: string
+// }
+
+// const CategoryFilter = ({
+//   categories,
+//   categoryId,
+//   setQueryParams,
+//   'data-testid': dataTestId,
+// }: CategoryFilterProps) => {
+//   const handleCategoryChange = useCallback(
+//     (id: string) => {
+//       setQueryParams("category", id)
+//     },
+//     [setQueryParams]
+//   )
+
+//   if (!categories || categories.length <= 1) {
+//     return null
+//   }
+
+//   return (
+//     <div className="mb-6" data-testid={dataTestId}>
+//       <Heading className="txt-compact-small-plus text-ui-fg-base mb-4">
+//         Categories
+//       </Heading>
+//       <RadioGroup value={categoryId} onChange={handleCategoryChange}>
+//         <div className="flex flex-col gap-2">
+//           {categories.map((category) => {
+//             return (
+//               <RadioGroup.Option
+//                 key={category.value}
+//                 value={category.value}
+//                 className="flex items-center gap-2 cursor-pointer"
+//               >
+//                 {({ checked }) => (
+//                   <>
+//                     <span
+//                       className={`w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center ${
+//                         checked && "border-gray-900"
+//                       }`}
+//                     >
+//                       {checked && (
+//                         <span className="w-2 h-2 rounded-full bg-gray-900" />
+//                       )}
+//                     </span>
+//                     <span className="text-sm">{category.label}</span>
+//                   </>
+//                 )}
+//               </RadioGroup.Option>
+//             )
+//           })}
+//         </div>
+//       </RadioGroup>
+//     </div>
+//   )
+// }
+
+// export default CategoryFilter
+
+// @modules/store/components/subcategory-filter/index.tsx
 "use client"
 
-import { useState } from "react"
-import FilterRadioGroup from "@modules/common/components/filter-radio-group"
-import { Button } from "@medusajs/ui"
-import { motion, AnimatePresence } from "framer-motion"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { HttpTypes } from "@medusajs/types"
 
-type CategoryFilterProps = {
-  categories: {
-    value: string
-    label: string
-  }[]
-  categoryId: string | null
-  setQueryParams: (name: string, value: string) => void
-  "data-testid"?: string
+type SubcategoryFilterProps = {
+  subcategories?: HttpTypes.StoreProductCategory[]
+  'data-testid'?: string
 }
 
-const CategoryFilter = ({
-  categories,
-  categoryId,
-  setQueryParams,
-  "data-testid": dataTestId,
-}: CategoryFilterProps) => {
-  const [showAll, setShowAll] = useState(false)
+const SubcategoryFilter = ({ 
+  subcategories = [], 
+  'data-testid': dataTestId 
+}: SubcategoryFilterProps) => {
+  const router = useRouter()
+  const pathname = usePathname()
   
-  const hasMoreThan6 = categories.length > 6
-  
-  const initialCategories = categories.slice(0, 6)
-  const additionalCategories = categories.slice(6)
-  
-  const handleChange = (value: string) => {
-    setQueryParams("category", value)
-  }
-
-  const toggleShowAll = () => {
-    setShowAll(!showAll)
+  if (!subcategories || subcategories.length === 0) {
+    return null
   }
 
   return (
-    <div className="flex flex-col gap-0">
-      <FilterRadioGroup
-        title="Categories"
-        items={initialCategories}
-        value={categoryId || ""}
-        handleChange={handleChange}
-        data-testid={dataTestId}
-      />
-      
-      <AnimatePresence>
-        {showAll && hasMoreThan6 && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden gap-0"
-          >
-            <FilterRadioGroup
-              title=""
-              items={additionalCategories}
-              value={categoryId || ""}
-              handleChange={handleChange}
-              data-testid={`${dataTestId}-additional`}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-      {hasMoreThan6 && (
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="gap-0"
+    <div className="flex flex-col space-y-2" data-testid={dataTestId}>
+      {subcategories.map((subcategory) => (
+        <LocalizedClientLink
+          key={subcategory.id}
+          href={`/categories/${subcategory.handle}`}
+          className="flex items-center py-1 px-2 text-sm text-gray-700 hover:bg-gray-50 rounded-sm hover:text-pink-600 transition-colors"
         >
-          <Button
-            variant="secondary"
-            size="small"
-            className="mt-4 w-full"
-            onClick={toggleShowAll}
-          >
-            {showAll ? "Show Less" : `Show More (${additionalCategories.length})`}
-          </Button>
-        </motion.div>
-      )}
+          <span className="truncate">{subcategory.name}</span>
+          <span className="ml-auto text-gray-400">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </span>
+        </LocalizedClientLink>
+      ))}
     </div>
   )
 }
 
-export default CategoryFilter
+export default SubcategoryFilter

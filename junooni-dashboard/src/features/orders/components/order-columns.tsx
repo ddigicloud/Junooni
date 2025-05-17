@@ -32,17 +32,17 @@ export const columns: ColumnDef<Order>[] = [
     accessorKey: "total",
     cell: info => {
       const rawValue = info.getValue();
-      console.log("Raw total value:", rawValue, "Type:", typeof rawValue);
+      //console.log("Raw total value:", rawValue, "Type:", typeof rawValue);
       
       // Handle null, undefined or non-numeric values
       if (rawValue === null || rawValue === undefined || isNaN(Number(rawValue))) {
-        console.log("Invalid total value detected");
+        //console.log("Invalid total value detected");
         return <span>$0.00</span>;
       }
       
       // Ensure we're working with a number
       const amount = Number(rawValue);
-      console.log("Converted number value:", amount);
+      //console.log("Converted number value:", amount);
       
       return <span>${amount.toFixed(2)}</span>;
     }

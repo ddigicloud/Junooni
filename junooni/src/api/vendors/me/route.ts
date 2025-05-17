@@ -13,24 +13,39 @@ export const GET = async (
   res: MedusaResponse
 ) => {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-
+  
+  // Get vendor data
   const { data: [vendorAdmin] } = await query.graph({
     entity: "vendor_admin",
-    fields: ["vendor.*"], // You can specify which vendor fields you want
+    fields: ["vendor.*"],
     filters: {
-      id: [
-        // ID of the authenticated vendor admin
-        req.auth_context.actor_id,
-      ],
+      id: [req.auth_context.actor_id],
     },
   })
-
+  
+  if (!vendorAdmin?.vendor?.id) {
+    return res.status(404).json({ message: "Vendor not found" })
+  }
+  
+  // Make a separate query specifically for the admin data
+  const { data: adminData } = await query.graph({
+    entity: "vendor_admin",
+    fields: ["id", "email", "first_name", "last_name"],
+    filters: {
+      vendor_id: [vendorAdmin.vendor.id],
+    },
+  })
+  
+  // Combine the data
+  const vendorWithAdmins = {
+    ...vendorAdmin.vendor,
+    admins: adminData || []
+  }
+  
   res.json({
-    vendor: vendorAdmin.vendor,
+    vendor: vendorWithAdmins
   })
 }
-
-
 export const UpdateVendorSchema = z.object({
   name: z.string().optional(),
   handle: z.string().optional(),
@@ -57,6 +72,11 @@ export const UpdateVendorSchema = z.object({
   cancelled_checkque: z.string().optional(),
   creator_bio: z.string().optional(),
   creator_title: z.string().optional(),
+admins: z.object({
+    email: z.string(),
+    first_name: z.string().optional(),
+    last_name: z.string().optional()
+  }).strict()
 }).strict()
 
 type RequestBody = z.infer<typeof UpdateVendorSchema>
