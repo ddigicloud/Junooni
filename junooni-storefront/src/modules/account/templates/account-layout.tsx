@@ -329,7 +329,7 @@ const AccountLayout = ({ customer, children, creatorList }) => {
               />
             )}
           </div>
-          <div className="flex-1 px-4">
+          <div className="flex-1 px-0 md:px-4">
             {/* Pass important context to children if needed */}
             {React.isValidElement(children) &&
               React.cloneElement(children, commonProps)}
@@ -345,9 +345,11 @@ const AccountLayout = ({ customer, children, creatorList }) => {
             </span>
           </div>
           <div>
-            <UnderlineLink href="/customer-service">
-              Customer Service
-            </UnderlineLink>
+            
+          <UnderlineLink href="/customer-service" className="text-[#e65100]">
+            Customer Service
+          </UnderlineLink>
+
           </div>
         </div>
       </div>

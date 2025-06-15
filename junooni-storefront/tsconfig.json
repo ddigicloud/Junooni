@@ -28,7 +28,7 @@
       }
     ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/modules/store/components/filter-handlers-wrapper/index.jsx"],
   "exclude": [
     "node_modules",
     ".next",

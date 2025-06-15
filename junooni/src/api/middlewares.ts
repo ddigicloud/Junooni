@@ -177,25 +177,37 @@ export default defineMiddlewares({
       ],
     },
     {
-      matcher: "/vendors/*",
-      method: ["GET","OPTIONS", "POST", "PUT", "DELETE"],
-      middlewares: [
-        (req, res, next) => {
-          const configModule = req.scope.resolve("configModule");
-          cors({
-            origin: true, // Allow all origins dynamically
-            credentials: true,
-            methods: [ "POST", "PUT", "DELETE", "OPTIONS"],
-            allowedHeaders: [
-              "Content-Type", 
-              "Authorization", 
-              "x-publishable-api-key"
-            ]
-          })(req, res, next);
-        },
-        authenticate(["vendor","user"], ["session", "bearer"])
-      ]
+  matcher: "/vendors/*",
+  method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
+  middlewares: [
+    (req, res, next) => {
+      const configModule = req.scope.resolve("configModule");
+      cors({
+        origin: true,
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "x-publishable-api-key"
+        ]
+      })(req, res, next);
     },
+    (req, res, next) => {
+      const publicPaths = [
+        /^\/vendors\/[^/]+\/followers$/, // Regex to match /vendors/[id]/followers
+      ];
+
+      const isPublic = publicPaths.some((pattern) => pattern.test(req.path));
+      if (isPublic) {
+        return next(); // Allow without auth
+      }
+
+      // Else apply auth
+      return authenticate(["vendor", "user"], ["session", "bearer"])(req, res, next);
+    }
+  ]
+},
     {
       matcher: "/admin/brand",
       method: "POST",

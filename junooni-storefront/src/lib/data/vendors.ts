@@ -67,7 +67,47 @@ export async function getVendorByHandle(handle: string): Promise<Vendor | undefi
 
 
 
-export const retriveVendorsFollowers = async (vendor_id) => {
+// export const retriveVendorsFollowers = async (vendor_id) => {
+//   const headers = {
+//     ...(await getAuthHeaders()),
+//   };
+
+//   const next = {
+//     ...(await getCacheOptions("vendors")),
+//   };
+
+//   return sdk.client
+//     .fetch<VendorResponse>(`/vendors/${vendor_id}/followers`, {
+//       method: "GET",
+//       query: {
+//         fields: "*",
+//       },
+//       headers,
+//       next,
+//     })
+//     .then((followers) => followers )
+//     .catch(() => null);
+// };
+
+interface FollowersResponse {
+  count: number;
+  follow: Array<{
+    id: string;
+    vendor_id: string;
+    follow: {
+      customer: {
+        id: string;
+        first_name: string;
+        last_name: string;
+        email: string;
+      }
+    }
+  }>;
+}
+
+export const retriveVendorsFollowers = async (vendor_id: string) => {
+  console.log("🚀 SDK: Fetching followers for vendor:", vendor_id);
+  
   const headers = {
     ...(await getAuthHeaders()),
   };
@@ -76,19 +116,38 @@ export const retriveVendorsFollowers = async (vendor_id) => {
     ...(await getCacheOptions("vendors")),
   };
 
-  return sdk.client
-    .fetch<VendorResponse>(`/vendors/${vendor_id}/followers`, {
-      method: "GET",
-      query: {
-        fields: "*",
-      },
-      headers,
-      next,
-    })
-    .then((followers) => followers )
-    .catch(() => null);
+  try {
+    console.log("📡 SDK: Calling /vendors/" + vendor_id + "/followers");
+    
+    const response = await sdk.client.fetch<FollowersResponse>(
+      `/vendors/${vendor_id}/followers`, 
+      {
+        method: "GET",
+        query: {
+          fields: "*",
+        },
+        headers,
+        next,
+      }
+    );
+    
+    console.log("✅ SDK: Raw followers response:", response);
+    
+    return response; // Return the full response { count, follow }
+    
+  } catch (error) {
+    console.error("❌ SDK: Error fetching followers:", error);
+    
+    // Handle 404 properly instead of returning null
+    if (error?.status === 404) {
+      console.log("📭 SDK: No followers found (404)");
+      return { count: 0, follow: [] }; // Return empty structure, not null
+    }
+    
+    // For other errors, still return empty structure
+    return { count: 0, follow: [] };
+  }
 };
-
 
 
 

@@ -37,14 +37,14 @@
 
 //   return (
 //     <div className="mb-6" data-testid={dataTestId}>
-//       <Heading className="txt-compact-small-plus text-ui-fg-base mb-4">
+//       <Heading className="mb-4 txt-compact-small-plus text-ui-fg-base">
 //         Subcategories
 //       </Heading>
 //       <div className="flex flex-col gap-2">
 //         {subcategories.map((subcategory) => (
 //           <button
 //             key={subcategory.id}
-//             className="text-left px-2 py-1 rounded hover:bg-gray-50"
+//             className="px-2 py-1 text-left rounded hover:bg-gray-50"
 //             onClick={() => navigateToSubcategory(subcategory.handle)}
 //           >
 //             <span>{subcategory.name}</span>

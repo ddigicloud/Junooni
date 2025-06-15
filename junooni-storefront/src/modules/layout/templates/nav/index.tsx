@@ -2,11 +2,12 @@ import { Suspense } from "react";
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 import CartButton from "@modules/layout/components/cart-button";
 import AccountButton from "@modules/layout/components/account-button"; // Add this import
-import { Heart, Search, UserCircle } from "lucide-react";
+import { Heart, Search, User } from "lucide-react";
 import { listCategories } from "@lib/data/categories";
 import { CategoryMegaMenu } from "./CategoryMegaMenu";
 import MobileMenu from "./MobileMenu";
 import SearchBar from "@modules/layout/components/search-button";
+import WishlistButton from "@modules/wishlists/components/wishlist-button";
 
 export default async function Nav() {
   const allCategories = await listCategories();
@@ -29,14 +30,17 @@ export default async function Nav() {
         {/* Right: Mobile Menu and Icons */}
         <div className="flex items-center">
           {/* Icons - Hidden on xsmall screens */}
-          <div className="items-center hidden mr-4 sm:flex gap-x-3">
-            <LocalizedClientLink
+          <div className="flex items-center mt-1 mr-4 gap-x-3">
+            {/* <LocalizedClientLink
               className="transition-colors duration-300"
               href="/search"
               data-testid="nav-search-link"
             >
               <Search className="w-5 h-5"/>
-            </LocalizedClientLink>
+            </LocalizedClientLink> */}
+            <div className="relative mb-1">
+              <SearchBar categories={allCategories} />
+            </div>
             
             {/* Replace this with the new AccountButton */}
             <Suspense
@@ -46,13 +50,21 @@ export default async function Nav() {
                   href="/account"
                   data-testid="nav-account-link"
                 >
-                  <UserCircle className="w-5 h-5"/>
+                  <User className="w-5 h-5"/>
                 </LocalizedClientLink>
               }
             >
               <AccountButton />
             </Suspense>
-            
+     
+            <LocalizedClientLink
+              className="transition-colors duration-300"
+              href="/wishlist"
+              data-testid="nav-wishlist-link"
+            >
+              <Heart className="w-5 h-5 mb-1 mr-1"/>
+            </LocalizedClientLink>
+              
             <Suspense
               fallback={
                 <LocalizedClientLink
@@ -98,6 +110,14 @@ export default async function Nav() {
         <SearchBar categories={allCategories} />
         
         {/* Replace this with the new AccountButton */}
+        <LocalizedClientLink
+          className="transition-colors duration-300 "
+          href="/wishlist"
+          data-testid="nav-account-link"
+        >
+          <Heart className="w-6 h-6"/>
+        </LocalizedClientLink>
+        
         <Suspense
           fallback={
             <LocalizedClientLink
@@ -105,20 +125,12 @@ export default async function Nav() {
               href="/account"
               data-testid="nav-account-link"
             >
-              <UserCircle className="w-5 h-5"/>
+              <User className="w-6 h-6"/>
             </LocalizedClientLink>
           }
         >
           <AccountButton />
         </Suspense>
-        
-        <LocalizedClientLink
-          className="transition-colors duration-300 "
-          href="/wishlist"
-          data-testid="nav-account-link"
-        >
-          <Heart className="w-5 h-5"/>
-        </LocalizedClientLink>
         
         <Suspense
           fallback={

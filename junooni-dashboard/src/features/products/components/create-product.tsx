@@ -376,57 +376,66 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
   };
 
   // Handle file change for standard and variant-specific uploads
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>, 
-    variantInfo: VariantInfo | null = null
-  ): void => {
-    try {
-      if (e.target.files && e.target.files.length > 0) {
-        // Create new media items with minimal metadata
-        const newMedia = Array.from(e.target.files).map((file, index) => {
-          const mediaItem: MediaItem = {
-            file,
-            url: URL.createObjectURL(file),
-            rank: mediaItems.length + index,
-            isNew: true
-          };
-          
-          // Add simplified variantInfo to avoid complex objects
-          if (variantInfo) {
-            if (variantInfo.variantId) {
-              // For variant-specific uploads, just store ID
-              mediaItem.variantInfo = {
-                variantId: variantInfo.variantId
-              };
-            } else if (variantInfo.optionName && variantInfo.optionValues?.[0]) {
-              // For option-specific uploads, just store name and first value
-              mediaItem.variantInfo = {
-                optionName: variantInfo.optionName,
-                optionValues: [variantInfo.optionValues[0]]
-              };
+  // REPLACE the handleFileChange function in create-product.tsx (around line 650-700)
+
+// REPLACE the handleFileChange function in create-product.tsx (around line 650-700)
+
+const handleFileChange = (
+  e: React.ChangeEvent<HTMLInputElement>, 
+  variantInfo: VariantInfo | null = null
+): void => {
+  try {
+    if (e.target.files && e.target.files.length > 0) {
+      // Create new media items with proper metadata
+      const newMedia = Array.from(e.target.files).map((file, index) => {
+        const mediaItem: MediaItem = {
+          file,
+          url: URL.createObjectURL(file),
+          rank: mediaItems.length + index,
+          isNew: true
+        };
+        
+        // Add simplified variantInfo to avoid complex objects
+        if (variantInfo) {
+          if (variantInfo.variantId) {
+            // For variant-specific uploads, just store ID
+            mediaItem.variantInfo = {
+              variantId: variantInfo.variantId
+            };
+          } else if (variantInfo.optionName && variantInfo.optionValues?.[0]) {
+            // For option-specific uploads, just store name and first value
+            mediaItem.variantInfo = {
+              optionName: variantInfo.optionName,
+              optionValues: [variantInfo.optionValues[0]]
+            };
+            
+            // CRITICAL FIX: Set colorValue for color options
+            if (isColorOption(variantInfo.optionName)) {
+              mediaItem.colorValue = variantInfo.optionValues[0];
+              console.log(`Setting colorValue to: ${variantInfo.optionValues[0]} for option: ${variantInfo.optionName}`);
             }
           }
-          
-          return mediaItem;
-        });
-        
-        setMediaItems((prev) => [...prev, ...newMedia]);
-        
-        // Clear the file input
-        if (e.target) {
-          e.target.value = '';
         }
-      }
-    } catch (error) {
-      // Clear the file input on error
+        
+        return mediaItem;
+      });
+      
+      setMediaItems((prev) => [...prev, ...newMedia]);
+      
+      // Clear the file input
       if (e.target) {
         e.target.value = '';
       }
-      
-      alert("Error uploading files. Please try again.");
     }
-  };
-
+  } catch (error) {
+    // Clear the file input on error
+    if (e.target) {
+      e.target.value = '';
+    }
+    
+    alert("Error uploading files. Please try again.");
+  }
+};
   const getImageAssociatedOptions = () => {
     const currentOptions = form.getValues('options');
     return currentOptions.filter(opt => 
@@ -490,10 +499,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
     
     // Next, check each option value for associated images
     variant.optionValues.forEach(optVal => {
-      const optionValueImages = mediaItems.filter(item => 
-        item.variantInfo?.optionName === optVal.optionName && 
-        item.variantInfo?.optionValues?.includes(optVal.value)
-      );
+    const optionValueImages = mediaItems.filter(item => {
+      // Add case-insensitive comparison here
+      return item.variantInfo?.optionName && 
+        item.variantInfo.optionName.toLowerCase() === optVal.optionName.toLowerCase() && 
+        item.variantInfo?.optionValues?.includes(optVal.value);
+    });
       
       optionValueImages.forEach(item => {
         if (item.url && item.id) {
@@ -738,6 +749,7 @@ for (const item of sortedMediaItems) {
       
       // Update the mediaItem with the new ID and URL
       item.id = uploadResult.id;
+      item.url = uploadResult.url;
       
       // Store the ID to URL mapping
       imageIdToUrlMap[uploadResult.id] = uploadResult.url;
@@ -824,6 +836,14 @@ for (const item of sortedMediaItems) {
       Object.entries(imageMetadata).forEach(([key, value]) => {
         metadata[key] = value;
       });
+      
+      console.log("=== IMAGE UPLOAD DEBUG ===");
+      console.log("Media items with associations:", mediaItems.map(item => ({
+        id: item.id,
+        url: item.url,
+        variantInfo: item.variantInfo,
+        colorValue: item.colorValue
+      })));
 
       // IMPORTANT: Get the latest option values directly from the form
       // This ensures we capture the correct imageAssociation values
@@ -928,107 +948,140 @@ for (const item of sortedMediaItems) {
       
       // Transform variants to match Medusa JS API expectations
       const formattedVariants = variants.map((variant) => {
-        // Format price as number to avoid string issues
-        const price = typeof variant.price === 'string' 
-          ? parseFloat(variant.price) 
-          : (variant.price || 0);
-      
-        // Format options according to Medusa JS API expectations
-        const variantOptions: Record<string, string> = {};
-        
-        // Map each option value to the format Medusa expects
-        if (variant.optionValues && variant.optionValues.length > 0) {
-          variant.optionValues.forEach(optVal => {
-            variantOptions[optVal.optionName] = optVal.value;
-          });
-        }
-        
-        // Prepare variant-specific metadata with correct image info
-        const variantMetadata: Record<string, any> = {};
+  // Format price as number to avoid string issues
+  const price = typeof variant.price === 'string' 
+    ? parseFloat(variant.price) 
+    : (variant.price || 0);
 
-        // Store color images in variant metadata using IMAGE IDs instead of URLs
-        if (variant.optionValues.some((opt: OptionValue) => isColorOption(opt.optionName))) {
-          const colorOption = variant.optionValues.find((opt: OptionValue) => isColorOption(opt.optionName));
-          if (colorOption) {
-            // Get color-specific images
-            const colorImages = mediaItems
-              .filter(item => 
-                item.variantInfo?.optionName === colorOption.optionName && 
-                item.variantInfo?.optionValues?.includes(colorOption.value) &&
-                item.id // Only include items with an ID
-              )
-              .map(item => ({
-                color: colorOption.value,
-                imageId: item.id, // Store the image ID instead of URL
-                url: item.url // Keep URL for reference
-              }));
-            
-            if (colorImages.length > 0) {
-              variantMetadata.color_images = colorImages;
-            }
-          }
-        }
+  // Format options according to Medusa JS API expectations
+  const variantOptions: Record<string, string> = {};
 
-        // Get all images associated with this variant and store their IDs
-       // Get all images associated with a variant (both direct and via option values)
-const getVariantAssociatedImages = (variant: Variant, mediaItems: MediaItem[]): {id: string, url: string}[] => {
-  if (!variant.optionValues || !Array.isArray(variant.optionValues)) {
-    return [];
+// Map each option value to the format Medusa expects
+if (variant.optionValues && variant.optionValues.length > 0) {
+  variant.optionValues.forEach(optVal => {
+    variantOptions[optVal.optionName] = optVal.value;
+  });
+
+}
+
+// Prepare variant-specific metadata
+const variantMetadata: Record<string, any> = {};
+
+// CRITICAL FIX 1: Get ALL images associated with this variant - direct or via option values
+const directVariantImages = mediaItems.filter(item => 
+  item.variantInfo?.variantId === variant.id && item.id
+);
+
+// Get images associated through option values
+const optionValueImages = mediaItems.filter(item => {
+  if (!item.variantInfo?.optionName || !item.variantInfo?.optionValues || !variant.optionValues) {
+    return false;
   }
   
-  const associatedImages: {id: string, url: string}[] = [];
-  
-  // First, check for direct variant-specific images
-  const directVariantImages = mediaItems.filter(item => 
-    item.variantInfo?.variantId === variant.id && item.id // Ensure we have a valid ID
+  return variant.optionValues.some(optVal => 
+    optVal.optionName.toLowerCase() === item.variantInfo.optionName.toLowerCase() && 
+    item.variantInfo.optionValues.includes(optVal.value)
   );
-  
-  directVariantImages.forEach(item => {
-    if (item.url && item.id) {
-      const exists = associatedImages.some(img => img.id === item.id);
-      if (!exists) {
-        associatedImages.push({ id: item.id, url: item.url });
-      }
-    }
-  });
-  
-  // Next, check each option value for associated images
+});
+
+// Combine all variant-associated images, avoiding duplicates
+const allVariantImages = [...directVariantImages];
+optionValueImages.forEach(img => {
+  if (!allVariantImages.some(existing => existing.id === img.id)) {
+    allVariantImages.push(img);
+  }
+});
+
+// CRITICAL FIX 2: Always store variant_images as URLs for all associated images
+const variantImageUrls = allVariantImages
+.map(item => {
+  // If URL is a blob URL and we have an ID, use the server URL format instead
+  if (item.url && item.url.startsWith('blob:') && item.id) {
+    return `http://localhost:9000/static/${item.id}`;
+  }
+  return item.url;
+})
+.filter(url => url);
+
+variantMetadata.variant_images = JSON.stringify(variantImageUrls);
+
+// Store image IDs for backend association
+const variantImageIds = allVariantImages
+  .map(item => item.id)
+  .filter(id => id && typeof id === 'string');
+
+variantMetadata.variant_image_ids = JSON.stringify(variantImageIds);
+
+// NEW FIX: Process option_images for ALL option types, not just colors
+// Process option_images for ALL option types
+const allOptionImages = [];
+let colorImages = [];
+
+if (variant.optionValues) {
+  // Process each option value for image associations
   variant.optionValues.forEach(optVal => {
-    const optionValueImages = mediaItems.filter(item => 
-      item.variantInfo?.optionName === optVal.optionName && 
+    // Get images associated with this option value
+    const optionSpecificImages = mediaItems.filter(item => 
+      item.variantInfo?.optionName && 
+      item.variantInfo.optionName.toLowerCase() === optVal.optionName.toLowerCase() && 
       item.variantInfo?.optionValues?.includes(optVal.value) &&
-      item.id // Ensure we have a valid ID
+      item.url
     );
     
-    optionValueImages.forEach(item => {
-      if (item.url && item.id) {
-        const exists = associatedImages.some(img => img.id === item.id);
-        if (!exists) {
-          associatedImages.push({ id: item.id, url: item.url });
-        }
+    // Process each image for this option value
+    optionSpecificImages.forEach(item => {
+      // Transform blob URLs to server URLs
+      let url = item.url;
+      if (url.startsWith('blob:') && item.id) {
+        url = `http://localhost:9000/static/${item.id}`;
+      }
+      
+      // Create option image entry for ALL option types
+      allOptionImages.push({
+        option_name: optVal.optionName,
+        option_value: optVal.value,
+        url: url,
+        imageId: item.id || ''
+      });
+      
+      // If this is a color option, also add to color_images for backward compatibility
+      if (isColorOption(optVal.optionName)) {
+        colorImages.push({
+          color: optVal.value,
+          url: url,
+          imageId: item.id || ''
+        });
       }
     });
   });
-  
-  return associatedImages;
-};
-        
-        // Return a minimal variant with only fields we know are accepted
-        return {
-          title: variant.title,
-          sku: variant.sku || '',
-          manage_inventory: Boolean(variant.manageInventory),
-          allow_backorder: Boolean(variant.allowBackorder),
-          options: variantOptions,
-          metadata: variantMetadata,
-                   
-          // The most basic prices array structure
-          prices: [{
-            amount: price,
-            currency_code: 'inr'
-          }]
-        };
-      });
+}
+
+
+// Add option_images metadata for ALL option types
+if (allOptionImages.length > 0) {
+  variantMetadata.option_images = JSON.stringify(allOptionImages);
+}
+
+// FIXED: Only add color_images if there are actually color options
+if (colorImages.length > 0) {
+  variantMetadata.color_images = JSON.stringify(colorImages);
+}
+// Return a minimal variant with only fields we know are accepted
+return {
+  title: variant.title,
+  sku: variant.sku || '',
+  manage_inventory: Boolean(variant.manageInventory),
+  allow_backorder: Boolean(variant.allowBackorder),
+  options: variantOptions,
+  metadata: variantMetadata,
+    
+    // The most basic prices array structure
+    prices: [{
+      amount: price,
+      currency_code: 'inr'
+    }]
+  };
+});
       
       // Extract image data for the API - include both id and url in each object
       const formattedImages = productImages.map(img => ({ 
@@ -1069,7 +1122,18 @@ const getVariantAssociatedImages = (variant: Variant, mediaItems: MediaItem[]): 
       };
     
       console.log("Full product creation payload:", JSON.stringify(newProduct, null, 2));
-
+      console.log("Final product metadata being saved:", metadata);
+      console.log("Variant metadata being saved:", formattedVariants.map(v => ({
+        title: v.title,
+        option_images: v.metadata.option_images,
+        color_images: v.metadata.color_images,
+        variant_images: v.metadata.variant_images
+      })));
+        console.log("=== CREATE PRODUCT DEBUG ===");
+      console.log("Formatted variants with metadata:", formattedVariants.map(v => ({
+        title: v.title,
+        metadata: v.metadata
+      })));
       try {
         // Create the product
         const result = await createProduct({ 

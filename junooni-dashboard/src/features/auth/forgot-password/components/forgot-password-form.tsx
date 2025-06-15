@@ -41,11 +41,10 @@ export function ForgotForm({ className, ...props }: ForgotFormProps) {
     setErrorMessage('')
     
     try {
-      // Make API call to reset password endpoint
-      await axios.post('http://localhost:9000/auth/vendor/emailpass/reset-password', {
-        identifier: data.identifier,
-      })
-      
+    // Make API call to reset password endpoint
+      const response = await axios.post('http://localhost:9000/auth/vendor/emailpass/reset-password', {
+      identifier: data.identifier,
+    })
       // ✅ Save the token returned from backend
       const token = response.data.token // Adjust based on actual API shape
       localStorage.setItem('vendorToken', token)

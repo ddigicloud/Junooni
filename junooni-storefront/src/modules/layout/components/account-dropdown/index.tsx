@@ -9,7 +9,7 @@ import {
 import { Button } from "@medusajs/ui"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { UserCircle, LogOut, Heart, Package, Settings, User } from "lucide-react"
+import { LogOut, Heart, Package, Settings, User } from "lucide-react"
 import { Fragment, useState } from "react"
 import { useParams } from "next/navigation"
 import { signout } from "@lib/data/customer"
@@ -45,7 +45,7 @@ const AccountDropdown = ({
             href="/account"
             data-testid="nav-account-link"
           >
-            <UserCircle className="w-5 h-5" />
+            <User className="w-6 h-6" />
           </LocalizedClientLink>
         </PopoverButton>
         <Transition
@@ -69,7 +69,7 @@ const AccountDropdown = ({
             {isLoggedIn ? (
               <>
                 <div className="px-6 pb-4 border-b border-gray-200">
-                  <p className="text-small-regular text-gray-700">
+                  <p className="text-gray-700 text-small-regular">
                     Signed in as
                   </p>
                   <p className="text-base-regular">
@@ -137,8 +137,8 @@ const AccountDropdown = ({
               </>
             ) : (
               <div>
-                <div className="flex flex-col items-center justify-center py-4 px-4">
-                  <p className="text-center text-small-regular mb-4">
+                <div className="flex flex-col items-center justify-center px-4 py-4">
+                  <p className="mb-4 text-center text-small-regular">
                     Sign in to view your account details, track orders, and more.
                   </p>
                   <div className="flex flex-col w-full gap-y-2">

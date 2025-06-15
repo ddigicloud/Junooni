@@ -2,10 +2,11 @@
 
 import { Text } from "@medusajs/ui"
 import { Region } from "@medusajs/medusa"
-import { ProductPreviewType } from "types/global"
+import { ProductPreviewType } from "@modules/products/types"
 import Link from "next/link"
 import Thumbnail from "@modules/products/components/thumbnail"
 import { useState } from "react"
+import InlineWishlistButton from "@modules/products/components/product-actions/InlineWishlistButton"
 import { Heart, Star } from "lucide-react"
 
 type ProductPreviewProps = {
@@ -23,6 +24,7 @@ const ProductPreview = ({ product, region, listView = false }: ProductPreviewPro
     (p) => p.currency_code === region.currency_code
   )
   
+  const wishlistVariantId = variants?.[0]?.id
   // Check if product is on sale
   const originalPrice = price?.original_amount
   const hasDiscount = originalPrice && originalPrice > price.amount
@@ -43,7 +45,7 @@ const ProductPreview = ({ product, region, listView = false }: ProductPreviewPro
   return (
     <Link href={`/products/${handle}`} passHref>
       <div
-        className="group relative h-full"
+        className="relative h-full group"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -55,40 +57,43 @@ const ProductPreview = ({ product, region, listView = false }: ProductPreviewPro
           />
           
           {/* Badges */}
-          <div className="absolute left-3 top-3 flex flex-col gap-2">
+          <div className="absolute flex flex-col gap-2 left-3 top-3">
             {isNew && (
-              <span className="bg-black text-white text-xs px-2 py-1 rounded">
+              <span className="px-2 py-1 text-xs text-white bg-black rounded">
                 New
               </span>
             )}
             {isLimited && (
-              <span className="bg-primary-500 text-white text-xs px-2 py-1 rounded">
+              <span className="px-2 py-1 text-xs text-white rounded bg-primary-500">
                 Limited Edition
               </span>
             )}
             {hasDiscount && (
-              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">
+              <span className="px-2 py-1 text-xs text-white bg-red-500 rounded">
                 -{discountPercentage}%
               </span>
             )}
           </div>
           
           {/* Wishlist button */}
-          <button className="absolute right-3 top-3 bg-white p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* <button className="absolute p-2 transition-opacity bg-white rounded-full shadow-md opacity-0 right-3 top-3 group-hover:opacity-100">
             <Heart size={18} />
-          </button>
+          </button> */}
+          <div className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
+            <InlineWishlistButton variantId={wishlistVariantId} />
+          </div>
           
           {/* Quick add to cart - only show on hover */}
-          <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-            <button className="w-full bg-white text-black font-medium py-2 rounded-md hover:bg-gray-100 transition">
+          <div className="absolute inset-x-0 bottom-0 p-4 transition-opacity opacity-0 bg-gradient-to-t from-black to-transparent group-hover:opacity-100">
+            <button className="w-full py-2 font-medium text-black transition bg-white rounded-md hover:bg-gray-100">
               Add to Cart
             </button>
           </div>
         </div>
         
         <div className="p-4">
-          <div className="flex justify-between items-start">
-            <Text className="font-medium text-gray-900 group-hover:text-primary-500 transition-colors">
+          <div className="flex items-start justify-between">
+            <Text className="font-medium text-gray-900 transition-colors group-hover:text-primary-500">
               {title}
             </Text>
             <div className="text-right">
@@ -97,7 +102,7 @@ const ProductPreview = ({ product, region, listView = false }: ProductPreviewPro
                   <Text className="font-semibold">
                     {price?.currency_code.toUpperCase()} {(price?.amount / 100).toFixed(2)}
                   </Text>
-                  <Text className="text-gray-500 line-through text-sm">
+                  <Text className="text-sm text-gray-500 line-through">
                     {price?.currency_code.toUpperCase()} {(originalPrice / 100).toFixed(2)}
                   </Text>
                 </div>
@@ -111,7 +116,7 @@ const ProductPreview = ({ product, region, listView = false }: ProductPreviewPro
           
           {/* Collection name */}
           {collection && (
-            <Text className="text-gray-500 text-sm mt-1">
+            <Text className="mt-1 text-sm text-gray-500">
               {collection.title}
             </Text>
           )}
@@ -119,7 +124,7 @@ const ProductPreview = ({ product, region, listView = false }: ProductPreviewPro
           {/* Star Rating */}
           {rating && (
             <div className="flex items-center mt-2">
-              <div className="flex text-yellow-400 mr-1">
+              <div className="flex mr-1 text-yellow-400">
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}

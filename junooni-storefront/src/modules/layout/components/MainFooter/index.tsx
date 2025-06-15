@@ -5,7 +5,7 @@ import { Text, clx } from "@medusajs/ui";
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 import { listCollections } from "@lib/data/collections";
 import { useState, useEffect } from "react";
-import Newsletter from "@modules/layout/components/Newsletter";
+import NewsLetter from "@modules/home/components/NewsLetter";
 
 // import { FaFacebookF } from "react-icons/fa";
 // import { FiLinkedin } from "react-icons/fi";
@@ -36,7 +36,7 @@ export default async function MainFooter() {
 
   return (
     <footer className="w-full border-t border-gray-200 bg-gray-50">
-      <Newsletter/>
+      <NewsLetter/>
       <div className="container px-6 py-16 mx-auto">
         <div className="flex flex-col justify-between gap-10 md:flex-row">
           {/* Logo & Socials */}

@@ -332,74 +332,78 @@ const DashboardTab = ({
       )}
 
       {/* Upcoming Events/Drops */}
-      <div className="p-6 mb-6 bg-white rounded-lg shadow-sm">
+      <div className="p-4 mb-4 bg-white rounded-lg shadow-sm sm:p-6 sm:mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-base font-semibold sm:text-lg">
             Upcoming from Creators You Follow
           </h2>
-          <button className="text-sm text-[#e65100] hover:underline">
+          <button className="text-xs text-[#e65100] hover:underline sm:text-sm">
             View Calendar
           </button>
         </div>
 
         {safeUser.following && safeUser.following.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {safeUpcomingEvents.map((event) => (
               <div
                 key={event.id}
-                className="flex items-center p-3 transition border border-gray-100 rounded-lg hover:border-gray-200"
+                className="flex flex-col p-3 transition border border-gray-100 rounded-lg hover:border-gray-200 sm:flex-row sm:items-center"
               >
-                <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 mr-4 bg-gray-100 rounded-lg">
-                  {event.type === "merch-drop" ? (
-                    <ShoppingBag size={20} className="text-[#e65100]" />
-                  ) : (
-                    <Calendar size={20} className="text-purple-600" />
-                  )}
+                <div className="flex items-start mb-3 sm:items-center sm:mb-0">
+                  <div className="flex items-center justify-center flex-shrink-0 w-10 h-10 mr-3 bg-gray-100 rounded-lg sm:w-12 sm:h-12 sm:mr-4">
+                    {event.type === "merch-drop" ? (
+                      <ShoppingBag size={18} className="text-[#e65100] sm:w-5 sm:h-5" />
+                    ) : (
+                      <Calendar size={18} className="text-purple-600 sm:w-5 sm:h-5" />
+                    )}
+                  </div>
+
+                  <div className="flex-grow min-w-0">
+                    <div className="flex items-center mb-1 text-xs text-gray-500">
+                      <span className="truncate">{event.creator}</span>
+                      <span className="mx-2">•</span>
+                      <span className="text-xs">
+                        {event.type === "merch-drop"
+                          ? "Merchandise Drop"
+                          : "Livestream Event"}
+                      </span>
+                    </div>
+                    <div className="text-sm font-medium truncate sm:text-base">
+                      {event.title}
+                    </div>
+                    <div className="flex items-center text-xs sm:text-sm">
+                      <Calendar size={12} className="mr-1 text-gray-400 sm:w-3.5 sm:h-3.5" />
+                      <span className="text-gray-600">{event.date}</span>
+                      <span className="mx-2 text-gray-400">•</span>
+                      <span className="text-[#e65100]">
+                        {event.countdown} days left
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex-grow">
-                  <div className="flex items-center mb-1 text-xs text-gray-500">
-                    <span>{event.creator}</span>
-                    <span className="mx-2">•</span>
-                    <span>
-                      {event.type === "merch-drop"
-                        ? "Merchandise Drop"
-                        : "Livestream Event"}
-                    </span>
-                  </div>
-                  <div className="font-medium">{event.title}</div>
-                  <div className="flex items-center text-sm">
-                    <Calendar size={14} className="mr-1 text-gray-400" />
-                    <span className="text-gray-600">{event.date}</span>
-                    <span className="mx-2 text-gray-400">•</span>
-                    <span className="text-[#e65100]">
-                      {event.countdown} days left
-                    </span>
-                  </div>
-                </div>
-
-                <button className="ml-4 px-3 py-1 text-xs border border-[#e65100] text-[#e65100] rounded-full hover:bg-[#e65100] hover:text-white transition">
+                <button className="self-start px-3 py-2 text-xs border border-[#e65100] text-[#e65100] rounded-full hover:bg-[#e65100] hover:text-white transition sm:ml-4 sm:self-center sm:px-3 sm:py-1 min-w-max">
                   Remind Me
                 </button>
               </div>
             ))}
           </div>
         ) : (
-          <div className="p-6 text-center rounded-lg bg-gray-50">
-            <p className="mb-3 text-gray-500">
+          <div className="p-4 text-center rounded-lg bg-gray-50 sm:p-6">
+            <p className="mb-3 text-sm text-gray-500 sm:text-base">
               You're not following any creators yet
             </p>
             <Link
               href="/ourcreators"
-              className="inline-flex items-center gap-2 text-[#e65100] hover:underline"
+              className="inline-flex items-center gap-2 text-sm text-[#e65100] hover:underline sm:text-base"
             >
               <span>Discover creators</span>
-              <ChevronRight size={16} />
+              <ChevronRight size={14} className="sm:w-4 sm:h-4" />
             </Link>
           </div>
         )}
       </div>
-
+      
       {/* Wishlist Preview */}
       <div className="p-6 bg-white rounded-lg shadow-sm">
         <div className="flex items-center justify-between mb-4">

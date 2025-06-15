@@ -45,14 +45,23 @@ export const ProductSchema = z.object({
   // Basic product information
   id: z.string().optional(),
   title: z.string().min(1, { message: "Product title is required" }),
+  subtitle: z.string().optional(),
   name: z.string().optional(), // Alias for title in some contexts
   handle: z.string().optional(),
   description: z.string().optional(),
-  
+  storyBehindDesign: z.string().optional(),
   // Status and categorization
   status: z.enum(['published', 'draft', 'archived','proposed','rejected']).default('published'),
   category: z.string().optional(),
   
+
+  category_id: z.string().optional(),
+  productDetails: z.array(
+    z.object({
+      id: z.string(),
+      text: z.string()
+    })
+  ).optional(),
   // Pricing and inventory (used mainly for simple products)
   // price: z.union([z.number().min(0), z.nan()]).optional(),
   discountable: z.boolean().default(true),

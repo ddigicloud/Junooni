@@ -228,6 +228,7 @@ import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
+import WishlistButton from "@modules/wishlists/components/wishlist-button"
 import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { isEqual } from "lodash"
@@ -235,6 +236,7 @@ import { useParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import MobileActions from "./mobile-actions"
+import InlineWishlistButton from "./InlineWishlistButton"
 import { Heart, Share2, ShoppingCart,ArrowRight} from "lucide-react";
 import ShareButton from "./ShareButton"; // (top of your file, add import)
 
@@ -257,6 +259,7 @@ const optionsAsKeymap = (
     return acc
   }, {}) ?? {}
 }
+
 
 export default function ProductActions({
   product,
@@ -375,6 +378,7 @@ export default function ProductActions({
 
   const isVariantInCart = selectedVariant ? addedVariantIds.includes(selectedVariant.id) : false
   
+  const wishlistVariantId = selectedVariant?.id || product.variants?.[0]?.id
   
   return (
     <>
@@ -499,9 +503,12 @@ export default function ProductActions({
         
                   {/* Social Buttons */}
                     <div className="flex items-center gap-2 mt-4 mb-6">
-                      <button className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
+                      {/* <button className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
                         <Heart size={20} />
-                      </button>
+                      </button> */}
+                      <div className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
+                      <InlineWishlistButton variantId={wishlistVariantId} />
+                    </div>
                        <ShareButton url={typeof window !== "undefined" ? window.location.href : ""} title={product.title} />
                       {/* <button className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
                         <Share2 size={20} />

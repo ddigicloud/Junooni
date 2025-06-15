@@ -1,8 +1,8 @@
-import { HTMLAttributes, useState } from 'react'
+import { HTMLAttributes, useState, useEffect } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,10 +36,16 @@ export function ResetPasswordForm({ className, ...props }: ResetPasswordFormProp
   const [isLoading, setIsLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [token, setToken] = useState<string | null>(null)
+  const [email, setEmail] = useState<string | null>(null)
   const navigate = useNavigate()
-  
-  // Get token from URL query parameters
-  const { token } = useSearch<{ token: string }>()
+
+  // Get token and email from URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    setToken(searchParams.get('token'))
+    setEmail(searchParams.get('email'))
+  }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,29 +56,35 @@ export function ResetPasswordForm({ className, ...props }: ResetPasswordFormProp
   })
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
-    if (!token) {
-      setErrorMessage('Reset token is missing. Please use the link from your email.')
+    if (!token || !email) {
+      setErrorMessage('Reset link is invalid or incomplete. Please use the link from your email.')
       return
     }
 
     setIsLoading(true)
     setSuccessMessage('')
     setErrorMessage('')
-    
-    try {
-      await axios.post('http://localhost:9000/auth/vendor/emailpass/reset-password', {
-        token,
-        password: data.password,
-      })
 
-      // Show success message and navigate after a delay
+    try {
+      await axios.post(
+        'http://localhost:9000/auth/vendor/emailpass/update?token=' + token,
+        {
+          email,
+          password: data.password,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+
       setSuccessMessage('Your password has been successfully reset!')
       setTimeout(() => {
         navigate({ to: '/sign-in' })
       }, 3000)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      // eslint-disable-next-line no-console
       console.error('Password reset error:', error)
       setErrorMessage(error.response?.data?.message || 'Failed to reset password. The link may have expired.')
     } finally {
@@ -94,10 +106,10 @@ export function ResetPasswordForm({ className, ...props }: ResetPasswordFormProp
         </Alert>
       )}
 
-      {!token ? (
+      {!token || !email ? (
         <Alert className="border-red-500 bg-red-50">
           <AlertDescription>
-            The password reset link is invalid or has expired. Please request a new password reset link.
+            The password reset link is invalid or has expired. Please request a new one.
           </AlertDescription>
         </Alert>
       ) : (

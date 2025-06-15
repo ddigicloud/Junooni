@@ -205,7 +205,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { Heart, Trash } from 'lucide-react'
+import { Heart, Trash, X } from 'lucide-react'
 import { wishlistAddItem, wishlistItems, ItemDelete } from '@lib/data/customer'
 import { useRouter } from 'next/navigation'
 
@@ -377,7 +377,7 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({ variantId, isWishlistPa
   // Determine which button styling to use based on context
   const getButtonClassNames = () => {
     if (isWishlistPage) {
-      return "absolute z-10 p-2 transition-all duration-300 bg-white rounded-full shadow-md right-3 top-3 hover:bg-gray-50";
+      return "absolute z-10 p-2 transition-all duration-300 bg-[#f8f8fa] rounded-full shadow-md right-3 top-3 hover:bg-gray-50";
     }
     return "absolute z-10 p-2 transition-all duration-300 bg-white rounded-full shadow-md opacity-0 right-3 top-3 group-hover:opacity-100 hover:bg-gray-50";
   };
@@ -393,9 +393,8 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({ variantId, isWishlistPa
       disabled={isLoading}
     >
       {isWishlistPage ? (
-        <Trash 
-          className="w-5 h-5 text-gray-700 transition-all hover:text-red-500" 
-          data-testid="remove-from-wishlist"
+        <X 
+          className="w-5 h-5 text-gray-700 transition-all scale-75 rounded hover:text-red-500 hover:scale-100 hover:bg-gray-100"
         />
       ) : (
         <Heart

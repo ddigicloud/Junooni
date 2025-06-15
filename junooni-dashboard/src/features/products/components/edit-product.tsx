@@ -582,7 +582,9 @@ const isNewVariant = (variant) => {
                     
                     return false;
                   });
-                  
+                  // ADD THESE DEBUG LOGS RIGHT AFTER THE ABOVE PROCESSING:
+                  console.log("Image association settings being loaded:", imageAssociationSettings);
+                  console.log("Options with image associations:", transformedOptions.filter(opt => opt.imageAssociation));
                   console.log(`Option ${opt.title} (${opt.id}) association setting:`, setting);
                   
                   if (setting) {
@@ -617,6 +619,7 @@ const isNewVariant = (variant) => {
               imageAssociation: false
             }));
           }
+          
           
           // Log all options after processing
           console.log("Transformed options with association settings:", transformedOptions);
@@ -954,6 +957,89 @@ const isNewVariant = (variant) => {
                   console.error("Failed to parse color images:", e);
                 }
               }
+
+              // ===== NEW CODE: Handle option_images array (for all option types) =====
+              if (variant.metadata.option_images) {
+                try {
+                  let optionImages;
+                  
+                  if (typeof variant.metadata.option_images === 'string') {
+                    optionImages = JSON.parse(variant.metadata.option_images);
+                  } else {
+                    optionImages = variant.metadata.option_images;
+                  }
+                  
+                  console.log(`Option images for variant ${variant.id}:`, optionImages);
+                  
+                  if (Array.isArray(optionImages)) {
+                    // Process each option image entry
+                    // REPLACE the option images processing section in edit-product.tsx (around line 720-750)
+                    // Find this section and replace it:
+
+                    optionImages.forEach(optImg => {
+                      if (optImg.imageId) {
+                        const optionName = optImg.option_name;
+                        const optionValue = optImg.option_value;
+                        
+                        if (optionName && optionValue) {
+                          // ADD THIS DEBUG LOG:
+                          console.log(`Attempting to match image ID: "${optImg.imageId}" with available images:`, 
+                            transformedMedia.map(img => ({id: img.id, url: img.url}))
+                          );
+                          
+                          console.log(`Processing option image for ${optionName}: ${optionValue}`, optImg);
+                          
+                          // Find the matching image by ID first
+                          let matchingImage = transformedMedia.find(img => img.id === optImg.imageId);
+                          
+                          // If not found by ID, try to match by URL
+                          if (!matchingImage) {
+                            const targetUrl = optImg.url;
+                            matchingImage = transformedMedia.find(img => img.url === targetUrl);
+                            console.log(`Image ${optImg.imageId} not found by ID, searching by URL: ${targetUrl}`);
+                            
+                            if (matchingImage) {
+                              console.log(`Found matching image by URL:`, matchingImage);
+                            }
+                          }
+                          
+                          if (matchingImage) {
+                            // CRITICAL FIX: Set the colorValue and variantInfo on the existing image
+                            matchingImage.colorValue = optionValue;
+                            matchingImage.variantInfo = {
+                              optionName: optionName,
+                              optionValues: [optionValue]
+                            };
+                            
+                            console.log(`Successfully set colorValue "${optionValue}" on image:`, matchingImage.id);
+                          } else {
+                            console.log(`No matching image found for ID: ${optImg.imageId}, URL: ${optImg.url}`);
+                            
+                            // If we can't find the image by ID or URL, create a new media item
+                            const newMediaItem: MediaItem = {
+                              id: optImg.imageId,
+                              url: optImg.url,
+                              rank: transformedMedia.length,
+                              isNew: false,
+                              colorValue: optionValue,
+                              variantInfo: {
+                                optionName: optionName,
+                                optionValues: [optionValue]
+                              }
+                            };
+                            
+                            transformedMedia.push(newMediaItem);
+                            console.log(`Created new media item for missing image:`, newMediaItem);
+                          }
+                        }
+                      }
+                    });
+                  }
+                } catch (e) {
+                  console.error("Failed to parse option images:", e);
+                }
+              }
+              // ===== END NEW CODE =====
             }
             
             console.log(`Variant ${variant.id} image associations:`, {
@@ -1055,6 +1141,20 @@ console.log("Final media items after processing:", allMediaItems);
 // Set the combined images to the state
 setMediaItems(allMediaItems);
 
+// ADD THESE DEBUG LOGS RIGHT AFTER setMediaItems:
+console.log("=== EDIT PRODUCT LOAD DEBUG ===");
+console.log("Product variants metadata:", product.variants?.map(v => ({
+  id: v.id,
+  title: v.title,
+  metadata: v.metadata
+})));
+console.log("Final media items loaded:", allMediaItems.map(item => ({
+  id: item.id,
+  url: item.url,
+  variantInfo: item.variantInfo,
+  colorValue: item.colorValue
+})));
+
 // Process product details from metadata
 let productDetails: ProductDetail[] = [{ id: generateUUID(), text: '' }];
 let storyBehindDesign = '';
@@ -1139,6 +1239,7 @@ if (id) {
 loadProduct();
 }
 }, [id, form, productLoaded]);
+
 
   // Helper function to ensure all option values are correctly added to the options
   const addMissingOptionValues = (options: Option[], variants: Variant[]): Option[] => {
@@ -1786,7 +1887,7 @@ loadProduct();
     setHasUnsavedVariantChanges(true);
   };
 
-  // Handle removing a variant with tracking for batch update
+ // Handle removing a variant with tracking for batch update
   const handleRemoveVariant = (index: number) => {
     const variant = form.getValues(`variants.${index}`);
     
@@ -2190,50 +2291,91 @@ loadProduct();
     });
   }, [mediaItems, form]);
 
-  // Update the submission handler with improved image handling
-  const onSubmit = async (values: ProductFormValues) => {
-    // Validate required fields
-    if (!values.title.trim()) {
-      setError('Product title is required');
-      return;
-    }
-    
-    if (!id) {
-      setError('Product ID is missing. Cannot update product.');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setError(null);
-    
-    // Check if product was originally published (from the original data)
-  // This is important to check against the original state, not the current form value
-  const wasPublished = originalData?.metadata?.status === 'published' || form.getValues('status') === 'published';
+  // FIXED: Helper function to prepare option-specific images metadata for all option types
+  const prepareOptionImagesMetadata = (options: Option[], media: MediaItem[]) => {
+  // Start with empty arrays for all options that have image associations
+  const optionImages: Record<string, any[]> = {};
   
-  // Automatically change status to "proposed" if the product was published
-  // and the vendor made changes
-  if (wasPublished) {
-    // Set status to proposed in the values being submitted
-    values.status = 'proposed';
-    
-    // Also update the form UI to reflect this change
-    form.setValue('status', 'proposed');
-    
-    // Show a notification to the vendor
-    // alert("Your changes have been submitted for approval. Product status changed to Proposed.");
-    toast({
-      title: "Changes Submitted for Approval",
-      description: "Your product status has been changed to Proposed and is awaiting approval.",
-      variant: "default",
-    });
-  }
-    
-    try {
-      // Generate a handle if none provided
-      if (!values.handle.trim()) {
-        values.handle = values.title.toLowerCase().replace(/\s+/g, '-');
+  // Make sure options exists and is an array before trying to iterate
+  if (Array.isArray(options)) {
+    options.forEach(opt => {
+      if (opt && opt.imageAssociation) {
+        optionImages[opt.title] = [];
       }
-      
+    });
+  
+    // Add images for each option value
+    if (Array.isArray(media)) {
+      media.forEach(item => {
+        // Skip any item without variant info or missing id
+        if (!item || !item.variantInfo || !item.id) return;
+        
+        const { optionName, optionValues } = item.variantInfo;
+        
+        // If this image is for an option value
+        if (optionName && optionValues && Array.isArray(optionValues) && optionValues.length > 0) {
+          // Make sure this option exists in our tracking object
+          if (!optionImages[optionName]) {
+            // Check if this option should have image association
+            const matchingOption = options.find(opt => opt.title === optionName);
+            if (!matchingOption || !matchingOption.imageAssociation) {
+              // Skip if option doesn't exist or doesn't have image association enabled
+              return;
+            }
+            optionImages[optionName] = [];
+          }
+          
+          // For each option value, add this image
+          optionValues.forEach(value => {
+            if (value) {
+              optionImages[optionName].push({
+                option_name: optionName,
+                option_value: value,
+                imageId: item.id,
+                url: item.url
+              });
+            }
+          });
+        }
+      });
+    }
+  }
+  
+  return optionImages;
+};
+
+
+  // Update the submission handler with improved image handling for all option types
+  // THIS IS A COMPREHENSIVE FIX
+
+// APPROACH: The key issue appears to be in one of the find() operations in the product update flow.
+// Rather than trying to fix individual functions, let's add a safer approach to onSubmit
+// with error trapping at each key section and replacing find() with alternative approaches.
+
+const onSubmit = async (values: ProductFormValues) => {
+  // Validate required fields
+  if (!values.title.trim()) {
+    setError('Product title is required');
+    return;
+  }
+  
+  if (!id) {
+    setError('Product ID is missing. Cannot update product.');
+    return;
+  }
+  
+  setIsSubmitting(true);
+  setError(null);
+  
+  // Add try/catch to the overall function
+  try {
+    // Generate a handle if none provided
+    if (!values.handle.trim()) {
+      values.handle = values.title.toLowerCase().replace(/\s+/g, '-');
+    }
+    
+    // --- STEP 1: Upload Images (wrapped with try/catch) ---
+    try {
       // Step 1: Upload any new image files first
       const updatedMedia = [...mediaItems];
       
@@ -2241,7 +2383,7 @@ loadProduct();
       for (let i = 0; i < updatedMedia.length; i++) {
         const item = updatedMedia[i];
         
-        if (item.file) {
+        if (item && item.file) {
           try {
             console.log(`Uploading image ${i} with variant info:`, item.variantInfo);
             const uploadResult = await uploadFile(item.file, item.variantInfo);
@@ -2269,115 +2411,138 @@ loadProduct();
       setMediaItems(updatedMedia);
       
       // Prepare images in the API format - ensure they all have proper IDs
-      const images = updatedMedia
-        .filter(item => !item.url.startsWith('blob:')) // Filter out any remaining blob URLs
+      const images = (updatedMedia || [])
+        .filter(item => item && item.url && !item.url.startsWith('blob:')) // Filter out any remaining blob URLs
         .map((item) => ({
           url: item.url,
-          rank: item.rank,
+          rank: item.rank || 0,
           id: item.id, // Include ID if available
           // Include color association if available
           ...(item.colorValue ? { metadata: { color: item.colorValue } } : {}),
         }));
       
-      // Log final image data to be sent to API
       console.log("Final images to be sent to API:", images);
       
-      // Filter and transform options to API format (remove empty ones)
-      const validOptions = values.options.filter(opt => 
-        opt.title && 
-        Array.isArray(opt.optionValues) && 
-        opt.optionValues.length > 0
-      );
-      
-      // Check if we have at least one option with values
-      if (validOptions.length === 0) {
-        setError('You must add at least one option (like Size or Color) with values');
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Format options to match API expectations 
-      const options = validOptions.map((opt) => {
-        const option = {
-          title: opt.title,
-          values: opt.optionValues
-        };
-        
-        // Include original ID only if editing an existing option
-        if (opt.id) {
-          // @ts-ignore
-          option.id = opt.id;
-        }
-        
-        return option;
-      });
-      
-      // Validate variants - make sure each has at least a title and SKU
-      const invalidVariants = values.variants.filter(v => !v.title || !v.sku);
-      if (invalidVariants.length > 0) {
-        setError('All variants must have a title and SKU');
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Check if we have variants
-      if (values.variants.length === 0) {
-        setError('You must add at least one variant. Add option values first.');
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Prepare metadata with product details and story
-      const metadata: Record<string, any> = { 
-        ...originalData.metadata    // ← start with everything you loaded
-      };
-
-      // Process product details - extract text values from the array
-      if (values.productDetails && Array.isArray(values.productDetails)) {
-        const validDetails = values.productDetails
-          .filter(detail => detail && detail.text && detail.text.trim() !== '')
-          .map(detail => detail.text.trim());
-        
-        if (validDetails.length > 0) {
-          metadata.product_details = JSON.stringify(validDetails);
-        }
-      }
-
-      // Process story behind design - handle HTML content
-      if (values.storyBehindDesign && typeof values.storyBehindDesign === 'string') {
-        metadata.description_story = values.storyBehindDesign.trim();
-      }
-      
-      // Process fulfillment data (creator fulfillment)
-      const fulfillmentData = {
-        type: "Creator-fulfilment",
-        handling_time: values.handlingTime || '2-3',
-        shipping_time: values.shippingDays || '7-10'
-      };
-      metadata.fulfillment_type = JSON.stringify(fulfillmentData);
-
-      // Process color hex values if present
-      const formData = form.getValues();
-      const formColorOption = formData.options?.find(opt => 
-        opt.title?.toLowerCase() === 'color' || opt.title?.toLowerCase() === 'colour'
-      );
-      
-
-      if (formColorOption && formColorOption.colorHexValues) {
-        // Convert the color hex values object to an array of {name, hex} pairs
-        const colorHexArray = Object.entries(formColorOption.colorHexValues).map(
-          ([colorName, hexValue]) => ({
-            name: colorName,
-            hex: hexValue
-          })
+      // --- STEP 2: Process Options (wrapped with try/catch) ---
+      try {
+        // Filter and transform options to API format (remove empty ones)
+        const validOptions = (values.options || []).filter(opt => 
+          opt && opt.title && 
+          Array.isArray(opt.optionValues) && 
+          opt.optionValues.length > 0
         );
         
-        // Store as a single JSON string in metadata
-        metadata.color_hex_values = JSON.stringify(colorHexArray);
-      }
-      
-      // Store image association settings - this is the key fix!
-      const imageAssociationSettings = values.options
+        // Check if we have at least one option with values
+        if (validOptions.length === 0) {
+          setError('You must add at least one option (like Size or Color) with values');
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Format options to match API expectations 
+        const options = validOptions.map((opt) => {
+          const option = {
+            title: opt.title,
+            values: opt.optionValues
+          };
+          
+          // Include original ID only if editing an existing option
+          if (opt.id) {
+            // @ts-ignore
+            option.id = opt.id;
+          }
+          
+          return option;
+        });
+        
+        // --- STEP 3: Process Variants (wrapped with try/catch) ---
+        try {
+          // Validate variants - make sure each has at least a title and SKU
+          const invalidVariants = (values.variants || []).filter(v => !v || !v.title || !v.sku);
+          if (invalidVariants.length > 0) {
+            setError('All variants must have a title and SKU');
+            setIsSubmitting(false);
+            return;
+          }
+          
+          // Check if we have variants
+          if (!values.variants || values.variants.length === 0) {
+            setError('You must add at least one variant. Add option values first.');
+            setIsSubmitting(false);
+            return;
+          }
+          
+          // --- STEP 4: Prepare Metadata (wrapped with try/catch) ---
+          try {
+            // Prepare metadata with product details and story
+            const metadata: Record<string, any> = { 
+              ...((originalData && originalData.metadata) ? originalData.metadata : {})
+            };
+
+            // Process product details - extract text values from the array
+            if (values.productDetails && Array.isArray(values.productDetails)) {
+              const validDetails = values.productDetails
+                .filter(detail => detail && detail.text && detail.text.trim() !== '')
+                .map(detail => detail.text.trim());
+              
+              if (validDetails.length > 0) {
+                metadata.product_details = JSON.stringify(validDetails);
+              }
+            }
+
+            // Process story behind design - handle HTML content
+            if (values.storyBehindDesign && typeof values.storyBehindDesign === 'string') {
+              metadata.description_story = values.storyBehindDesign.trim();
+            }
+            
+            // Process fulfillment data (creator fulfillment)
+            const fulfillmentData = {
+              type: "Creator-fulfilment",
+              handling_time: values.handlingTime || '2-3',
+              shipping_time: values.shippingDays || '7-10'
+            };
+            metadata.fulfillment_type = JSON.stringify(fulfillmentData);
+
+            // --- STEP 5: Process Colors and Image Associations (wrapped with try/catch) ---
+            try {
+              // Get the form data safely
+              const formData = form.getValues();
+              
+              // Build color hex values metadata
+              let colorHexArray = [];
+              if (formData.options) {
+                // Find color option without using find() - use a for loop instead
+                let formColorOption = null;
+                for (let i = 0; i < formData.options.length; i++) {
+                  const opt = formData.options[i];
+                  if (opt && (
+                      (opt.title && opt.title.toLowerCase() === 'color') || 
+                      (opt.title && opt.title.toLowerCase() === 'colour')
+                  )) {
+                    formColorOption = opt;
+                    break;
+                  }
+                }
+                
+                // Process color hex values if present
+                if (formColorOption && formColorOption.colorHexValues) {
+                  // Convert the color hex values object to an array of {name, hex} pairs
+                  colorHexArray = Object.entries(formColorOption.colorHexValues).map(
+                    ([colorName, hexValue]) => ({
+                      name: colorName,
+                      hex: hexValue
+                    })
+                  );
+                  
+                  // Store as a single JSON string in metadata
+                  if (colorHexArray.length > 0) {
+                    metadata.color_hex_values = JSON.stringify(colorHexArray);
+                  }
+                }
+              }
+              
+              // Store image association settings - without using find()
+               const imageAssociationSettings = values.options
         .filter(opt => opt.title && Array.isArray(opt.optionValues) && opt.optionValues.length > 0)
         .map(opt => {
           // Ensure imageAssociation is a proper boolean
@@ -2388,397 +2553,479 @@ loadProduct();
             enabled: isEnabled // Always use proper boolean here
           };
         });
-      
-      // Log the image association settings being saved
-      console.log("Saving image association settings:", imageAssociationSettings);
-      
-      metadata.variant_specific_image_option = JSON.stringify(imageAssociationSettings);
-      
-      // Process image associations metadata
-      const imageMetadata = prepareVariantImageMetadata(formData.options, updatedMedia);
-      Object.entries(imageMetadata).forEach(([key, value]) => {
-        metadata[key] = value;
-      });
-
-      // Fallback to direct form access if needed
-      if (!metadata.product_details || !metadata.description_story) {
-        console.log("Using fallback method to get metadata fields");
-        
-        // Add product details if missing
-        if (!metadata.product_details && formData.productDetails) {
-          const validDetails = formData.productDetails
-            .filter(detail => detail && detail.text && detail.text.trim() !== '')
-            .map(detail => detail.text.trim());
-          
-          if (validDetails.length > 0) {
-            console.log("Added product details from form data:", validDetails);
-            metadata.product_details = JSON.stringify(validDetails);
-          }
-        }
-        
-        // Add story if missing
-        if (!metadata.description_story && formData.storyBehindDesign) {
-          metadata.description_story = formData.storyBehindDesign.trim();
-          console.log("Added story from form data");
-        }
-      }
-
-      metadata.fulfillment_type = JSON.stringify({
-        type: "Creator-fulfilment",
-        handling_time: formData.handlingTime,
-        shipping_time: formData.shippingDays
-      });
-
-      metadata.variant_specific_image_option = JSON.stringify(
-        formData.options
-          .filter(opt => opt.title && Array.isArray(opt.optionValues) && opt.optionValues.length > 0)
-          .map(opt => ({
-            option_id:   opt.id,
-            option_name: opt.title,
-            enabled:     Boolean(opt.imageAssociation),
-          }))
-      );      
-      
-      // Prepare variants data for batch update API
-      const allVariants = values.variants;
-      
-      // Format variant data for API submission
-      const formatVariantForApi = (variant: Variant) => {
-        // Convert option values to the format expected by the API
-        const options = Array.isArray(variant.optionValues) 
-          ? variant.optionValues.reduce((acc: Record<string, string>, opt) => {
-              if (opt.optionName && opt.value) {
-                acc[opt.optionName] = opt.value;
-              }
-              return acc;
-            }, {})
-          : {};
-        
-        const price = typeof variant.price === 'string' ? parseFloat(variant.price) : (variant.price || 0);
-        
-        // FIXED: Improved variant image association logic
-        // Get all images associated with this variant through:
-        // 1. Direct variant association (variantInfo.variantId)
-        // 2. Option value association (variantInfo.optionName + optionValues)
-        const variantAssociatedImages = updatedMedia.filter(item => {
-          // Direct variant association
-          if (item.variantInfo?.variantId === variant.id) return true;
-          
-          // Option value association - check each option value
-          if (item.variantInfo?.optionName && item.variantInfo?.optionValues) {
-            return variant.optionValues.some(optVal => 
-              optVal.optionName === item.variantInfo.optionName && 
-              item.variantInfo.optionValues.includes(optVal.value)
-            );
-          }
-          
-          return false;
-        }).filter(item => item.id); // Only include items with valid IDs
-        
-        // Extract image IDs and URLs correctly
-        const associatedImageUrls = variantAssociatedImages
-          .map(item => item.url)
-          .filter(url => !url.startsWith('blob:')); // Skip blob URLs
-        
-        const associatedImageIds = variantAssociatedImages
-          .map(item => item.id)
-          .filter(id => id && typeof id === 'string');
-        
-        console.log(`Variant ${variant.id} has ${associatedImageIds.length} image IDs:`, associatedImageIds);
-        
-        // Prepare variant metadata
-        const variantMetadata: Record<string, any> = {
-          ...(variant.metadata || {}) // Preserve existing metadata
-        };
-
-        // Store associated images in variant metadata
-        if (associatedImageUrls.length > 0) {
-          variantMetadata.variant_images = JSON.stringify(associatedImageUrls);
-        }
-        
-        // Store image IDs in variant metadata - VERY IMPORTANT
-        if (associatedImageIds.length > 0) {
-          variantMetadata.variant_image_ids = JSON.stringify(associatedImageIds);
-        }
-        
-        // Handle special case for color images
-        const colorOption = variant.optionValues?.find(opt => isColorOption(opt.optionName));
-        if (colorOption) {
-          // Find all color-specific images
-          const colorImages = updatedMedia
-            .filter(item => 
-              item.variantInfo?.optionName === colorOption.optionName && 
-              item.variantInfo?.optionValues?.includes(colorOption.value) &&
-              item.id // Must have an ID
-            )
-            .map(item => ({
-              color: colorOption.value,
-              url: item.url,
-              imageId: item.id // Use the proper image ID
-            }));
-          
-          if (colorImages.length > 0) {
-            variantMetadata.color_images = JSON.stringify(colorImages); // FIXED: Make sure to stringify
-            console.log(`Color images for variant ${variant.id}:`, colorImages);
-          }
-        }
-        
-        return {
-          id: variant.id,
-          title: variant.title,
-          sku: variant.sku || '',
-          allow_backorder: Boolean(variant.allowBackorder),
-          manage_inventory: Boolean(variant.manageInventory),
-          options,
-          prices: [
-            {
-              amount: price,
-              currency_code: 'inr'
-            }
-          ],
-          metadata: variantMetadata
-        };
-      };
-      // Format all variants
-      const formattedVariants = allVariants.map(formatVariantForApi);
-        
-      // Identify new variants (not in original variant IDs)
-      const createdVariants = formattedVariants
-        .filter(v => !originalVariantIds.includes(v.id));
-        
-      // Identify updated variants (in original variant IDs and not deleted)
-      const updatedVariants = formattedVariants
-        .filter(v => originalVariantIds.includes(v.id));
-      
-      // Log variant changes
-      console.log("Variant changes:", {
-        create: createdVariants.length,
-        update: updatedVariants.length,
-        delete: deletedVariantIds.length
-      });
-      
-
-      // Construct the product object in API format (without variants)
-      const productData = {
-        title: values.title.trim(),
-        subtitle: values.subtitle?.trim() || "",
-        handle: values.handle.trim() || values.title.toLowerCase().replace(/\s+/g, '-'),
-        description: values.description.trim() || "",
-        status: values.status,
-        thumbnail: values.thumbnail || "",
-        discountable: Boolean(values.discountable),
-        weight: values.weight ? parseInt(values.weight) || 0 : 0,
-        length: values.length ? parseInt(values.length) || 0 : 0,
-        width: values.width ? parseInt(values.width) || 0 : 0,
-        height: values.height ? parseInt(values.height) || 0 : 0,
-        material: values.material || undefined,
-        origin_country: values.origin_country || undefined,
-        options,
-        images,
-        // Add category if selected
-        categories: values.category_id ? [{ id: values.category_id }] : [],
-        metadata : metadata
-      };
-      
-      console.log("Updating product with data:", productData);
-      
-      try {
-        // First, update the main product
-        const result = await updateProduct({ 
-          product: {
-            id, // This is used to construct the URL in fetchApi.js
-            ...productData // This is the actual payload (without the id field inside it)
-          } 
-        });
-        
-        console.log("Product update result:", result);
-        
-        // Then, handle variants separately with batch API
-        if (createdVariants.length > 0 || updatedVariants.length > 0 || deletedVariantIds.length > 0) {
-          // For the batchUpdateVariants function, make sure you include currency_code in the variant changes
-          const variantResult = await batchUpdateVariants({
-            productId: id,
-            variantChanges: {
-              create: createdVariants.length > 0 ? createdVariants : undefined,
-              update: updatedVariants.length > 0 ? updatedVariants : undefined,
-              delete: deletedVariantIds.length > 0 ? deletedVariantIds : undefined,
-            }
-          });
-          
-          console.log("Variant update result:", variantResult);
-        }
-        
-
-        // Pull the latest inventoryChanges from the ref
-        // Improved inventory processing in onSubmit
-        // First ensure we have inventory data loaded
-        if (!isLoadingInventory) {
-          const currentVariants = form.getValues('variants');
-          
-          // Create or update inventory items based on variant stock values
-          const inventoryOperations = {
-            create: [],
-            update: []
-          };
-          
-
-          // Process each variant with inventory management enabled
-        currentVariants.forEach(variant => {
-          if (variant.manageInventory) {
-            // Get or generate inventory item ID
-            const inventoryItemId = variant.inventoryItemId || `temp_item_${variant.id}`;
-            
-            // Determine if this is a create or update operation
-            // NEW VARIANTS ALWAYS GO TO CREATE
-            const isNew = isNewVariant(variant);
-            
-            const inventoryEntry = {
-              inventory_item_id: inventoryItemId,
-              location_id: DEFAULT_LOCATION_ID,
-              stocked_quantity: parseInt(variant.stock) || 0
-            };
-            
-            // New variants always go to create
-            if (isNew) {
-              inventoryOperations.create.push(inventoryEntry);
-              console.log(`New variant ${variant.id} added to CREATE inventory ops`);
-            } else {
-              // For existing variants, check if they already have inventory
-              const inventoryExists = inventoryLevelsRef.current[inventoryItemId]?.some(
-                level => level.location_id === DEFAULT_LOCATION_ID && !level.id?.startsWith('temp_')
-              );
               
-              if (inventoryExists) {
-                inventoryOperations.update.push(inventoryEntry);
-              } else {
-                inventoryOperations.create.push(inventoryEntry);
+              // Log the image association settings being saved
+              console.log("Saving image association settings:", imageAssociationSettings);
+              if (imageAssociationSettings.length > 0) {
+                metadata.variant_specific_image_option = JSON.stringify(imageAssociationSettings);
               }
-            }
-          }
-        });
-          
-          // Include any manually tracked changes from inventoryChanges state
-          // This ensures we don't lose any detailed changes made through the UI
-          if (inventoryChangesRef.current) {
-            (inventoryChangesRef.current.create || []).forEach(item => {
-              // Only add if not already included
-              const exists = inventoryOperations.create.some(
-                op => op.inventory_item_id === item.inventory_item_id && op.location_id === item.location_id
-              );
               
-              if (!exists) {
-                inventoryOperations.create.push(item);
+              // --- STEP 6: Process Option-specific Images ---
+              try {
+                // SIMPLIFIED APPROACH: Build option images metadata directly without using complex functions
+                const optionImagesArray = [];
+                const colorImagesArray = [];
+                
+                // Only process if we have options and media
+                if (formData.options && Array.isArray(formData.options) && updatedMedia && Array.isArray(updatedMedia)) {
+                  // First, build a map of options with image associations
+                  const optionsWithImageAssociations = {};
+                  for (let i = 0; i < formData.options.length; i++) {
+                    const opt = formData.options[i];
+                    if (opt && opt.title && opt.imageAssociation === true) {
+                      optionsWithImageAssociations[opt.title] = true;
+                    }
+                  }
+                  
+                  // Now process each media item for option associations
+                  for (let i = 0; i < updatedMedia.length; i++) {
+                    const item = updatedMedia[i];
+                    if (!item || !item.variantInfo || !item.id) continue;
+                    
+                    const { optionName, optionValues } = item.variantInfo;
+                    
+                    // If this image is for an option value
+                    if (optionName && optionValues && Array.isArray(optionValues) && optionValues.length > 0) {
+                      // Check if this option has image association enabled
+                      if (optionsWithImageAssociations[optionName]) {
+                        // For each option value, add this image
+                        for (let j = 0; j < optionValues.length; j++) {
+                          const value = optionValues[j];
+                          if (value) {
+                            const optionImage = {
+                              option_name: optionName,
+                              option_value: value,
+                              imageId: item.id,
+                              url: item.url
+                            };
+                            
+                            optionImagesArray.push(optionImage);
+                            
+                            // For color options, also add to color-specific array
+                            if (optionName.toLowerCase() === 'color' || optionName.toLowerCase() === 'colour') {
+                              colorImagesArray.push({
+                                color: value,
+                                url: item.url,
+                                imageId: item.id
+                              });
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                
+                // Add option images to metadata
+                if (optionImagesArray.length > 0) {
+                  metadata.option_images = JSON.stringify(optionImagesArray);
+                }
+                
+                // Add color images for backward compatibility
+                if (colorImagesArray.length > 0) {
+                  metadata.color_images = JSON.stringify(colorImagesArray);
+                }
+                
+                // --- STEP 7: Prepare Variants --- 
+                try {
+                  // Use a simplified approach to format variants for the API
+                  // without relying on external functions
+                  const formatVariantForApi = (variant) => {
+                    if (!variant) return null;
+                    
+                    // Convert option values to the format expected by the API
+                    const options = {};
+                    if (variant.optionValues && Array.isArray(variant.optionValues)) {
+                      for (let i = 0; i < variant.optionValues.length; i++) {
+                        const opt = variant.optionValues[i];
+                        if (opt && opt.optionName && opt.value) {
+                          options[opt.optionName] = opt.value;
+                        }
+                      }
+                    }
+                    
+                    const price = typeof variant.price === 'string' ? parseFloat(variant.price) : (variant.price || 0);
+                    
+                    // Get associated images - without complex filtering
+                    const variantImageIds = [];
+                    const variantImageUrls = [];
+                    const optionTypeImages = {};
+                    
+                    // Only process if we have media
+                    if (updatedMedia && Array.isArray(updatedMedia)) {
+                      for (let i = 0; i < updatedMedia.length; i++) {
+                        const item = updatedMedia[i];
+                        if (!item || !item.id) continue;
+                        
+                        let isAssociated = false;
+                        
+                        // Check for direct variant association
+                        if (item.variantInfo && item.variantInfo.variantId === variant.id) {
+                          isAssociated = true;
+                        }
+                        
+                        // Check for option value association
+                        if (item.variantInfo && item.variantInfo.optionName && 
+                            item.variantInfo.optionValues && Array.isArray(item.variantInfo.optionValues)) {
+                          
+                          // Check each option value in the variant
+                          if (variant.optionValues && Array.isArray(variant.optionValues)) {
+                            for (let j = 0; j < variant.optionValues.length; j++) {
+                              const optVal = variant.optionValues[j];
+                              if (optVal && optVal.optionName === item.variantInfo.optionName) {
+                                // Check if this option value is in the image's associated values
+                                if (item.variantInfo.optionValues.includes(optVal.value)) {
+                                  isAssociated = true;
+                                  
+                                  // Add to option-specific images
+                                  if (!optionTypeImages[optVal.optionName]) {
+                                    optionTypeImages[optVal.optionName] = [];
+                                  }
+                                  
+                                  optionTypeImages[optVal.optionName].push({
+                                    option_name: optVal.optionName,
+                                    option_value: optVal.value,
+                                    url: item.url,
+                                    imageId: item.id
+                                  });
+                                  
+                                  // No break here - we want to check all option values
+                                }
+                              }
+                            }
+                          }
+                        }
+                        
+                        // If associated, add to lists
+                        if (isAssociated) {
+                          if (item.id && typeof item.id === 'string') {
+                            variantImageIds.push(item.id);
+                          }
+                          
+                          if (item.url && !item.url.startsWith('blob:')) {
+                            variantImageUrls.push(item.url);
+                          }
+                        }
+                      }
+                    }
+                    
+                    // Build the variant metadata
+                    const variantMetadata = {
+                      ...(variant.metadata || {}) // Preserve existing metadata
+                    };
+                    
+                    // Add images to metadata
+                    if (variantImageUrls.length > 0) {
+                      variantMetadata.variant_images = JSON.stringify(variantImageUrls);
+                    }
+                    
+                    if (variantImageIds.length > 0) {
+                      variantMetadata.variant_image_ids = JSON.stringify(variantImageIds);
+                    }
+                    
+                    // Add option images to metadata
+                    const allOptionImages = [];
+                    Object.keys(optionTypeImages).forEach(optName => {
+                      const images = optionTypeImages[optName];
+                      if (Array.isArray(images)) {
+                        allOptionImages.push(...images);
+                      }
+                    });
+                    
+                    if (allOptionImages.length > 0) {
+                      variantMetadata.option_images = JSON.stringify(allOptionImages);
+                    }
+                    
+                    // Add color images (for backward compatibility)
+                    const colorImages = optionTypeImages['Color'] || optionTypeImages['Colour'] || [];
+                    if (colorImages.length > 0) {
+                      const legacyColorImages = colorImages.map(img => ({
+                        color: img.option_value,
+                        url: img.url,
+                        imageId: img.imageId
+                      }));
+                      
+                      variantMetadata.color_images = JSON.stringify(legacyColorImages);
+                    }
+                    
+                    return {
+                      id: variant.id,
+                      title: variant.title,
+                      sku: variant.sku || '',
+                      allow_backorder: Boolean(variant.allowBackorder),
+                      manage_inventory: Boolean(variant.manageInventory),
+                      options,
+                      prices: [
+                        {
+                          amount: price,
+                          currency_code: 'inr'
+                        }
+                      ],
+                      metadata: variantMetadata
+                    };
+                  };
+                  
+                  // Format all variants
+                  const allVariants = values.variants || [];
+                  const formattedVariants = [];
+                  
+                  for (let i = 0; i < allVariants.length; i++) {
+                    const result = formatVariantForApi(allVariants[i]);
+                    if (result) formattedVariants.push(result);
+                  }
+                  
+                  // --- STEP 8: Prepare Final Data For Submission ---
+                  try {
+                    // Identify new variants and updated variants
+                    const createdVariants = [];
+                    const updatedVariants = [];
+                    
+                    for (let i = 0; i < formattedVariants.length; i++) {
+                      const v = formattedVariants[i];
+                      if (originalVariantIds && Array.isArray(originalVariantIds) && !originalVariantIds.includes(v.id)) {
+                        createdVariants.push(v);
+                      } else if (originalVariantIds && Array.isArray(originalVariantIds) && originalVariantIds.includes(v.id)) {
+                        updatedVariants.push(v);
+                      }
+                    }
+                    
+                    // Log variant changes
+                    console.log("Variant changes:", {
+                      create: createdVariants.length,
+                      update: updatedVariants.length,
+                      delete: deletedVariantIds.length
+                    });
+                    
+                    // Construct the product object in API format (without variants)
+                    const productData = {
+                      title: values.title.trim(),
+                      subtitle: values.subtitle?.trim() || "",
+                      handle: values.handle.trim() || values.title.toLowerCase().replace(/\s+/g, '-'),
+                      description: values.description.trim() || "",
+                      status: values.status,
+                      thumbnail: values.thumbnail || "",
+                      discountable: Boolean(values.discountable),
+                      weight: values.weight ? parseInt(values.weight) || 0 : 0,
+                      length: values.length ? parseInt(values.length) || 0 : 0,
+                      width: values.width ? parseInt(values.width) || 0 : 0,
+                      height: values.height ? parseInt(values.height) || 0 : 0,
+                      material: values.material || undefined,
+                      origin_country: values.origin_country || undefined,
+                      options,
+                      images,
+                      // Add category if selected
+                      categories: values.category_id ? [{ id: values.category_id }] : [],
+                      metadata: metadata
+                    };
+                    
+                    console.log("Updating product with data:", productData);
+                    
+                    // --- STEP 9: Make API Calls ---
+                    try {
+                      // First, update the main product
+                      const result = await updateProduct({ 
+                        product: {
+                          id, // This is used to construct the URL in fetchApi.js
+                          ...productData // This is the actual payload (without the id field inside it)
+                        } 
+                      });
+                      
+                      console.log("Product update result:", result);
+                      
+                      // Then, handle variants separately with batch API
+                      if (createdVariants.length > 0 || updatedVariants.length > 0 || 
+                          (deletedVariantIds && deletedVariantIds.length > 0)) {
+                        // For the batchUpdateVariants function, include currency_code
+                        const variantResult = await batchUpdateVariants({
+                          productId: id,
+                          variantChanges: {
+                            create: createdVariants.length > 0 ? createdVariants : undefined,
+                            update: updatedVariants.length > 0 ? updatedVariants : undefined,
+                            delete: deletedVariantIds && deletedVariantIds.length > 0 ? deletedVariantIds : undefined,
+                          }
+                        });
+                        
+                        console.log("Variant update result:", variantResult);
+                      }
+                      
+                      // Process inventory operations (wrap with try/catch)
+                      try {
+                        // Handle inventory changes with careful null checks
+                        if (!isLoadingInventory) {
+                          const currentVariants = form.getValues('variants') || [];
+                          
+                          // Create or update inventory items based on variant stock values
+                          const inventoryOperations = {
+                            create: [],
+                            update: []
+                          };
+                          
+                          // Process each variant with inventory management enabled
+                          for (let i = 0; i < currentVariants.length; i++) {
+                            const variant = currentVariants[i];
+                            if (variant && variant.manageInventory) {
+                              // Get or generate inventory item ID
+                              const inventoryItemId = variant.inventoryItemId || `temp_item_${variant.id}`;
+                              
+                              // Determine if this is a create or update operation
+                              const isNew = isNewVariant(variant);
+                              
+                              const inventoryEntry = {
+                                inventory_item_id: inventoryItemId,
+                                location_id: DEFAULT_LOCATION_ID,
+                                stocked_quantity: parseInt(variant.stock) || 0
+                              };
+                              
+                              // New variants always go to create
+                              if (isNew) {
+                                inventoryOperations.create.push(inventoryEntry);
+                                console.log(`New variant ${variant.id} added to CREATE inventory ops`);
+                              } else {
+                                // For existing variants, check if they already have inventory
+                                const inventoryExists = inventoryLevelsRef.current && 
+                                  inventoryLevelsRef.current[inventoryItemId] && 
+                                  inventoryLevelsRef.current[inventoryItemId].some(
+                                    level => level.location_id === DEFAULT_LOCATION_ID && 
+                                             (!level.id || !level.id.startsWith('temp_'))
+                                  );
+                                
+                                if (inventoryExists) {
+                                  inventoryOperations.update.push(inventoryEntry);
+                                } else {
+                                  inventoryOperations.create.push(inventoryEntry);
+                                }
+                              }
+                            }
+                          }
+                          
+                          // Process inventory operations if we have any
+                          if (inventoryOperations.create.length > 0 || inventoryOperations.update.length > 0) {
+                            console.log("Updating inventory with operations:", inventoryOperations);
+                            
+                            try {
+                              const inventoryResult = await batchUpdateInventoryLevels(inventoryOperations);
+                              console.log("Inventory update result:", inventoryResult);
+                            } catch (inventoryError) {
+                              console.error("Error updating inventory levels:", inventoryError);
+                              // Continue with product update even if inventory update fails
+                            }
+                          }
+                        }
+                        
+                        // --- STEP 10: Handle Success ---
+                        // Reset unsaved changes flag
+                        setHasUnsavedVariantChanges(false);
+                        
+                        // Show success message
+                        toast({
+                          title: "Product Updated",
+                          description: "Your product has been successfully updated.",
+                          variant: "default",
+                        });
+                        
+                        // Navigate back to products list
+                        setError(null);
+                        setProductLoaded(false);
+                        navigate({ to: '/products' });
+                      } catch (inventoryError) {
+                        console.error("Error handling inventory:", inventoryError);
+                        setError(`Failed to update inventory: ${inventoryError?.message || 'Unknown error'}`);
+                        setIsSubmitting(false);
+                      }
+                    } catch (apiError) {
+                      console.error('API Error updating product:', apiError);
+                      handleApiError(apiError);
+                    }
+                  } catch (dataPreparationError) {
+                    console.error('Error preparing final data:', dataPreparationError);
+                    setError(`Failed to prepare final data: ${dataPreparationError?.message || 'Unknown error'}`);
+                    setIsSubmitting(false);
+                  }
+                } catch (variantFormattingError) {
+                  console.error('Error formatting variants:', variantFormattingError);
+                  setError(`Failed to format variants: ${variantFormattingError?.message || 'Unknown error'}`);
+                  setIsSubmitting(false);
+                }
+              } catch (optionImagesError) {
+                console.error('Error processing option images:', optionImagesError);
+                setError(`Failed to process option images: ${optionImagesError?.message || 'Unknown error'}`);
+                setIsSubmitting(false);
               }
-            });
-            
-            (inventoryChangesRef.current.update || []).forEach(item => {
-              // Only add if not already included
-              const exists = inventoryOperations.update.some(
-                op => op.inventory_item_id === item.inventory_item_id && op.location_id === item.location_id
-              );
-              
-              if (!exists) {
-                inventoryOperations.update.push(item);
-              }
-            });
+            } catch (colorProcessingError) {
+              console.error('Error processing color data:', colorProcessingError);
+              setError(`Failed to process colors: ${colorProcessingError?.message || 'Unknown error'}`);
+              setIsSubmitting(false);
+            }
+          } catch (metadataError) {
+            console.error('Error preparing metadata:', metadataError);
+            setError(`Failed to prepare metadata: ${metadataError?.message || 'Unknown error'}`);
+            setIsSubmitting(false);
           }
-          
-          // Process inventory operations if we have any
-          if (inventoryOperations.create.length > 0 || inventoryOperations.update.length > 0) {
-            try {
-              console.log("Updating inventory with operations:", inventoryOperations);
-
-              // Validate inventory operation data
-        if (inventoryOperations.create.length > 0 || inventoryOperations.update.length > 0) {
-          // Validate each entry
-          const validationErrors = [];
-          
-          [...inventoryOperations.create, ...inventoryOperations.update].forEach((item, index) => {
-            if (!item.inventory_item_id) {
-              validationErrors.push(`Missing inventory_item_id at index ${index}`);
-            }
-            if (!item.location_id) {
-              validationErrors.push(`Missing location_id at index ${index}`);
-            }
-            if (typeof item.stocked_quantity !== 'number') {
-              validationErrors.push(`Invalid stocked_quantity at index ${index}: ${item.stocked_quantity}`);
-            }
-          });
-          
-          if (validationErrors.length > 0) {
-            console.error("Inventory validation errors:", validationErrors);
-            // If you want to fail fast:
-            // throw new Error(`Invalid inventory data: ${validationErrors.join(', ')}`);
-          }
-          
-          // Log the final payloads for debugging
-          console.log("Final create operations:", inventoryOperations.create);
-          console.log("Final update operations:", inventoryOperations.update);
+        } catch (variantError) {
+          console.error('Error processing variants:', variantError);
+          setError(`Failed to process variants: ${variantError?.message || 'Unknown error'}`);
+          setIsSubmitting(false);
         }
-              
-              const inventoryResult = await batchUpdateInventoryLevels(inventoryOperations);
-              console.log("Inventory update result:", inventoryResult);
-            } catch (inventoryError) {
-              console.error("Error updating inventory levels:", inventoryError);
-              // Continue with product update even if inventory update fails
-            }
-          }
-        }
-        
-        // Reset unsaved changes flag
-        setHasUnsavedVariantChanges(false);
-        
-        // Navigate back to products list on success
-        setError(null);
-        setProductLoaded(false); 
-      } catch (apiError: any) {
-        console.error('API Error updating product:', apiError);
-        
-        // More detailed error handling
-        let errorMessage = 'API Error: ';
-        
-        if (apiError.response) {
-          console.error('API Error response:', apiError.response);
-          console.error('Error response data:', apiError.response.data);
-          
-          if (apiError.response.data?.message) {
-            errorMessage += apiError.response.data.message;
-          } else if (apiError.response.data?.error) {
-            errorMessage += apiError.response.data.error;
-          } else if (apiError.response.status) {
-            errorMessage += `HTTP ${apiError.response.status}`;
-            if (apiError.response.statusText) errorMessage += ` - ${apiError.response.statusText}`;
-          } else {
-            errorMessage += apiError.message || 'Unknown API error';
-          }
-          
-          // If we have detailed validation errors, show those too
-          if (apiError.response.data?.errors && Array.isArray(apiError.response.data.errors)) {
-            const errorsDetail = apiError.response.data.errors
-              .map((e: any) => `${e.path || ''}: ${e.message || 'Invalid'}`)
-              .join('; ');
-            
-            if (errorsDetail) {
-              errorMessage += ` - ${errorsDetail}`;
-            }
-          }
-        } else if (apiError.request) {
-          errorMessage = 'Network error: No response received from server. Please check your connection.';
-        } else {
-          errorMessage = `Error: ${apiError.message || 'Unknown error occurred'}`;
-        }
-        
-        setError(errorMessage);
+      } catch (optionError) {
+        console.error('Error processing options:', optionError);
+        setError(`Failed to process options: ${optionError?.message || 'Unknown error'}`);
         setIsSubmitting(false);
       }
-    } catch (error: any) {
-      console.error('Error preparing data for update:', error);
-      setError(`Failed to update product: ${error?.message || 'Unknown error'}`);
-      setIsSubmitting(false);
-    } finally {
+    } catch (imageError) {
+      console.error('Error processing images:', imageError);
+      setError(`Failed to process images: ${imageError?.message || 'Unknown error'}`);
       setIsSubmitting(false);
     }
-  };
+  } catch (error: any) {
+    console.error('Overall error in product update:', error);
+    setError(`Failed to update product: ${error?.message || 'Unknown error'}`);
+    setIsSubmitting(false);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+// Helper function to handle API errors
+const handleApiError = (apiError: any) => {
+  console.error('API Error details:', apiError);
+  
+  // More detailed error handling
+  let errorMessage = 'API Error: ';
+  
+  if (apiError.response) {
+    console.error('API Error response:', apiError.response);
+    console.error('Error response data:', apiError.response.data);
+    
+    if (apiError.response.data?.message) {
+      errorMessage += apiError.response.data.message;
+    } else if (apiError.response.data?.error) {
+      errorMessage += apiError.response.data.error;
+    } else if (apiError.response.status) {
+      errorMessage += `HTTP ${apiError.response.status}`;
+      if (apiError.response.statusText) errorMessage += ` - ${apiError.response.statusText}`;
+    } else {
+      errorMessage += apiError.message || 'Unknown API error';
+    }
+    
+    // If we have detailed validation errors, show those too
+    if (apiError.response.data?.errors && Array.isArray(apiError.response.data.errors)) {
+      const errorsDetail = apiError.response.data.errors
+        .map((e: any) => `${e.path || ''}: ${e.message || 'Invalid'}`)
+        .join('; ');
+      
+      if (errorsDetail) {
+        errorMessage += ` - ${errorsDetail}`;
+      }
+    }
+  } else if (apiError.request) {
+    errorMessage = 'Network error: No response received from server. Please check your connection.';
+  } else {
+    errorMessage = `Error: ${apiError.message || 'Unknown error occurred'}`;
+  }
+  
+  setError(errorMessage);
+  setIsSubmitting(false);
+};
   
   // Stock Management Modal Component
   const StockManagementModal = () => {
@@ -3034,7 +3281,6 @@ loadProduct();
       </Dialog>
     );
   };
-  
   // Loading state
   if (isLoading) {
     return (
@@ -3955,8 +4201,7 @@ loadProduct();
                     )}
                   />
                 </section>
-                
-                {/* Shipping & Fulfillment Info Card */}
+    {/* Shipping & Fulfillment Info Card */}
                 <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
                   <Separator className="mb-4" />
@@ -4124,7 +4369,7 @@ loadProduct();
                         name="height"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-medium text-gray-700">Heigh(cm)</FormLabel>
+                            <FormLabel className="font-medium text-gray-700">Height(cm)</FormLabel>
                             <FormControl>
                               <Input 
                                 {...field} 
@@ -4140,8 +4385,9 @@ loadProduct();
                     </div>
                   </div>
                 </section>
-     {/* Additional Info Card */}
-     <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                
+                {/* Additional Info Card */}
+                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-gray-800">Additional Info</h2>
                   <Separator className="mb-6" />
                   
@@ -4224,4 +4470,4 @@ loadProduct();
     );
   };
   
-  export default EditProduct;
+  export default EditProduct;   

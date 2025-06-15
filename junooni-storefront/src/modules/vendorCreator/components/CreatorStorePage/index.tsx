@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
+import WishlistButton from "@modules/wishlists/components/wishlist-button"
+import { listProducts, getProductReviews } from "@lib/data/products"
 import { motion } from "framer-motion"
 import {
   Heart,
@@ -16,9 +18,12 @@ import {
   Mail,
   Users,
   ChevronRight,
+  ChevronLeft,
   ArrowRight,
   MessageCircleMore,
   Sparkles,
+  Star,
+  Check,
 } from "lucide-react"
 import {
   retriveVendorsFollowers,
@@ -48,6 +53,292 @@ interface ExtendedProductCardProps extends DynamicProductCardProps {
   region: any
 }
 
+// Currency utility functions
+function getCurrencySymbol(code: string | undefined): string {
+  if (!code) return "$" // Default to USD symbol
+
+  switch (code.toLowerCase()) {
+    case "usd":
+      return "$"
+    case "eur":
+      return "€"
+    case "gbp":
+      return "£"
+    case "jpy":
+      return "¥"
+    case "inr":
+      return "₹"
+    case "aud":
+      return "A$"
+    case "cad":
+      return "C$"
+    case "cny":
+    case "rmb":
+      return "¥"
+    default:
+      return code.toUpperCase() + " "
+  }
+}
+
+function formatPrice(amount: number, currencyCode: string | undefined): string {
+  if (amount === 0) return "0.00"
+
+  // For JPY, no decimal places are typically shown
+  if (currencyCode && currencyCode.toLowerCase() === "jpy") {
+    return Math.round(amount).toString()
+  }
+
+  return amount.toFixed(2)
+}
+
+// Color name to hex mapping function
+const getColorHexFromName = (colorName: string): string => {
+  const cleanName = colorName
+    .replace(/^Color_/i, '')
+    .replace(/^colour_/i, '')
+    .toLowerCase()
+    .trim()
+
+  const colorMap: { [key: string]: string } = {
+    'black': '#000000',
+    'white': '#FFFFFF',
+    'red': '#FF0000',
+    'blue': '#0000FF',
+    'green': '#008000',
+    'yellow': '#FFFF00',
+    'orange': '#FFA500',
+    'purple': '#800080',
+    'pink': '#FFC0CB',
+    'brown': '#A52A2A',
+    'darkred': '#780000',
+    'cyan': '#000FFF',
+    'lightpink': '#ffe5ec',
+    'gray': '#808080',
+    'grey': '#808080',
+    'navy': '#000080',
+    'maroon': '#800000',
+    'olive': '#808000',
+    'lime': '#00FF00',
+    'aqua': '#00FFFF',
+    'teal': '#008080',
+    'silver': '#C0C0C0',
+    'fuchsia': '#FF00FF',
+    'beige': '#F5F5DC',
+    'khaki': '#F0E68C',
+    'coral': '#FF7F50',
+    'salmon': '#FA8072',
+    'gold': '#FFD700',
+  }
+
+  return colorMap[cleanName] || '#CCCCCC'
+}
+
+// Extract color information from product metadata (handles both regular and JSON colors)
+const extractProductColors = (metadata: any): Array<{name: string, hex: string, key: string}> => {
+  console.log("🎨 Extracting colors from metadata:", metadata)
+  
+  if (!metadata || typeof metadata !== 'object') {
+    console.log("🎨 No metadata or invalid metadata")
+    return []
+  }
+
+  const colors: Array<{name: string, hex: string, key: string}> = []
+  
+  Object.entries(metadata).forEach(([key, value]) => {
+    const lowerKey = key.toLowerCase()
+    
+    if (lowerKey.includes('color') || lowerKey.includes('colour')) {
+      console.log(`🎨 Found color key: ${key} = "${value}"`)
+      
+      // Case 1: Value contains JSON array of colors
+      if (typeof value === 'string' && value.trim().startsWith('[') && value.trim().endsWith(']')) {
+        console.log(`🎨 Found JSON color array: ${value}`)
+        try {
+          const colorArray = JSON.parse(value)
+          if (Array.isArray(colorArray)) {
+            colorArray.forEach((colorItem, index) => {
+              if (colorItem && typeof colorItem === 'object' && colorItem.name && colorItem.hex) {
+                console.log(`🎨 Parsed color from JSON: ${colorItem.name} = ${colorItem.hex}`)
+                colors.push({
+                  name: colorItem.name,
+                  hex: colorItem.hex,
+                  key: `${key}_${index}`
+                })
+              }
+            })
+            return // Skip other processing for this key
+          }
+        } catch (error) {
+          console.log(`🎨 Failed to parse JSON colors: ${error}`)
+        }
+      }
+      
+      // Case 2: Value contains single hex code
+      else if (typeof value === 'string' && value.match(/^#[0-9A-Fa-f]{6}$/)) {
+        console.log(`🎨 Found hex value: ${value}`)
+        colors.push({
+          name: key.replace(/^Color_/i, '').replace(/^colour_/i, ''),
+          hex: value,
+          key: key
+        })
+      }
+      
+      // Case 3: Value contains color name
+      else if (typeof value === 'string' && value.trim() && value !== '' && !value.includes('{') && !value.includes('[')) {
+        console.log(`🎨 Found color name in value: ${value}`)
+        colors.push({
+          name: value,
+          hex: getColorHexFromName(value),
+          key: key
+        })
+      }
+      
+      // Case 4: Color name is in the key, value is empty
+      else if (!value || value === '') {
+        console.log(`🎨 Extracting color from key: ${key}`)
+        const colorName = key.replace(/^Color_/i, '').replace(/^colour_/i, '')
+        colors.push({
+          name: colorName,
+          hex: getColorHexFromName(colorName),
+          key: key
+        })
+      }
+      
+      // Case 5: Skip complex values that don't fit other patterns
+      else {
+        console.log(`🎨 Skipping complex color value: ${key} = ${value}`)
+      }
+    }
+  })
+  
+  console.log("🎨 Extracted colors:", colors)
+  return colors
+}
+
+// Dedicated function for JSON color extraction
+const extractJSONColors = (metadata: any): Array<{name: string, hex: string, key: string}> => {
+  const colors: Array<{name: string, hex: string, key: string}> = []
+  
+  if (!metadata || typeof metadata !== 'object') {
+    return colors
+  }
+  
+  Object.entries(metadata).forEach(([key, value]) => {
+    // Look for JSON color arrays in any field
+    if (typeof value === 'string' && value.trim().startsWith('[')) {
+      console.log(`🎨 Checking for JSON colors in ${key}: ${value}`)
+      try {
+        const parsed = JSON.parse(value)
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item, index) => {
+            // Handle different JSON structures
+            if (item && typeof item === 'object') {
+              // Structure: [{name: "red", hex: "#FF0000"}]
+              if (item.name && item.hex) {
+                colors.push({
+                  name: item.name,
+                  hex: item.hex,
+                  key: `${key}_${index}`
+                })
+              }
+              // Structure: [{color: "red", value: "#FF0000"}]
+              else if (item.color && item.value) {
+                colors.push({
+                  name: item.color,
+                  hex: item.value,
+                  key: `${key}_${index}`
+                })
+              }
+              // Structure: [{title: "red", code: "#FF0000"}]
+              else if (item.title && item.code) {
+                colors.push({
+                  name: item.title,
+                  hex: item.code,
+                  key: `${key}_${index}`
+                })
+              }
+            }
+            // Handle simple string arrays: ["red", "blue", "green"]
+            else if (typeof item === 'string') {
+              colors.push({
+                name: item,
+                hex: getColorHexFromName(item),
+                key: `${key}_${index}`
+              })
+            }
+          })
+        }
+      } catch (error) {
+        console.log(`🎨 Failed to parse JSON in ${key}:`, error)
+      }
+    }
+  })
+  
+  return colors
+}
+
+// Check product options for colors
+const extractColorsFromOptions = (product: any): Array<{name: string, hex: string}> => {
+  console.log("🎨 Checking product options for colors:", product?.options)
+  
+  if (!product?.options || !Array.isArray(product.options)) {
+    return []
+  }
+  
+  const colors: Array<{name: string, hex: string}> = []
+  
+  const colorOption = product.options.find((option: any) => 
+    option.title?.toLowerCase().includes('color') || 
+    option.title?.toLowerCase().includes('colour')
+  )
+  
+  if (colorOption && colorOption.values) {
+    console.log("🎨 Found color option:", colorOption)
+    
+    colorOption.values.forEach((colorValue: any) => {
+      const colorName = colorValue.value || colorValue.title || colorValue
+      if (colorName) {
+        colors.push({
+          name: colorName,
+          hex: getColorHexFromName(colorName)
+        })
+      }
+    })
+  }
+  
+  return colors
+}
+
+// Enhanced color extraction that combines all sources
+const getProductColorsEnhanced = (product: any): Array<{name: string, hex: string, key?: string}> => {
+  console.log(`🎨 Getting enhanced colors for product: ${product?.title}`)
+  
+  const allColors: Array<{name: string, hex: string, key?: string}> = []
+  
+  // Method 1: Extract JSON colors first
+  const jsonColors = extractJSONColors(product?.metadata)
+  console.log(`🎨 Found ${jsonColors.length} JSON colors:`, jsonColors)
+  allColors.push(...jsonColors)
+  
+  // Method 2: Extract regular metadata colors
+  const metadataColors = extractProductColors(product?.metadata)
+  console.log(`🎨 Found ${metadataColors.length} metadata colors:`, metadataColors)
+  allColors.push(...metadataColors)
+  
+  // Method 3: Extract from options
+  const optionColors = extractColorsFromOptions(product)
+  console.log(`🎨 Found ${optionColors.length} option colors:`, optionColors)
+  allColors.push(...optionColors)
+  
+  // Remove duplicates based on hex code
+  const uniqueColors = allColors.filter((color, index, self) => 
+    index === self.findIndex(c => c.hex.toLowerCase() === color.hex.toLowerCase())
+  )
+  
+  console.log(`🎨 Final unique colors for ${product?.title}:`, uniqueColors)
+  return uniqueColors
+}
+
 const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
   vendor,
   region,
@@ -63,21 +354,34 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
   const [currentCustomer, setCurrentCustomer] = useState(null)
   const [showShareOptions, setShowShareOptions] = useState<boolean>(false)
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [sortOption, setSortOption] = useState<string>("featured")
+  const PRODUCTS_PER_PAGE = 12
+
   // Fetch followers data
   useEffect(() => {
     const fetchFollowers = async () => {
       try {
-        console.log("Fetching followers for vendor ID:", vendor.id)
+        console.log("🔍 Fetching followers for vendor ID:", vendor.id)
+        
         const vendorFollowers = await retriveVendorsFollowers(vendor.id)
-
-        // Ensure consistent data structure handling
-        if (vendorFollowers && vendorFollowers.follow) {
-          setFollowers(vendorFollowers.follow.filter((f) => f && f.follow))
+        console.log("📊 Followers response:", vendorFollowers)
+        
+        if (vendorFollowers && vendorFollowers.follow && Array.isArray(vendorFollowers.follow)) {
+          const validFollowers = vendorFollowers.follow.filter(f => 
+            f && f.follow && f.follow.customer
+          )
+          
+          console.log(`✅ Found ${validFollowers.length} valid followers`)
+          setFollowers(validFollowers)
         } else {
+          console.log("📭 No followers in response")
           setFollowers([])
         }
-      } catch (e) {
-        console.error("Error fetching followers:", e)
+        
+      } catch (error) {
+        console.error("❌ Error fetching followers:", error)
         setFollowers([])
       }
     }
@@ -85,7 +389,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
     if (vendor && vendor.id) {
       fetchFollowers()
     }
-  }, [vendor?.id]) // Only depend on vendor ID
+  }, [vendor?.id])
 
   // Fetch customer data separately from following status check
   useEffect(() => {
@@ -105,12 +409,11 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
     if (vendor && vendor.id) {
       fetchCustomer()
     }
-  }, [vendor?.id]) // Only depend on vendor ID
+  }, [vendor?.id])
 
   // Check following status when both customer and followers are available
   useEffect(() => {
     console.log(followers)
-    // Only run if we have both customer and followers data
     if (currentCustomer && followers.length > 0) {
       const isAlreadyFollowing = followers.some(
         (item) => item.follow?.customer_id === currentCustomer.id
@@ -118,11 +421,10 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
       console.log("Following status checked:", isAlreadyFollowing)
       setIsFollowing(isAlreadyFollowing)
     }
-  }, [currentCustomer, followers]) // Depend on both customer and followers
+  }, [currentCustomer, followers])
 
-  // Updated follow/unfollow handler - no automatic followers refresh
+  // Updated follow/unfollow handler
   const handleFollowToggle = async () => {
-    // First check if we have customer data
     if (!currentCustomer) {
       console.warn("User must be logged in to follow/unfollow.")
       return toast.warning("Please log in to follow/unfollow.")
@@ -139,7 +441,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
         setIsFollowing(true)
       }
 
-      // Refresh followers but with a slight delay to prevent immediate re-renders
+      // Refresh followers with delay
       setTimeout(async () => {
         const updatedFollowers = await retriveVendorsFollowers(vendor.id)
         if (updatedFollowers && updatedFollowers.follow) {
@@ -151,16 +453,14 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
     }
   }
 
-  // Optional: Helper function to generate avatar colors based on user ID
+  // Helper function to generate avatar colors based on user ID
   const generateAvatarColor = (userId: string): string => {
-    // Simple hash function to generate a consistent color for a user
     let hash = 0
     for (let i = 0; i < userId.length; i++) {
       hash = userId.charCodeAt(i) + ((hash << 5) - hash)
     }
 
-    // Convert to RGB format
-    const r = ((hash & 0xff) % 200) + 55 // Avoid too dark colors
+    const r = ((hash & 0xff) % 200) + 55
     const g = (((hash >> 8) & 0xff) % 200) + 55
     const b = (((hash >> 16) & 0xff) % 200) + 55
 
@@ -172,28 +472,70 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
     const fetchProducts = async () => {
       setIsLoading(true)
       try {
-        if (vendor && !Array.isArray(vendor)) {
-          const response = await retriveVendorsProducts(vendor.id)
-
-          // Handle different possible response formats
-          let products: Product[] = []
-          if (Array.isArray(response)) {
-            products = response
-          } else if (
-            response &&
-            response.products &&
-            Array.isArray(response.products)
-          ) {
-            products = response.products
-          } else if (response && typeof response === "object") {
-            // If it's a single product object
-            products = [response as Product]
+        if (vendor && !Array.isArray(vendor) && region) {
+          console.log("🔍 Fetching all products to filter by vendor:", vendor.id)
+          
+          const {
+            response: { products: pricedProducts },
+          } = await listProducts({
+            regionId: region.id,
+            queryParams: {
+              fields: "*vendor,*tags,*metadata,*variants,*variants.prices,*variants.calculated_price",
+              limit: 1000,
+            },
+          })
+          
+          console.log("📦 Total products fetched:", pricedProducts?.length || 0)
+          
+          if (pricedProducts && Array.isArray(pricedProducts)) {
+            console.log("📦 Sample product structure:", pricedProducts[0])
+            
+            // 🎨 DEBUG: Log metadata structure for color debugging
+            console.log("🎨 DEBUGGING PRODUCT METADATA:")
+            pricedProducts.forEach((product, index) => {
+              if (product.metadata && Object.keys(product.metadata).length > 0) {
+                console.log(`Product ${index} "${product.title}" metadata:`, product.metadata)
+                
+                // Check for color-related keys
+                const colorKeys = Object.keys(product.metadata).filter(key => 
+                  key.toLowerCase().includes('color') || 
+                  key.toLowerCase().includes('colour')
+                )
+                console.log(`Color-related keys:`, colorKeys)
+              }
+            })
+            
+            // Filter products that belong to this vendor
+            const vendorProducts = pricedProducts.filter(product => {
+              console.log(`🔍 Product "${product.title}":`, {
+                vendor: product.vendor,
+                vendor_id: product.vendor_id,
+                metadata: product.metadata
+              })
+              
+              return (
+                product.vendor?.id === vendor.id ||
+                product.vendor_id === vendor.id ||
+                product.creator_id === vendor.id ||
+                product.seller_id === vendor.id ||
+                (product.metadata && product.metadata.vendor_id === vendor.id) ||
+                (product.metadata && product.metadata.creator_id === vendor.id)
+              )
+            })
+            
+            console.log("✅ Vendor products found:", vendorProducts.length)
+            if (vendorProducts.length > 0) {
+              console.log("📦 Sample vendor product:", vendorProducts[0])
+            }
+            
+            setVendorProducts(vendorProducts)
+          } else {
+            console.log("❌ No products in response")
+            setVendorProducts([])
           }
-
-          setVendorProducts(products)
         }
       } catch (error) {
-        console.error("Error fetching vendor products:", error)
+        console.error("❌ Error fetching products:", error)
         setVendorProducts([])
       } finally {
         setIsLoading(false)
@@ -201,7 +543,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
     }
 
     fetchProducts()
-  }, [vendor])
+  }, [vendor, region])
 
   // If this is the main page showing multiple vendors
   if (Array.isArray(vendor)) {
@@ -269,7 +611,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
     handle: vendor.handle,
     role: vendor.creator_title || "Music Artist & Visual Creator",
     verified: true,
-    followers: followerCount, // Use actual follower count instead of hardcoded value
+    followers: followerCount,
     bio: vendor.creator_bio || "Artist bio not provided.",
     shortBio: vendor.creator_bio
       ? vendor.creator_bio.length > 150
@@ -343,7 +685,6 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
 
     switch (badgeType) {
       case "isNew":
-        // Consider a product new if it was created within the last 30 days
         if (product.created_at) {
           const thirtyDaysAgo = new Date()
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -353,16 +694,115 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
         return false
 
       case "isLimited":
-        // Consider a product limited if it has specific metadata or limited variants
-        return product.discountable === false // Just an example condition
+        return product.discountable === false
 
       case "isSigned":
-        // Check if the product has any indication of being signed
-        return product.material === "cotton" // Just an example condition
+        return product.material === "cotton"
 
       default:
         return false
     }
+  }
+
+  // Sort products based on selected option
+  const sortProducts = (products: Product[], sortBy: string): Product[] => {
+    const sortedProducts = [...products]
+    
+    switch (sortBy) {
+      case "newest":
+        return sortedProducts.sort((a, b) => {
+          const dateA = new Date(a.created_at || 0).getTime()
+          const dateB = new Date(b.created_at || 0).getTime()
+          return dateB - dateA
+        })
+      
+      case "price_low_high":
+        return sortedProducts.sort((a, b) => {
+          const priceA = a.variants?.[0]?.calculated_price?.calculated_amount || 0
+          const priceB = b.variants?.[0]?.calculated_price?.calculated_amount || 0
+          return priceA - priceB
+        })
+      
+      case "price_high_low":
+        return sortedProducts.sort((a, b) => {
+          const priceA = a.variants?.[0]?.calculated_price?.calculated_amount || 0
+          const priceB = b.variants?.[0]?.calculated_price?.calculated_amount || 0
+          return priceB - priceA
+        })
+      
+      case "featured":
+      default:
+        return sortedProducts // Keep original order for featured
+    }
+  }
+
+  // Calculate pagination data
+  const sortedProducts = sortProducts(vendorProducts, sortOption)
+  const totalProducts = sortedProducts.length
+  const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE)
+  const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE
+  const endIndex = startIndex + PRODUCTS_PER_PAGE
+  const currentProducts = sortedProducts.slice(startIndex, endIndex)
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    // Scroll to products section
+    const productsSection = document.getElementById('products-section')
+    if (productsSection) {
+      productsSection.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
+  // Handle sort change
+  const handleSortChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortOption(event.target.value)
+    setCurrentPage(1) // Reset to first page when sorting changes
+  }
+
+  // Generate page numbers for pagination
+  const generatePageNumbers = () => {
+    const pages = []
+    const maxVisiblePages = 5
+    
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if total is small
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
+    } else {
+      // Show smart pagination
+      if (currentPage <= 3) {
+        // Show first 5 pages
+        for (let i = 1; i <= 5; i++) {
+          pages.push(i)
+        }
+        if (totalPages > 5) {
+          pages.push('...')
+          pages.push(totalPages)
+        }
+      } else if (currentPage >= totalPages - 2) {
+        // Show last 5 pages
+        pages.push(1)
+        if (totalPages > 5) {
+          pages.push('...')
+        }
+        for (let i = totalPages - 4; i <= totalPages; i++) {
+          pages.push(i)
+        }
+      } else {
+        // Show pages around current page
+        pages.push(1)
+        pages.push('...')
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i)
+        }
+        pages.push('...')
+        pages.push(totalPages)
+      }
+    }
+    
+    return pages
   }
 
   return (
@@ -389,22 +829,23 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
         {/* Creator name on mobile */}
         <motion.div
           variants={slideIn}
-          className="absolute bottom-0 left-0 w-full p-4 md:hidden"
+          className="relative left-0 z-50 w-full pt-4 pl-28 md:p-4 md:bottom-0 md:hidden bottom-4 top-22"
         >
-          <h1 className="text-3xl font-bold text-white">{creator.name}</h1>
-          <p className="text-gray-200 bg-gray-50">@ {creator.handle}</p>
+          <h1 className="font-bold text-black ext-3xl ">{creator.name}</h1>
+          <p className="text-black-200">@ {creator.handle}</p>
         </motion.div>
       </motion.div>
-      <div className="container px-4 mx-auto">
+      
+      <div className="w-full px-0 mx-auto md:px-4 md:container">
         {/* Creator Profile Section */}
-        <motion.div variants={slideIn} className="relative mb-8 -mt-20">
+        <motion.div variants={slideIn} className="relative w-full mb-8 -mt-34 md:-mt-20 ">
           <div className="bg-white rounded-lg shadow-lg">
             <div className="p-4 md:p-6 md:pb-0">
               <div className="flex flex-col gap-6 md:flex-row">
                 {/* Profile Picture with proper styling */}
                 <motion.div
                   variants={fadeIn}
-                  className="relative w-32 h-32 md:w-40 md:h-40 md:-mt-24"
+                  className="relative w-32 h-32 -mt-16 md:w-40 md:h-40 md:-mt-24"
                 >
                   <div className="w-full h-full overflow-hidden border-4 border-white rounded-full shadow-lg">
                     <div className="relative w-full h-full">
@@ -424,7 +865,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                       <motion.div variants={slideIn}>
                         <h1 className="text-3xl font-bold">{creator.name}</h1>
                         <div className="flex items-center">
-                          <p className="text-gray-600 text-xs bg-gray-100 py-1 px-4 rounded-full">
+                          <p className="px-4 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
                             @ {creator.handle}
                           </p>
                           {creator.verified && (
@@ -435,7 +876,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                         </div>
                       </motion.div>
 
-                      {/* Action Buttons - Updated with loading state */}
+                      {/* Action Buttons */}
                       <motion.div
                         variants={slideIn}
                         className="flex flex-wrap gap-2"
@@ -449,7 +890,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                             isLoadingAuth
                               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                               : isFollowing
-                              ? "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                              ? "bg-white text-[#e65100] border border-[#e65100] hover:bg-gray-300"
                               : "bg-[#e65100] text-white hover:bg-[#d84315]"
                           }`}
                         >
@@ -558,7 +999,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                 </div>
               </div>
 
-              {/* Mobile Action Buttons - Updated with loading state */}
+              {/* Mobile Action Buttons */}
               <motion.div
                 variants={slideIn}
                 className="flex justify-between gap-2 mt-4 md:hidden"
@@ -570,9 +1011,9 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                   disabled={isLoadingAuth}
                   className={`flex-1 flex items-center justify-center px-4 py-2 rounded-full text-sm font-medium transition ${
                     isLoadingAuth
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      ? "bg-gray-300 text-gray-700 cursor-not-allowed"
                       : isFollowing
-                      ? "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                      ? "bg-white text-[#e65100] border border-[#e65100] hover:bg-gray-300"
                       : "bg-[#e65100] text-white hover:bg-[#d84315]"
                   }`}
                 >
@@ -663,10 +1104,8 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                   </div>
 
                   <div className="flex -space-x-4">
-                    {/* Completely redesigned followers rendering to prevent backend request loops */}
                     {(() => {
                       try {
-                        // If we have followers data, render up to 5 followers
                         if (
                           followers &&
                           Array.isArray(followers) &&
@@ -676,16 +1115,12 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                             .slice(0, 5)
                             .map((followerData, i) => {
                               try {
-                                // Safely access nested properties
                                 const follower = followerData?.follow?.customer
 
-                                // Skip if required data is missing
                                 if (!follower || !follower.id) {
                                   return null
                                 }
 
-                                // Instead of trying to load potentially problematic profile images,
-                                // use a color-based avatar with initials
                                 const firstName = follower.first_name || ""
                                 const lastName = follower.last_name || ""
                                 const initials =
@@ -693,7 +1128,6 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                                     firstName.charAt(0) + lastName.charAt(0)
                                   ).toUpperCase() || "?"
 
-                                // Generate a consistent color based on user ID
                                 const avatarColor = generateAvatarColor(
                                   follower.id
                                 )
@@ -705,15 +1139,13 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                                     className="relative w-10 h-10 overflow-hidden transition-all border-2 border-white rounded-full cursor-pointer"
                                     title={`${firstName} ${lastName}`}
                                   >
-                                    {/* Use color avatar with initials instead of profile image */}
                                     <div
-                                      className="flex items-center justify-center w-full h-full text-white font-bold text-xs"
+                                      className="flex items-center justify-center w-full h-full text-xs font-bold text-white"
                                       style={{ backgroundColor: avatarColor }}
                                     >
                                       {initials}
                                     </div>
 
-                                    {/* Tooltip with more info on hover */}
                                     <div className="absolute z-20 w-32 p-2 text-xs text-gray-800 transition-opacity transform -translate-x-1/2 bg-white rounded shadow-md opacity-0 pointer-events-none hover:opacity-100 -bottom-16 left-1/2">
                                       <p className="font-semibold text-center">
                                         {firstName || "Fan"} {lastName || ""}
@@ -729,20 +1161,19 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                                   "Error rendering follower:",
                                   error
                                 )
-                                return null // Skip this follower on error
+                                return null
                               }
                             })
-                            .filter(Boolean) // Remove null entries
+                            .filter(Boolean)
                         }
 
-                        // Fallback to generic avatars with no image requests
                         return [1, 2, 3].map((i) => (
                           <motion.div
                             key={`default-avatar-${i}`}
                             className="w-10 h-10 overflow-hidden border-2 border-white rounded-full"
                             whileHover={{ y: -3 }}
                           >
-                            <div className="flex items-center justify-center w-full h-full bg-gray-600 text-white font-bold">
+                            <div className="flex items-center justify-center w-full h-full font-bold text-white bg-gray-600">
                               ?
                             </div>
                           </motion.div>
@@ -753,14 +1184,13 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                           error
                         )
                         return (
-                          <div className="text-white text-sm">
+                          <div className="text-sm text-white">
                             <span>Fan avatars unavailable</span>
                           </div>
                         )
                       }
                     })()}
 
-                    {/* Show the follower count */}
                     <motion.div
                       whileHover={{ scale: 1.1 }}
                       className="w-10 h-10 rounded-full bg-white text-[#e65100] font-bold flex items-center justify-center text-sm border-2 border-white"
@@ -773,22 +1203,33 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                 </div>
               </motion.div>
 
-              <motion.div variants={slideIn} className="mb-12">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">All Products</h2>
+              {/* Products Section */}
+              <motion.div variants={slideIn} className="mb-12" id="products-section">
+                <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
+                  <h2 className="text-xl font-bold md:text-2xl">All Products</h2>
 
-                  <div className="flex items-center">
-                    <span className="mr-2 text-sm text-gray-500">
-                      {Array.isArray(vendorProducts)
-                        ? vendorProducts.length
-                        : 0}{" "}
-                      items
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <span className="text-xs text-gray-500 sm:text-sm sm:mr-2">
+                      {totalProducts > 0 ? (
+                        <>
+                          <span className="hidden sm:inline">
+                            {startIndex + 1}-{Math.min(endIndex, totalProducts)} of {totalProducts} items
+                          </span>
+                          <span className="sm:hidden">
+                            {totalProducts} items
+                          </span>
+                        </>
+                      ) : '0 items'}
                     </span>
-                    <select className="border rounded-md p-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#e65100]">
-                      <option>Sort: Featured</option>
-                      <option>Newest</option>
-                      <option>Price: Low to High</option>
-                      <option>Price: High to Low</option>
+                    <select 
+                      value={sortOption}
+                      onChange={handleSortChange}
+                      className="md:w-full w-1/2 border rounded-md p-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#e65100] sm:w-auto"
+                    >
+                      <option value="featured">Sort: Featured</option>
+                      <option value="newest">Newest</option>
+                      <option value="price_low_high">Price: Low to High</option>
+                      <option value="price_high_low">Price: High to Low</option>
                     </select>
                   </div>
                 </div>
@@ -803,26 +1244,118 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                     <p className="text-lg text-gray-500">No products found.</p>
                   </div>
                 ) : (
-                  <motion.div
-                    variants={staggerContainer}
-                    className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6"
-                  >
-                    {vendorProducts.map((product: Product) => (
-                      <DynamicProductCard
-                        key={product.id}
-                        product={product}
-                        hasProductBadge={hasProductBadge}
-                        region={region}
-                      />
-                    ))}
-                  </motion.div>
+                  <>
+                    <motion.div
+                      variants={staggerContainer}
+                      className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6"
+                    >
+                      {currentProducts.map((product: Product) => (
+                        <DynamicProductCard
+                          key={product.id}
+                          product={product}
+                          hasProductBadge={hasProductBadge}
+                          region={region}
+                        />
+                      ))}
+                    </motion.div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="flex flex-col items-center pb-8 mt-8 space-y-4"
+                      >
+                        {/* Page Info */}
+                        <div className="text-sm text-gray-600">
+                          Page {currentPage} of {totalPages}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        <div className="flex items-center space-x-2">
+                          {/* Previous Button */}
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md border transition ${
+                              currentPage === 1
+                                ? 'text-gray-400 border-gray-200 cursor-not-allowed'
+                                : 'text-gray-700 border-gray-300 hover:text-[#e65100] hover:border-[#e65100] hover:bg-gray-50'
+                            }`}
+                          >
+                            <ChevronLeft size={16} className="mr-1" />
+                            Previous
+                          </motion.button>
+
+                          {/* Page Numbers */}
+                          <div className="flex items-center space-x-1">
+                            {generatePageNumbers().map((page, index) => (
+                              <motion.div key={index}>
+                                {page === '...' ? (
+                                  <span className="px-3 py-2 text-sm text-gray-400">...</span>
+                                ) : (
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => handlePageChange(page as number)}
+                                    className={`px-3 py-2 text-sm font-medium rounded-md transition ${
+                                      currentPage === page
+                                        ? 'bg-[#e65100] text-white shadow-md'
+                                        : 'text-gray-700 hover:text-[#e65100] hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    {page}
+                                  </motion.button>
+                                )}
+                              </motion.div>
+                            ))}
+                          </div>
+
+                          {/* Next Button */}
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md border transition ${
+                              currentPage === totalPages
+                                ? 'text-gray-400 border-gray-200 cursor-not-allowed'
+                                : 'text-gray-700 border-gray-300 hover:text-[#e65100] hover:border-[#e65100] hover:bg-gray-50'
+                            }`}
+                          >
+                            Next
+                            <ChevronRight size={16} className="ml-1" />
+                          </motion.button>
+                        </div>
+
+                        {/* Quick Jump (for mobile) */}
+                        {totalPages > 10 && (
+                          <div className="flex items-center space-x-2 md:hidden">
+                            <span className="text-sm text-gray-500">Go to page:</span>
+                            <select
+                              value={currentPage}
+                              onChange={(e) => handlePageChange(parseInt(e.target.value))}
+                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#e65100]"
+                            >
+                              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <option key={page} value={page}>
+                                  {page}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </>
                 )}
               </motion.div>
             </div>
           </div>
         </motion.div>
-
-        {/* Products Grid */}
       </div>
     </motion.div>
   )
@@ -860,44 +1393,6 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, children }) => {
   )
 }
 
-// Currency utility functions
-function getCurrencySymbol(code: string | undefined): string {
-  if (!code) return "$" // Default to USD symbol
-
-  switch (code.toLowerCase()) {
-    case "usd":
-      return "$"
-    case "eur":
-      return "€"
-    case "gbp":
-      return "£"
-    case "jpy":
-      return "¥"
-    case "inr":
-      return "₹"
-    case "aud":
-      return "A$"
-    case "cad":
-      return "C$"
-    case "cny":
-    case "rmb":
-      return "¥"
-    default:
-      return code.toUpperCase() + " "
-  }
-}
-
-function formatPrice(amount: number, currencyCode: string | undefined): string {
-  if (amount === 0) return "0.00"
-
-  // For JPY, no decimal places are typically shown
-  if (currencyCode && currencyCode.toLowerCase() === "jpy") {
-    return Math.round(amount).toString()
-  }
-
-  return amount.toFixed(2)
-}
-
 // Dynamic Product Card Component
 const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
   product,
@@ -905,47 +1400,177 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
   region,
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false)
+  
+  // Review state
+  const [averageRating, setAverageRating] = useState(0)
+  const [reviewCount, setReviewCount] = useState(0)
+  const [isLoadingReviews, setIsLoadingReviews] = useState(true)
 
   // Extract required info from product with safety checks
   const productName = product?.title || "Product"
   const productImage = product?.thumbnail
   const productHandle = product?.handle || ""
 
-  // Get price from product variants based on region currency
+  // Fetch actual review data
+  useEffect(() => {
+    setIsLoadingReviews(true)
+    getProductReviews({
+      productId: product.id,
+      limit: 100,
+      offset: 0,
+    })
+      .then(({ reviews: paginatedReviews, average_rating, count }) => {
+        setAverageRating(average_rating || 0)
+        const actualCount = paginatedReviews?.length || 0
+        setReviewCount(actualCount)
+      })
+      .catch((error) => {
+        console.error("Error fetching product reviews in card:", error)
+        setAverageRating(0)
+        setReviewCount(0)
+      })
+      .finally(() => {
+        setIsLoadingReviews(false)
+      })
+  }, [product.id])
+
+  // Updated to only show colors from color_hex_values field
+  const getProductColors = () => {
+    console.log(`🎨 Getting colors for product: ${productName}`)
+    
+    // Get all colors using the enhanced extraction
+    const allColors = getProductColorsEnhanced(product)
+    
+    // Filter to only keep colors that have color_hex_values in their key
+    const filteredColors = allColors.filter(color => 
+      color.key && color.key.includes('color_hex_values')
+    )
+    
+    console.log(`🎨 All colors found: ${allColors.length}`)
+    console.log(`🎨 Filtered colors (color_hex_values only): ${filteredColors.length}`)
+    console.log(`🎨 Final colors:`, filteredColors)
+    
+    return filteredColors
+  }
+
+  const productColors = getProductColors()
+
+  // Enhanced getPriceData function with comprehensive debugging
   const getPriceData = () => {
+    console.log("💰 Getting price data for product:", product?.title)
+    console.log("💰 Product variants:", product?.variants)
+    console.log("💰 Region currency:", region?.currency_code)
+
     if (product?.variants?.length > 0) {
       const variant = product.variants[0]
+      console.log("💰 First variant:", variant)
+      
+      const currencyCode = region?.currency_code || "usd"
+      
+      // Method 1: Try calculated_price first
+      if (variant?.calculated_price) {
+        console.log("💰 Using calculated_price:", variant.calculated_price)
+        
+        if (typeof variant.calculated_price === 'object') {
+          const possiblePrices = [
+            variant.calculated_price[currencyCode],
+            variant.calculated_price.amount,
+            variant.calculated_price.price_incl_tax,
+            variant.calculated_price.price_excl_tax,
+            variant.calculated_price.original_amount,
+            variant.calculated_price.calculated_amount
+          ]
+          
+          for (const priceValue of possiblePrices) {
+            if (priceValue && typeof priceValue === 'number') {
+              console.log("💰 Found calculated price:", priceValue)
+              return {
+                amount: priceValue,
+                currencyCode: currencyCode,
+              }
+            }
+          }
+        } else if (typeof variant.calculated_price === 'number') {
+          console.log("💰 Using direct calculated price:", variant.calculated_price)
+          return {
+            amount: variant.calculated_price,
+            currencyCode: currencyCode,
+          }
+        }
+      }
+      
+      // Method 2: Try standard prices array
       if (variant?.prices?.length > 0) {
-        // Get current region's currency code
-        const currencyCode = region?.currency_code || "usd"
-
-        // Try to find matching price
+        console.log("💰 Using prices array:", variant.prices)
+        
         const matchingPrice = variant.prices.find(
           (p) => p.currency_code?.toLowerCase() === currencyCode.toLowerCase()
         )
-
-        // Use matching price or fall back to first price
+        
         const price = matchingPrice || variant.prices[0]
-
+        
         if (price && typeof price.amount === "number") {
+          console.log("💰 Found price:", price)
           return {
             amount: price.amount,
             currencyCode: price.currency_code || currencyCode,
           }
         }
       }
+      
+      // Method 3: Try other common price fields
+      const priceFields = ['price', 'unit_price', 'list_price', 'original_price', 'amount']
+      for (const field of priceFields) {
+        if (variant?.[field] && typeof variant[field] === 'number') {
+          console.log(`💰 Using ${field}:`, variant[field])
+          return {
+            amount: variant[field],
+            currencyCode: currencyCode,
+          }
+        }
+      }
+      
+      console.log("❌ No price found in variant:", Object.keys(variant))
     }
+    
+    console.log("❌ Returning default price 0")
     return { amount: 0, currencyCode: region?.currency_code || "usd" }
   }
 
   const priceData = getPriceData()
+  console.log("💰 Final price data:", priceData)
 
-  // Price component with currency formatting
+  // Enhanced PreviewPrice component with debugging
   const PreviewPrice = ({ price }) => {
+    console.log("💰 PreviewPrice received:", price)
+    
     const { amount, currencyCode } = price
     const symbol = getCurrencySymbol(currencyCode)
-    const formattedPrice = formatPrice(amount, currencyCode)
-
+    
+    if (amount === 0) {
+      return <span className="text-black-500">N/A</span>
+    }
+    
+    // Handle different price formats
+    let displayAmount = amount
+    
+    // Convert from cents if amount is large (likely in cents)
+    if (amount > 1000) {
+      displayAmount = amount / 100
+    }
+    
+    // For JPY, no decimal places
+    const formattedPrice = currencyCode?.toLowerCase() === "jpy" 
+      ? Math.round(displayAmount).toString()
+      : displayAmount.toFixed(2)
+    
+    console.log("💰 Displaying price:", {
+      original: amount,
+      converted: displayAmount,
+      formatted: formattedPrice,
+      symbol
+    })
+    
     return (
       <span>
         {symbol}
@@ -954,8 +1579,48 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
     )
   }
 
-  // UI Components with proper type definitions
-  const WishlistButton: React.FC<{ variantId: string | undefined }> = ({
+  // Enhanced Color Display Component
+  const ColorOptions = ({ colors }: { colors: Array<{name: string, hex: string, key?: string}> }) => {
+    if (!colors || colors.length === 0) {
+      console.log(`🎨 No colors to display for ${productName}`)
+      return null
+    }
+
+    console.log(`🎨 Displaying ${colors.length} colors for ${productName}:`, colors)
+
+    return (
+      <div className="pt-1 mt-auto">
+        {/* <div className="mb-2 text-xs text-gray-500">
+          Available Colors ({colors.length}):
+        </div> */}
+        <ul className="flex items-center gap-x-1.5 flex-wrap">
+          {colors.map((color, index) => (
+            <li key={color.key || `color-${index}`}>
+              <div
+                className="w-5 h-5 transition-all border border-gray-300 rounded-full shadow-sm cursor-pointer hover:scale-125 hover:border-gray-500 hover:shadow-md"
+                style={{ backgroundColor: color.hex }}
+                title={`${color.name} (${color.hex})`}
+                onClick={() => console.log(`Selected color: ${color.name} (${color.hex})`)}
+              >
+                {/* Special handling for white and very light colors */}
+                {(color.hex === '#FFFFFF' || color.hex === '#FFFFF0' || color.hex.toLowerCase() === '#ffe5ec') && (
+                  <div className="w-full h-full border border-gray-400 rounded-full"></div>
+                )}
+                
+                {/* Add a small dot for very dark colors to show interactivity */}
+                {(color.hex === '#000000' || color.hex === '#780000') && (
+                  <div className="absolute w-1 h-1 transition-opacity transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-full opacity-0 hover:opacity-100 top-1/2 left-1/2"></div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
+  // UI Components
+  const Wishlistbutton: React.FC<{ variantId: string | undefined }> = ({
     variantId,
   }) => (
     <motion.button
@@ -963,23 +1628,21 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
       whileTap={{ scale: 0.9 }}
       className="absolute z-20 p-2 bg-white rounded-full shadow-md right-3 top-3"
     >
-      <Heart size={18} className="text-gray-700 hover:text-red-500" />
+    {/* <div className="absolute top-0 right-0 z-20">
+      <div className="pointer-events-auto">
+        <WishlistButton variantId={matchedVariant?.id || product.variants?.[0]?.id}/>
+      </div>
+    </div> */}
+      {/* <Heart size={18} className="text-gray-700 hover:text-red-500" /> */}
     </motion.button>
   )
 
-  interface ThumbnailProps {
+  const Thumbnail: React.FC<{
     thumbnail: string | null
     images: any[]
     size: string
     isFeatured: boolean
-  }
-
-  const Thumbnail: React.FC<ThumbnailProps> = ({
-    thumbnail,
-    images,
-    size,
-    isFeatured,
-  }) => (
+  }> = ({ thumbnail }) => (
     <img
       src={thumbnail}
       alt={productName}
@@ -987,31 +1650,24 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
     />
   )
 
-  interface TextProps {
+  const Text: React.FC<{
     className: string
     children: React.ReactNode
     [key: string]: any
-  }
-
-  const Text: React.FC<TextProps> = ({ className, children, ...props }) => (
+  }> = ({ className, children, ...props }) => (
     <p className={className} {...props}>
       {children}
     </p>
   )
 
-  interface LinkProps {
+  const LocalizedClientLink: React.FC<{
     href: string
     children: React.ReactNode
-  }
-
-  const LocalizedClientLink: React.FC<LinkProps> = ({ href, children }) => (
+  }> = ({ href, children }) => (
     <Link href={href}>{children}</Link>
   )
 
-  // Extract tags from product if available
   const productTags = product?.tags || []
-
-  // Determine vendor name
   const vendorName = product?.vendor?.name || "Junooni"
 
   return (
@@ -1020,11 +1676,10 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       data-testid="product-wrapper"
-      className="relative flex flex-col h-full group"
+      className="relative flex flex-col h-full p-3 border border-gray-100 rounded-lg shadow-sm group hover:shadow-md"
     >
-      {/* Product image container with overlay effects */}
+      {/* Product image container */}
       <div className="relative overflow-hidden rounded-lg bg-gray-50 aspect-[4/5] mb-4">
-        {/* Wishlist button */}
         <WishlistButton variantId={product.variants?.[0]?.id} />
 
         {/* Product tags */}
@@ -1047,14 +1702,9 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
               Limited
             </span>
           )}
-          {hasProductBadge(product, "isSigned") && (
-            <span className="px-2 py-1 text-xs font-medium text-white bg-purple-600 rounded whitespace-nowrap">
-              Signed
-            </span>
-          )}
         </div>
 
-        {/* Image container with transform effect */}
+        {/* Image with hover effect */}
         <div className="w-full h-full transition-transform duration-500 group-hover:scale-105">
           <Thumbnail
             thumbnail={productImage}
@@ -1064,7 +1714,7 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
           />
         </div>
 
-        {/* Quick view overlay - appears on hover */}
+        {/* Quick view overlay */}
         <motion.div
           className="absolute inset-x-0 bottom-0 flex items-center justify-center p-2 transition-all bg-white/90"
           initial={{ translateY: "100%", opacity: 0 }}
@@ -1082,10 +1732,15 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
 
       {/* Product info section */}
       <div className="flex-grow">
-        {/* Vendor name */}
-        <div className="mb-1 text-xs text-gray-500">By {vendorName}</div>
+        <div className="flex items-center mb-1 text-sm text-gray-600">
+          <span className="mr-1">{vendorName}</span>
+          {product.vendor?.verified === "Yes" && (
+            <span className="text-[#e65100]">
+              <Check size={14} />
+            </span>
+          )}
+        </div>
 
-        {/* Product title and price */}
         <div className="flex items-start justify-between mb-2">
           <LocalizedClientLink href={`/products/${productHandle}`}>
             <Text
@@ -1099,24 +1754,56 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
             <PreviewPrice price={priceData} />
           </div>
         </div>
+
+        {/* Ratings Section */}
+        <div className="flex items-center mb-2">
+          {isLoadingReviews ? (
+            <div className="flex items-center">
+              <div className="flex mr-1">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="w-3 h-3 mr-0.5 bg-gray-200 rounded-full animate-pulse" />
+                ))}
+              </div>
+              <div className="w-8 h-3 bg-gray-200 rounded animate-pulse" />
+            </div>
+          ) : reviewCount > 0 ? (
+            <>
+              <div className="flex mr-1 text-yellow-400">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    fill={i < Math.floor(averageRating) ? "currentColor" : "none"}
+                    size={12}
+                    className={i < Math.floor(averageRating) ? "text-yellow-400" : "text-gray-300"}
+                  />
+                ))}
+              </div>
+              <span className="text-xs text-gray-600">
+                ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
+              </span>
+            </>
+          ) : (
+            <div className="flex items-center">
+              <div className="flex mr-1 text-gray-300">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    fill="none"
+                    size={14}
+                    className="text-gray-300"
+                  />
+                ))}
+              </div>
+              {/* <span className="text-xs text-gray-500">
+                No reviews yet
+              </span> */}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Color options - shown if product has color metadata */}
-      {product.metadata && Object.entries(product.metadata).length > 0 && (
-        <div className="pt-3 mt-auto">
-          <ul className="flex items-center gap-x-1">
-            {Object.entries(product.metadata).map(([key, value], index) => (
-              <li key={index}>
-                <div
-                  className="w-6 h-6 transition-transform border border-gray-200 rounded-full shadow-sm cursor-pointer hover:scale-110"
-                  style={{ backgroundColor: `${value}` }}
-                  title={key}
-                ></div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Color options using the filtered extraction method */}
+      <ColorOptions colors={productColors} />
     </motion.div>
   )
 }

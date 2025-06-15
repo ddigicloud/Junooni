@@ -6,7 +6,8 @@ import { IoMdClose } from "react-icons/io";
 import { IoChevronDown, IoChevronUp } from "react-icons/io5";
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, UserCircle, ShoppingCart } from "lucide-react";
+import SearchBar from "@modules/layout/components/search-button";
+import { Search, UserCircle, ShoppingCart, Heart } from "lucide-react";
 import { useNavContext } from "./NavContext"; // Import the NavContext hook
 
 // Animation variants for menu transitions
@@ -246,6 +247,41 @@ const getHamburgerColor = () => {
                 >
                   JUNOONI
                 </LocalizedClientLink>
+                <div className="mt-auto">
+                  <div className="flex justify-end py-2">
+                    <LocalizedClientLink
+                      href="/account"
+                      className="flex items-center px-3 py-3 text-base text-black transition-colors duration-200 hover:text-gray-700"
+                      onClick={handleNavigate}
+                    >
+                      <UserCircle className="w-5 h-5"/>
+                    </LocalizedClientLink>
+                    {/* <LocalizedClientLink
+                      href="/search"
+                      className="flex items-center px-3 py-3 text-base text-black transition-colors duration-200 hover:text-gray-700"
+                      onClick={handleNavigate}
+                    >
+                      <Search className="w-5 h-5"/>
+                    </LocalizedClientLink> */}
+                    <div className="relative mt-2 ml-2 mr-2">
+                      <SearchBar categories={categories}/>
+                    </div>
+                    <LocalizedClientLink
+                      href="/wishlist"
+                      className="flex items-center px-3 py-3 text-base text-black transition-colors duration-200 hover:text-gray-700"
+                      onClick={handleNavigate}
+                    >
+                      <Heart className="w-5 h-5"/>
+                    </LocalizedClientLink>
+                    <LocalizedClientLink
+                      href="/cart"
+                      className="flex items-center px-3 py-3 text-base text-black transition-colors duration-200 hover:text-gray-700"
+                      onClick={handleNavigate}
+                    >
+                      <ShoppingCart className="w-5 h-5"/>
+                    </LocalizedClientLink>
+                  </div>
+                </div>
                 <button 
                   onClick={toggleMenu} 
                   className="p-1 text-black focus:outline-none"
@@ -376,7 +412,7 @@ const getHamburgerColor = () => {
               </div>
               
               {/* Additional Navigation Links */}
-              <div className="mt-auto border-t border-gray-200">
+              {/* <div className="mt-auto border-t border-gray-200">
                 <div className="flex justify-end py-2">
                   <LocalizedClientLink
                     href="/account"
@@ -400,7 +436,7 @@ const getHamburgerColor = () => {
                     <ShoppingCart className="w-5 h-5"/>
                   </LocalizedClientLink>
                 </div>
-              </div>
+              </div> */}
             </motion.div>
           </>
         )}

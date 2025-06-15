@@ -88,7 +88,7 @@ const CartDropdown = ({
             className="relative flex hover:text-ui-fg-base"
             href="/cart"
             data-testid="nav-cart-link"
-          ><ShoppingCart className="w-5 h-5"/>
+          ><ShoppingCart className="w-6 h-6"/>
           {totalItems > 0 && (
             <span className="absolute -top-2 right-[-12px] bg-[#e65100] text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">
               {totalItems}
