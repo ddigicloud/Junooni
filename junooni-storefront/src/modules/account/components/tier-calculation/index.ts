@@ -111,7 +111,7 @@ export const TIER_PERCENTAGES = {
 }
 
 // Maximum possible points (can be adjusted based on system design)
-export const MAX_POSSIBLE_POINTS = 10000
+export const MAX_POSSIBLE_POINTS = 40000
 
 // Helper function to convert points to percentage of maximum
 export const pointsToPercentage = (points) => {

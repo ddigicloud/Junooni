@@ -158,48 +158,62 @@ const RealisticMockupGenerator: React.FC<RealisticMockupProps> = ({
   }, [backgroundImage, designElements, activeColorInMockup]);
 
   // Map design elements from designer to mockup
-  const renderDesignElements = () => {
-    if (!backgroundImage) return null;
+ const renderDesignElements = () => {
+  if (!backgroundImage) return null;
+  
+  // Use the actual printing area passed from the parent component
+  // Don't force a different area - this causes the scaling mismatch
+  
+  return designElements.map((el) => {
+    // Calculate relative position within the printing area
+    const relativeX = (el.x - printingArea.x) / printingArea.width;
+    const relativeY = (el.y - printingArea.y) / printingArea.height;
     
-    return designElements.map((el) => {
-      const relativeX = el.x - printingArea.x;
-      const relativeY = el.y - printingArea.y;
-      
-      // Calculate the new position in the mockup (using center of printing area)
-      const newX = stageWidth / 2 - printingArea.width / 2 + relativeX;
-      const newY = stageHeight / 2 - printingArea.height / 2 + relativeY;
-      
-      if (el.type === 'text') {
-        return (
-          <KonvaText
-            key={el.id}
-            text={el.text || ''}
-            x={newX}
-            y={newY}
-            fontSize={el.fontSize}
-            rotation={el.rotation}
-            scaleX={el.scaleX}
-            scaleY={el.scaleY}
-          />
-        );
-      } else if (el.type === 'image' && el.image) {
-        return (
-          <KonvaImage
-            key={el.id}
-            image={el.image}
-            x={newX}
-            y={newY}
-            width={el.width}
-            height={el.height}
-            rotation={el.rotation}
-            scaleX={el.scaleX}
-            scaleY={el.scaleY}
-          />
-        );
-      }
-      return null;
+    // Position within the mockup stage (center the printing area)
+    const mockupPrintingAreaX = stageWidth / 2 - printingArea.width / 2;
+    const mockupPrintingAreaY = stageHeight / 2 - printingArea.height / 2;
+    
+    const newX = mockupPrintingAreaX + (relativeX * printingArea.width);
+    const newY = mockupPrintingAreaY + (relativeY * printingArea.height);
+    
+    console.log('Element positioning:', {
+      original: { x: el.x, y: el.y },
+      relative: { x: relativeX, y: relativeY },
+      new: { x: newX, y: newY },
+      printingArea: printingArea
     });
-  };
+      
+    if (el.type === 'text') {
+      return (
+        <KonvaText
+          key={el.id}
+          text={el.text || ''}
+          x={newX}
+          y={newY}
+          fontSize={el.fontSize}
+          rotation={el.rotation}
+          scaleX={el.scaleX}
+          scaleY={el.scaleY}
+        />
+      );
+    } else if (el.type === 'image' && el.image) {
+      return (
+        <KonvaImage
+          key={el.id}
+          image={el.image}
+          x={newX}
+          y={newY}
+          width={el.width}    // Keep original dimensions
+          height={el.height}  // Keep original dimensions
+          rotation={el.rotation}
+          scaleX={el.scaleX}
+          scaleY={el.scaleY}
+        />
+      );
+    }
+    return null;
+  });
+};
 
   // Generate the mockup image
   const generateMockup = () => {
@@ -331,6 +345,14 @@ const RealisticMockupGenerator: React.FC<RealisticMockupProps> = ({
         )}
       </div>
       
+      // Add this button to debug
+      <button onClick={() => {
+        console.log('Printing area for current color:', printingArea);
+        console.log('Stage dimensions:', { width: stageWidth, height: stageHeight });
+        console.log('Design elements:', designElements);
+      }}>
+        Debug Printing Area
+      </button>
       {/* Debug information - only in development */}
       {DEBUG && (
         <div className="p-2 mt-2 text-xs text-gray-700 bg-gray-100 rounded">
@@ -341,6 +363,7 @@ const RealisticMockupGenerator: React.FC<RealisticMockupProps> = ({
           <div>Status: {isGenerating ? 'Generating' : error ? 'Error' : compositeImage ? 'Ready' : 'Loading'}</div>
           {error && <div className="text-red-500">Error: {error}</div>}
         </div>
+        
       )}
     </div>
   );

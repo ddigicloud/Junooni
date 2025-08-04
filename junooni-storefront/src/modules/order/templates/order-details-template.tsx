@@ -45,6 +45,9 @@
 
 // export default OrderDetailsTemplate
 
+// Replace your existing component with this updated version
+
+// Replace your existing component with this updated version
 "use client"
 
 import { HttpTypes } from "@medusajs/types"
@@ -54,8 +57,11 @@ import {
   Download,
   MessageSquare,
   Truck,
+  FileText,
+  Settings,
+  Loader2,
 } from "lucide-react"
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import OrderDetails from "@modules/order/components/order-details"
 import OrderSummary from "@modules/order/components/order-summary"
@@ -63,6 +69,7 @@ import PaymentDetails from "@modules/order/components/payment-details"
 import ShippingDetails from "@modules/order/components/shipping-details"
 import Items from "@modules/order/components/items"
 import Help from "@modules/order/components/help"
+import { fetchOrderInvoice } from "@lib/data/customer" // Import the new server function
 
 type OrderDetailsTemplateProps = {
   order: HttpTypes.StoreOrder
@@ -72,7 +79,57 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
   order,
 }) => {
   const [activeTab, setActiveTab] = useState<"items" | "payment">("items")
+  const [vendorSummaryData, setVendorSummaryData] = useState<Record<string, any>>({})
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false)
+  const [invoiceError, setInvoiceError] = useState<string | null>(null)
 
+  // Generate professional invoice using backend service
+  const generateProfessionalInvoice = async () => {
+    if (!order || !order.items?.length) {
+      setInvoiceError("No order items found to generate invoice")
+      return
+    }
+
+    setIsGeneratingInvoice(true)
+    setInvoiceError(null)
+
+    try {
+      // Use the server function instead of local fetch
+      const result = await fetchOrderInvoice(order.id)
+
+      if (!result || !result.success) {
+        throw new Error(result?.error || "Failed to fetch invoice")
+      }
+
+      // Convert base64 back to blob for download
+      const binaryString = atob(result.data.base64)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+      
+      const pdfBlob = new Blob([bytes], { type: result.data.mimeType })
+
+      // Create download link
+      const url = URL.createObjectURL(pdfBlob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `junooni_invoice_${order.display_id || order.id || "unknown"}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      console.log("Invoice downloaded successfully.")
+    } catch (err) {
+      console.error("Error generating invoice:", err)
+      setInvoiceError(err instanceof Error ? err.message : "Unexpected error")
+    } finally {
+      setIsGeneratingInvoice(false)
+    }
+  }
+
+  // Rest of your component remains the same...
   return (
     <div className="min-h-screen mt-6 bg-gray-50">
       {/* Header */}
@@ -157,29 +214,49 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
             )}
           </div>
 
-          {/* Actions */}
-          <div className="p-6 border-t border-gray-200 bg-gray-50">
-            <div className="flex flex-col space-y-3 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
-              <button className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md shadow-sm sm:w-auto hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-                <Download size={16} className="mr-2" />
-                Download Invoice
-              </button>
+          {/* Professional Invoice Actions - Only show if order is fulfilled/delivered */}
+          {(order.fulfillment_status === 'fulfilled' || order.fulfillment_status === 'delivered') && (
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="flex flex-col space-y-4">
+                {/* Professional Backend Invoice */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">Click below button to download invoice 👇</h3>
+                
+                {/* Error Display */}
+                {invoiceError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-700">
+                      <strong>Error:</strong> {invoiceError}
+                    </p>
+                  </div>
+                )}
 
-              <div className="flex flex-col w-full space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 sm:w-auto">
-                <button className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm sm:w-auto hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-                  <Truck size={16} className="mr-2" />
-                  Track Order
-                </button>
-                <button className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm sm:w-auto hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-                  <MessageSquare size={16} className="mr-2" />
-                  Need Help?
-                </button>
+                <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3">
+                  <button
+                    onClick={generateProfessionalInvoice}
+                    disabled={isGeneratingInvoice}
+                    className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingInvoice ? (
+                      <>
+                        <Loader2 size={16} className="mr-2 animate-spin" />
+                        Generating Invoice...
+                      </>
+                    ) : (
+                      <>
+                        <Download size={16} className="mr-2" />
+                         Download Invoice
+                      </>
+                    )}
+                  </button>
+                </div>           
               </div>
             </div>
           </div>
+          )}
         </div>
 
-        {/* Related Products */}
+        {/* Related Products - keeping your existing implementation */}
         <div className="mt-8 mb-6">
           <h2 className="mb-4 text-lg font-semibold text-gray-800">
             You Might Also Like
@@ -203,7 +280,7 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
                     Recommended Product {item}
                   </h3>
                   <p className="mt-1 text-sm text-gray-600">
-                    ${(item * 19.99).toFixed(2)}
+                    ₹{(item * 999).toFixed(2)}
                   </p>
                   <button className="inline-flex items-center justify-center w-full px-4 py-2 mt-2 text-xs font-medium text-white bg-orange-600 border border-transparent rounded-md shadow-sm hover:bg-orange-700 focus:outline-none">
                     Add to Cart

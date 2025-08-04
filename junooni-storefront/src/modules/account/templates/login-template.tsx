@@ -16,7 +16,7 @@ const LoginTemplate = () => {
   return (
     <div className="flex items-center justify-center w-full min-h-screen px-0 py-8 md:px-4" 
          style={{ backgroundColor: "#fdf7ec" }}>
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-sm">
+      <div className="w-full max-w-md p-0 bg-white rounded-lg shadow-sm">
         {currentView === "sign-in" ? (
           <Login setCurrentView={setCurrentView} />
         ) : (

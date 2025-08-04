@@ -296,39 +296,133 @@ export interface Category {
   createdAt: string;
 }
 /**
+ * Professional print-on-demand product catalog with industry-grade customization
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "blank-products".
  */
 export interface BlankProduct {
   id: number;
+  /**
+   * Product name as displayed to customers
+   */
   name: string;
-  cost: number;
-  sku: string;
-  brand: string;
-  Brandsku?: string | null;
-  dimensions: {
-    x: number;
-    y: number;
-    customizableWidth: number;
-    customizableHeight: number;
-  };
+  /**
+   * URL-friendly version of the name
+   */
+  slug?: string | null;
+  /**
+   * Product availability status
+   */
+  status: 'active' | 'draft' | 'discontinued' | 'out_of_stock' | 'coming_soon';
+  productType:
+    | 'apparel_tshirt'
+    | 'apparel_hoodie'
+    | 'apparel_sweatshirt'
+    | 'apparel_tank'
+    | 'apparel_longsleeve'
+    | 'apparel_hat'
+    | 'apparel_beanie'
+    | 'drinkware_mug'
+    | 'drinkware_bottle'
+    | 'drinkware_tumbler'
+    | 'print_poster'
+    | 'print_canvas'
+    | 'print_business_card'
+    | 'print_sticker'
+    | 'accessories_phone_case'
+    | 'accessories_tote_bag'
+    | 'accessories_backpack'
+    | 'home_pillow'
+    | 'home_blanket'
+    | 'home_towel'
+    | 'other';
+  /**
+   * Product categories for organization and filtering
+   */
   categories?: (number | Category)[] | null;
-  colorOptions?:
+  /**
+   * Tags for enhanced searchability
+   */
+  tags?:
     | {
-        colorName: string;
-        colorHex: string;
+        tag: string;
         id?: string | null;
       }[]
     | null;
-  sizeOptions?:
+  /**
+   * Brand or manufacturer name
+   */
+  brand: string;
+  /**
+   * Vendor's SKU or product code
+   */
+  brandSku?: string | null;
+  /**
+   * Your internal SKU
+   */
+  sku: string;
+  vendorInfo?: {
+    supplier?: ('printful' | 'printify' | 'gooten' | 'qikink' | 'local' | 'direct' | 'other') | null;
+    /**
+     * Product ID in supplier's system
+     */
+    supplierProductId?: string | null;
+    /**
+     * Manufacturing country
+     */
+    countryOfOrigin?: string | null;
+  };
+  sourcing?: {
+    minimumOrderQuantity?: number | null;
+    /**
+     * Production time in business days
+     */
+    leadTimeDays?: number | null;
+    rushAvailable?: boolean | null;
+    rushLeadTimeDays?: number | null;
+  };
+  /**
+   * Base cost from supplier
+   */
+  cost: number;
+  pricing?: {
+    markupType?: ('percentage' | 'fixed' | 'tiered') | null;
+    /**
+     * Markup percentage or fixed amount
+     */
+    markupValue?: number | null;
+    /**
+     * Suggested selling price
+     */
+    suggestedRetailPrice?: number | null;
+  };
+  pricingTiers?:
     | {
-        sizeName: string;
-        sizeDescription?: string | null;
+        minQuantity: number;
+        maxQuantity?: number | null;
+        markupPercentage: number;
         id?: string | null;
       }[]
     | null;
-  sizeChart?: (number | null) | Media;
+  additionalCosts?: {
+    /**
+     * Additional cost per printed area
+     */
+    printingCostPerArea?: number | null;
+    /**
+     * One-time setup fee if applicable
+     */
+    setupFee?: number | null;
+    rushSurcharge?: number | null;
+  };
+  /**
+   * Brief product description
+   */
   description?: string | null;
+  /**
+   * Detailed features and benefits
+   */
   features?: {
     root: {
       type: string;
@@ -344,80 +438,317 @@ export interface BlankProduct {
     };
     [k: string]: unknown;
   } | null;
-  displayImages?:
-    | {
-        title?: string | null;
-        image: number | Media;
-        caption?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  mockupImages?:
-    | {
-        title?: string | null;
-        image: number | Media;
-        width?: number | null;
-        height?: number | null;
-        x?: number | null;
-        y?: number | null;
-        rotation?: number | null;
-        skew?: number | null;
-        scale?: number | null;
-        /**
-         * Enter a hex code or use a color picker if available
-         */
-        photoColor?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  shippingInfo: {
-    weight: number;
-    dimensions?: string | null;
+  materials?: {
+    /**
+     * e.g., "100% Cotton", "Ceramic", "Polyester Blend"
+     */
+    primary?: string | null;
+    /**
+     * e.g., "5.3 oz/yd²", "150 GSM"
+     */
+    weight?: string | null;
+    /**
+     * e.g., "Ring-spun", "Jersey knit", "Woven"
+     */
+    construction?: string | null;
+    /**
+     * e.g., "Matte", "Glossy", "Soft-touch"
+     */
+    finish?: string | null;
   };
-  printingTechnologies?:
+  careInstructions?:
     | {
-        technologyName: 'dtg' | 'dtf' | 'vinyl' | 'embroidery';
-        customizationAreas?:
+        instruction: string;
+        icon?:
+          | (
+              | 'wash_cold'
+              | 'wash_warm'
+              | 'hand_wash'
+              | 'no_wash'
+              | 'dry_low'
+              | 'hang_dry'
+              | 'no_dry'
+              | 'iron_low'
+              | 'no_iron'
+              | 'no_bleach'
+            )
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  physicalDimensions?: {
+    /**
+     * Width in inches
+     */
+    widthInches?: number | null;
+    /**
+     * Height in inches
+     */
+    heightInches?: number | null;
+    /**
+     * Depth/thickness (for 3D products)
+     */
+    depthInches?: number | null;
+    /**
+     * For cylindrical products (inches)
+     */
+    diameter?: number | null;
+    units?: ('inches' | 'cm' | 'mm') | null;
+  };
+  shippingInfo: {
+    /**
+     * Weight in ounces
+     */
+    weight: number;
+    /**
+     * e.g., "10x13x3 inches"
+     */
+    shippingDimensions?: string | null;
+    packageType?: ('poly_mailer' | 'box' | 'envelope' | 'tube' | 'custom') | null;
+  };
+  /**
+   * Available product colors
+   */
+  colorOptions?:
+    | {
+        colorName: string;
+        /**
+         * Hex color code (e.g., #FFFFFF)
+         */
+        colorHex: string;
+        /**
+         * Set as default color
+         */
+        isPrimary?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  sizeOptions?:
+    | {
+        /**
+         * e.g., "Small", "Medium", "Large", "11oz", "16x20"
+         */
+        sizeName: string;
+        sizeDescription?: string | null;
+        dimensions?: {
+          width?: number | null;
+          height?: number | null;
+        };
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Size chart image for customer reference
+   */
+  sizeChart?: (number | null) | Media;
+  surfaceConf: {
+    renderType: 'flat' | 'cylindrical' | 'conical' | 'spherical' | 'complex_3d';
+    surfaceProp?: {
+      /**
+       * For cylindrical products: how many degrees the design wraps
+       */
+      wrapAngle?: number | null;
+      /**
+       * How much perspective distortion to apply
+       */
+      curveIntnsty?: number | null;
+      designRatio?: {
+        widthRatio?: number | null;
+        heightRatio?: number | null;
+      };
+    };
+    blendSetting?: {
+      defBlendMode?: ('normal' | 'multiply' | 'screen' | 'overlay' | 'soft_light') | null;
+      defaultOpacity?: number | null;
+      preserveColors?: boolean | null;
+    };
+  };
+  /**
+   * Available printing methods and their areas
+   */
+  printTech?:
+    | {
+        id?: string | null;
+        techName: 'dtg' | 'dtf' | 'screen' | 'sublimation' | 'embroidery' | 'vinyl' | 'digital' | 'uv' | 'laser';
+        printConstraints?: {
+          dpiReq?: {
+            minimum?: number | null;
+            recommended?: number | null;
+            maximum?: number | null;
+          };
+          sizeLimits?: {
+            minWidInch?: number | null;
+            minHtInch?: number | null;
+            maxWidInch?: number | null;
+            maxHtInch?: number | null;
+          };
+          colorLimits?: {
+            /**
+             * Leave empty for unlimited colors
+             */
+            maxColors?: number | null;
+            supportsFullColor?: boolean | null;
+          };
+        };
+        /**
+         * All mockup photos for this printing technology
+         */
+        mockupPhotos?:
           | {
-              areaName: string;
-              photos?:
+              /**
+               * e.g., "Front View", "3/4 Angle", "Lifestyle Shot"
+               */
+              title?: string | null;
+              photo: number | Media;
+              viewAngle?:
+                | (
+                    | 'front'
+                    | 'back'
+                    | 'left'
+                    | 'right'
+                    | 'three_quarter_front_left'
+                    | 'three_quarter_front_right'
+                    | 'top'
+                    | 'bottom'
+                    | 'lifestyle'
+                    | 'detail'
+                    | 'flat'
+                  )
+                | null;
+              mockupType?: ('studio' | 'lifestyle' | 'model' | 'flat_lay') | null;
+              /**
+               * Color of the product in this mockup (e.g., #000000)
+               */
+              photoColor: string;
+              /**
+               * All customization areas visible in this mockup
+               */
+              visibleAreas?:
                 | {
-                    photo: number | Media;
                     /**
-                     * Enter a hex code (e.g. #ff0000) or select via a color picker if available
+                     * Must match area name in customization areas below
                      */
-                    photoColor?: string | null;
-                    customizableWidth: number;
-                    customizableHeight: number;
-                    x: number;
-                    y: number;
+                    areaName: string;
+                    visibility?: ('full' | 'partial' | 'edge') | null;
+                    desgnPlacment: {
+                      coord: {
+                        x: number;
+                        y: number;
+                        width: number;
+                        height: number;
+                      };
+                      transforms?: {
+                        rotation?: number | null;
+                        skewX?: number | null;
+                        skewY?: number | null;
+                        scaleX?: number | null;
+                        scaleY?: number | null;
+                      };
+                      renderSettings?: {
+                        blendMode?: ('normal' | 'multiply' | 'screen' | 'overlay' | 'soft_light') | null;
+                        opacity?: number | null;
+                        preserveColors?: boolean | null;
+                      };
+                      surfSpecs?: {
+                        wrapSettng?: {
+                          enableWrap?: boolean | null;
+                          wrapAngle?: number | null;
+                          wrapIntensity?: number | null;
+                        };
+                        perspCorrection?: {
+                          enablePersp?: boolean | null;
+                          perspIntensity?: number | null;
+                        };
+                      };
+                    };
+                    id?: string | null;
+                  }[]
+                | null;
+              /**
+               * Higher priority mockups appear first
+               */
+              priority?: number | null;
+              tags?:
+                | {
+                    tag?: string | null;
                     id?: string | null;
                   }[]
                 | null;
               id?: string | null;
             }[]
           | null;
-        mockupPhotos?:
+        customizationAreas?:
           | {
-              title?: string | null;
-              photo: number | Media;
-              width?: number | null;
-              height?: number | null;
-              x?: number | null;
-              y?: number | null;
-              rotation?: number | null;
-              skew?: number | null;
-              scale?: number | null;
+              areaId?: string | null;
               /**
-               * Enter a hex code (e.g. #ff0000) for this mockup photo
+               * e.g., "Front", "Back", "Mug", "Left Sleeve"
                */
-              photoColor?: string | null;
+              areaName: string;
+              areaType?: ('primary' | 'secondary' | 'accent') | null;
+              canvasDimensions: {
+                widthInches: number;
+                heightInches: number;
+                canvasPixelWidth?: number | null;
+                canvasPixelHeight?: number | null;
+                aspectRatioLocked?: boolean | null;
+              };
+              designCanvasPhotos?:
+                | {
+                    photo: number | Media;
+                    /**
+                     * Product color hex for this canvas photo
+                     */
+                    photoColor?: string | null;
+                    printableAreaCoordinates?: {
+                      x?: number | null;
+                      y?: number | null;
+                      width?: number | null;
+                      height?: number | null;
+                    };
+                    id?: string | null;
+                  }[]
+                | null;
+              restrictions?: {
+                minElementSize?: {
+                  width?: number | null;
+                  height?: number | null;
+                };
+                maxElements?: number | null;
+              };
               id?: string | null;
             }[]
           | null;
+      }[]
+    | null;
+  areaSyncRules?:
+    | {
+        ruleName: string;
+        sourceArea: string;
+        targetAreas?:
+          | {
+              area?: string | null;
+              id?: string | null;
+            }[]
+          | null;
+        syncType?: ('copy' | 'mirror_h' | 'mirror_v' | 'scale') | null;
         id?: string | null;
       }[]
     | null;
+  /**
+   * Product photos for listings
+   */
+  displayImages?:
+    | {
+        image: number | Media;
+        title?: string | null;
+        caption?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  seo?: {
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -1262,24 +1593,96 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface BlankProductsSelect<T extends boolean = true> {
   name?: T;
-  cost?: T;
-  sku?: T;
-  brand?: T;
-  Brandsku?: T;
-  dimensions?:
+  slug?: T;
+  status?: T;
+  productType?: T;
+  categories?: T;
+  tags?:
     | T
     | {
-        x?: T;
-        y?: T;
-        customizableWidth?: T;
-        customizableHeight?: T;
+        tag?: T;
+        id?: T;
       };
-  categories?: T;
+  brand?: T;
+  brandSku?: T;
+  sku?: T;
+  vendorInfo?:
+    | T
+    | {
+        supplier?: T;
+        supplierProductId?: T;
+        countryOfOrigin?: T;
+      };
+  sourcing?:
+    | T
+    | {
+        minimumOrderQuantity?: T;
+        leadTimeDays?: T;
+        rushAvailable?: T;
+        rushLeadTimeDays?: T;
+      };
+  cost?: T;
+  pricing?:
+    | T
+    | {
+        markupType?: T;
+        markupValue?: T;
+        suggestedRetailPrice?: T;
+      };
+  pricingTiers?:
+    | T
+    | {
+        minQuantity?: T;
+        maxQuantity?: T;
+        markupPercentage?: T;
+        id?: T;
+      };
+  additionalCosts?:
+    | T
+    | {
+        printingCostPerArea?: T;
+        setupFee?: T;
+        rushSurcharge?: T;
+      };
+  description?: T;
+  features?: T;
+  materials?:
+    | T
+    | {
+        primary?: T;
+        weight?: T;
+        construction?: T;
+        finish?: T;
+      };
+  careInstructions?:
+    | T
+    | {
+        instruction?: T;
+        icon?: T;
+        id?: T;
+      };
+  physicalDimensions?:
+    | T
+    | {
+        widthInches?: T;
+        heightInches?: T;
+        depthInches?: T;
+        diameter?: T;
+        units?: T;
+      };
+  shippingInfo?:
+    | T
+    | {
+        weight?: T;
+        shippingDimensions?: T;
+        packageType?: T;
+      };
   colorOptions?:
     | T
     | {
         colorName?: T;
         colorHex?: T;
+        isPrimary?: T;
         id?: T;
       };
   sizeOptions?:
@@ -1287,77 +1690,209 @@ export interface BlankProductsSelect<T extends boolean = true> {
     | {
         sizeName?: T;
         sizeDescription?: T;
+        dimensions?:
+          | T
+          | {
+              width?: T;
+              height?: T;
+            };
         id?: T;
       };
   sizeChart?: T;
-  description?: T;
-  features?: T;
-  displayImages?:
+  surfaceConf?:
     | T
     | {
-        title?: T;
-        image?: T;
-        caption?: T;
-        id?: T;
-      };
-  mockupImages?:
-    | T
-    | {
-        title?: T;
-        image?: T;
-        width?: T;
-        height?: T;
-        x?: T;
-        y?: T;
-        rotation?: T;
-        skew?: T;
-        scale?: T;
-        photoColor?: T;
-        id?: T;
-      };
-  shippingInfo?:
-    | T
-    | {
-        weight?: T;
-        dimensions?: T;
-      };
-  printingTechnologies?:
-    | T
-    | {
-        technologyName?: T;
-        customizationAreas?:
+        renderType?: T;
+        surfaceProp?:
           | T
           | {
-              areaName?: T;
-              photos?:
+              wrapAngle?: T;
+              curveIntnsty?: T;
+              designRatio?:
                 | T
                 | {
-                    photo?: T;
-                    photoColor?: T;
-                    customizableWidth?: T;
-                    customizableHeight?: T;
-                    x?: T;
-                    y?: T;
-                    id?: T;
+                    widthRatio?: T;
+                    heightRatio?: T;
                   };
-              id?: T;
+            };
+        blendSetting?:
+          | T
+          | {
+              defBlendMode?: T;
+              defaultOpacity?: T;
+              preserveColors?: T;
+            };
+      };
+  printTech?:
+    | T
+    | {
+        id?: T;
+        techName?: T;
+        printConstraints?:
+          | T
+          | {
+              dpiReq?:
+                | T
+                | {
+                    minimum?: T;
+                    recommended?: T;
+                    maximum?: T;
+                  };
+              sizeLimits?:
+                | T
+                | {
+                    minWidInch?: T;
+                    minHtInch?: T;
+                    maxWidInch?: T;
+                    maxHtInch?: T;
+                  };
+              colorLimits?:
+                | T
+                | {
+                    maxColors?: T;
+                    supportsFullColor?: T;
+                  };
             };
         mockupPhotos?:
           | T
           | {
               title?: T;
               photo?: T;
-              width?: T;
-              height?: T;
-              x?: T;
-              y?: T;
-              rotation?: T;
-              skew?: T;
-              scale?: T;
+              viewAngle?: T;
+              mockupType?: T;
               photoColor?: T;
+              visibleAreas?:
+                | T
+                | {
+                    areaName?: T;
+                    visibility?: T;
+                    desgnPlacment?:
+                      | T
+                      | {
+                          coord?:
+                            | T
+                            | {
+                                x?: T;
+                                y?: T;
+                                width?: T;
+                                height?: T;
+                              };
+                          transforms?:
+                            | T
+                            | {
+                                rotation?: T;
+                                skewX?: T;
+                                skewY?: T;
+                                scaleX?: T;
+                                scaleY?: T;
+                              };
+                          renderSettings?:
+                            | T
+                            | {
+                                blendMode?: T;
+                                opacity?: T;
+                                preserveColors?: T;
+                              };
+                          surfSpecs?:
+                            | T
+                            | {
+                                wrapSettng?:
+                                  | T
+                                  | {
+                                      enableWrap?: T;
+                                      wrapAngle?: T;
+                                      wrapIntensity?: T;
+                                    };
+                                perspCorrection?:
+                                  | T
+                                  | {
+                                      enablePersp?: T;
+                                      perspIntensity?: T;
+                                    };
+                              };
+                        };
+                    id?: T;
+                  };
+              priority?: T;
+              tags?:
+                | T
+                | {
+                    tag?: T;
+                    id?: T;
+                  };
               id?: T;
             };
+        customizationAreas?:
+          | T
+          | {
+              areaId?: T;
+              areaName?: T;
+              areaType?: T;
+              canvasDimensions?:
+                | T
+                | {
+                    widthInches?: T;
+                    heightInches?: T;
+                    canvasPixelWidth?: T;
+                    canvasPixelHeight?: T;
+                    aspectRatioLocked?: T;
+                  };
+              designCanvasPhotos?:
+                | T
+                | {
+                    photo?: T;
+                    photoColor?: T;
+                    printableAreaCoordinates?:
+                      | T
+                      | {
+                          x?: T;
+                          y?: T;
+                          width?: T;
+                          height?: T;
+                        };
+                    id?: T;
+                  };
+              restrictions?:
+                | T
+                | {
+                    minElementSize?:
+                      | T
+                      | {
+                          width?: T;
+                          height?: T;
+                        };
+                    maxElements?: T;
+                  };
+              id?: T;
+            };
+      };
+  areaSyncRules?:
+    | T
+    | {
+        ruleName?: T;
+        sourceArea?: T;
+        targetAreas?:
+          | T
+          | {
+              area?: T;
+              id?: T;
+            };
+        syncType?: T;
         id?: T;
+      };
+  displayImages?:
+    | T
+    | {
+        image?: T;
+        title?: T;
+        caption?: T;
+        id?: T;
+      };
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
       };
   updatedAt?: T;
   createdAt?: T;

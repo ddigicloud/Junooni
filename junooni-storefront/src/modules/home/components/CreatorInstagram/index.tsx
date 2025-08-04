@@ -74,6 +74,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { retriveVendors } from '@lib/data/vendors'
 import { listProducts } from '@lib/data/products'
 import { listRegions } from '@lib/data/regions'
@@ -101,100 +102,312 @@ interface Vendor {
   xtwitter?: string;
 }
 
-interface CreatorInstagramProps {
-  region?: {
-    id: string;
-    currency_code: string;
-  };
-  countryCode?: string; // Add country code as an option
-}
-
-const CreatorInstagram = ({ region, countryCode = 'us' }: CreatorInstagramProps = {}) => {
+const CreatorInstagram = () => {
   const [spotlightVendor, setSpotlightVendor] = useState<Vendor | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [vendorProducts, setVendorProducts] = useState<any[]>([])
-  const [currentRegion, setCurrentRegion] = useState<any>(region)
-  
-  // Auto-scroll states
-  const scrollContainerRef = useRef(null)
-  const [isAutoScrolling, setIsAutoScrolling] = useState(true)
+  const [productLoading, setProductLoading] = useState(false)
+  const [productError, setProductError] = useState<string | null>(null)
+  const [currentRegion, setCurrentRegion] = useState<any>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [hasTriedAlternativeRegion, setHasTriedAlternativeRegion] = useState(false)
+  
+  const scrollContainerRef = useRef(null)
   const autoScrollIntervalRef = useRef(null)
 
-  // Get region using the same approach as CollectionPage
-  useEffect(() => {
-    const getRegion = async () => {
-      if (!currentRegion) {
-        try {
-          console.log("🌍 Getting regions using listRegions() - same as CollectionPage");
-          const regions = await listRegions();
-          console.log("✅ Available regions:", regions);
-          
-          if (regions && regions.length > 0) {
-            // Find region by country code, or use first available region
-            let selectedRegion = regions[0]; // Default to first region
-            
-            if (countryCode) {
-              const regionByCountry = regions.find(region => 
-                region.countries?.some(country => country.iso_2 === countryCode)
-              );
-              if (regionByCountry) {
-                selectedRegion = regionByCountry;
-                console.log(`🎯 Found region for country ${countryCode}:`, selectedRegion.id);
-              } else {
-                console.log(`⚠️ No region found for country ${countryCode}, using default:`, selectedRegion.id);
-              }
-            }
-            
-            setCurrentRegion(selectedRegion);
-          } else {
-            console.error("❌ No regions available");
-            setError("No regions available");
-          }
-        } catch (regionError) {
-          console.error("❌ Error fetching regions:", regionError);
-          setError("Failed to fetch regions");
-        }
-      }
-    };
+  // Debug logging function
+  const debugLog = (message: string, data?: any) => {
+    console.log(`[CreatorInstagram Debug] ${message}`, data || '')
+  }
 
-    getRegion();
-  }, [currentRegion, countryCode]);
-
-  useEffect(() => {
-    if (currentRegion) {
-      fetchSpotlightVendor();
-    }
-  }, [currentRegion])
-
-  const fetchSpotlightVendor = async () => {
-    console.log("🚀 Starting fetchSpotlightVendor function...")
+  // Separate function to fetch products with better error handling
+  const fetchVendorProducts = async (vendorId: string, vendorName: string, regionId: string, isRetry: boolean = false) => {
     try {
-      setLoading(true)
-      setError(null)
-      
-      console.log("🔍 Calling retriveVendors() - same as VendorList...")
-      const vendorData = await retriveVendors()
-      
-      console.log("✅ Retrieved vendor data:", vendorData)
-      
-      if (!vendorData || vendorData.length === 0) {
-        setError("No vendors found")
-        setLoading(false)
-        return
+      setProductLoading(true)
+      setProductError(null)
+      debugLog('Fetching products for vendor:', { vendorId, vendorName, regionId, isRetry })
+
+      const queryParams = {
+        fields: "*vendor,*variants.calculated_price,*variants.prices,*variants,*calculated_price,*prices",
+        limit: 100
+        // Removed vendor_id as it's not supported by the API
       }
       
-      const spotlightVendors = vendorData.filter((vendor: Vendor) => {
-        const spotlightValue = vendor.metadata?.creator_spotlight
-        return spotlightValue === true || spotlightValue === 'true'
+      debugLog('API Query Parameters:', queryParams)
+      debugLog('API Region ID:', regionId)
+
+      const productResponse = await listProducts({
+        regionId,
+        queryParams,
       })
 
-      console.log("Final spotlight vendors:", spotlightVendors)
+      debugLog('Product API response:', productResponse)
 
-      if (spotlightVendors.length > 0) {
-        const rawVendor = spotlightVendors[0]
+      const allProducts = productResponse?.response?.products || productResponse?.products || []
+      debugLog('All products received:', { count: allProducts.length, products: allProducts })
+
+      // Debug first product structure in detail
+      if (allProducts.length > 0) {
+        debugLog('=== FIRST PRODUCT STRUCTURE DEBUG ===')
+        debugLog('First product keys:', Object.keys(allProducts[0]))
+        debugLog('First product full object:', allProducts[0])
+        debugLog('First product pricing fields:', {
+          calculated_price: allProducts[0].calculated_price,
+          price: allProducts[0].price,
+          prices: allProducts[0].prices,
+          variants: allProducts[0].variants
+        })
+        if (allProducts[0].variants && allProducts[0].variants.length > 0) {
+          debugLog('First product first variant:', allProducts[0].variants[0])
+          debugLog('First product first variant pricing:', {
+            calculated_price: allProducts[0].variants[0].calculated_price,
+            price: allProducts[0].variants[0].price,
+            prices: allProducts[0].variants[0].prices
+          })
+        }
+        debugLog('=== END FIRST PRODUCT STRUCTURE DEBUG ===')
+      }
+
+      if (!allProducts.length) {
+        debugLog('No products found in API response')
+        setVendorProducts([])
+        return []
+      }
+
+      // More flexible filtering logic
+      const filteredProducts = allProducts.filter((product: any) => {
+        // Try multiple ways to match the vendor
+        const matchesVendorId = product.vendor_id === vendorId
+        const matchesVendorObjectId = product.vendor?.id === vendorId
+        const matchesVendorName = product.vendor?.name === vendorName
+        const matchesVendorHandle = product.vendor?.handle === spotlightVendor?.handle
         
+        // Special case for Junooni X
+        const isJunooniProduct = vendorName === "Junooni X" && (
+          product.vendor?.name === "Junooni X" ||
+          product.title?.toLowerCase().includes("junooni") ||
+          product.vendor?.handle?.toLowerCase().includes("junooni")
+        )
+
+        const isMatch = matchesVendorId || matchesVendorObjectId || matchesVendorName || matchesVendorHandle || isJunooniProduct
+        
+        if (isMatch) {
+          debugLog('Product matched:', {
+            productTitle: product.title,
+            productVendorId: product.vendor_id,
+            productVendorName: product.vendor?.name,
+            productVendorHandle: product.vendor?.handle,
+            matchType: {
+              matchesVendorId,
+              matchesVendorObjectId,
+              matchesVendorName,
+              matchesVendorHandle,
+              isJunooniProduct
+            }
+          })
+        }
+
+        return isMatch
+      })
+
+      debugLog('Filtered products:', { count: filteredProducts.length, products: filteredProducts })
+
+      // Transform products for display
+      const transformedProducts = filteredProducts.slice(0, 8).map((product: any, index: number) => {
+        // Better image URL handling
+        let imageUrl = "/api/placeholder/150/150"
+        if (product.thumbnail) {
+          imageUrl = product.thumbnail
+        } else if (product.images && product.images.length > 0) {
+          imageUrl = product.images[0].url || product.images[0]
+        } else if (product.image) {
+          imageUrl = product.image
+        }
+        
+        debugLog('Product image URL:', { title: product.title, imageUrl, thumbnail: product.thumbnail, images: product.images })
+        
+        // Enhanced pricing debugging
+        debugLog('=== PRICING DEBUG START ===')
+        debugLog('Product:', product.title)
+        debugLog('Raw product pricing data:', {
+          calculated_price: product.calculated_price,
+          variants: product.variants,
+          price: product.price,
+          prices: product.prices
+        })
+        
+        // Try multiple pricing sources
+        let calculatedPrice = null
+        
+        // Method 1: Direct calculated_price
+        if (product.calculated_price) {
+          calculatedPrice = product.calculated_price
+          debugLog('Found pricing method 1 (direct calculated_price):', calculatedPrice)
+          debugLog('Currency code in method 1:', calculatedPrice.currency_code)
+        }
+        
+        // Method 2: First variant's calculated_price
+        else if (product.variants && product.variants.length > 0) {
+          debugLog('Checking variants for pricing. Total variants:', product.variants.length)
+          
+          for (let i = 0; i < product.variants.length; i++) {
+            const variant = product.variants[i]
+            debugLog(`Variant ${i} pricing data:`, {
+              calculated_price: variant.calculated_price,
+              price: variant.price,
+              prices: variant.prices
+            })
+            
+            if (variant.calculated_price) {
+              calculatedPrice = variant.calculated_price
+              debugLog(`Found pricing method 2 (variant ${i} calculated_price):`, calculatedPrice)
+              debugLog(`Currency code in variant ${i}:`, calculatedPrice.currency_code)
+              break
+            }
+          }
+        }
+        
+        // Method 3: Check if there's a price field
+        else if (product.price) {
+          calculatedPrice = product.price
+          debugLog('Found pricing method 3 (direct price):', calculatedPrice)
+          debugLog('Currency code in method 3:', calculatedPrice?.currency_code)
+        }
+        
+        // Method 4: Check if there's a prices array
+        else if (product.prices && product.prices.length > 0) {
+          calculatedPrice = product.prices[0]
+          debugLog('Found pricing method 4 (prices array):', calculatedPrice)
+          debugLog('Currency code in method 4:', calculatedPrice?.currency_code)
+        }
+        
+        debugLog('Final calculated price for', product.title, ':', calculatedPrice)
+        debugLog('=== PRICING DEBUG END ===')
+        
+        const transformedProduct = {
+          id: product.id || `product-${index}`,
+          title: product.title || "Unnamed Product",
+          thumbnail: imageUrl,
+          calculated_price: calculatedPrice,
+          vendor_id: product.vendor_id,
+          vendor: product.vendor,
+          handle: product.handle
+        }
+        
+        // Debug the product URL that will be generated
+        const productUrl = transformedProduct.handle 
+          ? `/products/${transformedProduct.handle}` 
+          : `/products/${transformedProduct.id}`
+        debugLog('Product URL generated:', { title: transformedProduct.title, handle: transformedProduct.handle, id: transformedProduct.id, url: productUrl })
+        
+        return transformedProduct
+      })
+
+      debugLog('Transformed products:', transformedProducts)
+      
+      // Debug final pricing data for all products
+      debugLog('=== FINAL PRICING SUMMARY ===')
+      transformedProducts.forEach((product, index) => {
+        debugLog(`Product ${index + 1}: ${product.title}`)
+        debugLog(`- Has calculated_price:`, !!product.calculated_price)
+        debugLog(`- calculated_price value:`, product.calculated_price)
+        debugLog(`- Will display price:`, product.calculated_price ? 
+          `${product.calculated_price.currency_code === 'INR' ? '₹' : '$'}${product.calculated_price.calculated_amount?.toFixed(2)}` :
+          'Price unavailable'
+        )
+      })
+      debugLog('=== END FINAL PRICING SUMMARY ===')
+      
+      setVendorProducts(transformedProducts)
+      return transformedProducts
+
+    } catch (err: any) {
+      debugLog('Error fetching vendor products:', err)
+      
+      // Check if this is a region-related error and we haven't already tried an alternative
+      if (!isRetry && err.message && err.message.includes('Region with id') && err.message.includes('not found')) {
+        debugLog('Region not found error detected, attempting to find alternative region')
+        setHasTriedAlternativeRegion(true)
+        
+        // Try to fetch regions again and use a different one
+        try {
+          const regionsData = await listRegions()
+          const alternativeRegions = regionsData?.filter(r => r.id !== regionId && r.countries && r.countries.length > 0) || []
+          
+          if (alternativeRegions.length > 0) {
+            const newRegion = alternativeRegions[0]
+            debugLog('Trying alternative region:', newRegion)
+            setCurrentRegion(newRegion)
+            
+            // Try with the new region (with isRetry=true to prevent infinite loops)
+            return await fetchVendorProducts(vendorId, vendorName, newRegion.id, true)
+          }
+        } catch (regionErr) {
+          debugLog('Failed to fetch alternative regions:', regionErr)
+        }
+        
+        setProductError('Unable to load products: Region configuration issue. Please try refreshing the page.')
+      } else {
+        setProductError(`Failed to load products: ${err.message}`)
+      }
+      
+      setVendorProducts([])
+      return []
+    } finally {
+      setProductLoading(false)
+    }
+  }
+
+  // Main data fetching effect
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        setHasTriedAlternativeRegion(false) // Reset alternative region flag
+        debugLog('Starting data fetch...')
+
+        // Fetch regions and vendors in parallel
+        const [regionsData, vendorsData] = await Promise.all([
+          listRegions(),
+          retriveVendors()
+        ])
+
+        debugLog('Regions data:', regionsData)
+        debugLog('Vendors data:', vendorsData)
+
+        // Handle region selection with better validation
+        let selectedRegion = null
+        if (regionsData?.length > 0) {
+          // Try to find a region that's likely to work (e.g., has countries defined)
+          selectedRegion = regionsData.find(region => 
+            region.countries && region.countries.length > 0
+          ) || regionsData[0]
+          
+          debugLog('Available regions:', regionsData.map(r => ({ id: r.id, name: r.name, countries: r.countries?.length || 0 })))
+          setCurrentRegion(selectedRegion)
+        }
+
+        debugLog('Selected region:', selectedRegion)
+
+        // Find spotlight vendor
+        if (!vendorsData?.length) {
+          throw new Error("No vendors found in API response")
+        }
+
+        const spotlightVendors = vendorsData.filter((vendor: Vendor) => {
+          const spotlightValue = vendor.metadata?.creator_spotlight
+          return spotlightValue === true || spotlightValue === 'true'
+        })
+
+        debugLog('Spotlight vendors found:', spotlightVendors)
+
+        if (!spotlightVendors.length) {
+          throw new Error("No creator spotlight vendors found")
+        }
+
+        const rawVendor = spotlightVendors[0]
         const transformedVendor: Vendor = {
           id: rawVendor.id,
           name: rawVendor.name,
@@ -212,186 +425,137 @@ const CreatorInstagram = ({ region, countryCode = 'us' }: CreatorInstagramProps 
             instagram_url: rawVendor.metadata?.instagram_url || rawVendor.instagram,
             youtube_url: rawVendor.metadata?.youtube_url || rawVendor.youtube,
             twitter_url: rawVendor.metadata?.twitter_url || rawVendor.xtwitter
-          },
-          instagram: rawVendor.instagram,
-          youtube: rawVendor.youtube,
-          xtwitter: rawVendor.xtwitter
+          }
         }
-        
-        console.log("Transformed vendor:", transformedVendor)
+
+        debugLog('Transformed vendor:', transformedVendor)
         setSpotlightVendor(transformedVendor)
-      } else {
-        console.log("No spotlight vendors found")
-        setError("No creator spotlight available - Please check if there are vendors with creator_spotlight set to true in the database.")
+
+        // Fetch products after vendor is set
+        if (selectedRegion?.id) {
+          debugLog('Fetching products for vendor...')
+          await fetchVendorProducts(transformedVendor.id, transformedVendor.name, selectedRegion.id)
+        } else {
+          debugLog('No region selected, skipping product fetch')
+          setProductError('No region available for product pricing')
+        }
+
+      } catch (err: any) {
+        debugLog('Error in fetchAllData:', err)
+        setError(`Failed to load creator spotlight: ${err.message}`)
+      } finally {
+        setLoading(false)
       }
-      
-      setLoading(false)
-    } catch (err: any) {
-      console.error('Error fetching spotlight vendor:', err)
-      setError(`Failed to load creator spotlight: ${err.message}`)
-      setLoading(false)
     }
-  }
 
-  const getVendorProducts = async (vendorId: string, vendorName: string) => {
-    try {
-      console.log("🛍️ Getting products using listProducts() for vendor:", vendorName)
-      console.log("🔍 Vendor ID:", vendorId)
-      console.log("🌍 Using region:", currentRegion?.id)
-      
-      if (!currentRegion?.id) {
-        console.error("❌ No region ID available");
-        return [];
-      }
-      
-      // Use the same pattern as ProductRail component
-      const {
-        response: { products: allProducts },
-      } = await listProducts({
-        regionId: currentRegion.id,
-        queryParams: {
-          fields: "*vendor,*tags,*metadata,*variants.calculated_price",
-          limit: 100,
-        },
-      })
-      
-      console.log("✅ Successfully fetched products!")
-      console.log("📦 Total products fetched:", allProducts?.length)
-      
-      if (!allProducts || allProducts.length === 0) {
-        console.log("❌ No products found from listProducts()")
-        return []
-      }
+    fetchAllData()
+  }, [])
 
-      // Filter products for the specific vendor
-      const filteredProducts = allProducts.filter((product: any) => {
-        const matchesVendorId = product.vendor_id === vendorId
-        const matchesVendorName = product.vendor?.name === vendorName || product.vendor_name === vendorName
-        const matchesVendor = product.vendor?.id === vendorId
-        const matchesMetadata = product.metadata?.vendor_id === vendorId
-        const matchesJunoniX = vendorName === "Junooni X" && (
-          product.vendor?.name === "Junooni X" ||
-          product.vendor_name === "Junooni X" ||
-          product.title?.toLowerCase().includes("junooni") ||
-          product.description?.toLowerCase().includes("junooni")
-        )
-        
-        const isMatch = matchesVendorId || matchesVendorName || matchesVendor || matchesMetadata || matchesJunoniX
-        
-        if (isMatch) {
-          console.log("✅ Found matching product:", product.title, "for vendor:", vendorName)
-          console.log("   - Product vendor info:", {
-            vendor_id: product.vendor_id,
-            vendor_name: product.vendor_name,
-            vendor: product.vendor
-          })
-        }
-        
-        return isMatch
-      })
-
-      console.log("📋 Products after filtering for", vendorName + ":", filteredProducts.length)
-      
-      if (filteredProducts.length === 0) {
-        console.log("⚠️ No products found for vendor:", vendorName)
-        console.log("🔍 Sample product structure for debugging:")
-        if (allProducts.length > 0) {
-          console.log("First product:", allProducts[0])
-          console.log("First product vendor info:", {
-            vendor_id: allProducts[0].vendor_id,
-            vendor_name: allProducts[0].vendor_name,
-            vendor: allProducts[0].vendor
-          })
-        }
-      }
-
-      // Transform products to match expected structure
-      const transformedProducts = filteredProducts.map((product: any, index: number) => {
-        return {
-          id: product.id || `product-${index}`,
-          title: product.title || product.name || "Unnamed Product",
-          thumbnail: product.thumbnail || product.image_url || product.images?.[0]?.url,
-          images: product.images || [],
-          variants: product.variants || [],
-          calculated_price: product.calculated_price || product.variants?.[0]?.calculated_price,
-          price: product.price,
-          price_range: product.price_range,
-          vendor_id: product.vendor_id,
-          vendor: product.vendor
-        }
-      })
-      
-      console.log("🎯 Final vendor products count:", transformedProducts.length)
-      return transformedProducts
-      
-    } catch (err) {
-      console.error('❌ Error fetching vendor products:', err)
-      return []
-    }
-  }
-
+  // Separate effect to fetch products when vendor or region changes
   useEffect(() => {
-    if (spotlightVendor && currentRegion) {
-      getVendorProducts(spotlightVendor.id, spotlightVendor.name).then(setVendorProducts)
+    if (spotlightVendor && currentRegion?.id && !loading) {
+      debugLog('Vendor or region changed, refetching products...')
+      fetchVendorProducts(spotlightVendor.id, spotlightVendor.name, currentRegion.id)
     }
-  }, [spotlightVendor, currentRegion])
+  }, [spotlightVendor?.id, currentRegion?.id])
 
-  // Auto-scroll functionality
+  // Reset scroll position when products change
   useEffect(() => {
-    if (isAutoScrolling && vendorProducts.length > 0) {
+    if (vendorProducts.length > 0) {
+      setCurrentIndex(0)
+      scrollToIndex(0)
+    }
+  }, [vendorProducts.length])
+
+  // Auto-scroll effect with actual scrolling
+  useEffect(() => {
+    if (vendorProducts.length > 2) {
       autoScrollIntervalRef.current = setInterval(() => {
-        setCurrentIndex(prevIndex => {
-          const nextIndex = (prevIndex + 1) % vendorProducts.length
-          scrollToIndex(nextIndex)
-          return nextIndex
+        setCurrentIndex(prev => {
+          const newIndex = (prev + 1) % vendorProducts.length
+          // Scroll to the new index
+          scrollToIndex(newIndex)
+          return newIndex
         })
-      }, 3000)
-    }
+      }, 4000)
 
-    return () => {
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current)
+      return () => {
+        if (autoScrollIntervalRef.current) {
+          clearInterval(autoScrollIntervalRef.current)
+        }
       }
     }
-  }, [isAutoScrolling, vendorProducts.length])
+  }, [vendorProducts.length])
 
+  // Function to scroll to specific index
   const scrollToIndex = (index: number) => {
-    if (scrollContainerRef.current) {
-      const cardWidth = window.innerWidth < 768 ? 160 : 200 // Responsive card width
-      const scrollPosition = index * cardWidth
-      ;(scrollContainerRef.current as HTMLElement).scrollTo({
+    if (!scrollContainerRef.current) {
+      debugLog('Scroll container ref not available')
+      return
+    }
+    
+    const container = scrollContainerRef.current
+    // Calculate card width based on screen size
+    const isMobile = window.innerWidth < 768
+    const cardWidth = isMobile ? 144 + 8 : 208 + 16 // w-36 (144px) + gap-2 (8px) mobile, w-52 (208px) + gap-4 (16px) desktop
+    const scrollPosition = index * cardWidth
+    
+    debugLog('Scrolling to index:', { 
+      index, 
+      cardWidth, 
+      scrollPosition, 
+      isMobile, 
+      containerWidth: container.clientWidth,
+      scrollWidth: container.scrollWidth
+    })
+    
+    try {
+      container.scrollTo({
         left: scrollPosition,
         behavior: 'smooth'
       })
+    } catch (error) {
+      debugLog('Scroll error:', error)
+      // Fallback scroll method
+      container.scrollLeft = scrollPosition
     }
   }
 
   const handleManualScroll = (direction: 'left' | 'right') => {
-    setIsAutoScrolling(false)
+    // Clear auto-scroll when user manually scrolls
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current)
+    }
+    
     const newIndex = direction === 'left' 
       ? Math.max(0, currentIndex - 1)
       : Math.min(vendorProducts.length - 1, currentIndex + 1)
     
-    setCurrentIndex(newIndex)
-    scrollToIndex(newIndex)
+    debugLog('Manual scroll:', { direction, currentIndex, newIndex, vendorProductsLength: vendorProducts.length })
     
-    setTimeout(() => setIsAutoScrolling(true), 5000)
-  }
-
-  const toggleAutoScroll = () => {
-    setIsAutoScrolling(!isAutoScrolling)
+    setCurrentIndex(newIndex)
+    
+    // Use setTimeout to ensure state has updated
+    setTimeout(() => {
+      scrollToIndex(newIndex)
+    }, 10)
   }
 
   const formatFollowerCount = (count: number) => {
-    if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M`
-    } else if (count >= 1000) {
-      return `${(count / 1000).toFixed(0)}K`
-    }
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
+    if (count >= 1000) return `${(count / 1000).toFixed(0)}K`
     return count?.toString() || '0'
   }
 
-  if (loading || !currentRegion) {
+  // Retry function for products
+  const retryFetchProducts = () => {
+    if (spotlightVendor && currentRegion?.id) {
+      setHasTriedAlternativeRegion(false) // Reset the flag for retry
+      fetchVendorProducts(spotlightVendor.id, spotlightVendor.name, currentRegion.id)
+    }
+  }
+
+  if (loading) {
     return (
       <section className="py-8 md:py-16 bg-orange-50">
         <div className="container px-4 mx-auto">
@@ -408,10 +572,15 @@ const CreatorInstagram = ({ region, countryCode = 'us' }: CreatorInstagramProps 
       <section className="py-8 md:py-16 bg-orange-50">
         <div className="container px-4 mx-auto">
           <div className="text-center text-gray-600">
-            <p className="mb-2 text-sm md:text-base">{error || 'No creator spotlight available'}</p>
-            <p className="mb-4 text-xs text-gray-500 md:text-sm">
-              Please check if there are vendors with creator_spotlight set to true in the database.
-            </p>
+            <p className="text-sm md:text-base">{error || 'No creator spotlight available'}</p>
+            {process.env.NODE_ENV === 'development' && (
+              <button 
+                onClick={() => window.location.reload()} 
+                className="mt-2 text-xs text-blue-500 underline"
+              >
+                Retry (Dev Mode)
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -420,27 +589,18 @@ const CreatorInstagram = ({ region, countryCode = 'us' }: CreatorInstagramProps 
 
   return (
     <section className="py-8 md:py-16 bg-orange-50">
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          .hide-scrollbar::-webkit-scrollbar { display: none; }
-          .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
-          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-          @media (max-width: 768px) {
-            .mobile-card-width { width: 140px; }
-          }
-        `
-      }} />
       <div className="container px-4 mx-auto">
         <h2 className="mb-6 text-2xl font-bold text-center md:mb-10 md:text-3xl">Creator Spotlight</h2>
         
         <div className="flex flex-col items-center overflow-hidden bg-white shadow-lg md:flex-row rounded-xl">
           {/* Image Section */}
           <div className="w-full md:w-2/5">
-            <div className="bg-gray-200 aspect-square md:aspect-square">
+            <div className="bg-gray-200 aspect-square">
               <img 
                 src={spotlightVendor.metadata?.profile_image || spotlightVendor.logo || "/api/placeholder/600/600"} 
                 alt={`${spotlightVendor.name} spotlight`}
                 className="object-cover w-full h-full"
+                loading="lazy"
               />
             </div>
           </div>
@@ -483,7 +643,7 @@ const CreatorInstagram = ({ region, countryCode = 'us' }: CreatorInstagramProps 
                 {spotlightVendor.metadata?.instagram_followers && (
                   <div className="flex items-center">
                     <svg className="w-4 h-4 mr-2 text-gray-400 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.44z"/>
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
                     </svg>
                     <span className="text-xs text-gray-600 md:text-sm">
                       {formatFollowerCount(spotlightVendor.metadata.instagram_followers)} followers
@@ -502,7 +662,7 @@ const CreatorInstagram = ({ region, countryCode = 'us' }: CreatorInstagramProps 
                     className="p-2 text-gray-400 transition-colors rounded-full hover:text-pink-500 hover:bg-pink-50"
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.44z"/>
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z"/>
                     </svg>
                   </a>
                 )}
@@ -526,14 +686,52 @@ const CreatorInstagram = ({ region, countryCode = 'us' }: CreatorInstagramProps 
             <div className="mb-4 md:mb-6">
               <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-center sm:justify-between md:mb-4">
                 <h4 className="text-base font-semibold md:text-lg">Featured Products</h4>
-                <span className="text-xs text-gray-500 md:text-sm">
-                  {vendorProducts.length} product{vendorProducts.length !== 1 ? 's' : ''}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 md:text-sm">
+                    {vendorProducts.length} product{vendorProducts.length !== 1 ? 's' : ''}
+                  </span>
+                  {productLoading && (
+                    <div className="w-4 h-4 border-2 border-orange-500 rounded-full animate-spin border-t-transparent"></div>
+                  )}
+                </div>
               </div>
               
-              {vendorProducts.length > 0 ? (
+              {/* Product Loading State */}
+              {productLoading && (
+                <div className="flex justify-center py-6 md:py-8">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 bg-orange-100 rounded-full md:w-16 md:h-16 md:mb-4">
+                      <div className="w-6 h-6 border-2 border-orange-500 rounded-full animate-spin border-t-transparent md:w-8 md:h-8"></div>
+                    </div>
+                    <p className="text-sm text-gray-600 md:text-base">Loading products...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Product Error State */}
+              {productError && !productLoading && (
+                <div className="flex justify-center py-6 md:py-8">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 bg-red-100 rounded-full md:w-16 md:h-16 md:mb-4">
+                      <svg className="w-6 h-6 text-red-500 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <p className="mb-2 text-sm text-red-600 md:text-base">{productError}</p>
+                    <button 
+                      onClick={retryFetchProducts}
+                      className="text-xs text-blue-500 underline md:text-sm hover:text-blue-700"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Products Display */}
+              {vendorProducts.length > 0 && !productLoading ? (
                 <div className="relative">
-                  {/* Navigation Buttons - Hidden on mobile if only 1-2 products */}
+                  {/* Navigation Buttons */}
                   {vendorProducts.length > 2 && (
                     <>
                       <button
@@ -561,50 +759,120 @@ const CreatorInstagram = ({ region, countryCode = 'us' }: CreatorInstagramProps 
                   {/* Product Cards Container */}
                   <div 
                     ref={scrollContainerRef}
-                    className="flex gap-2 px-2 pb-4 overflow-x-auto md:gap-4 md:px-4 scroll-smooth hide-scrollbar"
-                    onMouseEnter={() => setIsAutoScrolling(false)}
-                    onMouseLeave={() => setIsAutoScrolling(true)}
+                    className="flex gap-2 px-2 pb-4 overflow-x-auto md:gap-4 md:px-4 scroll-smooth snap-x snap-mandatory"
+                    style={{ 
+                      scrollbarWidth: 'none', 
+                      msOverflowStyle: 'none',
+                      WebkitScrollSnapType: 'x mandatory'
+                    }}
                   >
-                    {vendorProducts.map((product, index) => (
-                      <div 
-                        key={product.id} 
-                        className={`flex-shrink-0 mobile-card-width md:w-52 p-2 md:p-3 text-center transition-all duration-300 rounded-lg cursor-pointer ${
-                          index === currentIndex 
-                            ? 'bg-gray-100 hover:bg-gray-200 transform scale-102' 
-                            : 'bg-gray-100 hover:bg-gray-200'
-                        }`}
-                      >
-                        <img 
-                          src={product.thumbnail || product.images?.[0]?.url || `/api/placeholder/150/150`} 
-                          alt={product.title}
-                          className="object-cover w-full mb-2 transition-transform rounded md:mb-3 aspect-square hover:scale-105" 
-                        />
-                        <p className="text-xs md:text-sm font-medium mb-1 md:mb-2 line-clamp-2 min-h-[2rem] md:min-h-[2.5rem]">
-                          {product.title}
-                        </p>
-                        <p className="text-xs font-medium text-gray-500">
-                          {(() => {
-                            if (product.calculated_price) {
-                              const price = product.calculated_price.calculated_amount
-                              const currencyCode = product.calculated_price.currency_code || 'INR'
-                              return `${currencyCode === 'INR' ? '₹' : '$'}${(price).toFixed(2)}`
-                            }
-                            
-                            if (product.variants?.[0]?.prices?.[0]?.amount) {
-                              const amount = typeof product.variants[0].prices[0].amount === 'number' 
-                                ? product.variants[0].prices[0].amount 
-                                : parseFloat(product.variants[0].prices[0].amount)
-                              return `€${(amount).toFixed(2)}`
-                            }
-                            
-                            return 'Price unavailable'
-                          })()}
-                        </p>
-                      </div>
-                    ))}
+                    {vendorProducts.map((product, index) => {
+                      // Construct product URL - using handle if available, otherwise fallback to id
+                      const productUrl = product.handle 
+                        ? `/products/${product.handle}` 
+                        : `/products/${product.id}`
+                      
+                      return (
+                        <Link 
+                          key={product.id}
+                          href={productUrl}
+                          className={`flex-shrink-0 w-36 md:w-52 p-2 md:p-3 text-center transition-all duration-300 rounded-lg cursor-pointer snap-start hover:shadow-md ${
+                            index === currentIndex 
+                              ? 'bg-gray-100 hover:bg-gray-200 transform scale-102' 
+                              : 'bg-gray-100 hover:bg-gray-200'
+                          }`}
+                        >
+                          <div className="relative mb-2 md:mb-3 aspect-square">
+                            <img 
+                              src={product.thumbnail} 
+                              alt={product.title}
+                              className="object-cover w-full h-full transition-transform rounded hover:scale-105"
+                              loading="lazy"
+                              onError={(e) => {
+                                debugLog('Image failed to load:', product.thumbnail)
+                                // Set fallback image on error
+                                const target = e.target as HTMLImageElement
+                                target.src = "/api/placeholder/150/150"
+                              }}
+                            />
+                            {/* Loading indicator for images */}
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded opacity-0">
+                              <div className="w-6 h-6 border-2 border-gray-300 rounded-full animate-spin border-t-transparent"></div>
+                            </div>
+                          </div>
+                          <p className="text-xs md:text-sm font-medium mb-1 md:mb-2 line-clamp-2 min-h-[2rem] md:min-h-[2.5rem] hover:text-orange-600 transition-colors">
+                            {product.title}
+                          </p>
+                          <p className="text-xs font-medium text-gray-500">
+                            {(() => {
+                              const price = product.calculated_price
+                              debugLog('=== CURRENCY DEBUG START ===')
+                              debugLog('Rendering price for', product.title)
+                              debugLog('Full price object:', price)
+                              
+                              if (price) {
+                                // Enhanced currency detection
+                                const detectCurrency = (currencyCode) => {
+                                  debugLog('Raw currency_code:', currencyCode, typeof currencyCode)
+                                  
+                                  if (!currencyCode) {
+                                    debugLog('No currency code found, defaulting to ₹')
+                                    return '₹' // Default to INR if no currency code
+                                  }
+                                  
+                                  const code = String(currencyCode).toUpperCase()
+                                  debugLog('Normalized currency code:', code)
+                                  
+                                  // More robust currency detection
+                                  if (code === 'INR' || code === 'RS' || code === 'RUPEES' || code === 'RUPEE') {
+                                    debugLog('Detected Indian currency')
+                                    return '₹'
+                                  } else if (code === 'USD' || code === 'DOLLAR' || code === 'DOLLARS') {
+                                    debugLog('Detected US currency')
+                                    return '$'
+                                  } else {
+                                    debugLog('Unknown currency code, defaulting to ₹')
+                                    return '₹' // Default to INR for unknown currencies
+                                  }
+                                }
+                                
+                                // Handle different price object structures
+                                if (price.calculated_amount !== undefined) {
+                                  const symbol = detectCurrency(price.currency_code)
+                                  const amount = price.calculated_amount.toFixed(2)
+                                  debugLog('Using calculated_amount:', amount, 'with symbol:', symbol)
+                                  return `${symbol}${amount}`
+                                } else if (price.amount !== undefined) {
+                                  const symbol = detectCurrency(price.currency_code)
+                                  const amount = price.amount.toFixed(2)
+                                  debugLog('Using amount:', amount, 'with symbol:', symbol)
+                                  return `${symbol}${amount}`
+                                } else if (typeof price === 'number') {
+                                  debugLog('Price is raw number:', price, 'defaulting to ₹')
+                                  return `₹${price.toFixed(2)}` // Default to INR for raw numbers
+                                } else if (price.original_amount) {
+                                  const symbol = detectCurrency(price.currency_code)
+                                  const amount = price.original_amount.toFixed(2)
+                                  debugLog('Using original_amount:', amount, 'with symbol:', symbol)
+                                  return `${symbol}${amount}`
+                                } else {
+                                  debugLog('Unknown price structure for', product.title, ':', price)
+                                  return 'Price unavailable'
+                                }
+                              }
+                              debugLog('=== CURRENCY DEBUG END ===')
+                              return 'Price unavailable'
+                            })()}
+                          </p>
+                        </Link>
+                      )
+                    })}
                     
                     {/* View All Card */}
-                    <div className="flex-shrink-0 p-2 text-center transition-colors border-2 border-orange-300 border-dashed rounded-lg cursor-pointer mobile-card-width md:w-48 md:p-3 bg-gradient-to-br from-orange-100 to-orange-200 hover:border-orange-400">
+                    <Link 
+                      href={spotlightVendor.metadata?.shop_url || `/creator/${spotlightVendor.handle}` || "#"}
+                      className="flex-shrink-0 p-2 text-center transition-colors border-2 border-orange-300 border-dashed rounded-lg cursor-pointer w-36 md:w-48 md:p-3 bg-gradient-to-br from-orange-100 to-orange-200 hover:border-orange-400 hover:shadow-md"
+                    >
                       <div className="flex items-center justify-center w-full h-full">
                         <div>
                           <div className="flex items-center justify-center w-8 h-8 mx-auto mb-2 bg-white rounded-full md:w-12 md:h-12 md:mb-3">
@@ -616,21 +884,32 @@ const CreatorInstagram = ({ region, countryCode = 'us' }: CreatorInstagramProps 
                           <p className="hidden text-xs text-orange-600 md:block">See complete collection</p>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   </div>
                 </div>
               ) : (
-                <div className="flex justify-center py-6 md:py-8">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 bg-gray-200 rounded-full md:w-16 md:h-16 md:mb-4">
-                      <svg className="w-6 h-6 text-gray-400 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4-8-4m16 0v10l-8 4-8-4V7" />
-                      </svg>
+                // No products found state (only show if not loading and no error)
+                !productLoading && !productError && (
+                  <div className="flex justify-center py-6 md:py-8">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 bg-gray-200 rounded-full md:w-16 md:h-16 md:mb-4">
+                        <svg className="w-6 h-6 text-gray-400 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4-8-4m16 0v10l-8 4-8-4V7" />
+                        </svg>
+                      </div>
+                      <p className="mb-2 text-sm text-gray-500 md:text-base">No products available</p>
+                      <p className="text-xs text-gray-400 md:text-sm">Check back soon for new arrivals!</p>
+                      {process.env.NODE_ENV === 'development' && (
+                        <button 
+                          onClick={retryFetchProducts}
+                          className="mt-2 text-xs text-blue-500 underline"
+                        >
+                          Retry Fetch (Dev Mode)
+                        </button>
+                      )}
                     </div>
-                    <p className="mb-2 text-sm text-gray-500 md:text-base">No products available</p>
-                    <p className="text-xs text-gray-400 md:text-sm">Check back soon for new arrivals!</p>
                   </div>
-                </div>
+                )
               )}
             </div>
 

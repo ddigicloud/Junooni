@@ -1,0 +1,14 @@
+import { Migration } from '@mikro-orm/migrations';
+
+export class Migration20250731072517 extends Migration {
+
+  override async up(): Promise<void> {
+    this.addSql(`create table if not exists "loyalty_transaction" ("id" text not null, "customer_id" text not null, "points" integer not null, "balance_after" integer not null, "event_type" text not null default 'purchase', "description" text null, "reference_id" text null, "reference_type" text null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "deleted_at" timestamptz null, constraint "loyalty_transaction_pkey" primary key ("id"));`);
+    this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_loyalty_transaction_deleted_at" ON "loyalty_transaction" (deleted_at) WHERE deleted_at IS NULL;`);
+  }
+
+  override async down(): Promise<void> {
+    this.addSql(`drop table if exists "loyalty_transaction" cascade;`);
+  }
+
+}

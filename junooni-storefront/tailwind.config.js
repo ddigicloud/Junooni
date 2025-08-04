@@ -218,7 +218,21 @@ module.exports = {
   			'slide-in': 'slide-in 1.2s cubic-bezier(.41,.73,.51,1.02)',
   			leave: 'leave 150ms ease-in forwards'
   		}
+		
   	}
   },
   plugins: [require("tailwindcss-radix")(), require("tailwindcss-animate")],
 }
+// @keyframes slide-in {
+//   from {
+//     transform: translateX(100%);
+//     opacity: 0;
+//   }
+//   to {
+//     transform: translateX(0);
+//     opacity: 1;
+//   }
+// }
+// .animate-slide-in {
+//   animation: slide-in 0.3s ease-out;
+// }

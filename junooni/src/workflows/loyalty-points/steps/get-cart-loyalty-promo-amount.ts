@@ -31,7 +31,7 @@ export const getCartLoyaltyPromoAmountStep = createStep(
       )
     }
     
-    const pointsAmount = await loyaltyModuleService.calculatePointsFromAmount(
+    const pointsAmount = await loyaltyModuleService.calculateAmountFromPoints(
       loyaltyPoints
     )
 

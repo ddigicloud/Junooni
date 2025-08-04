@@ -139,10 +139,28 @@ export default defineMiddlewares({
           })(req, res, next);
         },
         upload.array("files"),
-        authenticate(["vendor","user"], ["session", "bearer"])
+        authenticate("vendor", ["session", "bearer"], {
+          allowUnregistered: true, // Allow unauthenticated requests
+        })
        
       ],
     },
+    // {
+    //   matcher: "/vendors/me",
+    //   method: ["GET"],
+    //   middlewares: [
+    //     (req, res, next) => {
+    //       const configModule = req.scope.resolve("configModule");
+    //       cors({
+    //         origin: true,
+    //         credentials: true,
+    //       })(req, res, next);
+    //     },
+       
+    //     authenticate("vendor", ["session", "bearer"])
+       
+    //   ],
+    // },
     {
       matcher: "/vendors/check-handle",
       method: ["OPTIONS", "POST"], // Handle preflight OPTIONS and POST
@@ -196,6 +214,9 @@ export default defineMiddlewares({
     (req, res, next) => {
       const publicPaths = [
         /^\/vendors\/[^/]+\/followers$/, // Regex to match /vendors/[id]/followers
+        /^\/vendors\/check-handle$/,      // /vendors/check-handle
+        /^\/vendors\/uploads$/,  
+        //  /^\/vendors\/me$/,         // /vendors/uploads
       ];
 
       const isPublic = publicPaths.some((pattern) => pattern.test(req.path));
@@ -208,6 +229,20 @@ export default defineMiddlewares({
     }
   ]
 },
+{
+      matcher: "/store/razorpay/authorize",
+      method: "POST",
+      middlewares: [
+         (req, res, next) => {
+          const configModule = req.scope.resolve("configModule")
+          cors({
+            origin: true,
+            credentials: true,
+          })(req, res, next)
+        },
+       
+      ],
+    },
     {
       matcher: "/admin/brand",
       method: "POST",
@@ -240,10 +275,31 @@ export default defineMiddlewares({
       ],
     },
     {
+      matcher: "/store/customers/me/loyalty-points",
+      method: "GET",
+      middlewares: [
+        
+      ],
+    },
+    {
       matcher: "/store/customers/me/follow/lists",
       method: "POST",
       middlewares: [
         validateAndTransformBody(PostStoreCreateFollowList),
+      ],
+    },
+    {
+      matcher: "/store/customers/me/orders/:order_id/invoice",
+      method: "POST",
+      middlewares: [
+        (req, res, next) => {
+          const configModule = req.scope.resolve("configModule")
+          cors({
+            origin: true,
+            credentials: true,
+          })(req, res, next)
+        },
+        authenticate("customer", ["session", "bearer"]),
       ],
     },
     {
@@ -299,7 +355,7 @@ export default defineMiddlewares({
     {
       matcher: "/admin/orders/*",
       method: "POST",
-      middlewares: [authenticate("vendor", ["session", "bearer"])],
+      middlewares: [ authenticate(["vendor","user"], ["session", "bearer"])],
     },
     {
       matcher: "/admin/products",

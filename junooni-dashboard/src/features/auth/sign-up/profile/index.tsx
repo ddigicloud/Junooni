@@ -374,6 +374,7 @@ export default function CreatorProfile() {
     banking: false
   });
   const [showBankDetails, setShowBankDetails] = useState(false);
+const [isUploadingImage, setIsUploadingImage] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const coverPhotoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -391,6 +392,57 @@ export default function CreatorProfile() {
 // At the top of your component with other state declarations:
 const [showPasswordModal, setShowPasswordModal] = useState(false);
 const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+// Password reset functionality - send link to email instead of modal
+const [isSendingResetLink, setIsSendingResetLink] = useState(false);
+
+// Function to send password reset link to user's email
+const sendPasswordResetLink = useCallback(async () => {
+  setIsSendingResetLink(true);
+  
+  try {
+    // Get admin email from vendor data
+    const adminEmail = vendorData?.vendor?.admins?.[0]?.email;
+    
+    if (!adminEmail) {
+      throw new Error("Email address not found in your profile");
+    }
+    
+    console.log('Sending password reset link to:', adminEmail);
+    
+    // Send request to forgot password endpoint
+    const response = await fetch('http://localhost:9000/auth/vendor/emailpass/reset-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        identifier: adminEmail
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to send reset link");
+    }
+    
+    // Show success message
+    toast({
+      title: "Reset Link Sent",
+      description: `A password reset link has been sent to ${adminEmail}. Please check your email and click the link to change your password.`,
+    });
+    
+  } catch (error) {
+    console.error('Error sending reset link:', error);
+    toast({
+      title: "Error",
+      description: error.message || "Failed to send password reset link. Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsSendingResetLink(false);
+  }
+}, [vendorData, toast]);
 
 // Add this function to handle password changes:
 const handlePasswordSave = useCallback(async (currentPassword: string, newPassword: string) => {
@@ -686,21 +738,259 @@ const updateVendorData = (field: keyof VendorData['vendor'], value: any) => {
     });
   }
 };
-  // Handle image file upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'logo' | 'coverphoto') => {
+  // Fixed uploadImageToServer function based on the working code
+// Fix your uploadImageToServer function - change PUT to POST
+const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Promise<string> => {
+    const token = localStorage.getItem('vendorToken');
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Please select a valid image file');
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('File size must be less than 10MB');
+    }
+
+    console.log(`🔄 Uploading ${type}:`, file.name, `(${(file.size / 1024).toFixed(1)}KB)`);
+
+    const formData = new FormData();
+    formData.append('files', file);
+
+    try {
+      let response;
+      let uploadUrl = 'http://localhost:9000/vendors/uploads';
+      
+      console.log(`📡 Attempting upload to: ${uploadUrl}`);
+      
+      response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      console.log('Upload response status:', response.status);
+      
+      if (!response.ok) {
+        console.log(`❌ Primary upload failed (${response.status}), trying alternatives...`);
+        
+        const alternativeEndpoints = [
+          'http://localhost:9000/upload',
+          'http://localhost:9000/vendor/uploads'
+        ];
+        
+        let uploadSucceeded = false;
+        
+        for (const altUrl of alternativeEndpoints) {
+          try {
+            console.log(`🔄 Trying alternative endpoint: ${altUrl}`);
+            
+            const altResponse = await fetch(altUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              },
+              body: formData
+            });
+            
+            if (altResponse.ok) {
+              console.log(`✅ Alternative upload succeeded: ${altUrl}`);
+              response = altResponse;
+              uploadSucceeded = true;
+              break;
+            } else {
+              console.log(`❌ Alternative ${altUrl} failed:`, altResponse.status);
+            }
+          } catch (altError) {
+            console.log(`❌ Alternative ${altUrl} error:`, altError.message);
+          }
+        }
+        
+        if (!uploadSucceeded) {
+          const errorText = await response.text();
+          console.error('All upload endpoints failed:', errorText);
+          
+          let errorMessage;
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || errorData.error || 'Failed to upload image';
+          } catch {
+            errorMessage = `Upload failed with status ${response.status}: ${errorText}`;
+          }
+          
+          throw new Error(errorMessage);
+        }
+      }
+
+      const data = await response.json();
+      console.log('✅ Upload successful. Full response data:', JSON.stringify(data, null, 2));
+      
+      let fileUrl = null;
+      
+      if (data.files && Array.isArray(data.files) && data.files.length > 0) {
+        const fileData = data.files[0];
+        console.log('📁 File data structure:', JSON.stringify(fileData, null, 2));
+        
+        fileUrl = fileData.url || fileData.file_url || fileData.path || fileData.location;
+        
+        if (fileUrl && !fileUrl.startsWith('http')) {
+          fileUrl = `http://localhost:9000${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+        }
+      }
+      else if (data.url) {
+        fileUrl = data.url;
+      } else if (data.imageUrl) {
+        fileUrl = data.imageUrl;
+      } else if (data.file_url) {
+        fileUrl = data.file_url;
+      } else if (data.data && data.data.url) {
+        fileUrl = data.data.url;
+      } else if (data.file && typeof data.file === 'object') {
+        fileUrl = data.file.url || data.file.path;
+      } else if (data.path) {
+        fileUrl = data.path.startsWith('http') ? data.path : `http://localhost:9000${data.path}`;
+      } else if (data.location) {
+        fileUrl = data.location;
+      } else if (data.uploadedUrls && data.uploadedUrls[type]) {
+        fileUrl = data.uploadedUrls[type];
+      } else if (typeof data === 'string' && data.startsWith('http')) {
+        fileUrl = data;
+      }
+      
+      if (fileUrl) {
+        console.log(`✅ Successfully extracted ${type} URL:`, fileUrl);
+        return fileUrl;
+      } else {
+        console.error('❌ Could not extract URL from response. Available keys:', Object.keys(data));
+        console.error('Full response:', data);
+        throw new Error('Server response missing image URL');
+      }
+
+    } catch (error) {
+      console.error(`Error uploading ${type}:`, error);
+      throw error;
+    }
+  };
+
+// Updated handleImageUpload function
+const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'logo' | 'coverphoto') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // In a real implementation, you would upload the file to your server
-    // and get back a URL. For this demo, we'll use a fake URL.
-    const fakeImageUrl = URL.createObjectURL(file);
-    updateVendorData(field, fakeImageUrl);
-   
-    // Show a toast notification
-    toast({
-      title: "Image Uploaded",
-      description: `Your ${field === 'logo' ? 'logo' : 'cover photo'} has been updated.`,
-    });
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a JPG, PNG, or WebP image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload an image smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      console.log(`🔄 Starting ${field} upload...`);
+      
+      // Step 1: Upload file to server and get the URL
+      const imageUrl = await uploadImageToServer(file, field);
+      console.log(`✅ Image uploaded successfully: ${imageUrl}`);
+      
+      // Step 2: Update local state with the server URL
+      updateVendorData(field, imageUrl);
+      
+      // Step 3: IMMEDIATELY prepare the payload and save to backend
+      // We create the payload manually to ensure we're saving the correct URL
+      const token = localStorage.getItem('vendorToken');
+      
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      if (!vendorData?.vendor) {
+        throw new Error('Vendor data not available');
+      }
+
+      // Create the payload with the new image URL
+      const payload = {
+        name: vendorData.vendor.name || '',
+        handle: vendorData.vendor.handle || '',
+        creator_bio: vendorData.vendor.creator_bio || '',
+        creator_title: vendorData.vendor.creator_title || '',
+        phonenumber: vendorData.vendor.phonenumber || '',
+        // CRITICAL: Use the newly uploaded URL directly
+        logo: field === 'logo' ? imageUrl : (vendorData.vendor.logo || ''),
+        coverphoto: field === 'coverphoto' ? imageUrl : (vendorData.vendor.coverphoto || ''),
+        // Social media
+        youtube: vendorData.vendor.youtube || '',
+        instagram: vendorData.vendor.instagram || '',
+        xtwitter: vendorData.vendor.xtwitter || '',
+      };
+
+      console.log(`💾 Saving ${field} immediately with URL:`, imageUrl);
+      console.log('📤 Full payload:', payload);
+
+      // Step 4: Save to backend immediately
+      const response = await fetch('http://localhost:9000/vendors/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Save failed:', errorText);
+        throw new Error(`Failed to save ${field}: ${response.status}`);
+      }
+
+      const updatedData = await response.json();
+      console.log('✅ Backend save successful:', updatedData);
+      
+      // Step 5: Update local state with server response to ensure consistency
+      if (updatedData.vendor) {
+        setVendorData(updatedData);
+        console.log(`🔄 Local state updated with server data for ${field}`);
+      }
+      
+      toast({
+        title: "Image Uploaded",
+        description: `Your ${field === 'logo' ? 'logo' : 'cover photo'} has been updated successfully.`,
+      });
+      
+    } catch (error) {
+      console.error(`Error uploading ${field}:`, error);
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : `Failed to upload your ${field === 'logo' ? 'logo' : 'cover photo'}. Please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
+      
+      // Clear the input so the same file can be selected again if needed
+      if (e.target) {
+        e.target.value = '';
+      }
+    }
   };
 
     console.log('vendor data:', vendorData);
@@ -1038,16 +1328,24 @@ const openChatwoot = () => {
                   <CardContent className="pt-6 pb-8">
                     {/* Brand display with cover photo and logo */}
                     <div className="mb-8">
-                      <div className="relative bg-gray-100 h-58 rounded-xl">
+                      <div className="relative bg-gray-100 h-64 rounded-xl">
                         {vendorData.vendor.coverphoto ? (
                           <img
                             src={vendorData.vendor.coverphoto}
                             alt="Cover Photo"
                             className="object-cover w-full h-full"
+                            style={{ 
+                              objectPosition: 'center center',
+                              aspectRatio: '16/9'
+                            }}
                           />
                         ) : (
                           <div className="absolute inset-0 z-10 flex items-center justify-center text-gray-400">
-                            No cover photo
+                            <div className="text-center">
+                              <IconCamera className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                              <p>No cover photo</p>
+                              <p className="text-sm">Recommended size: 1600x900px</p>
+                            </div>
                           </div>
                         )}
                        
@@ -1056,9 +1354,19 @@ const openChatwoot = () => {
                             <Button
                               className="flex items-center gap-1 text-white bg-black/50 hover:bg-black/70"
                               onClick={() => coverPhotoInputRef.current?.click()}
+                              disabled={isUploadingImage}
                             >
-                              <IconCamera className="w-4 h-4" />
-                              <span>{vendorData.vendor.coverphoto ? 'Change Cover' : 'Add Cover'}</span>
+                              {isUploadingImage ? (
+                                <div className="w-4 h-4 border-2 border-white rounded-full animate-spin border-b-transparent" />
+                              ) : (
+                                <IconCamera className="w-4 h-4" />
+                              )}
+                              <span>
+                                {isUploadingImage 
+                                  ? 'Uploading...' 
+                                  : (vendorData.vendor.coverphoto ? 'Change Cover' : 'Add Cover')
+                                }
+                              </span>
                             </Button>
                             <input
                               type="file"
@@ -1066,6 +1374,7 @@ const openChatwoot = () => {
                               className="hidden"
                               accept="image/*"
                               onChange={e => handleImageUpload(e, 'coverphoto')}
+                              disabled={isUploadingImage}
                             />
                           </div>
                         )}
@@ -1084,10 +1393,15 @@ const openChatwoot = () => {
                             {editMode.profile && (
                               <div className="absolute bottom-0 right-0">
                                 <button
-                                  className="p-2 text-white bg-orange-600 rounded-full shadow-md"
+                                  className="p-2 text-white bg-orange-600 rounded-full shadow-md disabled:opacity-50"
                                   onClick={() => logoInputRef.current?.click()}
+                                  disabled={isUploadingImage}
                                 >
-                                  <IconCamera className="w-4 h-4" />
+                                  {isUploadingImage ? (
+                                    <div className="w-4 h-4 border-2 border-white rounded-full animate-spin border-b-transparent" />
+                                  ) : (
+                                    <IconCamera className="w-4 h-4" />
+                                  )}
                                 </button>
                                 <input
                                   type="file"
@@ -1095,6 +1409,7 @@ const openChatwoot = () => {
                                   className="hidden"
                                   accept="image/*"
                                   onChange={(e) => handleImageUpload(e, 'logo')}
+                                  disabled={isUploadingImage}
                                 />
                               </div>
                             )}
@@ -1940,7 +2255,7 @@ const openChatwoot = () => {
                                   </div>
                                 ) : (
                                   <p className="text-sm text-gray-500">
-                                    {vendorData.vendor.admins[0]?.first_name || 'Not set'}
+                                    {vendorData?.vendor?.admins?.[0]?.first_name || 'Not set'}
                                   </p>
                                 )}
                               </div>
@@ -2019,7 +2334,7 @@ const openChatwoot = () => {
                                   </div>
                                 ) : (
                                   <p className="text-sm text-gray-500">
-                                    {vendorData.vendor.admins[0]?.last_name || 'Not set'}
+                                    {vendorData?.vendor?.admins?.[0]?.last_name || 'Not set'}
                                   </p>
                                 )}
                               </div>
@@ -2093,7 +2408,7 @@ const openChatwoot = () => {
                               <h3 className="font-medium">Password</h3>
                               <p className="text-sm text-gray-500">Secure your account with a strong password</p>
                             </div>
-                            <Button variant="outline" className="h-8"  onClick={() => setShowPasswordModal(true)} >Change</Button>
+                            <Button variant="outline" className="h-8"  onClick={sendPasswordResetLink} >{isSendingResetLink ? "Sending..." : "Change"}</Button>
                           </div>
                          
                           {/* <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">

@@ -86,6 +86,52 @@ export async function getOrSetCart(countryCode: string) {
   return cart
 }
 
+export async function applyLoyaltyPointsOnCart() {
+  const cartId = await getCartId()
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  return await sdk.client.fetch<{
+    cart: HttpTypes.StoreCart & {
+      promotions: HttpTypes.StorePromotion[]
+    }
+  }>(`/store/carts/${cartId}/loyalty-points`, {
+    method: "POST",
+    headers,
+  })
+  .then(async (result) => {
+    const cartCacheTag = await getCacheTag("carts")
+    revalidateTag(cartCacheTag)
+
+    return result
+  })
+}
+export async function removeLoyaltyPointsOnCart() {
+  const cartId = await getCartId()
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+  const next = {
+    ...(await getCacheOptions("carts")),
+  }
+
+  return await sdk.client.fetch<{
+    cart: HttpTypes.StoreCart & {
+      promotions: HttpTypes.StorePromotion[]
+    }
+  }>(`/store/carts/${cartId}/loyalty-points`, {
+    method: "DELETE",
+    headers,
+  })
+  .then(async (result) => {
+    const cartCacheTag = await getCacheTag("carts")
+    revalidateTag(cartCacheTag)
+
+    return result
+  })
+}
+
 export async function updateCart(data: HttpTypes.StoreUpdateCart) {
   const cartId = await getCartId()
 

@@ -44,7 +44,8 @@ import {
   IconCalendar,
   IconGift,
   IconEye,
-  IconEyeOff
+  IconEyeOff,
+  IconLogout
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
@@ -216,124 +217,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                 You're about to join a thriving community of creative entrepreneurs. Let's set up your profile together.
               </p>
             </div>
-            {/* <div className="mb-8 text-center">
-              <div className="flex items-center justify-center w-24 h-24 mx-auto mb-4 rounded-full" style={{ background: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.secondary} 100%)` }}>
-                <IconUser className="w-12 h-12 text-white" />
-              </div>
-              <h1 className="mb-2 text-3xl font-bold" style={{ color: brandColors.primary }}>Welcome to Junooni!</h1>
-              <p className="max-w-xl mx-auto text-lg" style={{ color: brandColors.textSecondary }}>
-                Let's get started by setting up your admin profile.
-              </p>
-            </div> */}
-            
-            {/* New Admin Information Form
-      <div className="max-w-md p-6 mx-auto bg-white shadow-lg rounded-xl">
-        <h3 className="mb-4 text-xl font-bold" style={{ color: brandColors.secondary }}>Admin Information</h3>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block mb-1 text-sm font-medium">Email Address</label>
-            <div className="flex items-center px-3 py-2 bg-gray-100 rounded-md">
-              <IconMail className="w-5 h-5 mr-2 text-gray-500" />
-              <span className="text-gray-700">
-                {localStorage.getItem('vendorEmail') || "vendor@example.com"}
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-gray-500">This email will be used for account notifications</p>
-          </div>
-          
-          <div>
-            <div className="flex justify-between mb-1">
-              <label className="block text-sm font-medium">First Name <span className="text-red-500">*</span></label>
-              <span className="text-xs text-gray-400">Required</span>
-            </div>
-            <input
-              id="admin-first-name"
-              type="text"
-              value={adminFirstName}
-              onChange={(e) => setAdminFirstName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
-              style={{
-                borderColor: adminFirstName ? 'rgb(229, 231, 235)' : brandColors.error,
-                focusRing: brandColors.primary
-              }}
-              placeholder="Enter your first name"
-            />
-            {!adminFirstName && (
-              <p className="mt-1 text-sm" style={{ color: brandColors.error }}>First name is required</p>
-            )}
-          </div>
-
-          <div>
-            <div className="flex justify-between mb-1">
-              <label className="block text-sm font-medium">Last Name <span className="text-red-500">*</span></label>
-              <span className="text-xs text-gray-400">Required</span>
-            </div>
-            <input
-              id="admin-last-name"
-              type="text"
-              value={adminLastName}
-              onChange={(e) => setAdminLastName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
-              style={{
-                borderColor: adminLastName ? 'rgb(229, 231, 235)' : brandColors.error,
-                focusRing: brandColors.primary
-              }}
-              placeholder="Enter your last name"
-            />
-            {!adminLastName && (
-              <p className="mt-1 text-sm" style={{ color: brandColors.error }}>Last name is required</p>
-            )}
-          </div>
-
-        <div className="flex justify-center pt-4">
-          <button
-            onClick={() => {
-              // First update the local state to vendorData
-              const updatedVendorData = { ...vendorData };
-              const userEmail = localStorage.getItem('vendorEmail') || 'vendor@example.com';
-              
-              if (!updatedVendorData.vendor.admin || !Array.isArray(updatedVendorData.vendor.admin) || updatedVendorData.vendor.admin.length === 0) {
-                updatedVendorData.vendor.admin = [{
-                  email: userEmail,
-                  first_name: adminFirstName,
-                  last_name: adminLastName
-                }];
-              } else {
-                updatedVendorData.vendor.admin[0] = {
-                  ...updatedVendorData.vendor.admin[0],
-                  email: userEmail,
-                  first_name: adminFirstName,
-                  last_name: adminLastName
-                };
-              }
-              
-              // Update parent state
-              setVendorData(updatedVendorData);
-              
-              // Then call the API
-              saveAdminData(adminFirstName, adminLastName);
-            }}
-            className="px-4 py-2 text-white rounded-md"
-            style={{ 
-              background: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.secondary} 100%)`,
-            }}
-            disabled={!adminFirstName || !adminLastName}
-          >
-            Save Admin Information
-          </button>
-        </div>
-      </div>
-        
-        <div className="p-3 mt-4 border border-blue-100 rounded-md bg-blue-50">
-          <div className="flex items-start">
-            <IconInfoCircle className="w-5 h-5 mt-0.5 mr-2 text-blue-500" />
-            <p className="text-sm text-blue-700">
-              This information will be used for all official communications and documents.
-            </p>
-          </div>
-        </div>
-      </div> */}
 
             <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
               <div className="flex flex-col items-center p-4 text-center transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl">
@@ -419,7 +302,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         );
 
         case "basic-info":
-
           return (
             <div className="py-4 space-y-6">
               <div className="flex items-center p-4 mb-6 border border-blue-100 rounded-lg bg-blue-50">
@@ -430,8 +312,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               </div>
               
               <div className="space-y-6">
-                {/* Email Display Section - Updated for Existing Vendors */}
-                {/* Email Display Section - Works without external isLoading state */}
+                {/* Email Display Section */}
                 <div>
                   <div className="flex justify-between mb-2">
                     <label className="block text-sm font-medium">Your Email ID <span className="text-red-500">*</span></label>
@@ -467,18 +348,11 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                       ? vendorData.vendor.admin[0].first_name || '' 
                       : ''}
                     onChange={(e) => {
-                      // Create a deep copy of the current vendor data
                       const updatedVendorData = { ...vendorData };
-                      
-                      // Ensure admin array is properly initialized
                       if (!updatedVendorData.vendor.admin || !Array.isArray(updatedVendorData.vendor.admin) || updatedVendorData.vendor.admin.length === 0) {
                         updatedVendorData.vendor.admin = [{ email: localStorage.getItem('vendorEmail') || 'vendor@example.com' }];
                       }
-                      
-                      // Update the first_name property
                       updatedVendorData.vendor.admin[0].first_name = e.target.value;
-                      
-                      // Set the updated vendor data
                       setVendorData(updatedVendorData);
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
@@ -512,18 +386,11 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                       ? vendorData.vendor.admin[0].last_name || '' 
                       : ''}
                     onChange={(e) => {
-                      // Create a deep copy of the current vendor data
                       const updatedVendorData = { ...vendorData };
-                      
-                      // Ensure admin array is properly initialized
                       if (!updatedVendorData.vendor.admin || !Array.isArray(updatedVendorData.vendor.admin) || updatedVendorData.vendor.admin.length === 0) {
                         updatedVendorData.vendor.admin = [{ email: localStorage.getItem('vendorEmail') || 'vendor@example.com' }];
                       }
-                      
-                      // Update the last_name property
                       updatedVendorData.vendor.admin[0].last_name = e.target.value;
-                      
-                      // Set the updated vendor data
                       setVendorData(updatedVendorData);
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
@@ -572,27 +439,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                   updateVendorData={updateVendorData} 
                   brandColors={brandColors} 
                 />
-
-                {/* <div>
-                  <div className="flex justify-between mb-2">
-                    <label className="block text-sm font-medium">Vendor's Handle <span className="text-red-500">*</span></label>
-                    <span className="text-xs text-gray-400">Required</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={vendorData.vendor.handle || ''}
-                    onChange={(e) => updateVendorData('handle', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
-                    style={{
-                      borderColor: vendorData.vendor.handle ? 'rgb(229, 231, 235)' : brandColors.error,
-                      focusRing: brandColors.primary
-                    }}
-                    placeholder="Enter your handle"
-                  />
-                  {!vendorData.vendor.handle && (
-                    <p className="mt-1 text-sm" style={{ color: brandColors.error }}>Vendor's handle is required</p>
-                  )}
-                </div> */}
                 
                 <div className="flex flex-col gap-6 md:flex-row">
                   <div className="w-full">
@@ -615,7 +461,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                           <div 
                             className="absolute p-1 bg-white rounded-full shadow-md cursor-pointer top-2 right-2"
                             onClick={(e) => {
-                              e.stopPropagation(); // Prevent triggering the parent div's click
+                              e.stopPropagation();
                               updateVendorData('logo', null);
                             }}
                           >
@@ -625,7 +471,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                             <button
                               className="px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-80 hover:opacity-100"
                               onClick={(e) => {
-                                e.stopPropagation(); // Prevent triggering the parent div's click
+                                e.stopPropagation();
                                 document.getElementById('logo-upload').click();
                               }}
                             >
@@ -680,7 +526,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                           <div 
                             className="absolute p-1 bg-white rounded-full shadow-md cursor-pointer top-2 right-2"
                             onClick={(e) => {
-                              e.stopPropagation(); // Prevent triggering the parent div's click
+                              e.stopPropagation();
                               updateVendorData('coverphoto', null);
                             }}
                           >
@@ -709,7 +555,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                           if (e.target.files && e.target.files[0]) {
                             handleFileUpload(e.target.files[0], 'coverphoto');
                           }
-                          // Clear the input value so the same file can be selected again
                           e.target.value = '';
                         }}
                       />
@@ -818,7 +663,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                     ? "Let's add your business details for tax and verification purposes."
                     : "We use this information for tax reporting and verification purposes only."}
                 </p>
-                  {/* <p className="text-sm font-medium text-amber-800">We use this information for tax reporting and verification purposes only.</p> */}
                   <p className="mt-1 text-xs text-amber-700">All your business information is securely stored and protected.</p>
                 </div>
               </div>
@@ -942,7 +786,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                     <option value="Tamil Nadu">Tamil Nadu</option>
                     <option value="Telangana">Telangana</option>
                     <option value="Uttar Pradesh">Uttar Pradesh</option>
-                    {/* Additional states would be here */}
                   </select>
                 </div>
                 
@@ -964,23 +807,20 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
       case "banking-info":
         console.log('Rendering banking-info with vendorData:', vendorData);
   
-        // True loading state - only if vendorData is completely null
         if (vendorData === null) {
           return <div>Loading...</div>;
         }
         
-        // For missing vendor structure, initialize it rather than showing loading
         if (!vendorData.vendor) {
           vendorData = {
             vendor: {
-              // id: "",
               handle: "",
               name: "",
               bank_account_holder_name: null,
               bank_account_number: null,
               bank_account_ifsc_code: null,
               bank_name: null,
-              bank_account_type: "Saving", // Default value
+              bank_account_type: "Saving",
               cancelled_checkque: null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -988,12 +828,10 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
           };
         }
         
-        // Ensure admin property exists and is properly structured
         if (!vendorData.vendor.admin || !Array.isArray(vendorData.vendor.admin) || vendorData.vendor.admin.length === 0) {
           console.log('Admin data missing, initializing...');
           const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
           
-          // Initialize admin array with empty data
           vendorData.vendor.admin = [{
             email: userEmail,
             first_name: '',
@@ -1012,7 +850,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                   ? "Please provide your banking details so we can send your earnings."
                   : "Your banking details are needed for payouts"}
               </p>
-                {/* <p className="text-sm font-medium text-blue-800">Your banking details are needed for payouts</p> */}
                 <p className="mt-1 text-xs text-blue-700">We'll transfer your earnings to this account when customers purchase your products</p>
               </div>
             </div>
@@ -1130,7 +967,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                       <div 
                         className="absolute p-1 bg-white rounded-full shadow-md cursor-pointer top-2 right-2"
                         onClick={(e) => {
-                          e.stopPropagation(); // Prevent triggering the parent div's click
+                          e.stopPropagation();
                           updateVendorData('cancelled_checkque', null);
                         }}
                       >
@@ -1148,7 +985,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                       <p className="mt-1 text-xs text-gray-500">Supports JPG, PNG, PDF (Max: 5MB)</p>
                     </div>
                   )}
-                  {/* Hidden file input for cheque upload */}
                   <input
                     id="cheque-upload"
                     type="file"
@@ -1159,7 +995,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                       if (e.target.files && e.target.files[0]) {
                         handleFileUpload(e.target.files[0], 'cancelled_checkque');
                       }
-                      // Clear the input value so the same file can be selected again
                       e.target.value = '';
                     }}
                   />
@@ -1184,35 +1019,29 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
       case "creator-profile":
         console.log('Rendering creator-profile with vendorData:', vendorData);
   
-        // True loading state - only if vendorData is completely null
         if (vendorData === null) {
           return <div>Loading...</div>;
         }
         
-        // For missing vendor structure, initialize it rather than showing loading
         if (!vendorData.vendor) {
           vendorData = {
             vendor: {
-              // id: "new",
               handle: "",
               name: "",
               logo: null,
               coverphoto: null,
               creator_bio: null,
               creator_title: null,
-              //creator_category: null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             }
           };
         }
         
-        // Ensure admin property exists and is properly structured
         if (!vendorData.vendor.admin || !Array.isArray(vendorData.vendor.admin) || vendorData.vendor.admin.length === 0) {
           console.log('Admin data missing, initializing...');
           const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
           
-          // Initialize admin array with empty data
           vendorData.vendor.admin = [{
             email: userEmail,
             first_name: '',
@@ -1222,9 +1051,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         return (
           <div className="py-4 space-y-6">
             <div className="p-4 mb-6 bg-white border-l-4 rounded-lg shadow-sm" style={{ borderLeftColor: brandColors.primary }}>
-              {/* <p className="text-sm">
-                <span className="font-semibold">Make your profile stand out!</span> This information will be visible to customers browsing the marketplace.
-              </p> */}
               <p className="text-sm">
                 {!vendorData.vendor.id 
                   ? "Let's create your creator profile! This is how customers will discover your unique brand story."
@@ -1270,7 +1096,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                   <option value="Gaming">Gaming</option>
                   <option value="Influencer">Influencer</option>
                   <option value="other">Other</option>
-                {/* More categories would be here */}
               </select>
             </div>
             
@@ -1343,16 +1168,13 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
       case "final-review":
         console.log('Rendering final-review with vendorData:', vendorData);
   
-        // True loading state - only if vendorData is completely null
         if (vendorData === null) {
           return <div>Loading...</div>;
         }
         
-        // For missing vendor structure, initialize it rather than showing loading
         if (!vendorData.vendor) {
           vendorData = {
             vendor: {
-              // id: "new",
               handle: "",
               name: "",
               logo: null,
@@ -1381,12 +1203,10 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
           };
         }
         
-        // Ensure admin property exists and is properly structured
         if (!vendorData.vendor.admin || !Array.isArray(vendorData.vendor.admin) || vendorData.vendor.admin.length === 0) {
           console.log('Admin data missing, initializing...');
           const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
           
-          // Initialize admin array with empty data
           vendorData.vendor.admin = [{
             email: userEmail,
             first_name: '',
@@ -1414,8 +1234,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                 const isCompleted = stepCompletion[step.id];
                 const StepIcon = step.icon;
                 
-                // For new vendors with no data yet, we show sections as incomplete
-                // but still enable them to proceed if they've filled in required fields
                 const isNewVendor = !vendorData.vendor.id;
           
                 return (
@@ -1560,18 +1378,16 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               })}
             </div>
             
-             {/* Updated checkbox with state */}
              <div className="p-4 mt-8 bg-white border border-gray-200 rounded-lg">
               <label className="flex items-start cursor-pointer">
               <input
                 type="checkbox"
                 id="terms-checkbox"
-                className="w-5 h-5 mt-1 mr-3" // Made slightly larger
+                className="w-5 h-5 mt-1 mr-3"
                 style={{ accentColor: brandColors.primary, cursor: 'pointer' }}
                 checked={termsAgreed}
                 onChange={() => {
                   console.log("Checkbox clicked - current value:", !termsAgreed);
-                  // Use direct toggle approach
                   setTermsAgreed(!termsAgreed);
                 }}
               />
@@ -1617,11 +1433,15 @@ export default function ImprovedCreatorOnboarding() {
   const [currentStep, setCurrentStep] = useState("welcome");
   const [progress, setProgress] = useState(0);
   const [termsAgreed, setTermsAgreed] = useState(false);
-  // Add these with your other state variables in ImprovedCreatorOnboarding function
-const [isUploading, setIsUploading] = useState(false);
-const [uploadType, setUploadType] = useState<string | null>(null);
-  // const [logoFile, setLogoFile] = useState<File | null>(null);
-  // const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadType, setUploadType] = useState<string | null>(null);
+
+  const [pendingFiles, setPendingFiles] = useState({
+    logo: null,
+    coverphoto: null,
+    cancelled_checkque: null
+  });
+  
   const [vendorData, setVendorData] = useState<ApiVendorResponse | null>(null);
   const [stepCompletion, setStepCompletion] = useState({
     "welcome": true,
@@ -1636,97 +1456,6 @@ const [uploadType, setUploadType] = useState<string | null>(null);
   
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Add this to your ImprovedCreatorOnboarding component before any function references it
-  // const saveAdminData = async (firstName, lastName) => {
-  //   try {
-  //     // Use the parameters instead of trying to get values from DOM
-  //     const email = localStorage.getItem('vendorEmail') || 'vendor@example.com';
-      
-  //     console.log('Admin data to save:', { firstName, lastName, email });
-      
-  //     // Validate data
-  //     if (!firstName || !lastName) {
-  //       throw new Error('First name and last name are required');
-  //     }
-      
-  //     // Get token and prepare API request
-  //     const token = localStorage.getItem('vendorToken');
-  //     if (!token) {
-  //       throw new Error('Authentication token not found. Please log in again.');
-  //     }
-      
-  //      // Get vendor name from current state if available
-  //   const vendorName = vendorData?.vendor?.name || "New Vendor11"; // Provide a default name
-
-  //   const vendorHandle = vendorData?.vendor?.handle || "New Vendor handle11"; // Provide a default name
-
-  //     // Prepare API payload - simplified to just include admin data
-  //     const payload = {
-  //       name: vendorName, // Add the required name field
-  //       handle: vendorHandle, // Add the required name field
-  //       admin: {
-  //         email: email,
-  //         first_name: firstName,
-  //         last_name: lastName
-  //       }
-  //     };
-      
-  //     console.log('Sending admin data:', payload);
-      
-  //     // Determine if this is a new vendor
-  //     const isNewVendor = vendorData?.vendor?.id === "new";
-      
-  //     // Choose the endpoint based on whether it's a new vendor
-  //     const endpoint = 'http://localhost:9000/vendors';
-      
-  //     console.log('Using endpoint:', endpoint);
-      
-  //     const response = await fetch(endpoint, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': `Bearer ${token}`
-  //       },
-  //       body: JSON.stringify(payload)
-  //     });
-      
-  //     if (!response.ok) {
-  //       const errorText = await response.text();
-  //       console.error('API error response:', errorText);
-  //       throw new Error(`API error: ${response.status} - ${errorText}`);
-  //     }
-      
-  //     const responseData = await response.json();
-  //     console.log('Admin created successfully:', responseData);
-      
-  //     // If we created a new vendor, update the ID in vendorData
-  //     if (responseData.vendor && responseData.vendor.id) {
-  //       setVendorData(prevData => ({
-  //         ...prevData,
-  //         vendor: {
-  //           ...prevData.vendor,
-  //           id: responseData.vendor.id
-  //         }
-  //       }));
-  //     }
-      
-  //     toast({
-  //       title: "Success",
-  //       description: "Admin information saved successfully",
-  //     });
-      
-  //     return responseData;
-  //   } catch (error) {
-  //     console.error('Error saving admin data:', error);
-  //     toast({
-  //       title: "Error",
-  //       description: error.message || "Failed to save admin information",
-  //       variant: "destructive",
-  //     });
-  //     return null;
-  //   }
-  // };
 
   // Add this useEffect to check for step parameter in URL
 useEffect(() => {
@@ -1941,8 +1670,9 @@ const setupNewVendorProfile = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         }
+        
       });
-      
+      console.log ("token", token)
       // Handle 401 errors as new vendor cases
       if (response.status === 401) {
         console.log('Got 401 Unauthorized response, handling as new vendor');
@@ -2074,8 +1804,6 @@ useEffect(() => {
   }
 }, [shouldAutoSave]);
 
-
-
 // For form field changes, use this debounced approach
 const handleFormChange = () => {
   // Clear any pending auto-save
@@ -2089,7 +1817,6 @@ const handleFormChange = () => {
   return () => clearTimeout(timer);
 };
 
-// Add this new function in your ImprovedCreatorOnboarding component
 // 1. First, create a utility function to sanitize vendor data
 const sanitizeVendorData = (vendorData) => {
   // Make a deep copy to avoid modifying the original
@@ -2133,118 +1860,226 @@ const sanitizeVendorData = (vendorData) => {
       return null;
     }
     
-    // Create a completely new object to send to the API
-    const updateData = {};
-    
-    // Copy specific fields from vendorData.vendor to updateData
-    const fieldsToInclude = [
-      'name', 'handle', 'logo', 'coverphoto', 'phonenumber',
-      'youtube', 'instagram', 'xtwitter', 'othersocial',
-      'GSTIN', 'companyname', 'pan_number', 'city', 'pincode', 'state', 'address', 'tan_number',
-      'bank_account_holder_name', 'bank_account_number', 'bank_account_ifsc_code', 'bank_name', 
-      'bank_account_type', 'cancelled_checkque', 'creator_bio', 'creator_title', 'creator_category'
-    ];
-    
-    // Copy each field and ensure it's a string if needed
-    fieldsToInclude.forEach(field => {
-      // Use empty string for null/undefined values
-      updateData[field] = vendorData.vendor[field] === null || 
-                          vendorData.vendor[field] === undefined ? 
-                          '' : vendorData.vendor[field];
-    });
-    
-    // Determine if this is a new vendor (no ID means it hasn't been created yet)
-    // const isNewVendor = !vendorData.vendor.id;
-    const isNewVendor = !vendorData.vendor.id || vendorData.vendor.id === null;
-    console.log(`Vendor status: ${isNewVendor ? 'NEW' : 'EXISTING'}, ID: ${vendorData.vendor.id || 'none'}`);
-    
-    let method, url;
-    
-    // CREATION LOGIC: New vendor on basic-info page
-    if (isNewVendor && currentStep === "basic-info") {
-      console.log('🔵 CREATING NEW VENDOR - using POST to /vendors');
-      method = 'POST';
-      url = 'http://localhost:9000/vendors';
+    // Check if vendor exists on server
+    let serverVendor = null;
+    try {
+      const checkResponse = await fetch('http://localhost:9000/vendors/me', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
-      // CRITICAL: For vendor creation, ALWAYS include admin data
-      if (vendorData.vendor.admin && 
-          Array.isArray(vendorData.vendor.admin) && 
-          vendorData.vendor.admin.length > 0) {
+      if (checkResponse.ok) {
+        serverVendor = await checkResponse.json();
+        console.log('✅ Server has vendor:', serverVendor.vendor?.id);
+      }
+    } catch (checkError) {
+      console.log('❌ Error checking server vendor:', checkError.message);
+    }
+    
+    const hasServerVendor = serverVendor && serverVendor.vendor && serverVendor.vendor.id;
+    
+    // Upload pending files first
+    const uploadedUrls = await uploadPendingFiles();
+    
+    // Prepare data payload with backend-compatible structure
+    const preparePayload = (isCreation = false) => {
+      const rawPayload = {};
+      
+      // Different fields for creation vs update
+      const fieldsToInclude = isCreation ? [
+        'name', 'handle', 'logo', 'coverphoto', 'phonenumber',
+        'youtube', 'instagram', 'xtwitter', 'othersocial',
+        'GSTIN', 'companyname', 'pan_number', 'city', 'pincode', 'state', 'address', 'tan_number',
+        'bank_account_holder_name', 'bank_account_number', 'bank_account_ifsc_code', 'bank_name', 
+        'bank_account_type', 'cancelled_checkque', 'creator_bio', 'creator_title', 'creator_category'
+      ] : [
+        'name', 'handle', 'logo', 'coverphoto', 'phonenumber',
+        'youtube', 'instagram', 'xtwitter', 'othersocial',
+        'GSTIN', 'gst_verification_status', 'companyname', 'pan_number', 'city', 'pincode', 'state', 'address', 'tan_number',
+        'bank_account_holder_name', 'bank_account_number', 'bank_account_ifsc_code', 'bank_name', 
+        'bank_account_type', 'cancelled_checkque', 'creator_bio', 'creator_title', 'creator_category'
+      ];
+      
+      fieldsToInclude.forEach(field => {
+        let value = vendorData.vendor[field];
         
-        updateData.admin = {
-          email: vendorData.vendor.admin[0].email || '',
-          first_name: vendorData.vendor.admin[0].first_name || '',
-          last_name: vendorData.vendor.admin[0].last_name || ''
+        if (uploadedUrls[field]) {
+          value = uploadedUrls[field];
+          updateVendorData(field, uploadedUrls[field]);
+        } else if (['logo', 'coverphoto', 'cancelled_checkque'].includes(field)) {
+          if (typeof value === 'string' && value.startsWith('data:')) {
+            value = serverVendor?.vendor?.[field] || '';
+          }
+        }
+        
+        rawPayload[field] = value;
+      });
+      
+      // Validate and clean the data
+      const cleanedPayload = validateAndCleanVendorData(rawPayload);
+      
+      // Add admin data - CRUCIAL: only add the correct field for each operation
+      const cleanedAdminData = validateAndCleanAdminData(vendorData.vendor.admin);
+      
+      if (isCreation) {
+        // For creation, backend expects "admin" as single object (NOT array)
+        if (cleanedAdminData) {
+          console.log('🔧 Setting admin for creation (object):', cleanedAdminData);
+          cleanedPayload.admin = cleanedAdminData; // OBJECT, not [cleanedAdminData]
+        } else {
+          // If no admin data, we must provide it for creation
+          const userEmail = localStorage.getItem('vendorEmail') || 
+                            (vendorData.vendor.admin && vendorData.vendor.admin[0] ? vendorData.vendor.admin[0].email : '');
+          const fallbackAdmin = {
+            email: userEmail,
+            first_name: vendorData.vendor.admin?.[0]?.first_name || '',
+            last_name: vendorData.vendor.admin?.[0]?.last_name || ''
+          };
+          console.log('🔧 Setting fallback admin for creation (object):', fallbackAdmin);
+          cleanedPayload.admin = fallbackAdmin;
+        }
+        // Make sure we don't include 'admins' for creation
+        delete cleanedPayload.admins;
+        console.log('🔧 Final payload admin field type:', typeof cleanedPayload.admin);
+        console.log('🔧 Final payload admin is array?', Array.isArray(cleanedPayload.admin));
+      } else {
+        // For updates, we don't include admin in main payload - handle separately
+        // Remove both admin and admins from update payload
+        delete cleanedPayload.admin;
+        delete cleanedPayload.admins;
+      }
+      
+      // SAFETY CHECK: Ensure admin is never an array for creation
+      if (isCreation && cleanedPayload.admin && Array.isArray(cleanedPayload.admin)) {
+        console.error('🚨 CRITICAL: admin field is array, converting to object!');
+        cleanedPayload.admin = cleanedPayload.admin[0] || {
+          email: localStorage.getItem('vendorEmail') || 'vendor@example.com',
+          first_name: '',
+          last_name: ''
         };
       }
       
-      // Make sure required fields for vendor creation are included
-      if (!updateData.name || !updateData.handle) {
-        console.error('Missing required fields for vendor creation');
-        toast({
-          title: "Missing Information",
-          description: "Brand name and handle are required to create your vendor profile.",
-          variant: "destructive",
-        });
-        setAutoSaveIndicator("");
-        return null;
+      console.log('🔍 Final payload structure for', isCreation ? 'CREATION' : 'UPDATE', ':', cleanedPayload);
+      
+      return cleanedPayload;
+    };
+    
+    if (hasServerVendor) {
+      // UPDATE existing vendor
+      console.log('🔄 Updating existing vendor...');
+      const updatePayload = preparePayload(false); // false = update mode
+      
+      console.log('📤 PUT request with vendor payload:', updatePayload);
+      
+      const updateResponse = await fetch('http://localhost:9000/vendors/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updatePayload)
+      });
+      
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error('❌ Vendor update error:', errorText);
+        throw new Error(`Failed to update vendor: ${updateResponse.status} - ${errorText}`);
       }
-    } else {
-      // UPDATE LOGIC: Either existing vendor OR new vendor on non-basic pages
-      console.log('🟢 UPDATING VENDOR - using PUT to /vendors/me');
-      method = 'PUT';
-      url = 'http://localhost:9000/vendors/me';
       
-      // Include vendor_id if it exists
-      if (vendorData.vendor.id) {
-        updateData.vendor_id = vendorData.vendor.id;
+      const updateResponseData = await updateResponse.json();
+      console.log('✅ Vendor updated successfully');
+      
+      // Update local state
+      if (updateResponseData.vendor) {
+        setVendorData(prevData => ({
+          ...prevData,
+          vendor: {
+            ...prevData.vendor,
+            ...updateResponseData.vendor
+          }
+        }));
       }
-    }
-    
-    console.log(`Using ${method} for step ${currentStep} to URL: ${url}`);
-    console.log('Final payload to be sent:', JSON.stringify(updateData));
-    
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(updateData)
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Error response:', errorText);
-      console.error('Current step:', currentStep);
-      console.error('Is new vendor:', isNewVendor);
-      throw new Error(`API error: ${response.status} - ${errorText}`);
-    }
-    
-    const responseData = await response.json();
-    console.log('API response data:', responseData);
-    
-    // CRITICAL: Update local state with server data, especially the ID for new vendors
-    if (responseData.vendor) {
-      console.log('Updating local state with server response:', responseData.vendor);
       
-      setVendorData(prevData => ({
-        ...prevData,
-        vendor: {
-          ...prevData.vendor,
-          ...responseData.vendor, // Merge all fields from server response
-          // Ensure we have the ID (critical for new vendors)
-          id: responseData.vendor.id || prevData.vendor.id
-        }
-      }));
-      
-      if (isNewVendor && responseData.vendor.id) {
-        console.log('✅ SUCCESS: New vendor created with ID:', responseData.vendor.id);
+      // Handle admin update separately for updates
+      const cleanedAdminData = validateAndCleanAdminData(vendorData.vendor.admin);
+      if (cleanedAdminData && (cleanedAdminData.first_name || cleanedAdminData.last_name)) {
+        console.log('📤 Attempting admin update...');
         
-        // Show success message for vendor creation
+        // Get admin ID from server vendor data
+        const adminId = serverVendor?.vendor?.admins?.[0]?.id;
+        
+        if (adminId) {
+          console.log(`🔄 Updating admin with ID: ${adminId}`);
+          
+          try {
+            // Correct endpoint: http://localhost:9000/vendors/admins/[id]
+            const adminEndpoint = `http://localhost:9000/vendors/admins/${adminId}`;
+            
+            const adminResponse = await fetch(adminEndpoint, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify(cleanedAdminData)  // Send admin data directly
+            });
+            
+            if (adminResponse.ok) {
+              console.log('✅ Admin data updated successfully');
+            } else {
+              const adminErrorText = await adminResponse.text();
+              console.log('❌ Admin update failed:', adminErrorText);
+            }
+          } catch (adminError) {
+            console.log('⚠️ Admin update error (non-critical):', adminError);
+          }
+        } else {
+          console.log('⚠️ No admin ID found for update');
+        }
+      }
+      
+    } else {
+      // CREATE new vendor
+      console.log('🆕 Creating new vendor...');
+      const createPayload = preparePayload(true); // true = creation mode
+      
+      console.log('📤 POST request with payload:', createPayload);
+      
+      const createResponse = await fetch('http://localhost:9000/vendors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(createPayload)
+      });
+      
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        console.error('❌ Vendor creation error:', errorText);
+        throw new Error(`Failed to create vendor: ${createResponse.status} - ${errorText}`);
+      }
+      
+      const createResponseData = await createResponse.json();
+      console.log('✅ Vendor created successfully:', createResponseData);
+      
+      // Update local state with new vendor data
+      if (createResponseData.vendor && createResponseData.vendor.id) {
+        setVendorData(prevData => ({
+          ...prevData,
+          vendor: {
+            ...prevData.vendor,
+            ...createResponseData.vendor,
+            id: createResponseData.vendor.id
+          }
+        }));
+        
         toast({
-          title: "Vendor Created",
-          description: "Your vendor profile has been successfully created!",
+          title: "Profile Created",
+          description: "Your vendor profile has been created!",
         });
       }
     }
@@ -2254,7 +2089,8 @@ const sanitizeVendorData = (vendorData) => {
       setAutoSaveIndicator("");
     }, 2000);
     
-    return responseData;
+    return { success: true, hasExistingVendor: hasServerVendor };
+    
   } catch (error) {
     console.error('Error saving vendor data:', error);
     toast({
@@ -2266,9 +2102,12 @@ const sanitizeVendorData = (vendorData) => {
     return null;
   }
 };
-  // Handle final submission - reusing your original function
+
+  // Handle final submission - improved with better error handling
   const handleFinalSubmission = async () => {
     try {
+      console.log('🚀 Starting final submission process...');
+      
       // Validate token first
       const token = localStorage.getItem('vendorToken');
       
@@ -2287,66 +2126,101 @@ const sanitizeVendorData = (vendorData) => {
         return;
       }
       
-      // Change how we determine if a vendor is new - check if ID exists instead of "new"
-      const isNewVendor = !vendorData.vendor.id;
+      console.log('Current vendor data:', vendorData.vendor);
       
-      // Create a complete payload with ALL fields from vendorData.vendor
+      // First, let's save any pending changes using the existing save function
+      console.log('💾 Saving any pending changes first...');
+      await saveCurrentStepData();
+      
+      // Check if vendor already exists by trying to fetch current vendor
+      console.log('🔍 Checking if vendor already exists...');
+      let existingVendor = null;
+      try {
+        const checkResponse = await fetch('http://localhost:9000/vendors/me', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (checkResponse.ok) {
+          existingVendor = await checkResponse.json();
+          console.log('✅ Found existing vendor:', existingVendor);
+        } else {
+          console.log('❌ No existing vendor found, status:', checkResponse.status);
+        }
+      } catch (checkError) {
+        console.log('❌ Error checking existing vendor:', checkError);
+      }
+      
+      // Determine the correct approach based on existing vendor
+      const hasExistingVendor = existingVendor && existingVendor.vendor && existingVendor.vendor.id;
+      
+      if (hasExistingVendor) {
+        console.log('✅ Vendor already exists, onboarding complete!');
+        
+        // If vendor already exists, just mark as complete and redirect
+        toast({
+          title: "Onboarding Complete",
+          description: "Welcome to Junooni Creator Dashboard! You can now manage your products and orders.",
+        });
+        
+        // Redirect to dashboard
+        navigate({ to: '/sign-in' });
+        return;
+      }
+      
+      // If no existing vendor, create one with minimal required data
+      console.log('🆕 Creating new vendor for final submission...');
+      
+      // Get the current user email
+      const userEmail = localStorage.getItem('vendorEmail') || 
+                        (vendorData.vendor.admin && vendorData.vendor.admin[0] ? vendorData.vendor.admin[0].email : '');
+      
+      // Create minimal payload with only required fields
       const finalPayload = {
-        // Include ALL vendor data fields
-        name: vendorData.vendor.name,
-        handle: vendorData.vendor.handle,
-        logo: vendorData.vendor.logo || '',
-        coverphoto: vendorData.vendor.coverphoto || '',
-        youtube: vendorData.vendor.youtube || '',
-        instagram: vendorData.vendor.instagram || '',
-        xtwitter: vendorData.vendor.xtwitter || '',
-        othersocial: vendorData.vendor.othersocial || '',
+        name: vendorData.vendor.name || 'New Vendor',
+        handle: vendorData.vendor.handle || 'new-vendor-handle',
         phonenumber: vendorData.vendor.phonenumber || '',
         
-        // Business details
-        GSTIN: vendorData.vendor.GSTIN || '',
-        companyname: vendorData.vendor.companyname || '',
-        pan_number: vendorData.vendor.pan_number || '',
-        city: vendorData.vendor.city || '',
-        pincode: vendorData.vendor.pincode || '',
-        state: vendorData.vendor.state || '',
-        address: vendorData.vendor.address || '',
-        tan_number: vendorData.vendor.tan_number || '',
+        // Essential fields only
+        logo: vendorData.vendor.logo || '',
+        coverphoto: vendorData.vendor.coverphoto || '',
         
-        // Banking information
-        bank_account_holder_name: vendorData.vendor.bank_account_holder_name || '',
-        bank_account_number: vendorData.vendor.bank_account_number || '',
-        bank_account_ifsc_code: vendorData.vendor.bank_account_ifsc_code || '',
-        bank_name: vendorData.vendor.bank_name || '',
-        bank_account_type: vendorData.vendor.bank_account_type || 'Saving',
-        cancelled_checkque: vendorData.vendor.cancelled_checkque || '',
-        
-        // Creator profile
-        creator_bio: vendorData.vendor.creator_bio || '',
-        creator_title: vendorData.vendor.creator_title || '',
-        creator_category: vendorData.vendor.creator_category || 'other',
-        
-        // Admin information 
+        // Admin information - make sure it's properly structured
         admin: {
-          email: vendorData.vendor.admin && vendorData.vendor.admin[0] ? 
-            vendorData.vendor.admin[0].email || '' : '',
-          first_name: vendorData.vendor.admin && vendorData.vendor.admin[0] ? 
-            vendorData.vendor.admin[0].first_name || '' : '',
-          last_name: vendorData.vendor.admin && vendorData.vendor.admin[0] ? 
-            vendorData.vendor.admin[0].last_name || '' : ''
+          email: userEmail,
+          first_name: vendorData.vendor.admin?.[0]?.first_name || '',
+          last_name: vendorData.vendor.admin?.[0]?.last_name || ''
         }
       };
       
-      console.log('Sending final submission with payload:', JSON.stringify(finalPayload));
+      // Only include non-empty optional fields
+      if (vendorData.vendor.youtube) finalPayload.youtube = vendorData.vendor.youtube;
+      if (vendorData.vendor.instagram) finalPayload.instagram = vendorData.vendor.instagram;
+      if (vendorData.vendor.xtwitter) finalPayload.xtwitter = vendorData.vendor.xtwitter;
+      if (vendorData.vendor.GSTIN) finalPayload.GSTIN = vendorData.vendor.GSTIN;
+      if (vendorData.vendor.companyname) finalPayload.companyname = vendorData.vendor.companyname;
+      if (vendorData.vendor.pan_number) finalPayload.pan_number = vendorData.vendor.pan_number;
+      if (vendorData.vendor.city) finalPayload.city = vendorData.vendor.city;
+      if (vendorData.vendor.pincode) finalPayload.pincode = vendorData.vendor.pincode;
+      if (vendorData.vendor.state) finalPayload.state = vendorData.vendor.state;
+      if (vendorData.vendor.address) finalPayload.address = vendorData.vendor.address;
+      if (vendorData.vendor.bank_name) finalPayload.bank_name = vendorData.vendor.bank_name;
+      if (vendorData.vendor.bank_account_holder_name) finalPayload.bank_account_holder_name = vendorData.vendor.bank_account_holder_name;
+      if (vendorData.vendor.bank_account_number) finalPayload.bank_account_number = vendorData.vendor.bank_account_number;
+      if (vendorData.vendor.bank_account_ifsc_code) finalPayload.bank_account_ifsc_code = vendorData.vendor.bank_account_ifsc_code;
+      if (vendorData.vendor.cancelled_checkque) finalPayload.cancelled_checkque = vendorData.vendor.cancelled_checkque;
+      if (vendorData.vendor.creator_bio) finalPayload.creator_bio = vendorData.vendor.creator_bio;
+      if (vendorData.vendor.creator_title) finalPayload.creator_title = vendorData.vendor.creator_title;
+      if (vendorData.vendor.creator_category) finalPayload.creator_category = vendorData.vendor.creator_category;
       
-      // For final submission, use PUT for existing vendors
-      const method = isNewVendor ? 'POST' : 'PUT';
-      const url = isNewVendor 
-        ? 'http://localhost:9000/vendors' 
-        : 'http://localhost:9000/vendors/me';
+      console.log('📤 Sending final submission with payload:', finalPayload);
       
-      const response = await fetch(url, {
-        method,
+      // Always use POST for final submission if no vendor exists
+      const response = await fetch('http://localhost:9000/vendors', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -2354,28 +2228,52 @@ const sanitizeVendorData = (vendorData) => {
         body: JSON.stringify(finalPayload)
       });
       
+      console.log('📡 Response status:', response.status);
+      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Final submission error:', errorText);
-        throw new Error(`Failed to complete onboarding: ${response.status}`);
+        console.error('❌ Final submission error:', errorText);
+        
+        // Try to parse error for better user message
+        let errorMessage = 'Failed to complete onboarding';
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          console.log('Could not parse error response');
+        }
+        
+        throw new Error(`${errorMessage} (Status: ${response.status})`);
       }
       
-      // Capture the response data so we can log it for debugging
+      // Success - parse response
       const responseData = await response.json();
-      console.log('Final submission response:', responseData);
+      console.log('✅ Final submission successful:', responseData);
+      
+      // Update local vendor data with the created vendor
+      if (responseData.vendor) {
+        setVendorData(responseData);
+      }
       
       toast({
         title: "Onboarding Complete",
         description: "Welcome to Junooni Creator Dashboard! You can now manage your products and orders.",
       });
       
-      // Redirect to dashboard
-      navigate({ to: '/dashboard' });
+      // Small delay before redirect to ensure state is updated
+      setTimeout(() => {
+        navigate({ to: '/dashboard' });
+      }, 1000);
+      
     } catch (error) {
-      console.error('Error completing onboarding:', error);
+      console.error('❌ Error completing onboarding:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to complete onboarding.",
+        description: error.message || "Failed to complete onboarding. Please try again.",
         variant: "destructive",
       });
     }
@@ -2384,218 +2282,532 @@ const sanitizeVendorData = (vendorData) => {
   // Add this after handleFinalSubmission and before handleSaveAndContinue
   // Modify the handleFileUpload function to auto-save basic info first for new vendors
   const handleFileUpload = async (file: File, fileType: 'logo' | 'coverphoto' | 'cancelled_checkque') => {
-    if (!file) return;
+  if (!file) return;
+  
+  try {
+    // Validate file type
+    if (!file.type.startsWith('image/') && fileType !== 'cancelled_checkque') {
+      throw new Error('Please select a valid image file');
+    }
     
-    try {
-      setIsUploading(true);
-      setUploadType(fileType);
-      const token = localStorage.getItem('vendorToken');
+    // Validate file size (10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      throw new Error('File size must be less than 10MB');
+    }
+    
+    console.log(`Storing ${fileType} file for later upload:`, file.name, file.size, file.type);
+    
+    // Store the actual File object for later upload
+    setPendingFiles(prev => ({
+      ...prev,
+      [fileType]: file
+    }));
+    
+    // Create preview URL using FileReader for immediate display
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      const previewUrl = e.target?.result as string;
       
-      if (!token) {
-        throw new Error('Authentication token not found. Please log in again.');
-      }
+      // Update vendor data with preview URL for display
+      updateVendorData(fileType, previewUrl);
       
-      // Show loading state
+      console.log(`${fileType} preview set, file stored for upload on save`);
+      
       toast({
-        title: "Uploading...",
-        description: `Uploading your ${fileType === 'cancelled_checkque' ? 'cheque' : fileType}, please wait.`,
+        title: "File Selected",
+        description: `${fileType === 'cancelled_checkque' ? 'Cheque' : fileType} ready for upload. Click 'Continue' to save.`,
       });
+    };
+    
+    reader.onerror = () => {
+      throw new Error(`Failed to read ${fileType} file`);
+    };
+    
+    // Read file as data URL for preview
+    reader.readAsDataURL(file);
+    
+  } catch (error) {
+    console.error(`Error processing ${fileType}:`, error);
+    
+    toast({
+      title: "File Error",
+      description: error.message || `Failed to process your ${fileType}. Please try again.`,
+      variant: "destructive",
+    });
+  }
+};
+
+// REPLACE your uploadPendingFiles function with this corrected version:
+
+const uploadPendingFiles = async () => {
+  const token = localStorage.getItem('vendorToken');
+  if (!token) {
+    throw new Error('Authentication token not found');
+  }
+  
+  const uploadedUrls = {};
+  
+  // Check if we have any files to upload
+  const filesToUpload = Object.entries(pendingFiles).filter(([key, file]) => file instanceof File);
+  
+  if (filesToUpload.length === 0) {
+    console.log('No pending files to upload');
+    return uploadedUrls;
+  }
+  
+  console.log(`📁 Uploading ${filesToUpload.length} pending files...`);
+  
+  // Upload each pending file
+  for (const [fileType, file] of filesToUpload) {
+    try {
+      console.log(`🔄 Uploading ${fileType}:`, file.name, `(${(file.size / 1024).toFixed(1)}KB)`);
       
-      // For new vendors, we need a different approach - bypass creation and go straight to file upload
-      // Upload the file and get the URL first
       const formData = new FormData();
       formData.append('files', file);
-      //formData.append('vendor_id', 'temp'); // Add this in case your API needs it
       
-      // Try direct upload without vendor creation
-      console.log('Attempting direct file upload...');
-      const response = await fetch('http://localhost:9000/vendors/uploads', {
+      // Try vendor-specific upload endpoint first (most reliable)
+      let response;
+      let uploadUrl = 'http://localhost:9000/vendors/uploads';
+      
+      console.log(`📡 Attempting upload to: ${uploadUrl}`);
+      
+      response = await fetch(uploadUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
+          // Don't set Content-Type header - let browser set it with boundary for FormData
         },
         body: formData
       });
       
+      console.log(`📡 Upload response status for ${fileType}:`, response.status);
+      
+      // If vendor upload fails, try alternative endpoints
       if (!response.ok) {
-        // If direct upload fails with 401, check if we're on the correct step
-        if (response.status === 401 && currentStep === "basic-info") {
-          // Give helpful message about continuing to next step first
-          throw new Error(`Please complete required fields and click 'Continue' to proceed to the next step, then try uploading files again.`);
-        } else {
-          throw new Error(`Upload failed: ${response.status}`);
+        console.log(`❌ Vendor upload failed (${response.status}), trying alternatives...`);
+        
+        // Try different endpoints based on the error
+        const alternativeEndpoints = [
+          'http://localhost:9000/upload',           // Alternative 1
+          'http://localhost:9000/vendors/uploads',      // Alternative 2  
+          'http://localhost:9000/vendor/uploads' // Alternative 3
+        ];
+        
+        let uploadSucceeded = false;
+        
+        for (const altUrl of alternativeEndpoints) {
+          try {
+            console.log(`🔄 Trying alternative endpoint: ${altUrl}`);
+            
+            const altFormData = new FormData();
+            altFormData.append('files', file);
+            
+            const altResponse = await fetch(altUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              },
+              body: altFormData
+            });
+            
+            if (altResponse.ok) {
+              console.log(`✅ Alternative upload succeeded: ${altUrl}`);
+              response = altResponse;
+              uploadSucceeded = true;
+              break;
+            } else {
+              console.log(`❌ Alternative ${altUrl} failed:`, altResponse.status);
+            }
+          } catch (altError) {
+            console.log(`❌ Alternative ${altUrl} error:`, altError.message);
+          }
+        }
+        
+        if (!uploadSucceeded) {
+          const errorText = await response.text();
+          console.error(`❌ All upload endpoints failed for ${fileType}:`, errorText);
+          
+          // Instead of throwing, continue with other files and show warning
+          toast({
+            title: "Upload Warning",
+            description: `Failed to upload ${fileType}. You can add it later in your profile.`,
+            variant: "destructive",
+          });
+          continue;
         }
       }
       
+      // Parse the response
       const data = await response.json();
-      console.log('Server response structure:', data);
+      console.log(`📄 Upload response data for ${fileType}:`, data);
       
-      // Extract URL (same logic as before)
+      // Extract URL from response - handle multiple response formats
       let fileUrl = null;
       
-      // Extract URL from various possible response formats
-      if (data.url) fileUrl = data.url;
-      else if (data.files && Array.isArray(data.files) && data.files.length > 0) {
-        const file = data.files[0];
-        if (file.url) fileUrl = file.url;
-        else if (file.file_url) fileUrl = file.file_url;
-        else if (file.path) fileUrl = file.path;
-      } else if (data.file) {
-        if (data.file.url) fileUrl = data.file.url;
-        else if (data.file.path) fileUrl = data.file.path;
+      // Try different response structures
+      if (data.url) {
+        fileUrl = data.url;
+      } else if (data.file_url) {
+        fileUrl = data.file_url;
+      } else if (data.data && data.data.url) {
+        fileUrl = data.data.url;
+      } else if (data.files && Array.isArray(data.files) && data.files.length > 0) {
+        const fileData = data.files[0];
+        fileUrl = fileData.url || fileData.file_url || fileData.path;
+      } else if (data.file && typeof data.file === 'object') {
+        fileUrl = data.file.url || data.file.path;
+      } else if (data.path) {
+        // Handle response format: {"success": true, "path": "/uploads/..."}
+        fileUrl = data.path.startsWith('http') ? data.path : `http://localhost:9000${data.path}`;
+      } else if (data.location) {
+        fileUrl = data.location;
       } else if (typeof data === 'string' && data.startsWith('http')) {
         fileUrl = data;
-      } else if (data.data) {
-        if (data.data.url) fileUrl = data.data.url;
-        else if (typeof data.data === 'string' && data.data.startsWith('http')) {
-          fileUrl = data.data;
-        }
       }
       
-      // Store the URL locally but don't try to update the backend yet
       if (fileUrl) {
-        console.log(`Extracted ${fileType} URL:`, fileUrl);
+        uploadedUrls[fileType] = fileUrl;
+        console.log(`✅ ${fileType} uploaded successfully:`, fileUrl);
         
-        // Update local state
-        updateVendorData(fileType, fileUrl);
-        
-        // Save reference in localStorage for restoration if needed
-        const uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '{}');
-        uploadedFiles[fileType] = fileUrl;
-        localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
-        
+        // Show success toast for each file
         toast({
-          title: "Upload Complete",
-          description: `Your ${fileType === 'cancelled_checkque' ? 'cheque' : fileType} has been uploaded successfully.`,
+          title: "File Uploaded",
+          description: `${fileType.charAt(0).toUpperCase() + fileType.slice(1)} uploaded successfully!`,
         });
       } else {
-        throw new Error('Could not extract file URL from server response');
+        console.error(`❌ Could not extract URL from response for ${fileType}:`, data);
+        
+        // Show warning but continue
+        toast({
+          title: "Upload Issue",
+          description: `${fileType} upload completed but URL not found. Please try re-uploading.`,
+          variant: "destructive",
+        });
       }
       
     } catch (error) {
-      console.error(`Error uploading ${fileType}:`, error);
+      console.error(`❌ Error uploading ${fileType}:`, error);
       
+      // Show error but continue with other files
       toast({
         title: "Upload Failed",
-        description: `${error.message || `Failed to upload your ${fileType}. Please try again.`}`,
+        description: `Failed to upload ${fileType}: ${error.message}`,
         variant: "destructive",
       });
-    } finally {
-      setIsUploading(false);
-      setUploadType(null);
+      
+      // Don't throw error - continue with other files
+      continue;
+    }
+  }
+  
+  console.log(`📁 Upload completed. Successfully uploaded:`, Object.keys(uploadedUrls));
+  return uploadedUrls;
+};
+
+  // NEW FUNCTION: Handle Continue (move to next step without saving)
+  const handleContinue = async () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    try {
+      // Validate current step requirements
+      if (currentStep === "welcome") {
+        const adminFirst = vendorData?.vendor?.admin?.[0]?.first_name;
+        const adminLast = vendorData?.vendor?.admin?.[0]?.last_name;
+        
+        if (!adminFirst || !adminLast) {
+          toast({
+            title: "Admin Information Required",
+            description: "Please provide both first name and last name to continue.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else if (currentStep === "basic-info") {
+        if (!vendorData?.vendor?.name || !vendorData?.vendor?.phonenumber) {
+          toast({
+            title: "Required Fields Missing",
+            description: "Please fill in Brand Name and Phone Number to continue.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
+      // Handle navigation based on current step
+      if (currentStep === "final-review") {
+        if (!termsAgreed) {
+          toast({
+            title: "Agreement Required",
+            description: "Please confirm that all information is accurate by checking the box.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // For final review, this becomes the complete submission
+        await handleFinalSubmission();
+      } else {
+        // Find current step index and move to next
+        const currentIndex = STEPS.findIndex(step => step.id === currentStep);
+        
+        if (currentIndex < STEPS.length - 1) {
+          setCurrentStep(STEPS[currentIndex + 1].id);
+          
+          toast({
+            title: "Step Saved",
+            description: "Your progress has been saved. Continue filling the next section.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error during continue:', error);
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
     }
   };
-// Handle save and continue functionality
-const handleSaveAndContinue = async () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  try {
-    // No special case for welcome step anymore - all data is saved together
-    // Validate admin data if on welcome step
-    if (currentStep === "welcome") {
-      // Check if admin data is complete
-      const adminFirst = vendorData?.vendor?.admin?.[0]?.first_name;
-      const adminLast = vendorData?.vendor?.admin?.[0]?.last_name;
+
+  // NEW FUNCTION: Handle Save and Exit (save all data and redirect to homepage)
+const validateAndCleanVendorData = (vendorData) => {
+  const cleaned = {};
+  
+  // String fields that should be empty strings if empty (to match backend expectations)
+  const stringFields = [
+    'name', 'handle', 'logo', 'coverphoto', 'phonenumber',
+    'youtube', 'instagram', 'xtwitter', 'othersocial',
+    'GSTIN', 'companyname', 'pan_number', 'city', 'pincode', 'state', 'address', 'tan_number',
+    'bank_account_holder_name', 'bank_account_number', 'bank_account_ifsc_code', 'bank_name', 
+    'cancelled_checkque', 'creator_bio', 'creator_title', 'creator_category'
+  ];
+  
+  // Required fields that should never be null/empty
+  const requiredFields = ['name', 'handle'];
+  
+  // Enum fields with specific allowed values
+  const enumFields = {
+    'bank_account_type': ['Saving', 'Current'],
+    'creator_category': ['Art', 'Music', 'Cinema', 'Fashion', 'Sports', 'Comedy', 'Gaming', 'Influencer', 'other']
+    // Note: removed 'gst_verification_status' as it's handled separately and not always included
+  };
+  
+  stringFields.forEach(field => {
+    let value = vendorData[field];
+    
+    if (value === null || value === undefined || value === '') {
+      // All string fields should be empty strings, not null
+      cleaned[field] = '';
+    } else if (typeof value === 'string') {
+      value = value.trim();
       
-      if (!adminFirst || !adminLast) {
-        toast({
-          title: "Admin Information Required",
-          description: "Please provide both first name and last name to continue.",
-          variant: "destructive",
-        });
-        return; // Stop if admin data incomplete
+      // If after trimming it's empty, set to empty string
+      if (value === '') {
+        cleaned[field] = '';
+      } else {
+        // Apply specific validations
+        if (['logo', 'coverphoto', 'cancelled_checkque'].includes(field)) {
+          // For URLs, validate basic format - if invalid, use empty string instead of null
+          if (!value.startsWith('data:') && !value.startsWith('http://') && !value.startsWith('https://')) {
+            console.warn(`Invalid URL format for ${field}:`, value);
+            cleaned[field] = '';
+          } else {
+            cleaned[field] = value;
+          }
+        } else if (field === 'phonenumber') {
+          // For phone numbers, basic validation
+          value = value.replace(/[^\d+]/g, '');
+          if (value && !value.startsWith('+')) {
+            value = '+91' + value;
+          }
+          cleaned[field] = value || '';
+        } else if (field === 'GSTIN') {
+          // For GSTIN, basic format check
+          value = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          cleaned[field] = value || '';
+        } else if (field === 'pan_number') {
+          // For PAN, basic format check
+          value = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          cleaned[field] = value || '';
+        } else if (field === 'bank_account_ifsc_code') {
+          // For IFSC, basic format check
+          value = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          cleaned[field] = value || '';
+        } else {
+          cleaned[field] = value;
+        }
       }
+    } else {
+      // Convert non-strings to strings
+      const stringValue = String(value).trim();
+      cleaned[field] = stringValue || '';
+    }
+  });
+  
+  // Handle enum fields
+  Object.entries(enumFields).forEach(([field, allowedValues]) => {
+    let value = vendorData[field];
+    if (allowedValues.includes(value)) {
+      cleaned[field] = value;
+    } else {
+      // Set to default value based on field
+      if (field === 'bank_account_type') cleaned[field] = 'Saving';
+      else if (field === 'creator_category') cleaned[field] = 'other'; // Default to 'other' instead of null
+    }
+  });
+  
+  // Handle gst_verification_status separately (only if it's present in the input data)
+  if ('gst_verification_status' in vendorData) {
+    if (['pending', 'verified', 'failed'].includes(vendorData.gst_verification_status)) {
+      cleaned.gst_verification_status = vendorData.gst_verification_status;
+    } else {
+      cleaned.gst_verification_status = 'pending';
+    }
+  }
+  
+  return cleaned;
+};
+
+// IMPORTANT: Updated to handle backend's "admins" structure (not "admin")
+const validateAndCleanAdminData = (adminArray) => {
+  if (!adminArray || !Array.isArray(adminArray) || adminArray.length === 0) {
+    return null;
+  }
+  
+  const adminData = adminArray[0];
+  const cleaned = {
+    email: null,
+    first_name: null,
+    last_name: null
+  };
+  
+  // Clean email
+  if (adminData.email && typeof adminData.email === 'string') {
+    const email = adminData.email.trim().toLowerCase();
+    if (email.includes('@') && email.includes('.')) {
+      cleaned.email = email;
+    }
+  }
+  
+  // Clean names
+  ['first_name', 'last_name'].forEach(field => {
+    if (adminData[field] && typeof adminData[field] === 'string') {
+      const trimmed = adminData[field].trim();
+      cleaned[field] = trimmed || null;
+    }
+  });
+  
+  // Only return if we have at least email
+  return cleaned.email ? cleaned : null;
+};
+
+// CORRECTED handleSaveAndExit function
+// CORRECTED handleSaveAndExit function
+const handleSaveAndExit = async () => {
+  try {
+    const token = localStorage.getItem('vendorToken');
+    
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to save your data.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // Save all data in one call
-    await saveCurrentStepData();
-    
-    // Update step completion status
-    const newStepCompletion = { ...stepCompletion };
-    
-    // Add null check before accessing vendorData properties
-    if (vendorData && vendorData.vendor) {
-      if (currentStep === "basic-info") {
-        newStepCompletion["basic-info"] = Boolean(
-          vendorData.vendor.name && 
-          vendorData.vendor.phonenumber
-        );
-      } else if (currentStep === "business-details") {
-        newStepCompletion["business-details"] = Boolean(
-          vendorData.vendor.GSTIN && 
-          vendorData.vendor.companyname && 
-          vendorData.vendor.pan_number
-        );
-      } else if (currentStep === "banking-info") {
-        newStepCompletion["banking-info"] = Boolean(
-          vendorData.vendor.bank_account_holder_name && 
-          vendorData.vendor.bank_account_number && 
-          vendorData.vendor.bank_account_ifsc_code
-        );
-      } else if (currentStep === "creator-profile") {
-        newStepCompletion["creator-profile"] = Boolean(
-          vendorData.vendor.creator_bio && 
-          vendorData.vendor.creator_category
-        );
-      }
+    // Validate minimum required fields before attempting to save
+    if (!vendorData?.vendor?.name || !vendorData?.vendor?.admin?.[0]?.email) {
+      toast({
+        title: "Required Information Missing",
+        description: "Please provide at least your brand name and email to save your profile.",
+        variant: "destructive",
+      });
+      return;
     }
-    
-    setStepCompletion(newStepCompletion);    
-    // Calculate progress
-    calculateProgress(newStepCompletion);
-    
-    // Handle navigation based on current step
-    if (currentStep === "final-review") {
-      // Get the terms agreement status directly from state
-      if (!termsAgreed) {
+
+    // Additional validation for basic-info step
+    if (currentStep === "basic-info") {
+      const missingFields = [];
+      
+      // Check first name
+      if (!vendorData?.vendor?.admin?.[0]?.first_name || vendorData.vendor.admin[0].first_name.trim() === '') {
+        missingFields.push("First Name");
+      }
+      
+      // Check last name
+      if (!vendorData?.vendor?.admin?.[0]?.last_name || vendorData.vendor.admin[0].last_name.trim() === '') {
+        missingFields.push("Last Name");
+      }
+      
+      // Check brand name
+      if (!vendorData?.vendor?.name || vendorData.vendor.name.trim() === '') {
+        missingFields.push("Brand Name");
+      }
+      
+      // Check vendor handle
+      if (!vendorData?.vendor?.handle || vendorData.vendor.handle.trim() === '') {
+        missingFields.push("Vendor Handle");
+      }
+      
+      // If any fields are missing, show error and return
+      if (missingFields.length > 0) {
         toast({
-          title: "Agreement Required",
-          description: "Please confirm that all information is accurate by checking the box.",
+          title: "Required Fields Missing",
+          description: `Please fill in the following fields before saving: ${missingFields.join(", ")}`,
           variant: "destructive",
         });
         return;
       }
-      
-      // Handle final submission
-      await handleFinalSubmission();
-    } else {
-      // Find current step index
-      const currentIndex = STEPS.findIndex(step => step.id === currentStep);
-      
-      // Check if there is a next step
-      if (currentIndex < STEPS.length - 1) {
-        // Move to next step
-        setCurrentStep(STEPS[currentIndex + 1].id);
-        
-        // Show success toast if step was completed
-        if (newStepCompletion[currentStep]) {
-          toast({
-            title: "Step Completed",
-            description: `${STEPS[currentIndex].title} information saved successfully.`,
-          });
-        }
-      }
     }
-  } catch (error) {
-    console.error('Error during save and continue:', error);
+
+    setAutoSaveIndicator("Saving your profile...");
+    
+    // Use the existing saveCurrentStepData function which handles both creation and updates
+    const saveResult = await saveCurrentStepData();
+    
+    if (!saveResult || !saveResult.success) {
+      throw new Error('Failed to save vendor profile');
+    }
+    
+    setAutoSaveIndicator("Profile saved successfully!");
+    
     toast({
-      title: "Error",
-      description: "Failed to save your information. Please try again.",
+      title: "Profile Saved Successfully!",
+      description: "Your vendor profile has been saved. You can continue anytime from where you left off.",
+    });
+    
+    setTimeout(() => {
+      setAutoSaveIndicator("");
+      navigate({ to: '/sign-in' });
+    }, 1500);
+    
+  } catch (error) {
+    console.error('Error during save and exit:', error);
+    toast({
+      title: "Error Saving Profile",
+      description: error.message || "Failed to save your profile. Please try again.",
       variant: "destructive",
     });
-  }
-};  // Update vendor data
-const updateVendorData = (field: keyof VendorData, value: any) => {
-  if (vendorData && vendorData.vendor) {
-    setVendorData({
-      ...vendorData,
-      vendor: {
-        ...vendorData.vendor,
-        [field]: value,
-        updated_at: new Date().toISOString()
-      }
-    });
+    setAutoSaveIndicator("");
   }
 };
+
+  // Update vendor data function
+  const updateVendorData = (field: keyof VendorData, value: any) => {
+    if (vendorData && vendorData.vendor) {
+      setVendorData({
+        ...vendorData,
+        vendor: {
+          ...vendorData.vendor,
+          [field]: value,
+          updated_at: new Date().toISOString()
+        }
+      });
+    }
+  };
 
 // 1. Replace initializeNewVendor with this improved version
 const createEmptyVendorTemplate = () => {
@@ -2642,88 +2854,6 @@ const createEmptyVendorTemplate = () => {
   };
 };
 
-// Add a loading state to track API request status
-// const [isLoading, setIsLoading] = useState(true);
-
-// In useEffect for fetchVendorData
-// useEffect(() => {
-//   const fetchVendorData = async () => {
-//     setIsLoading(true); // Start loading
-    
-//     try {
-//       // Get authentication token from localStorage
-//       let token = localStorage.getItem('vendorToken');
-      
-//       // Skip API call completely if no token exists
-//       if (!token) {
-//         console.log('No token found in localStorage, immediately creating new vendor profile');
-//         setVendorData(createEmptyVendorTemplate());
-//         setIsLoading(false);
-//         return;
-//       }
-      
-//       // Add a timeout to prevent indefinite loading
-//       const timeoutPromise = new Promise((_, reject) => 
-//         setTimeout(() => reject(new Error('Request timed out')), 5000)
-//       );
-      
-//       // Race the fetch against the timeout
-//       const fetchPromise = fetch('http://localhost:9000/vendors/me', {
-//         method: 'GET',
-//         headers: {
-//           'Content-Type': 'application/json',
-//           'Authorization': `Bearer ${token}`
-//         }
-//       });
-      
-//       // Wait for either the fetch to complete or the timeout to occur
-//       const response = await Promise.race([fetchPromise, timeoutPromise]);
-      
-//       // Handle 401/404 errors as new vendor cases
-//       if (response.status === 401 || response.status === 404) {
-//         console.log(`Got ${response.status} response, handling as new vendor`);
-//         setVendorData(createEmptyVendorTemplate());
-//         setIsLoading(false);
-//         return;
-//       }
-      
-//       if (!response.ok) {
-//         throw new Error(`API error: ${response.status} ${response.statusText}`);
-//       }
-      
-//       // Success path - parse the response data
-//       console.log('Successfully fetched vendor data');
-//       const data = await response.json();
-      
-//       // Normalize admin data
-//       // ... (same code as before)
-      
-//       setVendorData(data);
-//       setIsLoading(false);
-      
-//     } catch (error) {
-//       console.error('Error fetching vendor data:', error);
-//       // For any error, initialize as new vendor instead of showing error
-//       setVendorData(createEmptyVendorTemplate());
-//       setIsLoading(false);
-//     }
-//   };
-  
-//   fetchVendorData();
-  
-  // Important: Add a fallback timeout to ensure loading state is cleared
-//   const fallbackTimer = setTimeout(() => {
-//     setIsLoading(false);
-//     if (!vendorData) {
-//       setVendorData(createEmptyVendorTemplate());
-//     }
-//   }, 8000);
-  
-//   return () => {
-//     clearTimeout(fallbackTimer);
-//   };
-// }, []);
-
  // ADD THE NEW USEEFFECT HERE
  useEffect(() => {
   if (vendorData && !isLoading) {
@@ -2750,6 +2880,7 @@ if (!vendorData) {
   setVendorData(createEmptyVendorTemplate());
   return null; // Return null to trigger re-render with new state
 }
+
   return (
     <div 
       className="min-h-screen"
@@ -2798,23 +2929,6 @@ if (!vendorData) {
                           {autoSaveIndicator}
                         </span>
                       )}
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <button 
-                        onClick={() => {
-                          saveCurrentStepData();
-                          toast({
-                            title: "Progress Saved",
-                            description: "Your progress has been saved. You can continue later.",
-                          });
-                        }} 
-                        className="flex items-center text-xs"
-                        style={{ color: BRAND.primary }}
-                      >
-                        <IconDeviceFloppy className="w-3 h-3 mr-1" />
-                        Save & Exit
-                      </button>
                     </div>
                   </div>
                   
@@ -3005,6 +3119,7 @@ if (!vendorData) {
                 />
               </CardContent>
               
+              {/* UPDATED FOOTER WITH BOTH BUTTONS */}
               {currentStep !== "welcome" && (
                 <CardFooter className="flex justify-between px-6 pt-4 pb-6 border-t" style={{ borderColor: `${BRAND.primary}11` }}>
                   <div className="flex-1 max-w-[200px]">
@@ -3023,6 +3138,21 @@ if (!vendorData) {
                   </div>
                   
                   <div className="flex gap-3">
+                    {/* SAVE AND EXIT BUTTON */}
+                    <Button
+                      variant="outline"
+                      onClick={handleSaveAndExit}
+                      className="transition-all duration-200 hover:shadow-md"
+                      style={{ 
+                        borderColor: BRAND.primary,
+                        color: BRAND.primary 
+                      }}
+                    >
+                      <IconLogout className="w-4 h-4 mr-2" />
+                      Save & Exit
+                    </Button>
+                    
+                    {/* Skip button (if applicable) */}
                     {STEPS.find(step => step.id === currentStep)?.isSkippable && (
                       <Button
                         variant="ghost"
@@ -3037,8 +3167,9 @@ if (!vendorData) {
                       </Button>
                     )}
                     
+                    {/* CONTINUE BUTTON */}
                     <Button 
-                      onClick={handleSaveAndContinue}
+                      onClick={handleContinue}
                       className="transition-all duration-200 hover:shadow-md"
                       style={{ 
                         background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
@@ -3061,10 +3192,11 @@ if (!vendorData) {
                 </CardFooter>
               )}
               
+              {/* WELCOME STEP FOOTER */}
               {currentStep === "welcome" && (
                 <CardFooter className="flex justify-center px-6 pt-4 pb-6">
                   <Button 
-                    onClick={handleSaveAndContinue}
+                    onClick={handleContinue}
                     className="px-8 py-6 text-lg transition-all duration-200 hover:shadow-md"
                     style={{ 
                       background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,

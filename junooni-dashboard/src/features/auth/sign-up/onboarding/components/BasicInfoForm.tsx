@@ -31,7 +31,7 @@ import * as z from "zod";
 const basicInfoSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   handle: z.string().min(2, "Handle must be at least 2 characters")
-    .regex(/^[a-z0-9_-]+$/, "Handle can only contain lowercase letters, numbers, underscores and hyphens"),
+    .regex(/^[a-z0-9-]+$/, "Handle can only contain lowercase letters, numbers, and hyphens (no spaces or underscores)"),
   phonenumber: z.string().regex(/^[0-9]{10}$/, "Phone number must be 10 digits"),
   instagram: z.string().optional(),
   youtube: z.string().optional(),
@@ -117,6 +117,18 @@ export function BasicInfoForm({ vendorData, updateVendorData }) {
   const handleFieldChange = (field: string, value: string) => {
     console.log(`Updating field ${field} to:`, value);
     updateVendorData(field, value);
+  };
+
+  // Handle handle input to prevent invalid characters
+  const handleHandleChange = (e: React.ChangeEvent<HTMLInputElement>, field: any) => {
+    // Remove any characters that aren't lowercase letters, numbers, or hyphens
+    const sanitizedValue = e.target.value
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, ''); // Remove spaces, underscores, and other invalid characters
+    
+    // Update the form field with sanitized value
+    field.onChange(sanitizedValue);
+    handleFieldChange("handle", sanitizedValue);
   };
 
   // If vendor data is not available yet, show loading state
@@ -252,16 +264,13 @@ export function BasicInfoForm({ vendorData, updateVendorData }) {
                     <Input 
                       className="rounded-l-none" 
                       placeholder="yourbrand" 
-                      {...field} 
-                      onChange={(e) => {
-                        field.onChange(e);
-                        handleFieldChange("handle", e.target.value);
-                      }}
+                      value={field.value}
+                      onChange={(e) => handleHandleChange(e, field)}
                     />
                   </div>
                 </FormControl>
                 <FormDescription>
-                  Your unique URL on Junooni
+                  Your unique URL on Junooni (lowercase letters, numbers, and hyphens only)
                 </FormDescription>
                 <FormMessage />
               </FormItem>

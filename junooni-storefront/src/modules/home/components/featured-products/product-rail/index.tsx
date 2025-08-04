@@ -1,31 +1,80 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { listProducts } from "@lib/data/products"
 import { HttpTypes } from "@medusajs/types"
 import { Text } from "@medusajs/ui"
 import ProductPreview from "@modules/products/components/product-preview"
 import SliderControls from "./SliderControls"
 import { ArrowRight } from "lucide-react"
+import { useBatchReviews } from "@lib/hooks/useBatchReviews"
 
-export default async function ProductRail({
-  collection,
-  region,
-}: {
+interface ProductRailProps {
   collection: HttpTypes.StoreCollection
   region: HttpTypes.StoreRegion
-}) {
-  // Fetch products for this collection with all necessary data fields
-  const {
-    response: { products: pricedProducts },
-  } = await listProducts({
-    regionId: region.id,
-    queryParams: {
-      collection_id: collection.id,
-      fields: "*vendor,*tags,*metadata,*variants.calculated_price",
-    },
+}
+
+export default function ProductRail({ collection, region }: ProductRailProps) {
+  const [products, setProducts] = useState<any[]>([])
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true)
+
+  // Fetch products on client side
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoadingProducts(true)
+        const {
+          response: { products: pricedProducts },
+        } = await listProducts({
+          regionId: region.id,
+          queryParams: {
+            collection_id: collection.id,
+            fields: "*vendor,*tags,*metadata,*variants.calculated_price",
+          },
+        })
+        setProducts(pricedProducts || [])
+      } catch (error) {
+        console.error("Error fetching products:", error)
+        setProducts([])
+      } finally {
+        setIsLoadingProducts(false)
+      }
+    }
+
+    fetchProducts()
+  }, [collection.id, region.id])
+
+  // Batch fetch reviews for all products
+  const { reviewsData, loading: reviewsLoading } = useBatchReviews(products, {
+    enabled: products.length > 0,
+    batchSize: 5, // Adjust batch size based on your API limits
+    batchDelay: 100, // Small delay between batches
   })
 
   // Don't render anything if no products are found
-  if (!pricedProducts || pricedProducts.length === 0) {
+  if (!isLoadingProducts && (!products || products.length === 0)) {
     return null
+  }
+
+  // Show loading state while fetching products
+  if (isLoadingProducts) {
+    return (
+      <div className="py-16 content-container">
+        <div className="flex items-center justify-between mb-8">
+          <div className="w-48 h-10 bg-gray-200 rounded animate-pulse"></div>
+          <div className="w-24 h-6 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div className="flex gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex-shrink-0 w-64">
+              <div className="aspect-[3/4] bg-gray-200 rounded-lg mb-4 animate-pulse"></div>
+              <div className="h-4 mb-2 bg-gray-200 rounded animate-pulse"></div>
+              <div className="w-3/4 h-4 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -51,25 +100,39 @@ export default async function ProductRail({
         >
           {/* Product list with consistent sizing */}
           <ul className="flex gap-6 w-max">
-            {pricedProducts.map((product) => (
-              <li 
-                key={product.id} 
-                className="flex-shrink-0 w-64"
-              >
-                <ProductPreview 
-                  product={product} 
-                  region={region} 
-                  isFeatured 
-                />
-              </li>
-            ))}
+            {products.map((product) => {
+              // Get review data for this product
+              const productReviewData = reviewsData[product.id] || {
+                averageRating: 0,
+                reviewCount: 0
+              }
+
+              return (
+                <li 
+                  key={product.id} 
+                  className="flex-shrink-0 w-64"
+                >
+                  <ProductPreview 
+                    product={product} 
+                    region={region}
+                    // Pass review data as props
+                    reviewData={{
+                      averageRating: productReviewData.averageRating,
+                      reviewCount: productReviewData.reviewCount,
+                      isLoading: reviewsLoading && !reviewsData[product.id]
+                    }}
+                    isFeatured 
+                  />
+                </li>
+              )
+            })}
           </ul>
         </div>
        
         {/* Client component for slider controls */}
         <SliderControls 
           sliderId={`product-rail-${collection.id}`} 
-          itemCount={pricedProducts.length} 
+          itemCount={products.length} 
         />
       </div>
     </div>

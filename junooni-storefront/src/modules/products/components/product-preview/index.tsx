@@ -1,55 +1,88 @@
-// ENHANCED ProductPreview.jsx - Color hover image functionality
+// ProductPreview.tsx - Optimized version with props-based reviews
 "use client"
 
 import Image from "next/image"
-import { useMemo } from "react"
-import { useEffect, useState } from "react"
-import { Heart, Star, Check } from "lucide-react"
+import { useMemo, useState } from "react"
+import { Star, Check } from "lucide-react"
 import WishlistButton from "@modules/wishlists/components/wishlist-button"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Region } from "@medusajs/medusa"
-import { getProductReviews } from "@lib/data/products"
 
-type ProductPreviewProps = {
-  product: any
-  region: Region
-  selectedColors?: string[]
+interface ProductVariant {
+  id: string;
+  options?: Array<{
+    option?: { title: string };
+    value: string;
+  }>;
+  calculated_price?: {
+    calculated_amount: number;
+    original_amount?: number;
+    currency_code: string;
+  };
+  metadata?: {
+    variant_images?: string | string[];
+  };
+  [key: string]: any;
 }
 
-const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreviewProps) => {
-  // Review state
-  const [averageRating, setAverageRating] = useState(0);
-  const [reviewCount, setReviewCount] = useState(0);
-  const [isLoadingReviews, setIsLoadingReviews] = useState(true);
+interface ProductImage {
+  url: string;
+  [key: string]: any;
+}
+
+interface Product {
+  id: string;
+  title: string;
+  handle: string;
+  thumbnail?: string;
+  created_at?: string;
+  variants?: ProductVariant[];
+  images?: ProductImage[];
+  vendor?: {
+    id: string;
+    name: string;
+    verified?: string;
+  };
+  metadata?: {
+    color_hex_values?: string | Array<{
+      name: string;
+      hex: string;
+    }>;
+    variant_images?: string | { [variantId: string]: string };
+  };
+  [key: string]: any;
+}
+
+interface ReviewData {
+  averageRating: number;
+  reviewCount: number;
+  isLoading: boolean;
+}
+
+type ProductPreviewProps = {
+  product: Product;
+  region: Region;
+  selectedColors?: string[];
+  reviewData?: ReviewData; // New prop for review data
+  isFeatured?: boolean;
+}
+
+const ProductPreview = ({ 
+  product, 
+  region, 
+  selectedColors = [],
+  reviewData = { averageRating: 0, reviewCount: 0, isLoading: true }, // Default values
+  isFeatured = false
+}: ProductPreviewProps) => {
   
   // Color hover state
   const [hoveredColor, setHoveredColor] = useState<string | null>(null);
 
-  // Fetch actual review data
-  useEffect(() => {
-    setIsLoadingReviews(true);
-    getProductReviews({
-      productId: product.id,
-      limit: 100,
-      offset: 0,
-    })
-      .then(({ reviews: paginatedReviews, average_rating, count }) => {
-        setAverageRating(average_rating || 0);
-        const actualCount = paginatedReviews?.length || 0;
-        setReviewCount(actualCount);
-      })
-      .catch((error) => {
-        console.error("Error fetching product reviews in preview:", error);
-        setAverageRating(0);
-        setReviewCount(0);
-      })
-      .finally(() => {
-        setIsLoadingReviews(false);
-      });
-  }, [product.id]);
+  // Use passed-in review data instead of individual API calls
+  const { averageRating, reviewCount, isLoading: isLoadingReviews } = reviewData;
 
-  // Color name normalizer
-  const normalizeColorName = (colorName: string): string => {
+  // Color name normalizer (optimized - memoized)
+  const normalizeColorName = useMemo(() => (colorName: string): string => {
     return colorName
       .trim()
       .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -60,10 +93,10 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
-  }
+  }, []);
 
-  // Extract image finding logic into reusable function
-  const findImageForColor = (colorName: string) => {
+  // Extract image finding logic (optimized - memoized)
+  const findImageForColor = useMemo(() => (colorName: string): string | null => {
     if (!colorName) return null;
     
     const normalizedColorName = normalizeColorName(colorName);
@@ -82,13 +115,12 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
       variant.metadata?.variant_images
     );
     
-    if (variantWithImage && variantWithImage.metadata.variant_images) {
+    if (variantWithImage && variantWithImage.metadata?.variant_images) {
       let variantImages = variantWithImage.metadata.variant_images;
       if (typeof variantImages === 'string') {
         try {
           variantImages = JSON.parse(variantImages);
         } catch (e) {
-          console.error('Failed to parse variant_images:', e);
           variantImages = [];
         }
       }
@@ -105,14 +137,15 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
         try {
           productVariantImages = JSON.parse(productVariantImages);
         } catch (e) {
-          console.error('Failed to parse product variant_images:', e);
           productVariantImages = {};
         }
       }
       
-      for (const variant of colorMatchingVariants) {
-        if (productVariantImages[variant.id]) {
-          return productVariantImages[variant.id];
+      if (typeof productVariantImages === 'object') {
+        for (const variant of colorMatchingVariants) {
+          if (productVariantImages[variant.id]) {
+            return productVariantImages[variant.id];
+          }
         }
       }
     }
@@ -139,29 +172,28 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
     }
     
     return null;
-  };
+  }, [product, normalizeColorName]);
 
-  // ✅ CLEAN: Simplified image selection with minimal logging
-  const { displayImage, matchedVariant, allProductColors, debugInfo } = useMemo(() => {
-    // Only log in development mode
-    const isDebug = process.env.NODE_ENV === 'development';
-    
+  // Optimized image selection with minimal processing
+  interface ImageSelectionResult {
+    displayImage: string | undefined;
+    matchedVariant: ProductVariant | null;
+    allProductColors: Array<{ name: string; hex: string; normalizedName: string }>;
+  }
+
+  const { displayImage, matchedVariant, allProductColors } = useMemo((): ImageSelectionResult => {
     // Determine which color to use for image (hovered color takes priority)
     const activeColors = hoveredColor ? [hoveredColor] : selectedColors;
     
-    if (isDebug && activeColors.length > 0) {
-      console.log(`🎯 ${hoveredColor ? 'Hover' : 'Filter'} image selection for "${product.title}":`, activeColors);
-    }
-    
-    // Extract colors from product metadata
-    const productColors = [];
-    if (product.metadata && product.metadata.color_hex_values) {
+    // Extract colors from product metadata (cached)
+    const productColors: Array<{ name: string; hex: string; normalizedName: string }> = [];
+    if (product.metadata?.color_hex_values) {
       let colorsData = product.metadata.color_hex_values;
       if (typeof colorsData === 'string') {
         try {
           colorsData = JSON.parse(colorsData);
         } catch (e) {
-          if (isDebug) console.error('Failed to parse color_hex_values:', e);
+          // Silent fail for performance
         }
       }
       if (Array.isArray(colorsData)) {
@@ -185,16 +217,14 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
     
     // Image selection
     let bestImage = product.thumbnail; // Default fallback
-    let bestVariant = null;
-    let strategy = 'default_thumbnail';
+    let bestVariant: ProductVariant | null = null;
     
     if (matchedColor) {
       const colorImage = findImageForColor(matchedColor.normalizedName);
       if (colorImage) {
         bestImage = colorImage;
-        strategy = hoveredColor ? 'hover_color_image' : 'selected_color_image';
         
-        // Also find the matching variant
+        // Find the matching variant
         const colorMatchingVariants = product.variants?.filter(variant => {
           if (!variant.options) return false;
           return variant.options.some(option => 
@@ -207,51 +237,46 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
       }
     }
     
-    // Log final result only in debug mode
-    if (isDebug && activeColors.length > 0) {
-      const imageChanged = bestImage !== product.thumbnail;
-      console.log(`${imageChanged ? '✅' : '⚠️'} Final: ${strategy} ${imageChanged ? '(image changed)' : '(fallback)'}`);
-    }
-    
     return {
       displayImage: bestImage,
       matchedVariant: bestVariant,
-      allProductColors: productColors,
-      debugInfo: {
-        strategy,
-        activeColors,
-        matchedColor,
-        imageChanged: bestImage !== product.thumbnail,
-        isHovering: !!hoveredColor
-      }
+      allProductColors: productColors
     };
-  }, [product, selectedColors, hoveredColor]);
+  }, [product, selectedColors, hoveredColor, normalizeColorName, findImageForColor]);
 
-  // Get product price (prioritize matched variant)
-  const { cheapestPrice, currencyCode, formattedPrice } = useMemo(() => {
+  // Get product price (prioritize matched variant) - optimized
+  interface PriceResult {
+    formattedPrice: string;
+    hasDiscount: boolean;
+    discountPercentage: number;
+    originalPrice: string | null;
+  }
+
+  const { formattedPrice, hasDiscount, discountPercentage, originalPrice } = useMemo((): PriceResult => {
     if (!product || !region) {
       return {
-        cheapestPrice: undefined,
-        currencyCode: undefined,
-        formattedPrice: "N/A"
+        formattedPrice: "N/A",
+        hasDiscount: false,
+        discountPercentage: 0,
+        originalPrice: null
       };
     }
     
     const regionCurrencyCode = region.currency_code;
-    let cheapestPrice = undefined;
+    let cheapestPrice: {
+      amount: number;
+      original_amount: number;
+      currency_code: string;
+    } | undefined = undefined;
     
     if (product.variants && product.variants.length > 0) {
       // Prioritize matched variant for pricing
-      if (matchedVariant) {
-        console.log('💰 Getting price from matched variant:', matchedVariant.title);
-        
-        if (matchedVariant.calculated_price && matchedVariant.calculated_price.calculated_amount) {
-          cheapestPrice = {
-            amount: matchedVariant.calculated_price.calculated_amount,
-            original_amount: matchedVariant.calculated_price.original_amount || matchedVariant.calculated_price.calculated_amount,
-            currency_code: matchedVariant.calculated_price.currency_code
-          };
-        }
+      if (matchedVariant && matchedVariant.calculated_price?.calculated_amount) {
+        cheapestPrice = {
+          amount: matchedVariant.calculated_price.calculated_amount,
+          original_amount: matchedVariant.calculated_price.original_amount || matchedVariant.calculated_price.calculated_amount,
+          currency_code: matchedVariant.calculated_price.currency_code
+        };
       }
       
       // Fallback to cheapest price
@@ -269,54 +294,45 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
             return variantPrice;
           }
           return cheapest;
-        }, undefined);
+        }, undefined as typeof cheapestPrice);
       }
     }
     
     let formattedPrice = "N/A";
+    let hasDiscount = false;
+    let discountPercentage = 0;
+    let originalPrice: string | null = null;
+    
     if (cheapestPrice && cheapestPrice.amount) {
       formattedPrice = new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: regionCurrencyCode,
       }).format(cheapestPrice.amount);
+      
+      // Check for discounts
+      if (cheapestPrice.original_amount && cheapestPrice.original_amount > cheapestPrice.amount) {
+        hasDiscount = true;
+        const discount = cheapestPrice.original_amount - cheapestPrice.amount;
+        discountPercentage = Math.round((discount / cheapestPrice.original_amount) * 100);
+        originalPrice = new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: regionCurrencyCode,
+        }).format(cheapestPrice.original_amount);
+      }
     }
     
     return {
-      cheapestPrice,
-      currencyCode: regionCurrencyCode,
-      formattedPrice
+      formattedPrice,
+      hasDiscount,
+      discountPercentage,
+      originalPrice
     };
   }, [product, region, matchedVariant]);
-  
-  // Check for discounts
-  const { hasDiscount, discountPercentage, originalPrice } = useMemo(() => {
-    if (!cheapestPrice || !cheapestPrice.original_amount || cheapestPrice.original_amount <= cheapestPrice.amount) {
-      return { 
-        hasDiscount: false, 
-        discountPercentage: 0,
-        originalPrice: null
-      };
-    }
-    
-    const discount = cheapestPrice.original_amount - cheapestPrice.amount;
-    const percentage = Math.round((discount / cheapestPrice.original_amount) * 100);
-    
-    const formattedOriginal = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currencyCode,
-    }).format(cheapestPrice.original_amount);
-    
-    return { 
-      hasDiscount: true, 
-      discountPercentage: percentage,
-      originalPrice: formattedOriginal
-    };
-  }, [cheapestPrice, currencyCode]);
 
-  // Get vendor info
-  const vendorName = product.vendor?.name || "Unknown Vendor";
+  // Get vendor info - memoized
+  const vendorName = useMemo(() => product.vendor?.name || "Unknown Vendor", [product.vendor]);
 
-  // Check if new
+  // Check if new - memoized
   const isNew = useMemo(() => {
     if (!product.created_at) return false;
     const createdAt = new Date(product.created_at);
@@ -324,18 +340,18 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
     return (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24) < 14;
   }, [product.created_at]);
 
-  // URL helper
-  const isRelativeUrl = (url: string) => {
+  // URL helper - memoized
+  const isRelativeUrl = useMemo(() => (url: string): boolean => {
     if (!url) return true;
     return !url.startsWith('http') && !url.startsWith('//');
-  };
+  }, []);
 
   // Color hover handlers
-  const handleColorHover = (colorName: string) => {
+  const handleColorHover = (colorName: string): void => {
     setHoveredColor(colorName);
   };
 
-  const handleColorLeave = () => {
+  const handleColorLeave = (): void => {
     setHoveredColor(null);
   };
 
@@ -355,6 +371,7 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
                   className={`object-cover transition-all duration-300 group-hover:scale-105 ${
                     hoveredColor ? 'brightness-110' : ''
                   }`}
+                  loading="lazy"
                 />
               ) : (
                 <img
@@ -363,6 +380,7 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
                   className={`object-cover w-full h-full transition-all duration-300 group-hover:scale-105 ${
                     hoveredColor ? 'brightness-110' : ''
                   }`}
+                  loading="lazy"
                 />
               )}
             </div>
@@ -384,17 +402,6 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
                 {discountPercentage}% Off
               </span>
             )}
-            {/* Show current color being displayed */}
-            {/* {(hoveredColor || (selectedColors.length > 0 && debugInfo.imageChanged)) && (
-              <span 
-                className={`px-2 py-1 text-xs text-white rounded shadow-sm transition-colors ${
-                  hoveredColor ? 'bg-blue-600' : 'bg-green-600'
-                }`}
-                title={`Showing ${hoveredColor || selectedColors.join(', ')} variant`}
-              >
-                {hoveredColor ? `Previewing ${hoveredColor}` : selectedColors.join(', ')}
-              </span>
-            )} */}
           </div>
           
           {/* Quick actions */}
@@ -444,7 +451,7 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
           </div>
         </div>
         
-        {/* Ratings */}
+        {/* Review Data (now passed as props) with Loading States */}
         <div className="flex items-center mt-2">
           {isLoadingReviews ? (
             <div className="flex items-center">
@@ -484,7 +491,7 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
                 ))}
               </div>
               <span className="text-xs text-gray-500">
-                
+                No reviews
               </span>
             </div>
           )}
@@ -493,7 +500,7 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
         {/* Color swatches with hover functionality */}
         {allProductColors.length > 0 && (
           <div className="flex gap-1 mt-2">
-            {allProductColors.slice(0, 4).map((color: any, index: number) => {
+            {allProductColors.slice(0, 4).map((color, index) => {
               const isSelected = selectedColors.some(selected => 
                 normalizeColorName(selected).toLowerCase().trim() === color.normalizedName.toLowerCase().trim()
               );
@@ -523,20 +530,6 @@ const ProductPreview = ({ product, region, selectedColors = [] }: ProductPreview
             )}
           </div>
         )}
-        
-        {/* Hover instruction text */}
-        {/* {allProductColors.length > 1 && !hoveredColor && (
-          <div className="mt-1 text-xs text-gray-400">
-            Hover colors to preview
-          </div>
-        )} */}
-        
-        {/* Active color display */}
-        {/* {hoveredColor && (
-          <div className="mt-1 text-xs text-blue-600">
-            Previewing: {hoveredColor}
-          </div>
-        )} */}
       </div>
     </div>
   );

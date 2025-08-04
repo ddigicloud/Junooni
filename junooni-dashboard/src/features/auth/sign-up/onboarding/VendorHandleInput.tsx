@@ -19,6 +19,14 @@ const VendorHandleInput = ({ vendorData, updateVendorData, brandColors }) => {
     }
   }, [vendorData.vendor.id]);
 
+  // Function to sanitize handle input
+  const sanitizeHandle = (input) => {
+    // Remove any characters that aren't lowercase letters, numbers, or hyphens
+    return input
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, ''); // Remove spaces, underscores, and other invalid characters
+  };
+
   // Function to check handle uniqueness
   const checkHandleUniqueness = async (handle) => {
     if (!handle) return;
@@ -75,10 +83,13 @@ const VendorHandleInput = ({ vendorData, updateVendorData, brandColors }) => {
     }
   };
 
-  // Handle input change with debounce
+  // Handle input change with debounce and sanitization
   const handleInputChange = (e) => {
-    const value = e.target.value;
-    updateVendorData('handle', value);
+    const rawValue = e.target.value;
+    const sanitizedValue = sanitizeHandle(rawValue);
+    
+    // Update vendor data with sanitized value
+    updateVendorData('handle', sanitizedValue);
     
     // Clear any existing timeout
     if (typingTimeout) {
@@ -90,12 +101,12 @@ const VendorHandleInput = ({ vendorData, updateVendorData, brandColors }) => {
     setIsSameAsOriginal(false);
     
     // Only check handle if it's not empty
-    if (value.trim()) {
-      console.log(`Will check handle: "${value}" after typing stops`);
+    if (sanitizedValue.trim()) {
+      console.log(`Will check handle: "${sanitizedValue}" after typing stops`);
       
       // Set a new timeout
       const timeout = setTimeout(() => {
-        checkHandleUniqueness(value);
+        checkHandleUniqueness(sanitizedValue);
       }, 500); // Wait for 500ms after user stops typing
       
       setTypingTimeout(timeout);
@@ -170,11 +181,11 @@ const VendorHandleInput = ({ vendorData, updateVendorData, brandColors }) => {
             borderColor: getBorderColor(),
             focusRing: brandColors.primary
           }}
-          placeholder="Enter your handle"
+          placeholder="Enter your handle (lowercase letters, numbers, and hyphens only)"
         />
         {isChecking && (
           <div className="absolute right-3 top-2.5">
-            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path 
                 className="opacity-75" 
@@ -187,11 +198,11 @@ const VendorHandleInput = ({ vendorData, updateVendorData, brandColors }) => {
         {hasBeenChecked && !isChecking && (
           <div className="absolute right-3 top-2.5">
             {isUnique ? (
-              <svg className="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="w-5 h-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
             ) : (
-              <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="w-5 h-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             )}
@@ -203,6 +214,9 @@ const VendorHandleInput = ({ vendorData, updateVendorData, brandColors }) => {
           {feedback.text}
         </p>
       )}
+      <p className="mt-1 text-xs text-gray-500">
+        Only lowercase letters, numbers, and hyphens are allowed. No spaces or underscores.
+      </p>
     </div>
   );
 };

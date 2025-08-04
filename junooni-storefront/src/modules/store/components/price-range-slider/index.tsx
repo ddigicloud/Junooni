@@ -231,8 +231,8 @@ const PriceRangeSlider = ({
       
       {/* Price range labels */}
       <div className="w-full flex justify-between">
-        <Text className="text-gray-500 text-sm">${minPrice}</Text>
-        <Text className="text-gray-500 text-sm">${maxPrice}</Text>
+        <Text className="text-gray-500 text-sm">₹{minPrice}</Text>
+        <Text className="text-gray-500 text-sm">₹{maxPrice}</Text>
       </div>
     </div>
   )
