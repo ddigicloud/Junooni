@@ -436,7 +436,7 @@ const isNewVariant = (variant) => {
               product = product.product;
             }
           } catch (parseError) {
-            console.error('Error parsing product data:', parseError);
+            ////console.error('Error parsing product data:', parseError);
             throw new Error('Invalid product data format');
           }
         } else {
@@ -448,14 +448,14 @@ const isNewVariant = (variant) => {
           throw new Error('Product data is empty or invalid');
         }
         
-        console.log("Loaded product data:", product);
+        ////console.log("Loaded product data:", product);
         
         // Set product view URL
         setProductViewUrl(`${STOREFRONT_DOMAIN}/products/${product.handle}`);
         
         // Parse metadata for fulfillment info
         const metadata = product.metadata || {};
-        console.log("Product metadata:", metadata);
+        ////console.log("Product metadata:", metadata);
         setFulfillmentType(metadata.fulfillment_type || '');
         
         // Parse fulfillment data from metadata
@@ -465,7 +465,7 @@ const isNewVariant = (variant) => {
             fulfillmentDataObj = parseFulfillmentData(metadata.fulfillment_type);
             setFulfillmentData(fulfillmentDataObj);
           } catch (e) {
-            console.error("Error parsing fulfillment data:", e);
+            ////console.error("Error parsing fulfillment data:", e);
           }
         }
         
@@ -518,7 +518,7 @@ const isNewVariant = (variant) => {
                     });
                   }
                 } catch (e) {
-                  console.error("Failed to parse color_hex_values:", e);
+                  ////console.error("Failed to parse color_hex_values:", e);
                 }
               }
               
@@ -561,7 +561,7 @@ const isNewVariant = (variant) => {
                 imageAssociationSettings = product.metadata.variant_specific_image_option;
               }
               
-              console.log("Image association settings from metadata:", imageAssociationSettings);
+              ////console.log("Image association settings from metadata:", imageAssociationSettings);
               
               if (Array.isArray(imageAssociationSettings)) {
                 // Update each option with its image association setting
@@ -583,9 +583,9 @@ const isNewVariant = (variant) => {
                     return false;
                   });
                   // ADD THESE DEBUG LOGS RIGHT AFTER THE ABOVE PROCESSING:
-                  console.log("Image association settings being loaded:", imageAssociationSettings);
-                  console.log("Options with image associations:", transformedOptions.filter(opt => opt.imageAssociation));
-                  console.log(`Option ${opt.title} (${opt.id}) association setting:`, setting);
+                  // //console.log("Image association settings being loaded:", imageAssociationSettings);
+                  // //console.log("Options with image associations:", transformedOptions.filter(opt => opt.imageAssociation));
+                  // //console.log(`Option ${opt.title} (${opt.id}) association setting:`, setting);
                   
                   if (setting) {
                     // Convert to explicit boolean to avoid any "undefined" issues
@@ -604,7 +604,7 @@ const isNewVariant = (variant) => {
                 });
               }
             } catch (e) {
-              console.error("Failed to parse image association settings:", e);
+              ////console.error("Failed to parse image association settings:", e);
               
               // Ensure all options have explicit imageAssociation value
               transformedOptions = transformedOptions.map(opt => ({
@@ -622,7 +622,7 @@ const isNewVariant = (variant) => {
           
           
           // Log all options after processing
-          console.log("Transformed options with association settings:", transformedOptions);
+          ////console.log("Transformed options with association settings:", transformedOptions);
         } else {
           // Create default Color and Size options if none exist
           transformedOptions = [
@@ -663,7 +663,7 @@ const isNewVariant = (variant) => {
               handlingTime = fulfillmentInfo.handling_time || '2-3';
             }
           } catch (e) {
-            console.error("Error parsing fulfillment_type:", e);
+            ////console.error("Error parsing fulfillment_type:", e);
           }
         }
         // Transform variants to match component format
@@ -731,7 +731,7 @@ const isNewVariant = (variant) => {
                   newInventoryLevels[inventoryItemId] = [invLevel];
                 }
               } catch (invErr) {
-                console.log(`Failed to fetch inventory for variant ${variant.id}:`, invErr);
+                ////console.log(`Failed to fetch inventory for variant ${variant.id}:`, invErr);
               }
             } else if (variant.inventory_quantity !== undefined) {
               stock = variant.inventory_quantity;
@@ -800,7 +800,7 @@ const isNewVariant = (variant) => {
           // Ensure we have the full URL for each image
           let imgUrl = img.url;
           
-          console.log(`Processing image ${index}:`, img);
+          ////console.log(`Processing image ${index}:`, img);
           
           return {
             file: null,
@@ -812,22 +812,22 @@ const isNewVariant = (variant) => {
           };
         }) || [];
 
-        console.log("Product Images:", product.images);
-        console.log("Transformed Media Initial:", transformedMedia);
+        // //console.log("Product Images:", product.images);
+        // //console.log("Transformed Media Initial:", transformedMedia);
         // Process variant-specific image associations
         const variantSpecificImages: MediaItem[] = [];
 
         if (product.variants && Array.isArray(product.variants)) {
           // Process each variant to look for image associations
           product.variants.forEach(variant => {
-            console.log(`Processing variant ${variant.id} for image associations:`, variant);
+            ////console.log(`Processing variant ${variant.id} for image associations:`, variant);
             
             // First check if this variant has any direct image associations in its metadata
             let variantImageIds: string[] = [];
             let variantImageUrls: string[] = [];
             
             if (variant.metadata) {
-              console.log(`Variant ${variant.id} metadata:`, variant.metadata);
+              ////console.log(`Variant ${variant.id} metadata:`, variant.metadata);
               
               // Try to get image IDs first (preferred)
               if (variant.metadata.variant_image_ids) {
@@ -840,7 +840,7 @@ const isNewVariant = (variant) => {
                     variantImageIds = parsedIds;
                   }
                 } catch (e) {
-                  console.error(`Failed to parse variant_image_ids for variant ${variant.id}:`, e);
+                  ////console.error(`Failed to parse variant_image_ids for variant ${variant.id}:`, e);
                 }
               }
               
@@ -855,7 +855,7 @@ const isNewVariant = (variant) => {
                     variantImageUrls = parsedUrls;
                   }
                 } catch (e) {
-                  console.error(`Failed to parse variant_images for variant ${variant.id}:`, e);
+                  ////console.error(`Failed to parse variant_images for variant ${variant.id}:`, e);
                 }
               }
               
@@ -870,7 +870,7 @@ const isNewVariant = (variant) => {
                     colorImages = variant.metadata.color_images;
                   }
                   
-                  console.log(`Color images for variant ${variant.id}:`, colorImages);
+                  ////console.log(`Color images for variant ${variant.id}:`, colorImages);
                   
                   if (Array.isArray(colorImages)) {
                     // Extract the image IDs and URLs
@@ -887,7 +887,7 @@ const isNewVariant = (variant) => {
                                               'Color';
                         
                         if (colorOption) {
-                          console.log(`Found color option match for ${colorImg.color}:`, colorOption);
+                          ////console.log(`Found color option match for ${colorImg.color}:`, colorOption);
                           
                           // Try to find a matching image in the main images array first
                           let matchingImage = transformedMedia.find(img => {
@@ -905,7 +905,7 @@ const isNewVariant = (variant) => {
                           });
                           
                           if (matchingImage) {
-                            console.log(`Found matching image for color ${colorImg.color}:`, matchingImage);
+                            ////console.log(`Found matching image for color ${colorImg.color}:`, matchingImage);
                             
                             // Add option association to existing image
                             matchingImage.variantInfo = matchingImage.variantInfo || {};
@@ -913,7 +913,7 @@ const isNewVariant = (variant) => {
                             matchingImage.variantInfo.optionValues = [colorImg.color];
                             matchingImage.colorValue = colorImg.color;
                           } else {
-                            console.log(`No matching image found for color ${colorImg.color}, adding as new`);
+                            ////console.log(`No matching image found for color ${colorImg.color}, adding as new`);
                             
                             // Use imageId from colorImg if available, otherwise use a URL
                             let imageUrl = colorImg.url || '';
@@ -928,7 +928,7 @@ const isNewVariant = (variant) => {
                               if (serverImage) {
                                 imageUrl = serverImage.url;
                               } else {
-                                console.warn(`Could not find server URL for color image ${colorImg.imageId}`);
+                                ////console.warn(`Could not find server URL for color image ${colorImg.imageId}`);
                                 // Try to construct URL from image ID
                                 imageUrl = `${API_BASE_URL}/static/${colorImg.imageId}`;
                               }
@@ -969,7 +969,7 @@ const isNewVariant = (variant) => {
                     optionImages = variant.metadata.option_images;
                   }
                   
-                  console.log(`Option images for variant ${variant.id}:`, optionImages);
+                  ////console.log(`Option images for variant ${variant.id}:`, optionImages);
                   
                   if (Array.isArray(optionImages)) {
                     // Process each option image entry
@@ -983,11 +983,11 @@ const isNewVariant = (variant) => {
                         
                         if (optionName && optionValue) {
                           // ADD THIS DEBUG LOG:
-                          console.log(`Attempting to match image ID: "${optImg.imageId}" with available images:`, 
-                            transformedMedia.map(img => ({id: img.id, url: img.url}))
-                          );
+                          // console.log(`Attempting to match image ID: "${optImg.imageId}" with available images:`, 
+                          //   transformedMedia.map(img => ({id: img.id, url: img.url}))
+                          // );
                           
-                          console.log(`Processing option image for ${optionName}: ${optionValue}`, optImg);
+                          ////console.log(`Processing option image for ${optionName}: ${optionValue}`, optImg);
                           
                           // Find the matching image by ID first
                           let matchingImage = transformedMedia.find(img => img.id === optImg.imageId);
@@ -996,10 +996,10 @@ const isNewVariant = (variant) => {
                           if (!matchingImage) {
                             const targetUrl = optImg.url;
                             matchingImage = transformedMedia.find(img => img.url === targetUrl);
-                            console.log(`Image ${optImg.imageId} not found by ID, searching by URL: ${targetUrl}`);
+                            ////console.log(`Image ${optImg.imageId} not found by ID, searching by URL: ${targetUrl}`);
                             
                             if (matchingImage) {
-                              console.log(`Found matching image by URL:`, matchingImage);
+                              ////console.log(`Found matching image by URL:`, matchingImage);
                             }
                           }
                           
@@ -1011,9 +1011,9 @@ const isNewVariant = (variant) => {
                               optionValues: [optionValue]
                             };
                             
-                            console.log(`Successfully set colorValue "${optionValue}" on image:`, matchingImage.id);
+                            ////console.log(`Successfully set colorValue "${optionValue}" on image:`, matchingImage.id);
                           } else {
-                            console.log(`No matching image found for ID: ${optImg.imageId}, URL: ${optImg.url}`);
+                            ////console.log(`No matching image found for ID: ${optImg.imageId}, URL: ${optImg.url}`);
                             
                             // If we can't find the image by ID or URL, create a new media item
                             const newMediaItem: MediaItem = {
@@ -1029,23 +1029,23 @@ const isNewVariant = (variant) => {
                             };
                             
                             transformedMedia.push(newMediaItem);
-                            console.log(`Created new media item for missing image:`, newMediaItem);
+                            ////console.log(`Created new media item for missing image:`, newMediaItem);
                           }
                         }
                       }
                     });
                   }
                 } catch (e) {
-                  console.error("Failed to parse option images:", e);
+                  ////console.error("Failed to parse option images:", e);
                 }
               }
               // ===== END NEW CODE =====
             }
             
-            console.log(`Variant ${variant.id} image associations:`, {
-              ids: variantImageIds,
-              urls: variantImageUrls
-            });
+            // //console.log(`Variant ${variant.id} image associations:`, {
+            //   ids: variantImageIds,
+            //   urls: variantImageUrls
+            // });
             
             // Process direct variant-specific image IDs
             if (variantImageIds.length > 0) {
@@ -1062,9 +1062,9 @@ const isNewVariant = (variant) => {
                   // Add variant association to this image
                   matchingImage.variantInfo = matchingImage.variantInfo || {};
                   matchingImage.variantInfo.variantId = variant.id;
-                  console.log(`Associated image ${imageId} with variant ${variant.id}`);
+                  ////console.log(`Associated image ${imageId} with variant ${variant.id}`);
                 } else {
-                  console.warn(`Image ${imageId} not found in loaded images, will check URLs instead`);
+                  ////console.warn(`Image ${imageId} not found in loaded images, will check URLs instead`);
                   
                   // Try to find this image in the product images by ID
                   const serverImage = product.images?.find(img => imageIdsMatch(img.id, imageId));
@@ -1091,7 +1091,7 @@ const isNewVariant = (variant) => {
       
       // Skip blob URLs as they won't be valid anymore
       if (imageUrl.startsWith('blob:')) {
-        console.warn(`Skipping blob URL: ${imageUrl}`);
+        ////console.warn(`Skipping blob URL: ${imageUrl}`);
         return;
       }
       
@@ -1102,10 +1102,10 @@ const isNewVariant = (variant) => {
         // Add variant association to this image
         matchingImage.variantInfo = matchingImage.variantInfo || {};
         matchingImage.variantInfo.variantId = variant.id;
-        console.log(`Associated image with URL ${imageUrl} with variant ${variant.id}`);
+        ////console.log(`Associated image with URL ${imageUrl} with variant ${variant.id}`);
       } else {
         // If the image isn't in the gallery, add it as a new item
-        console.log(`Adding new image with URL ${imageUrl} for variant ${variant.id}`);
+        ////console.log(`Adding new image with URL ${imageUrl} for variant ${variant.id}`);
         
         // Try to find a proper image ID from product.images
         const serverImage = product.images?.find(img => img.url === imageUrl);
@@ -1136,24 +1136,24 @@ if (!exists) {
 }
 });
 
-console.log("Final media items after processing:", allMediaItems);
+////console.log("Final media items after processing:", allMediaItems);
 
 // Set the combined images to the state
 setMediaItems(allMediaItems);
 
 // ADD THESE DEBUG LOGS RIGHT AFTER setMediaItems:
-console.log("=== EDIT PRODUCT LOAD DEBUG ===");
-console.log("Product variants metadata:", product.variants?.map(v => ({
-  id: v.id,
-  title: v.title,
-  metadata: v.metadata
-})));
-console.log("Final media items loaded:", allMediaItems.map(item => ({
-  id: item.id,
-  url: item.url,
-  variantInfo: item.variantInfo,
-  colorValue: item.colorValue
-})));
+////console.log("=== EDIT PRODUCT LOAD DEBUG ===");
+// //console.log("Product variants metadata:", product.variants?.map(v => ({
+//   id: v.id,
+//   title: v.title,
+//   metadata: v.metadata
+// })));
+// //console.log("Final media items loaded:", allMediaItems.map(item => ({
+//   id: item.id,
+//   url: item.url,
+//   variantInfo: item.variantInfo,
+//   colorValue: item.colorValue
+// })));
 
 // Process product details from metadata
 let productDetails: ProductDetail[] = [{ id: generateUUID(), text: '' }];
@@ -1171,7 +1171,7 @@ if (product.metadata.product_details) {
       }));
     }
   } catch (e) {
-    console.error("Failed to parse product details:", e);
+    ////console.error("Failed to parse product details:", e);
   }
 }
 
@@ -1207,11 +1207,11 @@ locationId: DEFAULT_LOCATION_ID
 });
 
 // Log the options after form reset
-console.log("Options after form reset:", form.getValues('options'));
+////console.log("Options after form reset:", form.getValues('options'));
 
 // Log the image association options
 const associatedOptions = getImageAssociatedOptions();
-console.log("Image associated options after load:", associatedOptions);
+////console.log("Image associated options after load:", associatedOptions);
 setImageAssociatedOptions(associatedOptions);
 
 // Set initial selected option and value if we have options with image associations
@@ -1229,7 +1229,7 @@ setHasUnsavedVariantChanges(false);
 setProductLoaded(true);
 setIsLoading(false);
 } catch (error: any) {
-console.error('Error loading product:', error);
+////console.error('Error loading product:', error);
 setError('Failed to load product. Please try again.');
 setIsLoading(false);
 }
@@ -1281,13 +1281,13 @@ loadProduct();
       try {
         parsedData = JSON.parse(dataString);
       } catch (e) {
-        console.error("Failed to parse fulfillment_data JSON:", e);
+        ////console.error("Failed to parse fulfillment_data JSON:", e);
         return null;
       }
       
       return parsedData;
     } catch (e) {
-      console.error("Error parsing fulfillment data:", e);
+      ////console.error("Error parsing fulfillment data:", e);
       return null;
     }
   };
@@ -1479,7 +1479,7 @@ loadProduct();
                 parseInt(variant.stock) || 0
               );
               
-              console.log(`Synced new variant ${variant.id} stock ${variant.stock} to inventory item ${variant.inventoryItemId}`);
+              ////console.log(`Synced new variant ${variant.id} stock ${variant.stock} to inventory item ${variant.inventoryItemId}`);
             }
           }
         });
@@ -1489,7 +1489,7 @@ loadProduct();
       syncNewVariantsInventory();
 
       
-      console.log("Generated variants:", variantsWithExistingData);
+      ////console.log("Generated variants:", variantsWithExistingData);
       
       // Flag that we have unsaved variant changes
       setHasUnsavedVariantChanges(true);
@@ -1574,14 +1574,14 @@ loadProduct();
         if ('data' in result && result.data) {
           newInventoryLevels[result.inventoryItemId] = result.data.inventory_levels || [];
         } else if ('error' in result) {
-          console.error(`Error fetching inventory for ${result.inventoryItemId}:`, result.error);
+          ////console.error(`Error fetching inventory for ${result.inventoryItemId}:`, result.error);
         }
       });
       
       setInventoryLevels(newInventoryLevels);
       setIsLoadingInventory(false);
     } catch (error) {
-      console.error('Error loading inventory levels:', error);
+      ////console.error('Error loading inventory levels:', error);
       setInventoryError('Failed to load inventory data. Please try again.');
       setIsLoadingInventory(false);
     }
@@ -1943,7 +1943,7 @@ loadProduct();
         fileInput.value = '';
       }
     } catch (error) {
-      console.error("Error handling file upload:", error);
+      ////console.error("Error handling file upload:", error);
       alert("Error uploading files. Please try again.");
     }
   };
@@ -2121,7 +2121,7 @@ loadProduct();
         // Add metadata to formData as a separate field
         if (Object.keys(metadata).length > 0) {
           formData.append('metadata', JSON.stringify(metadata));
-          console.log('Uploading image with variant metadata:', metadata);
+          ////console.log('Uploading image with variant metadata:', metadata);
         }
       }
       
@@ -2131,7 +2131,7 @@ loadProduct();
       });
       
       if (response && 'id' in response) {
-        console.log('Image upload successful, received ID:', response.id);
+        ////console.log('Image upload successful, received ID:', response.id);
         // Store the mapping from original URL to new ID
         const originalUrl = URL.createObjectURL(file);
         setUploadedImageMap(prev => ({
@@ -2147,7 +2147,7 @@ loadProduct();
       
       throw new Error('Failed to get image URL from response');
     } catch (error) {
-      console.error('Error uploading file:', error);
+      ////console.error('Error uploading file:', error);
       throw error;
     }
   };
@@ -2159,10 +2159,10 @@ loadProduct();
 
   // For debugging when update button doesn't work
   const handleManualSubmit = () => {
-    console.log('Manual submit button clicked');
-    console.log('Form state:', form.formState);
-    console.log('Form values:', form.getValues());
-    console.log('Media items:', mediaItems);
+    // //console.log('Manual submit button clicked');
+    // //console.log('Form state:', form.formState);
+    // //console.log('Form values:', form.getValues());
+    // //console.log('Media items:', mediaItems);
     form.handleSubmit(onSubmit)();
   };
 
@@ -2186,7 +2186,7 @@ loadProduct();
     const subscription = form.watch((formValues, { name, type }) => {
       // Check if the changed field is an option field
       if (name && (name.includes('options'))) {
-        console.log(`Form field changed: ${name}, type: ${type}`);
+        ////console.log(`Form field changed: ${name}, type: ${type}`);
         const currentOptions = form.getValues('options');
         
         // If the last option has values and we have fewer than 3 options
@@ -2271,7 +2271,7 @@ loadProduct();
 
   // Log current media items for debugging
   useEffect(() => {
-    console.log("Current media items:", mediaItems);
+    ////console.log("Current media items:", mediaItems);
     
     // For each option with image association, log whether images exist
     const options = form.getValues('options');
@@ -2285,7 +2285,7 @@ loadProduct();
             item.variantInfo?.optionValues?.includes(value)
           );
           
-          console.log(`Images for ${option.title}: ${value}:`, imagesForValue.length, imagesForValue);
+          //console.log(`Images for ${option.title}: ${value}:`, imagesForValue.length, imagesForValue);
         });
       }
     });
@@ -2385,7 +2385,7 @@ const onSubmit = async (values: ProductFormValues) => {
         
         if (item && item.file) {
           try {
-            console.log(`Uploading image ${i} with variant info:`, item.variantInfo);
+            //console.log(`Uploading image ${i} with variant info:`, item.variantInfo);
             const uploadResult = await uploadFile(item.file, item.variantInfo);
             
             // Update the media item with server values
@@ -2397,9 +2397,9 @@ const onSubmit = async (values: ProductFormValues) => {
               isNew: false
             };
             
-            console.log(`Updated image ${i} with new ID: ${uploadResult.id}`);
+            //console.log(`Updated image ${i} with new ID: ${uploadResult.id}`);
           } catch (uploadError) {
-            console.error(`Failed to upload image ${i}:`, uploadError);
+            //console.error(`Failed to upload image ${i}:`, uploadError);
             setError(`Failed to upload image: ${uploadError.message || 'Unknown error'}`);
             setIsSubmitting(false);
             return;
@@ -2421,7 +2421,7 @@ const onSubmit = async (values: ProductFormValues) => {
           ...(item.colorValue ? { metadata: { color: item.colorValue } } : {}),
         }));
       
-      console.log("Final images to be sent to API:", images);
+      //console.log("Final images to be sent to API:", images);
       
       // --- STEP 2: Process Options (wrapped with try/catch) ---
       try {
@@ -2555,7 +2555,7 @@ const onSubmit = async (values: ProductFormValues) => {
         });
               
               // Log the image association settings being saved
-              console.log("Saving image association settings:", imageAssociationSettings);
+              //console.log("Saving image association settings:", imageAssociationSettings);
               if (imageAssociationSettings.length > 0) {
                 metadata.variant_specific_image_option = JSON.stringify(imageAssociationSettings);
               }
@@ -2787,14 +2787,15 @@ const onSubmit = async (values: ProductFormValues) => {
                       } else if (originalVariantIds && Array.isArray(originalVariantIds) && originalVariantIds.includes(v.id)) {
                         updatedVariants.push(v);
                       }
+                    
                     }
                     
                     // Log variant changes
-                    console.log("Variant changes:", {
-                      create: createdVariants.length,
-                      update: updatedVariants.length,
-                      delete: deletedVariantIds.length
-                    });
+                    // console.log("Variant changes:", {
+                    //   create: createdVariants.length,
+                    //   update: updatedVariants.length,
+                    //   delete: deletedVariantIds.length
+                    // });
                     
                     // Construct the product object in API format (without variants)
                     const productData = {
@@ -2818,7 +2819,7 @@ const onSubmit = async (values: ProductFormValues) => {
                       metadata: metadata
                     };
                     
-                    console.log("Updating product with data:", productData);
+                    //console.log("Updating product with data:", productData);
                     
                     // --- STEP 9: Make API Calls ---
                     try {
@@ -2830,7 +2831,7 @@ const onSubmit = async (values: ProductFormValues) => {
                         } 
                       });
                       
-                      console.log("Product update result:", result);
+                      //console.log("Product update result:", result);
                       
                       // Then, handle variants separately with batch API
                       if (createdVariants.length > 0 || updatedVariants.length > 0 || 
@@ -2845,7 +2846,7 @@ const onSubmit = async (values: ProductFormValues) => {
                           }
                         });
                         
-                        console.log("Variant update result:", variantResult);
+                        //console.log("Variant update result:", variantResult);
                       }
                       
                       // Process inventory operations (wrap with try/catch)
@@ -2879,7 +2880,7 @@ const onSubmit = async (values: ProductFormValues) => {
                               // New variants always go to create
                               if (isNew) {
                                 inventoryOperations.create.push(inventoryEntry);
-                                console.log(`New variant ${variant.id} added to CREATE inventory ops`);
+                                //console.log(`New variant ${variant.id} added to CREATE inventory ops`);
                               } else {
                                 // For existing variants, check if they already have inventory
                                 const inventoryExists = inventoryLevelsRef.current && 
@@ -2900,13 +2901,13 @@ const onSubmit = async (values: ProductFormValues) => {
                           
                           // Process inventory operations if we have any
                           if (inventoryOperations.create.length > 0 || inventoryOperations.update.length > 0) {
-                            console.log("Updating inventory with operations:", inventoryOperations);
+                            //console.log("Updating inventory with operations:", inventoryOperations);
                             
                             try {
                               const inventoryResult = await batchUpdateInventoryLevels(inventoryOperations);
-                              console.log("Inventory update result:", inventoryResult);
+                              //console.log("Inventory update result:", inventoryResult);
                             } catch (inventoryError) {
-                              console.error("Error updating inventory levels:", inventoryError);
+                              //console.error("Error updating inventory levels:", inventoryError);
                               // Continue with product update even if inventory update fails
                             }
                           }
@@ -2928,56 +2929,56 @@ const onSubmit = async (values: ProductFormValues) => {
                         setProductLoaded(false);
                         navigate({ to: '/products' });
                       } catch (inventoryError) {
-                        console.error("Error handling inventory:", inventoryError);
+                        //console.error("Error handling inventory:", inventoryError);
                         setError(`Failed to update inventory: ${inventoryError?.message || 'Unknown error'}`);
                         setIsSubmitting(false);
                       }
                     } catch (apiError) {
-                      console.error('API Error updating product:', apiError);
+                      //console.error('API Error updating product:', apiError);
                       handleApiError(apiError);
                     }
                   } catch (dataPreparationError) {
-                    console.error('Error preparing final data:', dataPreparationError);
+                    //console.error('Error preparing final data:', dataPreparationError);
                     setError(`Failed to prepare final data: ${dataPreparationError?.message || 'Unknown error'}`);
                     setIsSubmitting(false);
                   }
                 } catch (variantFormattingError) {
-                  console.error('Error formatting variants:', variantFormattingError);
+                  //console.error('Error formatting variants:', variantFormattingError);
                   setError(`Failed to format variants: ${variantFormattingError?.message || 'Unknown error'}`);
                   setIsSubmitting(false);
                 }
               } catch (optionImagesError) {
-                console.error('Error processing option images:', optionImagesError);
+                //console.error('Error processing option images:', optionImagesError);
                 setError(`Failed to process option images: ${optionImagesError?.message || 'Unknown error'}`);
                 setIsSubmitting(false);
               }
             } catch (colorProcessingError) {
-              console.error('Error processing color data:', colorProcessingError);
+              //console.error('Error processing color data:', colorProcessingError);
               setError(`Failed to process colors: ${colorProcessingError?.message || 'Unknown error'}`);
               setIsSubmitting(false);
             }
           } catch (metadataError) {
-            console.error('Error preparing metadata:', metadataError);
+            //console.error('Error preparing metadata:', metadataError);
             setError(`Failed to prepare metadata: ${metadataError?.message || 'Unknown error'}`);
             setIsSubmitting(false);
           }
         } catch (variantError) {
-          console.error('Error processing variants:', variantError);
+          //console.error('Error processing variants:', variantError);
           setError(`Failed to process variants: ${variantError?.message || 'Unknown error'}`);
           setIsSubmitting(false);
         }
       } catch (optionError) {
-        console.error('Error processing options:', optionError);
+        //console.error('Error processing options:', optionError);
         setError(`Failed to process options: ${optionError?.message || 'Unknown error'}`);
         setIsSubmitting(false);
       }
     } catch (imageError) {
-      console.error('Error processing images:', imageError);
+      //console.error('Error processing images:', imageError);
       setError(`Failed to process images: ${imageError?.message || 'Unknown error'}`);
       setIsSubmitting(false);
     }
   } catch (error: any) {
-    console.error('Overall error in product update:', error);
+    //console.error('Overall error in product update:', error);
     setError(`Failed to update product: ${error?.message || 'Unknown error'}`);
     setIsSubmitting(false);
   } finally {
@@ -2987,14 +2988,14 @@ const onSubmit = async (values: ProductFormValues) => {
 
 // Helper function to handle API errors
 const handleApiError = (apiError: any) => {
-  console.error('API Error details:', apiError);
+  //console.error('API Error details:', apiError);
   
   // More detailed error handling
   let errorMessage = 'API Error: ';
   
   if (apiError.response) {
-    console.error('API Error response:', apiError.response);
-    console.error('Error response data:', apiError.response.data);
+    //console.error('API Error response:', apiError.response);
+    //console.error('Error response data:', apiError.response.data);
     
     if (apiError.response.data?.message) {
       errorMessage += apiError.response.data.message;
@@ -3107,7 +3108,7 @@ const handleApiError = (apiError: any) => {
         // Save to server
         if (operations.create.length > 0 || operations.update.length > 0) {
           const result = await batchUpdateInventoryLevels(operations);
-          console.log("Inventory update result:", result);
+          //console.log("Inventory update result:", result);
           
           // Update the main inventory levels state
           setInventoryLevels(localInventoryLevels);
@@ -3119,7 +3120,7 @@ const handleApiError = (apiError: any) => {
         // Close modal
         setIsStockModalOpen(false);
       } catch (error) {
-        console.error("Error saving inventory:", error);
+        //console.error("Error saving inventory:", error);
         setInventoryError("Failed to save inventory changes");
       } finally {
         setUpdating(false);
@@ -3325,39 +3326,42 @@ const handleApiError = (apiError: any) => {
       
       {/* Header Bar with branding */}
       <div className="flex flex-col justify-between gap-4 p-6 mb-6 bg-white border border-gray-100 rounded-lg shadow-sm md:flex-row md:items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-[#e65100]">
-            Edit Product
-          </h1>
-          <p className="mt-1 text-gray-500">Update product details</p>
-        </div>
-        <div className="flex space-x-3">
-          <Button 
-            variant="outline" 
-            onClick={handleViewProduct}
-            className="border-[#e65100] text-[#e65100] hover:bg-orange-50"
-            disabled={!productViewUrl}
-          >
-            <IconExternalLink size={18} className="mr-2" />
-            View Product
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => navigate({ to: '/products' })}
-            className="text-gray-700 border-gray-300 hover:bg-gray-50"
-          >
-            Cancel
-          </Button>
-          <Button 
-            type="button" 
-            onClick={handleManualSubmit} 
-            disabled={isSubmitting}
-            className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
-          >
-            {isSubmitting ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-[#e65100]">Edit Product</h1>
+        <p className="mt-1 text-gray-500">Update product details</p>
       </div>
+
+      {/* Buttons */}
+      <div className="flex flex-col w-full space-y-2 md:flex-row md:space-y-0 md:space-x-3 md:w-auto">
+        <Button
+          variant="outline"
+          onClick={handleViewProduct}
+          className="w-full md:w-auto border-[#e65100] text-[#e65100] hover:bg-orange-50"
+          disabled={!productViewUrl}
+        >
+          <IconExternalLink size={18} className="mr-2" />
+          View Product
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={() => navigate({ to: '/products' })}
+          className="w-full text-gray-700 border-gray-300 md:w-auto hover:bg-gray-50"
+        >
+          Cancel
+        </Button>
+
+        <Button
+          type="button"
+          onClick={handleManualSubmit}
+          disabled={isSubmitting}
+          className="w-full md:w-auto bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
+        >
+          {isSubmitting ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </div>
+    </div>
+
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -3630,7 +3634,7 @@ const handleApiError = (apiError: any) => {
                                 alt={`Product image ${index + 1}`}
                                 className="object-cover w-full h-full"
                                 onError={(e) => {
-                                  console.error(`Failed to load image: ${item.url}`);
+                                  //console.error(`Failed to load image: ${item.url}`);
                                   e.currentTarget.src = '/placeholder-image.png';
                                 }}
                               />

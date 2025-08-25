@@ -121,7 +121,7 @@ export default function NotFound() {
                 href="/"
               >
                 <Home className="w-5 h-5" />
-                <Text className="font-medium">Return to Homepage</Text>
+                <Text className="font-medium text-[#e65100]">Return to Homepage</Text>
               </Link>
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function NotFound() {
             <Link href="/" className="w-full">
               <Button 
                 variant="default" 
-                className="w-full bg-gradient-to-r from-[#e65100] to-[#ff8a50] hover:from-[#d84315] hover:to-[#e65100] transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl" 
+                className="w-full bg-gradient-to-r text-white from-[#e65100] to-[#ff8a50] hover:from-[#d84315] hover:to-[#e65100] transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl" 
                 size="large"
               >
                 <Home className="w-5 h-5 mr-2" />

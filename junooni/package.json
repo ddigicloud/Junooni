@@ -34,6 +34,7 @@
     "@mikro-orm/migrations": "6.4.3",
     "@mikro-orm/postgresql": "6.4.3",
     "@react-email/components": "0.0.41",
+    "anthropic": "^0.0.0",
     "awilix": "^8.0.1",
     "bcryptjs": "^3.0.2",
     "express-rate-limit": "^8.0.1",

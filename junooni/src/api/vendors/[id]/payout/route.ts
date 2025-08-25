@@ -348,7 +348,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     }
     
     throw new MedusaError(
-      MedusaError.Types.UNKNOWN_ERROR,
+      MedusaError.Types.UNEXPECTED_STATE,
       `Failed to fetch payout data: ${error.message}`
     )
   }
@@ -357,7 +357,11 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 // POST /store/vendors/[id]/payout/request - Request payout
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const { id } = req.params
-  const { amount, paymentMethod, reason } = req.body
+  const { amount, paymentMethod, reason } = req.body as {
+    amount: number
+    paymentMethod: "bank_transfer" | "paypal" | "razorpay" | "manual"
+    reason?: string
+  }
   const vendorId = id
 
   if (!vendorId) {
@@ -374,10 +378,11 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     )
   }
 
-  if (!paymentMethod) {
+  const allowedMethods = ["bank_transfer", "paypal", "razorpay", "manual"] as const
+  if (!paymentMethod || !allowedMethods.includes(paymentMethod)) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "Payment method is required"
+      "Payment method is required and must be one of: bank_transfer, paypal, razorpay, manual"
     )
   }
 
@@ -415,7 +420,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     }
     
     throw new MedusaError(
-      MedusaError.Types.UNKNOWN_ERROR,
+      MedusaError.Types.UNEXPECTED_STATE,
       `Failed to process payout: ${error.message}`
     )
   }

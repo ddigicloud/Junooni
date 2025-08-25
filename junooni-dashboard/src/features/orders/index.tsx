@@ -533,7 +533,9 @@ export default function OrdersPage() {
         console.log("📊 Request params:", { limit, offset: (page - 1) * limit, page });
         
         // ✅ FIXED: Simplified API call with proper error handling
-        const url = `http://localhost:9000/vendors/orders?limit=${limit}&offset=${(page - 1) * limit}`;
+        // ✅ Fetch ALL orders at once
+        const url = `http://localhost:9000/vendors/orders`; // Remove limit and offset
+        // const url = `http://localhost:9000/vendors/orders?limit=${limit}&offset=${(page - 1) * limit}`;
         console.log("🌐 Request URL:", url);
         
         const response = await fetch(url, {
@@ -813,134 +815,140 @@ export default function OrdersPage() {
     };
     
     fetchVendorOrders();
-  }, [page, limit]); // Keep existing dependencies
+  }, []); // Keep existing dependencies
   
   // ✅ FIXED: Enhanced filter function with better error handling
-  const filteredOrders = orders.filter(order => {
-    try {
-      // Apply search filter
-      if (searchTerm) {
-        const lowerSearch = searchTerm.toLowerCase();
-        const customerName = `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.trim().toLowerCase();
-        const searchFields = [
-          order.id.toLowerCase(),
-          String(order.display_id),
-          customerName,
-          order.customer?.email?.toLowerCase() || ''
-        ];
-        
-        if (!searchFields.some(field => field.includes(lowerSearch))) {
-          return false;
-        }
-      }
+  // ✅ Updated: Filter first, then paginate
+const filteredOrders = orders.filter(order => {
+  try {
+    // Apply search filter
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      const customerName = `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.trim().toLowerCase();
+      const searchFields = [
+        order.id.toLowerCase(),
+        String(order.display_id),
+        customerName,
+        order.customer?.email?.toLowerCase() || ''
+      ];
       
-      // Apply tab filter
-      if (currentTab !== "all") {
-        const status = order.fulfillment_status?.toLowerCase() || '';
-        
-        switch (currentTab) {
-          case "pending":
-            if (!["pending", "not_fulfilled"].includes(status)) return false;
-            break;
-          case "processing":
-            // ✅ UPDATED: Processing tab now shows pending orders with creator fulfillment products
-            const isPending = ["pending", "not_fulfilled"].includes(status);
-            const hasCreatorFulfillmentProducts = order.vendor_items.some(item => 
-              item.fulfillment_type === "Creator-fulfilment"
-            );
-            if (!(isPending && hasCreatorFulfillmentProducts)) return false;
-            break;
-          case "shipped":
-            if (!["shipped", "partially_shipped"].includes(status)) return false;
-            break;
-          case "completed":
-            if (!["fulfilled", "delivered", "completed"].includes(status)) return false;
-            break;
-          case "cancelled":
-            if (!["cancelled", "canceled"].includes(status)) return false;
-            break;
-        }
-      }
-      
-      // Apply status filter
-      if (statusFilter !== "all" && order.fulfillment_status !== statusFilter) {
+      if (!searchFields.some(field => field.includes(lowerSearch))) {
         return false;
       }
+    }
+    
+    // Apply tab filter
+    if (currentTab !== "all") {
+      const status = order.fulfillment_status?.toLowerCase() || '';
       
-      // Apply payment filter
-      if (paymentFilter !== "all" && order.payment_status !== paymentFilter) {
-        return false;
+      switch (currentTab) {
+        case "pending":
+          if (!["pending", "not_fulfilled"].includes(status)) return false;
+          break;
+        case "processing":
+          const isPending = ["pending", "not_fulfilled"].includes(status);
+          const hasCreatorFulfillmentProducts = order.vendor_items.some(item => 
+            item.fulfillment_type === "Creator-fulfilment"
+          );
+          if (!(isPending && hasCreatorFulfillmentProducts)) return false;
+          break;
+        case "shipped":
+          if (!["shipped", "partially_shipped"].includes(status)) return false;
+          break;
+        case "completed":
+          if (!["fulfilled", "delivered", "completed"].includes(status)) return false;
+          break;
+        case "cancelled":
+          if (!["cancelled", "canceled"].includes(status)) return false;
+          break;
       }
-      
-      // ✅ FIXED: Apply date filter with better error handling
-      if (dateFilter || dateRangeFilter) {
-        try {
-          const orderDate = new Date(order.created_at);
+    }
+    
+    // Apply status filter
+    if (statusFilter !== "all" && order.fulfillment_status !== statusFilter) {
+      return false;
+    }
+    
+    // Apply payment filter
+    if (paymentFilter !== "all" && order.payment_status !== paymentFilter) {
+      return false;
+    }
+    
+    // Apply date filter
+    if (dateFilter || dateRangeFilter) {
+      try {
+        const orderDate = new Date(order.created_at);
+        
+        if (isNaN(orderDate.getTime())) {
+          return true;
+        }
+        
+        orderDate.setHours(0, 0, 0, 0);
+        
+        if (dateFilterMode === 'single' && dateFilter) {
+          const filterDate = new Date(dateFilter);
+          filterDate.setHours(0, 0, 0, 0);
           
-          if (isNaN(orderDate.getTime())) {
-            console.warn("Invalid order date:", order.created_at);
-            return true; // Don't filter out orders with invalid dates
+          if (orderDate.getTime() !== filterDate.getTime()) {
+            return false;
           }
-          
-          orderDate.setHours(0, 0, 0, 0);
-          
-          if (dateFilterMode === 'single' && dateFilter) {
-            const filterDate = new Date(dateFilter);
-            filterDate.setHours(0, 0, 0, 0);
+        } else if (dateFilterMode === 'range' && dateRangeFilter) {
+          if (dateRangeFilter.from) {
+            const fromDate = new Date(dateRangeFilter.from);
+            fromDate.setHours(0, 0, 0, 0);
             
-            if (orderDate.getTime() !== filterDate.getTime()) {
+            if (orderDate.getTime() < fromDate.getTime()) {
               return false;
             }
-          } else if (dateFilterMode === 'range' && dateRangeFilter) {
-            if (dateRangeFilter.from) {
-              const fromDate = new Date(dateRangeFilter.from);
-              fromDate.setHours(0, 0, 0, 0);
-              
-              if (orderDate.getTime() < fromDate.getTime()) {
-                return false;
-              }
-            }
+          }
+          
+          if (dateRangeFilter.to) {
+            const toDate = new Date(dateRangeFilter.to);
+            toDate.setHours(23, 59, 59, 999);
             
-            if (dateRangeFilter.to) {
-              const toDate = new Date(dateRangeFilter.to);
-              toDate.setHours(23, 59, 59, 999);
-              
-              if (orderDate.getTime() > toDate.getTime()) {
-                return false;
-              }
+            if (orderDate.getTime() > toDate.getTime()) {
+              return false;
             }
           }
-        } catch (dateError) {
-          console.warn("Error in date filtering:", dateError);
-          return true; // Don't filter out on date errors
         }
+      } catch (dateError) {
+        return true;
       }
-      
-      return true;
-    } catch (filterError) {
-      console.warn("Error in filtering order:", filterError, order);
-      return true; // Don't filter out on errors
     }
-  }).sort((a, b) => {
-    try {
-      // Apply sorting using vendor totals
-      switch (sortOrder) {
-        case "latest":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case "oldest":
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        case "highest":
-          return (b.vendor_total || 0) - (a.vendor_total || 0);
-        case "lowest":
-          return (a.vendor_total || 0) - (b.vendor_total || 0);
-        default:
-          return 0;
-      }
-    } catch (sortError) {
-      console.warn("Error in sorting:", sortError);
-      return 0;
+    
+    return true;
+  } catch (filterError) {
+    return true;
+  }
+}).sort((a, b) => {
+  try {
+    switch (sortOrder) {
+      case "latest":
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      case "oldest":
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      case "highest":
+        return (b.vendor_total || 0) - (a.vendor_total || 0);
+      case "lowest":
+        return (a.vendor_total || 0) - (b.vendor_total || 0);
+      default:
+        return 0;
     }
-  });
+  } catch (sortError) {
+    return 0;
+  }
+});
+
+// ✅ ADD: Client-side pagination
+const totalFilteredCount = filteredOrders.length;
+const startIndex = (page - 1) * limit;
+const endIndex = startIndex + limit;
+const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+// ✅ ADD: Reset page to 1 when filters change
+useEffect(() => {
+  setPage(1);
+}, [searchTerm, statusFilter, paymentFilter, currentTab, dateFilter, dateRangeFilter, sortOrder]);
 
   // Get unique values for filter dropdowns
   const fulfillmentStatusOptions = [...new Set(orders.map(order => order.fulfillment_status))];
@@ -1167,7 +1175,7 @@ export default function OrdersPage() {
               <SidebarTrigger variant='outline' className='mr-2 scale-125 sm:scale-100' />
               <span className="hidden text-gray-500 md:inline">|</span>
               {/* <div 
-                className="mr-2 text-2xl font-bold ml-2" 
+                className="ml-2 mr-2 text-2xl font-bold" 
                 style={{ color: BRAND.primary }}
               >
                 JUNOONI
@@ -1265,7 +1273,7 @@ export default function OrdersPage() {
         )}
         
         {/* ✅ Updated Summary cards using vendor data */}
-        {!loading && !error && <SummaryCards data={orders} />}
+        {!loading && !error && <SummaryCards data={filteredOrders} />}
         
         {/* Status tab filters */}
         {!loading && (
@@ -1493,7 +1501,7 @@ export default function OrdersPage() {
                   variant="outline"
                   size="sm"
                   className="hidden md:flex"
-                  disabled={loading || filteredOrders.length === 0}
+                  disabled={loading || paginatedOrders.length === 0}
                   onClick={exportOrdersToExcel}
                 >
                   <Download className="w-4 h-4 mr-2" />
@@ -1564,7 +1572,7 @@ export default function OrdersPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredOrders.map((order) => (
+                        {paginatedOrders.map((order) => (
                           <TableRow key={order.id} className=" group hover:bg-gray-50">
                             <TableCell className="text-sm font-medium">
                               <Button 
@@ -1659,11 +1667,14 @@ export default function OrdersPage() {
                 )}
                 
                 {/* Pagination */}
-                {!loading && filteredOrders.length > 0 && (
+                {/* ✅ Updated Pagination */}
+                {!loading && paginatedOrders.length > 0 && totalFilteredCount > limit && (
                   <div className="flex items-center justify-between p-4 border-t">
                     <div className="text-sm text-muted-foreground">
-                      Showing <span className="font-medium">{filteredOrders.length}</span> of{" "}
-                      <span className="font-medium">{count}</span> orders with your products
+                      Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+                      <span className="font-medium">{Math.min(endIndex, totalFilteredCount)}</span> of{" "}
+                      <span className="font-medium">{totalFilteredCount}</span> orders
+                      {totalFilteredCount !== orders.length && ` (filtered from ${orders.length} total)`}
                     </div>
                     
                     <div className="flex items-center space-x-2">
@@ -1675,25 +1686,47 @@ export default function OrdersPage() {
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </Button>
-                      {Array.from({ length: Math.min(Math.ceil(count / limit), 5) }, (_, index) => (
-                        <Button
-                          key={index}
-                          variant={page === index + 1 ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setPage(index + 1)}
-                          style={page === index + 1 ? { 
-                            backgroundColor: BRAND.primary,
-                            color: 'white' 
-                          } : {}}
-                        >
-                          {index + 1}
-                        </Button>
-                      ))}
+                      
+                      {/* Page numbers */}
+                      {Array.from({ length: Math.min(Math.ceil(totalFilteredCount / limit), 5) }, (_, index) => {
+                        const pageNumber = index + 1;
+                        const totalPages = Math.ceil(totalFilteredCount / limit);
+                        
+                        // Show first few pages, or pages around current page
+                        let showPage = false;
+                        if (totalPages <= 5) {
+                          showPage = true;
+                        } else if (page <= 3) {
+                          showPage = pageNumber <= 5;
+                        } else if (page >= totalPages - 2) {
+                          showPage = pageNumber > totalPages - 5;
+                        } else {
+                          showPage = Math.abs(pageNumber - page) <= 2;
+                        }
+                        
+                        if (!showPage) return null;
+                        
+                        return (
+                          <Button
+                            key={pageNumber}
+                            variant={page === pageNumber ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPage(pageNumber)}
+                            style={page === pageNumber ? { 
+                              backgroundColor: BRAND.primary,
+                              color: 'white' 
+                            } : {}}
+                          >
+                            {pageNumber}
+                          </Button>
+                        );
+                      })}
+                      
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setPage(prev => Math.min(prev + 1, Math.ceil(count / limit)))}
-                        disabled={page >= Math.ceil(count / limit)}
+                        onClick={() => setPage(prev => Math.min(prev + 1, Math.ceil(totalFilteredCount / limit)))}
+                        disabled={page >= Math.ceil(totalFilteredCount / limit)}
                       >
                         <ChevronRight className="w-4 h-4" />
                       </Button>

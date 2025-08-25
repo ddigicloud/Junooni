@@ -101,8 +101,8 @@ export default function NotFound() {
               className="flex items-center justify-center gap-x-2 text-ui-fg-interactive hover:text-ui-fg-interactive-hover transition-colors"
               href="/"
             >
-              <Home className="w-4 h-4" />
-              <Text>Return to Homepage</Text>
+              <Home className="w-4 h-4 text-[#e65100]" />
+              <Text className="text-[#e65100]">Return to Homepage</Text>
             </Link>
           </div>
         </div>

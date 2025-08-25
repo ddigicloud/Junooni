@@ -76,57 +76,58 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
     <div className="relative">
       <div className="flex gap-2">
         <Button variant="outline">Import Products</Button>
-        <Button onClick={() => setShowPopup(true)}>
+        <Button style={{ backgroundColor: BRAND.primary }} onClick={() => setShowPopup(true)}>
           Add Product
         </Button>
       </div>
 
       {showPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-white max-w-4xl w-full relative">
-            <div className="flex justify-end p-4 absolute right-0 top-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
+          <div className="relative w-full max-w-4xl bg-white">
+            <div className="absolute top-0 right-0 flex justify-end p-4">
               <button 
                 onClick={() => setShowPopup(false)}
-                className="text-gray-500 hover:text-gray-700 font-bold"
+                className="font-bold text-gray-500 hover:text-gray-700"
               >
                 ✕
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-0">
-              {/* Design Something New */}
-              <div className="border-r p-6 flex flex-col items-center cursor-pointer hover:bg-gray-50" onClick={() => {
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-0">
+            {/* Design Something New */}
+            <div 
+              className="flex flex-col items-center p-4 transition border-b rounded-lg shadow-sm cursor-pointer md:p-6 md:border-b-0 md:border-r hover:bg-gray-50 md:rounded-none md:shadow-none"
+              onClick={() => {
                 setShowPopup(false);
-                // Navigate to create product page
                 navigate({ to: '/productCatalog' })
-              }}>
-                <div className="mb-6 w-64 h-64 flex items-center justify-center">
-                  <img src={windowSoping} alt="Design something new" className="max-w-full" />
-                </div>
-                <h3 className="text-xl font-semibold text-center">Design something new</h3>
+              }}
+            >
+              <div className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
+                <img src={windowSoping} alt="Design something new" className="max-w-full max-h-full" />
               </div>
+              <h3 className="text-lg font-semibold text-center md:text-xl">Design something new</h3>
+            </div>
 
-              {/* Sell Something I Have */}
-              <div className="p-6 flex flex-col items-center cursor-pointer hover:bg-gray-50" onClick={() => {
+            {/* Sell Something I Have */}
+            <div 
+              className="flex flex-col items-center p-4 transition rounded-lg shadow-sm cursor-pointer md:p-6 hover:bg-gray-50 md:rounded-none md:shadow-none"
+              onClick={() => {
                 setShowPopup(false);
-                // Check GST verification status
                 const gstStatus = vendor?.gst_verification_status || "pending";
-                
-                console.log("GST Status:", gstStatus);
                 if (gstStatus === "verified") {
-                  // Navigate to create product page
                   window.location.href = '/products/createproduct';
                 } else {  
-                  // Show GST verification message
                   setShowGSTVerificationMessage(true);
                 }
-              }}>
-                <div className="mb-6 w-64 h-64 flex items-center justify-center">
-                  <img src={sellSometing} alt="Sell something I have" className="max-w-full" />
-                </div>
-                <h3 className="text-xl font-semibold text-center">Sell something I have</h3>
+              }}
+            >
+              <div className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
+                <img src={sellSometing} alt="Sell something I have" className="max-w-full max-h-full" />
               </div>
+              <h3 className="text-lg font-semibold text-center md:text-xl">Sell something I have</h3>
             </div>
+          </div>
+
           </div>
         </div>
       )}
@@ -167,5 +168,6 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
 };
 
 export const ProductsPrimaryButtons = forwardRef(ProductsPrimaryButtonsComponent);
-// Add a display name for better debugging
-// ProductsPrimaryButtons.displayName = 'ProductsPrimaryButtons';
+// // Add a display name for better debugging
+// // ProductsPrimaryButtons.displayName = 'ProductsPrimaryButtons';
+

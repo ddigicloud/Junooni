@@ -10,15 +10,15 @@
 //         {/* Brand accent line */}
 //         <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-[#e65100] to-[#ff8a50] rounded-full shadow-lg"></div>
         
-//         <Card className='p-8 max-w-md mx-auto bg-white shadow-2xl border-0 rounded-2xl relative overflow-hidden'>
+//         <Card className='relative max-w-md p-8 mx-auto overflow-hidden bg-white border-0 shadow-2xl rounded-2xl'>
 //           {/* Subtle gradient overlay */}
 //           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#e65100]/30 to-transparent"></div>
           
-//           <div className='flex flex-col space-y-3 text-center mb-2'>
-//             <h1 className='text-3xl font-bold tracking-tight text-gray-900 mb-2'>
+//           <div className='flex flex-col mb-2 space-y-3 text-center'>
+//             <h1 className='mb-2 text-3xl font-bold tracking-tight text-gray-900'>
 //               Welcome Back
 //             </h1>
-//             <p className='text-base text-gray-600 leading-relaxed max-w-sm mx-auto'>
+//             <p className='max-w-sm mx-auto text-base leading-relaxed text-gray-600'>
 //               Sign in to your account to continue to your dashboard
 //             </p>
 //           </div>
@@ -26,8 +26,8 @@
 //           <UserAuthForm />
           
 //           {/* Enhanced footer with better styling */}
-//           <div className='mt-2 pt-6 border-t border-gray-100'>
-//             <p className='text-center text-sm text-gray-500 leading-relaxed'>
+//           <div className='pt-6 mt-2 border-t border-gray-100'>
+//             <p className='text-sm leading-relaxed text-center text-gray-500'>
 //               By signing in, you agree to our{' '}
 //               <Link
 //                 to='/terms'
@@ -291,11 +291,11 @@ export default function JunooniLogin() {
   }
   
   return (
-    <div className="relative min-h-screen w-full">
+    <div className="relative w-full min-h-screen">
       {/* Professional Toast Notification */}
       {toast.show && (
         <div 
-          className="fixed top-4 right-4 z-50 max-w-md w-full"
+          className="fixed z-50 w-full max-w-md top-4 right-4"
           style={{
             animation: 'slideInRight 0.3s ease-out'
           }}
@@ -326,14 +326,14 @@ export default function JunooniLogin() {
                 <p className="text-sm font-semibold">
                   {toast.title}
                 </p>
-                <p className="text-sm opacity-90 mt-1">
+                <p className="mt-1 text-sm opacity-90">
                   {toast.message}
                 </p>
               </div>
               
               <button
                 onClick={hideToast}
-                className="flex-shrink-0 ml-2 p-1 rounded-lg hover:bg-black/10 transition-colors duration-200"
+                className="flex-shrink-0 p-1 ml-2 transition-colors duration-200 rounded-lg hover:bg-black/10"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -359,12 +359,12 @@ export default function JunooniLogin() {
         </div>
       )}
 
-      <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2">
+      <div className="grid w-full min-h-screen grid-cols-1 lg:grid-cols-2">
         {/* Left Panel - Enhanced Branded Section */}
         <div className="relative hidden h-full lg:flex flex-col overflow-hidden bg-gradient-to-br from-[#e65100] to-[#d84315]">
           {/* Main background image with enhanced overlay */}
           <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat" 
+            className="absolute inset-0 bg-center bg-no-repeat bg-cover" 
             style={{ 
               backgroundImage: `url(${CreatorJunooni})`,
               filter: 'brightness(0.85) contrast(1.1)' 
@@ -405,12 +405,12 @@ export default function JunooniLogin() {
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#e65100] shadow-xl">
                 <span className="text-2xl font-black">J</span>
               </div>
-              <h1 className="text-3xl font-black text-white drop-shadow-2xl tracking-wide">JUNOONI</h1>
+              <h1 className="text-3xl font-black tracking-wide text-white drop-shadow-2xl">JUNOONI</h1>
             </div>
             
             {/* Centered Content with enhanced design */}
-            <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-              <div className="mb-12 rounded-3xl bg-white/10 p-4 backdrop-blur-sm shadow-2xl border border-white/20">
+            <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
+              <div className="p-4 mb-12 border shadow-2xl rounded-3xl bg-white/10 backdrop-blur-sm border-white/20">
                 <svg 
                   width="120" 
                   height="120" 
@@ -420,7 +420,7 @@ export default function JunooniLogin() {
                   strokeWidth="1.5" 
                   strokeLinecap="round" 
                   strokeLinejoin="round"
-                  className="drop-shadow-2xl mx-auto"
+                  className="mx-auto drop-shadow-2xl"
                 >
                   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
@@ -429,24 +429,24 @@ export default function JunooniLogin() {
                 </svg>
               </div>
               
-              <div className="bg-black/10 backdrop-blur-sm p-4 rounded-2xl shadow-xl border border-white/10 max-w-lg mt-8">
+              <div className="max-w-lg p-4 mt-8 border shadow-xl bg-black/10 backdrop-blur-sm rounded-2xl border-white/10">
                 <h2 className="mb-6 text-4xl font-black text-white drop-shadow-2xl">Creator Dashboard</h2>
-                <p className="max-w-md text-xl text-white/95 drop-shadow-lg leading-relaxed font-medium">
+                <p className="max-w-md text-xl font-medium leading-relaxed text-white/95 drop-shadow-lg">
                   Turn your passion into profit. Create, manage, and grow your business all in one place.
                 </p>
                 
-                <div className="mt-10 grid grid-cols-3 gap-6">
-                  <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+                <div className="grid grid-cols-3 gap-6 mt-10">
+                  <div className="flex flex-col items-center p-4 border bg-white/10 rounded-xl backdrop-blur-sm border-white/20">
                     <div className="text-3xl font-black text-white drop-shadow-lg">1000+</div>
-                    <div className="text-sm text-white/90 font-medium mt-1">Active creators</div>
+                    <div className="mt-1 text-sm font-medium text-white/90">Active creators</div>
                   </div>
-                  <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+                  <div className="flex flex-col items-center p-4 border bg-white/10 rounded-xl backdrop-blur-sm border-white/20">
                     <div className="text-3xl font-black text-white drop-shadow-lg">₹10M+</div>
-                    <div className="text-sm text-white/90 font-medium mt-1">Revenue generated</div>
+                    <div className="mt-1 text-sm font-medium text-white/90">Revenue generated</div>
                   </div>
-                  <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+                  <div className="flex flex-col items-center p-4 border bg-white/10 rounded-xl backdrop-blur-sm border-white/20">
                     <div className="text-3xl font-black text-white drop-shadow-lg">50k+</div>
-                    <div className="text-sm text-white/90 font-medium mt-1">Happy customers</div>
+                    <div className="mt-1 text-sm font-medium text-white/90">Happy customers</div>
                   </div>
                 </div>
               </div>
@@ -454,8 +454,8 @@ export default function JunooniLogin() {
             
             {/* Enhanced Footer Quote */}
             <div className="p-8">
-              <blockquote className="bg-black/20 backdrop-blur-lg p-6 rounded-2xl shadow-xl border border-white/10 border-l-4 border-l-white">
-                <p className="italic text-white text-lg font-medium leading-relaxed">
+              <blockquote className="p-6 border border-l-4 shadow-xl bg-black/20 backdrop-blur-lg rounded-2xl border-white/10 border-l-white">
+                <p className="text-lg italic font-medium leading-relaxed text-white">
                   "Your passion fuels our universe—log in and become a part of the creator verse."
                 </p>
                 <footer className="mt-3 text-base font-semibold text-white/95">
@@ -467,10 +467,10 @@ export default function JunooniLogin() {
         </div>
         
         {/* Right Panel - Enhanced Login Form */}
-        <div className="flex h-full flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-white px-6 pt-0 pb-28">
-          <div className="mx-auto w-full max-w-md">
+        <div className="flex flex-col items-center justify-center h-full px-6 pt-0 bg-gradient-to-br from-gray-50 to-white pb-28">
+          <div className="w-full max-w-md mx-auto">
             {/* Mobile Logo - Enhanced */}
-            <div className="mb-10 flex items-center justify-center gap-3 lg:hidden">
+            <div className="flex items-center justify-center gap-3 mt-4 mb-10 lg:hidden">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e65100] text-white shadow-lg">
                 <span className="text-2xl font-black">J</span>
               </div>
@@ -479,8 +479,8 @@ export default function JunooniLogin() {
             
             {/* Enhanced Header */}
             <div className="mb-8 text-center">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h1>
-              <p className="text-base text-gray-600 leading-relaxed">
+              <h1 className="mb-2 text-3xl font-bold text-gray-900">Welcome back</h1>
+              <p className="text-base leading-relaxed text-gray-600">
                 Enter your credentials to access your account
               </p>
             </div>
@@ -496,7 +496,7 @@ export default function JunooniLogin() {
                       <FormLabel className="text-sm font-semibold text-gray-700">Email</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                          <Mail className="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-4 top-1/2" />
                           <Input 
                             placeholder="creator@junooni.com" 
                             type="email" 
@@ -508,7 +508,7 @@ export default function JunooniLogin() {
                           />
                         </div>
                       </FormControl>
-                      <FormMessage className="text-red-500 text-sm" />
+                      <FormMessage className="text-sm text-red-500" />
                     </FormItem>
                   )}
                 />
@@ -530,7 +530,7 @@ export default function JunooniLogin() {
                       </div>
                       <FormControl>
                         <div className="relative">
-                          <LockKeyhole className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                          <LockKeyhole className="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-4 top-1/2" />
                           <Input 
                             placeholder="••••••••"
                             type={showPassword ? "text" : "password"} 
@@ -543,14 +543,14 @@ export default function JunooniLogin() {
                             className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#e65100] transition-colors duration-200"
                           >
                             {showPassword ? (
-                              <EyeOff className="h-5 w-5" />
+                              <EyeOff className="w-5 h-5" />
                             ) : (
-                              <Eye className="h-5 w-5" />
+                              <Eye className="w-5 h-5" />
                             )}
                           </button>
                         </div>
                       </FormControl>
-                      <FormMessage className="text-red-500 text-sm" />
+                      <FormMessage className="text-sm text-red-500" />
                     </FormItem>
                   )}
                 />
@@ -585,25 +585,25 @@ export default function JunooniLogin() {
             </Form>
               
             {/* Enhanced Divider */}
-            <div className="relative flex items-center justify-center my-6">
+            {/* <div className="relative flex items-center justify-center my-6">
               <Separator className="w-full bg-gray-200" />
-              <span className="absolute bg-white px-4 text-sm text-gray-500 font-medium">OR</span>
-            </div>
+              <span className="absolute px-4 text-sm font-medium text-gray-500 bg-white">OR</span>
+            </div> */}
             
             {/* Enhanced Google Button */}
-            <Button 
-              variant="outline" 
-              className="w-full h-12 border-2 border-gray-200 hover:border-[#e65100] hover:bg-[#e65100]/5 text-gray-700 hover:text-[#e65100] font-medium transition-all duration-200 rounded-lg"
-              disabled={isLoading}
-              type="button"
-            >
-              <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24">
-                <path
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              {/* <Button 
+                  variant="outline" 
+                  className="w-full h-12 border-2 border-gray-200 hover:border-[#e65100] hover:bg-[#e65100]/5 text-gray-700 hover:text-[#e65100] font-medium transition-all duration-200 rounded-lg"
+                  disabled={isLoading}
+                  type="button"
+                >
+                <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
                   fill="#34A853"
                 />
                 <path
@@ -617,10 +617,10 @@ export default function JunooniLogin() {
                 <path d="M1 1h22v22H1z" fill="none" />
               </svg>
               Sign in with Google
-            </Button>
+            </Button> */}
             
             {/* Enhanced Footer Links */}
-            <div className="mt-8 text-center space-y-4">
+            <div className="mt-8 space-y-4 text-center">
               <p className="text-base text-gray-600">
                 Don't have an account?{" "}
                 <Link to="/sign-up" className="font-semibold text-[#e65100] hover:text-[#d84315] transition-colors duration-200 hover:underline">
@@ -628,7 +628,7 @@ export default function JunooniLogin() {
                 </Link>
               </p>
               
-              <p className="text-sm text-gray-500 leading-relaxed max-w-sm mx-auto">
+              <p className="max-w-sm mx-auto text-sm leading-relaxed text-gray-500">
                 By clicking sign in, you agree to our{" "}
                 <Link to="/terms" className="font-medium text-[#e65100] hover:text-[#d84315] transition-colors duration-200 hover:underline">
                   Terms of Service

@@ -362,7 +362,7 @@ class LoyaltyModuleService extends MedusaService({
     // For example, Rs 100 = 1 point
     // Round down to nearest whole point
     // const points = Math.floor(amount / 100)
-    const points = Math.floor(amount * 100)
+    const points = Math.floor(amount / 100)
 
     if (points < 0) {
       throw new MedusaError(

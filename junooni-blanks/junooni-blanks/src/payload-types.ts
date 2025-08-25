@@ -737,7 +737,7 @@ export interface Form {
   createdAt: string;
 }
 /**
- * Junooni Blanks
+ * Professional print-on-demand with advanced masking & surface mapping
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "blank-products".
@@ -752,9 +752,6 @@ export interface BlankProduct {
    * URL-friendly version of the name
    */
   slug?: string | null;
-  /**
-   * Product availability status
-   */
   status: 'active' | 'draft' | 'discontinued' | 'out_of_stock' | 'coming_soon';
   productType:
     | 'apparel_tshirt'
@@ -778,64 +775,31 @@ export interface BlankProduct {
     | 'home_blanket'
     | 'home_towel'
     | 'other';
-  /**
-   * Product categories for organization and filtering
-   */
   categories?: (number | Category)[] | null;
-  /**
-   * Tags for enhanced searchability
-   */
   tags?:
     | {
         tag: string;
         id?: string | null;
       }[]
     | null;
-  /**
-   * Brand or manufacturer name
-   */
   brand: string;
-  /**
-   * Vendor's SKU or product code
-   */
   brandSku?: string | null;
-  /**
-   * Your internal SKU
-   */
   sku: string;
   vendorInfo?: {
     supplier?: ('printful' | 'printify' | 'gooten' | 'qikink' | 'local' | 'direct' | 'other') | null;
-    /**
-     * Product ID in supplier's system
-     */
     supplierProductId?: string | null;
-    /**
-     * Manufacturing country
-     */
     countryOfOrigin?: string | null;
   };
   sourcing?: {
     minimumOrderQuantity?: number | null;
-    /**
-     * Production time in business days
-     */
     leadTimeDays?: number | null;
     rushAvailable?: boolean | null;
     rushLeadTimeDays?: number | null;
   };
-  /**
-   * Base cost from supplier
-   */
   cost: number;
   pricing?: {
     markupType?: ('percentage' | 'fixed' | 'tiered') | null;
-    /**
-     * Markup percentage or fixed amount
-     */
     markupValue?: number | null;
-    /**
-     * Suggested selling price
-     */
     suggestedRetailPrice?: number | null;
   };
   pricingTiers?:
@@ -847,23 +811,11 @@ export interface BlankProduct {
       }[]
     | null;
   additionalCosts?: {
-    /**
-     * Additional cost per printed area
-     */
     printingCostPerArea?: number | null;
-    /**
-     * One-time setup fee if applicable
-     */
     setupFee?: number | null;
     rushSurcharge?: number | null;
   };
-  /**
-   * Brief product description
-   */
   description?: string | null;
-  /**
-   * Detailed features and benefits
-   */
   features?: {
     root: {
       type: string;
@@ -880,22 +832,48 @@ export interface BlankProduct {
     [k: string]: unknown;
   } | null;
   materials?: {
-    /**
-     * e.g., "100% Cotton", "Ceramic", "Polyester Blend"
-     */
     primary?: string | null;
-    /**
-     * e.g., "5.3 oz/yd²", "150 GSM"
-     */
     weight?: string | null;
-    /**
-     * e.g., "Ring-spun", "Jersey knit", "Woven"
-     */
     construction?: string | null;
-    /**
-     * e.g., "Matte", "Glossy", "Soft-touch"
-     */
     finish?: string | null;
+    /**
+     * Material type for accurate surface rendering
+     */
+    efabType?:
+      | (
+          | 'cotton'
+          | 'polyester'
+          | 'blend'
+          | 'canvas'
+          | 'leather'
+          | 'denim'
+          | 'fleece'
+          | 'jersey'
+          | 'mesh'
+          | 'vinyl'
+          | 'paper'
+          | 'ceramic'
+          | 'metal'
+          | 'plastic'
+        )
+      | null;
+    /**
+     * Fabric weight in GSM (grams per square meter)
+     */
+    fabricWeight?: number | null;
+    surfaceTexture?: ('smooth' | 'textured' | 'rough' | 'glossy' | 'matte' | 'satin' | 'brushed') | null;
+    /**
+     * Fabric stretch factor (0 = no stretch, 1 = very stretchy)
+     */
+    stretchability?: number | null;
+    /**
+     * Fabric transparency level (0 = opaque, 1 = transparent)
+     */
+    transparency?: number | null;
+    /**
+     * Surface reflectivity for lighting calculations
+     */
+    reflectivity?: number | null;
   };
   careInstructions?:
     | {
@@ -918,57 +896,40 @@ export interface BlankProduct {
       }[]
     | null;
   physicalDimensions?: {
-    /**
-     * Width in inches
-     */
     widthInches?: number | null;
-    /**
-     * Height in inches
-     */
     heightInches?: number | null;
-    /**
-     * Depth/thickness (for 3D products)
-     */
     depthInches?: number | null;
-    /**
-     * For cylindrical products (inches)
-     */
     diameter?: number | null;
     units?: ('inches' | 'cm' | 'mm') | null;
   };
   shippingInfo: {
-    /**
-     * Weight in ounces
-     */
     weight: number;
-    /**
-     * e.g., "10x13x3 inches"
-     */
     shippingDimensions?: string | null;
     packageType?: ('poly_mailer' | 'box' | 'envelope' | 'tube' | 'custom') | null;
   };
-  /**
-   * Available product colors
-   */
   colorOptions?:
     | {
         colorName: string;
-        /**
-         * Hex color code (e.g., #FFFFFF)
-         */
         colorHex: string;
-        /**
-         * Set as default color
-         */
         isPrimary?: boolean | null;
+        fabricInteraction?: {
+          /**
+           * How much ink the fabric color absorbs (affects final appearance)
+           */
+          absorptionRate?: number | null;
+          blendMode?: ('normal' | 'multiply' | 'screen' | 'overlay' | 'soft_light') | null;
+          colorShift?: {
+            hueShift?: number | null;
+            saturationShift?: number | null;
+            lightnessShift?: number | null;
+          };
+        };
         id?: string | null;
       }[]
     | null;
+  color_Images?: boolean | null;
   sizeOptions?:
     | {
-        /**
-         * e.g., "Small", "Medium", "Large", "11oz", "16x20"
-         */
         sizeName: string;
         sizeDescription?: string | null;
         dimensions?: {
@@ -978,67 +939,91 @@ export interface BlankProduct {
         id?: string | null;
       }[]
     | null;
-  /**
-   * Size chart image for customer reference
-   */
+  size_Images?: boolean | null;
   sizeChart?: (number | null) | Media;
-  surfaceConf: {
-    renderType: 'flat' | 'cylindrical' | 'conical' | 'spherical' | 'complex_3d';
-    surfaceProp?: {
-      /**
-       * For cylindrical products: how many degrees the design wraps
-       */
+  sizeChartHtml?: string | null;
+  surfConf: {
+    renderType: 'flat' | 'cylindrical' | 'conical' | 'spherical' | 'complex_3d' | 'apparel_body' | 'sleeve_wrap';
+    surfProp?: {
       wrapAngle?: number | null;
-      /**
-       * How much perspective distortion to apply
-       */
-      curveIntnsty?: number | null;
+      curveInten?: number | null;
       designRatio?: {
         widthRatio?: number | null;
         heightRatio?: number | null;
       };
     };
-    blendSetting?: {
-      defBlendMode?: ('normal' | 'multiply' | 'screen' | 'overlay' | 'soft_light') | null;
+    blendSet?: {
+      defaultBlendMode?: ('normal' | 'multiply' | 'screen' | 'overlay' | 'soft_light') | null;
       defaultOpacity?: number | null;
       preserveColors?: boolean | null;
     };
   };
-  /**
-   * Available printing methods and their areas
-   */
-  printTech?:
+  advanSurfMap?: {
+    curvProf?: ('linear' | 'smooth' | 'elastic' | 'ease_in' | 'ease_out' | 'custom') | null;
+    /**
+     * Barrel distortion coefficient
+     */
+    barrelDist?: number | null;
+    pincushiDistor?: number | null;
+    perspDis?: number | null;
+    hasSeams?: boolean | null;
+  };
+  seamPositions?:
+    | {
+        seamTypes?: ('side' | 'shoulder' | 'sleeve' | 'hem' | 'custom') | null;
+        positionX?: number | null;
+        positionY?: number | null;
+        width?: number | null;
+        seamEffect?: ('indent' | 'raised' | 'flat' | 'shadow') | null;
+        id?: string | null;
+      }[]
+    | null;
+  lightingConfiguration?: {
+    /**
+     * Light direction in degrees (0 = top, 90 = right)
+     */
+    lightDirection?: number | null;
+    lightIntensity?: number | null;
+    ambientLight?: number | null;
+    shadowIntensity?: number | null;
+  };
+  printTechn?:
     | {
         id?: string | null;
-        techName: 'dtg' | 'dtf' | 'screen' | 'sublimation' | 'embroidery' | 'vinyl' | 'digital' | 'uv' | 'laser';
-        printConstraints?: {
-          dpiReq?: {
+        technologyName: 'dtg' | 'dtf' | 'screen' | 'sublimation' | 'embroidery' | 'vinyl' | 'digital' | 'uv' | 'laser';
+        printingConstraints?: {
+          dpiRequirements?: {
             minimum?: number | null;
             recommended?: number | null;
             maximum?: number | null;
           };
           sizeLimits?: {
-            minWidInch?: number | null;
-            minHtInch?: number | null;
-            maxWidInch?: number | null;
-            maxHtInch?: number | null;
+            minWidthInch?: number | null;
+            minHeightInch?: number | null;
+            maxWidthInch?: number | null;
+            maxHeightInch?: number | null;
           };
           colorLimits?: {
-            /**
-             * Leave empty for unlimited colors
-             */
             maxColors?: number | null;
             supportsFullColor?: boolean | null;
           };
+          printBleeds?: {
+            /**
+             * Bleed margin in millimeters
+             */
+            bleedMargin?: number | null;
+            /**
+             * Safety margin in millimeters
+             */
+            safetyMargin?: number | null;
+            /**
+             * Trim tolerance in millimeters
+             */
+            trimTolerance?: number | null;
+          };
         };
-        /**
-         * All mockup photos for this printing technology
-         */
         mockupPhotos?:
           | {
-              /**
-               * e.g., "Front View", "3/4 Angle", "Lifestyle Shot"
-               */
               title?: string | null;
               photo: number | Media;
               viewAngle?:
@@ -1057,57 +1042,205 @@ export interface BlankProduct {
                   )
                 | null;
               mockupType?: ('studio' | 'lifestyle' | 'model' | 'flat_lay') | null;
-              /**
-               * Color of the product in this mockup (e.g., #000000)
-               */
               photoColor: string;
               /**
-               * All customization areas visible in this mockup
+               * Displacement maps for curved surfaces (mugs, bottles, curved products)
                */
-              visibleAreas?:
+              dispMaps?:
                 | {
                     /**
-                     * Must match area name in customization areas below
+                     * PNG displacement map (512x512 recommended)
                      */
-                    areaName: string;
-                    visibility?: ('full' | 'partial' | 'edge') | null;
-                    desgnPlacment: {
-                      coord: {
-                        x: number;
-                        y: number;
-                        width: number;
-                        height: number;
-                      };
-                      transforms?: {
-                        rotation?: number | null;
-                        skewX?: number | null;
-                        skewY?: number | null;
-                        scaleX?: number | null;
-                        scaleY?: number | null;
-                      };
-                      renderSettings?: {
-                        blendMode?: ('normal' | 'multiply' | 'screen' | 'overlay' | 'soft_light') | null;
-                        opacity?: number | null;
-                        preserveColors?: boolean | null;
-                      };
-                      surfSpecs?: {
-                        wrapSettng?: {
-                          enableWrap?: boolean | null;
-                          wrapAngle?: number | null;
-                          wrapIntensity?: number | null;
-                        };
-                        perspCorrection?: {
-                          enablePersp?: boolean | null;
-                          perspIntensity?: number | null;
-                        };
-                      };
-                    };
+                    dispImg: number | Media;
+                    dsrfaceTy?: ('cylindrical' | 'conical' | 'spherical') | null;
+                    /**
+                     * Displacement intensity (0.1 = subtle, 1.5 = strong)
+                     */
+                    disint?: number | null;
+                    /**
+                     * Which area this applies to (must match visibleArea areaName)
+                     */
+                    disarea: string;
                     id?: string | null;
                   }[]
                 | null;
               /**
-               * Higher priority mockups appear first
+               * Alpha masks to define precise printable areas (white = printable, black = non-printable)
                */
+              alphaMasks?:
+                | {
+                    /**
+                     * PNG with alpha channel (same dimensions as mockup photo)
+                     */
+                    maskImg: number | Media;
+                    /**
+                     * Which area this mask applies to (must match visibleArea areaName)
+                     */
+                    alfarea: string;
+                    alfamask?: ('alpha' | 'luminance' | 'red_channel') | null;
+                    /**
+                     * Edge softness in pixels (0 = sharp, 5 = soft)
+                     */
+                    featherEdge?: number | null;
+                    id?: string | null;
+                  }[]
+                | null;
+              /**
+               * Lighting and shadow overlays for realistic mockup effects
+               */
+              lightingOverlays?:
+                | {
+                    /**
+                     * PNG lighting/shadow overlay (same dimensions as mockup photo)
+                     */
+                    overImage: number | Media;
+                    overlayType?: ('lighting' | 'shadow' | 'reflection' | 'ambient') | null;
+                    overbldMde?: ('overlay' | 'multiply' | 'screen' | 'soft-light' | 'hard-light') | null;
+                    /**
+                     * Overlay strength (0.1 = subtle, 0.8 = strong)
+                     */
+                    ovlayOpa?: number | null;
+                    /**
+                     * Specific area (leave empty for entire mockup)
+                     */
+                    overlayArea?: string | null;
+                    id?: string | null;
+                  }[]
+                | null;
+              /**
+               * Control rendering engine and quality settings
+               */
+              renderPref?: {
+                /**
+                 * Auto selects best engine based on complexity
+                 */
+                preferredEngine?: ('auto' | 'canvas' | 'pixi') | null;
+                /**
+                 * Enable displacement, masking, and lighting effects
+                 */
+                enableAdvancedEffects?: boolean | null;
+                qualityLevel?: ('draft' | 'standard' | 'high' | 'ultra') | null;
+                /**
+                 * Export resolution multiplier (1x to 4x for print)
+                 */
+                exportRes?: number | null;
+                /**
+                 * Show rendering progress to users
+                 */
+                enableProgTrack?: boolean | null;
+              };
+              fabricProp?: {
+                mfabType?:
+                  | ('cotton' | 'polyester' | 'cotton_blend' | 'canvas' | 'leather' | 'denim' | 'fleece' | 'jersey')
+                  | null;
+                fabricWeight?: number | null;
+                surfaceTexture?: ('smooth' | 'textured' | 'rough' | 'glossy' | 'matte') | null;
+                stretchability?: number | null;
+                transparency?: number | null;
+              };
+              lightingConditions?: {
+                lightDirection?: number | null;
+                lightIntensity?: number | null;
+                ambientLight?: number | null;
+                shadowIntensity?: number | null;
+              };
+              visibleAreas?:
+                | {
+                    areaName: string;
+                    visibility?: ('full' | 'partial' | 'edge' | 'sleeve' | 'shadow' | 'reflection') | null;
+                    /**
+                     * Percentage of area visible (0-100%)
+                     */
+                    visibilityPercentage?: number | null;
+                    maskingConfiguration?: {
+                      enableMasking?: boolean | null;
+                      maskTypes?: ('gradient' | 'sharp' | 'soft' | 'svg' | 'fold' | 'seam') | null;
+                      /**
+                       * SVG path data for custom masking
+                       */
+                      maskPath?: string | null;
+                    };
+                    gradientMaskSettings?: {
+                      gradientDirection?: ('horizontal' | 'vertical' | 'radial' | 'angle') | null;
+                      gradientAngle?: number | null;
+                      /**
+                       * Where fade starts (0-1)
+                       */
+                      fadeStart?: number | null;
+                      /**
+                       * Where fade ends (0-1)
+                       */
+                      fadeEnd?: number | null;
+                      fadeIntensity?: number | null;
+                    };
+                    edgeDetectionSettings?: {
+                      enableEdgeDetection?: boolean | null;
+                      edgeThreshold?: number | null;
+                      /**
+                       * Edge softness in pixels
+                       */
+                      edgeSoftness?: number | null;
+                    };
+                    fabricIntegration?: {
+                      enableFabricBlend?: boolean | null;
+                      bfabType?: ('cotton' | 'polyester' | 'canvas' | 'leather' | 'denim') | null;
+                      foldAwareness?: boolean | null;
+                      seamAwareness?: boolean | null;
+                      textureIntensity?: number | null;
+                      fabricColor?: string | null;
+                      fabricRoughness?: number | null;
+                    };
+                    designPlacement: {
+                      /**
+                       * X position (0.0-1.0)
+                       */
+                      coordinateX: number;
+                      /**
+                       * Y position (0.0-1.0)
+                       */
+                      coordinateY: number;
+                      /**
+                       * Width (0.0-1.0)
+                       */
+                      coordinateWidth: number;
+                      /**
+                       * Height (0.0-1.0)
+                       */
+                      coordinateHeight: number;
+                      rotation?: number | null;
+                      skewX?: number | null;
+                      skewY?: number | null;
+                      scaleX?: number | null;
+                      scaleY?: number | null;
+                      blendMode?: ('normal' | 'multiply' | 'screen' | 'overlay' | 'soft_light') | null;
+                      opacity?: number | null;
+                      preserveColors?: boolean | null;
+                    };
+                    surfaceWrapSettings?: {
+                      enableWrap?: boolean | null;
+                      wrapAngle?: number | null;
+                      wrapIntensity?: number | null;
+                      dynamicWrap?: boolean | null;
+                      wrapFalloff?: number | null;
+                    };
+                    perspectiveSettings?: {
+                      enablePerspective?: boolean | null;
+                      perspectiveIntensity?: number | null;
+                      dynamicPerspective?: boolean | null;
+                    };
+                    fabricEffectsSettings?: {
+                      enableFolds?: boolean | null;
+                      foldIntensity?: number | null;
+                      foldDirection?: ('horizontal' | 'vertical' | 'radial' | 'random') | null;
+                      seamDistrt?: boolean | null;
+                      /**
+                       * Fabric depth effect in pixels
+                       */
+                      fabricDpth?: number | null;
+                    };
+                    id?: string | null;
+                  }[]
+                | null;
               priority?: number | null;
               tags?:
                 | {
@@ -1118,29 +1251,23 @@ export interface BlankProduct {
               id?: string | null;
             }[]
           | null;
-        customizationAreas?:
+        custAreas?:
           | {
               areaId?: string | null;
-              /**
-               * e.g., "Front", "Back", "Mug", "Left Sleeve"
-               */
               areaName: string;
-              areaType?: ('primary' | 'secondary' | 'accent') | null;
-              canvasDimensions: {
-                widthInches: number;
-                heightInches: number;
-                canvasPixelWidth?: number | null;
-                canvasPixelHeight?: number | null;
+              areaType?: ('primary' | 'secondary' | 'accent' | 'sleeve' | 'back' | 'pocket') | null;
+              canvasDim: {
+                widthInch: number;
+                heightInch: number;
+                canvasPixWid?: number | null;
+                canvasPixHeight?: number | null;
                 aspectRatioLocked?: boolean | null;
               };
               designCanvasPhotos?:
                 | {
                     photo: number | Media;
-                    /**
-                     * Product color hex for this canvas photo
-                     */
                     photoColor?: string | null;
-                    printableAreaCoordinates?: {
+                    printAreaCoord?: {
                       x?: number | null;
                       y?: number | null;
                       width?: number | null;
@@ -1161,7 +1288,7 @@ export interface BlankProduct {
           | null;
       }[]
     | null;
-  areaSyncRules?:
+  areaSynchRules?:
     | {
         ruleName: string;
         sourceArea: string;
@@ -1175,9 +1302,6 @@ export interface BlankProduct {
         id?: string | null;
       }[]
     | null;
-  /**
-   * Product photos for listings
-   */
   displayImages?:
     | {
         image: number | Media;
@@ -1190,6 +1314,299 @@ export interface BlankProduct {
     metaTitle?: string | null;
     metaDescription?: string | null;
   };
+  prodInt: {
+    /**
+     * Choose smart template or let AI auto-detect from your mockup images
+     */
+    prodTemp:
+      | 'auto_detect'
+      | 'apparel_tshirt_standard'
+      | 'apparel_tshirt_folded'
+      | 'apparel_hoodie_front'
+      | 'apparel_hoodie_lifestyle'
+      | 'phone_iphone15pro'
+      | 'phone_iphone14'
+      | 'phone_samsung_s24'
+      | 'phone_pixel'
+      | 'mug_standard'
+      | 'tumbler_travel'
+      | 'pillow_square'
+      | 'canvas_standard'
+      | 'bag_tote'
+      | 'custom';
+    autoDetSett?: {
+      /**
+       * Automatically analyze uploaded mockup images to detect customizable areas
+       */
+      enImgAnal?: boolean | null;
+      anAcc?: ('fast' | 'balanced' | 'precise' | 'ultra') | null;
+      /**
+       * Minimum confidence level for auto-detected areas (0.1 = low, 1.0 = very high)
+       */
+      detThres?: number | null;
+      /**
+       * Require manual review of auto-detected areas before activation
+       */
+      manlReq?: boolean | null;
+    };
+    srtDef?: {
+      /**
+       * Use smart defaults from selected product template
+       */
+      intfrmTlt?: boolean | null;
+      oMskRls?: {
+        /**
+         * Automatically create masks for edge transitions, sleeves, and occlusions
+         */
+        enablesMask?: boolean | null;
+        edgeDetctMode?: ('automatic' | 'geometric' | 'color' | 'contrast' | 'ml') | null;
+        occlDetct?: {
+          /**
+           * Automatically detect and mask camera holes in phone cases
+           */
+          detectCamHole?: boolean | null;
+          /**
+           * Automatically detect seam lines in apparel
+           */
+          detectSeams?: boolean | null;
+          /**
+           * Automatically detect fabric folds and wrinkles
+           */
+          detectFolds?: boolean | null;
+          /**
+           * Automatically detect shadow areas for realistic rendering
+           */
+          detectShadows?: boolean | null;
+        };
+      };
+    };
+  };
+  smartPrintTech?:
+    | {
+        id?: string | null;
+        technologyName: 'dtg' | 'dtf' | 'screen' | 'sublimation' | 'embroidery' | 'vinyl' | 'digital' | 'uv' | 'laser';
+        /**
+         * Upload mockup photos and let AI detect customizable areas automatically
+         */
+        smartMockupPhotos?:
+          | {
+              /**
+               * e.g., "Front View", "Folded Style", "Lifestyle Shot"
+               */
+              title?: string | null;
+              /**
+               * Upload high-quality mockup image (AI will analyze automatically)
+               */
+              photo: number | Media;
+              viewAngle?:
+                | (
+                    | 'front'
+                    | 'back'
+                    | 'left'
+                    | 'right'
+                    | 'three_quarter_front_left'
+                    | 'three_quarter_front_right'
+                    | 'folded'
+                    | 'lifestyle'
+                    | 'detail'
+                    | 'top'
+                  )
+                | null;
+              mockupStyle?: ('studio' | 'lifestyle' | 'model' | 'flat_lay' | 'folded' | 'detail') | null;
+              /**
+               * Base color of the product in this mockup
+               */
+              photoColor: string;
+              /**
+               * Automatically populated by AI image analysis
+               */
+              aiAnalRes?: {
+                analStat?: ('pending' | 'processing' | 'completed' | 'failed' | 'needs_review') | null;
+                /**
+                 * AI-detected product type
+                 */
+                detProdTy?: string | null;
+                /**
+                 * AI confidence level (0-1)
+                 */
+                confScore?: number | null;
+                /**
+                 * AI-detected customizable areas
+                 */
+                detAr?:
+                  | {
+                      arNme?: string | null;
+                      bodBx?: {
+                        x?: number | null;
+                        y?: number | null;
+                        width?: number | null;
+                        height?: number | null;
+                      };
+                      confdnce?: number | null;
+                      /**
+                       * AI-suggested masking path (SVG)
+                       */
+                      suggesMask?: string | null;
+                      id?: string | null;
+                    }[]
+                  | null;
+                /**
+                 * AI-detected obstructions (camera holes, seams, etc.)
+                 */
+                dtcObs?:
+                  | {
+                      obsType?:
+                        | ('camera_hole' | 'speaker_hole' | 'seam' | 'port' | 'button' | 'fold' | 'shadow' | 'unknown')
+                        | null;
+                      boundbox?: {
+                        x?: number | null;
+                        y?: number | null;
+                        width?: number | null;
+                        height?: number | null;
+                      };
+                      confidence?: number | null;
+                      id?: string | null;
+                    }[]
+                  | null;
+              };
+              /**
+               * AI-detected areas with smart defaults + manual overrides
+               */
+              smartVisA?:
+                | {
+                    /**
+                     * Area name (auto-populated from AI or manual entry)
+                     */
+                    areaName: string;
+                    /**
+                     * How this area configuration was created
+                     */
+                    dataSource?: ('ai_detected' | 'template' | 'manual' | 'hybrid') | null;
+                    /**
+                     * Manual review status for AI-detected areas
+                     */
+                    appStat?: ('pending_review' | 'approved' | 'rejected' | 'needs_adjustment') | null;
+                    visibility?:
+                      | ('full' | 'partial' | 'edge' | 'sleeve' | 'shadow' | 'reflection' | 'device_cutout')
+                      | null;
+                    /**
+                     * Percentage of area visible (AI can auto-calculate)
+                     */
+                    visibilityPercentage?: number | null;
+                    smartMasking?: {
+                      /**
+                       * Use AI-powered smart masking for this area
+                       */
+                      enableSmartMask?: boolean | null;
+                      maskingStrategy?: ('ai_automatic' | 'template' | 'manual' | 'hybrid') | null;
+                    };
+                    aiMaskSettings?: {
+                      edgeDetectLevel?: ('soft' | 'medium' | 'sharp' | 'ultra') | null;
+                      /**
+                       * Automatically adapt masking based on lighting conditions
+                       */
+                      adaptToLighting?: boolean | null;
+                      /**
+                       * Consider fabric properties when creating masks
+                       */
+                      fabricAwareness?: boolean | null;
+                      /**
+                       * Automatically detect and handle seam lines
+                       */
+                      seamDetection?: boolean | null;
+                    };
+                    /**
+                     * Automatically generated by AI analysis
+                     */
+                    generatedMask?: {
+                      /**
+                       * SVG path for the generated mask
+                       */
+                      maskPath?: string | null;
+                      maskTypes?: ('gradient' | 'vector' | 'bitmap' | 'composite') | null;
+                      /**
+                       * AI confidence in generated mask quality
+                       */
+                      maskConfidence?: number | null;
+                    };
+                    smartPlacement?: {
+                      /**
+                       * X position (AI-calculated)
+                       */
+                      autoX?: number | null;
+                      /**
+                       * Y position (AI-calculated)
+                       */
+                      autoY?: number | null;
+                      /**
+                       * Width (AI-calculated)
+                       */
+                      autoWidth?: number | null;
+                      /**
+                       * Height (AI-calculated)
+                       */
+                      autoHeight?: number | null;
+                      /**
+                       * Override AI-calculated placement with manual values
+                       */
+                      enableManualOverride?: boolean | null;
+                      manualX?: number | null;
+                      manualY?: number | null;
+                      manualWidth?: number | null;
+                      manualHeight?: number | null;
+                      rotation?: number | null;
+                      skewX?: number | null;
+                      skewY?: number | null;
+                      scaleX?: number | null;
+                      scaleY?: number | null;
+                    };
+                    id?: string | null;
+                  }[]
+                | null;
+              /**
+               * Display priority (higher numbers appear first)
+               */
+              priority?: number | null;
+              tags?:
+                | {
+                    tag?: string | null;
+                    id?: string | null;
+                  }[]
+                | null;
+              id?: string | null;
+            }[]
+          | null;
+        /**
+         * AI-enhanced customization areas with smart defaults
+         */
+        smartCustomizationAreas?:
+          | {
+              areaId?: string | null;
+              /**
+               * e.g., "Front", "Back", "Left Sleeve", "Camera Area"
+               */
+              areaName: string;
+              areaType?: ('primary' | 'secondary' | 'accent' | 'sleeve' | 'back' | 'pocket' | 'device_specific') | null;
+              smartCanvasConfig?: {
+                /**
+                 * Use AI-calculated optimal dimensions for this area
+                 */
+                useAICalculatedDimensions?: boolean | null;
+                aiWidthInches?: number | null;
+                aiHeightInches?: number | null;
+                aiCanvasPixelWidth?: number | null;
+                aiCanvasPixelHeight?: number | null;
+                manualWidthInches?: number | null;
+                manualHeightInches?: number | null;
+                manualCanvasPixelWidth?: number | null;
+                manualCanvasPixelHeight?: number | null;
+                aspectRatioLocked?: boolean | null;
+              };
+              id?: string | null;
+            }[]
+          | null;
+      }[]
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1820,6 +2237,12 @@ export interface BlankProductsSelect<T extends boolean = true> {
         weight?: T;
         construction?: T;
         finish?: T;
+        efabType?: T;
+        fabricWeight?: T;
+        surfaceTexture?: T;
+        stretchability?: T;
+        transparency?: T;
+        reflectivity?: T;
       };
   careInstructions?:
     | T
@@ -1850,8 +2273,22 @@ export interface BlankProductsSelect<T extends boolean = true> {
         colorName?: T;
         colorHex?: T;
         isPrimary?: T;
+        fabricInteraction?:
+          | T
+          | {
+              absorptionRate?: T;
+              blendMode?: T;
+              colorShift?:
+                | T
+                | {
+                    hueShift?: T;
+                    saturationShift?: T;
+                    lightnessShift?: T;
+                  };
+            };
         id?: T;
       };
+  color_Images?: T;
   sizeOptions?:
     | T
     | {
@@ -1865,16 +2302,18 @@ export interface BlankProductsSelect<T extends boolean = true> {
             };
         id?: T;
       };
+  size_Images?: T;
   sizeChart?: T;
-  surfaceConf?:
+  sizeChartHtml?: T;
+  surfConf?:
     | T
     | {
         renderType?: T;
-        surfaceProp?:
+        surfProp?:
           | T
           | {
               wrapAngle?: T;
-              curveIntnsty?: T;
+              curveInten?: T;
               designRatio?:
                 | T
                 | {
@@ -1882,23 +2321,50 @@ export interface BlankProductsSelect<T extends boolean = true> {
                     heightRatio?: T;
                   };
             };
-        blendSetting?:
+        blendSet?:
           | T
           | {
-              defBlendMode?: T;
+              defaultBlendMode?: T;
               defaultOpacity?: T;
               preserveColors?: T;
             };
       };
-  printTech?:
+  advanSurfMap?:
+    | T
+    | {
+        curvProf?: T;
+        barrelDist?: T;
+        pincushiDistor?: T;
+        perspDis?: T;
+        hasSeams?: T;
+      };
+  seamPositions?:
+    | T
+    | {
+        seamTypes?: T;
+        positionX?: T;
+        positionY?: T;
+        width?: T;
+        seamEffect?: T;
+        id?: T;
+      };
+  lightingConfiguration?:
+    | T
+    | {
+        lightDirection?: T;
+        lightIntensity?: T;
+        ambientLight?: T;
+        shadowIntensity?: T;
+      };
+  printTechn?:
     | T
     | {
         id?: T;
-        techName?: T;
-        printConstraints?:
+        technologyName?: T;
+        printingConstraints?:
           | T
           | {
-              dpiReq?:
+              dpiRequirements?:
                 | T
                 | {
                     minimum?: T;
@@ -1908,16 +2374,23 @@ export interface BlankProductsSelect<T extends boolean = true> {
               sizeLimits?:
                 | T
                 | {
-                    minWidInch?: T;
-                    minHtInch?: T;
-                    maxWidInch?: T;
-                    maxHtInch?: T;
+                    minWidthInch?: T;
+                    minHeightInch?: T;
+                    maxWidthInch?: T;
+                    maxHeightInch?: T;
                   };
               colorLimits?:
                 | T
                 | {
                     maxColors?: T;
                     supportsFullColor?: T;
+                  };
+              printBleeds?:
+                | T
+                | {
+                    bleedMargin?: T;
+                    safetyMargin?: T;
+                    trimTolerance?: T;
                   };
             };
         mockupPhotos?:
@@ -1928,55 +2401,140 @@ export interface BlankProductsSelect<T extends boolean = true> {
               viewAngle?: T;
               mockupType?: T;
               photoColor?: T;
+              dispMaps?:
+                | T
+                | {
+                    dispImg?: T;
+                    dsrfaceTy?: T;
+                    disint?: T;
+                    disarea?: T;
+                    id?: T;
+                  };
+              alphaMasks?:
+                | T
+                | {
+                    maskImg?: T;
+                    alfarea?: T;
+                    alfamask?: T;
+                    featherEdge?: T;
+                    id?: T;
+                  };
+              lightingOverlays?:
+                | T
+                | {
+                    overImage?: T;
+                    overlayType?: T;
+                    overbldMde?: T;
+                    ovlayOpa?: T;
+                    overlayArea?: T;
+                    id?: T;
+                  };
+              renderPref?:
+                | T
+                | {
+                    preferredEngine?: T;
+                    enableAdvancedEffects?: T;
+                    qualityLevel?: T;
+                    exportRes?: T;
+                    enableProgTrack?: T;
+                  };
+              fabricProp?:
+                | T
+                | {
+                    mfabType?: T;
+                    fabricWeight?: T;
+                    surfaceTexture?: T;
+                    stretchability?: T;
+                    transparency?: T;
+                  };
+              lightingConditions?:
+                | T
+                | {
+                    lightDirection?: T;
+                    lightIntensity?: T;
+                    ambientLight?: T;
+                    shadowIntensity?: T;
+                  };
               visibleAreas?:
                 | T
                 | {
                     areaName?: T;
                     visibility?: T;
-                    desgnPlacment?:
+                    visibilityPercentage?: T;
+                    maskingConfiguration?:
                       | T
                       | {
-                          coord?:
-                            | T
-                            | {
-                                x?: T;
-                                y?: T;
-                                width?: T;
-                                height?: T;
-                              };
-                          transforms?:
-                            | T
-                            | {
-                                rotation?: T;
-                                skewX?: T;
-                                skewY?: T;
-                                scaleX?: T;
-                                scaleY?: T;
-                              };
-                          renderSettings?:
-                            | T
-                            | {
-                                blendMode?: T;
-                                opacity?: T;
-                                preserveColors?: T;
-                              };
-                          surfSpecs?:
-                            | T
-                            | {
-                                wrapSettng?:
-                                  | T
-                                  | {
-                                      enableWrap?: T;
-                                      wrapAngle?: T;
-                                      wrapIntensity?: T;
-                                    };
-                                perspCorrection?:
-                                  | T
-                                  | {
-                                      enablePersp?: T;
-                                      perspIntensity?: T;
-                                    };
-                              };
+                          enableMasking?: T;
+                          maskTypes?: T;
+                          maskPath?: T;
+                        };
+                    gradientMaskSettings?:
+                      | T
+                      | {
+                          gradientDirection?: T;
+                          gradientAngle?: T;
+                          fadeStart?: T;
+                          fadeEnd?: T;
+                          fadeIntensity?: T;
+                        };
+                    edgeDetectionSettings?:
+                      | T
+                      | {
+                          enableEdgeDetection?: T;
+                          edgeThreshold?: T;
+                          edgeSoftness?: T;
+                        };
+                    fabricIntegration?:
+                      | T
+                      | {
+                          enableFabricBlend?: T;
+                          bfabType?: T;
+                          foldAwareness?: T;
+                          seamAwareness?: T;
+                          textureIntensity?: T;
+                          fabricColor?: T;
+                          fabricRoughness?: T;
+                        };
+                    designPlacement?:
+                      | T
+                      | {
+                          coordinateX?: T;
+                          coordinateY?: T;
+                          coordinateWidth?: T;
+                          coordinateHeight?: T;
+                          rotation?: T;
+                          skewX?: T;
+                          skewY?: T;
+                          scaleX?: T;
+                          scaleY?: T;
+                          blendMode?: T;
+                          opacity?: T;
+                          preserveColors?: T;
+                        };
+                    surfaceWrapSettings?:
+                      | T
+                      | {
+                          enableWrap?: T;
+                          wrapAngle?: T;
+                          wrapIntensity?: T;
+                          dynamicWrap?: T;
+                          wrapFalloff?: T;
+                        };
+                    perspectiveSettings?:
+                      | T
+                      | {
+                          enablePerspective?: T;
+                          perspectiveIntensity?: T;
+                          dynamicPerspective?: T;
+                        };
+                    fabricEffectsSettings?:
+                      | T
+                      | {
+                          enableFolds?: T;
+                          foldIntensity?: T;
+                          foldDirection?: T;
+                          seamDistrt?: T;
+                          fabricDpth?: T;
                         };
                     id?: T;
                   };
@@ -1989,19 +2547,19 @@ export interface BlankProductsSelect<T extends boolean = true> {
                   };
               id?: T;
             };
-        customizationAreas?:
+        custAreas?:
           | T
           | {
               areaId?: T;
               areaName?: T;
               areaType?: T;
-              canvasDimensions?:
+              canvasDim?:
                 | T
                 | {
-                    widthInches?: T;
-                    heightInches?: T;
-                    canvasPixelWidth?: T;
-                    canvasPixelHeight?: T;
+                    widthInch?: T;
+                    heightInch?: T;
+                    canvasPixWid?: T;
+                    canvasPixHeight?: T;
                     aspectRatioLocked?: T;
                   };
               designCanvasPhotos?:
@@ -2009,7 +2567,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
                 | {
                     photo?: T;
                     photoColor?: T;
-                    printableAreaCoordinates?:
+                    printAreaCoord?:
                       | T
                       | {
                           x?: T;
@@ -2033,7 +2591,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
               id?: T;
             };
       };
-  areaSyncRules?:
+  areaSynchRules?:
     | T
     | {
         ruleName?: T;
@@ -2060,6 +2618,170 @@ export interface BlankProductsSelect<T extends boolean = true> {
     | {
         metaTitle?: T;
         metaDescription?: T;
+      };
+  prodInt?:
+    | T
+    | {
+        prodTemp?: T;
+        autoDetSett?:
+          | T
+          | {
+              enImgAnal?: T;
+              anAcc?: T;
+              detThres?: T;
+              manlReq?: T;
+            };
+        srtDef?:
+          | T
+          | {
+              intfrmTlt?: T;
+              oMskRls?:
+                | T
+                | {
+                    enablesMask?: T;
+                    edgeDetctMode?: T;
+                    occlDetct?:
+                      | T
+                      | {
+                          detectCamHole?: T;
+                          detectSeams?: T;
+                          detectFolds?: T;
+                          detectShadows?: T;
+                        };
+                  };
+            };
+      };
+  smartPrintTech?:
+    | T
+    | {
+        id?: T;
+        technologyName?: T;
+        smartMockupPhotos?:
+          | T
+          | {
+              title?: T;
+              photo?: T;
+              viewAngle?: T;
+              mockupStyle?: T;
+              photoColor?: T;
+              aiAnalRes?:
+                | T
+                | {
+                    analStat?: T;
+                    detProdTy?: T;
+                    confScore?: T;
+                    detAr?:
+                      | T
+                      | {
+                          arNme?: T;
+                          bodBx?:
+                            | T
+                            | {
+                                x?: T;
+                                y?: T;
+                                width?: T;
+                                height?: T;
+                              };
+                          confdnce?: T;
+                          suggesMask?: T;
+                          id?: T;
+                        };
+                    dtcObs?:
+                      | T
+                      | {
+                          obsType?: T;
+                          boundbox?:
+                            | T
+                            | {
+                                x?: T;
+                                y?: T;
+                                width?: T;
+                                height?: T;
+                              };
+                          confidence?: T;
+                          id?: T;
+                        };
+                  };
+              smartVisA?:
+                | T
+                | {
+                    areaName?: T;
+                    dataSource?: T;
+                    appStat?: T;
+                    visibility?: T;
+                    visibilityPercentage?: T;
+                    smartMasking?:
+                      | T
+                      | {
+                          enableSmartMask?: T;
+                          maskingStrategy?: T;
+                        };
+                    aiMaskSettings?:
+                      | T
+                      | {
+                          edgeDetectLevel?: T;
+                          adaptToLighting?: T;
+                          fabricAwareness?: T;
+                          seamDetection?: T;
+                        };
+                    generatedMask?:
+                      | T
+                      | {
+                          maskPath?: T;
+                          maskTypes?: T;
+                          maskConfidence?: T;
+                        };
+                    smartPlacement?:
+                      | T
+                      | {
+                          autoX?: T;
+                          autoY?: T;
+                          autoWidth?: T;
+                          autoHeight?: T;
+                          enableManualOverride?: T;
+                          manualX?: T;
+                          manualY?: T;
+                          manualWidth?: T;
+                          manualHeight?: T;
+                          rotation?: T;
+                          skewX?: T;
+                          skewY?: T;
+                          scaleX?: T;
+                          scaleY?: T;
+                        };
+                    id?: T;
+                  };
+              priority?: T;
+              tags?:
+                | T
+                | {
+                    tag?: T;
+                    id?: T;
+                  };
+              id?: T;
+            };
+        smartCustomizationAreas?:
+          | T
+          | {
+              areaId?: T;
+              areaName?: T;
+              areaType?: T;
+              smartCanvasConfig?:
+                | T
+                | {
+                    useAICalculatedDimensions?: T;
+                    aiWidthInches?: T;
+                    aiHeightInches?: T;
+                    aiCanvasPixelWidth?: T;
+                    aiCanvasPixelHeight?: T;
+                    manualWidthInches?: T;
+                    manualHeightInches?: T;
+                    manualCanvasPixelWidth?: T;
+                    manualCanvasPixelHeight?: T;
+                    aspectRatioLocked?: T;
+                  };
+              id?: T;
+            };
       };
   updatedAt?: T;
   createdAt?: T;

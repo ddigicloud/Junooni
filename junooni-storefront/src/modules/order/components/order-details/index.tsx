@@ -127,6 +127,8 @@
 // }
 
 // export default OrderDetails
+"use client"
+
 import { HttpTypes } from "@medusajs/types"
 import { Check, Clock } from "lucide-react"
 import { formatDate } from "@lib/data/date-util"
@@ -264,7 +266,7 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Status:</span>
                 <span className="text-sm font-medium text-gray-800">
-                  {formatStatus(order.status)}
+                  {formatStatus(order.fulfillment_status)}
                 </span>
               </div>
             )}

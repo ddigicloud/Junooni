@@ -3850,17 +3850,17 @@ const generateTrackingUrl = (carrier: string, trackingNumber: string): string =>
                         )}
                         
                         {/* Tax (calculated on net amount) */}
-                        <div className="flex justify-between">
+                        {/* <div className="flex justify-between">
                           <span className="text-gray-600">Tax amount</span>
                           <span>{formatPrice(order.vendor_tax_total, order.currency_code)}</span>
-                        </div>
+                        </div> */}
                         
                         <Separator className="my-3" />
                         
                         <div className="flex justify-between font-bold">
                           <span>Customer paid (inc. delivery charges)</span>
                           <span style={{ color: BRAND.primary }}>
-                            {formatPrice(customerTotalPayment, order.currency_code)}
+                            {formatPrice(netSubtotal, order.currency_code)}
                           </span>
                         </div>
                         

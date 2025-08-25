@@ -157,7 +157,7 @@ const HelpdeskPage = () => {
           <h2 className="text-2xl font-bold mb-6">Still Need Help?</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex flex-col items-center text-center p-4 border border-gray-200 rounded-lg">
-              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-3 text-blue-600">
+              <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-3 text-orange-600">
                 <MessageSquare size={24} />
               </div>
               <h3 className="font-medium mb-2">Start a Chat</h3>
@@ -165,8 +165,8 @@ const HelpdeskPage = () => {
                 Chat with our support team in real-time.
               </p>
               <p className="text-sm text-gray-500 mb-2">Available Monday-Friday</p>
-              <p className="text-sm font-medium">9:00 AM - 6:00 PM ET</p>
-              <button className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+              <p className="text-sm font-medium">9:00 AM - 6:00 PM IST</p>
+              <button className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors">
                 Start Chat
               </button>
             </div>
@@ -191,7 +191,7 @@ const HelpdeskPage = () => {
             </div>
             
             <div className="flex flex-col items-center text-center p-4 border border-gray-200 rounded-lg">
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3 text-green-600">
+              <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-3 text-orange-600">
                 <Phone size={24} />
               </div>
               <h3 className="font-medium mb-2">Call Us</h3>
@@ -199,12 +199,12 @@ const HelpdeskPage = () => {
                 Speak with a support representative.
               </p>
               <p className="text-sm text-gray-500 mb-2">Available Monday-Friday</p>
-              <p className="text-sm font-medium">10:00 AM - 4:00 PM ET</p>
+              <p className="text-sm font-medium">10:00 AM - 4:00 PM IST</p>
               <Link 
-                href="tel:+18001234567" 
-                className="mt-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors inline-block"
+                href="tel:+919557294610"
+                className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors inline-block"
               >
-                Call (800) 123-4567
+                Call +91 9557294610
               </Link>
             </div>
           </div>
@@ -212,7 +212,7 @@ const HelpdeskPage = () => {
       </main>
       
       {/* Footer */}
-      <footer className="bg-white border-t py-6 mt-12">
+      {/* <footer className="bg-white border-t py-6 mt-12">
         <div className="container mx-auto px-4 text-center">
           <p className="text-gray-500 text-sm">© {new Date().getFullYear()} Junooni. All rights reserved.</p>
           <div className="mt-2 flex justify-center gap-4">
@@ -221,7 +221,7 @@ const HelpdeskPage = () => {
             <Link href="/contact" className="text-sm text-gray-500 hover:text-[#e65100]">Contact</Link>
           </div>
         </div>
-      </footer>
+      </footer> */}
       <ChatwootWidget/>
     </div>
   );

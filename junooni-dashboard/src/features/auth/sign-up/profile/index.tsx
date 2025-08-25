@@ -1259,76 +1259,96 @@ const openChatwoot = () => {
               {/* Profile Information Tab */}
               <TabsContent value="profile" className="mt-0">
                 <Card className="overflow-hidden border-0 shadow-xl">
-                  <CardHeader className="pb-2 border-b" style={{ borderColor: `${BRAND.primary}11` }}>
-                    <div className="flex items-center justify-between">
+                  <CardHeader
+                    className="pb-2 border-b"
+                    style={{ borderColor: `${BRAND.primary}11` }}
+                  >
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      {/* Left side: Icon + Title */}
                       <div className="flex items-center">
-                        <div className="p-3 mr-4 rounded-lg" style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
+                        <div
+                          className="p-3 mr-4 rounded-lg"
+                          style={{
+                            background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
+                          }}
+                        >
                           <IconUser className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <CardTitle className="text-2xl font-bold" style={{ color: BRAND.secondary }}>
+                          <CardTitle
+                            className="text-2xl font-bold"
+                            style={{ color: BRAND.secondary }}
+                          >
                             Profile Information
                           </CardTitle>
-                          <CardDescription className="text-base" style={{ color: BRAND.textSecondary }}>
+                          <CardDescription
+                            className="text-base"
+                            style={{ color: BRAND.textSecondary }}
+                          >
                             Manage how customers see you on the marketplace
                           </CardDescription>
                         </div>
                       </div>
-                     
-                      <Button
+
+                      {/* Right side: Buttons */}
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+                        <Button
                           variant="outline"
                           className="flex items-center gap-1"
                           style={{ borderColor: BRAND.primary, color: BRAND.primary }}
-                         onClick={() => window.location.href = '/dashboard'}
+                          onClick={() => (window.location.href = "/dashboard")}
                         >
                           <span>Back to dashboard</span>
-                      </Button>
-                      {!editMode.profile ? (
-                        <Button
-                          variant="outline"
-                          className="flex items-center gap-1 mr-8"
-                          style={{ borderColor: BRAND.primary, color: BRAND.primary }}
-                          onClick={() => setEditMode({ ...editMode, profile: true })}
-                        >
-                          <IconEdit className="w-4 h-4" />
-                          <span>Edit</span>
                         </Button>
-                      ) : (
-                        <div className="flex items-center gap-2">
+
+                        {!editMode.profile ? (
                           <Button
                             variant="outline"
                             className="flex items-center gap-1"
-                            onClick={() => setEditMode({ ...editMode, profile: false })}
+                            style={{ borderColor: BRAND.primary, color: BRAND.primary }}
+                            onClick={() => setEditMode({ ...editMode, profile: true })}
                           >
-                            <IconX className="w-4 h-4" />
-                            <span>Cancel</span>
+                            <IconEdit className="w-4 h-4" />
+                            <span>Edit</span>
                           </Button>
-                         
-                          <Button
-                            className="flex items-center gap-1"
-                            style={{
-                              background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
-                              color: 'white'
-                            }}
-                            onClick={() => saveVendorData('profile')}
-                            disabled={isSaving}
-                          >
-                            {isSaving ? (
-                              <div className="w-4 h-4 mr-1 border-2 border-white rounded-full animate-spin border-b-transparent" />
-                            ) : (
-                              <IconDeviceFloppy className="w-4 h-4" />
-                            )}
-                            <span>Save Changes</span>
-                          </Button>
-                        </div>
-                      )}
+                        ) : (
+                          <div className="flex flex-col gap-2 md:flex-row md:gap-2">
+                            <Button
+                              variant="outline"
+                              className="flex items-center gap-1"
+                              onClick={() => setEditMode({ ...editMode, profile: false })}
+                            >
+                              <IconX className="w-4 h-4" />
+                              <span>Cancel</span>
+                            </Button>
+
+                            <Button
+                              className="flex items-center gap-1"
+                              style={{
+                                background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
+                                color: "white",
+                              }}
+                              onClick={() => saveVendorData("profile")}
+                              disabled={isSaving}
+                            >
+                              {isSaving ? (
+                                <div className="w-4 h-4 mr-1 border-2 border-white rounded-full animate-spin border-b-transparent" />
+                              ) : (
+                                <IconDeviceFloppy className="w-4 h-4" />
+                              )}
+                              <span>Save Changes</span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
+
                  
                   <CardContent className="pt-6 pb-8">
                     {/* Brand display with cover photo and logo */}
                     <div className="mb-8">
-                      <div className="relative bg-gray-100 h-64 rounded-xl">
+                      <div className="relative h-64 bg-gray-100 rounded-xl">
                         {vendorData.vendor.coverphoto ? (
                           <img
                             src={vendorData.vendor.coverphoto}

@@ -1313,21 +1313,27 @@ const DashboardPage = () => {
       }}
     >
       {/* Header */}
+      {/* Header */}
       <div className="sticky top-0 z-30 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90">
         <div className="container px-4 py-3 mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <SidebarTrigger variant='outline' className='mr-2 scale-125 sm:scale-100' />
-              {/* <Separator orientation='vertical' className='h-6 ml-2' /> */}
-              {/* <div 
-                className="mr-2 text-2xl font-bold" 
-                style={{ color: BRAND.primary }}
-              >
-                <Link to="/dashboard">
-                  <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-8" />
+              <Separator orientation='vertical' className='h-6 ml-2' />
+              
+              {/* Brand Name - Always visible */}
+              <div className="ml-2 md:hidden">
+                <Link to="/dashboard" className="flex items-center">
+                  <span 
+                    className="text-lg font-bold md:text-xl" 
+                    style={{ color: BRAND.primary }}
+                  >
+                    JUNOONI
+                  </span>
                 </Link>
-              </div> */}
-              <span className="hidden text-gray-500 md:inline">|</span>
+              </div>
+              
+              <span className="hidden ml-2 text-gray-500 md:inline md:hidden">|</span>
               <h1 className="hidden ml-2 text-lg font-semibold md:block" style={{ color: BRAND.secondary }}>
                 Seller Dashboard
               </h1>

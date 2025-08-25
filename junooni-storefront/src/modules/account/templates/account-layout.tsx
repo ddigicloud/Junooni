@@ -6,6 +6,7 @@ import UnderlineLink from "@modules/common/components/interactive-link"
 import { HttpTypes } from "@medusajs/types"
 import AccountSidebar from "../components/account-sidebar"
 import { listOrders } from "@lib/data/orders"
+import Help from "@modules/order/components/help"
 import {
   wishlistItems,
   loyaltyPoints,
@@ -334,9 +335,12 @@ const AccountLayout = ({ customer, children, creatorList }) => {
             {React.isValidElement(children) &&
               React.cloneElement(children, commonProps)}
             {!React.isValidElement(children) && children}
+            <Help/>
           </div>
         </div>
-        <div className="flex flex-col items-end justify-between gap-8 px-4 py-12 border-gray-200 small:flex-row small:border-t">
+        {/* <Help /> */}
+
+        {/* <div className="flex flex-col items-end justify-between gap-8 px-4 py-12 border-gray-200 small:flex-row small:border-t">
           <div>
             <h3 className="mb-4 text-xl-semi">Got questions?</h3>
             <span className="txt-medium">
@@ -344,6 +348,7 @@ const AccountLayout = ({ customer, children, creatorList }) => {
               customer service page.
             </span>
           </div>
+          
           <div>
             
           <UnderlineLink href="/customer-service" className="text-[#e65100]">
@@ -351,7 +356,7 @@ const AccountLayout = ({ customer, children, creatorList }) => {
           </UnderlineLink>
 
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   )

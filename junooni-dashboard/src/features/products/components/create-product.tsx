@@ -41,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+
 import { Checkbox } from '@/components/ui/checkbox';
 
 // Import components from our new modules
@@ -412,7 +413,7 @@ const handleFileChange = (
             // CRITICAL FIX: Set colorValue for color options
             if (isColorOption(variantInfo.optionName)) {
               mediaItem.colorValue = variantInfo.optionValues[0];
-              console.log(`Setting colorValue to: ${variantInfo.optionValues[0]} for option: ${variantInfo.optionName}`);
+              //console.log(`Setting colorValue to: ${variantInfo.optionValues[0]} for option: ${variantInfo.optionName}`);
             }
           }
         }
@@ -837,13 +838,13 @@ for (const item of sortedMediaItems) {
         metadata[key] = value;
       });
       
-      console.log("=== IMAGE UPLOAD DEBUG ===");
-      console.log("Media items with associations:", mediaItems.map(item => ({
-        id: item.id,
-        url: item.url,
-        variantInfo: item.variantInfo,
-        colorValue: item.colorValue
-      })));
+      //console.log("=== IMAGE UPLOAD DEBUG ===");
+      // console.log("Media items with associations:", mediaItems.map(item => ({
+      //   id: item.id,
+      //   url: item.url,
+      //   variantInfo: item.variantInfo,
+      //   colorValue: item.colorValue
+      // })));
 
       // IMPORTANT: Get the latest option values directly from the form
       // This ensures we capture the correct imageAssociation values
@@ -862,8 +863,8 @@ for (const item of sortedMediaItems) {
       metadata.variant_specific_image_option = JSON.stringify(imageAssociationSettings);
       
       // Log to verify the values are correct
-      console.log('Image association settings being saved:', imageAssociationSettings);
-      console.log('Full metadata being saved:', metadata);
+      //console.log('Image association settings being saved:', imageAssociationSettings);
+      //console.log('Full metadata being saved:', metadata);
       
       if (hasVariants) {
         // When using variants: filter and transform options to API format (remove empty ones)
@@ -1121,54 +1122,54 @@ return {
         variants: formattedVariants,
       };
     
-      console.log("Full product creation payload:", JSON.stringify(newProduct, null, 2));
-      console.log("Final product metadata being saved:", metadata);
-      console.log("Variant metadata being saved:", formattedVariants.map(v => ({
-        title: v.title,
-        option_images: v.metadata.option_images,
-        color_images: v.metadata.color_images,
-        variant_images: v.metadata.variant_images
-      })));
-        console.log("=== CREATE PRODUCT DEBUG ===");
-      console.log("Formatted variants with metadata:", formattedVariants.map(v => ({
-        title: v.title,
-        metadata: v.metadata
-      })));
+      //console.log("Full product creation payload:", JSON.stringify(newProduct, null, 2));
+      //console.log("Final product metadata being saved:", metadata);
+      // console.log("Variant metadata being saved:", formattedVariants.map(v => ({
+      //   title: v.title,
+      //   option_images: v.metadata.option_images,
+      //   color_images: v.metadata.color_images,
+      //   variant_images: v.metadata.variant_images
+      // })));
+      //   console.log("=== CREATE PRODUCT DEBUG ===");
+      // console.log("Formatted variants with metadata:", formattedVariants.map(v => ({
+      //   title: v.title,
+      //   metadata: v.metadata
+      // })));
       try {
         // Create the product
         const result = await createProduct({ 
           product: newProduct
         });
         
-        console.log("Product created successfully:", result);
+        //console.log("Product created successfully:", result);
         
         // Store the created product ID
      // After successful product creation
 if (result && result.id) {
   setCreatedProductId(result.id);
   
-  console.log("Product created successfully with ID:", result.id);
+  //console.log("Product created successfully with ID:", result.id);
   
   // Add a slight delay to allow backend processing
   setTimeout(async () => {
     try {
       // Fetch the complete product with inventory information
-      console.log("Fetching complete product data to retrieve inventory items...");
+      //console.log("Fetching complete product data to retrieve inventory items...");
       const completeProduct = await fetchProduct({ id: result.id });
       
       if (completeProduct && completeProduct.variants) {
-        console.log("Processing inventory for variants from complete product data");
+        //console.log("Processing inventory for variants from complete product data");
         const inventoryCreations = [];
         
         for (const variant of completeProduct.variants) {
-          console.log(`Processing variant ${variant.id}: ${variant.title}`);
+          //console.log(`Processing variant ${variant.id}: ${variant.title}`);
           
           // Check if inventory_items exists and has data
           if (variant.inventory_items && Array.isArray(variant.inventory_items) && variant.inventory_items.length > 0) {
             const inventoryItemId = variant.inventory_items[0].inventory_item_id;
             
             if (inventoryItemId) {
-              console.log(`Found inventory_item_id: ${inventoryItemId} for variant ${variant.title}`);
+              //console.log(`Found inventory_item_id: ${inventoryItemId} for variant ${variant.title}`);
               
               // Find matching form variant to get stock
               const formVariant = variants.find(v => v.title === variant.title) || variants[0];
@@ -1182,30 +1183,30 @@ if (result && result.id) {
               });
             }
           } else {
-            console.warn(`No inventory_items found for variant: ${variant.title}`);
+            //console.warn(`No inventory_items found for variant: ${variant.title}`);
           }
         }
         
         // Only proceed if we have inventory operations to perform
         if (inventoryCreations.length > 0) {
-          console.log(`Submitting ${inventoryCreations.length} inventory creation operations`);
+          //console.log(`Submitting ${inventoryCreations.length} inventory creation operations`);
           
           try {
             const inventoryResult = await batchUpdateInventoryLevels({
               create: inventoryCreations
             });
             
-            console.log("Inventory creation successful:", inventoryResult);
+            //console.log("Inventory creation successful:", inventoryResult);
           } catch (inventoryError) {
-            console.error("Failed to create inventory levels:", inventoryError);
+            //console.error("Failed to create inventory levels:", inventoryError);
             // Don't set error - continue showing success message for product creation
           }
         } else {
-          console.warn("No valid inventory items found to create");
+          //console.warn("No valid inventory items found to create");
         }
       }
     } catch (fetchError) {
-      console.error("Failed to fetch complete product data:", fetchError);
+      //console.error("Failed to fetch complete product data:", fetchError);
       // Still show success for product creation even if inventory failed
     }
   }, 2000); // 2-second delay to allow backend processing
@@ -2440,7 +2441,7 @@ if (result && result.id) {
               </section>
               
               {/* Additional Info Card */}
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="p-6 pb-16 bg-white border border-gray-200 rounded-lg shadow-sm md:pb-0">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Additional Info</h2>
                 <Separator className="mb-6" />
                 

@@ -36,7 +36,7 @@ const Help = () => {
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-gray-900">Call Us</h3>
-                <p className="text-sm text-gray-600">+1 (555) 123-4567</p>
+                <p className="text-sm text-gray-600">+91 9557294610</p>
               </div>
             </div>
 
@@ -47,7 +47,7 @@ const Help = () => {
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-gray-900">Email</h3>
-                <p className="text-sm text-gray-600">support@example.com</p>
+                <p className="text-sm text-gray-600">support@junooni.com</p>
               </div>
             </div>
 
@@ -65,9 +65,11 @@ const Help = () => {
 
           {/* Contact button */}
           <div className="mt-4">
-            <button className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md shadow-sm sm:w-auto hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-              Contact Support
-            </button>
+            <a href="/support">
+              <button className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md shadow-sm sm:w-auto hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+                Contact Support
+              </button>
+            </a>
           </div>
         </div>
       </div>

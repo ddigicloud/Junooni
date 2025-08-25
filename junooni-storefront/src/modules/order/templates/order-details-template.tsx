@@ -61,7 +61,7 @@ import {
   Settings,
   Loader2,
 } from "lucide-react"
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import OrderDetails from "@modules/order/components/order-details"
 import OrderSummary from "@modules/order/components/order-summary"
@@ -69,14 +69,17 @@ import PaymentDetails from "@modules/order/components/payment-details"
 import ShippingDetails from "@modules/order/components/shipping-details"
 import Items from "@modules/order/components/items"
 import Help from "@modules/order/components/help"
+import OrderRelatedProducts from "@modules/order/components/order-related-products"
 import { fetchOrderInvoice } from "@lib/data/customer" // Import the new server function
 
 type OrderDetailsTemplateProps = {
   order: HttpTypes.StoreOrder
+  countryCode?: string // Make it optional
 }
 
 const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
   order,
+  countryCode,
 }) => {
   const [activeTab, setActiveTab] = useState<"items" | "payment">("items")
   const [vendorSummaryData, setVendorSummaryData] = useState<Record<string, any>>({})
@@ -129,7 +132,6 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
     }
   }
 
-  // Rest of your component remains the same...
   return (
     <div className="min-h-screen mt-6 bg-gray-50">
       {/* Header */}
@@ -161,7 +163,7 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
                 <>
                   <span className="mx-2 text-gray-400">•</span>
                   <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {order.status.replace("_", " ")}
+                    {order.fulfillment_status.replace("_", " ")}
                   </div>
                 </>
               )}
@@ -220,7 +222,7 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
               <div className="flex flex-col space-y-4">
                 {/* Professional Backend Invoice */}
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-3">Click below button to download invoice 👇</h3>
+                  {/* <h3 className="text-sm font-medium text-gray-900 mb-3">Click below button to download invoice 👇</h3> */}
                 
                 {/* Error Display */}
                 {invoiceError && (
@@ -256,43 +258,13 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
           )}
         </div>
 
-        {/* Related Products - keeping your existing implementation */}
-        <div className="mt-8 mb-6">
-          <h2 className="mb-4 text-lg font-semibold text-gray-800">
-            You Might Also Like
-          </h2>
-
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {[1, 2, 3, 4].map((item) => (
-              <div
-                key={item}
-                className="overflow-hidden bg-white rounded-lg shadow"
-              >
-                <div className="w-full bg-gray-200 aspect-square">
-                  <img
-                    src={`/api/placeholder/400/400`}
-                    alt={`Recommended product ${item}`}
-                    className="object-cover object-center w-full h-full"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="text-sm font-medium text-gray-900 truncate">
-                    Recommended Product {item}
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-600">
-                    ₹{(item * 999).toFixed(2)}
-                  </p>
-                  <button className="inline-flex items-center justify-center w-full px-4 py-2 mt-2 text-xs font-medium text-white bg-orange-600 border border-transparent rounded-md shadow-sm hover:bg-orange-700 focus:outline-none">
-                    Add to Cart
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Related Products */}
+        <div className="mb-12">
+          <OrderRelatedProducts order={order} countryCode={countryCode || 'in'} />
         </div>
 
         {/* Help Section */}
-        <Help />
+        {/* <Help /> */}
       </main>
     </div>
   )

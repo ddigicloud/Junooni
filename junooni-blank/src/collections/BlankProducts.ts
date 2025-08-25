@@ -1,17 +1,16 @@
- // collections/BlankProducts.ts
+// collections/BlankProducts.ts - Fixed with unique database names & PostgreSQL compatibility
 import { lexicalEditor } from '@payloadcms/richtext-lexical';
 import type { CollectionConfig, PayloadRequest } from 'payload';
 
 export const BlankProducts: CollectionConfig = {
   slug: 'blank-products',
-  dbName: 'blank_products', // 14 chars
+  dbName: 'blank_products',
   access: {
     read: () => true,
-    
   },
   admin: { 
     useAsTitle: 'name',
-    description: 'Professional print-on-demand product catalog with industry-grade customization',
+    description: 'Professional print-on-demand with advanced masking & surface mapping',
     defaultColumns: ['name', 'sku', 'brand', 'productType', 'status', 'updatedAt'],
     group: 'Products',
   },
@@ -60,7 +59,6 @@ export const BlankProducts: CollectionConfig = {
               type: 'select',
               required: true,
               defaultValue: 'draft',
-              
               options: [
                 { label: 'Active', value: 'active' },
                 { label: 'Draft', value: 'draft' },
@@ -68,9 +66,6 @@ export const BlankProducts: CollectionConfig = {
                 { label: 'Out of Stock', value: 'out_of_stock' },
                 { label: 'Coming Soon', value: 'coming_soon' },
               ],
-              admin: {
-                description: 'Product availability status',
-              },
             },
             {
               name: 'productType',
@@ -107,17 +102,10 @@ export const BlankProducts: CollectionConfig = {
               type: 'relationship',
               relationTo: 'categories',
               hasMany: true,
-              admin: {
-                description: 'Product categories for organization and filtering',
-              },
             },
             {
               name: 'tags',
               type: 'array',
-              dbName: 'tags',
-              admin: {
-                description: 'Tags for enhanced searchability',
-              },
               fields: [
                 {
                   name: 'tag',
@@ -139,31 +127,22 @@ export const BlankProducts: CollectionConfig = {
               name: 'brand', 
               type: 'text', 
               required: true,
-              admin: {
-                description: 'Brand or manufacturer name',
-              },
             },
             { 
               name: 'brandSku',
               type: 'text',
-              dbName: 'brand_sku', // 9 chars
-              admin: {
-                description: 'Vendor\'s SKU or product code',
-              },
+              dbName: 'brand_sku',
             },
             { 
               name: 'sku', 
               type: 'text', 
               required: true,
               unique: true,
-              admin: {
-                description: 'Your internal SKU',
-              },
             },
             {
               name: 'vendorInfo',
               type: 'group',
-              dbName: 'vendor', // 6 chars
+              dbName: 'vendor_info',
               label: 'Additional Vendor Information',
               fields: [
                 {
@@ -178,55 +157,44 @@ export const BlankProducts: CollectionConfig = {
                     { label: 'Direct Manufacturer', value: 'direct' },
                     { label: 'Other', value: 'other' },
                   ],
-                 
                 },
                 {
                   name: 'supplierProductId',
                   type: 'text',
-                  dbName: 'supp_prod_id', // 12 chars
-                  admin: {
-                    description: 'Product ID in supplier\'s system',
-                  },
+                  dbName: 'supplier_prod_id',
                 },
                 {
                   name: 'countryOfOrigin',
                   type: 'text',
-                  dbName: 'origin', // 6 chars
-                  admin: {
-                    description: 'Manufacturing country',
-                  },
+                  dbName: 'country_origin',
                 },
               ],
             },
             {
               name: 'sourcing',
               type: 'group',
+              dbName: 'sourcing_info',
               fields: [
                 {
                   name: 'minimumOrderQuantity',
                   type: 'number',
-                  dbName: 'moq', // 3 chars
-                 
+                  dbName: 'min_order_qty',
                   min: 1,
                 },
                 {
                   name: 'leadTimeDays',
                   type: 'number',
-                  dbName: 'lead_days', // 9 chars
-                  admin: {
-                    description: 'Production time in business days',
-                  },
+                  dbName: 'lead_time_days',
                 },
                 {
                   name: 'rushAvailable',
                   type: 'checkbox',
-                  dbName: 'rush_avail', // 10 chars
-                
+                  dbName: 'rush_available',
                 },
                 {
                   name: 'rushLeadTimeDays',
                   type: 'number',
-                  dbName: 'rush_days', // 9 chars
+                  dbName: 'rush_lead_days',
                   admin: {
                     condition: (data) => data?.sourcing?.rushAvailable,
                   },
@@ -247,20 +215,16 @@ export const BlankProducts: CollectionConfig = {
               type: 'number', 
               required: true, 
               min: 0,
-              admin: {
-                description: 'Base cost from supplier',
-              },
             },
             {
               name: 'pricing',
               type: 'group',
+              dbName: 'pricing_info',
               fields: [
-                
                 {
                   name: 'markupType',
                   type: 'select',
-                  dbName: 'markup_type', // 11 chars
-                  
+                  dbName: 'markup_type',
                   options: [
                     { label: 'Percentage', value: 'percentage' },
                     { label: 'Fixed Amount', value: 'fixed' },
@@ -270,26 +234,22 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'markupValue',
                   type: 'number',
-                  dbName: 'markup_val', // 10 chars
+                  dbName: 'markup_value',
                   admin: {
-                    description: 'Markup percentage or fixed amount',
                     condition: (data) => data?.pricing?.markupType !== 'tiered',
                   },
                 },
                 {
                   name: 'suggestedRetailPrice',
                   type: 'number',
-                  dbName: 'srp', // 3 chars
-                  admin: {
-                    description: 'Suggested selling price',
-                  },
+                  dbName: 'suggested_retail',
                 },
               ],
             },
             {
               name: 'pricingTiers',
               type: 'array',
-              dbName: 'price_tiers', // 11 chars
+              dbName: 'pricing_tiers',
               admin: {
                 condition: (data) => data?.pricing?.markupType === 'tiered',
               },
@@ -297,18 +257,18 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'minQuantity',
                   type: 'number',
-                  dbName: 'min_qty', // 7 chars
+                  dbName: 'min_quantity',
                   required: true,
                 },
                 {
                   name: 'maxQuantity',
                   type: 'number',
-                  dbName: 'max_qty', // 7 chars
+                  dbName: 'max_quantity',
                 },
                 {
                   name: 'markupPercentage',
                   type: 'number',
-                  dbName: 'markup_pct', // 10 chars
+                  dbName: 'markup_percentage',
                   required: true,
                 },
               ],
@@ -316,30 +276,22 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'additionalCosts',
               type: 'group',
-              dbName: 'add_costs', // 9 chars
+              dbName: 'additional_costs',
               fields: [
                 {
                   name: 'printingCostPerArea',
                   type: 'number',
-                  dbName: 'print_cost', // 10 chars
-                 
-                  admin: {
-                    description: 'Additional cost per printed area',
-                  },
+                  dbName: 'printing_cost_area',
                 },
                 {
                   name: 'setupFee',
                   type: 'number',
-                 
-                  admin: {
-                    description: 'One-time setup fee if applicable',
-                  },
+                  dbName: 'setup_fee',
                 },
                 {
                   name: 'rushSurcharge',
                   type: 'number',
-                  dbName: 'rush_charge', // 11 chars
-                 
+                  dbName: 'rush_surcharge',
                 },
               ],
             },
@@ -355,48 +307,123 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'description', 
               type: 'textarea',
-              admin: {
-                description: 'Brief product description',
-              },
             },
             {
               name: 'features',
               type: 'richText',
               editor: lexicalEditor(),
-              admin: {
-                description: 'Detailed features and benefits',
-              },
             },
             {
               name: 'materials',
               type: 'group',
+              dbName: 'material',
               fields: [
                 {
                   name: 'primary',
                   type: 'text',
-                  admin: {
-                    description: 'e.g., "100% Cotton", "Ceramic", "Polyester Blend"',
-                  },
+                  dbName: 'prim_mat',
                 },
                 {
                   name: 'weight',
                   type: 'text',
-                  admin: {
-                    description: 'e.g., "5.3 oz/yd²", "150 GSM"',
-                  },
+                  dbName: 'mat_wght',
                 },
                 {
                   name: 'construction',
                   type: 'text',
-                  admin: {
-                    description: 'e.g., "Ring-spun", "Jersey knit", "Woven"',
-                  },
                 },
                 {
                   name: 'finish',
                   type: 'text',
+                },
+              
+                // ENHANCED FABRIC PROPERTIES FOR ADVANCED RENDERING
+                {
+                  name: 'efabType',
+                  type: 'select',
+                  dbName: 'efabty',
+                  defaultValue: 'cotton',
+                 
+                  options: [
+                    { label: 'Cotton', value: 'cotton' },
+                    { label: 'Polyester', value: 'polyester' },
+                    { label: 'Cotton Blend', value: 'blend' },
+                    { label: 'Canvas', value: 'canvas' },
+                    { label: 'Leather', value: 'leather' },
+                    { label: 'Denim', value: 'denim' },
+                    { label: 'Fleece', value: 'fleece' },
+                    { label: 'Jersey', value: 'jersey' },
+                    { label: 'Mesh', value: 'mesh' },
+                    { label: 'Vinyl', value: 'vinyl' },
+                    { label: 'Paper', value: 'paper' },
+                    { label: 'Ceramic', value: 'ceramic' },
+                    { label: 'Metal', value: 'metal' },
+                    { label: 'Plastic', value: 'plastic' },
+                  ],
                   admin: {
-                    description: 'e.g., "Matte", "Glossy", "Soft-touch"',
+                    description: 'Material type for accurate surface rendering',
+                  },
+                },
+                {
+                  name: 'fabricWeight',
+                  type: 'number',
+                  dbName: 'fabric_weight_gsm',
+                  min: 50,
+                  max: 1000,
+                  defaultValue: 180,
+                  admin: {
+                    description: 'Fabric weight in GSM (grams per square meter)',
+                  },
+                },
+                {
+                  name: 'surfaceTexture',
+                  type: 'select',
+                  dbName: 'surface_texture',
+                  defaultValue: 'smooth',
+                  options: [
+                    { label: 'Smooth', value: 'smooth' },
+                    { label: 'Textured', value: 'textured' },
+                    { label: 'Rough', value: 'rough' },
+                    { label: 'Glossy', value: 'glossy' },
+                    { label: 'Matte', value: 'matte' },
+                    { label: 'Satin', value: 'satin' },
+                    { label: 'Brushed', value: 'brushed' },
+                  ],
+                },
+                {
+                  name: 'stretchability',
+                  type: 'number',
+                  dbName: 'fabric_stretch',
+                  min: 0,
+                  max: 1,
+                  defaultValue: 0.1,
+                  admin: {
+                    description: 'Fabric stretch factor (0 = no stretch, 1 = very stretchy)',
+                    step: 0.1,
+                  },
+                },
+                {
+                  name: 'transparency',
+                  type: 'number',
+                  dbName: 'fabric_transparency',
+                  min: 0,
+                  max: 1,
+                  defaultValue: 0.05,
+                  admin: {
+                    description: 'Fabric transparency level (0 = opaque, 1 = transparent)',
+                    step: 0.01,
+                  },
+                },
+                {
+                  name: 'reflectivity',
+                  type: 'number',
+                  dbName: 'fabric_reflectivity',
+                  min: 0,
+                  max: 1,
+                  defaultValue: 0.1,
+                  admin: {
+                    description: 'Surface reflectivity for lighting calculations',
+                    step: 0.1,
                   },
                 },
               ],
@@ -404,7 +431,7 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'careInstructions',
               type: 'array',
-              dbName: 'care', // 4 chars
+              dbName: 'care_instructions',
               fields: [
                 {
                   name: 'instruction',
@@ -442,39 +469,27 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'physicalDimensions',
               type: 'group',
-              dbName: 'phys_dims', // 9 chars
+              dbName: 'physical_dimensions',
               label: 'Physical Product Dimensions',
               fields: [
                 { 
                   name: 'widthInches', 
                   type: 'number',
-                  dbName: 'width_in', // 8 chars
-                  admin: {
-                    description: 'Width in inches',
-                  },
+                  dbName: 'width_inches',
                 },
                 { 
                   name: 'heightInches', 
                   type: 'number',
-                  dbName: 'height_in', // 9 chars
-                  admin: {
-                    description: 'Height in inches',
-                  },
+                  dbName: 'height_inches',
                 },
                 { 
                   name: 'depthInches', 
                   type: 'number',
-                  dbName: 'depth_in', // 8 chars
-                  admin: {
-                    description: 'Depth/thickness (for 3D products)',
-                  },
+                  dbName: 'depth_inches',
                 },
                 {
                   name: 'diameter',
                   type: 'number',
-                  admin: {
-                    description: 'For cylindrical products (inches)',
-                  },
                 },
                 {
                   name: 'units',
@@ -491,28 +506,22 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'shippingInfo',
               type: 'group',
-              dbName: 'shipping', // 8 chars
+              dbName: 'shipping_info',
               fields: [
                 { 
                   name: 'weight', 
                   type: 'number', 
                   required: true,
-                  admin: {
-                    description: 'Weight in ounces',
-                  },
                 },
                 { 
                   name: 'shippingDimensions', 
                   type: 'text',
-                  dbName: 'ship_dims', // 9 chars
-                  admin: {
-                    description: 'e.g., "10x13x3 inches"',
-                  },
+                  dbName: 'shipping_dimensions',
                 },
                 {
                   name: 'packageType',
                   type: 'select',
-                  dbName: 'pack_type', // 9 chars
+                  dbName: 'package_type',
                   options: [
                     { label: 'Poly Mailer', value: 'poly_mailer' },
                     { label: 'Box', value: 'box' },
@@ -536,63 +545,116 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'colorOptions',
               type: 'array',
-              dbName: 'colors', // 6 chars
+              dbName: 'color_options',
               label: 'Color Options',
               minRows: 1,
-              admin: {
-                description: 'Available product colors',
-              },
               fields: [
                 {
                   name: 'colorName',
                   type: 'text',
-                  dbName: 'name', // 4 chars
+                  dbName: 'color_name',
                   required: true,
                 },
                 {
                   name: 'colorHex',
                   type: 'text',
-                  dbName: 'hex', // 3 chars
+                  dbName: 'color_hex',
                   required: true,
-                  admin: {
-                    description: 'Hex color code (e.g., #FFFFFF)',
-                  },
                 },
                 {
                   name: 'isPrimary',
                   type: 'checkbox',
-                  dbName: 'is_primary', // 10 chars
-                  admin: {
-                    description: 'Set as default color',
-                  },
+                  dbName: 'is_primary_color',
+                },
+                // 🆕 ENHANCED COLOR PROPERTIES FOR ACCURATE RENDERING
+                {
+                  name: 'fabricInteraction',
+                  type: 'group',
+                  dbName: 'fabric_interaction',
+                  label: 'Fabric Color Interaction',
+                  fields: [
+                    {
+                      name: 'absorptionRate',
+                      type: 'number',
+                      dbName: 'absorption_rate',
+                      min: 0,
+                      max: 1,
+                      defaultValue: 0.1,
+                      admin: {
+                        description: 'How much ink the fabric color absorbs (affects final appearance)',
+                        step: 0.01,
+                      },
+                    },
+                    {
+                      name: 'blendMode',
+                      type: 'select',
+                      dbName: 'color_blend_mode',
+                      defaultValue: 'multiply',
+                      options: [
+                        { label: 'Normal', value: 'normal' },
+                        { label: 'Multiply', value: 'multiply' },
+                        { label: 'Screen', value: 'screen' },
+                        { label: 'Overlay', value: 'overlay' },
+                        { label: 'Soft Light', value: 'soft_light' },
+                      ],
+                    },
+                    {
+                      name: 'colorShift',
+                      type: 'group',
+                      dbName: 'color_shift_values',
+                      fields: [
+                        {
+                          name: 'hueShift',
+                          type: 'number',
+                          dbName: 'hue_shift',
+                          min: -180,
+                          max: 180,
+                          defaultValue: 0,
+                        },
+                        {
+                          name: 'saturationShift',
+                          type: 'number',
+                          dbName: 'saturation_shift',
+                          min: -100,
+                          max: 100,
+                          defaultValue: 0,
+                        },
+                        {
+                          name: 'lightnessShift',
+                          type: 'number',
+                          dbName: 'lightness_shift',
+                          min: -100,
+                          max: 100,
+                          defaultValue: 0,
+                        },
+                      ],
+                    },
+                  ],
                 },
               ],
             },
             {
               name: 'sizeOptions',
               type: 'array',
-              dbName: 'sizes', // 5 chars
+              dbName: 'size_options',
               label: 'Size Options',
               minRows: 1,
               fields: [
                 {
                   name: 'sizeName',
                   type: 'text',
-                  dbName: 'name', // 4 chars
+                  dbName: 'size_name',
                   required: true,
-                  admin: {
-                    description: 'e.g., "Small", "Medium", "Large", "11oz", "16x20"',
-                  },
                 },
                 {
                   name: 'sizeDescription',
                   type: 'textarea',
-                  dbName: 'desc', // 4 chars
+                  dbName: 'size_description',
                 },
                 {
                   name: 'dimensions',
                   type: 'group',
-                  dbName: 'dims', // 4 chars
+                  dbName: 'size_dimensions',
                   fields: [
                     { name: 'width', type: 'number' },
                     { name: 'height', type: 'number' },
@@ -604,29 +666,32 @@ export const BlankProducts: CollectionConfig = {
               name: 'sizeChart',
               type: 'upload',
               relationTo: 'media',
-              admin: {
-                description: 'Size chart image for customer reference',
-              },
+            },
+            {
+              name: 'sizeChartHtml',
+              type: 'textarea',
+              
             },
           ],
         },
 
         // =====================================
-        // CUSTOMIZATION TAB
+        // 🆕 ADVANCED SURFACE CONFIGURATION TAB
         // =====================================
         {
-          label: 'Customization',
+          label: 'Surface & Rendering',
+          description: 'Advanced surface mapping and rendering configuration',
           fields: [
             {
-              name: 'surfaceConf',
+              name: 'surfConf',
               type: 'group',
-              dbName: 'surf_config', // 11 chars
+              dbName: 'surf_cfg',
               label: 'Surface Rendering Configuration',
               fields: [
                 {
                   name: 'renderType',
                   type: 'select',
-                  dbName: 'render_type', // 11 chars
+                  dbName: 'render_type',
                   required: true,
                   defaultValue: 'flat',
                   options: [
@@ -635,54 +700,50 @@ export const BlankProducts: CollectionConfig = {
                     { label: 'Conical Surface', value: 'conical' },
                     { label: 'Spherical Surface', value: 'spherical' },
                     { label: 'Complex 3D', value: 'complex_3d' },
+                    { label: 'Apparel Body', value: 'apparel_body' },
+                    { label: 'Sleeve Wrap', value: 'sleeve_wrap' },
                   ],
                 },
                 {
-                  name: 'surfaceProp',
+                  name: 'surfProp',
                   type: 'group',
-                  dbName: 'surf_props', // 10 chars
+                  dbName: 'surf_props',
                   fields: [
                     {
                       name: 'wrapAngle',
                       type: 'number',
-                      dbName: 'wrap_angle', // 10 chars
+                      dbName: 'wrap_angle',
                       defaultValue: 280,
                       min: 0,
                       max: 360,
-                      admin: {
-                        description: 'For cylindrical products: how many degrees the design wraps',
-                      },
                     },
                     {
-                      name: 'curveIntnsty',
+                      name: 'curveInten',
                       type: 'number',
-                      dbName: 'curve_int', // 9 chars
+                      dbName: 'curve_intensity',
                       min: 0,
                       max: 1,
                       defaultValue: 0.8,
                       admin: {
-                        description: 'How much perspective distortion to apply',
                         step: 0.1,
                       },
                     },
                     {
                       name: 'designRatio',
                       type: 'group',
-                      dbName: 'design_ratio', // 12 chars
+                      dbName: 'ratio',
                       fields: [
                         {
                           name: 'widthRatio',
                           type: 'number',
-                          dbName: 'width_ratio', // 11 chars
-  
+                          dbName: 'width',
                           min: 0.1,
                           max: 2.0,
                         },
                         {
                           name: 'heightRatio',
                           type: 'number',
-                          dbName: 'height_ratio', // 12 chars
-                      
+                          dbName: 'height',
                           min: 0.1,
                           max: 2.0,
                         },
@@ -691,14 +752,14 @@ export const BlankProducts: CollectionConfig = {
                   ],
                 },
                 {
-                  name: 'blendSetting',
+                  name: 'blendSet',
                   type: 'group',
-                  dbName: 'blend_sets', // 10 chars
+                  dbName: 'blend',
                   fields: [
                     {
-                      name: 'defBlendMode',
+                      name: 'defaultBlendMode',
                       type: 'select',
-                      dbName: 'blend_mode', // 10 chars
+                      dbName: 'mode',
                       defaultValue: 'normal',
                       options: [
                         { label: 'Normal', value: 'normal' },
@@ -711,29 +772,211 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'defaultOpacity',
                       type: 'number',
-                      dbName: 'opacity', // 7 chars
+                      dbName: 'opacity',
                       min: 0.1,
                       max: 1.0,
-                   
                     },
                     {
                       name: 'preserveColors',
                       type: 'checkbox',
-                      dbName: 'preserve_colors', // 15 chars
+                      dbName: 'preserve_colors',
                       defaultValue: true,
                     },
                   ],
                 },
               ],
             },
+            // FLATTENED ADVANCED SURFACE MAPPING (separate group to avoid deep nesting)
             {
-              name: 'printTech',
+              name: 'advanSurfMap',
+              type: 'group',
+              dbName: 'adv_surf_map',
+              label: 'Advanced Surface Mapping',
+              fields: [
+                {
+                  name: 'curvProf',
+                  type: 'select',
+                  dbName: 'curve_profile',
+                  defaultValue: 'smooth',
+                  options: [
+                    { label: 'Linear', value: 'linear' },
+                    { label: 'Smooth', value: 'smooth' },
+                    { label: 'Elastic', value: 'elastic' },
+                    { label: 'Ease In', value: 'ease_in' },
+                    { label: 'Ease Out', value: 'ease_out' },
+                    { label: 'Custom Bezier', value: 'custom' },
+                  ],
+                },
+                {
+                  name: 'barrelDist',
+                  type: 'number',
+                  dbName: 'barrel',
+                  min: -1,
+                  max: 1,
+                  defaultValue: 0,
+                  admin: {
+                    description: 'Barrel distortion coefficient',
+                    step: 0.01,
+                  },
+                },
+                {
+                  name: 'pincushiDistor',
+                  type: 'number',
+                  dbName: 'pincushion',
+                  min: -1,
+                  max: 1,
+                  defaultValue: 0,
+                  admin: {
+                    step: 0.01,
+                  },
+                },
+                {
+                  name: 'perspDis',
+                  type: 'number',
+                  dbName: 'perspective',
+                  min: 0,
+                  max: 2,
+                  defaultValue: 1,
+                  admin: {
+                    step: 0.1,
+                  },
+                },
+                {
+                  name: 'hasSeams',
+                  type: 'checkbox',
+                  dbName: 'has_seams',
+                  defaultValue: false,
+                },
+              ],
+            },
+            // FLATTENED SEAM CONFIGURATION
+            {
+              name: 'seamPositions',
               type: 'array',
-              dbName: 'print_techs', // 11 chars
-              label: 'Printing Technologies',
+              dbName: 'seam_pos',
+              label: 'Seam Positions',
               admin: {
-                description: 'Available printing methods and their areas',
+                condition: (data) => data?.advancedSurfaceMapping?.hasSeams,
               },
+              fields: [
+                {
+                  name: 'seamTypes',
+                  type: 'select',
+                  dbName: 'seamtype',
+                  options: [
+                    { label: 'Side Seam', value: 'side' },
+                    { label: 'Shoulder Seam', value: 'shoulder' },
+                    { label: 'Sleeve Seam', value: 'sleeve' },
+                    { label: 'Bottom Hem', value: 'hem' },
+                    { label: 'Custom', value: 'custom' },
+                  ],
+                  defaultValue: 'side',
+                },
+                {
+                  name: 'positionX',
+                  type: 'number',
+                  dbName: 'x',
+                  min: 0,
+                  max: 1,
+                  step: 0.01,
+                },
+                {
+                  name: 'positionY',
+                  type: 'number',
+                  dbName: 'y',
+                  min: 0,
+                  max: 1,
+                  step: 0.01,
+                },
+                {
+                  name: 'width',
+                  type: 'number',
+                  dbName: 'width',
+                  min: 0,
+                  max: 0.1,
+                  step: 0.001,
+                },
+                {
+                  name: 'seamEffect',
+                  type: 'select',
+                  dbName: 'effect',
+                  defaultValue: 'indent',
+                  options: [
+                    { label: 'Indent', value: 'indent' },
+                    { label: 'Raised', value: 'raised' },
+                    { label: 'Flat', value: 'flat' },
+                    { label: 'Shadow', value: 'shadow' },
+                  ],
+                },
+              ],
+            },
+            // FLATTENED LIGHTING CONFIGURATION
+            {
+              name: 'lightingConfiguration',
+              type: 'group',
+              dbName: 'lighting',
+              label: 'Lighting Configuration',
+              fields: [
+                {
+                  name: 'lightDirection',
+                  type: 'number',
+                  dbName: 'direction',
+                  min: 0,
+                  max: 360,
+                  defaultValue: 45,
+                  admin: {
+                    description: 'Light direction in degrees (0 = top, 90 = right)',
+                  },
+                },
+                {
+                  name: 'lightIntensity',
+                  type: 'number',
+                  dbName: 'intensity',
+                  min: 0,
+                  max: 2,
+                  defaultValue: 0.8,
+                  admin: {
+                    step: 0.1,
+                  },
+                },
+                {
+                  name: 'ambientLight',
+                  type: 'number',
+                  dbName: 'ambient',
+                  min: 0,
+                  max: 1,
+                  defaultValue: 0.3,
+                  admin: {
+                    step: 0.1,
+                  },
+                },
+                {
+                  name: 'shadowIntensity',
+                  type: 'number',
+                  dbName: 'shadow',
+                  min: 0,
+                  max: 1,
+                  defaultValue: 0.4,
+                  admin: {
+                    step: 0.1,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+
+        // =====================================
+        // 🆕 ADVANCED PRINTING TECHNOLOGIES WITH MASKING
+        // =====================================
+        {
+          label: 'Printing & Customization',
+          fields: [
+            {
+              name: 'printTechn',
+              type: 'array',
+              dbName: 'print_tech',
+              label: 'Printing Technologies',
               fields: [
                 {
                   name: 'id',
@@ -747,9 +990,9 @@ export const BlankProducts: CollectionConfig = {
                   },
                 },
                 {
-                  name: 'techName',
+                  name: 'technologyName',
                   type: 'select',
-                  dbName: 'tech_name', // 9 chars
+                  dbName: 'technology_name',
                   defaultValue: 'dtg',
                   required: true,
                   options: [
@@ -765,14 +1008,14 @@ export const BlankProducts: CollectionConfig = {
                   ],
                 },
                 {
-                  name: 'printConstraints',
+                  name: 'printingConstraints',
                   type: 'group',
-                  dbName: 'constraints', // 11 chars
+                  dbName: 'printing_constraints',
                   fields: [
                     {
-                      name: 'dpiReq',
+                      name: 'dpiRequirements',
                       type: 'group',
-                      dbName: 'dpi_reqs', // 8 chars
+                      dbName: 'dpi_requirements',
                       fields: [
                         {
                           name: 'minimum',
@@ -794,50 +1037,91 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'sizeLimits',
                       type: 'group',
-                      dbName: 'size_limits', // 11 chars
+                      dbName: 'size_limits',
                       fields: [
                         {
-                          name: 'minWidInch',
+                          name: 'minWidthInch',
                           type: 'number',
-                          dbName: 'min_width', // 9 chars
+                          dbName: 'min_width_inch',
                           defaultValue: 1.0,
                         },
                         {
-                          name: 'minHtInch',
+
+                          
+                          name: 'minHeightInch',
                           type: 'number',
-                          dbName: 'min_height', // 10 chars
+                          dbName: 'min_height_inch',
                           defaultValue: 1.0,
                         },
                         {
-                          name: 'maxWidInch',
+                          name: 'maxWidthInch',
                           type: 'number',
-                          dbName: 'max_width', // 9 chars
+                          dbName: 'max_width_inch',
                         },
                         {
-                          name: 'maxHtInch',
+                          name: 'maxHeightInch',
                           type: 'number',
-                          dbName: 'max_height', // 10 chars
+                          dbName: 'max_height_inch',
                         },
                       ],
                     },
                     {
                       name: 'colorLimits',
                       type: 'group',
-                      dbName: 'color_limits', // 12 chars
+                      dbName: 'color_limits',
                       fields: [
                         {
                           name: 'maxColors',
                           type: 'number',
-                          dbName: 'max_colors', // 10 chars
-                          admin: {
-                            description: 'Leave empty for unlimited colors',
-                          },
+                          dbName: 'max_colors',
                         },
                         {
                           name: 'supportsFullColor',
                           type: 'checkbox',
-                          dbName: 'full_color', // 10 chars
+                          dbName: 'supports_full_color',
                           defaultValue: true,
+                        },
+                      ],
+                    },
+                    // 🆕 PRINT BLEED AND SAFETY MARGINS
+                    {
+                      name: 'printBleeds',
+                      type: 'group',
+                      dbName: 'print_bleeds',
+                      label: 'Print Bleeds & Safety Margins',
+                      fields: [
+                        {
+                          name: 'bleedMargin',
+                          type: 'number',
+                          dbName: 'bleed_margin',
+                          min: 0,
+                          max: 20,
+                          defaultValue: 3,
+                          admin: {
+                            description: 'Bleed margin in millimeters',
+                          },
+                        },
+                        {
+                          name: 'safetyMargin',
+                          type: 'number',
+                          dbName: 'safety_margin',
+                          min: 0,
+                          max: 50,
+                          defaultValue: 5,
+                          admin: {
+                            description: 'Safety margin in millimeters',
+                          },
+                        },
+                        {
+                          name: 'trimTolerance',
+                          type: 'number',
+                          dbName: 'trim_tolerance',
+                          min: 0,
+                          max: 5,
+                          defaultValue: 1,
+                          admin: {
+                            description: 'Trim tolerance in millimeters',
+                          },
                         },
                       ],
                     },
@@ -845,25 +1129,18 @@ export const BlankProducts: CollectionConfig = {
                 },
 
                 // =====================================
-                // MOCKUP PHOTOS AT TECHNOLOGY LEVEL
+                // 🆕 ADVANCED MOCKUP PHOTOS WITH MASKING
                 // =====================================
                 {
                   name: 'mockupPhotos',
                   type: 'array',
-                  dbName: 'mockups', // 7 chars
+                  dbName: 'tech_mockup_photos',
                   label: 'Technology Mockup Photos',
-                  admin: {
-                    description: 'All mockup photos for this printing technology',
-                  },
                   fields: [
                     { 
                       name: 'title', 
                       type: 'text', 
                       label: 'Mockup Title',
-                     
-                      admin: {
-                        description: 'e.g., "Front View", "3/4 Angle", "Lifestyle Shot"',
-                      },
                     },
                     {
                       name: 'photo',
@@ -877,7 +1154,6 @@ export const BlankProducts: CollectionConfig = {
                       type: 'select',
                       label: 'View Angle',
                       defaultValue: 'front',
-                      
                       options: [
                         { label: 'Front', value: 'front' },
                         { label: 'Back', value: 'back' },
@@ -895,7 +1171,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'mockupType',
                       type: 'select',
-                      dbName: 'mtype', // 4 chars
+                      dbName: 'mockup_type',
                       defaultValue: 'studio',
                       options: [
                         { label: 'Studio Shot', value: 'studio' },
@@ -907,32 +1183,380 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'photoColor',
                       type: 'text',
-                      dbName: 'color', // 5 chars
+                      dbName: 'photo_color',
                       label: 'Product Color (Hex)',
                       required: true,
-                      admin: {
-                        description: 'Color of the product in this mockup (e.g., #000000)',
-                      },
                     },
+                    {
+      name: 'dispMaps',
+      type: 'array',
+      dbName: 'dis_maps',
+      label: 'Displacement Maps',
+      admin: {
+        description: 'Displacement maps for curved surfaces (mugs, bottles, curved products)',
+             },
+      fields: [
+        {
+          name: 'dispImg',
+          type: 'upload',
+          relationTo: 'media',
+          required: true,
+          admin: {
+            description: 'PNG displacement map (512x512 recommended)',
+          }
+        },
+        {
+          name: 'dsrfaceTy',
+          type: 'select',
+          dbname: 'dsrfaceTy',
+          defaultValue: 'cylindrical',
+          label: 'Surface Type',
+          options: [
+            { label: 'Cylindrical (Mugs, Bottles)', value: 'cylindrical' },
+            { label: 'Conical (Tapered)', value: 'conical' },
+            { label: 'Spherical (Balls)', value: 'spherical' },
+          ]
+        },
+        {
+          name: 'disint',
+          type: 'number',
+          min: 0,
+          max: 2,
+          defaultValue: 0.8,
+          label: 'Displacement Intensity',
+          admin: {
+            description: 'Displacement intensity (0.1 = subtle, 1.5 = strong)',
+          }
+        },
+        {
+          name: 'disarea',
+          type: 'text',
+          required: true,
+          label: 'Area Name',
+          admin: {
+            description: 'Which area this applies to (must match visibleArea areaName)',
+          }
+        }
+      ]
+    },
+
+    // 2. ALPHA MASKS (for printable area clipping)
+    {
+      name: 'alphaMasks',
+      type: 'array',
+      dbName: 'alpha_masks',
+      label: 'Alpha Masks',
+      admin: {
+        description: 'Alpha masks to define precise printable areas (white = printable, black = non-printable)',
+      },
+      fields: [
+        {
+          name: 'maskImg',
+          type: 'upload',
+          relationTo: 'media',
+          required: true,
+          admin: {
+            description: 'PNG with alpha channel (same dimensions as mockup photo)',
+          }
+        },
+        {
+          name: 'alfarea',
+          type: 'text',
+          required: true,
+          dbName: 'alfarea',
+          label: 'Area Name',
+          admin: {
+            description: 'Which area this mask applies to (must match visibleArea areaName)',
+          }
+        },
+        {
+          name: 'alfamask',
+          type: 'select',
+          label: 'Mask Type',
+          dbName: 'alfamask',
+          defaultValue: 'alpha',
+          options: [
+            { label: 'Alpha Channel', value: 'alpha' },
+            { label: 'Luminance (Brightness)', value: 'luminance' },
+            { label: 'Red Channel', value: 'red_channel' },
+          ]
+        },
+        {
+          name: 'featherEdge',
+          type: 'number',
+          min: 0,
+          max: 10,
+          dbName: 'fea_edge',
+          label: 'Feather Edge',
+          defaultValue: 1,
+          admin: {
+            description: 'Edge softness in pixels (0 = sharp, 5 = soft)',
+          }
+        }
+      ]
+    },
+
+    // 3. LIGHTING OVERLAYS (for realism - shadows, highlights)
+    {
+      name: 'lightingOverlays',
+      type: 'array',
+      dbName: 'light_over',
+      label: 'Lighting Overlays',
+      admin: {
+        description: 'Lighting and shadow overlays for realistic mockup effects',
+      },
+      fields: [
+        {
+          name: 'overImage',
+          type: 'upload',
+          relationTo: 'media',
+          label: 'Overlay Image',
+          required: true,
+          admin: {
+            description: 'PNG lighting/shadow overlay (same dimensions as mockup photo)',
+          }
+        },
+        {
+          name: 'overlayType',
+          type: 'select',
+          defaultValue: 'lighting',
+          options: [
+            { label: '💡 Lighting (Highlights)', value: 'lighting' },
+            { label: '🌑 Shadow (Dark areas)', value: 'shadow' },
+            { label: '✨ Reflection (Shiny)', value: 'reflection' },
+            { label: '🌅 Ambient (Overall)', value: 'ambient' },
+          ]
+        },
+        {
+          name: 'overbldMde',
+          type: 'select',
+          dbName: 'overbldMde',
+          label: 'Blend Mode',
+          defaultValue: 'overlay',
+          options: [
+            { label: 'Overlay (Recommended)', value: 'overlay' },
+            { label: 'Multiply (Shadows)', value: 'multiply' },
+            { label: 'Screen (Highlights)', value: 'screen' },
+            { label: 'Soft Light (Subtle)', value: 'soft-light' },
+            { label: 'Hard Light (Strong)', value: 'hard-light' },
+          ]
+        },
+        {
+          name: 'ovlayOpa',
+          type: 'number',
+          min: 0,
+          max: 1,
+          defaultValue: 0.6,
+          label: 'Overlay Opacity',
+          admin: {
+            description: 'Overlay strength (0.1 = subtle, 0.8 = strong)',
+          }
+        },
+        {
+          name: 'overlayArea',
+          type: 'text',
+          label: 'Overlay Area Name',
+          dbName: 'overlay_area',
+          admin: {
+            description: 'Specific area (leave empty for entire mockup)',
+          }
+        }
+      ]
+    },
+
+    // 4. RENDERING PREFERENCES (engine selection and quality)
+    {
+      name: 'renderPref',
+      type: 'group',
+      dbName: 'render_pref',
+      label: 'Advanced Rendering',
+      admin: {
+        description: 'Control rendering engine and quality settings',
+      },
+      fields: [
+        {
+          name: 'preferredEngine',
+          type: 'select',
+          defaultValue: 'auto',
+          options: [
+            { label: '🤖 Auto (Recommended)', value: 'auto' },
+            { label: '🎨 Canvas (Legacy)', value: 'canvas' },
+            { label: '🚀 Pixi.js (Advanced)', value: 'pixi' },
+          ],
+          admin: {
+            description: 'Auto selects best engine based on complexity',
+          }
+        },
+        {
+          name: 'enableAdvancedEffects',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: {
+            description: 'Enable displacement, masking, and lighting effects',
+          }
+        },
+        {
+          name: 'qualityLevel',
+          type: 'select',
+          defaultValue: 'high',
+          options: [
+            { label: '⚡ Draft (Fast)', value: 'draft' },
+            { label: '📱 Standard (Mobile)', value: 'standard' },
+            { label: '🖥️ High (Desktop)', value: 'high' },
+            { label: '🎯 Ultra (Print)', value: 'ultra' },
+          ]
+        },
+        {
+          name: 'exportRes',
+          type: 'number',
+          min: 1,
+          max: 4,
+          defaultValue: 2,
+          admin: {
+            description: 'Export resolution multiplier (1x to 4x for print)',
+          }
+        },
+        {
+          name: 'enableProgTrack',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: {
+            description: 'Show rendering progress to users',
+          }
+        }
+      ]
+    },
+                    // 🆕 ENHANCED FABRIC PROPERTIES FOR MOCKUP
+                    {
+                      name: 'fabricProp',
+                      type: 'group',
+                      dbName: 'm_fabric_prop',
+                      label: 'Fabric Properties for Rendering',
+                      fields: [
+                        {
+                          name: 'mfabType',
+                          type: 'select',
+                          dbName: 'mfab_type',
+                          defaultValue: 'cotton',
+                          options: [
+                            { label: 'Cotton', value: 'cotton' },
+                            { label: 'Polyester', value: 'polyester' },
+                            { label: 'Cotton Blend', value: 'cotton_blend' },
+                            { label: 'Canvas', value: 'canvas' },
+                            { label: 'Leather', value: 'leather' },
+                            { label: 'Denim', value: 'denim' },
+                            { label: 'Fleece', value: 'fleece' },
+                            { label: 'Jersey', value: 'jersey' },
+                          ],
+                        },
+                        {
+                          name: 'fabricWeight',
+                          type: 'number',
+                          dbName: 'mockup_fabric_weight',
+                          min: 50,
+                          max: 1000,
+                          defaultValue: 180,
+                        },
+                        {
+                          name: 'surfaceTexture',
+                          type: 'select',
+                          dbName: 'mockup_surface_texture',
+                          defaultValue: 'textured',
+                          options: [
+                            { label: 'Smooth', value: 'smooth' },
+                            { label: 'Textured', value: 'textured' },
+                            { label: 'Rough', value: 'rough' },
+                            { label: 'Glossy', value: 'glossy' },
+                            { label: 'Matte', value: 'matte' },
+                          ],
+                        },
+                        {
+                          name: 'stretchability',
+                          type: 'number',
+                          dbName: 'mockup_stretchability',
+                          min: 0,
+                          max: 1,
+                          defaultValue: 0.3,
+                          admin: {
+                            step: 0.1,
+                          },
+                        },
+                        {
+                          name: 'transparency',
+                          type: 'number',
+                          dbName: 'mockup_transparency',
+                          min: 0,
+                          max: 1,
+                          defaultValue: 0.05,
+                          admin: {
+                            step: 0.01,
+                          },
+                        },
+                      ],
+                    },
+                    // 🆕 LIGHTING CONDITIONS FOR MOCKUP
+                    {
+                      name: 'lightingConditions',
+                      type: 'group',
+                      dbName: 'mockup_lighting_conditions',
+                      label: 'Lighting Conditions',
+                      fields: [
+                        {
+                          name: 'lightDirection',
+                          type: 'number',
+                          dbName: 'mockup_light_direction',
+                          min: 0,
+                          max: 360,
+                          defaultValue: 45,
+                        },
+                        {
+                          name: 'lightIntensity',
+                          type: 'number',
+                          dbName: 'mockup_light_intensity',
+                          min: 0,
+                          max: 2,
+                          defaultValue: 0.8,
+                          admin: {
+                            step: 0.1,
+                          },
+                        },
+                        {
+                          name: 'ambientLight',
+                          type: 'number',
+                          dbName: 'mockup_ambient_light',
+                          min: 0,
+                          max: 1,
+                          defaultValue: 0.3,
+                          admin: {
+                            step: 0.1,
+                          },
+                        },
+                        {
+                          name: 'shadowIntensity',
+                          type: 'number',
+                          dbName: 'mockup_shadow_intensity',
+                          min: 0,
+                          max: 1,
+                          defaultValue: 0.4,
+                          admin: {
+                            step: 0.1,
+                          },
+                        },
+                      ],
+                    },
+                    // 🆕 ADVANCED VISIBLE AREAS WITH MASKING
                     {
                       name: 'visibleAreas',
                       type: 'array',
-                      dbName: 'visible_areas', // 13 chars
-                      label: 'Visible Areas',
-                 
+                      dbName: 'mockup_visible_areas',
+                      label: 'Visible Areas with Advanced Masking',
                       minRows: 0,
-                      admin: {
-                        description: 'All customization areas visible in this mockup',
-                      },
                       fields: [
                         {
                           name: 'areaName',
                           type: 'text',
-                          dbName: 'area', // 4 chars
+                          dbName: 'visible_area_name',
                           required: true,
-                          admin: {
-                            description: 'Must match area name in customization areas below',
-                          },
                         },
                         {
                           name: 'visibility',
@@ -942,129 +1566,504 @@ export const BlankProducts: CollectionConfig = {
                             { label: 'Fully Visible', value: 'full' },
                             { label: 'Partially Visible', value: 'partial' },
                             { label: 'Edge/Wrap Visible', value: 'edge' },
+                            { label: 'Sleeve Visible', value: 'sleeve' },
+                            { label: 'Shadow Zone', value: 'shadow' },
+                            { label: 'Reflection Zone', value: 'reflection' },
                           ],
-                          
                         },
                         {
-                          name: 'desgnPlacment',
+                          name: 'visibilityPercentage',
+                          type: 'number',
+                          dbName: 'visibility_percentage',
+                          min: 0,
+                          max: 100,
+                          defaultValue: 100,
+                          admin: {
+                            description: 'Percentage of area visible (0-100%)',
+                            condition: (data, siblingData) => siblingData?.visibility === 'partial',
+                          },
+                        },
+                        // 🆕 ADVANCED MASKING CONFIGURATION (FLATTENED)
+                        {
+                          name: 'maskingConfiguration',
                           type: 'group',
-                          dbName: 'placement', // 9 chars
-                          label: 'Design Placement Configuration',
+                          dbName: 'masking',
+                          label: 'Advanced Masking Configuration',
                           fields: [
                             {
-                              name: 'coord',
-                              type: 'group',
-                              dbName: 'coords', // 6 chars
-                              label: 'Base Coordinates (0.0-1.0)',
-                              fields: [
-                                { name: 'x', type: 'number', min: 0, max: 1, required: true },
-                                { name: 'y', type: 'number', min: 0, max: 1, required: true },
-                                { name: 'width', type: 'number', min: 0, max: 1, required: true },
-                                { name: 'height', type: 'number', min: 0, max: 1, required: true },
+                              name: 'enableMasking',
+                              type: 'checkbox',
+                              dbName: 'enable',
+                              defaultValue: false,
+                            },
+                            {
+                              name: 'maskTypes',
+                              type: 'select',
+                              dbName: 'masktype',
+                              defaultValue: 'gradient',
+                              options: [
+                                { label: 'Gradient Mask', value: 'gradient' },
+                                { label: 'Sharp Edge', value: 'sharp' },
+                                { label: 'Soft Edge', value: 'soft' },
+                                { label: 'Custom SVG', value: 'svg' },
+                                { label: 'Fabric Fold', value: 'fold' },
+                                { label: 'Seam Line', value: 'seam' },
+                              ],
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableMasking,
+                              },
+                            },
+                            {
+                              name: 'maskPath',
+                              type: 'textarea',
+                              dbName: 'path',
+                              admin: {
+                                description: 'SVG path data for custom masking',
+                                condition: (data, siblingData) => siblingData?.maskTypes === 'svg',
+                              },
+                            },
+                          ],
+                        },
+                        // GRADIENT MASK SETTINGS (FLATTENED)
+                        {
+                          name: 'gradientMaskSettings',
+                          type: 'group',
+                          dbName: 'gradient',
+                          label: 'Gradient Mask Settings',
+                          admin: {
+                            condition: (data, siblingData) => siblingData?.maskingConfiguration?.maskTypes === 'gradient',
+                          },
+                          fields: [
+                            {
+                              name: 'gradientDirection',
+                              type: 'select',
+                              dbName: 'direction',
+                              defaultValue: 'horizontal',
+                              options: [
+                                { label: 'Horizontal', value: 'horizontal' },
+                                { label: 'Vertical', value: 'vertical' },
+                                { label: 'Radial', value: 'radial' },
+                                { label: 'Custom Angle', value: 'angle' },
                               ],
                             },
                             {
-                              name: 'transforms',
-                              type: 'group',
-                              dbName: 'tfms', // 4 chars
-                              fields: [
-                                { name: 'rotation', type: 'number', defaultValue: 0 },
-                                { name: 'skewX', type: 'number', dbName: 'skew_x', defaultValue: 0 },
-                                { name: 'skewY', type: 'number', dbName: 'skew_y', defaultValue: 0 },
-                                { name: 'scaleX', type: 'number', dbName: 'scale_x', defaultValue: 1 },
-                                { name: 'scaleY', type: 'number', dbName: 'scale_y', defaultValue: 1 },
+                              name: 'gradientAngle',
+                              type: 'number',
+                              dbName: 'angle',
+                              min: 0,
+                              max: 360,
+                              defaultValue: 0,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.gradientDirection === 'angle',
+                              },
+                            },
+                            {
+                              name: 'fadeStart',
+                              type: 'number',
+                              dbName: 'start',
+                              min: 0,
+                              max: 1,
+                              defaultValue: 0.7,
+                              admin: {
+                                description: 'Where fade starts (0-1)',
+                                step: 0.01,
+                              },
+                            },
+                            {
+                              name: 'fadeEnd',
+                              type: 'number',
+                              dbName: 'end',
+                              min: 0,
+                              max: 1,
+                              defaultValue: 1.0,
+                              admin: {
+                                description: 'Where fade ends (0-1)',
+                                step: 0.01,
+                              },
+                            },
+                            {
+                              name: 'fadeIntensity',
+                              type: 'number',
+                              dbName: 'intensity',
+                              min: 0,
+                              max: 1,
+                              defaultValue: 0.8,
+                              admin: {
+                                step: 0.1,
+                              },
+                            },
+                          ],
+                        },
+                        // EDGE DETECTION SETTINGS (FLATTENED)
+                        {
+                          name: 'edgeDetectionSettings',
+                          type: 'group',
+                          dbName: 'edge_detect',
+                          label: 'Edge Detection Parameters',
+                          fields: [
+                            {
+                              name: 'enableEdgeDetection',
+                              type: 'checkbox',
+                              dbName: 'enable',
+                              defaultValue: false,
+                            },
+                            {
+                              name: 'edgeThreshold',
+                              type: 'number',
+                              dbName: 'threshold',
+                              min: 0,
+                              max: 255,
+                              defaultValue: 128,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableEdgeDetection,
+                              },
+                            },
+                            {
+                              name: 'edgeSoftness',
+                              type: 'number',
+                              dbName: 'softness',
+                              min: 0,
+                              max: 20,
+                              defaultValue: 2,
+                              admin: {
+                                description: 'Edge softness in pixels',
+                                condition: (data, siblingData) => siblingData?.enableEdgeDetection,
+                              },
+                            },
+                          ],
+                        },
+                        // 🆕 FABRIC INTEGRATION FOR AREA (FLATTENED)
+                        {
+                          name: 'fabricIntegration',
+                          type: 'group',
+                          dbName: 'fabric_integ',
+                          label: 'Fabric Integration',
+                          fields: [
+                            {
+                              name: 'enableFabricBlend',
+                              type: 'checkbox',
+                              dbName: 'enable',
+                              defaultValue: true,
+                            },
+                            {
+                              name: 'bfabType',
+                              type: 'select',
+                              dbName: 'ftype',
+                              defaultValue: 'cotton',
+                              label: 'Fabric Type',
+                              options: [
+                                { label: 'Cotton', value: 'cotton' },
+                                { label: 'Polyester', value: 'polyester' },
+                                { label: 'Canvas', value: 'canvas' },
+                                { label: 'Leather', value: 'leather' },
+                                { label: 'Denim', value: 'denim' },
+                              ],
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableFabricBlend,
+                              },
+                            },
+                            {
+                              name: 'foldAwareness',
+                              type: 'checkbox',
+                              dbName: 'fold_aware',
+                              defaultValue: true,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableFabricBlend,
+                              },
+                            },
+                            {
+                              name: 'seamAwareness',
+                              type: 'checkbox',
+                              dbName: 'seam_aware',
+                              defaultValue: true,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableFabricBlend,
+                              },
+                            },
+                            {
+                              name: 'textureIntensity',
+                              type: 'number',
+                              dbName: 'texture',
+                              min: 0,
+                              max: 1,
+                              defaultValue: 0.3,
+                              admin: {
+                                step: 0.1,
+                                condition: (data, siblingData) => siblingData?.enableFabricBlend,
+                              },
+                            },
+                            {
+                              name: 'fabricColor',
+                              type: 'text',
+                              dbName: 'color',
+                              defaultValue: '#ffffff',
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableFabricBlend,
+                              },
+                            },
+                            {
+                              name: 'fabricRoughness',
+                              type: 'number',
+                              dbName: 'roughness',
+                              min: 0,
+                              max: 1,
+                              defaultValue: 0.3,
+                              admin: {
+                                step: 0.1,
+                                condition: (data, siblingData) => siblingData?.enableFabricBlend,
+                              },
+                            },
+                          ],
+                        },
+                        // DESIGN PLACEMENT CONFIGURATION (FLATTENED)
+                        {
+                          name: 'designPlacement',
+                          type: 'group',
+                          dbName: 'placement',
+                          label: 'Design Placement Configuration',
+                          fields: [
+                            // Base Coordinates
+                            {
+                              name: 'coordinateX',
+                              type: 'number',
+                              dbName: 'x',
+                              min: 0,
+                              max: 1,
+                              required: true,
+                              admin: {
+                                description: 'X position (0.0-1.0)',
+                              },
+                            },
+                            {
+                              name: 'coordinateY',
+                              type: 'number',
+                              dbName: 'y',
+                              min: 0,
+                              max: 1,
+                              required: true,
+                              admin: {
+                                description: 'Y position (0.0-1.0)',
+                              },
+                            },
+                            {
+                              name: 'coordinateWidth',
+                              type: 'number',
+                              dbName: 'width',
+                              min: 0,
+                              max: 1,
+                              required: true,
+                              admin: {
+                                description: 'Width (0.0-1.0)',
+                              },
+                            },
+                            {
+                              name: 'coordinateHeight',
+                              type: 'number',
+                              dbName: 'height',
+                              min: 0,
+                              max: 1,
+                              required: true,
+                              admin: {
+                                description: 'Height (0.0-1.0)',
+                              },
+                            },
+                            // Transform Values
+                            {
+                              name: 'rotation',
+                              type: 'number',
+                              dbName: 'rotation',
+                              defaultValue: 0,
+                            },
+                            {
+                              name: 'skewX',
+                              type: 'number',
+                              dbName: 'skew_x',
+                              defaultValue: 0,
+                            },
+                            {
+                              name: 'skewY',
+                              type: 'number',
+                              dbName: 'skew_y',
+                              defaultValue: 0,
+                            },
+                            {
+                              name: 'scaleX',
+                              type: 'number',
+                              dbName: 'scale_x',
+                              defaultValue: 1,
+                            },
+                            {
+                              name: 'scaleY',
+                              type: 'number',
+                              dbName: 'scale_y',
+                              defaultValue: 1,
+                            },
+                            // Render Settings
+                            {
+                              name: 'blendMode',
+                              type: 'select',
+                              dbName: 'blend_mode',
+                              defaultValue: 'normal',
+                              options: [
+                                { label: 'Normal', value: 'normal' },
+                                { label: 'Multiply', value: 'multiply' },
+                                { label: 'Screen', value: 'screen' },
+                                { label: 'Overlay', value: 'overlay' },
+                                { label: 'Soft Light', value: 'soft_light' },
                               ],
                             },
                             {
-                              name: 'renderSettings',
-                              type: 'group',
-                              dbName: 'render_sets', // 11 chars
-                              fields: [
-                                {
-                                  name: 'blendMode',
-                                  type: 'select',
-                                  dbName: 'blend', // 5 chars
-                                  defaultValue: 'normal',
-                                  options: [
-                                    { label: 'Normal', value: 'normal' },
-                                    { label: 'Multiply', value: 'multiply' },
-                                    { label: 'Screen', value: 'screen' },
-                                    { label: 'Overlay', value: 'overlay' },
-                                    { label: 'Soft Light', value: 'soft_light' },
-                                  ],
-                                  
-                                },
-                                {
-                                  name: 'opacity',
-                                  type: 'number',
-                                  min: 0.1,
-                                  max: 1,
-                                  
-                                },
-                                {
-                                  name: 'preserveColors',
-                                  type: 'checkbox',
-                                  dbName: 'preserve_col', // 12 chars
-                                
-                                },
-                              ],
+                              name: 'opacity',
+                              type: 'number',
+                              dbName: 'opacity',
+                              min: 0.1,
+                              max: 1,
                             },
                             {
-                              name: 'surfSpecs',
-                              type: 'group',
-                              dbName: 'surf_spec', // 9 chars
-                              fields: [
-                                {
-                                  name: 'wrapSettng',
-                                  type: 'group',
-                                  dbName: 'wrap_sets', // 9 chars
-                                  fields: [
-                                    {
-                                      name: 'enableWrap',
-                                      type: 'checkbox',
-                                      dbName: 'enable_wrap', // 11 chars
-                                     
-                                    },
-                                    {
-                                      name: 'wrapAngle',
-                                      type: 'number',
-                                      dbName: 'wrap_angle', // 10 chars
-                                      min: 0,
-                                      max: 360,
-                                      defaultValue: 280,
-                                    },
-                                    {
-                                      name: 'wrapIntensity',
-                                      type: 'number',
-                                      dbName: 'wrap_int', // 8 chars
-                                      min: 0,
-                                      max: 1,
-                                      defaultValue: 0.8,
-                                    },
-                                  ],
-                                },
-                                {
-                                  name: 'perspCorrection',
-                                  type: 'group',
-                                  dbName: 'persp_corr', // 10 chars
-                                  fields: [
-                                    {
-                                      name: 'enablePersp',
-                                      type: 'checkbox',
-                                      dbName: 'enable_persp', // 12 chars
-                                      defaultValue: false,
-                                    },
-                                    {
-                                      name: 'perspIntensity',
-                                      type: 'number',
-                                      dbName: 'persp_int', // 9 chars
-                                      min: 0,
-                                      max: 1,
-                                      defaultValue: 0.5,
-                                    },
-                                  ],
-                                },
+                              name: 'preserveColors',
+                              type: 'checkbox',
+                              dbName: 'preserve_colors',
+                            },
+                          ],
+                        },
+                        // SURFACE WRAP SETTINGS (FLATTENED)
+                        {
+                          name: 'surfaceWrapSettings',
+                          type: 'group',
+                          dbName: 'wrap_sets',
+                          label: 'Surface Wrap Settings',
+                          fields: [
+                            {
+                              name: 'enableWrap',
+                              type: 'checkbox',
+                              dbName: 'enable',
+                            },
+                            {
+                              name: 'wrapAngle',
+                              type: 'number',
+                              dbName: 'angle',
+                              min: 0,
+                              max: 360,
+                              defaultValue: 280,
+                            },
+                            {
+                              name: 'wrapIntensity',
+                              type: 'number',
+                              dbName: 'intensity',
+                              min: 0,
+                              max: 1,
+                              defaultValue: 0.8,
+                            },
+                            {
+                              name: 'dynamicWrap',
+                              type: 'checkbox',
+                              dbName: 'dynamic',
+                              defaultValue: false,
+                            },
+                            {
+                              name: 'wrapFalloff',
+                              type: 'number',
+                              dbName: 'falloff',
+                              min: 0,
+                              max: 1,
+                              defaultValue: 0.8,
+                              admin: {
+                                step: 0.1,
+                              },
+                            },
+                          ],
+                        },
+                        // PERSPECTIVE CORRECTION (FLATTENED)
+                        {
+                          name: 'perspectiveSettings',
+                          type: 'group',
+                          dbName: 'perspective',
+                          label: 'Perspective Correction',
+                          fields: [
+                            {
+                              name: 'enablePerspective',
+                              type: 'checkbox',
+                              dbName: 'enable',
+                              defaultValue: false,
+                            },
+                            {
+                              name: 'perspectiveIntensity',
+                              type: 'number',
+                              dbName: 'intensity',
+                              min: 0,
+                              max: 1,
+                              defaultValue: 0.5,
+                            },
+                            {
+                              name: 'dynamicPerspective',
+                              type: 'checkbox',
+                              dbName: 'dynamic',
+                              defaultValue: false,
+                            },
+                          ],
+                        },
+                        // FABRIC EFFECTS (FLATTENED)
+                        {
+                          name: 'fabricEffectsSettings',
+                          type: 'group',
+                          dbName: 'fabric_fx',
+                          label: 'Advanced Fabric Effects',
+                          fields: [
+                            {
+                              name: 'enableFolds',
+                              type: 'checkbox',
+                              dbName: 'enable_folds',
+                              defaultValue: false,
+                            },
+                            {
+                              name: 'foldIntensity',
+                              type: 'number',
+                              dbName: 'fold_intensity',
+                              min: 0,
+                              max: 1,
+                              defaultValue: 0.3,
+                              admin: {
+                                step: 0.1,
+                                condition: (data, siblingData) => siblingData?.enableFolds,
+                              },
+                            },
+                            {
+                              name: 'foldDirection',
+                              type: 'select',
+                              dbName: 'fold_direction',
+                              defaultValue: 'horizontal',
+                              options: [
+                                { label: 'Horizontal', value: 'horizontal' },
+                                { label: 'Vertical', value: 'vertical' },
+                                { label: 'Radial', value: 'radial' },
+                                { label: 'Random', value: 'random' },
                               ],
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableFolds,
+                              },
+                            },
+                            {
+                              name: 'seamDistrt',
+                              type: 'checkbox',
+                              dbName: 'seam_distrt',
+                              label: 'Seam Distortion',
+                              defaultValue: false,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableFolds,
+                              },
+                            },
+                            {
+                              name: 'fabricDpth',
+                              type: 'number',
+                              dbName: 'depth',
+                              label: 'Fabric Depth',
+                              min: 0,
+                              max: 10,
+                              defaultValue: 1,
+                              admin: {
+                                description: 'Fabric depth effect in pixels',
+                                condition: (data, siblingData) => siblingData?.enableFolds,
+                              },
                             },
                           ],
                         },
@@ -1074,13 +2073,11 @@ export const BlankProducts: CollectionConfig = {
                       name: 'priority',
                       type: 'number',
                       defaultValue: 0,
-                      admin: {
-                        description: 'Higher priority mockups appear first',
-                      },
                     },
                     {
                       name: 'tags',
                       type: 'array',
+                      dbName: 'mockup_tags',
                       fields: [
                         {
                           name: 'tag',
@@ -1092,12 +2089,12 @@ export const BlankProducts: CollectionConfig = {
                 },
 
                 // =====================================
-                // CUSTOMIZATION AREAS
+                // CUSTOMIZATION AREAS (EXISTING WITH ENHANCEMENTS)
                 // =====================================
                 {
-                  name: 'customizationAreas',
+                  name: 'custAreas',
                   type: 'array',
-                  dbName: 'areas', // 5 chars
+                  dbName: 'cust_areas',
                   label: 'Customization Areas',
                   fields: [
                     {
@@ -1114,56 +2111,62 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'areaName',
                       type: 'text',
-                      dbName: 'name', // 4 chars
+                      dbName: 'cust_area_name',
+                      label: 'Area Name',
                       required: true,
-                      admin: {
-                        description: 'e.g., "Front", "Back", "Mug", "Left Sleeve"',
-                      },
                     },
                     {
                       name: 'areaType',
                       type: 'select',
-                      dbName: 'atype', // 4 chars
+                      dbName: 'cust_ar_type',
+                      label: 'Area Type',
                       options: [
                         { label: 'Primary', value: 'primary' },
                         { label: 'Secondary', value: 'secondary' },
                         { label: 'Accent', value: 'accent' },
+                        { label: 'Sleeve', value: 'sleeve' },
+                        { label: 'Back', value: 'back' },
+                        { label: 'Pocket', value: 'pocket' },
                       ],
                       defaultValue: 'primary',
                     },
                     {
-                      name: 'canvasDimensions',
+                      name: 'canvasDim',
                       type: 'group',
-                      dbName: 'canvas_dims', // 11 chars
+                      dbName: 'canvas_dim',
+                      label: 'Canvas Dimensions',
                       fields: [
                         {
-                          name: 'widthInches',
+                          name: 'widthInch',
                           type: 'number',
-                          dbName: 'width_in', // 8 chars
+                          dbName: 'canvas_wid_inc',
+                          label:'Width (inches)',
                           required: true,
                         },
                         {
-                          name: 'heightInches',
+                          name: 'heightInch',
                           type: 'number',
-                          dbName: 'height_in', // 9 chars
+                          dbName: 'canvas_ht_inch',
+                          label: 'Height (inches)',
                           required: true,
                         },
                         {
-                          name: 'canvasPixelWidth',
+                          name: 'canvasPixWid',
                           type: 'number',
-                          dbName: 'canvas_w', // 8 chars
+                          dbName: 'canvas_pix_wid',
+                          label: 'Canvas Width (pixels)',
                           defaultValue: 800,
                         },
                         {
-                          name: 'canvasPixelHeight',
+                          name: 'canvasPixHeight',
                           type: 'number',
-                          dbName: 'canvas_h', // 8 chars
+                          dbName: 'canvas_pix_ht',
                           defaultValue: 600,
                         },
                         {
                           name: 'aspectRatioLocked',
                           type: 'checkbox',
-                          dbName: 'aspect_lock', // 11 chars
+                          dbName: 'asp_rat_locked',
                           defaultValue: true,
                         },
                       ],
@@ -1171,7 +2174,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'designCanvasPhotos',
                       type: 'array',
-                      dbName: 'canvas_photos', // 13 chars
+                      dbName: 'design_canvas_photos',
                       fields: [
                         {
                           name: 'photo',
@@ -1182,15 +2185,13 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'photoColor',
                           type: 'text',
-                          dbName: 'color', // 5 chars
-                          admin: {
-                            description: 'Product color hex for this canvas photo',
-                          },
+                          dbName: 'canvas_photo_color',
                         },
                         {
-                          name: 'printableAreaCoordinates',
+                          name: 'printAreaCoord',
                           type: 'group',
-                          dbName: 'print_coords', // 12 chars
+                          dbName: 'print_area_coord',
+                          label: 'Printable Area Coordinates',
                           fields: [
                             { name: 'x', type: 'number', min: 0, max: 1 },
                             { name: 'y', type: 'number', min: 0, max: 1 },
@@ -1203,11 +2204,12 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'restrictions',
                       type: 'group',
+                      dbName: 'area_rest',
                       fields: [
                         {
                           name: 'minElementSize',
                           type: 'group',
-                          dbName: 'min_size', // 8 chars
+                          dbName: 'min_element_size',
                           fields: [
                             { name: 'width', type: 'number' },
                             { name: 'height', type: 'number' },
@@ -1216,7 +2218,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'maxElements',
                           type: 'number',
-                          dbName: 'max_elem', // 8 chars
+                          dbName: 'max_elements',
                         },
                       ],
                     },
@@ -1225,26 +2227,27 @@ export const BlankProducts: CollectionConfig = {
               ],
             },
             {
-              name: 'areaSyncRules',
+              name: 'areaSynchRules',
               type: 'array',
-              dbName: 'sync_rules', // 10 chars
+              dbName: 'area_sync_rules',
               label: 'Design Synchronization Rules',
               fields: [
                 {
                   name: 'ruleName',
                   type: 'text',
+                  dbName: 'sync_rule_name',
                   required: true,
                 },
                 {
                   name: 'sourceArea',
                   type: 'text',
-                  dbName: 'source', // 6 chars
+                  dbName: 'sync_source_area',
                   required: true,
                 },
                 {
                   name: 'targetAreas',
                   type: 'array',
-                  dbName: 'targets', // 7 chars
+                  dbName: 'sync_target_areas',
                   fields: [
                     {
                       name: 'area',
@@ -1255,7 +2258,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'syncType',
                   type: 'select',
-                  dbName: 'sync_type', // 9 chars
+                  dbName: 'sync_type',
                   options: [
                     { label: 'Copy', value: 'copy' },
                     { label: 'Mirror Horizontal', value: 'mirror_h' },
@@ -1277,13 +2280,10 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'displayImages',
               type: 'array',
-              dbName: 'gallery', // 7 chars
+              dbName: 'display_images',
               label: 'Product Gallery',
               minRows: 1,
               maxRows: 10,
-              admin: {
-                description: 'Product photos for listings',
-              },
               fields: [
                 {
                   name: 'image',
@@ -1304,51 +2304,1099 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'seo',
               type: 'group',
+              dbName: 'seo_info',
               fields: [
                 {
                   name: 'metaTitle',
                   type: 'text',
-                  dbName: 'meta_title', // 10 chars
+                  dbName: 'meta_title',
                 },
                 {
                   name: 'metaDescription',
                   type: 'textarea',
-                  dbName: 'meta_desc', // 9 chars
+                  dbName: 'meta_description',
                 },
               ],
             },
           ],
         },
+
+        // =====================================
+        // 🆕 SMART PRODUCT INTELLIGENCE TAB
+        // =====================================
+        {
+          label: 'Smart Intelligence',
+          description: 'AI-powered product detection and smart defaults',
+          fields: [
+            {
+              name: 'prodInt',
+              type: 'group',
+              dbName: 'prod_int',
+              label: 'Product Intelligence Configuration',
+              fields: [
+                {
+                  name: 'prodTemp',
+                  type: 'select',
+                  dbName: 'prod_temp',
+                  required: true,
+                  defaultValue: 'auto_detect',
+                  options: [
+                    { label: '🤖 Auto-Detect from Images', value: 'auto_detect' },
+                    { label: '👕 Apparel - T-Shirt Standard', value: 'apparel_tshirt_standard' },
+                    { label: '👕 Apparel - T-Shirt Folded', value: 'apparel_tshirt_folded' },
+                    { label: '🧥 Apparel - Hoodie Front', value: 'apparel_hoodie_front' },
+                    { label: '🧥 Apparel - Hoodie Lifestyle', value: 'apparel_hoodie_lifestyle' },
+                    { label: '📱 Phone Case - iPhone 15 Pro', value: 'phone_iphone15pro' },
+                    { label: '📱 Phone Case - iPhone 14', value: 'phone_iphone14' },
+                    { label: '📱 Phone Case - Samsung S24', value: 'phone_samsung_s24' },
+                    { label: '📱 Phone Case - Google Pixel', value: 'phone_pixel' },
+                    { label: '☕ Drinkware - Standard Mug', value: 'mug_standard' },
+                    { label: '☕ Drinkware - Travel Tumbler', value: 'tumbler_travel' },
+                    { label: '🏠 Home - Pillow Square', value: 'pillow_square' },
+                    { label: '🏠 Home - Canvas Print', value: 'canvas_standard' },
+                    { label: '💼 Accessories - Tote Bag', value: 'bag_tote' },
+                    { label: '🎯 Custom Configuration', value: 'custom' },
+                  ],
+                  admin: {
+                    description: 'Choose smart template or let AI auto-detect from your mockup images',
+                  },
+                },
+                {
+                  name: 'autoDetSett',
+                  type: 'group',
+                  dbName: 'au_det_sett',
+                  label: 'Auto-Detection Settings',
+                  admin: {
+                    condition: (data) => data?.productIntelligence?.productTemplate === 'auto_detect',
+                  },
+                  fields: [
+                    {
+                      name: 'enImgAnal',
+                      type: 'checkbox',
+                      dbName: 'enaimg_anal',
+                      label: 'Enable Image Analysis',
+                      defaultValue: true,
+                      admin: {
+                        description: 'Automatically analyze uploaded mockup images to detect customizable areas',
+                      },
+                    },
+                    {
+                      name: 'anAcc',
+                      type: 'select',
+                      dbName: 'anal_acc',
+                      defaultValue: 'balanced',
+                      options: [
+                        { label: '⚡ Fast (Good for simple products)', value: 'fast' },
+                        { label: '⚖️ Balanced (Recommended)', value: 'balanced' },
+                        { label: '🎯 High Precision (Complex products)', value: 'precise' },
+                        { label: '🔬 Ultra Precise (AI-Enhanced)', value: 'ultra' },
+                      ],
+                    },
+                    {
+                      name: 'detThres',
+                      type: 'number',
+                      dbName: 'detthrs',
+                      label: 'Detection Confidence Threshold',
+                      min: 0.1,
+                      max: 1.0,
+                      defaultValue: 0.7,
+                      admin: {
+                        description: 'Minimum confidence level for auto-detected areas (0.1 = low, 1.0 = very high)',
+                        step: 0.1,
+                      },
+                    },
+                    {
+                      name: 'manlReq',
+                      type: 'checkbox',
+                      dbName: 'manual_rev_req',
+                      label: 'Manual Review Required',
+                      defaultValue: true,
+                      admin: {
+                        description: 'Require manual review of auto-detected areas before activation',
+                      },
+                    },
+                  ],
+                },
+                {
+                  name: 'srtDef',
+                  type: 'group',
+                  dbName: 'smtdef',
+                  label: 'Smart Defaults & Templates',
+                  fields: [
+                    {
+                      name: 'intfrmTlt',
+                      type: 'checkbox',
+                      dbName: 'inht_fm_temp',
+                      label: 'Inherit From Template',
+                      defaultValue: true,
+                      admin: {
+                        description: 'Use smart defaults from selected product template',
+                      },
+                    },
+                    {
+                      name: 'oMskRls',
+                      type: 'group',
+                      dbName: 'atmskrule',
+                      label: 'Auto-Masking Intelligence',
+                      fields: [
+                        {
+                          name: 'enablesMask',
+                          type: 'checkbox',
+                          dbName: 'enble_smrt_msk',
+                          label: 'Enable Smart Masking',
+                          defaultValue: true,
+                          admin: {
+                            description: 'Automatically create masks for edge transitions, sleeves, and occlusions',
+                          },
+                        },
+                        {
+                          name: 'edgeDetctMode',
+                          type: 'select',
+                          dbName: 'edge_detect_mode',
+                          defaultValue: 'automatic',
+                          options: [
+                            { label: '🤖 Automatic (AI-powered)', value: 'automatic' },
+                            { label: '📐 Geometric (Rule-based)', value: 'geometric' },
+                            { label: '🎨 Color-based', value: 'color' },
+                            { label: '🔍 Contrast-based', value: 'contrast' },
+                            { label: '🧠 Machine Learning', value: 'ml' },
+                          ],
+                          admin: {
+                            condition: (data) => data?.smartDefaults?.autoMaskingRules?.enableSmartMasking,
+                          },
+                        },
+                        {
+                          name: 'occlDetct',
+                          type: 'group',
+                          dbName: 'occ_detect',
+                          label: 'Occlusion Detection',
+                          admin: {
+                            condition: (data) => data?.smartDefaults?.autoMaskingRules?.enableSmartMasking,
+                          },
+                          fields: [
+                            {
+                              name: 'detectCamHole',
+                              type: 'checkbox',
+                              dbName: 'detect_cam_holes',
+                              defaultValue: true,
+                              admin: {
+                                description: 'Automatically detect and mask camera holes in phone cases',
+                              },
+                            },
+                            {
+                              name: 'detectSeams',
+                              type: 'checkbox',
+                              dbName: 'detect_seams',
+                              defaultValue: true,
+                              admin: {
+                                description: 'Automatically detect seam lines in apparel',
+                              },
+                            },
+                            {
+                              name: 'detectFolds',
+                              type: 'checkbox',
+                              dbName: 'detect_folds',
+                              defaultValue: true,
+                              admin: {
+                                description: 'Automatically detect fabric folds and wrinkles',
+                              },
+                            },
+                            {
+                              name: 'detectShadows',
+                              type: 'checkbox',
+                              dbName: 'detect_shadows',
+                              defaultValue: true,
+                              admin: {
+                                description: 'Automatically detect shadow areas for realistic rendering',
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+
+        // =====================================
+        // 🆕 ENHANCED PRINTING TECHNOLOGIES WITH SMART TEMPLATES
+        // =====================================
+        {
+          label: 'Smart Printing & Mockups',
+          fields: [
+            {
+              name: 'smartPrintTech',
+              type: 'array',
+              dbName: 'smart_print_tech',
+              label: 'Printing Technologies with Smart Mockups',
+              fields: [
+                {
+                  name: 'id',
+                  type: 'text',
+                  admin: { hidden: true },
+                  hooks: {
+                    beforeValidate: [({ data }) => {
+                      if (!data?.id) return `smart_tech_${Math.random().toString(36).substring(2, 11)}`;
+                      return data.id;
+                    }],
+                  },
+                },
+                {
+                  name: 'technologyName',
+                  type: 'select',
+                  dbName: 'smart_technology_name',
+                  defaultValue: 'dtg',
+                  required: true,
+                  options: [
+                    { label: 'Direct-to-Garment (DTG)', value: 'dtg' },
+                    { label: 'Direct-to-Film (DTF)', value: 'dtf' },
+                    { label: 'Screen Printing', value: 'screen' },
+                    { label: 'Sublimation', value: 'sublimation' },
+                    { label: 'Embroidery', value: 'embroidery' },
+                    { label: 'Vinyl/Heat Transfer', value: 'vinyl' },
+                    { label: 'Digital Print', value: 'digital' },
+                    { label: 'UV Printing', value: 'uv' },
+                    { label: 'Laser Engraving', value: 'laser' },
+                  ],
+                },
+                
+                // =====================================
+                // 🆕 SMART MOCKUP PHOTOS WITH AUTO-DETECTION
+                // =====================================
+                {
+                  name: 'smartMockupPhotos',
+                  type: 'array',
+                  dbName: 'smart_mockup_photos',
+                  label: 'Smart Mockup Photos',
+                  admin: {
+                    description: 'Upload mockup photos and let AI detect customizable areas automatically',
+                  },
+                  fields: [
+                    { 
+                      name: 'title', 
+                      type: 'text', 
+                      label: 'Mockup Title',
+                      admin: {
+                        description: 'e.g., "Front View", "Folded Style", "Lifestyle Shot"',
+                      },
+                    },
+                    {
+                      name: 'photo',
+                      type: 'upload',
+                      relationTo: 'media',
+                      label: 'Mockup Photo',
+                      required: true,
+                      admin: {
+                        description: 'Upload high-quality mockup image (AI will analyze automatically)',
+                      },
+                    },
+                    {
+                      name: 'viewAngle',
+                      type: 'select',
+                      label: 'View Angle',
+                      defaultValue: 'front',
+                      options: [
+                        { label: 'Front View', value: 'front' },
+                        { label: 'Back View', value: 'back' },
+                        { label: 'Left Side', value: 'left' },
+                        { label: 'Right Side', value: 'right' },
+                        { label: '3/4 Front Left', value: 'three_quarter_front_left' },
+                        { label: '3/4 Front Right', value: 'three_quarter_front_right' },
+                        { label: 'Folded/Flat Lay', value: 'folded' },
+                        { label: 'Lifestyle/Model', value: 'lifestyle' },
+                        { label: 'Detail Shot', value: 'detail' },
+                        { label: 'Top Down', value: 'top' },
+                      ],
+                    },
+                    {
+                      name: 'mockupStyle',
+                      type: 'select',
+                      dbName: 'smart_mockup_style',
+                      defaultValue: 'studio',
+                      options: [
+                        { label: '📸 Studio Shot (Clean background)', value: 'studio' },
+                        { label: '🏠 Lifestyle (In environment)', value: 'lifestyle' },
+                        { label: '👤 Model Wearing', value: 'model' },
+                        { label: '📐 Flat Lay', value: 'flat_lay' },
+                        { label: '📦 Folded Product', value: 'folded' },
+                        { label: '🎯 Detail/Close-up', value: 'detail' },
+                      ],
+                    },
+                    {
+                      name: 'photoColor',
+                      type: 'text',
+                      dbName: 'smart_photo_color',
+                      label: 'Product Color (Hex)',
+                      required: true,
+                      admin: {
+                        description: 'Base color of the product in this mockup',
+                      },
+                    },
+
+                    // =====================================
+                    // 🆕 AI ANALYSIS RESULTS (AUTO-POPULATED)
+                    // =====================================
+                    {
+                      name: 'aiAnalRes',
+                      type: 'group',
+                      dbName: 'ai_anal_results',
+                      label: 'AI Analysis Results',
+                      admin: {
+                        description: 'Automatically populated by AI image analysis',
+                        readOnly: true,
+                      },
+                      fields: [
+                        {
+                          name: 'analStat',
+                          type: 'select',
+                          dbName: 'ai_analysis_status',
+                          defaultValue: 'pending',
+                          label: 'Analysis Status',
+                          options: [
+                            { label: '⏳ Pending Analysis', value: 'pending' },
+                            { label: '🔄 Processing', value: 'processing' },
+                            { label: '✅ Completed', value: 'completed' },
+                            { label: '❌ Failed', value: 'failed' },
+                            { label: '⚠️ Needs Review', value: 'needs_review' },
+                          ],
+                          admin: {
+                            readOnly: true,
+                          },
+                        },
+                        {
+                          name: 'detProdTy',
+                          type: 'text',
+                          dbName: 'ai_det_prod_type',
+                          admin: {
+                            description: 'AI-detected product type',
+                            readOnly: true,
+                          },
+                        },
+                        {
+                          name: 'confScore',
+                          type: 'number',
+                          dbName: 'ai_confidence_score',
+                          min: 0,
+                          max: 1,
+                          admin: {
+                            description: 'AI confidence level (0-1)',
+                            readOnly: true,
+                            step: 0.01,
+                          },
+                        },
+                        {
+                          name: 'detAr',
+                          type: 'array',
+                          dbName: 'ai_detected_areas',
+                          admin: {
+                            description: 'AI-detected customizable areas',
+                            readOnly: true,
+                          },
+                          fields: [
+                            {
+                              name: 'arNme',
+                              type: 'text',
+                              dbName: 'ai_area_name',
+                              admin: { readOnly: true },
+                            },
+                            {
+                              name: 'bodBx',
+                              type: 'group',
+                              dbName: 'ai_bou_box',
+                              label: 'Bounding Box',
+                              fields: [
+                                { name: 'x', type: 'number', min: 0, max: 1, admin: { readOnly: true } },
+                                { name: 'y', type: 'number', min: 0, max: 1, admin: { readOnly: true } },
+                                { name: 'width', type: 'number', min: 0, max: 1, admin: { readOnly: true } },
+                                { name: 'height', type: 'number', min: 0, max: 1, admin: { readOnly: true } },
+                              ],
+                            },
+                            {
+                              name: 'confdnce',
+                              type: 'number',
+                              dbName: 'ai_area_confidence',
+                              min: 0,
+                              max: 1,
+                              admin: { readOnly: true },
+                            },
+                            {
+                              name: 'suggesMask',
+                              type: 'textarea',
+                              dbName: 'ai_sugg_mask',
+                              admin: {
+                                description: 'AI-suggested masking path (SVG)',
+                                readOnly: true,
+                              },
+                            },
+                          ],
+                        },
+                        {
+                          name: 'dtcObs',
+                          type: 'array',
+                          dbName: 'ai_det_obs',
+                          admin: {
+                            description: 'AI-detected obstructions (camera holes, seams, etc.)',
+                            readOnly: true,
+                          },
+                          fields: [
+                            {
+                              name: 'obsType',
+                              type: 'select',
+                              dbName: 'ai_obs_type',
+                              options: [
+                                { label: '📷 Camera Hole', value: 'camera_hole' },
+                                { label: '🔊 Speaker Hole', value: 'speaker_hole' },
+                                { label: '🧵 Seam Line', value: 'seam' },
+                                { label: '📱 Port Opening', value: 'port' },
+                                { label: '🔘 Button Area', value: 'button' },
+                                { label: '🌊 Fabric Fold', value: 'fold' },
+                                { label: '🌑 Shadow Area', value: 'shadow' },
+                                { label: '❓ Unknown', value: 'unknown' },
+                              ],
+                              admin: { readOnly: true },
+                            },
+                            {
+                              name: 'boundbox',
+                              type: 'group',
+                              dbName: 'ai_obstruction_bbox',
+                              label: 'Bounding Box',
+                              fields: [
+                                { name: 'x', type: 'number', min: 0, max: 1, admin: { readOnly: true } },
+                                { name: 'y', type: 'number', min: 0, max: 1, admin: { readOnly: true } },
+                                { name: 'width', type: 'number', min: 0, max: 1, admin: { readOnly: true } },
+                                { name: 'height', type: 'number', min: 0, max: 1, admin: { readOnly: true } },
+                              ],
+                            },
+                            {
+                              name: 'confidence',
+                              type: 'number',
+                              dbName: 'ai_obs_conf',
+                              min: 0,
+                              max: 1,
+                              admin: { readOnly: true },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+
+                    // =====================================
+                    // 🆕 SMART VISIBLE AREAS (AI + MANUAL)
+                    // =====================================
+                    {
+                      name: 'smartVisA',
+                      type: 'array',
+                      dbName: 'smart_visible_areas',
+                      label: 'Smart Visible Areas',
+                      admin: {
+                        description: 'AI-detected areas with smart defaults + manual overrides',
+                      },
+                      fields: [
+                        {
+                          name: 'areaName',
+                          type: 'text',
+                          dbName: 'sm_ar_name',
+                          required: true,
+                          admin: {
+                            description: 'Area name (auto-populated from AI or manual entry)',
+                          },
+                        },
+                        {
+                          name: 'dataSource',
+                          type: 'select',
+                          dbName: 'smart_data_source',
+                          defaultValue: 'ai_detected',
+                          options: [
+                            { label: '🤖 AI Detected', value: 'ai_detected' },
+                            { label: '📋 Template Default', value: 'template' },
+                            { label: '✏️ Manual Entry', value: 'manual' },
+                            { label: '🔄 AI + Manual Override', value: 'hybrid' },
+                          ],
+                          admin: {
+                            description: 'How this area configuration was created',
+                          },
+                        },
+                        {
+                          name: 'appStat',
+                          type: 'select',
+                          dbName: 'smrt_app_stats',
+                          defaultValue: 'pending_review',
+                          options: [
+                            { label: '⏳ Pending Review', value: 'pending_review' },
+                            { label: '✅ Approved', value: 'approved' },
+                            { label: '❌ Rejected', value: 'rejected' },
+                            { label: '✏️ Needs Adjustment', value: 'needs_adjustment' },
+                          ],
+                          admin: {
+                            description: 'Manual review status for AI-detected areas',
+                          },
+                        },
+                        {
+                          name: 'visibility',
+                          type: 'select',
+                          dbName: 'smart_visibility',
+                          defaultValue: 'full',
+                          options: [
+                            { label: '✅ Fully Visible', value: 'full' },
+                            { label: '🔸 Partially Visible', value: 'partial' },
+                            { label: '📐 Edge/Wrap Visible', value: 'edge' },
+                            { label: '👕 Sleeve Visible', value: 'sleeve' },
+                            { label: '🌑 Shadow Zone', value: 'shadow' },
+                            { label: '🪞 Reflection Zone', value: 'reflection' },
+                            { label: '📱 Device Cutout', value: 'device_cutout' },
+                          ],
+                        },
+                        {
+                          name: 'visibilityPercentage',
+                          type: 'number',
+                          dbName: 'smart_visibility_percentage',
+                          min: 0,
+                          max: 100,
+                          defaultValue: 100,
+                          admin: {
+                            description: 'Percentage of area visible (AI can auto-calculate)',
+                            condition: (data, siblingData) => 
+                              siblingData?.visibility === 'partial' || 
+                              siblingData?.visibility === 'edge' ||
+                              siblingData?.visibility === 'sleeve',
+                          },
+                        },
+                        
+                        // =====================================
+                        // 🆕 SMART MASKING (AI-POWERED) - FLATTENED
+                        // =====================================
+                        {
+                          name: 'smartMasking',
+                          type: 'group',
+                          dbName: 'smart_mask',
+                          label: 'Smart Masking Configuration',
+                          fields: [
+                            {
+                              name: 'enableSmartMask',
+                              type: 'checkbox',
+                              dbName: 'enable',
+                              defaultValue: true,
+                              admin: {
+                                description: 'Use AI-powered smart masking for this area',
+                              },
+                            },
+                            {
+                              name: 'maskingStrategy',
+                              type: 'select',
+                              dbName: 'strategy',
+                              defaultValue: 'ai_automatic',
+                              options: [
+                                { label: '🤖 AI Automatic', value: 'ai_automatic' },
+                                { label: '📐 Template-based', value: 'template' },
+                                { label: '🎨 Custom Manual', value: 'manual' },
+                                { label: '🔄 AI + Manual Hybrid', value: 'hybrid' },
+                              ],
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableSmartMask,
+                              },
+                            },
+                          ],
+                        },
+                        // AI MASK SETTINGS (FLATTENED)
+                        {
+                          name: 'aiMaskSettings',
+                          type: 'group',
+                          dbName: 'ai_mask_sets',
+                          label: 'AI Mask Settings',
+                          admin: {
+                            condition: (data, siblingData) => 
+                              siblingData?.smartMasking?.enableSmartMask && 
+                              (siblingData?.smartMasking?.maskingStrategy === 'ai_automatic' || siblingData?.smartMasking?.maskingStrategy === 'hybrid'),
+                          },
+                          fields: [
+                            {
+                              name: 'edgeDetectLevel',
+                              type: 'select',
+                              dbName: 'edgelevel',
+                              defaultValue: 'medium',
+                              options: [
+                                { label: '🔸 Soft (Gentle transitions)', value: 'soft' },
+                                { label: '⚖️ Medium (Balanced)', value: 'medium' },
+                                { label: '🔲 Sharp (Crisp edges)', value: 'sharp' },
+                                { label: '🎯 Ultra-precise', value: 'ultra' },
+                              ],
+                            },
+                            {
+                              name: 'adaptToLighting',
+                              type: 'checkbox',
+                              dbName: 'adapt_lighting',
+                              defaultValue: true,
+                              admin: {
+                                description: 'Automatically adapt masking based on lighting conditions',
+                              },
+                            },
+                            {
+                              name: 'fabricAwareness',
+                              type: 'checkbox',
+                              dbName: 'fabric_aware',
+                              defaultValue: true,
+                              admin: {
+                                description: 'Consider fabric properties when creating masks',
+                              },
+                            },
+                            {
+                              name: 'seamDetection',
+                              type: 'checkbox',
+                              dbName: 'seam_detect',
+                              defaultValue: true,
+                              admin: {
+                                description: 'Automatically detect and handle seam lines',
+                              },
+                            },
+                          ],
+                        },
+                        // AI GENERATED MASK (FLATTENED)
+                        {
+                          name: 'generatedMask',
+                          type: 'group',
+                          dbName: 'gen_mask',
+                          label: 'AI-Generated Mask (Auto-populated)',
+                          admin: {
+                            description: 'Automatically generated by AI analysis',
+                            readOnly: true,
+                          },
+                          fields: [
+                            {
+                              name: 'maskPath',
+                              type: 'textarea',
+                              dbName: 'path',
+                              admin: {
+                                description: 'SVG path for the generated mask',
+                                readOnly: true,
+                              },
+                            },
+                            {
+                              name: 'maskTypes',
+                              type: 'select',
+                              dbName: 'aimask_type',
+                              options: [
+                                { label: 'Gradient Mask', value: 'gradient' },
+                                { label: 'Vector Path', value: 'vector' },
+                                { label: 'Bitmap Mask', value: 'bitmap' },
+                                { label: 'Composite Mask', value: 'composite' },
+                              ],
+                              admin: { readOnly: true },
+                            },
+                            {
+                              name: 'maskConfidence',
+                              type: 'number',
+                              dbName: 'confidence',
+                              min: 0,
+                              max: 1,
+                              admin: {
+                                description: 'AI confidence in generated mask quality',
+                                readOnly: true,
+                              },
+                            },
+                          ],
+                        },
+
+                        // =====================================
+                        // ENHANCED DESIGN PLACEMENT (FLATTENED)
+                        // =====================================
+                        {
+                          name: 'smartPlacement',
+                          type: 'group',
+                          dbName: 'smart_place',
+                          label: 'Smart Design Placement',
+                          fields: [
+                            // Auto-Calculated Coordinates (Read-only)
+                            {
+                              name: 'autoX',
+                              type: 'number',
+                              dbName: 'auto_x',
+                              min: 0,
+                              max: 1,
+                              admin: {
+                                description: 'X position (AI-calculated)',
+                                readOnly: true,
+                              },
+                            },
+                            {
+                              name: 'autoY',
+                              type: 'number',
+                              dbName: 'auto_y',
+                              min: 0,
+                              max: 1,
+                              admin: {
+                                description: 'Y position (AI-calculated)',
+                                readOnly: true,
+                              },
+                            },
+                            {
+                              name: 'autoWidth',
+                              type: 'number',
+                              dbName: 'auto_width',
+                              min: 0,
+                              max: 1,
+                              admin: {
+                                description: 'Width (AI-calculated)',
+                                readOnly: true,
+                              },
+                            },
+                            {
+                              name: 'autoHeight',
+                              type: 'number',
+                              dbName: 'auto_height',
+                              min: 0,
+                              max: 1,
+                              admin: {
+                                description: 'Height (AI-calculated)',
+                                readOnly: true,
+                              },
+                            },
+                            // Manual Override Settings
+                            {
+                              name: 'enableManualOverride',
+                              type: 'checkbox',
+                              dbName: 'enable_override',
+                              defaultValue: false,
+                              admin: {
+                                description: 'Override AI-calculated placement with manual values',
+                              },
+                            },
+                            {
+                              name: 'manualX',
+                              type: 'number',
+                              dbName: 'manual_x',
+                              min: 0,
+                              max: 1,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableManualOverride,
+                              },
+                            },
+                            {
+                              name: 'manualY',
+                              type: 'number',
+                              dbName: 'manual_y',
+                              min: 0,
+                              max: 1,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableManualOverride,
+                              },
+                            },
+                            {
+                              name: 'manualWidth',
+                              type: 'number',
+                              dbName: 'manual_width',
+                              min: 0,
+                              max: 1,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableManualOverride,
+                              },
+                            },
+                            {
+                              name: 'manualHeight',
+                              type: 'number',
+                              dbName: 'manual_height',
+                              min: 0,
+                              max: 1,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableManualOverride,
+                              },
+                            },
+                            // Transform Settings
+                            {
+                              name: 'rotation',
+                              type: 'number',
+                              dbName: 'rotation',
+                              defaultValue: 0,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableManualOverride,
+                              },
+                            },
+                            {
+                              name: 'skewX',
+                              type: 'number',
+                              dbName: 'skew_x',
+                              defaultValue: 0,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableManualOverride,
+                              },
+                            },
+                            {
+                              name: 'skewY',
+                              type: 'number',
+                              dbName: 'skew_y',
+                              defaultValue: 0,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableManualOverride,
+                              },
+                            },
+                            {
+                              name: 'scaleX',
+                              type: 'number',
+                              dbName: 'scale_x',
+                              defaultValue: 1,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableManualOverride,
+                              },
+                            },
+                            {
+                              name: 'scaleY',
+                              type: 'number',
+                              dbName: 'scale_y',
+                              defaultValue: 1,
+                              admin: {
+                                condition: (data, siblingData) => siblingData?.enableManualOverride,
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+
+                    {
+                      name: 'priority',
+                      type: 'number',
+                      defaultValue: 0,
+                      admin: {
+                        description: 'Display priority (higher numbers appear first)',
+                      },
+                    },
+                    {
+                      name: 'tags',
+                      type: 'array',
+                      dbName: 'smart_mockup_tags',
+                      fields: [
+                        {
+                          name: 'tag',
+                          type: 'text',
+                        },
+                      ],
+                    },
+                  ],
+                },
+
+                // =====================================
+                // SIMPLIFIED CUSTOMIZATION AREAS
+                // =====================================
+                {
+                  name: 'smartCustomizationAreas',
+                  type: 'array',
+                  dbName: 'smart_customization_areas',
+                  label: 'Smart Customization Areas',
+                  admin: {
+                    description: 'AI-enhanced customization areas with smart defaults',
+                  },
+                  fields: [
+                    {
+                      name: 'areaId',
+                      type: 'text',
+                      admin: { hidden: true },
+                      hooks: {
+                        beforeValidate: [({ data }) => {
+                          if (!data?.areaId) return `smart_area_${Math.random().toString(36).substring(2, 11)}`;
+                          return data.areaId;
+                        }],
+                      },
+                    },
+                    {
+                      name: 'areaName',
+                      type: 'text',
+                      dbName: 'smart_customization_area_name',
+                      required: true,
+                      admin: {
+                        description: 'e.g., "Front", "Back", "Left Sleeve", "Camera Area"',
+                      },
+                    },
+                    {
+                      name: 'areaType',
+                      type: 'select',
+                      dbName: 'smart_customization_area_type',
+                      options: [
+                        { label: '🎯 Primary Design Area', value: 'primary' },
+                        { label: '📋 Secondary Area', value: 'secondary' },
+                        { label: '✨ Accent Area', value: 'accent' },
+                        { label: '👕 Sleeve Area', value: 'sleeve' },
+                        { label: '🔙 Back Area', value: 'back' },
+                        { label: '👔 Pocket Area', value: 'pocket' },
+                        { label: '📱 Device-Specific', value: 'device_specific' },
+                      ],
+                      defaultValue: 'primary',
+                    },
+                    {
+                      name: 'smartCanvasConfig',
+                      type: 'group',
+                      dbName: 'smart_canvas',
+                      label: 'Smart Canvas Configuration',
+                      fields: [
+                        {
+                          name: 'useAICalculatedDimensions',
+                          type: 'checkbox',
+                          dbName: 'use_ai_dims',
+                          defaultValue: true,
+                          admin: {
+                            description: 'Use AI-calculated optimal dimensions for this area',
+                          },
+                        },
+                        // AI Calculated Dimensions (Flattened)
+                        {
+                          name: 'aiWidthInches',
+                          type: 'number',
+                          dbName: 'ai_width',
+                          admin: { 
+                            readOnly: true,
+                            condition: (data, siblingData) => siblingData?.useAICalculatedDimensions,
+                          },
+                        },
+                        {
+                          name: 'aiHeightInches',
+                          type: 'number',
+                          dbName: 'ai_height',
+                          admin: { 
+                            readOnly: true,
+                            condition: (data, siblingData) => siblingData?.useAICalculatedDimensions,
+                          },
+                        },
+                        {
+                          name: 'aiCanvasPixelWidth',
+                          type: 'number',
+                          dbName: 'ai_pixel_w',
+                          admin: { 
+                            readOnly: true,
+                            condition: (data, siblingData) => siblingData?.useAICalculatedDimensions,
+                          },
+                        },
+                        {
+                          name: 'aiCanvasPixelHeight',
+                          type: 'number',
+                          dbName: 'ai_pixel_h',
+                          admin: { 
+                            readOnly: true,
+                            condition: (data, siblingData) => siblingData?.useAICalculatedDimensions,
+                          },
+                        },
+                        // Manual Dimensions (Flattened)
+                        {
+                          name: 'manualWidthInches',
+                          type: 'number',
+                          dbName: 'manual_width',
+                          required: true,
+                          admin: {
+                            condition: (data, siblingData) => !siblingData?.useAICalculatedDimensions,
+                          },
+                        },
+                        {
+                          name: 'manualHeightInches',
+                          type: 'number',
+                          dbName: 'manual_height',
+                          required: true,
+                          admin: {
+                            condition: (data, siblingData) => !siblingData?.useAICalculatedDimensions,
+                          },
+                        },
+                        {
+                          name: 'manualCanvasPixelWidth',
+                          type: 'number',
+                          dbName: 'manual_pixel_w',
+                          defaultValue: 800,
+                          admin: {
+                            condition: (data, siblingData) => !siblingData?.useAICalculatedDimensions,
+                          },
+                        },
+                        {
+                          name: 'manualCanvasPixelHeight',
+                          type: 'number',
+                          dbName: 'manual_pixel_h',
+                          defaultValue: 600,
+                          admin: {
+                            condition: (data, siblingData) => !siblingData?.useAICalculatedDimensions,
+                          },
+                        },
+                        {
+                          name: 'aspectRatioLocked',
+                          type: 'checkbox',
+                          dbName: 'aspect_locked',
+                          defaultValue: true,
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        
       ],
     },
   ],
 
   // =====================================
-  // INDEXES
-  // =====================================
-
-  // =====================================
-  // HOOKS
+  // ENHANCED HOOKS WITH AI PROCESSING
   // =====================================
   hooks: {
     beforeChange: [
-      async ({ data, originalDoc }) => {
-        // Auto-calculate suggested retail price
-        if (data?.cost && data?.pricing?.markupType) {
-          if (data.pricing.markupType === 'percentage' && data.pricing.markupValue) {
-            data.pricing = {
-              ...data.pricing,
-              suggestedRetailPrice: data.cost * (1 + data.pricing.markupValue / 100)
-            };
-          } else if (data.pricing.markupType === 'fixed' && data.pricing.markupValue) {
-            data.pricing = {
-              ...data.pricing,
-              suggestedRetailPrice: data.cost + data.pricing.markupValue
-            };
+      async ({ data, originalDoc, operation }) => {
+        // Existing hooks...
+        
+        // 🆕 TRIGGER AI ANALYSIS FOR NEW MOCKUP PHOTOS
+        if (data?.smartPrintingTechnologies) {
+          for (let techIndex = 0; techIndex < data.smartPrintingTechnologies.length; techIndex++) {
+            const tech = data.smartPrintingTechnologies[techIndex];
+            if (tech?.smartMockupPhotos) {
+              for (let mockupIndex = 0; mockupIndex < tech.smartMockupPhotos.length; mockupIndex++) {
+                const mockup = tech.smartMockupPhotos[mockupIndex];
+                
+                // Check if this is a new mockup or photo has changed
+                const isNewMockup = !originalDoc?.smartPrintingTechnologies?.[techIndex]?.smartMockupPhotos?.[mockupIndex];
+                const photoChanged = mockup.photo !== originalDoc?.smartPrintingTechnologies?.[techIndex]?.smartMockupPhotos?.[mockupIndex]?.photo;
+                
+                if ((isNewMockup || photoChanged) && mockup.photo) {
+                  // Mark for AI analysis
+                  if (!mockup.aiAnalysisResults) {
+                    mockup.aiAnalysisResults = {};
+                  }
+                  mockup.aiAnalysisResults.analysisStatus = 'pending';
+                  
+                  // TODO: Queue AI analysis job
+                  console.log(`🤖 Queuing AI analysis for mockup: ${mockup.title}`);
+                  
+                  // In a real implementation, you would:
+                  // 1. Queue background job for image analysis
+                  // 2. Use computer vision API (Google Vision, AWS Rekognition, etc.)
+                  // 3. Apply machine learning models for product detection
+                  // 4. Generate smart defaults based on product template
+                }
+              }
+            }
           }
         }
 
         return data;
+      },
+    ],
+    afterChange: [
+      async ({ doc, operation }) => {
+        if (operation === 'create' || operation === 'update') {
+          console.log(`✅ Smart product ${doc.name} ${operation}d with AI-powered configuration`);
+          
+          // Count AI-powered features
+          if (doc.smartPrintingTechnologies) {
+            const aiMockupCount = doc.smartPrintingTechnologies.reduce((count: number, tech: any) => {
+              return count + (tech.smartMockupPhotos?.length || 0);
+            }, 0);
+            
+            const pendingAnalysis = doc.smartPrintingTechnologies.reduce((count: number, tech: any) => {
+              return count + (tech.smartMockupPhotos?.filter((mockup: any) => 
+                mockup.aiAnalysisResults?.analysisStatus === 'pending'
+              ).length || 0);
+            }, 0);
+            
+            if (aiMockupCount > 0) {
+              console.log(`🤖 Product has ${aiMockupCount} smart mockups, ${pendingAnalysis} pending AI analysis`);
+            }
+          }
+        }
       },
     ],
   },

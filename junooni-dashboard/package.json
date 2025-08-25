@@ -51,6 +51,7 @@
     "js-cookie": "^3.0.5",
     "konva": "^9.3.19",
     "lucide-react": "^0.468.0",
+    "pixi.js": "^8.11.0",
     "react": "^19.0.0",
     "react-colorful": "^5.6.1",
     "react-day-picker": "8.10.1",
