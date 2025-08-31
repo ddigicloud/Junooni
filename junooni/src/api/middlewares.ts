@@ -17,6 +17,9 @@ import { PostAdminUpdateReviewsStatusSchema } from "./admin/reviews/status/route
 import { SearchSchema } from "./store/products/search/route"
 import {PostStoreReviewSchema} from "./store/reviews/route"
 import {CheckHandleSchema} from "./vendors/check-handle/route"
+import { PostAdminCreateSizeChartType } from "./admin/size-chart/validators"
+import {createVendorArtworkSchema} from "./validation-schemas"
+import artwork from "src/modules/artwork"
 
 
 import { PostCreateBlank } from "./blank/route"
@@ -96,6 +99,24 @@ export default defineMiddlewares({
         validateAndTransformBody(PostVendorCreateSchema),
       ],
     },
+    {
+      matcher: "/vendors/uploads",
+      method: ["OPTIONS", "POST"],
+      middlewares: [
+        (req, res, next) => {
+          const configModule = req.scope.resolve("configModule");
+          cors({
+            origin: true,
+            credentials: true,
+          })(req, res, next);
+        },
+        upload.array("files"),
+        authenticate("vendor", ["session", "bearer"], {
+          allowUnregistered: true, // Allow unauthenticated requests
+        })
+       
+      ],
+    },
    {
       matcher: "/vendors/products*",
       method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
@@ -125,26 +146,59 @@ export default defineMiddlewares({
             next()
           }
         }
-      ]
+      ],
+      additionalDataValidator: {
+        brand_id: z.string().optional(),
+        size_chart_id: z.string().optional(),
+        vendor_artwork_id: z.string().optional(),
+
+      },
     },    
-    {
-      matcher: "/vendors/uploads",
-      method: ["OPTIONS", "POST"],
+    
+     {
+      matcher: "/admin/artwork",
+      method: ["POST"],
       middlewares: [
-        (req, res, next) => {
-          const configModule = req.scope.resolve("configModule");
-          cors({
-            origin: true,
-            credentials: true,
-          })(req, res, next);
-        },
-        upload.array("files"),
-        authenticate("vendor", ["session", "bearer"], {
-          allowUnregistered: true, // Allow unauthenticated requests
-        })
-       
+        validateAndTransformBody(createVendorArtworkSchema),
       ],
     },
+    {
+      matcher: "/admin/artwork/upload",
+      method: "POST",
+      middlewares: [
+        upload.array("files"),
+      ],
+    },
+    {
+      matcher: "/vendors/artwork",
+      method: "POST",
+      middlewares: [
+        validateAndTransformBody(createVendorArtworkSchema),
+      ],
+    },
+    {
+      matcher: "/vendors/artwork/upload",
+      method: "POST",
+      middlewares: [
+        upload.array("files"),
+      ],
+    },
+    {
+      matcher: "/vendors/size-chart",
+      method: "POST",
+      middlewares: [
+        validateAndTransformBody(PostAdminCreateSizeChartType),
+      ],
+    },
+    {
+      matcher: "/admin/size-chart",
+      method: ["POST"],
+      middlewares: [
+        validateAndTransformBody(PostAdminCreateSizeChartType),
+      ],
+      
+    },
+    
     // {
     //   matcher: "/vendors/me",
     //   method: ["GET"],
@@ -362,6 +416,8 @@ export default defineMiddlewares({
       method: ["POST"],
       additionalDataValidator: {
         brand_id: z.string().optional(),
+        size_chart_id: z.string().optional(),
+        artwork_id: z.string().optional(),
       },
     }
    ],

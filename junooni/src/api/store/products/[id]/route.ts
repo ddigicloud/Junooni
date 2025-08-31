@@ -17,7 +17,7 @@ import type {
     const { data: [product] } = await query.graph(
       {
         entity: "product",
-        fields: ["*", "variants.*","categories.*","vendor.*","collection.*"], // Add any other fields you need
+        fields: ["*", "variants.*","categories.*","vendor.*","collection.*","brand.*","size_chart.*"], // Add any other fields you need
         filters: {
           id: id,
         },

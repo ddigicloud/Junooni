@@ -329,13 +329,10 @@ const SummaryCards = ({ data }: { data: VendorOrder[] }) => {
       item.fulfillment_type === "Creator-fulfilment"
     );
     
-    console.log(`📊 SummaryCards - Order ${order.display_id}: isPending=${isPending}, hasCreatorFulfillment=${hasCreatorFulfillmentProducts}`);
-    
     return isPending && hasCreatorFulfillmentProducts;
   }).length;
   
-  console.log(`📊 SummaryCards - Total processing orders: ${processingOrders}`);
-  
+ 
   // Today's orders
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -447,7 +444,6 @@ export default function OrdersPage() {
   // ✅ NEW: Fetch vendor products to get fulfillment types
   const fetchVendorProducts = async (token: string): Promise<Map<string, string>> => {
     try {
-      console.log("🔍 Fetching vendor products for fulfillment types...");
       
       const productResponse = await fetch("http://localhost:9000/vendors/products", {
         method: "GET",
@@ -458,24 +454,15 @@ export default function OrdersPage() {
       });
       
       if (!productResponse.ok) {
-        console.warn(`Could not fetch products: ${productResponse.status} ${productResponse.statusText}`);
         return new Map();
       }
       
       const productData = await productResponse.json();
-      console.log("📦 Product data for fulfillment types:", productData);
-      
       // Create a map of product_id -> fulfillment_type
       const fulfillmentMap = new Map<string, string>();
       
       if (productData.products && Array.isArray(productData.products)) {
         productData.products.forEach((product: any) => {
-          console.log(`🔍 Processing product ${product.id}:`, {
-            id: product.id,
-            title: product.title,
-            metadata: product.metadata,
-            fulfillment_type_raw: product.metadata?.fulfillment_type
-          });
           
           if (product.id && product.metadata?.fulfillment_type) {
             try {
@@ -484,24 +471,19 @@ export default function OrdersPage() {
               const fulfillmentType = fulfillmentTypeData.type || "standard";
               
               fulfillmentMap.set(product.id, fulfillmentType);
-              console.log(`📋 Product ${product.id} -> ${fulfillmentType}`);
             } catch (parseError) {
-              console.warn(`Failed to parse fulfillment_type for product ${product.id}:`, parseError);
               fulfillmentMap.set(product.id, "standard");
             }
           } else {
             // Default to standard if no fulfillment type specified
             fulfillmentMap.set(product.id, "standard");
-            console.log(`📋 Product ${product.id} -> standard (no fulfillment_type in metadata)`);
           }
         });
       }
       
-      console.log("✅ Created fulfillment type map:", fulfillmentMap);
       return fulfillmentMap;
       
     } catch (error) {
-      console.error("❌ Error fetching vendor products:", error);
       return new Map();
     }
   };
@@ -526,18 +508,12 @@ export default function OrdersPage() {
         const fulfillmentMap = await fetchVendorProducts(token);
         setProductFulfillmentMap(fulfillmentMap);
         
-        console.log("🗺️ Fulfillment map contents:", Array.from(fulfillmentMap.entries()));
-        console.log("🔢 Total products in map:", fulfillmentMap.size);
-        
-        console.log("🔍 Fetching vendor-filtered orders...");
-        console.log("📊 Request params:", { limit, offset: (page - 1) * limit, page });
         
         // ✅ FIXED: Simplified API call with proper error handling
         // ✅ Fetch ALL orders at once
         const url = `http://localhost:9000/vendors/orders`; // Remove limit and offset
         // const url = `http://localhost:9000/vendors/orders?limit=${limit}&offset=${(page - 1) * limit}`;
-        console.log("🌐 Request URL:", url);
-        
+  
         const response = await fetch(url, {
           method: "GET",
           headers: {
@@ -546,12 +522,9 @@ export default function OrdersPage() {
           }
         });
         
-        console.log("📡 Response status:", response.status);
-        console.log("📡 Response headers:", Object.fromEntries(response.headers.entries()));
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("❌ Response error:", errorText);
           
           if (response.status === 401) {
             setAuthError(true);
@@ -571,16 +544,13 @@ export default function OrdersPage() {
         let data;
         try {
           const responseText = await response.text();
-          console.log("📄 Raw response:", responseText);
-          
+
           if (!responseText) {
             throw new Error("Empty response from server");
           }
           
           data = JSON.parse(responseText);
-          console.log("✅ Parsed response data:", data);
         } catch (parseError) {
-          console.error("❌ JSON parsing error:", parseError);
           setError("Invalid response format from server");
           setLoading(false);
           return;
@@ -595,10 +565,8 @@ export default function OrdersPage() {
         
         // Handle different response formats
         const ordersArray = data.orders || data.data || (Array.isArray(data) ? data : []);
-        console.log("📋 Orders array:", ordersArray);
         
         if (!Array.isArray(ordersArray)) {
-          console.error("❌ Expected orders array, got:", typeof ordersArray);
           setError("Invalid orders data format");
           setLoading(false);
           return;
@@ -607,25 +575,11 @@ export default function OrdersPage() {
         // ✅ FIXED: Enhanced data transformation with better error handling
         const transformedOrders = ordersArray.map((order: any, index: number) => {
           try {
-            console.log(`🔄 Transforming order ${index}:`, order);
-            
-             // ✅ FIXED: Use display_id directly from response first
-            // ✅ SIMPLIFIED: Direct extraction
-            // ✅ DEBUG: Add logging to see what's happening
-            console.log(`🔍 Order ${index} data:`, {
-              order_id: order.id,
-              display_id_from_response: order.display_id,
-              typeof_display_id: typeof order.display_id,
-              parsed_display_id: parseInt(String(order.display_id)),
-              full_order_keys: Object.keys(order)
-            });
 
             let display_id = 0;
             if (order.display_id !== undefined && order.display_id !== null) {
               display_id = parseInt(String(order.display_id)) || 0;
-              console.log(`✅ Using display_id from response: ${display_id}`);
             } else {
-              console.log(`⚠️ No display_id in response, falling back to ID extraction`);
               const numbers = order.id.match(/\d+/g);
               if (numbers && numbers.length > 0) {
                 display_id = parseInt(numbers[numbers.length - 1]) || 0;
@@ -634,10 +588,8 @@ export default function OrdersPage() {
 
             if (display_id === 0) {
               display_id = (page - 1) * limit + index + 1;
-              console.log(`⚠️ Using fallback display_id: ${display_id}`);
             }
 
-            console.log(`🎯 Final display_id for order: ${display_id}`);
             // ✅ Safer customer data extraction
             const customer = {
               first_name: order.customer?.first_name || order.billing_address?.first_name || "Guest",
@@ -666,7 +618,6 @@ export default function OrdersPage() {
             
             // ✅ Enhanced vendor items transformation
             const vendor_items: VendorOrderItem[] = (order.vendor_items || []).map((item: any, itemIndex: number) => {
-              console.log(`🔍 Processing item ${itemIndex}:`, item);
               
               const unit_price = safeNumber(item.unit_price || item.raw_unit_price);
               const quantity = Math.max(1, safeNumber(item.quantity, 1));
@@ -684,9 +635,6 @@ export default function OrdersPage() {
               const product_id = item.product_id || item.variant?.product_id;
               const fulfillment_type = product_id ? fulfillmentMap.get(product_id) || "standard" : "standard";
               
-              console.log(`🎯 Item ${itemIndex} - Product ID: ${product_id}, Fulfillment Type: ${fulfillment_type}`);
-              console.log(`🔍 Checking for Creator-fulfilment: ${fulfillment_type === "Creator-fulfilment"}`);
-              console.log(`🔍 All fulfillment types in map:`, Array.from(fulfillmentMap.entries()));
               
               return {
                 id: item.id || `item_${itemIndex}`,
@@ -754,11 +702,10 @@ export default function OrdersPage() {
               has_returns: order.has_returns || false
             };
             
-            console.log(`✅ Transformed order ${index}:`, transformedOrder);
             return transformedOrder;
             
           } catch (transformError) {
-            console.error(`❌ Error transforming order ${index}:`, transformError);
+    
             // Return a minimal order object to prevent complete failure
             return {
               id: order.id || `order_${index}`,
@@ -787,12 +734,6 @@ export default function OrdersPage() {
           }
         });
         
-        console.log("✅ All transformed orders:", transformedOrders);
-        console.log("📊 Order statuses:", transformedOrders.map(o => ({ id: o.display_id, status: o.fulfillment_status })));
-        console.log("📦 Orders with vendor items:", transformedOrders.map(o => ({ 
-          id: o.display_id, 
-          items: o.vendor_items.map(i => ({ title: i.title, fulfillment_type: i.fulfillment_type }))
-        })));
         
         setOrders(transformedOrders);
         setCount(data.count || data.total || transformedOrders.length);
@@ -807,7 +748,6 @@ export default function OrdersPage() {
         }
         
       } catch (err: any) {
-        console.error("❌ Error in fetchVendorOrders:", err);
         setError(err.message || "Failed to load vendor orders. Please check your connection and try again.");
       } finally {
         setLoading(false);
@@ -971,14 +911,10 @@ useEffect(() => {
       item.fulfillment_type === "Creator-fulfilment"
     );
     
-    console.log(`🔍 Order ${order.display_id}: isPending=${isPending}, hasCreatorFulfillment=${hasCreatorFulfillmentProducts}`);
-    console.log(`🔍 Order fulfillment status: ${order.fulfillment_status}`);
-    console.log(`🔍 Order item fulfillment types:`, order.vendor_items.map(item => item.fulfillment_type));
     
     return isPending && hasCreatorFulfillmentProducts;
   }).length;
-  
-  console.log(`🎯 Total processing count: ${processingCount}`);
+
   
   const shippedCount = orders.filter(order => 
     order.fulfillment_status === "shipped" || 
@@ -1148,11 +1084,8 @@ useEffect(() => {
     XLSX.writeFile(workbook, filename);
     
     // Show success message (you can add a toast notification here)
-    console.log(`✅ Exported ${exportData.length} order items to ${filename}`);
     
   } catch (error) {
-    console.error('❌ Error exporting orders:', error);
-    // You can add error handling/notification here
     alert('Error exporting orders. Please try again.');
   }
 };

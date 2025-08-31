@@ -1,17 +1,12 @@
 import { model } from "@medusajs/framework/utils"
 import PayoutDetails from "./payout_details"
-import PayoutBatch from "./payout_batch"
+
 
 // Individual transaction records for complete audit trail
 const Payout = model.define("payout", {
   id: model.id().primaryKey(),
-  vendor_id: model.text().index("IDX_PAYOUT_VENDOR_ID"),
-  order_id: model.text().index("IDX_PAYOUT_ORDER_ID"),
-  amount: model.number(), // Amount in rupees (+ for earnings, - for payouts)
-  type: model.enum(["earning", "payout", "adjustment", "refund"]),
-  status: model.enum(["pending", "processing", "completed", "failed", "cancelled"]).default("pending"),
-  reason: model.text(),
-  notes: model.text().nullable(),
+  vendor_id: model.text(),
+ 
    // Payout scheduling
   payout_period: model.text().nullable(), // e.g., "2025-W03"
   scheduled_payout_date: model.dateTime().nullable(),
@@ -37,9 +32,9 @@ const Payout = model.define("payout", {
   avg_order_value: model.number().default(0),
   
   // Payout settings
-  minimum_payout_amount: model.number().default(1000), // $10.00 minimum
+  minimum_payout_amount: model.number().default(1000), 
   payout_schedule: model.enum(["weekly", "biweekly", "monthly"]).default("weekly"),
-  preferred_payment_method: model.enum(["bank_transfer", "paypal", "razorpay"]).default("bank_transfer"),
+  //preferred_payment_method: model.enum(["bank_transfer", "paypal", "razorpay"]).default("bank_transfer"),
   
   // Timestamps
   last_payout_at: model.dateTime().nullable(),
@@ -56,15 +51,18 @@ const Payout = model.define("payout", {
     mappedBy: "payout",
   }),
   
-  // FIXED: Make payout_batch nullable so individual earnings don't require a batch
-  payout_batch: model.belongsTo(() => PayoutBatch, {
-    mappedBy: "payout",
-  }).nullable(),
-  
-  // Audit fields
   processed_at: model.dateTime().nullable(),
   created_by: model.text().nullable(), // Admin user ID for manual transactions
   
 })
+.indexes([
+  {
+    on: ["vendor_id"],
+    unique: true
+  }
+])
+
+
+
 
 export default Payout

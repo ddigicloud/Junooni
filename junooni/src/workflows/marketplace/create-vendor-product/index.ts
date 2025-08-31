@@ -15,6 +15,7 @@ import { Modules } from "@medusajs/framework/utils"
 type WorkflowInput = {
   vendor_admin_id: string
   product: CreateProductWorkflowInputDTO
+  additional_data?: Record<string, unknown>
 }
 
 const createVendorProductWorkflow = createWorkflow(
@@ -40,7 +41,8 @@ const createVendorProductWorkflow = createWorkflow(
               id: data.stores[0].default_sales_channel_id
             }
           ]
-        }]
+        }],
+        additional_data: data.input.additional_data
       }
     })
 
@@ -55,6 +57,8 @@ const createVendorProductWorkflow = createWorkflow(
         id: input.vendor_admin_id
       }
     }).config({ name: "retrieve-vendor-admins" })
+
+    
 
     const linksToCreate = transform({
       input,

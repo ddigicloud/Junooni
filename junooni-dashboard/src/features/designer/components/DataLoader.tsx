@@ -544,7 +544,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   const processImageUrls = (data: any): DynamicProductData => {
     const config = getDynamicAPIConfig();
     
-    console.log('🖼️ Processing enhanced image URLs with base:', config.baseUrl);
+    //console.log('🖼️ Processing enhanced image URLs with base:', config.baseUrl);
     
     const processUrl = (obj: any) => {
       if (!obj) return obj;
@@ -625,7 +625,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
       });
     }
     
-    console.log('✅ Enhanced image URL processing complete');
+    //console.log('✅ Enhanced image URL processing complete');
     return processedData as DynamicProductData;
   };
 
@@ -636,7 +636,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   const fetchWithRetry = async (url: string, attempt: number = 1): Promise<Response> => {
     const config = getDynamicAPIConfig();
     
-    console.log(`📡 Fetching enhanced data (attempt ${attempt}/${config.retryAttempts}):`, url);
+    //console.log(`📡 Fetching enhanced data (attempt ${attempt}/${config.retryAttempts}):`, url);
     
     try {
       const controller = new AbortController();
@@ -659,11 +659,11 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
       return response;
       
     } catch (fetchError: any) {
-      console.error(`❌ Enhanced fetch attempt ${attempt} failed:`, fetchError);
+      //console.error(`❌ Enhanced fetch attempt ${attempt} failed:`, fetchError);
       
       if (attempt < config.retryAttempts) {
         const delay = Math.pow(2, attempt) * 1000;
-        console.log(`⏱️ Retrying in ${delay}ms...`);
+        //console.log(`⏱️ Retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return fetchWithRetry(url, attempt + 1);
       }
@@ -722,31 +722,31 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   // =====================================
   
   const validateProductData = (data: any): boolean => {
-    console.log('🔍 Validating enhanced product data...');
+    //console.log('🔍 Validating enhanced product data...');
     
     if (!data) {
-      console.error('❌ No data received');
+      //console.error('❌ No data received');
       return false;
     }
     
     if (!data.name || !data.id) {
-      console.error('❌ Missing required fields: name or id');
+      //console.error('❌ Missing required fields: name or id');
       return false;
     }
     
     // Check for main printing technologies (note field name change)
     if (!data.printTechn || !Array.isArray(data.printTechn) || data.printTechn.length === 0) {
-      console.error('❌ No printing technologies configured (printTechn)');
+      //console.error('❌ No printing technologies configured (printTechn)');
       return false;
     }
     
     if (!data.colorOptions || !Array.isArray(data.colorOptions) || data.colorOptions.length === 0) {
-      console.error('❌ No color options configured');
+      //console.error('❌ No color options configured');
       return false;
     }
     
     if (!data.sizeOptions || !Array.isArray(data.sizeOptions) || data.sizeOptions.length === 0) {
-      console.error('❌ No size options configured');
+      //console.error('❌ No size options configured');
       return false;
     }
     
@@ -756,24 +756,24 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     );
     
     if (!hasValidTech) {
-      console.error('❌ No valid printing technology with customization areas (custAreas)');
+      //console.error('❌ No valid printing technology with customization areas (custAreas)');
       return false;
     }
     
     // Log enhanced features detection
-    console.log('🤖 Enhanced features detected:', {
-      hasSmartPrintTech: !!data.smartPrintTech?.length,
-      hasProductIntelligence: !!data.prodInt,
-      hasAdvancedSurfaceMapping: !!data.advanSurfMap,
-      hasLightingConfiguration: !!data.lightingConfiguration,
-      hasMaskingFeatures: data.printTechn.some((tech: any) => 
-        tech.mockupPhotos?.some((photo: any) => 
-          photo.visibleAreas?.some((area: any) => area.maskingConfiguration?.enableMasking)
-        )
-      )
-    });
+    // console.log('🤖 Enhanced features detected:', {
+    //   hasSmartPrintTech: !!data.smartPrintTech?.length,
+    //   hasProductIntelligence: !!data.prodInt,
+    //   hasAdvancedSurfaceMapping: !!data.advanSurfMap,
+    //   hasLightingConfiguration: !!data.lightingConfiguration,
+    //   hasMaskingFeatures: data.printTechn.some((tech: any) => 
+    //     tech.mockupPhotos?.some((photo: any) => 
+    //       photo.visibleAreas?.some((area: any) => area.maskingConfiguration?.enableMasking)
+    //     )
+    //   )
+    // });
     
-    console.log('✅ Enhanced product data validation passed');
+    //console.log('✅ Enhanced product data validation passed');
     return true;
   };
   
@@ -789,23 +789,23 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
       const config = getDynamicAPIConfig();
       const url = `${config.baseUrl}${config.endpoints.products}/${productId}`;
       
-      console.log('🚀 Starting enhanced product data fetch for ID:', productId);
-      console.log('🌐 API URL:', url);
+      //console.log('🚀 Starting enhanced product data fetch for ID:', productId);
+      //console.log('🌐 API URL:', url);
       
       const response = await fetchWithRetry(url);
       const data = await response.json();
       
-      console.log('📦 Enhanced raw product data received:', {
-        name: data.name,
-        id: data.id,
-        productType: data.productType,
-        mainTechnologiesCount: data.printTechn?.length || 0,
-        smartTechnologiesCount: data.smartPrintTech?.length || 0,
-        colorsCount: data.colorOptions?.length || 0,
-        sizesCount: data.sizeOptions?.length || 0,
-        hasProductIntelligence: !!data.prodInt,
-        hasAdvancedSurfaceMapping: !!data.advanSurfMap
-      });
+      // console.log('📦 Enhanced raw product data received:', {
+      //   name: data.name,
+      //   id: data.id,
+      //   productType: data.productType,
+      //   mainTechnologiesCount: data.printTechn?.length || 0,
+      //   smartTechnologiesCount: data.smartPrintTech?.length || 0,
+      //   colorsCount: data.colorOptions?.length || 0,
+      //   sizesCount: data.sizeOptions?.length || 0,
+      //   hasProductIntelligence: !!data.prodInt,
+      //   hasAdvancedSurfaceMapping: !!data.advanSurfMap
+      // });
       
       // Validate the enhanced data
       if (!validateProductData(data)) {
@@ -815,13 +815,13 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
       // Process image URLs with enhanced support
       const processedData = processImageUrls(data);
       
-      console.log('✅ Enhanced product data successfully processed and validated');
+      //console.log('✅ Enhanced product data successfully processed and validated');
       setProductData(processedData);
       setLoading(false);
       setRetryCount(0);
       
     } catch (err: any) {
-      console.error('💥 Error fetching enhanced product data:', err);
+      //console.error('💥 Error fetching enhanced product data:', err);
       
       const classifiedError = classifyError(err);
       setError(classifiedError);
@@ -829,7 +829,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
       
       // Auto-retry for retryable errors
       if (classifiedError.retryable && retryCount < 2) {
-        console.log('🔄 Auto-retrying enhanced data fetch due to retryable error...');
+        //console.log('🔄 Auto-retrying enhanced data fetch due to retryable error...');
         setTimeout(() => {
           setRetryCount(prev => prev + 1);
           fetchProductData();

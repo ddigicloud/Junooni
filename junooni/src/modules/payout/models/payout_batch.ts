@@ -23,9 +23,9 @@ const PayoutBatch = model.define("payout_batch", {
   scheduled_at: model.dateTime(),
   started_at: model.dateTime().nullable(),
   completed_at: model.dateTime().nullable(),
-  payout: model.hasMany(() => Payout, {
-    mappedBy: "payout_batch",
-  }),
+  // payout: model.hasMany(() => Payout, {
+  //   mappedBy: "payout_batch",
+  // }),
 
   // Metadata
   created_by: model.text().nullable(),

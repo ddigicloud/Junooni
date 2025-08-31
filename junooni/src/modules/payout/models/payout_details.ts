@@ -4,6 +4,8 @@ import Payout from "./payouts"
 // Individual transaction records for complete audit trail
 const PayoutDetails = model.define("payout_details", {
   id: model.id().primaryKey(),
+  order_id: model.text().index("IDX_PAYOUT_ORDER_ID"),
+  order_item_id: model.text().index("IDX_PAYOUT_ORDER_ITEM_ID"),
   product_id: model.text().index("IDX_PAYOUT_PRODUCT_ID"),
   amount: model.number(), // Amount in rupees (+ for earnings, - for payouts)
   tax_amount: model.number().default(0), // Tax amount for earnings
@@ -21,6 +23,7 @@ const PayoutDetails = model.define("payout_details", {
   payout: model.belongsTo(() => Payout, {
     mappedBy: "payout_details",
   })
+  
 })
 
 export default PayoutDetails

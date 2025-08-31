@@ -193,6 +193,7 @@ private async createInvoiceContent(
       const originalItem = params.order.items?.find((oi: any) => oi.title === item.title)
       const hsCode = originalItem?.variant?.product?.hs_code || originalItem?.product?.hs_code || 'N/A'
       
+      
       if (!originalItem) {
         console.warn(`⚠️ Original item not found for: ${item.title}, calculating from available data`)
       }

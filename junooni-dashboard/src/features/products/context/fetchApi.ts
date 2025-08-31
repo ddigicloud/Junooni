@@ -70,10 +70,10 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
         'x-publishable-api-key': `${API_KEY}`
       }
     });
-    console.log("Product fetched:", response.data.product);
+    //console.log("Product fetched:", response.data.product);
     return response.data.product;
   } catch (error) {
-    console.error('Error fetching product:', error);
+    //console.error('Error fetching product:', error);
     throw error;
   }
 }
@@ -128,42 +128,42 @@ export function extractInventoryItemId(variant) {
 export async function handleInventoryCreation(result, formVariants, defaultLocationId) {
   // Make sure we have variants in the result
   if (!result || !result.variants || !Array.isArray(result.variants) || result.variants.length === 0) {
-    console.warn("No variants found in product creation result");
+    //console.warn("No variants found in product creation result");
     return null;
   }
   
-  console.log(`Processing inventory for ${result.variants.length} variants`);
+  //console.log(`Processing inventory for ${result.variants.length} variants`);
   
   // Create array to store inventory creation operations
   const inventoryCreations = [];
   
   // Process each variant from the API response
   for (const variant of result.variants) {
-    console.log(`Processing variant ${variant.id}:`, variant.title);
+    //console.log(`Processing variant ${variant.id}:`, variant.title);
     
     // Examine inventory_items structure in detail for debugging
     if (variant.inventory_items) {
-      console.log(`Variant has ${variant.inventory_items.length} inventory items`);
+      //console.log(`Variant has ${variant.inventory_items.length} inventory items`);
     } else {
-      console.log("Variant has no inventory_items array");
+      //console.log("Variant has no inventory_items array");
     }
     
     // Extract inventory item ID using our extraction function
     const inventoryItemId = extractInventoryItemId(variant);
     
     if (!inventoryItemId) {
-      console.warn(`No inventory item ID found for variant ${variant.id}, skipping inventory creation`);
+      //console.warn(`No inventory item ID found for variant ${variant.id}, skipping inventory creation`);
       continue;
     }
     
-    console.log(`Found inventory_item_id for variant ${variant.id}: ${inventoryItemId}`);
+    //console.log(`Found inventory_item_id for variant ${variant.id}: ${inventoryItemId}`);
     
     // Find the matching form variant to get the stock quantity
     // Match by title (most reliable in this case)
     const formVariant = formVariants.find(v => v.title === variant.title) || formVariants[0];
     const stockQuantity = parseInt(formVariant?.stock || 0);
     
-    console.log(`Using stock quantity ${stockQuantity} for variant "${variant.title}"`);
+    //console.log(`Using stock quantity ${stockQuantity} for variant "${variant.title}"`);
     
     inventoryCreations.push({
       inventory_item_id: inventoryItemId,
@@ -174,10 +174,10 @@ export async function handleInventoryCreation(result, formVariants, defaultLocat
   }
   
   // Log the final payload for debugging
-  console.log(`Prepared ${inventoryCreations.length} inventory creation operations`);
+  //console.log(`Prepared ${inventoryCreations.length} inventory creation operations`);
   
   if (inventoryCreations.length === 0) {
-    console.warn("No inventory creations to submit");
+    //console.warn("No inventory creations to submit");
     return null;
   }
   
@@ -187,16 +187,16 @@ export async function handleInventoryCreation(result, formVariants, defaultLocat
       create: inventoryCreations
     };
     
-    console.log("Submitting inventory batch creation payload:", inventoryPayload);
+    //console.log("Submitting inventory batch creation payload:", inventoryPayload);
     
     // Call the batch update function with the prepared payload
     const response = await batchUpdateInventoryLevels(inventoryPayload);
     
-    console.log("Inventory batch creation successful:", response);
+    //console.log("Inventory batch creation successful:", response);
     return response;
   } catch (error) {
-    console.error("Failed to create inventory levels:", error);
-    console.error("Error details:", error.response?.data || error.message);
+    //console.error("Failed to create inventory levels:", error);
+    //console.error("Error details:", error.response?.data || error.message);
     throw error;
   }
 }
@@ -244,7 +244,7 @@ export async function fetchCategories() {
     
     return response;
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    //console.error('Error fetching categories:', error);
     throw error;
   }
 }
@@ -273,7 +273,7 @@ export async function batchUpdateVariants({
   const token = localStorage.getItem("vendorToken");
 
   // Just to debug
-  console.log("Batch variant update payload:", JSON.stringify(variantChanges, null, 2));
+  //console.log("Batch variant update payload:", JSON.stringify(variantChanges, null, 2));
 
   const response = await axios.post(
     `${API_BASE_URL}/vendors/products/${productId}/variants/batch`, 
@@ -365,7 +365,7 @@ export async function uploadProductImage({
         },
       });
       
-      console.log("Image upload response:", response.data);
+      //console.log("Image upload response:", response.data);
       
       // Return all files or just the first one based on the multiple flag
       return multiple ? response.data.files : response.data.files[0];
@@ -383,13 +383,13 @@ export async function uploadProductImage({
         }
       );
       
-      console.log("URL image upload response:", response.data);
+      //console.log("URL image upload response:", response.data);
       return response.data;
     }
     
     throw new Error('Invalid upload parameters');
   } catch (error) {
-    console.error('Error with image operation:', error);
+    //console.error('Error with image operation:', error);
     throw error;
   }
 }
@@ -411,10 +411,10 @@ export async function fetchInventoryLevels({ inventoryItemId }: { inventoryItemI
       }
     );
     
-    console.log("Inventory levels fetched:", response.data);
+    //console.log("Inventory levels fetched:", response.data);
     return response.data;
   } catch (error) {
-    console.error('Error fetching inventory levels:', error);
+    //console.error('Error fetching inventory levels:', error);
     throw error;
   }
 }
@@ -435,10 +435,10 @@ export async function fetchAllInventoryItems(): Promise<InventoryItem[]> {
       }
     );
     
-    console.log("All inventory items fetched:", response.data);
+    //console.log("All inventory items fetched:", response.data);
     return response.data.inventory_items || [];
   } catch (error) {
-    console.error('Error fetching all inventory items:', error);
+    //console.error('Error fetching all inventory items:', error);
     throw error;
   }
 }
@@ -475,10 +475,10 @@ export async function updateInventoryLevel({
       }
     );
     
-    console.log("Inventory level updated:", response.data);
+    //console.log("Inventory level updated:", response.data);
     return response.data;
   } catch (error) {
-    console.error('Error updating inventory level:', error);
+    //console.error('Error updating inventory level:', error);
     throw error;
   }
 }
@@ -500,7 +500,7 @@ export async function fetchProducts(): Promise<Product[]> {
     });
     return response.data.products || response.data;
   } catch (error) {
-    console.error('Error fetching products:', error);
+    //console.error('Error fetching products:', error);
     throw error;
   }
 }
@@ -529,10 +529,141 @@ export async function createProduct({ product }: { product: Product }): Promise<
     
     return response.data.product;
   } catch (error) {
-    console.error('Error creating product:', error);
+    //console.error('Error creating product:', error);
     throw error;
   }
 }
+
+
+/**
+ * STEP 1: Upload artwork file
+ */
+export async function uploadArtworkFile(file: File) {
+  const token = localStorage.getItem("vendorToken")
+  const formData = new FormData()
+  formData.append("files", file)
+
+  try {
+    //console.log("📤 Uploading artwork file:", file.name)
+
+    const response = await axios.post(
+      `${API_BASE_URL}/vendors/artwork/upload`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    )
+
+    //console.log("✅ File uploaded successfully:", response.data)
+    
+    // ✅ Extract the first file from the response
+    const uploadedFile = response.data.files?.[0]
+    
+    if (!uploadedFile) {
+      throw new Error("No file data returned from upload")
+    }
+    
+    return {
+      id: uploadedFile.id,
+      url: uploadedFile.url,
+      filename: uploadedFile.filename,
+      mime_type: uploadedFile.mimeType || uploadedFile.mime_type, // Handle both possible field names
+    }
+  } catch (err: any) {
+    //console.error("❌ Error uploading artwork file:", err)
+    throw new Error(
+      `Failed to upload artwork file: ${err.response?.data?.message || err.message}`
+    )
+  }
+}
+
+/**
+ * STEP 2: Create artwork payload
+ */
+/**
+ * STEP 2: Create artwork payload with required field enforcement
+ */
+export async function createArtworkPayload(artworkPayload: any) {
+  const token = localStorage.getItem("vendorToken")
+
+  try {
+    // Ensure all required fields are present in medias array
+    if (artworkPayload.medias && Array.isArray(artworkPayload.medias)) {
+      artworkPayload.medias = artworkPayload.medias.map((media, index) => {
+        return {
+          ...media,
+          // Force required fields with fallbacks
+          mime_type: media.mime_type || media.mimeType || 'image/png',
+          filename: media.filename || media.name || `artwork-${index + 1}.png`
+        }
+      })
+    }
+
+    //console.log("Creating artwork with processed payload:", artworkPayload)
+
+    const response = await axios.post(
+      `${API_BASE_URL}/vendors/artwork`,
+      artworkPayload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    )
+
+    //console.log("Artwork created successfully:", response.data)
+    return response.data
+  } catch (err: any) {
+    //console.error("Error creating artwork payload:", err)
+    throw new Error(
+      `Failed to create artwork payload: ${err.response?.data?.message || err.message}`
+    )
+  }
+}
+
+/**
+ * Combined helper → Upload file + create artwork
+ */
+export async function submitArtwork(
+  areaName: string,
+  designImage: { file: File; metadata?: Record<string, any> }
+) {
+  // Step 1: Upload the design image
+  const uploadResult = await uploadArtworkFile(designImage.file)
+
+  // Step 2: Build final payload
+  const artworkPayload = {
+    name: `${areaName.charAt(0).toUpperCase() + areaName.slice(1)} Artwork`,
+    description: `${areaName.charAt(0).toUpperCase() + areaName.slice(1)} Artwork - Canvas design from ${areaName} area`,
+    medias: [
+      {
+        // ✅ Use URL in payload
+        image_url: uploadResult.url,
+
+        // ✅ Extra metadata
+        filename: uploadResult.filename || designImage.file.name,
+        mime_type: uploadResult.mime_type || designImage.file.type,
+        file_id: uploadResult.id,
+        file_type: "image",
+        file_description: `${areaName} design artwork file`,
+        design_area: areaName.toLowerCase(),
+        metadata: {
+          original_filename: designImage.file.name,
+          canvas_position: designImage.metadata?.canvasPosition || {},
+          source: "canvas_design_element",
+        },
+      },
+    ],
+  }
+
+  // Step 3: Submit to /vendors/artwork
+  return await createArtworkPayload(artworkPayload)
+}
+
 
 /**
  * Batch update inventory levels
@@ -557,7 +688,7 @@ export async function batchUpdateInventoryLevels(payload: {
 }): Promise<any> {
   const token = localStorage.getItem("vendorToken");
 
-  console.log("📦 Inventory batch operation payload:", JSON.stringify(payload, null, 2));
+  //console.log("📦 Inventory batch operation payload:", JSON.stringify(payload, null, 2));
 
   try {
     const response = await axios.post(
@@ -571,10 +702,10 @@ export async function batchUpdateInventoryLevels(payload: {
       }
     );
     
-    console.log("✅ Inventory operation success:", response.data);
+    //console.log("✅ Inventory operation success:", response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error in inventory operation:', error);
+    //console.error('❌ Error in inventory operation:', error);
     throw error;
   }
 }
@@ -593,7 +724,7 @@ export async function deleteProduct({ id }: { id: string }): Promise<void> {
       },
     });
   } catch (error) {
-    console.error('Error deleting product:', error);
+    //console.error('Error deleting product:', error);
     throw error;
   }
 }

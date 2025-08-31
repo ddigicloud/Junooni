@@ -120,16 +120,16 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
       
         
         <div className="mb-10 overflow-hidden bg-white rounded-lg shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-5">
             {/* Product Images Section */}
-            <div className="p-4">
+            <div className="p-4 md:col-span-3">
               <Suspense fallback={<div className="h-[450px] bg-gray-100 animate-pulse rounded-lg"></div>}>
                 <ProductImageGallery images={product.images || []} />
               </Suspense>
             </div>
             
             {/* Product Details Section */}
-            <div className="p-4 md:p-8">
+            <div className="p-4  md:p-8 md:col-span-2">
               {/* Hardcoded Creator Info */}
               {/* Vendor Info */}
               {extendedProduct.vendor && (

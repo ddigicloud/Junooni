@@ -5,7 +5,13 @@ import {
   import { createSizeChartStep } from "./steps/create-sizechart"
   
   export type CreateSizeChartInput = {
-    chart_url: string
+    
+    chart: string,
+    name?: string | null,
+    sku: string,
+    manufacturer?: string | null,
+    manufacturer_sku?: string | null,
+    chart_url?: string | null
   }
   
   export const createSizeChartWorkflow = createWorkflow(

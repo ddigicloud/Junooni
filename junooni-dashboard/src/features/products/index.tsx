@@ -168,7 +168,6 @@ export default function Products() {
         const responseBody = await response.json();
         setProducts(responseBody.products || []);
       } catch (error) {
-        console.error("Error fetching products:", error);
         setError(error instanceof Error ? error.message : "Failed to fetch products");
         toast({
           title: "Error",

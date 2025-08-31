@@ -9,7 +9,7 @@ import {
   fileId: string
   mimeType: string
   filename: string
-  vendor_artwork_id: string
+  //vendor_artwork_id: string
   file_type: string
   file_description: string
 }

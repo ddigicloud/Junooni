@@ -703,15 +703,15 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
       />
       
       <div className="absolute flex items-center gap-2 top-3 right-3">
-        <div className="flex items-center gap-1 px-3 py-1 text-xs text-white bg-green-600 rounded-full shadow-lg">
+        {/* <div className="flex items-center gap-1 px-3 py-1 text-xs text-white bg-green-600 rounded-full shadow-lg">
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
           <span className="font-semibold">PRO</span>
         </div>
-        
+         */}
         {/* Smart/AI indicator */}
-        {smartStatus && (
+        {/* {smartStatus && (
           <div className={`text-white text-xs px-2 py-1 rounded-full shadow-lg ${
             aiStatus === 'completed' ? 'bg-green-600' :
             aiStatus === 'pending' ? 'bg-yellow-600' :
@@ -720,7 +720,7 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
           }`}>
             <span className="font-medium">🤖 AI</span>
           </div>
-        )}
+        )} */}
         
         {/* Dynamic surface type indicator */}
         <div className={`text-white text-xs px-2 py-1 rounded-full shadow-lg ${
@@ -732,11 +732,11 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
           <span className="font-medium">{surfaceType.toUpperCase()}</span>
         </div>
         
-        {fabricSettings.enableRealisticFabric && (
+        {/* {fabricSettings.enableRealisticFabric && (
           <div className="px-2 py-1 text-xs text-white bg-blue-600 rounded-full shadow-lg">
             <span className="font-medium">FABRIC</span>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );

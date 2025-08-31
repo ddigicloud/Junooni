@@ -92,6 +92,7 @@ export async function POST(
         "shipping_total",
         "discount_total",
         "currency_code",
+        "hs_code",
         "created_at",
         "items.*",
         "billing_address.*",

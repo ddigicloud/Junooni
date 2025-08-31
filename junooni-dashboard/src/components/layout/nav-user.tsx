@@ -161,7 +161,7 @@ useEffect(() => {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to='/settings'>
+                <Link to='/payouts'>
                   <CreditCard />
                   Payout
                 </Link>

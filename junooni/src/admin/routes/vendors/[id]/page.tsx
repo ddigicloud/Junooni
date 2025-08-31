@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Container, Heading, Label, Button, Text, Badge } from "@medusajs/ui";
 import CreatorFollowersTab from "./followers/page"
-
+import CreatorPayoutTab from "./payout/page"
+import CreatorPayoutDetailsTab from "./payout/payout-details/page"
 
 // Define interfaces for the API response structure
 interface Admin {
@@ -13,7 +14,6 @@ interface Admin {
   created_at: string;
   updated_at: string;
 }
-
 
 interface Vendor {
   id: string;
@@ -56,11 +56,9 @@ interface Vendor {
   metadata?: Record<string, any>;
 }
 
-
 const CreatorDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
 
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,30 +66,26 @@ const CreatorDetailPage = () => {
   const [activeTab, setActiveTab] = useState("basic");
   const [hasMetadata, setHasMetadata] = useState(false);
 
-
   useEffect(() => {
     fetchVendorDetails();
   }, [id]);
-
 
   const fetchVendorDetails = async () => {
     try {
       setIsLoading(true);
       setError(null);
-     
+      
       const response = await fetch(`/vendors?vendor_id=${id}`, {
         credentials: "include",
       });
-
 
       if (!response.ok) {
         throw new Error(`Failed to fetch creator details: ${response.status}`);
       }
 
-
       const data = await response.json();
       console.log('Fetched vendor data:', data);
-     
+      
       if (data.vendor) {
         setVendor(data.vendor);
         // Check if vendor has metadata
@@ -107,7 +101,6 @@ const CreatorDetailPage = () => {
     }
   };
 
-
   // Helper function to format dates nicely
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
@@ -120,7 +113,6 @@ const CreatorDetailPage = () => {
     });
   };
 
-
   if (isLoading) {
     return (
       <Container className="py-8">
@@ -131,15 +123,14 @@ const CreatorDetailPage = () => {
     );
   }
 
-
   if (error) {
     return (
       <Container className="py-8">
         <div className="p-4 border border-red-300 rounded bg-red-50 text-red-600">
           <Heading level="h2" className="text-lg mb-2">Error</Heading>
           <Text>{error}</Text>
-          <Button
-            variant="secondary"
+          <Button 
+            variant="secondary" 
             className="mt-4"
             onClick={() => navigate("/vendors")}
           >
@@ -149,7 +140,6 @@ const CreatorDetailPage = () => {
       </Container>
     );
   }
-
 
   if (!vendor) {
     return (
@@ -157,8 +147,8 @@ const CreatorDetailPage = () => {
         <div className="p-4 border border-gray-300 rounded bg-gray-50">
           <Heading level="h2" className="text-lg mb-2">Creator Not Found</Heading>
           <Text>The requested creator could not be found.</Text>
-          <Button
-            variant="secondary"
+          <Button 
+            variant="secondary" 
             className="mt-4"
             onClick={() => navigate("/vendors")}
           >
@@ -169,17 +159,16 @@ const CreatorDetailPage = () => {
     );
   }
 
-
   return (
     <Container className="py-8">
       {/* Header with creator name, cover photo and logo */}
       <div className="mb-8 relative">
         <div className="h-48 bg-gray-200 rounded-lg overflow-hidden">
           {vendor.coverphoto ? (
-            <img
-              src={vendor.coverphoto}
-              alt="Cover"
-              className="w-full h-full object-cover"
+            <img 
+              src={vendor.coverphoto} 
+              alt="Cover" 
+              className="w-full h-full object-cover" 
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-100">
@@ -187,14 +176,14 @@ const CreatorDetailPage = () => {
             </div>
           )}
         </div>
-       
+        
         <div className="absolute flex items-end bottom-0 left-6 transform translate-y-1/2">
           <div className="w-24 h-24 rounded-lg border-4 border-white overflow-hidden bg-white">
             {vendor.logo ? (
-              <img
-                src={vendor.logo}
-                alt={`${vendor.name} logo`}
-                className="w-full h-full object-cover"
+              <img 
+                src={vendor.logo} 
+                alt={`${vendor.name} logo`} 
+                className="w-full h-full object-cover" 
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500 font-bold">
@@ -203,7 +192,7 @@ const CreatorDetailPage = () => {
             )}
           </div>
         </div>
-       
+        
         <div className="flex justify-end mt-2">
           <Button
             variant="secondary"
@@ -214,84 +203,96 @@ const CreatorDetailPage = () => {
         </div>
       </div>
 
-
       {/* Creator info and title */}
       <div className="mb-6 pl-32 pt-2">
         <div className="flex flex-wrap items-center gap-2 mb-1">
           <Heading level="h1" className="text-2xl">{vendor.name}</Heading>
-         
+          
           {/* Verification badges */}
           {vendor.verified === "Yes" && (
             <Badge className="bg-green-100 text-green-800">
               Verified Creator
             </Badge>
           )}
-         
+          
           {vendor.gst_verification_status === "verified" && (
             <Badge className="bg-blue-100 text-blue-800">
               GST Verified
             </Badge>
           )}
         </div>
-       
+        
         <Text className="text-gray-500">
           {vendor.creator_title || "No professional title set"}
         </Text>
-       
+        
         {vendor.handle && (
           <Badge className="mt-2">@{vendor.handle}</Badge>
         )}
       </div>
 
-
       {/* Tabs navigation */}
       <div className="border-b mb-6">
         <div className="flex gap-6 flex-wrap">
-          <Button
-            variant="transparent"
+          <Button 
+            variant="transparent" 
             className={`py-2 px-1 border-b-2 rounded-none ${activeTab === "basic" ? "border-blue-500" : "border-transparent"}`}
             onClick={() => setActiveTab("basic")}
           >
             Basic Info
           </Button>
-          <Button
-            variant="transparent"
+          <Button 
+            variant="transparent" 
             className={`py-2 px-1 border-b-2 rounded-none ${activeTab === "profile" ? "border-blue-500" : "border-transparent"}`}
             onClick={() => setActiveTab("profile")}
           >
             Profile & Social
           </Button>
-          <Button
-            variant="transparent"
+          <Button 
+            variant="transparent" 
             className={`py-2 px-1 border-b-2 rounded-none ${activeTab === "business" ? "border-blue-500" : "border-transparent"}`}
             onClick={() => setActiveTab("business")}
           >
             Business Details
           </Button>
-          <Button
-            variant="transparent"
+          <Button 
+            variant="transparent" 
             className={`py-2 px-1 border-b-2 rounded-none ${activeTab === "banking" ? "border-blue-500" : "border-transparent"}`}
             onClick={() => setActiveTab("banking")}
           >
             Banking Info
           </Button>
-          <Button
-            variant="transparent"
+          <Button 
+            variant="transparent" 
+            className={`py-2 px-1 border-b-2 rounded-none ${activeTab === "payout" ? "border-blue-500" : "border-transparent"}`}
+            onClick={() => setActiveTab("payout")}
+          >
+            Payout
+          </Button>
+          <Button 
+            variant="transparent" 
+            className={`py-2 px-1 border-b-2 rounded-none ${activeTab === "payout-details" ? "border-blue-500" : "border-transparent"}`}
+            onClick={() => setActiveTab("payout-details")}
+          >
+            Payout Details
+          </Button>
+          <Button 
+            variant="transparent" 
             className={`py-2 px-1 border-b-2 rounded-none ${activeTab === "followers" ? "border-blue-500" : "border-transparent"}`}
             onClick={() => setActiveTab("followers")}
           >
             Followers
           </Button>
-          <Button
-            variant="transparent"
+          <Button 
+            variant="transparent" 
             className={`py-2 px-1 border-b-2 rounded-none ${activeTab === "admins" ? "border-blue-500" : "border-transparent"}`}
             onClick={() => setActiveTab("admins")}
           >
             Account Admins
           </Button>
           {hasMetadata && (
-            <Button
-              variant="transparent"
+            <Button 
+              variant="transparent" 
               className={`py-2 px-1 border-b-2 rounded-none ${activeTab === "metadata" ? "border-blue-500" : "border-transparent"}`}
               onClick={() => setActiveTab("metadata")}
             >
@@ -300,7 +301,6 @@ const CreatorDetailPage = () => {
           )}
         </div>
       </div>
-
 
       {/* Basic Info Tab */}
       {activeTab === "basic" && (
@@ -317,7 +317,7 @@ const CreatorDetailPage = () => {
                   Edit Details
                 </Button>
               </div>
-             
+              
               <div className="space-y-4">
                 <div>
                   <Label className="mb-1 block text-sm">Creator ID</Label>
@@ -325,7 +325,6 @@ const CreatorDetailPage = () => {
                     {vendor.id}
                   </div>
                 </div>
-
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -335,7 +334,6 @@ const CreatorDetailPage = () => {
                     </div>
                   </div>
 
-
                   <div>
                     <Label className="mb-1 block text-sm">Handle</Label>
                     <div className="p-2 bg-gray-50 rounded border">
@@ -344,7 +342,6 @@ const CreatorDetailPage = () => {
                   </div>
                 </div>
 
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="mb-1 block text-sm">Created At</Label>
@@ -352,7 +349,7 @@ const CreatorDetailPage = () => {
                       {formatDate(vendor.created_at)}
                     </div>
                   </div>
-                 
+                  
                   <div>
                     <Label className="mb-1 block text-sm">Last Updated</Label>
                     <div className="p-2 bg-gray-50 rounded border">
@@ -361,28 +358,27 @@ const CreatorDetailPage = () => {
                   </div>
                 </div>
 
-
                 <div>
                   <Label className="mb-1 block text-sm">Professional Title</Label>
                   <div className="p-2 bg-gray-50 rounded border">
                     {vendor.creator_title || "Not set"}
                   </div>
                 </div>
-               
+                
                 {/* Verification Status */}
                 <div>
                   <Label className="mb-1 block text-sm">Verification Status</Label>
                   <div className="p-2 bg-gray-50 rounded border flex items-center gap-2">
-                    <Badge
+                    <Badge 
                       className={
-                        vendor.verified === "Yes"
-                          ? "bg-green-100 text-green-800"
+                        vendor.verified === "Yes" 
+                          ? "bg-green-100 text-green-800" 
                           : "bg-yellow-100 text-yellow-800"
                       }
                     >
                       {vendor.verified === "Yes" ? "Verified" : "Unverified"}
                     </Badge>
-                   
+                    
                     {/* Action button if not verified */}
                     {vendor.verified !== "Yes" && (
                       <Button
@@ -398,7 +394,6 @@ const CreatorDetailPage = () => {
               </div>
             </div>
 
-
             {/* Login Information */}
             <div className="bg-white p-6 border rounded-lg mb-6">
               <div className="flex items-center justify-between mb-4">
@@ -411,17 +406,16 @@ const CreatorDetailPage = () => {
                   Manage Access
                 </Button>
               </div>
-             
+              
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm">Authentication Status</Label>
-                  <Badge
+                  <Badge 
                     className={vendor.auth_enabled ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
                   >
                     {vendor.auth_enabled ? "Enabled" : "Disabled"}
                   </Badge>
                 </div>
-
 
                 <div>
                   <Label className="mb-1 block text-sm">Login Email</Label>
@@ -430,14 +424,12 @@ const CreatorDetailPage = () => {
                   </div>
                 </div>
 
-
                 <div>
                   <Label className="mb-1 block text-sm">Last Login</Label>
                   <div className="p-2 bg-gray-50 rounded border">
                     {vendor.last_login ? formatDate(vendor.last_login) : "Never logged in"}
                   </div>
                 </div>
-
 
                 <div className="pt-2">
                   <Button
@@ -452,7 +444,6 @@ const CreatorDetailPage = () => {
             </div>
           </div>
 
-
           {/* Creator Bio */}
           <div className="md:col-span-1">
             <div className="bg-white p-6 border rounded-lg mb-6">
@@ -466,7 +457,7 @@ const CreatorDetailPage = () => {
                   Edit Bio
                 </Button>
               </div>
-             
+              
               <div className="prose max-w-none">
                 {vendor.creator_bio ? (
                   <p>{vendor.creator_bio}</p>
@@ -478,7 +469,6 @@ const CreatorDetailPage = () => {
           </div>
         </div>
       )}
-
 
       {/* Profile & Social Tab */}
       {activeTab === "profile" && (
@@ -493,7 +483,7 @@ const CreatorDetailPage = () => {
               Edit Social Media
             </Button>
           </div>
-         
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Heading level="h3" className="text-lg mb-3">Social Profiles</Heading>
@@ -515,7 +505,7 @@ const CreatorDetailPage = () => {
                     )}
                   </div>
                 </div>
-               
+                
                 <div>
                   <Label className="mb-1 block text-sm">Instagram</Label>
                   <div className="p-2 bg-gray-50 rounded border flex items-center">
@@ -533,7 +523,7 @@ const CreatorDetailPage = () => {
                     )}
                   </div>
                 </div>
-               
+                
                 <div>
                   <Label className="mb-1 block text-sm">X (Twitter)</Label>
                   <div className="p-2 bg-gray-50 rounded border flex items-center">
@@ -551,7 +541,7 @@ const CreatorDetailPage = () => {
                     )}
                   </div>
                 </div>
-               
+                
                 <div>
                   <Label className="mb-1 block text-sm">Other Social</Label>
                   <div className="p-2 bg-gray-50 rounded border">
@@ -560,7 +550,7 @@ const CreatorDetailPage = () => {
                 </div>
               </div>
             </div>
-           
+            
             <div>
               <Heading level="h3" className="text-lg mb-3">Contact Information</Heading>
               <div className="space-y-4">
@@ -570,7 +560,7 @@ const CreatorDetailPage = () => {
                     {vendor.phonenumber || <span className="text-gray-500">Not provided</span>}
                   </div>
                 </div>
-               
+                
                 <div>
                   <Label className="mb-1 block text-sm">Address</Label>
                   <div className="p-2 bg-gray-50 rounded border">
@@ -595,7 +585,6 @@ const CreatorDetailPage = () => {
         </div>
       )}
 
-
       {/* Business Details Tab */}
       {activeTab === "business" && (
         <div className="bg-white p-6 border rounded-lg mb-6">
@@ -609,7 +598,7 @@ const CreatorDetailPage = () => {
               Edit Business Details
             </Button>
           </div>
-         
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Heading level="h3" className="text-lg mb-3">Company Details</Heading>
@@ -620,12 +609,12 @@ const CreatorDetailPage = () => {
                     {vendor.companyname || <span className="text-gray-500">Not provided</span>}
                   </div>
                 </div>
-               
+                
                 <div>
                   <Label className="mb-1 block text-sm">GSTIN</Label>
                   <div className="p-2 bg-gray-50 rounded border font-mono flex items-center gap-2">
                     {vendor.GSTIN || <span className="text-gray-500">Not provided</span>}
-                   
+                    
                     {vendor.GSTIN && vendor.gst_verification_status === "verified" && (
                       <Badge className="bg-green-100 text-green-800">
                         Verified
@@ -633,28 +622,28 @@ const CreatorDetailPage = () => {
                     )}
                   </div>
                 </div>
-               
+                
                 {/* GST Verification Status */}
                 <div>
                   <Label className="mb-1 block text-sm">GST Verification Status</Label>
                   <div className="p-2 bg-gray-50 rounded border">
-                    <Badge
+                    <Badge 
                       className={
-                        vendor.gst_verification_status === "verified"
-                          ? "bg-green-100 text-green-800"
+                        vendor.gst_verification_status === "verified" 
+                          ? "bg-green-100 text-green-800" 
                           : vendor.gst_verification_status === "failed"
                             ? "bg-red-100 text-red-800"
                             : "bg-yellow-100 text-yellow-800"
                       }
                     >
-                      {vendor.gst_verification_status === "verified"
-                        ? "Verified"
-                        : vendor.gst_verification_status === "failed"
-                          ? "Failed"
+                      {vendor.gst_verification_status === "verified" 
+                        ? "Verified" 
+                        : vendor.gst_verification_status === "failed" 
+                          ? "Failed" 
                           : "Pending"
                       }
                     </Badge>
-                   
+                    
                     {vendor.gst_verification_status !== "verified" && vendor.GSTIN && (
                       <Button
                         variant="secondary"
@@ -669,7 +658,7 @@ const CreatorDetailPage = () => {
                 </div>
               </div>
             </div>
-           
+            
             <div>
               <Heading level="h3" className="text-lg mb-3">Tax Information</Heading>
               <div className="space-y-4">
@@ -679,7 +668,7 @@ const CreatorDetailPage = () => {
                     {vendor.pan_number || <span className="text-gray-500">Not provided</span>}
                   </div>
                 </div>
-               
+                
                 <div>
                   <Label className="mb-1 block text-sm">TAN Number</Label>
                   <div className="p-2 bg-gray-50 rounded border font-mono">
@@ -691,7 +680,6 @@ const CreatorDetailPage = () => {
           </div>
         </div>
       )}
-
 
       {/* Banking Info Tab */}
       {activeTab === "banking" && (
@@ -706,7 +694,7 @@ const CreatorDetailPage = () => {
               Edit Banking Details
             </Button>
           </div>
-         
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Heading level="h3" className="text-lg mb-3">Account Information</Heading>
@@ -717,14 +705,14 @@ const CreatorDetailPage = () => {
                     {vendor.bank_account_holder_name || <span className="text-gray-500">Not provided</span>}
                   </div>
                 </div>
-               
+                
                 <div>
                   <Label className="mb-1 block text-sm">Bank Name</Label>
                   <div className="p-2 bg-gray-50 rounded border">
                     {vendor.bank_name || <span className="text-gray-500">Not provided</span>}
                   </div>
                 </div>
-               
+                
                 <div>
                   <Label className="mb-1 block text-sm">Account Type</Label>
                   <div className="p-2 bg-gray-50 rounded border">
@@ -733,7 +721,7 @@ const CreatorDetailPage = () => {
                 </div>
               </div>
             </div>
-           
+            
             <div>
               <Heading level="h3" className="text-lg mb-3">Account Details</Heading>
               <div className="space-y-4">
@@ -751,14 +739,14 @@ const CreatorDetailPage = () => {
                     )}
                   </div>
                 </div>
-               
+                
                 <div>
                   <Label className="mb-1 block text-sm">IFSC Code</Label>
                   <div className="p-2 bg-gray-50 rounded border font-mono">
                     {vendor.bank_account_ifsc_code || <span className="text-gray-500">Not provided</span>}
                   </div>
                 </div>
-               
+                
                 <div>
                   <Label className="mb-1 block text-sm">Cancelled Cheque</Label>
                   <div className="p-2 bg-gray-50 rounded border">
@@ -784,10 +772,14 @@ const CreatorDetailPage = () => {
         </div>
       )}
 
+      {/* Payout Tab */}
+      {activeTab === "payout" && <CreatorPayoutTab />}
+
+      {/* Payout Details Tab */}
+      {activeTab === "payout-details" && <CreatorPayoutDetailsTab />}
 
       {/* Followers Tab */}
       {activeTab === "followers" && <CreatorFollowersTab />}
-
 
       {/* Admins Tab */}
       {activeTab === "admins" && (
@@ -802,7 +794,7 @@ const CreatorDetailPage = () => {
               Add New Admin
             </Button>
           </div>
-         
+          
           {vendor.admins && vendor.admins.length > 0 ? (
             <div className="space-y-4">
               {vendor.admins.map((admin) => (
@@ -810,8 +802,8 @@ const CreatorDetailPage = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <Text className="font-medium">
-                        {admin.first_name || admin.last_name ?
-                          `${admin.first_name || ''} ${admin.last_name || ''}`.trim() :
+                        {admin.first_name || admin.last_name ? 
+                          `${admin.first_name || ''} ${admin.last_name || ''}`.trim() : 
                           'Unnamed Admin'}
                       </Text>
                       <Text className="text-sm text-gray-600">{admin.email}</Text>
@@ -846,8 +838,8 @@ const CreatorDetailPage = () => {
           ) : (
             <div className="p-6 border rounded-lg bg-gray-50 text-center">
               <Text className="text-gray-500 mb-2">No admins assigned to this creator</Text>
-              <Button
-                variant="secondary"
+              <Button 
+                variant="secondary" 
                 size="small"
                 onClick={() => navigate(`/vendors/${vendor.id}/admin/add`)}
               >
@@ -857,7 +849,7 @@ const CreatorDetailPage = () => {
           )}
         </div>
       )}
-     
+      
       {/* Metadata Tab */}
       {activeTab === "metadata" && vendor.metadata && Object.keys(vendor.metadata).length > 0 && (
         <div className="bg-white p-6 border rounded-lg mb-6">
@@ -871,14 +863,14 @@ const CreatorDetailPage = () => {
               Edit Metadata
             </Button>
           </div>
-         
+          
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Object.entries(vendor.metadata).map(([key, value], index) => (
               <div key={index} className="p-4 border rounded-lg bg-gray-50">
                 <Label className="mb-1 block text-sm font-medium">{key}</Label>
                 <div className="p-2 bg-gray-100 rounded border">
-                  {typeof value === 'object' ?
-                    JSON.stringify(value) :
+                  {typeof value === 'object' ? 
+                    JSON.stringify(value) : 
                     String(value)}
                 </div>
               </div>
@@ -886,7 +878,6 @@ const CreatorDetailPage = () => {
           </div>
         </div>
       )}
-
 
       {/* Action buttons */}
       <div className="mt-8 flex flex-wrap gap-4">
@@ -930,6 +921,4 @@ const CreatorDetailPage = () => {
   );
 };
 
-
 export default CreatorDetailPage;
-

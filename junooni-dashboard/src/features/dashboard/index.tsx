@@ -354,37 +354,33 @@ const formatDate = (dateString: string) => {
 
 // Helper function to check if vendor exists based on response structure
 const checkVendorExists = (vendorData: any) => {
-  console.log("Checking vendor existence with data:", JSON.stringify(vendorData, null, 2));
   
   if (!vendorData) {
-    console.log("No vendor data received");
     return false;
   }
   
   if (vendorData.vendor) {
     if (vendorData.vendor.id) {
-      console.log("Vendor exists with ID:", vendorData.vendor.id);
+
       return true;
     }
-    console.log("Vendor object exists but no ID");
     return false;
   }
   
   if (vendorData.id) {
-    console.log("Vendor exists with direct ID:", vendorData.id);
+
     return true;
   }
   
   const hasData = Object.keys(vendorData).length > 0 && 
                   !isEmptyResponse(vendorData);
-  
-  console.log("Vendor existence based on data presence:", hasData);
+
   return hasData;
 };
 
 // Check onboarding completion status with detailed field tracking
 const checkOnboardingCompletion = (vendorData: any): OnboardingStatus => {
-  console.log("Checking onboarding completion for vendor data:", vendorData);
+
   
   if (!vendorData || !vendorData.vendor) {
     return {
@@ -532,13 +528,7 @@ const checkOnboardingCompletion = (vendorData: any): OnboardingStatus => {
   // Consider onboarding complete if basic info and banking info are done (minimum requirements)
   const isComplete = hasBasicInfo && hasBankingInfo;
 
-  console.log("Onboarding status:", {
-    isComplete,
-    completedSteps,
-    missingSteps,
-    completionPercentage,
-    stepDetails
-  });
+
 
   return {
     isComplete,
@@ -845,21 +835,17 @@ const DashboardPage = () => {
   // Enhanced order transformation with better error handling
   const transformVendorOrders = (orderData: any) => {
     if (!orderData) {
-      console.warn("No order data received");
       return [];
     }
 
     const ordersArray = orderData.orders || orderData.data || (Array.isArray(orderData) ? orderData : []);
-    console.log("📋 Orders array:", ordersArray);
     
     if (!Array.isArray(ordersArray)) {
-      console.error("❌ Expected orders array, got:", typeof ordersArray);
       return [];
     }
 
     return ordersArray.map((order: any, index: number) => {
       try {
-        console.log(`🔄 Transforming order ${index}:`, order);
         
         // Get display_id with better extraction
         let display_id = 0;
@@ -904,7 +890,6 @@ const DashboardPage = () => {
         
         // Enhanced vendor items transformation
         const vendor_items: VendorOrderItem[] = (order.vendor_items || []).map((item: any, itemIndex: number) => {
-          console.log(`🔍 Processing item ${itemIndex}:`, item);
           
           const unit_price = safeNumber(item.unit_price || item.raw_unit_price);
           const quantity = Math.max(1, safeNumber(item.quantity, 1));
@@ -983,11 +968,9 @@ const DashboardPage = () => {
           has_returns: order.has_returns || false
         };
         
-        console.log(`✅ Transformed order ${index}:`, transformedOrder);
-        return transformedOrder;
+         return transformedOrder;
         
       } catch (transformError) {
-        console.error(`❌ Error transforming order ${index}:`, transformError);
         // Return a minimal order object to prevent complete failure
         return {
           id: order.id || `order_${index}`,
@@ -1026,7 +1009,6 @@ const DashboardPage = () => {
       try {
         const token = localStorage.getItem("vendorToken");
         
-        console.log("token", token);
         if (!token) {
           setError("Authentication required. Please log in.");
           setAuthError(true);
@@ -1043,17 +1025,14 @@ const DashboardPage = () => {
           }
         });
         
-        console.log("Vendor response status:", vendorResponse.status);
         
         if (vendorResponse.status === 404) {
-          console.log("Vendor not found (404). Redirecting to onboarding.");
           window.location.href = '/onboarding?step=basic-info';
           setLoading(false);
           return;
         }
         
         if (vendorResponse.status === 401 || vendorResponse.status === 403) {
-          console.log("Authentication failed. Redirecting to sign-in.");
           localStorage.removeItem("vendorToken");
           setAuthError(true);
           setError("Your session has expired. Please log in again.");
@@ -1066,7 +1045,6 @@ const DashboardPage = () => {
         }
         
         const vendorData = await vendorResponse.json();
-        console.log("Vendor data:", vendorData);
         
         // Check onboarding completion status
         const onboardingCheck = checkOnboardingCompletion(vendorData);
@@ -1095,7 +1073,6 @@ const DashboardPage = () => {
 
         // Fetch recent vendor orders
         try {
-          console.log("🔍 Fetching vendor-filtered orders for dashboard...");
           
           const orderResponse = await fetch("http://localhost:9000/vendors/orders?limit=10", {
             method: "GET",
@@ -1106,19 +1083,15 @@ const DashboardPage = () => {
           });
           
           if (!orderResponse.ok) {
-            console.warn(`Could not fetch orders: ${orderResponse.status} ${orderResponse.statusText}`);
-            setOrders([]);
+           setOrders([]);
           } else {
             const orderData = await orderResponse.json();
-            console.log("Raw order data for dashboard:", orderData);
             
             const transformedOrders = transformVendorOrders(orderData);
-            console.log("Transformed orders for dashboard:", transformedOrders);
             
             setOrders(transformedOrders);
           }
         } catch (orderError) {
-          console.error("Error fetching orders:", orderError);
           setOrders([]);
         }
         
@@ -1133,11 +1106,9 @@ const DashboardPage = () => {
           });
           
           if (!productResponse.ok) {
-            console.warn(`Warning: Could not fetch products: ${productResponse.statusText}`);
             setProducts([]);
           } else {
             const productData = await productResponse.json();
-            console.log("Product data:", productData);
             
             // Transform products
             const transformedProducts = (productData.products || []).map((product: any): Product => {
@@ -1161,12 +1132,10 @@ const DashboardPage = () => {
             setProducts(transformedProducts);
           }
         } catch (productError) {
-          console.error("Error fetching products:", productError);
-          setProducts([]);
+         setProducts([]);
         }
         
       } catch (err: any) {
-        console.error("Error fetching data:", err);
         setError(err.message || "Failed to load dashboard data");
       } finally {
         setLoading(false);
@@ -1198,7 +1167,6 @@ const DashboardPage = () => {
       order.fulfillment_status
     );
     
-    console.log("Valid orders for stats:", validOrders.length, "out of", orders.length);
     
     const totalRevenue = validOrders.reduce((sum, order) => {
       return sum + (order.vendor_total || 0);

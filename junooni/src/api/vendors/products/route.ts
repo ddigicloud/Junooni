@@ -40,6 +40,8 @@ export const GET = async (
       "vendor.products.categories.*",
       "vendor.products.tags.*",
       "vendor.products.vendor.*",
+      //"vendor.products.size_chart.*",
+      //"vendor.products.artwork.*",
       "vendor.products.metadata"
     ],
     filters: {
@@ -63,7 +65,8 @@ export const POST = async (
     .run({
       input: {
         vendor_admin_id: req.auth_context.actor_id,
-        product: req.validatedBody
+        product: req.validatedBody,
+        additional_data: req.validatedBody.additional_data
       }
     })
 

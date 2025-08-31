@@ -227,7 +227,7 @@
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@medusajs/ui"
+import { Button, clx } from "@medusajs/ui"
 import WishlistButton from "@modules/wishlists/components/wishlist-button"
 import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
@@ -237,11 +237,27 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import MobileActions from "./mobile-actions"
 import InlineWishlistButton from "./InlineWishlistButton"
-import { Heart, Share2, ShoppingCart,ArrowRight} from "lucide-react";
+import { Heart, Share2, ShoppingCart, ArrowRight, X, Ruler  } from "lucide-react";
 import ShareButton from "./ShareButton"; // (top of your file, add import)
 
+// Extend the StoreProduct type to include size_chart
+type ExtendedStoreProduct = HttpTypes.StoreProduct & {
+  size_chart?: {
+    id: string
+    name?: string
+    chart?: string
+    sku?: string
+    manufacturer?: string
+    manufacturer_sku?: string
+    chart_url?: string
+    created_at: string
+    updated_at: string
+    deleted_at?: string
+  }
+}
+
 type ProductActionsProps = {
-  product: HttpTypes.StoreProduct
+  product: ExtendedStoreProduct
   region: HttpTypes.StoreRegion
   disabled?: boolean
 }
@@ -250,6 +266,7 @@ function stripHtml(html: string): string {
   if (!html) return ""
   return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim()
 }
+
 // Helper function to convert variant options into a key-value map
 const optionsAsKeymap = (
   variantOptions?: HttpTypes.StoreProductVariant["options"]
@@ -260,7 +277,6 @@ const optionsAsKeymap = (
   }, {}) ?? {}
 }
 
-
 export default function ProductActions({
   product,
   disabled,
@@ -269,6 +285,7 @@ export default function ProductActions({
   const [isAdding, setIsAdding] = useState(false)
   const [quantity, setQuantity] = useState(1) // Quantity state
   const [optionMetadata, setOptionMetadata] = useState<Record<string, any>>({}) // Store color metadata
+  const [showSizeChart, setShowSizeChart] = useState(false) // Size chart visibility state
   const countryCode = useParams().countryCode as string
   const [addedVariantIds, setAddedVariantIds] = useState<string[]>([])
   
@@ -365,7 +382,6 @@ export default function ProductActions({
     setIsAdding(false)
   }
   
-  
   // Increase quantity
   const increaseQuantity = () => {
     setQuantity((prev) => prev + 1)
@@ -394,6 +410,61 @@ export default function ProductActions({
                 dangerouslySetInnerHTML={{ __html: product.subtitle }}
               />
               {(product.options || []).map((option) => {
+                // Special handling for Size option to include size chart link
+                if (option.title === "Size") {
+                  return (
+                    <div key={option.id}>
+                      {/* Custom header for Size with Size Chart link */}
+                      <div className="flex items-center gap-4 mb-3">
+                        <span className="text-m font-semibold">Select {option.title}</span>
+                        {product.size_chart && product.size_chart.chart && (
+                          <button
+                            onClick={() => setShowSizeChart(true)}
+                            className="text-[#e65100] hover:text-[#d84315] text-sm font-semibold flex items-center gap-1 hover:underline"
+                          >
+                            SIZE CHART
+                            
+                            <Ruler size={14} strokeWidth={2} />
+                            {/* <svg 
+                              width="12" 
+                              height="12" 
+                              viewBox="0 0 24 24" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              strokeWidth="2"
+                            >
+                              <polyline points="9,18 15,12 9,6"></polyline>
+                            </svg> */}
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Size options without title since we rendered it above */}
+                      <div className="flex gap-3" data-testid="product-options">
+                        {(option.values ?? []).map((v) => (
+                          <button
+                            onClick={() => setOptionValue(option.id, v.value)}
+                            key={v.value}
+                            className={clx(
+                              "border-ui-border-base border rounded-md text-small-regular w-12 h-10",
+                              {
+                                "bg-[#E65100] text-white border-4 border-[#E65100]": v.value === options[option.id],
+                                "border-ui-border-base hover:border-[#E65100]": v.value !== options[option.id],
+                                "transition-shadow ease-in-out duration-150": v.value !== options[option.id],
+                              }
+                            )}
+                            disabled={!!disabled || isAdding}
+                            data-testid="option-button"
+                          >
+                            {v.value}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                }
+                
+                // Regular handling for non-Size options
                 return (
                   <div key={option.id}>
                     <OptionSelect
@@ -408,6 +479,18 @@ export default function ProductActions({
                   </div>
                 )
               })}
+
+              {/* Size Chart Link - Show only if size chart exists */}
+              {/* {product.size_chart && product.size_chart.chart && (
+                <div className="mb-2">
+                  <button
+                    onClick={() => setShowSizeChart(true)}
+                    className="text-[#e65100] hover:text-[#d84315] underline text-sm font-medium"
+                  >
+                    Show size-chart
+                  </button>
+                </div>
+              )} */}
 
               {/* Quantity Selector */}
               <div>
@@ -437,104 +520,49 @@ export default function ProductActions({
           )}
         </div>
 
-        {/* <ProductPrice product={product} variant={selectedVariant} /> */}
+        <div className="flex items-center justify-start gap-3">
+          <Button
+            onClick={isVariantInCart ? () => window.location.href = '/cart' : handleAddToCart}
+            disabled={
+              !inStock ||
+              !selectedVariant ||
+              !!disabled ||
+              isAdding ||
+              !isValidVariant
+            }
+            variant="primary"
+            className="text-lg font-medium mb-2 w-full h-12 text-white bg-[#e65100] hover:bg-[#d84315] shadow-none border-none"
+            isLoading={isAdding}
+            data-testid="add-product-button"
+          >
+            {!selectedVariant && !options
+              ? "Select variant"
+              : !inStock || !isValidVariant
+              ? "Out of stock"
+              : (
+                <>
+                <ShoppingCart size={18} className="mr-2" />
+                {isVariantInCart ? (
+                  <>
+                    Go to Cart
+                    <ArrowRight size={24} className="ml-2 " />
+                  </>
+                ) : (
+                  "Add to Cart"
+                )}
+              </>
+              
+              )}
+          </Button>
 
-                <div className="flex items-center justify-start gap-3">
-                    <Button
-                      onClick={isVariantInCart ? () => window.location.href = '/cart' : handleAddToCart}
-                      disabled={
-                        !inStock ||
-                        !selectedVariant ||
-                        !!disabled ||
-                        isAdding ||
-                        !isValidVariant
-                      }
-                      variant="primary"
-                      className="text-lg font-medium mb-2 w-full h-12 text-white bg-[#e65100] hover:bg-[#d84315] shadow-none border-none"
-                      isLoading={isAdding}
-                      data-testid="add-product-button"
-                    >
-                      {!selectedVariant && !options
-                        ? "Select variant"
-                        : !inStock || !isValidVariant
-                        ? "Out of stock"
-                        : (
-                          <>
-                          <ShoppingCart size={18} className="mr-2" />
-                          {isVariantInCart ? (
-                            <>
-                              Go to Cart
-                              <ArrowRight size={24} className="ml-2 " />
-                            </>
-                          ) : (
-                            "Add to Cart"
-                          )}
-                        </>
-                        
-                        )}
-                    </Button>
-          
-                  {/* <Button
-                    onClick={handleAddToCart}
-                    disabled={
-                      !inStock ||
-                      !selectedVariant ||
-                      !!disabled ||
-                      isAdding ||
-                      !isValidVariant
-                    }
-                    variant="primary"
-                    // className="w-1/2 h-10"
-                    className="text-lg font-medium mb-2 w-full h-12 text-white bg-[#E65100] hover:bg-[#d84315] shadow-none hover:shadow-none focus:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    isLoading={isAdding}
-                    data-testid="add-product-button"
-                  >
-                    {!selectedVariant && !options
-                      ? "Select variant"
-                      : !inStock || !isValidVariant
-                      ? "Out of stock"
-                      : (
-                        <>
-                          <ShoppingCart size={18} className="mr-2" />
-                          Add to Cart
-                        </>
-                      )}
-                  </Button> */}
-        
-                  {/* Social Buttons */}
-                    <div className="flex items-center gap-2 mt-4 mb-6">
-                      {/* <button className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
-                        <Heart size={20} />
-                      </button> */}
-                      <div className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
-                      <InlineWishlistButton variantId={wishlistVariantId} />
-                    </div>
-                       <ShareButton url={typeof window !== "undefined" ? window.location.href : ""} title={product.title} />
-                      {/* <button className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
-                        <Share2 size={20} />
-                      </button> */}
-                    </div>
-        
-                  {/* {inStock && (
-                    <Button
-                      variant="primary"
-                      className="w-full h-10"
-                      disabled={
-                        !inStock ||
-                        !selectedVariant ||
-                        !!disabled ||
-                        isAdding ||
-                        !isValidVariant
-                      }
-                    >
-                      {!selectedVariant && !options
-                        ? "Select variant"
-                        : !inStock || !isValidVariant
-                        ? "Out of stock"
-                        : "Buy it now"}
-                    </Button>
-                  )} */}
-                </div>
+          {/* Social Buttons */}
+          <div className="flex items-center gap-2 mt-4 mb-6">
+            <div className="w-12 h-12 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:border-[#e65100] hover:text-[#e65100] transition">
+            <InlineWishlistButton variantId={wishlistVariantId} />
+          </div>
+             <ShareButton url={typeof window !== "undefined" ? window.location.href : ""} title={product.title} />
+          </div>
+        </div>
 
         <MobileActions
           product={product}
@@ -548,6 +576,27 @@ export default function ProductActions({
           optionsDisabled={!!disabled || isAdding}
         />
       </div>
+
+      {/* Size Chart Modal */}
+      {showSizeChart && product.size_chart && product.size_chart.chart && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="rounded-lg max-w-4xl max-h-[90vh] overflow-y-auto relative w-full">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowSizeChart(false)}
+              className="absolute top-4 right-4 z-10 p-2 bg-gray-100 hover:bg-gray-200 rounded-full"
+            >
+              <X size={20} />
+            </button>
+            
+            {/* Size Chart Content */}
+            <div 
+              className="p-4"
+              dangerouslySetInnerHTML={{ __html: product.size_chart.chart }}
+            />
+          </div>
+        </div>
+      )}
     </>
   )
 }

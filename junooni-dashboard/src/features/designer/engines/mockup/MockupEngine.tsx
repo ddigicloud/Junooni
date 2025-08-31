@@ -184,6 +184,7 @@ interface EnhancedMockupEngineProps {
   canvasPrintableAreas: Record<string, any>;
   displayDimensions: { width: number; height: number };
   productType: string;
+  showBadges?: boolean;
   productColor: string;
   fabricSettings?: {
     enableRealisticFabric: boolean;
@@ -226,6 +227,7 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
   },
   surfaceConfiguration,
   renderEngine = 'auto',
+   showBadges = true,
   enablePixiFeatures = true,
   onRenderComplete
 }) => {

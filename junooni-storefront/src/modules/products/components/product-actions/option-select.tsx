@@ -111,7 +111,7 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
   
   return (
     <div className="flex flex-col gap-y-3">
-      <span className="text-sm">Select {title}</span>
+      <span className="text-m font-semibold">Select {title}</span>
       <div
         className="flex gap-3"
         data-testid={dataTestId}

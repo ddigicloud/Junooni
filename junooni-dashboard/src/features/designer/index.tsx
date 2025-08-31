@@ -34,7 +34,7 @@ useEffect(() => {
   return (
     <>
     
-    <div className="min-h-screen p-8 bg-background">
+    <div className="min-h-screen p-4 bg-background">
       <TShirtDesigner  productId={id as string}  />
     </div>
     </>

@@ -398,7 +398,7 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
         {/* Order Status Banner */}
         <div className={`mt-6 p-4 rounded-lg ${
           order.payment_status === "captured" && order.fulfillment_status === "not_fulfilled"
-            ? "bg-blue-50 border border-blue-200" 
+            ? "bg-orange-50 border border-orange-200" 
             : order.payment_status === "captured" && order.fulfillment_status === "fulfilled"
             ? "bg-green-50 border border-green-200"
             : "bg-yellow-50 border border-yellow-200"
@@ -406,7 +406,7 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               {order.payment_status === "captured" && order.fulfillment_status === "not_fulfilled" && (
-                <AlertCircle className="w-5 h-5 text-blue-600" />
+                <AlertCircle className="w-5 h-5 text-orange-600" />
               )}
               {order.payment_status === "captured" && order.fulfillment_status === "fulfilled" && (
                 <Check className="w-5 h-5 text-green-600" />
@@ -418,7 +418,7 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
             <div className="ml-3">
               <h3 className={`text-sm font-medium ${
                 order.payment_status === "captured" && order.fulfillment_status === "not_fulfilled"
-                  ? "text-blue-800" 
+                  ? "text-orange-800" 
                   : order.payment_status === "captured" && order.fulfillment_status === "fulfilled"
                   ? "text-green-800"
                   : "text-yellow-800"
@@ -427,7 +427,7 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
               </h3>
               <div className={`mt-1 text-sm ${
                 order.payment_status === "captured" && order.fulfillment_status === "not_fulfilled"
-                  ? "text-blue-700" 
+                  ? "text-orange-700" 
                   : order.payment_status === "captured" && order.fulfillment_status === "fulfilled"
                   ? "text-green-700"
                   : "text-yellow-700"

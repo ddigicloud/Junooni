@@ -333,6 +333,22 @@ interface StoreImportData {
       }>;
     }>;
   }>;
+  // 🔥 ADD DESIGN IMAGES PROPERTY
+  design_images?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    base64Data: string;
+    originalWidth: number;
+    originalHeight: number;
+    area: string;
+    position: { x: number; y: number };
+    dimensions: { width: number; height: number };
+    rotation?: number;
+    scaleX?: number;
+    scaleY?: number;
+    opacity?: number;
+  }>;
   generation_summary: {
     total_combinations: number;
     total_images_generated: number;
@@ -536,14 +552,6 @@ const convertFileToBase64 = (file: File): Promise<string> => {
 };
 
 const convertImageToBase64 = (img) => {
-  console.log('🔄 Converting image to base64...');
-  console.log('Image properties:', {
-    src: img.src.substring(0, 100) + '...',
-    naturalWidth: img.naturalWidth,
-    naturalHeight: img.naturalHeight,
-    complete: img.complete,
-    crossOrigin: img.crossOrigin
-  });
 
   return new Promise((resolve, reject) => {
     try {
@@ -559,24 +567,16 @@ const convertImageToBase64 = (img) => {
       canvas.width = img.naturalWidth || img.width;
       canvas.height = img.naturalHeight || img.height;
       
-      console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
-      
       // Draw image to canvas
       ctx.drawImage(img, 0, 0);
       
       // Convert to base64 with high quality
       const base64 = canvas.toDataURL('image/png', 0.95);
       
-      console.log('✅ Base64 conversion successful:', {
-        length: base64.length,
-        sizeKB: Math.round(base64.length / 1024),
-        preview: base64.substring(0, 50) + '...'
-      });
-      
       resolve(base64);
       
     } catch (error) {
-      console.error('❌ Base64 conversion failed:', error);
+
       reject(error);
     }
   });
@@ -590,24 +590,17 @@ const loadImageWithCORS = (src) => {
     img.crossOrigin = 'anonymous';
     
     img.onload = async () => {
-      console.log('✅ Image loaded successfully:', {
-        src: src.substring(0, 100) + '...',
-        dimensions: `${img.naturalWidth}x${img.naturalHeight}`,
-        complete: img.complete
-      });
       
       try {
         const base64 = await convertImageToBase64(img);
         resolve({ img, base64 });
       } catch (error) {
-        console.error('❌ Failed to convert to base64:', error);
         // Still resolve with image but without base64
         resolve({ img, base64: null, error: error.message });
       }
     };
     
     img.onerror = (error) => {
-      console.error('❌ Image loading failed:', error);
       reject(new Error(`Failed to load image: ${src}`));
     };
     
@@ -660,10 +653,8 @@ const validateImageFile = (file: File): { valid: boolean; error?: string } => {
 
 const extractAllMockupsFromPayload = (productData: PayloadProductData): DynamicMockupPhoto[] => {
   try {
-    console.log('ðŸ” Extracting all mockups from payload');
 
     if (!productData?.printTechn || !Array.isArray(productData.printTechn)) {
-      console.error('âŒ Invalid printTechn data');
       return [];
     }
 
@@ -686,10 +677,8 @@ const extractAllMockupsFromPayload = (productData: PayloadProductData): DynamicM
       return (a.priority || 0) - (b.priority || 0);
     });
 
-    console.log('âœ… Extracted all mockups:', allMockups.length, 'mockups found');
     return allMockups;
   } catch (error) {
-    console.error('âŒ Error extracting all mockups:', error);
     return [];
   }
 };
@@ -713,12 +702,8 @@ const getMockupsForColor = (
       allMockups.push(mockup);
     });
   });
-
-  console.log(`🎨 Getting mockups for color: ${colorHex}`);
-  console.log(`📦 Available mockups: ${allMockups.length}`);
   
   if (!productData?.colorOptions) {
-    console.log(`⚠️ No color options in product data, returning all mockups`);
     return allMockups;
   }
 
@@ -730,17 +715,14 @@ const getMockupsForColor = (
   const targetColorInfo = colorMatcher.getColorInfo(colorHex);
   
   if (!targetColorInfo) {
-    console.log(`⚠️ Target color ${colorHex} not found in product data, using all mockups`);
     return allMockups;
   }
 
   // Filter mockups for the specific color
   const colorMockups = allMockups.filter(mockup => {
-    console.log(`   🔍 Checking mockup "${mockup.title}": ${mockup.photoColor} vs ${colorHex}`);
     
     // Direct color match using our matcher
     if (colorMatcher.areColorsSimilar(mockup.photoColor || '', colorHex)) {
-      console.log(`   ✅ DIRECT MATCH: ${mockup.title}`);
       return true;
     }
     
@@ -748,18 +730,14 @@ const getMockupsForColor = (
     const mockupColor = mockup.photoColor?.toLowerCase() || '';
     
     if (neutralDetector.isNeutral(mockupColor)) {
-      console.log(`   🔄 WHITE BASE: ${mockup.title} (can be overlaid with ${targetColorInfo.name})`);
       return true;
     }
     
     return false;
   });
-
-  console.log(`📊 Result: ${colorMockups.length} mockups for color ${targetColorInfo.name} (${colorHex})`);
   
   // If no specific mockups found, return neutral mockups that can be overlaid
   if (colorMockups.length === 0) {
-    console.log(`🔄 No specific mockups found, searching for neutral base mockups...`);
     
     // 🔥 FIXED: Use dynamic neutral detection
     const neutralMockups = allMockups.filter(mockup => {
@@ -767,7 +745,6 @@ const getMockupsForColor = (
       return neutralDetector.isNeutral(mockupColor);
     });
     
-    console.log(`🔄 Found ${neutralMockups.length} neutral mockups for overlay`);
     return neutralMockups;
   }
   
@@ -787,26 +764,17 @@ const calculateTotalMockups = (
   let totalMockups = 0;
   const calculationBreakdown: MockupCalculationResult['calculationBreakdown'] = [];
 
-  console.log('\nðŸ§® === CORRECTED MOCKUP CALCULATION ===');
-  console.log(`ðŸ“Š PayloadCMS Config: color_Images=${color_Images}, size_Images=${size_Images}`);
-  console.log(`ðŸŽ¨ Selected Colors: ${selectedColors.length}`);
-  console.log(`ðŸ“ Selected Sizes: ${selectedSizes.length}`);
-
   // ðŸ”¥ CORRECTED: Determine strategy based on BOTH flags
   let strategy: MockupCalculationResult['strategy'];
   
   if (color_Images && size_Images) {
     strategy = 'color_and_size_specific';
-    console.log('ðŸ“‹ Strategy: COLOR_AND_SIZE_SPECIFIC (each color-size combination gets unique images)');
   } else if (color_Images && !size_Images) {
     strategy = 'color_specific';
-    console.log('ðŸ“‹ Strategy: COLOR_SPECIFIC (each color gets unique images, shared across sizes)');
   } else if (!color_Images && size_Images) {
     strategy = 'size_specific';
-    console.log('ðŸ“‹ Strategy: SIZE_SPECIFIC (each size gets unique images, shared across colors)');
   } else {
     strategy = 'shared_across_all';
-    console.log('ðŸ“‹ Strategy: SHARED_ACROSS_ALL (same images for all colors and sizes)');
   }
 
   if (strategy === 'color_and_size_specific') {
@@ -827,20 +795,19 @@ const calculateTotalMockups = (
       
       totalMockups += subtotal;
       
-      console.log(`  ðŸŽ¨ ${color.name}: ${mockupsForColor.length} mockups Ã— ${sizesCount} sizes = ${subtotal}`);
     });
 
   } else if (strategy === 'color_specific') {
-    // ðŸ”¥ CORRECTED: Colors get unique images, but sizes share them
+    // CORRECTED: Colors get unique images, but sizes share them
     selectedColors.forEach(color => {
       const mockupsForColor = getMockupsForColor(productData, color.value);
       const sizesCount = 1; // Sizes share the same images
-      const subtotal = mockupsForColor.length; // No multiplication for sizes
+      const subtotal = 1; // No multiplication for sizes
       
       calculationBreakdown.push({
         color: color.name,
         colorHex: color.value,
-        mockupsForColor: mockupsForColor.length,
+        mockupsForColor: 1,
         sizesCount,
         subtotal,
         mockups: mockupsForColor
@@ -848,7 +815,6 @@ const calculateTotalMockups = (
       
       totalMockups += subtotal;
       
-      console.log(`  ðŸŽ¨ ${color.name}: ${mockupsForColor.length} mockups Ã— 1 (shared across ${selectedSizes.length} sizes) = ${subtotal}`);
     });
 
   } else if (strategy === 'size_specific') {
@@ -867,8 +833,6 @@ const calculateTotalMockups = (
     });
     
     totalMockups = subtotal;
-    
-    console.log(`  ðŸ“ Sizes: ${baseColorMockups.length} mockups Ã— ${sizesCount} sizes = ${subtotal} (shared across ${selectedColors.length} colors)`);
 
   } else {
     // Everything is shared
@@ -884,18 +848,9 @@ const calculateTotalMockups = (
       mockups: allMockups
     });
     
-    console.log(`  ðŸ”„ Shared: ${allMockups.length} mockups (used for all ${selectedColors.length} colors and ${selectedSizes.length} sizes)`);
   }
-
-  console.log(`\nðŸŽ¯ FINAL CALCULATION:`);
-  console.log(`   Strategy: ${strategy}`);
-  console.log(`   Total unique mockups: ${totalMockups}`);
-  console.log(`   color_Images: ${color_Images} | size_Images: ${size_Images}`);
   
   if (!size_Images) {
-    console.log(`   ðŸ“ size_Images=false: Images will be SHARED across ${selectedSizes.length} sizes`);
-  } else {
-    console.log(`   ðŸ“ size_Images=true: Each size will get SEPARATE images`);
   }
 
   return {
@@ -912,14 +867,11 @@ const getColorSpecificMockupGroups = (
   selectedColors: Array<{ name: string; value: string }>
 ): ColorSpecificMockupGroup[] => {
   
-  console.log('\n🎨 === BUILDING DYNAMIC COLOR-SPECIFIC MOCKUP GROUPS ===');
-  
   const groups: ColorSpecificMockupGroup[] = [];
   const colorMatcher = createCanvasColorMatcher(productData);
   
   if (!productData.color_Images) {
-    // If color_Images is false, all colors share the same mockups
-    console.log('🔄 color_Images=false: All colors will share mockups');
+    // If color_Images is false, all colors share the same mockup
     
     const firstColor = selectedColors[0];
     const sharedMockups = firstColor ? getMockupsForColor(productData, firstColor.value) : [];
@@ -933,19 +885,15 @@ const getColorSpecificMockupGroups = (
       });
     });
     
-    console.log('🔄 Using shared mockups for all colors');
     return groups;
   }
 
   // color_Images = true: Each color gets its specific mockups
-  console.log('🎯 color_Images=true: Each color gets specific mockups');
   
   selectedColors.forEach(color => {
-    console.log(`\n🎨 Processing color: ${color.name} (${color.value})`);
     
     // Validate color exists in product data
     if (!colorMatcher.isValidColor(color.value) && !colorMatcher.isValidColor(color.name)) {
-      console.warn(`⚠️ Color ${color.name} (${color.value}) not found in product data`);
     }
     
     const colorMockups = getMockupsForColor(productData, color.value);
@@ -957,17 +905,11 @@ const getColorSpecificMockupGroups = (
       imageCount: colorMockups.length
     });
     
-    console.log(`🎨 ${color.name} (${color.value}): ${colorMockups.length} mockups`);
     colorMockups.forEach(mockup => {
-      console.log(`   - ${mockup.title} (${mockup.photoColor})`);
     });
   });
 
   const totalUniqueMockups = groups.reduce((sum, group) => sum + group.imageCount, 0);
-  console.log(`\n📊 DYNAMIC GROUPS SUMMARY:`);
-  console.log(`   Total groups: ${groups.length}`);
-  console.log(`   Total unique mockups: ${totalUniqueMockups}`);
-  console.log(`   Available colors in product: ${colorMatcher.getAllColors().length}`);
 
   return groups;
 };
@@ -980,29 +922,13 @@ const getProductColorForMockup = (
   selectedColor: string, 
   productData?: PayloadProductData
 ) => {
-  console.log(`🎨 === FIXED COLOR MAPPING ===`);
-  console.log(`📋 Mockup: "${mockup?.title}" (Original: ${mockup?.photoColor})`);
-  console.log(`🎯 Selected Color: ${selectedColor}`);
   
   // 🔥 CRITICAL FIX: ALWAYS use the selected color
   // This ensures #87CEEB shows as #87CEEB, not #588157
   
   const neutralDetector = createDynamicNeutralDetector(productData);
   const mockupColor = mockup.photoColor?.toLowerCase().trim() || '';
-  
-  // Log transformation but ALWAYS return selected color
-  if (mockupColor !== selectedColor.toLowerCase()) {
-    if (neutralDetector.isNeutral(mockupColor)) {
-      console.log(`✅ NEUTRAL BASE → COLOR OVERLAY: ${selectedColor}`);
-    } else {
-      console.log(`🔄 COLOR TRANSFORM: ${mockupColor} → ${selectedColor}`);
-    }
-  } else {
-    console.log(`✅ EXACT MATCH: ${selectedColor}`);
-  }
-  
-  // 🔥 ALWAYS return selected color - no exceptions!
-  console.log(`✅ FINAL COLOR: ${selectedColor}`);
+
   return selectedColor;
 };
 
@@ -1015,109 +941,6 @@ class EnhancedMockupGenerator {
   private generationQueue = new Map<string, Promise<string | null>>();
   private renderCache = new Map<string, string>();
 
-  // private capturePreviewRender = async (
-  //   mockup: DynamicMockupPhoto,
-  //   designElements: Record<string, DesignElement[]>,
-  //   canvasConfigs: Record<string, any>,
-  //   printableAreas: Record<string, any>,
-  //   productColor: string,
-  //   productData: any,
-  //   targetResolution: number = 1000
-  // ): Promise<string> => {
-  //   return new Promise((resolve, reject) => {
-  //     console.log(`ðŸ”¸ CAPTURING: ${mockup.title} in color ${productColor}`);
-      
-  //     const container = document.createElement('div');
-  //     container.style.cssText = `
-  //       position: fixed;
-  //       top: 50px;
-  //       left: 50px;
-  //       width: 400px;
-  //       height: 400px;
-  //       background: white;
-  //       border: 2px solid #ec5100;
-  //       z-index: 9999;
-  //       opacity: 0.9;
-  //       pointer-events: none;
-  //     `;
-  //     container.innerHTML = `<div style="position: absolute; top: 5px; left: 5px; background: #ec5100; color: white; padding: 2px 6px; font-size: 12px; z-index: 10001;">Generating ${mockup.title}</div>`;
-  //     container.id = `capture-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  //     document.body.appendChild(container);
-      
-  //     import('react-dom/client').then(async ({ createRoot }) => {
-  //       const root = createRoot(container);
-        
-  //       let renderCompleted = false;
-  //       let renderTimeout: NodeJS.Timeout;
-        
-  //       const mockupComponent = React.createElement(EnhancedMockupEngine, {
-  //         mockup,
-  //         designElements,
-  //         canvasConfigs,
-  //         canvasPrintableAreas: printableAreas,
-  //         displayDimensions: { width: targetResolution, height: targetResolution },
-  //         productType: productData?.productType || 'drinkware',
-  //         productColor,
-  //         renderEngine: 'canvas',
-  //         enablePixiFeatures: true,
-  //         onRenderComplete: async (imageData: string) => {
-  //           if (renderCompleted) return;
-  //           renderCompleted = true;
-            
-  //           if (renderTimeout) clearTimeout(renderTimeout);
-            
-  //           setTimeout(() => {
-  //             try {
-  //               root.unmount();
-  //               if (document.body.contains(container)) {
-  //                 document.body.removeChild(container);
-  //               }
-  //             } catch (e) {
-  //               console.warn('Cleanup warning:', e);
-  //             }
-  //           }, 100);
-            
-  //           resolve(imageData);
-  //         },
-  //         onProgress: (progress: number) => {
-  //           console.log(`ðŸ“„ PROGRESS: ${mockup.title} ${progress}%`);
-  //         }
-  //       });
-        
-  //       renderTimeout = setTimeout(async () => {
-  //         if (renderCompleted) return;
-  //         renderCompleted = true;
-          
-  //         try {
-  //           root.unmount();
-  //           if (document.body.contains(container)) {
-  //             document.body.removeChild(container);
-  //           }
-  //         } catch (e) {
-  //           console.warn('Timeout cleanup warning:', e);
-  //         }
-          
-  //         reject(new Error(`Timeout capturing ${mockup.title}`));
-  //       }, 15000);
-        
-  //       root.render(mockupComponent);
-        
-  //     }).catch(error => {
-  //       console.error(`âŒ ReactDOM import failed:`, error);
-  //       if (document.body.contains(container)) {
-  //         document.body.removeChild(container);
-  //       }
-  //       reject(error);
-  //     });
-  //   });
-  // };
-
-  // COMPLETE FIXED capturePreviewRender METHOD
-// Replace your existing method in EnhancedMockupGenerator class with this:
-
-// 🔥 FIXED: Canvas engine with NO CONTAINER AT ALL
-// Replace your capturePreviewRender and related methods with these:
-
 private capturePreviewRender = async (
   mockup: DynamicMockupPhoto,
   designElements: Record<string, DesignElement[]>,
@@ -1128,24 +951,16 @@ private capturePreviewRender = async (
   targetResolution: number = 1000
 ): Promise<string> => {
   
-  console.log(`🎯 === ROBUST RENDER ENGINE ROUTING ===`);
-  console.log(`📋 Mockup: ${mockup.title}`);
-  console.log(`🎨 Product Color: ${productColor}`);
-  console.log(`📦 Product Type: ${productData?.productType}`);
-  
   const selectedEngine = this.determineEngine(mockup);
-  console.log(`⚙️ Selected Engine: ${selectedEngine}`);
   
   if (selectedEngine === 'canvas_professional') {
-    console.log(`🎨 Using Canvas Professional - SIMPLIFIED APPROACH`);
     return await this.captureWithCanvasSimplified(mockup, designElements, canvasConfigs, printableAreas, productColor, productData, targetResolution);
   } else {
-    console.log(`🎮 Using PIXI Dynamic - CONTAINER APPROACH`);
     return await this.captureWithPixiContainer(mockup, designElements, canvasConfigs, printableAreas, productColor, productData, targetResolution);
   }
 };
 
-// 🔥 SIMPLIFIED CANVAS ENGINE - No progress dependency
+// Fixed captureWithCanvasSimplified method with PIXI fallback
 private captureWithCanvasSimplified = async (
   mockup: DynamicMockupPhoto,
   designElements: Record<string, DesignElement[]>,
@@ -1156,175 +971,199 @@ private captureWithCanvasSimplified = async (
   targetResolution: number
 ): Promise<string> => {
   
-  console.log(`🎨 === CANVAS SIMPLIFIED - NO PROGRESS DEPENDENCY ===`);
-  console.log(`🔧 Simplified approach for reliable Canvas rendering`);
+  // Try Canvas engine first with 15 second timeout
+  try {
+    const canvasResult = await this.tryCanvasEngine(
+      mockup, designElements, canvasConfigs, printableAreas, 
+      productColor, productData, targetResolution
+    );
+    
+    return canvasResult;
+    
+  } catch (canvasError) {
+    
+    // Fallback to PIXI engine
+    try {
+      const pixiResult = await this.captureWithPixiContainer(
+        mockup, designElements, canvasConfigs, printableAreas, 
+        productColor, productData, targetResolution
+      );
+      
+      return pixiResult;
+      
+    } catch (pixiError) {
+      throw new Error(`Both Canvas and PIXI failed: Canvas: ${canvasError.message}, PIXI: ${pixiError.message}`);
+    }
+  }
+};
+
+// Separate method for Canvas engine attempt with timeout
+private tryCanvasEngine = async (
+  mockup: DynamicMockupPhoto,
+  designElements: Record<string, DesignElement[]>,
+  canvasConfigs: Record<string, any>,
+  printableAreas: Record<string, any>,
+  productColor: string,
+  productData: any,
+  targetResolution: number
+): Promise<string> => {
   
   return new Promise((resolve, reject) => {
     let renderCompleted = false;
     let renderTimeout: NodeJS.Timeout;
     let componentMounted = false;
     
-    // ✅ MINIMAL HIDDEN CONTAINER
+    // Create visible container for Canvas rendering
     const container = document.createElement('div');
     container.style.cssText = `
-      position: fixed;
-      top: -9999px;
-      left: -9999px;
-      width: 10px;
-      height: 10px;
-      visibility: hidden;
-      pointer-events: none;
-      opacity: 0;
-      z-index: -1;
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: ${targetResolution}px;
+  height: ${targetResolution}px;
+  background: white;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  overflow: hidden;
+`;
+    
+    // Visual indicator
+    container.innerHTML = `
+      <div style="position: absolute; top: 8px; left: 8px; background: #10b981; color: white; padding: 6px 12px; font-size: 12px; border-radius: 6px; font-weight: bold; z-index: 10001;">
+        Canvas Engine (15s timeout)
+      </div>
+      <div style="position: absolute; top: 8px; right: 8px; background: rgba(16,185,129,0.1); color: #10b981; padding: 6px 12px; font-size: 11px; border-radius: 6px; font-weight: bold;" id="canvas-progress">
+        Initializing...
+      </div>
+      <div style="position: absolute; bottom: 8px; left: 8px; background: rgba(16,185,129,0.1); color: #10b981; padding: 4px 8px; font-size: 10px; border-radius: 4px;">
+        ${mockup.title}
+      </div>
     `;
     
-    container.id = `canvas-simple-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    container.id = `canvas-pro-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     document.body.appendChild(container);
     
-    console.log(`🔧 Canvas simplified container created: ${container.id}`);
+    // Cleanup function
+    const cleanup = () => {
+      try {
+        if (componentMounted) {
+          componentMounted = false;
+        }
+        if (document.body.contains(container)) {
+          document.body.removeChild(container);
+        }
+      } catch (e) {
+      }
+    };
+    
+    // Set 15 second timeout
+    renderTimeout = setTimeout(() => {
+      if (renderCompleted) return;
+      renderCompleted = true;
+      
+      // Update progress to show timeout
+      const progressElement = container.querySelector('#canvas-progress');
+      if (progressElement) {
+        progressElement.textContent = 'Timeout!';
+        progressElement.style.background = '#f59e0b';
+        progressElement.style.color = 'white';
+      }
+      
+      // Cleanup and reject
+      setTimeout(cleanup, 500);
+      reject(new Error('Canvas engine timeout after 15 seconds'));
+      
+    }, 15000); // 15 second timeout
     
     import('react-dom/client').then(async ({ createRoot }) => {
-      console.log(`📦 ReactDOM imported successfully`);
-      
       const root = createRoot(container);
       componentMounted = true;
       
-      console.log(`🔧 React root created and mounted`);
-      
-      // ✅ SIMPLIFIED PROPS - Only essential props
       const mockupComponent = React.createElement(EnhancedMockupEngine, {
         mockup,
         designElements,
         canvasConfigs,
         canvasPrintableAreas: printableAreas,
-        displayDimensions: { width: targetResolution, height: targetResolution },
+        displayDimensions: { 
+          width: targetResolution,
+          height: targetResolution
+        },
         productType: productData?.productType || 'apparel',
         productColor,
         renderEngine: 'canvas',
         enablePixiFeatures: false,
+        
+        // Success handler
         onRenderComplete: (imageData: string) => {
-          if (renderCompleted) {
-            console.log(`⚠️ Canvas render complete called after timeout`);
-            return;
-          }
+          if (renderCompleted) return;
           renderCompleted = true;
           
-          console.log(`✅ CANVAS SIMPLIFIED render completed for ${mockup.title}`);
-          console.log(`📊 Image data length: ${imageData?.length || 0}`);
+          // Update progress indicator
+          const progressElement = container.querySelector('#canvas-progress');
+          if (progressElement) {
+            progressElement.textContent = 'Complete!';
+            progressElement.style.background = '#10b981';
+            progressElement.style.color = 'white';
+          }
           
           if (renderTimeout) clearTimeout(renderTimeout);
           
-          // Quick cleanup
-          setTimeout(() => {
-            try {
-              if (componentMounted) {
-                root.unmount();
-                componentMounted = false;
-              }
-              if (document.body.contains(container)) {
-                document.body.removeChild(container);
-                console.log(`🗑️ Canvas simplified container cleaned up`);
-              }
-            } catch (e) {
-              console.warn('Canvas simplified cleanup warning:', e);
-            }
-          }, 50);
+          // Delayed cleanup to show success
+          setTimeout(cleanup, 1000);
           
           if (imageData && imageData.length > 0) {
             resolve(imageData);
           } else {
-            reject(new Error('Canvas render completed but no image data received'));
+            reject(new Error('Canvas completed but no image data received'));
           }
         },
+        
+        // Progress handler
         onProgress: (progress: number) => {
-          // ✅ OPTIONAL - Log progress but don't depend on it
-          console.log(`🎨 CANVAS SIMPLIFIED PROGRESS: ${mockup.title} - ${progress}%`);
+          const progressElement = container.querySelector('#canvas-progress');
+          if (progressElement) {
+            progressElement.textContent = `${Math.round(progress)}%`;
+            if (progress > 50) {
+              progressElement.style.background = '#10b981';
+              progressElement.style.color = 'white';
+            }
+          }
         },
+        
+        // Error handler
         onError: (error: any) => {
           if (renderCompleted) return;
           renderCompleted = true;
           
-          console.error(`❌ Canvas simplified render error for ${mockup.title}:`, error);
+          // Update progress indicator
+          const progressElement = container.querySelector('#canvas-progress');
+          if (progressElement) {
+            progressElement.textContent = 'Error!';
+            progressElement.style.background = '#ef4444';
+            progressElement.style.color = 'white';
+          }
+          
           if (renderTimeout) clearTimeout(renderTimeout);
           
-          setTimeout(() => {
-            try {
-              if (componentMounted) {
-                root.unmount();
-                componentMounted = false;
-              }
-              if (document.body.contains(container)) {
-                document.body.removeChild(container);
-              }
-            } catch (e) {}
-          }, 50);
-          
-          reject(new Error(`Canvas simplified render error: ${error?.message || error}`));
+          // Cleanup and reject
+          setTimeout(cleanup, 2000);
+          reject(new Error(`Canvas render error: ${error?.message || error}`));
         }
       });
       
-      // ✅ EXTENDED TIMEOUT (40 seconds) - No progress dependency
-      renderTimeout = setTimeout(() => {
-        if (renderCompleted) return;
-        renderCompleted = true;
-        
-        console.error(`⏰ CANVAS SIMPLIFIED timeout for ${mockup.title} (40s limit)`);
-        console.error(`Component mounted: ${componentMounted}`);
-        console.error(`Container exists: ${document.body.contains(container)}`);
-        
-        try {
-          if (componentMounted) {
-            root.unmount();
-            componentMounted = false;
-          }
-          if (document.body.contains(container)) {
-            document.body.removeChild(container);
-          }
-        } catch (e) {
-          console.warn('Canvas timeout cleanup error:', e);
-        }
-        
-        reject(new Error(`Canvas simplified timeout (40s) - Component may not be calling onRenderComplete`));
-      }, 40000); // 40 second timeout
-      
-      // ✅ RENDER WITH COMPREHENSIVE ERROR HANDLING
+      // Render component with error handling
       try {
-        console.log(`🔧 Rendering Canvas component...`);
         root.render(mockupComponent);
-        console.log(`✅ Canvas component render() called successfully`);
-        
-        // ✅ COMPONENT HEALTH CHECK after 2 seconds
-        setTimeout(() => {
-          if (!renderCompleted && componentMounted) {
-            console.log(`🔧 Canvas component health check: Still rendering after 2s`);
-          }
-        }, 2000);
-        
-        // ✅ COMPONENT HEALTH CHECK after 10 seconds
-        setTimeout(() => {
-          if (!renderCompleted && componentMounted) {
-            console.warn(`⚠️ Canvas component taking longer than expected (10s)`);
-          }
-        }, 10000);
-        
+
       } catch (renderError) {
         if (!renderCompleted) {
           renderCompleted = true;
           if (renderTimeout) clearTimeout(renderTimeout);
           
-          console.error(`❌ Canvas render() threw error:`, renderError);
-          
-          try {
-            if (componentMounted) {
-              root.unmount();
-              componentMounted = false;
-            }
-            if (document.body.contains(container)) {
-              document.body.removeChild(container);
-            }
-          } catch (e) {}
-          
-          reject(new Error(`Canvas render() threw error: ${renderError.message}`));
+          cleanup();
+          reject(new Error(`Canvas render error: ${renderError.message}`));
         }
       }
       
@@ -1333,12 +1172,7 @@ private captureWithCanvasSimplified = async (
         renderCompleted = true;
         if (renderTimeout) clearTimeout(renderTimeout);
         
-        console.error(`❌ Canvas ReactDOM import failed:`, importError);
-        
-        if (document.body.contains(container)) {
-          document.body.removeChild(container);
-        }
-        
+        cleanup();
         reject(new Error(`ReactDOM import failed: ${importError.message}`));
       }
     });
@@ -1356,39 +1190,37 @@ private captureWithPixiContainer = async (
   targetResolution: number
 ): Promise<string> => {
   
-  console.log(`🎮 === PIXI ENGINE - VISIBLE CONTAINER (WORKING) ===`);
-  
   return new Promise((resolve, reject) => {
     let renderCompleted = false;
     let renderTimeout: NodeJS.Timeout;
     
     const container = document.createElement('div');
-    container.style.cssText = `
-      position: fixed;
-      top: 50px;
-      left: 50px;
-      width: 500px;
-      height: 500px;
-      background: white;
-      border: 2px solid #8b5cf6;
-      border-radius: 8px;
-      z-index: 9999;
-      opacity: 0.95;
-      pointer-events: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    `;
+      container.style.cssText = `
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+    width: 500px;
+    height: 500px;
+    background: white;
+    z-index: -1;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    overflow: hidden;
+  `;
     
     container.innerHTML = `
-      <div style="position: absolute; top: 5px; left: 5px; background: #8b5cf6; color: white; padding: 4px 8px; font-size: 11px; border-radius: 4px; font-weight: bold;">
-        Engine: PIXI Dynamic
-      </div>
-      <div style="position: absolute; top: 5px; right: 5px; background: rgba(139,92,246,0.1); color: #8b5cf6; padding: 4px 8px; font-size: 10px; border-radius: 4px;" id="pixi-progress">0%</div>
+    //   <div style="position: absolute; top: 5px; left: 5px; background: #8b5cf6; color: white; padding: 4px 8px; font-size: 11px; border-radius: 4px; font-weight: bold;">
+    //     Engine: PIXI Dynamic
+    //   </div>
+    //   <div style="position: absolute; top: 5px; right: 5px; background: rgba(139,92,246,0.1); color: #8b5cf6; padding: 4px 8px; font-size: 10px; border-radius: 4px;" id="pixi-progress">0%</div>
+    // `;
+    container.innerHTML = `
+      <div style="position: absolute; width: 100%; height: 100%;"></div>
     `;
     
     container.id = `pixi-container-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     document.body.appendChild(container);
-    
-    console.log(`👁️ PIXI visible container created: ${container.id}`);
     
     import('react-dom/client').then(async ({ createRoot }) => {
       const root = createRoot(container);
@@ -1407,7 +1239,6 @@ private captureWithPixiContainer = async (
           if (renderCompleted) return;
           renderCompleted = true;
           
-          console.log(`✅ PIXI render completed for ${mockup.title}`);
           if (renderTimeout) clearTimeout(renderTimeout);
           
           setTimeout(() => {
@@ -1415,10 +1246,10 @@ private captureWithPixiContainer = async (
               root.unmount();
               if (document.body.contains(container)) {
                 document.body.removeChild(container);
-                console.log(`🗑️ PIXI container cleaned up`);
+
               }
             } catch (e) {
-              console.warn('PIXI cleanup warning:', e);
+      
             }
           }, 200);
           
@@ -1429,15 +1260,13 @@ private captureWithPixiContainer = async (
           if (progressElement) {
             progressElement.textContent = `${Math.round(progress)}%`;
           }
-          console.log(`🎮 PIXI PROGRESS: ${mockup.title} ${progress}%`);
+    
         }
       });
       
       renderTimeout = setTimeout(() => {
         if (renderCompleted) return;
         renderCompleted = true;
-        
-        console.error(`⏰ PIXI timeout for ${mockup.title}`);
         
         try {
           root.unmount();
@@ -1456,7 +1285,6 @@ private captureWithPixiContainer = async (
         renderCompleted = true;
         if (renderTimeout) clearTimeout(renderTimeout);
         
-        console.error(`❌ PIXI ReactDOM import failed:`, error);
         if (document.body.contains(container)) {
           document.body.removeChild(container);
         }
@@ -1477,7 +1305,6 @@ private determineEngine = (mockup: DynamicMockupPhoto): 'canvas_professional' | 
                    productType.includes('clothing');
   
   if (isApparel) {
-    console.log(`🔒 APPAREL → Canvas Professional (SIMPLIFIED)`);
     return 'canvas_professional';
   }
   
@@ -1495,11 +1322,9 @@ private determineEngine = (mockup: DynamicMockupPhoto): 'canvas_professional' | 
   );
   
   if (hasComplexFeatures) {
-    console.log(`🔒 COMPLEX FEATURES → PIXI Dynamic (CONTAINER)`);
     return 'pixi_dynamic';
   }
-  
-  console.log(`🔒 DEFAULT → Canvas Professional (SIMPLIFIED)`);
+
   return 'canvas_professional';
 };
 
@@ -1509,7 +1334,6 @@ private productData: any;
 // 🔥 OPTIONAL: Update your constructor or add this method to set product data
 public setProductData(productData: any) {
   this.productData = productData;
-  console.log(`📦 Product data set: ${productData?.productType}`);
 }
 
   
@@ -1518,7 +1342,6 @@ public setProductData(productData: any) {
   if (this.productData?.productType?.toLowerCase().includes('shirt') || 
       this.productData?.productType?.toLowerCase().includes('tee') ||
       this.productData?.productType?.toLowerCase().includes('apparel')) {
-    console.log('ðŸ”’ FORCING Canvas engine for apparel product');
     return 'canvas_professional';
   }
 
@@ -1561,12 +1384,9 @@ public setProductData(productData: any) {
     const startTime = performance.now();
     const engine = this.determineEngine(mockup);
     
-    console.log(`ðŸŽ¯ Generating: ${mockup.title} in ${productColor} using ${engine}`);
-    
     const cacheKey = `${mockup.id}-${productColor}-${Object.keys(designElements).length}-${targetResolution}`;
     
     if (this.renderCache.has(cacheKey)) {
-      console.log(`ðŸ’¾ Using cached render for ${mockup.title}`);
       const cachedImageData = this.renderCache.get(cacheKey)!;
       return {
         imageData: cachedImageData,
@@ -1580,7 +1400,6 @@ public setProductData(productData: any) {
     }
     
     if (this.generationQueue.has(cacheKey)) {
-      console.log(`â³ Waiting for existing generation: ${mockup.title}`);
       return await this.generationQueue.get(cacheKey)!;
     }
     
@@ -1639,11 +1458,6 @@ public generateForStoreImport = async (
   }
 
   this.isGenerating = true;
-  console.log('\nðŸš€ === CORRECTED STORE GENERATION ===');
-  console.log(`ðŸŽ¯ Strategy: ${mockupCalculation.strategy}`);
-  console.log(`ðŸ“Š Expected mockups: ${mockupCalculation.totalMockups}`);
-  console.log(`ðŸŽ¨ color_Images: ${productData.color_Images}`);
-  console.log(`ðŸ“ size_Images: ${productData.size_Images}`);
   
   const generationStartTime = performance.now();
   const generationStarted = new Date().toISOString();
@@ -1653,11 +1467,9 @@ public generateForStoreImport = async (
   if (productData.size_Images) {
     // size_Images = true: Each size gets separate images
     totalCombinations = mockupCalculation.totalMockups * selectedSizes.length;
-    console.log(`ðŸ“Š size_Images=true: ${totalCombinations} total images (${mockupCalculation.totalMockups} mockups Ã— ${selectedSizes.length} sizes)`);
   } else {
     // size_Images = false: Images are shared across sizes
     totalCombinations = mockupCalculation.totalMockups;
-    console.log(`ðŸ“Š size_Images=false: ${totalCombinations} shared images (${mockupCalculation.totalMockups} mockups, shared across ${selectedSizes.length} sizes)`);
   }
   
   let completedCombinations = 0;
@@ -1669,14 +1481,8 @@ public generateForStoreImport = async (
   try {
     // Process each color group
     for (const colorBreakdown of mockupCalculation.calculationBreakdown) {
-      console.log(`\nðŸŽ¨ === PROCESSING COLOR: ${colorBreakdown.color} ===`);
-      console.log(`ðŸ“¦ Mockups for this color: ${colorBreakdown.mockups.length}`);
       
       for (const mockup of colorBreakdown.mockups) {
-        console.log(`\nðŸ–¼ï¸ === MOCKUP: ${mockup.title} ===`);
-        console.log(`ðŸŽ¨ Original Color: ${mockup.photoColor}`);
-        console.log(`ðŸŽ¯ Target Color: ${colorBreakdown.colorHex}`);
-        console.log(`ðŸ“ size_Images flag: ${productData.size_Images}`);
         
         const smartProductColor = getProductColorForMockup(mockup, colorBreakdown.colorHex, productData);
         const determinedEngine = this.determineEngine(mockup);
@@ -1689,8 +1495,6 @@ public generateForStoreImport = async (
 
         // ðŸ”¥ CORRECTED: Handle size generation based on size_Images flag from PayloadCMS
         if (!productData.size_Images) {
-          // ðŸ”¥ size_Images = FALSE: Generate ONE image shared across all sizes
-          console.log(`ðŸ”¥ size_Images=FALSE: Generating ONE shared image for all sizes`);
           
           const combinationId = `${mockup.title}-${colorBreakdown.color}-shared`;
           
@@ -1704,9 +1508,6 @@ public generateForStoreImport = async (
           });
 
           try {
-            console.log(`\n    ðŸ”§ GENERATING SHARED IMAGE: ${combinationId}`);
-            console.log(`       Smart Color: ${smartProductColor}`);
-            console.log(`       Engine: ${determinedEngine}`);
 
             const result = await this.generateSingleMockup(
               mockup,
@@ -1734,12 +1535,10 @@ public generateForStoreImport = async (
               });
             });
 
-            console.log(`    âœ… SUCCESS: ${combinationId} (shared across ${selectedSizes.length} sizes)`);
             completedCombinations++;
 
           } catch (error) {
             const errorMsg = `Failed: ${combinationId} - ${error.message}`;
-            console.error(`    âŒ FAILURE: ${errorMsg}`);
             errors.push(errorMsg);
             
             // Create empty size variants on failure
@@ -1753,7 +1552,6 @@ public generateForStoreImport = async (
 
         } else {
           // ðŸ”¥ size_Images = TRUE: Generate separate images for each size
-          console.log(`ðŸ”¥ size_Images=TRUE: Generating separate images for each size`);
           
           for (let sizeIndex = 0; sizeIndex < selectedSizes.length; sizeIndex++) {
             const size = selectedSizes[sizeIndex];
@@ -1769,10 +1567,6 @@ public generateForStoreImport = async (
             });
 
             try {
-              console.log(`\n    ðŸ”§ GENERATING SIZE-SPECIFIC: ${combinationId}`);
-              console.log(`       Smart Color: ${smartProductColor}`);
-              console.log(`       Engine: ${determinedEngine}`);
-              console.log(`       Size: ${size}`);
 
               const result = await this.generateSingleMockup(
                 mockup,
@@ -1797,11 +1591,8 @@ public generateForStoreImport = async (
                 }]
               });
 
-              console.log(`    âœ… SUCCESS: ${combinationId}`);
-
             } catch (error) {
               const errorMsg = `Failed: ${combinationId} - ${error.message}`;
-              console.error(`    âŒ FAILURE: ${errorMsg}`);
               errors.push(errorMsg);
               
               colorCombinations[0].size_variants.push({
@@ -1824,13 +1615,11 @@ public generateForStoreImport = async (
           color_combinations: colorCombinations
         });
         
-        console.log(`âœ… Completed mockup ${mockup.title} for color ${colorBreakdown.color}`);
         await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
   } catch (criticalError) {
-    console.error('âŒ CRITICAL ERROR:', criticalError);
     errors.push(`Critical error: ${criticalError.message}`);
   } finally {
     this.isGenerating = false;
@@ -1883,17 +1672,6 @@ public generateForStoreImport = async (
       errors: errors
     }
   };
-
-  console.log(`\nðŸŽ‰ === CORRECTED GENERATION COMPLETE ===`);
-  console.log(`ðŸ“Š Expected: ${mockupCalculation.totalMockups} unique mockups`);
-  console.log(`ðŸ“Š Generated: ${totalImagesGenerated} total images`);
-  console.log(`ðŸ“Š Strategy: ${mockupCalculation.strategy}`);
-  console.log(`ðŸŽ¨ color_Images: ${productData.color_Images}`);
-  console.log(`ðŸ“ size_Images: ${productData.size_Images}`);
-  console.log(`â±ï¸ Time: ${Math.round(totalTimeMs / 1000)}s`);
-  console.log(`ðŸŽ¨ Canvas: ${engineUsage.canvas_professional}`);
-  console.log(`ðŸŽ® PIXI: ${engineUsage.pixi_dynamic}`);
-  console.log(`âŒ Errors: ${errors.length}`);
   
   return storeImportData;
 };
@@ -1904,7 +1682,6 @@ public generateForStoreImport = async (
 
   public clearRenderCache(): void {
     this.renderCache.clear();
-    console.log('ðŸ§¹ Render cache cleared');
   }
 }
 
@@ -2012,6 +1789,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
         <div className="relative w-full h-full">
           <EnhancedMockupEngine
             mockup={mockup}
+             showBadges={false}
             designElements={designElements}
             canvasConfigs={canvasConfigs}
             canvasPrintableAreas={canvasPrintableAreas}
@@ -2021,10 +1799,8 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
             renderEngine={renderEngine}
             enablePixiFeatures={true}
             onRenderComplete={() => {
-              console.log(`âœ… Thumbnail render complete: ${mockup.title}`);
             }}
             onProgress={(progress) => {
-              console.log(`ðŸ“Š Thumbnail progress: ${mockup.title} - ${progress}%`);
             }}
           />
         </div>
@@ -2066,7 +1842,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
             : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
         }`}
       >
-        <div className="relative mb-2 overflow-hidden bg-gray-100 rounded aspect-square">
+        <div className="relative mb-2 overflow-hidden bg-gray-100 roundedstyle={{ aspectRatio: '4/5', minHeight: '160px' }}">
           <div className="flex items-center justify-center w-full h-full text-gray-400">
             <div className="text-center">
               <span className="text-xs">âš ï¸</span>
@@ -2320,22 +2096,16 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
           }
           URL.revokeObjectURL(url);
         } catch (cleanupError) {
-          console.warn('Cleanup error:', cleanupError);
         }
       }, 100);
       
-      console.log('âœ… Store import data download initiated');
-      
     } catch (error) {
-      console.error('âŒ Error downloading store import data:', error);
       alert('Error downloading file. Please try again.');
     }
   }, [importData]);
 
   const handleImportToStore = useCallback(() => {
     if (!importData) return;
-
-    console.log('ðŸª Importing to store:', importData);
     
     alert(`âœ… Ready to import to store!\n\n` +
           `Product: ${importData.product_name}\n` +
@@ -2363,9 +2133,9 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
       >
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-bold" style={{ color: brandColor }}>
-            ðŸª Enhanced Store Import Generation
+            Enhanced Store Import Generation
           </h2>
-          <button
+          {/* <button
             onClick={onClose}
             disabled={isGenerating}
             className={`text-2xl transition-colors ${
@@ -2375,12 +2145,12 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
             }`}
           >
             Ã—
-          </button>
+          </button> */}
         </div>
         
         <div className="p-6">
           {/* Enhanced Calculation Preview */}
-          {mockupCalculation && !isGenerating && (
+          {/* {mockupCalculation && !isGenerating && (
             <div className="p-4 mb-6 border border-blue-200 rounded-lg bg-blue-50">
               <div className="mb-2 text-sm font-medium text-blue-800">
                 ðŸ“Š Enhanced Mockup Calculation ({mockupCalculation.strategy.replace(/_/g, ' ')})
@@ -2404,28 +2174,28 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Generation Progress */}
           {isGenerating && generationProgress && (
-            <div className="p-4 mb-6 border border-blue-200 rounded-lg bg-blue-50">
+            <div className="p-4 mb-6 border border-orange-200 rounded-lg bg-orange-50">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-blue-800">ðŸš€ Generating Enhanced Store Data...</h4>
-                <div className="text-sm text-blue-600">
+                <h4 className="font-medium text-orange-800"> Generating Enhanced Store Data...</h4>
+                <div className="text-sm text-orange-600">
                   {generationProgress.completed}/{generationProgress.total}
                 </div>
               </div>
               
               <div className="w-full h-3 mb-3 bg-gray-200 rounded-full">
                 <div 
-                  className="h-3 transition-all duration-300 bg-blue-600 rounded-full"
+                  className="h-3 transition-all duration-300 bg-orange-600 rounded-full"
                   style={{ 
                     width: `${(generationProgress.completed / generationProgress.total) * 100}%` 
                   }}
                 ></div>
               </div>
               
-              <div className="space-y-1 text-sm text-blue-700">
+              <div className="space-y-1 text-sm text-orange-700">
                 {generationProgress.current_combination && (
                   <div>Combination: <strong>{generationProgress.current_combination}</strong></div>
                 )}
@@ -2742,7 +2512,6 @@ const [activeColor, setActiveColor] = useState<string>(() => {
       
       return areas.length > 0 ? areas : ['front'];
     } catch (error) {
-      console.error('Error getting available areas:', error);
       return ['front'];
     }
   }, [getCurrentTechnology]);
@@ -2779,7 +2548,6 @@ const [activeColor, setActiveColor] = useState<string>(() => {
         realWorldHeight: canvasDims.heightInch || 12,
       };
     } catch (error) {
-      console.error('Error getting canvas config:', error);
       return { width: 800, height: 600, realWorldWidth: 8, realWorldHeight: 12 };
     }
   }, [getCustomizationAreaByName]);
@@ -2848,7 +2616,6 @@ const [activeColor, setActiveColor] = useState<string>(() => {
       
       return printArea;
     } catch (error) {
-      console.error('Error getting printable area:', error);
       const canvasConfig = getCanvasConfig(areaId);
       return { 
         x: canvasConfig.width * 0.1, 
@@ -2953,96 +2720,43 @@ const [activeColor, setActiveColor] = useState<string>(() => {
   
 
 const extractDesignImages = useCallback(() => {
-  console.log('\n📸 === FIXED DESIGN IMAGE EXTRACTION ===');
-  
-  // ✅ FIRST: Validate current state
-  console.log('🔍 STATE VALIDATION:', {
-    designElementsExists: !!designElements,
-    designElementsType: typeof designElements,
-    designElementsKeys: Object.keys(designElements || {}),
-    designElementsContent: designElements
-  });
-  
-  if (!designElements || typeof designElements !== 'object') {
-    console.error('🚨 INVALID DESIGN ELEMENTS STATE!');
-    return [];
-  }
   
   const designImages = [];
   let totalElements = 0;
   let imageElements = 0;
-  let elementsWithBase64 = 0;
   
   Object.entries(designElements).forEach(([area, elements]) => {
-    console.log(`\n📋 === AREA: ${area} ===`);
-    
     if (!Array.isArray(elements)) {
-      console.warn(`⚠️ Area ${area} elements is not an array:`, elements);
       return;
     }
     
-    console.log(`Elements in area: ${elements.length}`);
     totalElements += elements.length;
     
     elements.forEach((element, index) => {
-      console.log(`\nElement ${index + 1}:`, {
-        id: element.id,
-        type: element.type,
-        imageName: element.imageName,
-        hasBase64: !!element.imageBase64
-      });
-      
-      if (element.type === 'image') {
+      if (element.type === 'image' && element.imageBase64) {
         imageElements++;
         
-        if (element.imageBase64) {
-          elementsWithBase64++;
-          
-          const designImage = {
-            name: element.imageName || `design-image-${elementsWithBase64}.png`,
-            area: area,
-            base64Preview: element.imageBase64,
-            hasBase64: true,
-            size: `${element.originalImageWidth || element.width}x${element.originalImageHeight || element.height}`,
-            position: `${element.x},${element.y}`,
-            elementId: element.id
-          };
-          
-          designImages.push(designImage);
-          
-          console.log(`✅ ADDED TO EXPORT:`, {
-            name: designImage.name,
-            area: designImage.area,
-            base64Length: designImage.base64Preview.length
-          });
-        } else {
-          console.error(`❌ MISSING BASE64:`, {
-            id: element.id,
-            imageName: element.imageName,
-            hasImageBase64Property: element.hasOwnProperty('imageBase64'),
-            allKeys: Object.keys(element)
-          });
-        }
+        const designImage = {
+          id: element.id,
+          name: element.imageName || `design-image-${imageElements}.png`,
+          type: 'image/png',
+          base64Data: element.imageBase64, // This is the key property
+          originalWidth: element.originalImageWidth || element.width,
+          originalHeight: element.originalImageHeight || element.height,
+          area: area,
+          position: { x: element.x, y: element.y },
+          dimensions: { width: element.width, height: element.height },
+          rotation: element.rotation || 0,
+          scaleX: element.scaleX || 1,
+          scaleY: element.scaleY || 1,
+          opacity: element.opacity || 1
+        };
+        
+        designImages.push(designImage);
+        
       }
     });
   });
-  
-  console.log(`\n📊 === EXTRACTION SUMMARY ===`);
-  console.log(`Total elements: ${totalElements}`);
-  console.log(`Image elements: ${imageElements}`);
-  console.log(`Elements with base64: ${elementsWithBase64}`);
-  console.log(`Design images extracted: ${designImages.length}`);
-  
-  if (designImages.length === 0) {
-    console.error('\n🚨 === NO DESIGN IMAGES EXTRACTED ===');
-    console.error('Debug info:');
-    console.error('1. Total elements found:', totalElements);
-    console.error('2. Image elements found:', imageElements);
-    console.error('3. Elements with base64:', elementsWithBase64);
-    console.error('4. Current designElements state:', designElements);
-  } else {
-    console.log('\n✅ === EXTRACTION SUCCESSFUL ===');
-  }
   
   return designImages;
 }, [designElements]);
@@ -3053,14 +2767,10 @@ const extractDesignImages = useCallback(() => {
   // =====================================
   
   const transformStoreDataForCreate = useCallback((storeData: StoreImportData) => {
-  console.log('ðŸ”„ Transforming corrected store data for Create page...');
   
   // Extract mockup images based on PayloadCMS flags
   const mockupImages: Record<string, string> = {};
   const colorSpecificImages: Record<string, Array<{ mockupTitle: string; imageData: string }>> = {};
-  
-  console.log(`ðŸ“Š Processing ${storeData.mockup_variants.length} mockup variants...`);
-  console.log(`ðŸ“Š Strategy: ${storeData.generation_summary.mockup_calculation.strategy}`);
   
   // ðŸ”¥ CORRECTED: Extract PayloadCMS flags from the original product data to determine image sharing behavior
   const productDataFlags = {
@@ -3068,15 +2778,10 @@ const extractDesignImages = useCallback(() => {
     size_Images: productData.size_Images
   };
   
-  console.log(`ðŸŽ¨ color_Images: ${productDataFlags.color_Images}`);
-  console.log(`ðŸ“ size_Images: ${productDataFlags.size_Images}`);
-  
   // Process mockup variants based on the size_Images flag
   storeData.mockup_variants.forEach(mockupVariant => {
-    console.log(`\nðŸ–¼ï¸ === MOCKUP VARIANT: ${mockupVariant.mockup_title} ===`);
     
     mockupVariant.color_combinations.forEach(colorCombo => {
-      console.log(`ðŸŽ¨ Color: ${colorCombo.color_name} (${colorCombo.color_hex})`);
       
       // Initialize color group if not exists
       if (!colorSpecificImages[colorCombo.color_hex]) {
@@ -3085,9 +2790,6 @@ const extractDesignImages = useCallback(() => {
       
       // ðŸ”¥ CORRECTED: Handle transformation based on size_Images flag
       if (!productDataFlags.size_Images) {
-        // ðŸ”¥ size_Images = FALSE: Images are shared across sizes
-        // Take the first size variant's image (since all sizes share the same image)
-        console.log(`ðŸ“ size_Images=FALSE: Extracting shared image across ${colorCombo.size_variants.length} sizes`);
         
         const firstSizeVariant = colorCombo.size_variants[0];
         
@@ -3096,13 +2798,6 @@ const extractDesignImages = useCallback(() => {
           
           // Create a unique key for this mockup-color combination
           const uniqueKey = `${mockupVariant.mockup_title}_${colorCombo.color_name}`.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-          
-          console.log(`\nðŸ“¸ === SHARED IMAGE EXTRACTION ===`);
-          console.log(`ðŸ”‘ Unique Key: ${uniqueKey}`);
-          console.log(`âš™ï¸ Engine: ${generatedImage.engine_used}`);
-          console.log(`ðŸ“Š Data Length: ${generatedImage.image_data.length}`);
-          console.log(`ðŸŽ¨ Color: ${colorCombo.color_hex}`);
-          console.log(`ðŸ“ Shared across sizes: ${colorCombo.size_variants.map(sv => sv.size_name).join(', ')}`);
           
           // Store in general mockup images
           mockupImages[uniqueKey] = generatedImage.image_data;
@@ -3117,30 +2812,19 @@ const extractDesignImages = useCallback(() => {
           colorCombo.size_variants.forEach(sizeVariant => {
             const sizeSpecificKey = `${mockupVariant.mockup_title}_${colorCombo.color_name}_${sizeVariant.size_name}`.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
             mockupImages[sizeSpecificKey] = generatedImage.image_data;
-            console.log(`    ðŸ“Œ Created alias: ${sizeSpecificKey} -> same image`);
           });
           
         } else {
-          console.warn(`âš ï¸ No image data for shared image: ${mockupVariant.mockup_title} - ${colorCombo.color_name}`);
         }
         
       } else {
-        // ðŸ”¥ size_Images = TRUE: Each size has separate images
-        console.log(`ðŸ“ size_Images=TRUE: Extracting separate images for each size`);
         
         colorCombo.size_variants.forEach(sizeVariant => {
-          console.log(`ðŸ“ Processing Size: ${sizeVariant.size_name}`);
           
           sizeVariant.generated_images.forEach((generatedImage, imgIndex) => {
             if (generatedImage.image_data) {
               const key = `${mockupVariant.mockup_title}_${colorCombo.color_name}_${sizeVariant.size_name}`;
               const cleanKey = key.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-              
-              console.log(`\nðŸ“¸ === SIZE-SPECIFIC IMAGE EXTRACTION ===`);
-              console.log(`ðŸ”‘ Size-specific Key: ${cleanKey}`);
-              console.log(`âš™ï¸ Engine: ${generatedImage.engine_used}`);
-              console.log(`ðŸ“Š Data Length: ${generatedImage.image_data.length}`);
-              console.log(`ðŸ“ Specific to size: ${sizeVariant.size_name}`);
               
               mockupImages[cleanKey] = generatedImage.image_data;
               
@@ -3149,7 +2833,6 @@ const extractDesignImages = useCallback(() => {
                 imageData: generatedImage.image_data
               });
             } else {
-              console.warn(`âš ï¸ No image data for size-specific: ${mockupVariant.mockup_title} - ${colorCombo.color_name} - ${sizeVariant.size_name}`);
             }
           });
         });
@@ -3157,34 +2840,19 @@ const extractDesignImages = useCallback(() => {
     });
   });
   
-  console.log(`\nðŸ“Š === FINAL MOCKUP IMAGES ===`);
-  console.log(`ðŸ“Š Total images created: ${Object.keys(mockupImages).length}`);
-  console.log(`ðŸŽ¨ Color groups: ${Object.keys(colorSpecificImages).length}`);
-  console.log(`ðŸ“ size_Images flag: ${productDataFlags.size_Images}`);
-  
   Object.keys(colorSpecificImages).forEach(colorHex => {
-    console.log(`   ${colorHex}: ${colorSpecificImages[colorHex].length} mockup variants`);
   });
   
   // ðŸ”¥ CORRECTED: Validation based on size_Images flag
   const expectedUniqueCount = storeData.generation_summary.mockup_calculation.totalMockups;
   const actualUniqueCount = Object.keys(mockupImages).length;
-   console.log('\nðŸ“¸ === EXTRACTING DESIGN IMAGES ===');
-  const designImages = extractDesignImages();
-  
-  console.log(`ðŸ“Š Design images extracted: ${designImages.length}`);
+  const designImages = storeData.design_images || []; // Use images from store data
   
   if (designImages.length === 0) {
-    console.error('ðŸš¨ CRITICAL: No design images extracted!');
-    console.error('Current designElements state:', designElements);
-    console.error('Looking for elements with type="image" and imageBase64 property');
+  } else {
+    designImages.forEach((img, index) => {
+    });
   }
-  
-  console.log(`\nðŸ” === VALIDATION ===`);
-  console.log(`Expected unique mockups: ${expectedUniqueCount}`);
-  console.log(`Actual images created: ${actualUniqueCount}`);
-  console.log(`Strategy: ${storeData.generation_summary.mockup_calculation.strategy}`);
-  console.log(`size_Images: ${productDataFlags.size_Images}`);
   
   if (!productDataFlags.size_Images) {
     // For size_Images=false, we should have mockup-color combinations with size aliases
@@ -3194,12 +2862,10 @@ const extractDesignImages = useCallback(() => {
       ));
       return total + uniqueTitles.size;
     }, 0);
-    console.log(`size_Images=false validation: Expected ${expectedUniqueCount}, Got ${uniqueMockupColorCombos} unique mockup-color combinations`);
   } else {
     // For size_Images=true, we should have mockup-color-size combinations
     const totalVariants = Object.keys(colorSpecificImages).reduce((total, colorHex) => 
       total + colorSpecificImages[colorHex].length, 0);
-    console.log(`size_Images=true validation: Got ${totalVariants} mockup-color-size combinations`);
   }
   
   // Extract color details from the calculation breakdown
@@ -3274,10 +2940,6 @@ const extractDesignImages = useCallback(() => {
     });
   });
   
-  console.log(`ðŸ“Š Base64 storage summary:`);
-  console.log(`   ðŸ’¾ Images with base64: ${totalBase64Images}`);
-  console.log(`   ðŸ“Š Total base64 size: ${(base64DataSize / 1024 / 1024).toFixed(2)} MB`);
-  
   // Create color-specific mockup groups
   const colorSpecificMockups: ColorSpecificMockupGroup[] = Object.keys(colorSpecificImages).map(colorHex => {
     const colorName = colorDetails.find(c => c.value === colorHex)?.name || 'Unknown';
@@ -3289,11 +2951,10 @@ const extractDesignImages = useCallback(() => {
     };
   });
   
-  // Create design data structure
   const designData: DesignData = {
     productInfo: {
       title: storeData.product_name || 'Custom Design Product',
-      description: `Custom designed ${storeData.product_type} with ${storeData.design_configuration.design_metadata.total_elements} design elements (${productDataFlags.size_Images ? 'size-specific' : 'size-shared'} images)`,
+      description: `Custom designed ${storeData.product_type} with ${storeData.design_configuration.design_metadata.total_elements} design elements`,
       sku: storeData.product_id || `custom-${Date.now()}`,
       brand: enhancedProductData.brand || 'Junooni'
     },
@@ -3310,7 +2971,7 @@ const extractDesignImages = useCallback(() => {
     designElements: cleanDesignElements,
     designConfiguration: {
       ...storeData.design_configuration,
-      payloadcms_flags: productDataFlags // Include the flags for reference
+      payloadcms_flags: productDataFlags
     },
     colorDetails: colorDetails,
     printingTechnology: 'dtg',
@@ -3321,7 +2982,7 @@ const extractDesignImages = useCallback(() => {
       mockupPreview: Object.values(mockupImages)[0] || null,
       mockupPreviews: mockupImages,
       colorSpecificMockups: colorSpecificMockups,
-      designImages: designImages // âœ… Your uploaded images here
+      designImages: designImages // 🔥 USE DESIGN IMAGES FROM STORE DATA
     },
     selectedProduct: {
       color: selectedColors[0]?.value || '#ffffff',
@@ -3330,25 +2991,19 @@ const extractDesignImages = useCallback(() => {
       productName: storeData.product_name
     }
   };
-  
-  console.log(`\nðŸŽ‰ === CORRECTED TRANSFORMATION COMPLETE ===`);
-  console.log(`ðŸ“Š Final mockup images: ${Object.keys(mockupImages).length}`);
-  console.log(`ðŸŽ¨ Color-specific groups: ${Object.keys(colorSpecificImages).length}`);
-  console.log(`ðŸ“ size_Images flag respected: ${productDataFlags.size_Images}`);
-  console.log(`ðŸ“‹ Design data created successfully`);
-  
+
   return {
     designData,
     mockupImages,
     colorSpecificImages,
-    designImages,
+    designImages, // 🔥 RETURN DESIGN IMAGES SEPARATELY TOO
     enhancedProductData
   };
 }, [selectedColors, selectedSizes, allMockups, productData]);
 
 
 const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<string, any[]>) => {
-  console.log('ðŸ”„ Restoring design elements from base64...');
+
   
   const restoredElements: Record<string, DesignElement[]> = {};
   
@@ -3358,7 +3013,6 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
     for (const elementData of elements) {
       try {
         if (elementData.type === 'image' && elementData.imageBase64) {
-          console.log(`ðŸ“¸ Restoring image: ${elementData.imageName}`);
           
           // Create image from base64
           const img = await createImageFromBase64(elementData.imageBase64);
@@ -3370,14 +3024,12 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
           };
           
           restoredElements[area].push(restoredElement);
-          console.log(`âœ… Restored: ${elementData.imageName}`);
           
         } else {
           // Non-image elements (text, etc.)
           restoredElements[area].push(elementData);
         }
       } catch (error) {
-        console.error(`âŒ Failed to restore ${elementData.imageName}:`, error);
         // Add element without image as fallback
         restoredElements[area].push({
           ...elementData,
@@ -3387,8 +3039,7 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
       }
     }
   }
-  
-  console.log(`âœ… Restored ${Object.values(restoredElements).flat().length} design elements`);
+
   return restoredElements;
 }, []);
 
@@ -3400,25 +3051,17 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
   };
 
   const navigateToCreatePage = useCallback((transformedData: any) => {
-  console.log('ðŸš€ === FIXED: NAVIGATING TO CREATE WITH DESIGN IMAGES ===');
   
-  // âœ… CRITICAL: Verify design images before navigation
+  // ✅ VERIFY DESIGN IMAGES BEFORE NAVIGATION
   const designImagesCheck = {
     hasDesignImages: !!transformedData.designImages,
     designImagesCount: transformedData.designImages?.length || 0,
-    designImagesArray: transformedData.designImages || [],
-    firstDesignImage: transformedData.designImages?.[0] || null
+    designImagesArray: transformedData.designImages || []
   };
   
-  console.log('ðŸ“Š Design images check before navigation:', designImagesCheck);
-  
   if (designImagesCheck.designImagesCount === 0) {
-    console.error('ðŸš¨ CRITICAL WARNING: Navigating WITHOUT design images!');
-    console.error('Check extractDesignImages function and designElements state');
   } else {
-    console.log('âœ… SUCCESS: Navigating WITH design images!');
     transformedData.designImages.forEach((img: any, index: number) => {
-      console.log(`${index + 1}. ${img.name} - Base64 length: ${img.base64Preview?.length || 0}`);
     });
   }
   
@@ -3431,49 +3074,27 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
       mockupImages: transformedData.mockupImages,
       colorSpecificImages: transformedData.colorSpecificImages,
       enhancedProductData: transformedData.enhancedProductData,
-      designImages: transformedData.designImages, // âœ… CRITICAL: Ensure this is included
-      uploadedFiles: []
+      designImages: transformedData.designImages, // ✅ DESIGN IMAGES INCLUDED
+      uploadedFiles: [] // Can be empty since we have base64 data
     }
   });
-  
-  // âœ… FINAL CHECK: Log what we just sent
-  console.log('ðŸŽ¯ === NAVIGATION STATE SENT ===');
-  console.log('Final state object keys:', Object.keys({
-    designData: transformedData.designData,
-    mockupImages: transformedData.mockupImages,
-    colorSpecificImages: transformedData.colorSpecificImages,
-    enhancedProductData: transformedData.enhancedProductData,
-    designImages: transformedData.designImages,
-    uploadedFiles: []
-  }));
-  console.log('designImages in final state:', transformedData.designImages);
   
 }, [navigate]);
 
   const handleImportToStore = useCallback(async () => {
   if (!hasDesignElements) {
-    alert('âš ï¸ Please add design elements before importing to store.');
+    alert('⚠️ Please add design elements before importing to store.');
     return;
   }
 
   if (selectedColors.length === 0 || selectedSizes.length === 0) {
-    alert('âš ï¸ Please select colors and sizes before importing to store.');
+    alert('⚠️ Please select colors and sizes before importing to store.');
     return;
   }
 
   if (!mockupCalculation) {
-    alert('âš ï¸ Unable to calculate mockups. Please check your selections.');
+    alert('⚠️ Unable to calculate mockups. Please check your selections.');
     return;
-  }
-
-  // Check if we have base64 data for images
-  const totalImages = Object.values(designElements).flat().filter(el => el.type === 'image').length;
-  const imagesWithBase64 = Object.values(designElements).flat().filter(el => el.type === 'image' && el.imageBase64).length;
-  
-  console.log(`ðŸ“Š Image storage check: ${imagesWithBase64}/${totalImages} images have base64 data`);
-  
-  if (totalImages > 0 && imagesWithBase64 === 0) {
-    console.warn('âš ï¸ No base64 data found for images. Images may not persist.');
   }
 
   try {
@@ -3482,102 +3103,30 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
     setStoreGenerationProgress(null);
     setShowStoreImportModal(true);
 
-    console.log('ðŸª Starting store import generation with base64 images...');
-    console.log(`ðŸ’¾ Including ${imagesWithBase64} base64 images in export`);
-    // Extract design images before generation
+    // 🔥 EXTRACT DESIGN IMAGES FIRST
     const designImages = extractDesignImages();
-    
-    console.log('ðŸŽ¨ Design images to include in export:', {
-      count: designImages.length,
-      // totalSize: designImages.reduce((total, img) => total + img.base64Data.length, 0),
-      images: designImages.map(img => ({
-        name: img.name,
-        area: img.area,
-        size: `${img.originalWidth}x${img.originalHeight}`,
-        position: `${img.position.x},${img.position.y}`,
-        hasBase64: !!img.base64Data,
-        // base64Preview: img.base64Data.substring(0, 50) + '...'
-      }))
-    });
 
     const importData = await mockupGenerator.generateForStoreImport(
       productData,
       selectedColors,
       selectedSizes,
-      designElements, // âœ… Contains base64 data
+      designElements,
       getAllCanvasConfigs,
       getAllPrintableAreas,
       mockupCalculation,
       setStoreGenerationProgress
     );
 
-    // Verify base64 data in export
-    const exportedImageCount = Object.values(importData.design_elements).flat().filter(el => el.imageBase64).length;
-    console.log(`âœ… Export includes ${exportedImageCount} images with base64 data`);
+    // 🔥 ADD DESIGN IMAGES TO IMPORT DATA
+    importData.design_images = designImages; // Add design images to the import data
 
     setStoreImportData(importData);
-    
-
-    // ðŸ” DEBUG: Check if images are in importData
-    console.log('ðŸ” DEBUG: Generated StoreImportData contains:', {
-      totalMockupVariants: importData.mockup_variants.length,
-      hasGeneratedImages: importData.mockup_variants.some(variant => 
-        variant.color_combinations.some(color => 
-          color.size_variants.some(size => 
-            size.generated_images.length > 0
-          )
-        )
-      ),
-      firstImageSample: (() => {
-        const firstVariant = importData.mockup_variants[0];
-        const firstColor = firstVariant?.color_combinations[0];
-        const firstSize = firstColor?.size_variants[0];
-        const firstImage = firstSize?.generated_images[0];
-        return firstImage ? {
-          hasImageData: !!firstImage.image_data,
-          imageDataLength: firstImage.image_data?.length || 0,
-          imageDataPreview: firstImage.image_data?.substring(0, 100) + '...',
-          engine: firstImage.engine_used
-        } : 'No images found';
-      })()
-    });
 
     const transformedData = transformStoreDataForCreate(importData);
-
-    // ðŸ” DEBUG: Check if images are in transformedData
-    console.log('ðŸ” DEBUG: TransformedData for Create page contains:', {
-      hasMockupImages: !!transformedData.mockupImages,
-      mockupImageCount: Object.keys(transformedData.mockupImages || {}).length,
-      mockupImageKeys: Object.keys(transformedData.mockupImages || {}),
-      firstMockupImageSample: (() => {
-        const firstKey = Object.keys(transformedData.mockupImages || {})[0];
-        const firstImage = transformedData.mockupImages?.[firstKey];
-        return firstImage ? {
-          hasData: !!firstImage,
-          dataLength: firstImage.length,
-          dataPreview: firstImage.substring(0, 100) + '...',
-          isValidBase64: firstImage.startsWith('data:image/')
-        } : 'No mockup images found';
-      })(),
-      hasColorSpecificImages: !!transformedData.colorSpecificImages,
-      colorSpecificImageCount: Object.keys(transformedData.colorSpecificImages || {}).length
-    });
-
-    // ðŸ” DEBUG: Check what's being passed to navigation
-    console.log('ðŸ” DEBUG: Navigation state will contain:', {
-      hasDesignData: !!transformedData.designData,
-      hasMockupImages: !!transformedData.mockupImages,
-      hasColorSpecificImages: !!transformedData.colorSpecificImages,
-      hasEnhancedProductData: !!transformedData.enhancedProductData,
-      mockupImageKeys: Object.keys(transformedData.mockupImages || {}),
-      totalImageSize: Object.values(transformedData.mockupImages || {}).reduce((total, img) => total + (img?.length || 0), 0)
-    });
-
     navigateToCreatePage(transformedData);
 
   } catch (error) {
-    console.error('âŒ Store import generation failed:', error);
-    alert(`âŒ Store import generation failed: ${error.message}`);
+    alert(`❌ Store import generation failed: ${error.message}`);
   } finally {
     setIsGeneratingForStore(false);
   }
@@ -3587,10 +3136,11 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
   selectedSizes,
   mockupCalculation,
   productData,
-  designElements, // âœ… Now contains base64 data
+  designElements,
   getAllCanvasConfigs,
   getAllPrintableAreas,
   mockupGenerator,
+  extractDesignImages, // Add this dependency
   transformStoreDataForCreate,
   navigateToCreatePage
 ]);
@@ -3694,9 +3244,6 @@ const renderUploadPanel = () => {
 const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageName, targetArea, base64Data) => {
   const areaToUse = targetArea || activeArea;
   
-  console.log(`🎨 === ROBUST IMAGE UPLOAD ===`);
-  console.log('Input:', { imageName, areaToUse, hasBase64: !!base64Data });
-  
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -3736,19 +3283,9 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           opacity: 1, visible: true, locked: false
         };
         
-        console.log('✅ ELEMENT CREATED:', {
-          id: element.id,
-          type: element.type,
-          hasBase64: !!element.imageBase64,
-          base64Length: element.imageBase64?.length || 0
-        });
         
         // ✅ ATOMIC STATE UPDATE WITH PROPER MERGING
         setDesignElements(currentState => {
-          console.log('🔄 ATOMIC UPDATE START:', {
-            currentArea: areaToUse,
-            existingElements: currentState[areaToUse]?.length || 0
-          });
           
           // Ensure area exists
           const updatedState = { ...currentState };
@@ -3764,25 +3301,17 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           // Add element to area
           updatedState[areaToUse] = [...existingElements, element];
           
-          console.log('✅ ATOMIC UPDATE COMPLETE:', {
-            newElementCount: updatedState[areaToUse].length,
-            elementAdded: element.id,
-            totalImages: Object.values(updatedState).flat().filter(el => el.type === 'image').length
-          });
-          
           return updatedState;
         });
         
         resolve(true);
         
       } catch (error) {
-        console.error('❌ Element creation failed:', error);
         reject(error);
       }
     };
     
     img.onerror = (error) => {
-      console.error('❌ Image loading failed:', error);
       reject(error);
     };
     
@@ -3795,18 +3324,14 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
   const handleFileUpload = useCallback(async (files) => {
   if (!files) return;
   
-  console.log('🔄 === FIXED FILE UPLOAD WITH STATE PROTECTION ===');
-  
   for (const file of Array.from(files)) {
     try {
-      console.log(`📤 Processing: ${file.name}`);
       
       // ✅ GUARANTEED base64 conversion
       const base64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
           const result = e.target.result;
-          console.log(`✅ Base64 SUCCESS: ${result.length} chars`);
           resolve(result);
         };
         reader.onerror = reject;
@@ -3827,20 +3352,16 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
       const success = await addImageToCanvasWithStateProtection(blobUrl, file.name, activeArea, base64Data);
       
       if (success) {
-        console.log(`✅ === COMPLETED: ${file.name} ===`);
         
         // ✅ IMMEDIATE STATE VERIFICATION
         setTimeout(() => {
           const currentImages = Object.values(designElements).flat().filter(el => el.type === 'image');
-          console.log(`🔍 POST-UPLOAD VERIFICATION: ${currentImages.length} images in state`);
           if (currentImages.length === 0) {
-            console.error('🚨 CRITICAL: Images lost after upload!');
           }
         }, 100);
       }
       
     } catch (error) {
-      console.error(`❌ FAILED: ${file.name}`, error);
     }
   }
 }, [activeArea, designElements]);
@@ -4078,7 +3599,6 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
   // =====================================
   
   const renderPreview = useCallback(() => {
-    console.log('ðŸŽ¬ Rendering enhanced preview...');
     
     const surfaceConfig = getSurfaceConfiguration();
     
@@ -4101,7 +3621,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
       <div className="flex h-full">
         {/* Enhanced Mockup Thumbnails */}
         <div className="w-64 p-4 bg-white border-r border-gray-200">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-2">
             <h3 className="font-medium">Mockup Variants</h3>
             <div className="text-xs text-gray-500">
               {selectedColors.length} color{selectedColors.length !== 1 ? 's' : ''}
@@ -4128,7 +3648,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           </div>
           
           {/* Enhanced Calculation Display */}
-          {mockupCalculation && (
+          {/* {mockupCalculation && (
             <div className="p-2 mb-4 rounded bg-blue-50">
               <div className="mb-1 text-xs font-medium text-blue-800">ðŸ“Š Enhanced Calculation</div>
               <div className="text-xs text-blue-700">
@@ -4145,9 +3665,9 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                 ))}
               </div>
             </div>
-          )}
+          )} */}
           
-          <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto">
+          <div className="space-y-2 max-h-[calc(100vh-275px)] overflow-y-auto">
             {colorSpecificMockupGroups.length > 0 ? (
               colorSpecificMockupGroups.flatMap(group => 
               group.mockups.map((mockup, index) => {
@@ -4158,16 +3678,8 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                   productData
                 );
                 
-                console.log(`🎨 Thumbnail for ${group.colorName}:`, {
-                  mockupTitle: mockup.title,
-                  groupColor: group.colorHex,
-                  finalColor: mockupProductColor,
-                  shouldMatch: group.colorHex === mockupProductColor
-                });
-                
                 // Verify the color is correct
                 if (mockupProductColor !== group.colorHex) {
-                  console.warn(`⚠️ Color mismatch for ${mockup.title}: expected ${group.colorHex}, got ${mockupProductColor}`);
                 }
                 
                 return (
@@ -4217,9 +3729,9 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
         </div>
         
         {/* Main Preview */}
-        <div className="flex flex-col flex-1 p-6">
+        <div className="flex flex-col flex-1 p-4">
           {/* Enhanced Export Button Row */}
-          <div className="flex items-center justify-between mb-4">
+          {/* <div className="flex items-center justify-between mb-4">
             <div className="text-sm text-gray-600">
               Enhanced calculation: {mockupCalculation?.totalMockups || 0} unique mockups for {selectedColors.length} color{selectedColors.length !== 1 ? 's' : ''} Ã— {selectedSizes.length} size{selectedSizes.length !== 1 ? 's' : ''}
             </div>
@@ -4236,7 +3748,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                 </>
               ) : (
                 <>
-                  ðŸª Generate & Import to Store (Enhanced)
+                  Generate & Import to Store (Enhanced)
                   {mockupCalculation && (
                     <span className="px-2 py-1 text-sm rounded bg-white/20">
                       {mockupCalculation.totalMockups * selectedSizes.length}
@@ -4245,12 +3757,12 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                 </>
               )}
             </button>
-          </div>
+          </div> */}
           
           {/* Main Preview Content */}
           <div className="flex items-center justify-center flex-1">
             <div className="relative">
-              <div className="w-[500px] h-[500px] relative bg-gray-50 rounded-lg overflow-hidden shadow-lg">
+              <div className="w-[400px] h-[400px] relative bg-gray-50 rounded-lg overflow-hidden shadow-lg">
                 {(() => {
                   const heroMockup = selectedHeroMockup || allMockups[0];
                   
@@ -4272,6 +3784,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                     <div className="w-full h-full">
                       <EnhancedMockupEngine
                         mockup={heroMockup}
+                         showBadges={false}
                         designElements={designElements}
                         canvasConfigs={canvasConfigs}
                         canvasPrintableAreas={printableAreas}
@@ -4281,10 +3794,8 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                         renderEngine={heroMockup.renderPref?.preferredEngine || 'auto'}
                         enablePixiFeatures={true}
                         onRenderComplete={(imageData: string) => {
-                          console.log('âœ… Enhanced preview render completed');
                         }}
                         onProgress={(progress: number) => {
-                          console.log(`Enhanced preview progress: ${progress}%`);
                         }}
                       />
                     </div>
@@ -4293,7 +3804,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
               </div>
               
               {/* Enhanced mockup info panel */}
-              {(selectedHeroMockup || allMockups[0]) && (
+              {/* {(selectedHeroMockup || allMockups[0]) && (
                 <div className="p-3 mt-4 text-xs bg-white border rounded-lg">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -4330,7 +3841,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                     </div>
                   )}
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>
@@ -4677,9 +4188,9 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                 <button
                   key={color.colorHex}
                   onClick={() => handleColorChange(color.colorHex, color.colorName)}
-                  className={`w-12 h-12 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center ${
+                  className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center ${
                     selectedColors.some(c => c.value === color.colorHex)
-                      ? 'border-blue-500 ring-2 ring-blue-200 scale-110' 
+                      ? 'border-orange-500 ring-2 ring-orange-200 scale-110' 
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                   style={{ backgroundColor: color.colorHex }}
@@ -4696,10 +4207,10 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
             </div>
             
             {/* Enhanced calculation preview */}
-            {mockupCalculation && (
+            {/* {mockupCalculation && (
               <div className="p-3 rounded-lg bg-blue-50">
                 <div className="mb-2 text-sm font-medium text-blue-800">
-                  ðŸ“Š Enhanced Calculation Preview
+                   Enhanced Calculation Preview
                 </div>
                 <div className="text-sm text-blue-700">
                   Strategy: {mockupCalculation.strategy.replace(/_/g, ' ')}
@@ -4711,7 +4222,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                   Total images: <strong>{mockupCalculation.totalMockups * selectedSizes.length}</strong>
                 </div>
               </div>
-            )}
+            )} */}
             
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Selected Colors</h4>
@@ -4781,23 +4292,6 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
               Selected: {selectedSizes.join(', ') || 'None'}
             </div>
             
-            {/* Enhanced size impact display */}
-            {mockupCalculation && selectedSizes.length > 0 && (
-              <div className="p-3 rounded-lg bg-green-50">
-                <div className="mb-1 text-sm font-medium text-green-800">
-                  ðŸ“ Size Impact
-                </div>
-                <div className="text-sm text-green-700">
-                  {mockupCalculation.strategy === 'color_specific' ? (
-                    <>Each color gets its own mockups, shared across all {selectedSizes.length} sizes</>
-                  ) : mockupCalculation.strategy === 'color_and_size_specific' ? (
-                    <>Each color Ã— size combination gets unique mockups</>
-                  ) : (
-                    <>All colors and sizes share the same mockups</>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         );
 
@@ -4897,7 +4391,6 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
   // =====================================
   useEffect(() => {
   designElementsRef.current = designElements;
-  console.log('📝 State persisted to ref:', Object.values(designElements).flat().length, 'total elements');
 }, [designElements]);
 
 // ✅ ADD THIS: Periodic state validator
@@ -4907,7 +4400,6 @@ useEffect(() => {
     const refImages = Object.values(designElementsRef.current).flat().filter(el => el.type === 'image').length;
     
     if (stateImages < refImages && refImages > 0) {
-      console.warn('🚨 STATE CORRUPTION DETECTED! Auto-recovering...');
       setDesignElements({ ...designElementsRef.current });
     }
   }, 2000);
@@ -4988,12 +4480,10 @@ useEffect(() => {
       };
       
       img.onerror = (error) => {
-        console.error(`❌ Could not load canvas image for ${activeArea} at: ${resolvedUrl}`, error);
       };
       
       img.src = resolvedUrl;
     } catch (error) {
-      console.error(`❌ Error loading canvas image for ${activeArea}:`, error);
     }
   };
   
@@ -5073,41 +4563,36 @@ useEffect(() => {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
       {/* Enhanced Top Header */}
-      <div className="px-6 py-3 bg-white border-b border-gray-200 shadow-sm">
+      <div className="px-4 py-2 border-b border-gray-200 shadow-sm bg-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <div className="text-2xl font-bold" style={{ color: brandColor }}>
+            <div className="text-xl font-bold" style={{ color: brandColor }}>
               Junooni
             </div>
-            <div className="ml-4 text-sm text-gray-600">
+            <div className="ml-2 text-sm text-gray-600">
               Enhanced Professional Designer
             </div>
-            {mockupCalculation && (
+            {/* {mockupCalculation && (
               <div className="px-3 py-1 ml-4 text-xs text-blue-800 bg-blue-100 rounded-full">
                 {mockupCalculation.strategy.replace(/_/g, ' ')}: {mockupCalculation.totalMockups} unique mockups
               </div>
-            )}
+            )} */}
           </div>
           
           <button
             onClick={handleImportToStore}
             disabled={!hasDesignElements || isGeneratingForStore || !mockupCalculation}
-            className="flex items-center gap-2 px-6 py-2 font-medium text-white transition-colors rounded-lg shadow-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 font-medium text-white transition-colors rounded-lg shadow-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: brandColor }}
           >
             {isGeneratingForStore ? (
               <>
                 <div className="w-4 h-4 border-b-2 border-white rounded-full animate-spin"></div>
-                Generating Enhanced Data...
+                Generating Mockups...
               </>
             ) : (
               <>
-                ðŸª Generate & Import to Store (Enhanced)
-                {mockupCalculation && (
-                  <span className="px-2 py-1 text-sm rounded bg-white/20">
-                    {mockupCalculation.totalMockups * selectedSizes.length} Images
-                  </span>
-                )}
+                Import to Store 
               </>
             )}
           </button>
@@ -5121,8 +4606,8 @@ useEffect(() => {
           <div className="flex flex-col w-1/4 bg-white border-r border-gray-200 shadow-sm">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
               <div>
-                <h1 className="text-lg font-semibold text-gray-800">{productData.name}</h1>
-                <p className="text-xs text-gray-500">Brand: {productData.brand}</p>
+                {/* <h1 className="text-lg font-semibold text-gray-800">{productData.name}</h1>
+                <p className="text-xs text-gray-500">Brand: {productData.brand}</p> */}
                 
                 <div className="flex items-center mt-2 text-xs" style={{ color: brandColor }}>
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
@@ -5153,7 +4638,7 @@ useEffect(() => {
               {(['colors', 'sizes', 'upload', 'library', 'layers'] as const).map(tab => (
                 <button
                   key={tab}
-                  className={`flex-1 py-3 px-2 text-sm font-medium capitalize transition-all whitespace-nowrap relative ${
+                  className={`flex-1 py-4 px-2 text-sm font-medium capitalize transition-all whitespace-nowrap relative ${
                     activeTab === tab 
                       ? 'border-b-2 bg-orange-50' 
                       : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -5166,12 +4651,12 @@ useEffect(() => {
                 >
                   {tab}
                   {tab === 'layers' && (
-                    <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-red-500 rounded-full -top-1 -right-1">
+                    <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-orange-500 rounded-full -top-0 -right-1">
                       {getLayersInfo().length}
                     </span>
                   )}
                   {tab === 'colors' && mockupCalculation && (
-                    <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-blue-500 rounded-full -top-1 -right-1">
+                    <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-orange-500 rounded-full -top-0 -right-1">
                       {selectedColors.length}
                     </span>
                   )}
@@ -5185,7 +4670,7 @@ useEffect(() => {
             
             <div className="p-4 space-y-2 border-t border-gray-100">
               <div className="mb-2 text-xs text-gray-600">
-                <div className="flex justify-between">
+                {/* <div className="flex justify-between">
                   <span>Layers: {getLayersInfo().length}</span>
                   <span>Files: {uploadedFiles.length}</span>
                 </div>
@@ -5202,7 +4687,7 @@ useEffect(() => {
                   <span className="font-medium" style={{ color: brandColor }}>
                     ENHANCED
                   </span>
-                </div>
+                </div> */}
                 {getLayersInfo().length > 0 && (
                   <div className="flex justify-between mt-1">
                     <span>Avg DPI: {Math.round(getLayersInfo().reduce((acc, layer) => acc + layer.dpi, 0) / getLayersInfo().length)}</span>
@@ -5215,36 +4700,14 @@ useEffect(() => {
                 )}
               </div>
               
-              <button
-                onClick={() => setActiveView('preview')}
-                className="w-full px-4 py-2 text-sm font-medium text-white transition-colors bg-gray-600 rounded-lg hover:bg-gray-700"
-              >
-                â†’ Preview Enhanced Mockups
-              </button>
-              
-              <button
-                onClick={handleImportToStore}
-                disabled={!hasDesignElements || isGeneratingForStore || !mockupCalculation}
-                className="flex items-center justify-center w-full gap-2 px-4 py-2 text-sm font-medium text-white transition-colors rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: brandColor }}
-              >
-                {isGeneratingForStore ? (
-                  <>
-                    <div className="w-4 h-4 border-b-2 border-white rounded-full animate-spin"></div>
-                    Generating...
-                  </>
-                ) : (
-                  'ðŸš€ Generate & Import Enhanced'
-                )}
-              </button>
             </div>
           </div>
         )}
 
         {/* Main Content Area */}
         <div className={`flex flex-col ${activeView === 'design' ? 'w-3/4' : 'flex-1'}`}>
-          <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm">
-            <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-between p-2 bg-white border-b border-gray-200 shadow-sm">
+            <div className="flex items-center space-x-3">
               {activeView === 'design' && (
                 <>
                   <div className="flex items-center">
@@ -5295,16 +4758,16 @@ useEffect(() => {
               )}
               
               {activeView === 'preview' && (
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
                   <h2 className="text-lg font-semibold">Enhanced Preview</h2>
                   <div className="text-sm text-gray-600">
                     {Object.values(designElements).flat().length} design elements
                   </div>
-                  {mockupCalculation && (
+                  {/* {mockupCalculation && (
                     <div className="px-3 py-1 text-sm text-green-800 bg-green-100 rounded-full">
                       {mockupCalculation.totalMockups} unique mockups
                     </div>
-                  )}
+                  )} */}
                   {isGeneratingForStore && (
                     <div className="flex items-center text-sm text-green-600">
                       <div className="w-3 h-3 mr-2 border-b-2 border-green-600 rounded-full animate-spin"></div>
@@ -5318,7 +4781,7 @@ useEffect(() => {
             <div className="flex p-1 bg-gray-100 rounded-lg">
               <button
                 onClick={() => setActiveView('design')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                className={`px-2 py-1 text-sm font-small rounded-md transition-all ${
                   activeView === 'design'
                     ? 'text-white shadow-sm'
                     : 'text-gray-700 hover:text-gray-900'
@@ -5331,7 +4794,7 @@ useEffect(() => {
               </button>
               <button
                 onClick={() => setActiveView('preview')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                className={`px-2 py-1 text-sm font-medium rounded-md transition-all ${
                   activeView === 'preview'
                     ? 'text-white shadow-sm'
                     : 'text-gray-700 hover:text-gray-900'
@@ -5345,9 +4808,9 @@ useEffect(() => {
             </div>
           </div>
           
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 p-2 overflow-hidden">
             {activeView === 'design' ? (
-              <div className="flex items-center justify-center h-full p-6">
+              <div className="flex items-center justify-center h-full p-4 overflow-y-auto">
                 {renderCanvas()}
               </div>
             ) : (

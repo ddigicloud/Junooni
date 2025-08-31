@@ -478,7 +478,6 @@ interface VendorOrder {
 }
 
 const calculateCustomerTotalPayment = (order: VendorOrder, originalItems: OrderItem[], returnedItems: OrderItem[], replacementItems: OrderItem[]) => {
-  console.log("💳 Calculating customer total payment...");
   
   // Calculate base product totals
   const originalTotal = originalItems.reduce((sum, item) => sum + item.total, 0);
@@ -505,16 +504,9 @@ const calculateCustomerTotalPayment = (order: VendorOrder, originalItems: OrderI
     return originalTotal; // No changes
   })();
   
-  console.log("💳 Product totals:", {
-    original: originalTotal,
-    returned: returnedTotal,
-    replacement: replacementTotal,
-    net: netProductTotal
-  });
   
   // ✅ OPTION 1: Use backend tax/shipping values (recommended)
   const useBackendValues = true;
-  console.log("shipping amount", order.vendor_shipping_total)
   if (useBackendValues) {
     // Backend should have already calculated adjusted tax and shipping for the net order
     //const customerTotal = netProductTotal + order.vendor_tax_total + order.vendor_shipping_total;
@@ -537,50 +529,23 @@ const calculateCustomerTotalPayment = (order: VendorOrder, originalItems: OrderI
     return netProductTotal + order.vendor_tax_total;  //order.vendor_shipping_total; // No changes
   })();
     
-    console.log("💳 Using backend values:", {
-      netProductTotal,
-      vendorTax: order.vendor_tax_total,
-      vendorShipping: order.vendor_shipping_total,
-      total: customerTotal
-    });
     
     return customerTotal;
   }
   
-  // ✅ OPTION 2: Calculate tax/shipping manually - ALWAYS add tax
   else {
-    // ✅ SIMPLIFIED: Always calculate tax on net product total
-    // Customer should pay tax on whatever products they're keeping
-    
-    // Calculate tax rate from original order
+   
     const originalTaxRate = originalTotal > 0 ? order.vendor_tax_total / originalTotal : 0;
     
-    // ✅ ALWAYS apply tax rate to net product total
+   
     const finalTax = netProductTotal * originalTaxRate;
     
-    console.log("💳 Tax calculation:", {
-      originalTax: order.vendor_tax_total,
-      originalTotal: originalTotal,
-      taxRate: (originalTaxRate * 100).toFixed(2) + '%',
-      netProductTotal: netProductTotal,
-      finalTax: finalTax,
-      note: 'Tax always applied to net product total'
-    });
-    
-    // ✅ Shipping - use backend value
     const finalShipping = order.vendor_shipping_total;
     
     // ✅ ALWAYS add: net products + tax + shipping
     const customerTotal = -netProductTotal + finalTax; //+ finalShipping;
     
-    console.log("💳 Final calculation:", {
-      'Net Products': netProductTotal,
-      'Tax': finalTax,
-      'Shipping': finalShipping,
-      'Total': customerTotal,
-      'Formula': `${netProductTotal} + ${finalTax} + ${finalShipping} = ${customerTotal}`
-    });
-    
+       
     return customerTotal;
   }
 };
@@ -1748,10 +1713,7 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
         setLoading(false)
         return
       }
-      
-      console.log(`🔍 Fetching vendor-specific order details for order ${id}`)
-      
-      // ✅ CORRECTED: Simple API call, backend handles claims/returns separately
+
       const response = await fetch(`http://localhost:9000/vendors/orders/${id}`, {
         method: "GET",
         headers: {
@@ -1768,7 +1730,7 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
       }
       
       const data = await response.json()
-      console.log(`✅ Received vendor-filtered order data with claims/returns:`, data.order)
+    
       
       if (!data.order) {
         throw new Error(`No order data returned for order ${id}`)
@@ -1779,7 +1741,7 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
       setOrder(transformedOrder)
       
     } catch (err: any) {
-      console.error("❌ Error fetching vendor order details:", err)
+    
       setError(err.message || "Failed to load order details")
     } finally {
       setLoading(false)
@@ -1789,35 +1751,8 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
   fetchVendorOrderDetails()
 }, [id])
   
-  // ✅ Updated transformer for vendor-filtered order data with product images
+
   const transformVendorOrderDataWithClaims = (orderData: any): VendorOrder => {
-  console.log("🔄 Transforming vendor order data with claims/returns:", orderData)
-  
-    // ✅ NEW: Log claims/returns data for debugging
-    console.log("🔍 Item fulfillment statuses:", orderData.item_fulfillment_statuses);
-console.log("🔍 Fulfillments array:", orderData.fulfillments);
-console.log("🔍 Raw vendor_items:", orderData.vendor_items);
-  console.log("📋 Claims data:", orderData.claims || [])
-  console.log("📋 Returns data:", orderData.returns || [])
-  console.log("📋 Has claims:", orderData.has_claims)
-  console.log("📋 Has returns:", orderData.has_returns)
-  
-    // ✅ DEBUG: Log the raw vendor_items first
-    console.log("🔍 Raw vendor_items array:", orderData.vendor_items);
-    if (orderData.vendor_items) {
-      orderData.vendor_items.forEach((item: any, index: number) => {
-        console.log(`🔍 Raw item ${index}:`, {
-          title: item.title || item.product_title,
-          product_cost_direct: item.product_cost,
-          merged_metadata: item.merged_metadata,
-          tracking_numbers: item.tracking_numbers,
-          has_tracking: item.has_tracking,
-          image_url: item.image_url,
-          product_image: item.product_image,
-          all_keys: Object.keys(item)
-        });
-      });
-    }
     
     // Use vendor-specific totals from filtered data
     const vendorTotal = orderData.vendor_total || 0
@@ -1891,36 +1826,6 @@ console.log("🔍 Raw vendor_items:", orderData.vendor_items);
       } else {
         thumbnailUrl = imageUrl; // Use main image as thumbnail fallback
       }
-      
-     // ✅ NEW: Debug claim/return status from backend
-    console.log(`🔍 Item ${index} (${item.title}) claim/return status:`, {
-      claim_status: item.claim_status,
-      return_status: item.return_status,
-      is_claim_item: item.is_claim_item,
-      claim_id: item.claim_id,
-      return_id: item.return_id
-    });
-
-    // ✅ NEW: Debug tracking information from backend
-    console.log(`🚚 Item ${index} (${item.title}) tracking info:`, {
-      tracking_numbers: item.tracking_numbers,
-      tracking_urls: item.tracking_urls,
-      has_tracking: item.has_tracking,
-      shipped_at: item.shipped_at,
-      delivered_at: item.delivered_at
-    });
-
-    // ✅ NEW: Debug image information from backend
-    console.log(`🖼️ Item ${index} (${item.title}) image info:`, {
-      image_url: imageUrl,
-      thumbnail_url: thumbnailUrl,
-      raw_image_fields: {
-        image_url: item.image_url,
-        product_image: item.product_image,
-        variant_image: item.variant?.image_url,
-        product_images: item.product?.images,
-      }
-    });
     
   // ✅ CORRECTED: Extract fulfillment type based on actual API response
 let fulfillmentType: 'creator' | 'junooni' = 'creator'; // default to creator
@@ -1941,21 +1846,6 @@ if (item.item_fulfillment_type) {
     fulfillmentType = 'creator';
   }
 }
-
-    // ✅ ENHANCED: Debug fulfillment type information
-    console.log(`🏭 Item ${index} (${item.title}) fulfillment type detection:`, {
-      detected_fulfillment_type: fulfillmentType,
-      item_fulfillment_type: item.item_fulfillment_type,
-      fulfillment_type: item.fulfillment_type,
-      fulfillment_status: item.fulfillment_status,
-      shipped_at: item.shipped_at,
-      raw_fulfillment_fields: {
-        item_fulfillment_type: item.item_fulfillment_type,
-        product_fulfillment_type: item.product?.fulfillment_type,
-        variant_product_fulfillment_type: item.variant?.product?.fulfillment_type,
-        metadata_fulfillment_type: item.merged_metadata?.fulfillment_type
-      }
-    });
 
    // ✅ FIXED: Properly detect fulfillment status from fulfillments array
 let fulfillmentStatus = 'pending';
@@ -1981,16 +1871,6 @@ if (itemFulfillment) {
     fulfillmentStatus = 'fulfilled';
   }
 }
-
-console.log(`🔍 Item ${item.title} fulfillment detection:`, {
-  itemId: item.id,
-  fulfillmentId,
-  fulfillmentStatus,
-  packed_at: packedAt,
-  shipped_at: shippedAt,
-  can_ship: fulfillmentStatus === 'fulfilled' && !shippedAt
-});
-
       return {
       id: item.id || `item_${index}`,
       title: item.title || item.product_title || "Unknown Product",
@@ -2116,8 +1996,6 @@ const handleConfirmOrder = async () => {
       throw new Error("Authentication required. Please log in again.");
     }
     
-    console.log('🔐 Authentication check passed, token present:', !!token);
-    
     const confirmQty = parseInt(confirmQuantity);
     const cancelQty = parseInt(cancelQuantity) || 0;
     
@@ -2129,18 +2007,6 @@ const handleConfirmOrder = async () => {
     if (confirmQty + cancelQty > selectedItem.quantity) {
       throw new Error("Total quantity cannot exceed item quantity");
     }
-    
-    console.log(`🚀 Creating fulfillment for order ${order.original_order_id}, item ${selectedItem.id}`);
-    console.log('🔍 Request details:', {
-      url: `http://localhost:9000/vendors/orders/${order.original_order_id}/fulfillments`,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token ? token.substring(0, 10) + '...' : 'missing'}`,
-        'Accept': 'application/json'
-      },
-      bodySize: JSON.stringify(fulfillmentPayload).length
-    });
     
     // ✅ UPDATED: Create fulfillment payload matching your backend API
     const fulfillmentPayload = {
@@ -2168,10 +2034,6 @@ const handleConfirmOrder = async () => {
       }
     };
     
-    console.log('📦 Sending fulfillment payload:', JSON.stringify(fulfillmentPayload, null, 2));
-    
-    console.log('📦 Fulfillment payload:', fulfillmentPayload);
-    
     // ✅ Create fulfillment using the exact endpoint from your route.ts
     const fulfillmentResponse = await fetch(`http://localhost:9000/vendors/orders/${order.original_order_id}/fulfillments`, {
       method: "POST",
@@ -2182,9 +2044,6 @@ const handleConfirmOrder = async () => {
       },
       body: JSON.stringify(fulfillmentPayload)
     });
-    
-    console.log('📡 Fulfillment response status:', fulfillmentResponse.status);
-    console.log('📡 Fulfillment response headers:', Object.fromEntries(fulfillmentResponse.headers.entries()));
     
     if (fulfillmentResponse.status === 401) {
       throw new Error("Authentication failed. Please log in again.");
@@ -2198,9 +2057,7 @@ const handleConfirmOrder = async () => {
       let errorMessage = "Failed to create fulfillment";
       
       try {
-        const errorText = await fulfillmentResponse.text();
-        console.log('❌ Error response body:', errorText);
-        
+        const errorText = await fulfillmentResponse.text(); 
         // Try to parse as JSON first
         let errorData;
         try {
@@ -2211,7 +2068,6 @@ const handleConfirmOrder = async () => {
           errorMessage = errorText || `${errorMessage}: ${fulfillmentResponse.statusText}`;
         }
       } catch (responseError) {
-        console.error('❌ Error reading response:', responseError);
         errorMessage = `${errorMessage}: ${fulfillmentResponse.statusText}`;
       }
       
@@ -2221,19 +2077,15 @@ const handleConfirmOrder = async () => {
     let fulfillmentData;
     try {
       const responseText = await fulfillmentResponse.text();
-      console.log('✅ Success response body:', responseText);
-      fulfillmentData = JSON.parse(responseText);
+       fulfillmentData = JSON.parse(responseText);
     } catch (parseError) {
-      console.error('❌ Error parsing success response:', parseError);
-      // If we can't parse the response but the request was successful, continue
+       // If we can't parse the response but the request was successful, continue
       fulfillmentData = { success: true };
     }
     
-    console.log('✅ Fulfillment created successfully:', fulfillmentData);
     
     // ✅ Handle cancellation if specified
     if (cancelQty > 0) {
-      console.log(`❌ Canceling ${cancelQty} items from order ${order.original_order_id}`);
       
       try {
         const cancelPayload = {
@@ -2257,13 +2109,10 @@ const handleConfirmOrder = async () => {
         });
         
         if (!cancelResponse.ok) {
-          console.warn('⚠️ Failed to cancel items, but fulfillment was successful');
-          // Don't throw here since the main fulfillment succeeded
+        // Don't throw here since the main fulfillment succeeded
         } else {
-          console.log('✅ Items canceled successfully');
-        }
+           }
       } catch (cancelError) {
-        console.warn('⚠️ Error during cancellation:', cancelError);
         // Don't fail the whole operation for cancellation errors
       }
     }
@@ -2284,8 +2133,7 @@ const handleConfirmOrder = async () => {
     }, 2000);
     
   } catch (error: any) {
-    console.error('❌ Error confirming order fulfillment:', error);
-    setFulfillmentError(error.message || 'An unexpected error occurred');
+      setFulfillmentError(error.message || 'An unexpected error occurred');
   } finally {
     setFulfillmentLoading(false);
   }
@@ -2352,22 +2200,7 @@ const handleMarkAsShipped = async () => {
     if (!token) {
       throw new Error("Authentication required. Please log in again.");
     }
-    
-    console.log(`🚢 Marking fulfillment ${selectedShipmentItem.fulfillment_id} as shipped`);
-    
-    // ✅ Create fulfillment update payload
-    // const updatePayload = {
-    //   tracking_number: trackingNumber.trim(),
-    //   tracking_url: trackingUrl.trim() || generateTrackingUrl(carrier, trackingNumber.trim()),
-    //   carrier: carrier,
-    //   shipped_at: new Date().toISOString(),
-    //   metadata: {
-    //     vendor_id: order.vendor_id,
-    //     vendor_handle: order.vendor_handle,
-    //     shipped_by: "vendor",
-    //     shipment_timestamp: new Date().toISOString()
-    //   }
-    // };
+  
     // ✅ FIXED: Create shipment payload matching backend API
 // ✅ FIXED: Create shipment payload with proper label_url handling
 
@@ -2384,9 +2217,7 @@ const updatePayload = {
   ]
 };
 
-console.log('📦 Sending update payload:', JSON.stringify(updatePayload, null, 2));
-    console.log("fulfillmentid",selectedShipmentItem.fulfillment_id)
-    
+   
     // ✅ Update fulfillment status to shipped with tracking info
         const updateResponse = await fetch(
       `http://localhost:9000/vendors/orders/${order.original_order_id}/fulfillments/${selectedShipmentItem.fulfillment_id}/shipment`, 
@@ -2401,9 +2232,7 @@ console.log('📦 Sending update payload:', JSON.stringify(updatePayload, null, 
       }
     );
     
-    console.log('📡 Update response status:', updateResponse.status);
-    
-    if (updateResponse.status === 401) {
+     if (updateResponse.status === 401) {
       throw new Error("Authentication failed. Please log in again.");
     }
     
@@ -2416,7 +2245,6 @@ console.log('📦 Sending update payload:', JSON.stringify(updatePayload, null, 
       
       try {
         const errorText = await updateResponse.text();
-        console.log('❌ Update error response:', errorText);
         
         let errorData;
         try {
@@ -2426,8 +2254,7 @@ console.log('📦 Sending update payload:', JSON.stringify(updatePayload, null, 
           errorMessage = errorText || `${errorMessage}: ${updateResponse.statusText}`;
         }
       } catch (responseError) {
-        console.error('❌ Error reading update response:', responseError);
-        errorMessage = `${errorMessage}: ${updateResponse.statusText}`;
+         errorMessage = `${errorMessage}: ${updateResponse.statusText}`;
       }
       
       throw new Error(errorMessage);
@@ -2436,14 +2263,11 @@ console.log('📦 Sending update payload:', JSON.stringify(updatePayload, null, 
     let updateData;
     try {
       const responseText = await updateResponse.text();
-      console.log('✅ Update success response:', responseText);
-      updateData = JSON.parse(responseText);
+        updateData = JSON.parse(responseText);
     } catch (parseError) {
-      console.error('❌ Error parsing update response:', parseError);
-      updateData = { success: true };
+       updateData = { success: true };
     }
     
-    console.log('✅ Fulfillment marked as shipped successfully:', updateData);
     
     // Success!
     setShipmentSuccess(true);
@@ -2462,8 +2286,7 @@ console.log('📦 Sending update payload:', JSON.stringify(updatePayload, null, 
     }, 2000);
     
   } catch (error: any) {
-    console.error('❌ Error marking as shipped:', error);
-    setShipmentError(error.message || 'An unexpected error occurred');
+      setShipmentError(error.message || 'An unexpected error occurred');
   } finally {
     setShipmentLoading(false);
   }
@@ -2612,8 +2435,7 @@ const generateTrackingUrl = (carrier: string, trackingNumber: string): string =>
       // Save the PDF
       doc.save(`Junooni_Vendor_Invoice_${order.display_id}_${order.vendor_handle}.pdf`);
     } catch (error) {
-      console.error("Error generating vendor invoice:", error);
-      alert("Failed to generate invoice. Please try again.");
+       alert("Failed to generate invoice. Please try again.");
     }
   };  
   

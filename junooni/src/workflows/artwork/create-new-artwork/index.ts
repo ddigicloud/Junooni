@@ -24,9 +24,9 @@ import {
   
   type CreateArtworkWorkflowInput = {
     vendor_artwork: CreateArtworkStepInput & {
-      medias: Omit<CreateArtworkMediasInput, "vendor_artwork_id">[]
+      medias: CreateArtworkMediasInput
     }
-    product: CreateProductWorkflowInputDTO
+
   }
   
   const CreateArtworkWorkflow = createWorkflow(

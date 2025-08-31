@@ -905,6 +905,7 @@ export interface BlankProduct {
   shippingInfo: {
     weight: number;
     shippingDimensions?: string | null;
+    shippingLocationID?: string | null;
     packageType?: ('poly_mailer' | 'box' | 'envelope' | 'tube' | 'custom') | null;
   };
   colorOptions?:
@@ -2265,6 +2266,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
     | {
         weight?: T;
         shippingDimensions?: T;
+        shippingLocationID?: T;
         packageType?: T;
       };
   colorOptions?:
