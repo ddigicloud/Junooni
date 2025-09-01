@@ -723,14 +723,14 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
         )} */}
         
         {/* Dynamic surface type indicator */}
-        <div className={`text-white text-xs px-2 py-1 rounded-full shadow-lg ${
+        {/* <div className={`text-white text-xs px-2 py-1 rounded-full shadow-lg ${
           surfaceType === 'cylindrical' ? 'bg-purple-600' :
           surfaceType === 'apparel_body' ? 'bg-indigo-600' :
           surfaceType === 'sleeve_wrap' ? 'bg-orange-600' :
           'bg-gray-600'
         }`}>
           <span className="font-medium">{surfaceType.toUpperCase()}</span>
-        </div>
+        </div> */}
         
         {/* {fabricSettings.enableRealisticFabric && (
           <div className="px-2 py-1 text-xs text-white bg-blue-600 rounded-full shadow-lg">
@@ -1287,9 +1287,9 @@ async function applyEnhancedCylindricalWrap(
       ctx.restore();
     }
     
-    console.log(`✅ Enhanced cylindrical wrap applied successfully with ${visibilityPercentage}% visibility`);
+
   } catch (error) {
-    console.error('Error in enhanced cylindrical wrap:', error);
+    
     ctx.drawImage(source, 0, 0);
   }
 }

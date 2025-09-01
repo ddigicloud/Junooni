@@ -59,6 +59,50 @@ interface LayerInfo {
   };
 }
 
+
+interface CanvasImageMetadata {
+  area_name: string;
+  canvas_dimensions: { 
+    width_pixels: number; 
+    height_pixels: number; 
+    width_inches: number; 
+    height_inches: number 
+  };
+  printable_area: { x: number; y: number; width: number; height: number };
+  design_elements: Array<{
+    element_id: string; 
+    element_index: number; 
+    type: string;
+    position: { x: number; y: number; x_inches: number; y_inches: number };
+    dimensions: { 
+      width_pixels: number; 
+      height_pixels: number; 
+      width_inches: number; 
+      height_inches: number 
+    };
+    transformations: { rotation: number; scale_x: number; scale_y: number; opacity: number };
+    image_info?: { 
+      original_name: string; 
+      original_width: number; 
+      original_height: number; 
+      print_quality: string; 
+      print_dpi: number 
+    };
+    text_info?: { 
+      content: string; 
+      font_size: number; 
+      font_family: string; 
+      color: string 
+    };
+  }>;
+  canvas_settings: { 
+    active_color: string; 
+    total_elements: number; 
+    visible_elements: number 
+  };
+}
+
+
 interface DynamicMockupPhoto {
   id: string;
   title: string;
@@ -342,6 +386,7 @@ interface StoreImportData {
     originalWidth: number;
     originalHeight: number;
     area: string;
+    description?: string;
     position: { x: number; y: number };
     dimensions: { width: number; height: number };
     rotation?: number;
@@ -349,6 +394,12 @@ interface StoreImportData {
     scaleY?: number;
     opacity?: number;
   }>;
+  canvas_images?: Array<{
+  area_id: string;
+  image_data: string;
+  metadata: CanvasImageMetadata;
+  description: string;
+}>;
   generation_summary: {
     total_combinations: number;
     total_images_generated: number;
@@ -1697,6 +1748,8 @@ interface ThumbnailPreviewProps {
   productColor: string;
   isSelected: boolean;
   onSelect: () => void;
+  displayDimensions?: { width: number; height: number };
+  isMainPreview?: boolean; // 🔥 ADD THIS PROP
   productData: any;
 }
 
@@ -1708,6 +1761,8 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   productColor,
   isSelected,
   onSelect,
+  displayDimensions = { width: 160, height: 160 }, // 🔥 DEFAULT TO THUMBNAIL SIZE
+  isMainPreview = false, // 🔥 DEFAULT TO FALSE
   productData
 }) => {
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
@@ -1793,11 +1848,13 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
             designElements={designElements}
             canvasConfigs={canvasConfigs}
             canvasPrintableAreas={canvasPrintableAreas}
-            displayDimensions={{ width: 160, height: 160 }}
+              displayDimensions={displayDimensions}
+            // displayDimensions={{ width: 160, height: 160 }}
             productType={productData.productType || 'flat'}
             productColor={productColor}
             renderEngine={renderEngine}
             enablePixiFeatures={true}
+            pixelRatio={isMainPreview ? 2 : 1}
             onRenderComplete={() => {
             }}
             onProgress={(progress) => {
@@ -2316,7 +2373,7 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
                   className="flex-1 px-6 py-3 font-medium text-white transition-colors rounded-lg hover:opacity-90"
                   style={{ backgroundColor: brandColor }}
                 >
-                  ðŸª Import to Store
+                  Import to Store
                 </button>
                 <button
                   onClick={downloadImportData}
@@ -2720,7 +2777,6 @@ const [activeColor, setActiveColor] = useState<string>(() => {
   
 
 const extractDesignImages = useCallback(() => {
-  
   const designImages = [];
   let totalElements = 0;
   let imageElements = 0;
@@ -2736,11 +2792,33 @@ const extractDesignImages = useCallback(() => {
       if (element.type === 'image' && element.imageBase64) {
         imageElements++;
         
+        const canvasConfig = getCanvasConfig(area);
+        const dpiInfo = calculateDPI(element);
+        
+        // Generate detailed manufacturing description
+        const widthInches = (element.width / canvasConfig.width) * canvasConfig.realWorldWidth;
+        const heightInches = (element.height / canvasConfig.height) * canvasConfig.realWorldHeight;
+        const xInches = (element.x / canvasConfig.width) * canvasConfig.realWorldWidth;
+        const yInches = (element.y / canvasConfig.height) * canvasConfig.realWorldHeight;
+        
+        const description = `DESIGN IMAGE SPECIFICATIONS:
+Area: ${area.toUpperCase()}
+Position: (${xInches.toFixed(3)}", ${yInches.toFixed(3)}")
+Size: ${widthInches.toFixed(3)}" x ${heightInches.toFixed(3)}"
+Pixels: ${element.width} x ${element.height}
+Original: ${element.originalImageWidth || element.width} x ${element.originalImageHeight || element.height}
+Print Quality: ${dpiInfo.quality} (${dpiInfo.dpi} DPI)
+Rotation: ${element.rotation || 0}°
+Scale: ${element.scaleX || 1} x ${element.scaleY || 1}
+Opacity: ${Math.round((element.opacity || 1) * 100)}%
+File: ${element.imageName || `design-image-${imageElements}.png`}
+Generated: ${new Date().toISOString()}`;
+        
         const designImage = {
           id: element.id,
           name: element.imageName || `design-image-${imageElements}.png`,
           type: 'image/png',
-          base64Data: element.imageBase64, // This is the key property
+          base64Data: element.imageBase64,
           originalWidth: element.originalImageWidth || element.width,
           originalHeight: element.originalImageHeight || element.height,
           area: area,
@@ -2749,17 +2827,373 @@ const extractDesignImages = useCallback(() => {
           rotation: element.rotation || 0,
           scaleX: element.scaleX || 1,
           scaleY: element.scaleY || 1,
-          opacity: element.opacity || 1
+          opacity: element.opacity || 1,
+          description: description
         };
         
         designImages.push(designImage);
-        
       }
     });
   });
   
   return designImages;
-}, [designElements]);
+}, [designElements, getCanvasConfig, calculateDPI]);
+
+
+
+// Canvas Image Capture Functions
+const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<string | null> => {
+  try {
+    const elements = designElements[areaId] || [];
+    const visibleElements = elements.filter(element => element.visible !== false);
+    
+    if (visibleElements.length === 0) {
+      return null;
+    }
+    
+    const canvasConfig = getCanvasConfig(areaId, activeColor);
+    const printableArea = getPrintableAreaFromPhoto(areaId, activeColor);
+    
+    // Get the canvas background image (t-shirt template)
+    const canvasImage = canvasImages[`${areaId}_${activeColor}`] || canvasImages[areaId];
+    
+    console.log(`🎯 CANVAS CAPTURE: Starting capture for ${areaId}`, {
+      canvasConfig,
+      hasCanvasImage: !!canvasImage,
+      visibleElements: visibleElements.length,
+      printableArea
+    });
+    
+    // Create temporary stage with higher resolution for quality
+    const tempStage = new Konva.Stage({
+      container: document.createElement('div'),
+      width: canvasConfig.width,
+      height: canvasConfig.height,
+      pixelRatio: 2 // High quality
+    });
+    
+    const tempLayer = new Konva.Layer();
+    tempStage.add(tempLayer);
+    
+    // STEP 1: Add transparent background (no color fill)
+    const backgroundRect = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: canvasConfig.width,
+      height: canvasConfig.height,
+      fill: 'transparent', // Transparent background
+      listening: false
+    });
+    tempLayer.add(backgroundRect);
+    
+    // STEP 2: Add the t-shirt template with color applied only to the t-shirt shape
+    if (canvasImage) {
+      console.log(`🎯 CANVAS CAPTURE: Adding t-shirt template with color ${activeColor}`);
+      
+      // First, add a colored rectangle for the t-shirt
+      const tshirtColorRect = new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: canvasConfig.width,
+        height: canvasConfig.height,
+        fill: activeColor, // T-shirt color
+        listening: false
+      });
+      tempLayer.add(tshirtColorRect);
+      
+      // Then add the t-shirt template as a mask to shape the color
+      const canvasImageNode = new Konva.Image({
+        image: canvasImage,
+        x: 0,
+        y: 0,
+        width: canvasConfig.width,
+        height: canvasConfig.height,
+        globalCompositeOperation: 'destination-in', // Use t-shirt shape as mask
+        listening: false
+      });
+      tempLayer.add(canvasImageNode);
+      
+      // Add texture/detail overlay if needed
+      const textureOverlay = new Konva.Image({
+        image: canvasImage,
+        x: 0,
+        y: 0,
+        width: canvasConfig.width,
+        height: canvasConfig.height,
+        opacity: 0.1, // Very subtle texture
+        globalCompositeOperation: 'multiply',
+        listening: false
+      });
+      tempLayer.add(textureOverlay);
+    }
+    
+    // STEP 3: Create clipping group for design elements (THIS WAS MISSING!)
+    const clippingGroup = new Konva.Group({
+      clipFunc: (ctx) => {
+        ctx.beginPath();
+        ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
+        ctx.closePath();
+      }
+    });
+    tempLayer.add(clippingGroup);
+    
+    // STEP 4: Add all visible design elements INSIDE the clipping group
+    for (const element of visibleElements) {
+      if (element.type === 'image' && element.image) {
+        console.log(`🎯 CANVAS CAPTURE: Adding clipped image element ${element.id}`);
+        
+        const imageNode = new Konva.Image({
+          image: element.image,
+          x: element.x,
+          y: element.y,
+          width: element.width,
+          height: element.height,
+          rotation: element.rotation || 0,
+          scaleX: element.scaleX || 1,
+          scaleY: element.scaleY || 1,
+          opacity: element.opacity || 1,
+          listening: false
+        });
+        clippingGroup.add(imageNode); // Add to clipping group instead of layer
+        
+      } else if (element.type === 'text') {
+        console.log(`🎯 CANVAS CAPTURE: Adding clipped text element ${element.id}`);
+        
+        const textNode = new Konva.Text({
+          text: element.text || 'Text',
+          x: element.x,
+          y: element.y,
+          width: element.width,
+          fontSize: element.fontSize || 20,
+          fontFamily: element.fontFamily || 'Arial',
+          fill: element.fill || '#000000',
+          rotation: element.rotation || 0,
+          scaleX: element.scaleX || 1,
+          scaleY: element.scaleY || 1,
+          opacity: element.opacity || 1,
+          listening: false
+        });
+        clippingGroup.add(textNode); // Add to clipping group instead of layer
+      }
+    }
+    
+    // STEP 5: Add printable area boundary for manufacturer reference (AFTER clipped elements)
+    const printableBorder = new Konva.Rect({
+      x: printableArea.x,
+      y: printableArea.y,
+      width: printableArea.width,
+      height: printableArea.height,
+      stroke: '#FF0000',
+      strokeWidth: 2,
+      dash: [6, 4],
+      listening: false
+    });
+    tempLayer.add(printableBorder); // Add to main layer (not clipped)
+    
+    // STEP 6: Force layer to draw and wait for completion
+    tempLayer.draw();
+    
+    // Small delay to ensure rendering is complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // STEP 7: Export as high-quality PNG
+    const dataURL = tempStage.toDataURL({
+      mimeType: 'image/png',
+      quality: 1.0,
+      pixelRatio: 2
+    });
+    
+    console.log(`🎯 CANVAS CAPTURE: Successfully captured ${areaId}`, {
+      dataUrlLength: dataURL.length,
+      hasBackground: !!canvasImage,
+      clippedElements: visibleElements.length
+    });
+    
+    // Cleanup
+    tempStage.destroy();
+    
+    return dataURL;
+    
+  } catch (error) {
+    console.error(`🎯 CANVAS CAPTURE: Error capturing area ${areaId}:`, error);
+    return null;
+  }
+}, [getCanvasConfig, getPrintableAreaFromPhoto, designElements, activeColor, canvasImages]);
+
+
+const generateCanvasMetadata = useCallback((areaId: string): CanvasImageMetadata => {
+  const canvasConfig = getCanvasConfig(areaId, activeColor);
+  const printableArea = getPrintableAreaFromPhoto(areaId, activeColor);
+  const elements = designElements[areaId] || [];
+  const visibleElements = elements.filter(element => element.visible !== false);
+  
+  const designElementsData = visibleElements.map((element, index) => {
+    // Calculate inches from pixels
+    const xInches = (element.x / canvasConfig.width) * canvasConfig.realWorldWidth;
+    const yInches = (element.y / canvasConfig.height) * canvasConfig.realWorldHeight;
+    const widthInches = (element.width / canvasConfig.width) * canvasConfig.realWorldWidth;
+    const heightInches = (element.height / canvasConfig.height) * canvasConfig.realWorldHeight;
+    
+    const baseData = {
+      element_id: element.id,
+      element_index: index,
+      type: element.type,
+      position: {
+        x: Math.round(element.x * 100) / 100,
+        y: Math.round(element.y * 100) / 100,
+        x_inches: Math.round(xInches * 1000) / 1000,
+        y_inches: Math.round(yInches * 1000) / 1000
+      },
+      dimensions: {
+        width_pixels: Math.round(element.width),
+        height_pixels: Math.round(element.height),
+        width_inches: Math.round(widthInches * 1000) / 1000,
+        height_inches: Math.round(heightInches * 1000) / 1000
+      },
+      transformations: {
+        rotation: element.rotation || 0,
+        scale_x: element.scaleX || 1,
+        scale_y: element.scaleY || 1,
+        opacity: element.opacity || 1
+      }
+    };
+    
+    if (element.type === 'image') {
+      const dpiInfo = calculateDPI(element);
+      baseData.image_info = {
+        original_name: element.imageName || 'Unknown',
+        original_width: element.originalImageWidth || element.width,
+        original_height: element.originalImageHeight || element.height,
+        print_quality: dpiInfo.quality,
+        print_dpi: dpiInfo.dpi
+      };
+    } else if (element.type === 'text') {
+      baseData.text_info = {
+        content: element.text || '',
+        font_size: element.fontSize || 20,
+        font_family: element.fontFamily || 'Arial',
+        color: element.fill || '#000000'
+      };
+    }
+    
+    return baseData;
+  });
+  
+  return {
+    area_name: areaId,
+    canvas_dimensions: {
+      width_pixels: canvasConfig.width,
+      height_pixels: canvasConfig.height,
+      width_inches: canvasConfig.realWorldWidth,
+      height_inches: canvasConfig.realWorldHeight
+    },
+    printable_area: {
+      x: Math.round(printableArea.x * 100) / 100,
+      y: Math.round(printableArea.y * 100) / 100,
+      width: Math.round(printableArea.width * 100) / 100,
+      height: Math.round(printableArea.height * 100) / 100
+    },
+    design_elements: designElementsData,
+    canvas_settings: {
+      active_color: activeColor,
+      total_elements: elements.length,
+      visible_elements: visibleElements.length
+    }
+  };
+}, [getCanvasConfig, getPrintableAreaFromPhoto, calculateDPI, designElements, activeColor]);
+
+const generateDetailedDescription = useCallback((areaId: string, metadata: CanvasImageMetadata): string => {
+  const { canvas_dimensions, printable_area, design_elements, canvas_settings } = metadata;
+  
+  let description = `MANUFACTURING SPECIFICATIONS - ${areaId.toUpperCase()} AREA\n\n`;
+  
+  // Canvas specifications
+  description += `CANVAS DIMENSIONS:\n`;
+  description += `- Pixels: ${canvas_dimensions.width_pixels} x ${canvas_dimensions.height_pixels}\n`;
+  description += `- Physical: ${canvas_dimensions.width_inches}" x ${canvas_dimensions.height_inches}"\n`;
+  description += `- Color: ${canvas_settings.active_color}\n\n`;
+  
+  // Printable area
+  description += `PRINTABLE AREA:\n`;
+  description += `- Position: (${printable_area.x}, ${printable_area.y}) pixels\n`;
+  description += `- Size: ${printable_area.width} x ${printable_area.height} pixels\n`;
+  description += `- Physical: ${(printable_area.width/canvas_dimensions.width_pixels*canvas_dimensions.width_inches).toFixed(3)}" x ${(printable_area.height/canvas_dimensions.height_pixels*canvas_dimensions.height_inches).toFixed(3)}"\n\n`;
+  
+  // Design elements
+  description += `DESIGN ELEMENTS (${design_elements.length} total):\n`;
+  design_elements.forEach((element, index) => {
+    description += `\n${index + 1}. ${element.type.toUpperCase()} - ID: ${element.element_id}\n`;
+    description += `   Position: (${element.position.x_inches}", ${element.position.y_inches}")\n`;
+    description += `   Size: ${element.dimensions.width_inches}" x ${element.dimensions.height_inches}"\n`;
+    description += `   Pixels: ${element.dimensions.width_pixels} x ${element.dimensions.height_pixels}\n`;
+    
+    if (element.transformations.rotation !== 0) {
+      description += `   Rotation: ${element.transformations.rotation}°\n`;
+    }
+    if (element.transformations.scale_x !== 1 || element.transformations.scale_y !== 1) {
+      description += `   Scale: ${element.transformations.scale_x} x ${element.transformations.scale_y}\n`;
+    }
+    if (element.transformations.opacity !== 1) {
+      description += `   Opacity: ${Math.round(element.transformations.opacity * 100)}%\n`;
+    }
+    
+    if (element.image_info) {
+      description += `   Original: ${element.image_info.original_width} x ${element.image_info.original_height} pixels\n`;
+      description += `   Quality: ${element.image_info.print_quality} (${element.image_info.print_dpi} DPI)\n`;
+      description += `   File: ${element.image_info.original_name}\n`;
+    }
+    
+    if (element.text_info) {
+      description += `   Text: "${element.text_info.content}"\n`;
+      description += `   Font: ${element.text_info.font_family}, ${element.text_info.font_size}px\n`;
+      description += `   Color: ${element.text_info.color}\n`;
+    }
+  });
+  
+  description += `\nMANUFACTURING NOTES:\n`;
+  description += `- All measurements are precise for production setup\n`;
+  description += `- Red dashed lines indicate printable boundaries\n`;
+  description += `- High-resolution PNG for quality reference\n`;
+  description += `- Generated: ${new Date().toISOString()}\n`;
+  
+  return description;
+}, []);
+
+const exportAllCanvasImages = useCallback(() => {
+  const canvasImages: Array<{
+    area_id: string;
+    image_data: string;
+    metadata: CanvasImageMetadata;
+    description: string;
+  }> = [];
+  
+  Object.keys(designElements).forEach(areaId => {
+    const elements = designElements[areaId] || [];
+    const visibleElements = elements.filter(element => element.visible !== false);
+    
+    if (visibleElements.length > 0) {
+      try {
+        const imageData = captureCanvasImageForArea(areaId);
+        
+        if (imageData) {
+          const metadata = generateCanvasMetadata(areaId);
+          const description = generateDetailedDescription(areaId, metadata);
+          
+          canvasImages.push({
+            area_id: areaId,
+            image_data: imageData,
+            metadata: metadata,
+            description: description
+          });
+        }
+      } catch (error) {
+        console.error(`Error exporting canvas image for area ${areaId}:`, error);
+      }
+    }
+  });
+  
+  return canvasImages;
+}, [designElements, captureCanvasImageForArea, generateCanvasMetadata, generateDetailedDescription]);
 
 
   // =====================================
@@ -2867,6 +3301,10 @@ const extractDesignImages = useCallback(() => {
     const totalVariants = Object.keys(colorSpecificImages).reduce((total, colorHex) => 
       total + colorSpecificImages[colorHex].length, 0);
   }
+
+   const canvasImages = storeData.canvas_images || [];
+  console.log('🎯 TRANSFORM DEBUG: Extracted canvas images:', canvasImages.length);
+  console.log('🎯 TRANSFORM DEBUG: Canvas images data:', canvasImages);
   
   // Extract color details from the calculation breakdown
   const colorDetails = storeData.generation_summary.mockup_calculation.calculationBreakdown.map(breakdown => ({
@@ -2992,13 +3430,18 @@ const extractDesignImages = useCallback(() => {
     }
   };
 
-  return {
+ const result = {
     designData,
     mockupImages,
     colorSpecificImages,
-    designImages, // 🔥 RETURN DESIGN IMAGES SEPARATELY TOO
+    designImages: storeData.design_images || [],
+    canvasImages, // 🔥 THIS WAS MISSING!
     enhancedProductData
   };
+
+  console.log('🎯 TRANSFORM DEBUG: Final result canvasImages:', result.canvasImages?.length || 0);
+  return result;
+  
 }, [selectedColors, selectedSizes, allMockups, productData]);
 
 
@@ -3058,6 +3501,15 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
     designImagesCount: transformedData.designImages?.length || 0,
     designImagesArray: transformedData.designImages || []
   };
+
+  // 🔥 ADD CANVAS IMAGES VERIFICATION
+  const canvasImagesCheck = {
+    hasCanvasImages: !!transformedData.canvasImages,
+    canvasImagesCount: transformedData.canvasImages?.length || 0,
+    canvasImagesArray: transformedData.canvasImages || []
+  };
+  
+  console.log('🎯 NAVIGATE DEBUG: Canvas images check:', canvasImagesCheck);
   
   if (designImagesCheck.designImagesCount === 0) {
   } else {
@@ -3075,6 +3527,7 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
       colorSpecificImages: transformedData.colorSpecificImages,
       enhancedProductData: transformedData.enhancedProductData,
       designImages: transformedData.designImages, // ✅ DESIGN IMAGES INCLUDED
+      canvasImages: transformedData.canvasImages,
       uploadedFiles: [] // Can be empty since we have base64 data
     }
   });
@@ -3105,6 +3558,18 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
 
     // 🔥 EXTRACT DESIGN IMAGES FIRST
     const designImages = extractDesignImages();
+    // Add these lines before mockupGenerator.generateForStoreImport
+    const canvasImages = exportAllCanvasImages();
+    console.log(`🎯 CANVAS DEBUG: Captured ${canvasImages.length} canvas images`);
+    console.log('🎯 CANVAS DEBUG: Canvas images data:', canvasImages);
+    canvasImages.forEach((img, index) => {
+      console.log(`🎯 CANVAS DEBUG: Image ${index + 1}:`, {
+        area_id: img.area_id,
+        has_image_data: !!img.image_data,
+        image_data_length: img.image_data?.length || 0,
+        metadata_areas: img.metadata?.area_name
+      });
+    });
 
     const importData = await mockupGenerator.generateForStoreImport(
       productData,
@@ -3117,6 +3582,9 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
       setStoreGenerationProgress
     );
 
+    importData.canvas_images = canvasImages;
+    console.log('🎯 CANVAS DEBUG: Added canvas images to importData');
+    console.log('🎯 CANVAS DEBUG: importData.canvas_images length:', importData.canvas_images?.length || 0);
     // 🔥 ADD DESIGN IMAGES TO IMPORT DATA
     importData.design_images = designImages; // Add design images to the import data
 
@@ -3608,7 +4076,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           <div className="text-center text-gray-500">
             <div className="mb-4 text-4xl">ðŸ“·</div>
             <p className="font-medium">No mockups available</p>
-            <p className="mt-2 text-sm">No mockups found in PayloadCMS</p>
+            {/* <p className="mt-2 text-sm">No mockups found in PayloadCMS</p> */}
           </div>
         </div>
       );
@@ -3621,30 +4089,31 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
       <div className="flex h-full">
         {/* Enhanced Mockup Thumbnails */}
         <div className="w-64 p-4 bg-white border-r border-gray-200">
-          <div className="flex items-center justify-between mb-2">
+          {/* <div className="flex items-center justify-between mb-2">
             <h3 className="font-medium">Mockup Variants</h3>
             <div className="text-xs text-gray-500">
               {selectedColors.length} color{selectedColors.length !== 1 ? 's' : ''}
             </div>
-          </div>
+          </div> */}
           
           {/* Enhanced Color Display */}
           <div className="mb-4">
-            <div className="mb-2 text-xs font-medium text-gray-600">Selected Colors:</div>
+            {/* <div className="mb-2 text-xs font-medium text-gray-600">Selected Colors:</div>
             <div className="flex flex-wrap gap-1">
               {selectedColors.map(color => (
                 <div 
                   key={color.value}
                   className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 rounded"
                 >
-                  <div 
+                   <div 
                     className="w-3 h-3 border border-gray-300 rounded-full"
                     style={{ backgroundColor: color.value }}
-                  />
-                  <span>{color.name}</span>
+                  /> 
+                 <span>{color.name}</span> 
                 </div>
               ))}
-            </div>
+              
+            </div> */}
           </div>
           
           {/* Enhanced Calculation Display */}
@@ -3722,7 +4191,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
               <div className="py-8 text-center text-gray-500">
                 <div className="mb-2 text-2xl">ðŸŽ¨</div>
                 <p className="text-sm">No mockups available</p>
-                <p className="mt-1 text-xs">Check PayloadCMS configuration</p>
+                {/* <p className="mt-1 text-xs">Check PayloadCMS configuration</p> */}
               </div>
             )}
           </div>
@@ -3761,47 +4230,70 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           
           {/* Main Preview Content */}
           <div className="flex items-center justify-center flex-1">
-            <div className="relative">
-              <div className="w-[400px] h-[400px] relative bg-gray-50 rounded-lg overflow-hidden shadow-lg">
-                {(() => {
-                  const heroMockup = selectedHeroMockup || allMockups[0];
-                  
-                  if (!heroMockup) {
-                    return (
-                      <div className="flex items-center justify-center w-full h-full text-gray-400">
-                        <div className="text-center">
-                          <div className="mb-4 text-4xl">ðŸŽ¨</div>
-                          <p className="font-medium">Select colors to see preview</p>
-                          <p className="mt-2 text-sm">Choose colors from the design panel</p>
-                        </div>
-                      </div>
-                    );
-                  }
-                  
-                  const heroProductColor = getProductColorForMockup(heroMockup, activeColor, productData);
-                  
+          <div className="relative">
+            <div className="w-[500px] h-[500px] relative bg-gray-50 rounded-lg overflow-hidden shadow-lg">
+              {(() => {
+                const heroMockup = selectedHeroMockup || allMockups[0];
+                
+                if (!heroMockup) {
                   return (
-                    <div className="w-full h-full">
-                      <EnhancedMockupEngine
+                    <div className="flex items-center justify-center w-full h-full text-gray-400">
+                      <div className="text-center">
+                        <div className="mb-4 text-4xl">🎨</div>
+                        <p className="font-medium">Select colors to see preview</p>
+                        <p className="mt-2 text-sm">Choose colors from the design panel</p>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                const heroProductColor = getProductColorForMockup(heroMockup, activeColor, productData);
+                
+        return (
+                <div className="w-full h-full">
+                  {/* ✅ CUSTOM MAIN PREVIEW - Using ThumbnailPreview logic but styled for main preview */}
+                  <div 
+                    className="w-full h-full p-0 transition-all cursor-default"
+                    style={{ 
+                      border: '3px solid',
+                      borderColor: brandColor,
+                      borderRadius: '8px'
+                    }}
+                  >
+                    <div className="relative w-full h-full overflow-hidden rounded">
+                      <ThumbnailPreview
                         mockup={heroMockup}
-                         showBadges={false}
                         designElements={designElements}
                         canvasConfigs={canvasConfigs}
                         canvasPrintableAreas={printableAreas}
-                        displayDimensions={{ width: 500, height: 500 }}
-                        productType={productData.productType || surfaceConfig.renderType}
                         productColor={heroProductColor}
-                        renderEngine={heroMockup.renderPref?.preferredEngine || 'auto'}
-                        enablePixiFeatures={true}
-                        onRenderComplete={(imageData: string) => {
-                        }}
-                        onProgress={(progress: number) => {
-                        }}
+                        displayDimensions={{ width: 500, height: 500 }} // 🔥 HIGH RESOLUTION
+                        isMainPreview={true}
+                        isSelected={true} // Always selected for main preview
+                        onSelect={() => {}} // No action needed for main preview
+                        productData={productData}
                       />
                     </div>
-                  );
-                })()}
-              </div>
+                    
+                    {/* Main preview info overlay */}
+                    {/* <div className="absolute px-2 py-1 text-xs font-medium rounded shadow top-2 left-2 bg-white/90 backdrop-blur-sm">
+                      Main Preview
+                    </div> */}
+                    
+                    {/* Color info overlay */}
+                    <div className="absolute px-2 py-1 text-xs text-white rounded bottom-2 left-2 bg-black/70 backdrop-blur-sm">
+                      {selectedColors.find(c => c.value === activeColor)?.name || 'Active Color'}: {heroProductColor}
+                    </div>
+                    
+                    {/* Engine info overlay */}
+                    {/* <div className="absolute px-2 py-1 text-xs font-medium text-white rounded top-2 right-2 bg-green-500/90 backdrop-blur-sm">
+                      Using Thumbnail Engine ✓
+                    </div> */}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
               
               {/* Enhanced mockup info panel */}
               {/* {(selectedHeroMockup || allMockups[0]) && (
@@ -4563,15 +5055,15 @@ useEffect(() => {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
       {/* Enhanced Top Header */}
-      <div className="px-4 py-2 border-b border-gray-200 shadow-sm bg-white">
+      <div className="px-4 py-2 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div className="text-xl font-bold" style={{ color: brandColor }}>
               Junooni
             </div>
-            <div className="ml-2 text-sm text-gray-600">
+            {/* <div className="ml-2 text-sm text-gray-600">
               Enhanced Professional Designer
-            </div>
+            </div> */}
             {/* {mockupCalculation && (
               <div className="px-3 py-1 ml-4 text-xs text-blue-800 bg-blue-100 rounded-full">
                 {mockupCalculation.strategy.replace(/_/g, ' ')}: {mockupCalculation.totalMockups} unique mockups
@@ -4618,19 +5110,19 @@ useEffect(() => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-1">
-                <div className="px-2 py-1 text-xs text-gray-500 text-blue-800 bg-blue-100 rounded-full">
+                {/* <div className="px-2 py-1 text-xs text-gray-500 text-orange-800 bg-orange-100 rounded-full">
                   {getSurfaceConfiguration().renderType.toUpperCase()}
-                </div>
+                </div> */}
                 {isGeneratingForStore && (
                   <div className="px-2 py-1 text-xs text-white bg-green-500 rounded-full animate-pulse">
                     GENERATING
                   </div>
                 )}
-                {mockupCalculation && (
+                {/* {mockupCalculation && (
                   <div className="px-2 py-1 text-xs text-purple-800 bg-purple-100 rounded-full">
                     {mockupCalculation.totalMockups}M
                   </div>
-                )}
+                )} */}
               </div>
             </div>
             
@@ -4759,10 +5251,10 @@ useEffect(() => {
               
               {activeView === 'preview' && (
                 <div className="flex items-center space-x-2">
-                  <h2 className="text-lg font-semibold">Enhanced Preview</h2>
-                  <div className="text-sm text-gray-600">
+                  {/* <h2 className="text-lg font-semibold">Enhanced Preview</h2> */}
+                  {/* <div className="text-sm text-gray-600">
                     {Object.values(designElements).flat().length} design elements
-                  </div>
+                  </div> */}
                   {/* {mockupCalculation && (
                     <div className="px-3 py-1 text-sm text-green-800 bg-green-100 rounded-full">
                       {mockupCalculation.totalMockups} unique mockups
@@ -4882,7 +5374,6 @@ useEffect(() => {
         onClick={() => setDebugMode(!debugMode)}
         className="fixed w-4 h-4 transition-opacity opacity-0 bottom-4 right-4 hover:opacity-100"
       >
-        ðŸ› 
       </button>
     </div>
   );

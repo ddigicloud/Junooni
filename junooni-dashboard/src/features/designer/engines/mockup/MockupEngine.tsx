@@ -321,12 +321,12 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
   return (
     <div className="relative">
       {/* Engine indicator (development only) */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div className="absolute z-10 px-2 py-1 text-xs text-white rounded top-2 left-2 bg-black/75">
           Engine: {selectedEngine.toUpperCase()}
           {engineError && <div className="text-red-300">⚠️ {engineError}</div>}
         </div>
-      )}
+      )} */}
 
       {/* Render with selected engine */}
       {selectedEngine === 'pixi' ? (

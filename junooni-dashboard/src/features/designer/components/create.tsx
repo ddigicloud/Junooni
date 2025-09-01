@@ -244,6 +244,12 @@ interface LocationState {
   designData?: DesignData;
   designImages?: DesignImageItem[]; // ✅ FIXED: Array of design images
   mockupImages?: Record<string, string>;
+  canvasImages?: Array<{  // 🔥 ADD THIS
+    area_id: string;
+    image_data: string;
+    metadata: any;
+    description: string;
+  }>;
   uniqueImages?: Record<string, {
     imageData: string;
     colorName: string;
@@ -880,6 +886,13 @@ const Create: React.FC = () => {
 const [isProcessingDesignImages, setIsProcessingDesignImages] = useState<boolean>(false);
 const [hasProcessedInitialData, setHasProcessedInitialData] = useState<boolean>(false);
 const [isSubmittingForm, setIsSubmittingForm] = useState<boolean>(false);
+// Add with your other state declarations
+const [importedCanvasImages, setImportedCanvasImages] = useState<Array<{
+  area_id: string;
+  image_data: string;
+  metadata: any;
+  description: string;
+}>>([]);
 
   // ===== NEW: PRE-GENERATED IMAGE MANAGEMENT STATE =====
   const [preGeneratedMockupImages, setPreGeneratedMockupImages] = useState<Record<string, string>>({});
@@ -935,6 +948,7 @@ const [isSubmittingForm, setIsSubmittingForm] = useState<boolean>(false);
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
     shouldFocusError: false,
+    mode: 'onSubmit', 
     defaultValues: {
       title: '',
       subtitle: '',
@@ -1136,6 +1150,10 @@ useEffect(() => {
       if (locationState.designImages && Array.isArray(locationState.designImages) && locationState.designImages.length > 0) {
         await processDesignImagesArray(locationState.designImages);
         designImagesProcessed = true;
+      }
+       if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
+        console.log('📸 Found', locationState.canvasImages.length, 'canvas images');
+        setImportedCanvasImages(locationState.canvasImages);
       }
       // Option B: Process design elements (legacy format) - ONLY if new format not found
       else if (locationState.designData?.designElements && !designImagesProcessed) {
@@ -1996,6 +2014,7 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
       
       const suggestedPrice = payloadProduct.pricing.suggestedRetailPrice;
       form.setValue('defaultVariantPrice', suggestedPrice);
+      console.log("Mug/shirt Price", suggestedPrice);
       
       // ===== 5. STATUS AND SETTINGS =====
       form.setValue('status', payloadProduct.status === 'active' ? 'published' : 'draft');
@@ -2154,17 +2173,18 @@ if (existingProductDetails && existingProductDetails.length > 0) {
   directImageSettings?: ImageAssociationSettings
 ) => {
   try {
+    console.log('🎯 POPULATE DEBUG: Starting form population with design data');
+    
     const settingsToUse = directImageSettings || payloadImageSettings;
-
     const locationId = getLocationId(productData);
     setDynamicLocationId(locationId);
     form.setValue('locationId', locationId);
     
-    // ===== 1. BASIC PRODUCT INFORMATION =====
+    // STEP 1: Basic product information
     if (data.productInfo) {
-      
       if (data.productInfo.title) {
         form.setValue('title', data.productInfo.title);
+        console.log('🎯 POPULATE DEBUG: Set title:', data.productInfo.title);
       }
       
       if (data.productInfo.description) {
@@ -2176,23 +2196,18 @@ if (existingProductDetails && existingProductDetails.length > 0) {
       }
     }
     
-    // ===== 2. PAYLOADCMS ENHANCED DATA =====
+    // STEP 2: Enhanced product data
     if (productData) {
-      
       if (productData.dimensions) {
-        
         if (productData.dimensions.weight) {
           form.setValue('weight', productData.dimensions.weight.toString());
         }
-        
         if (productData.dimensions.length) {
           form.setValue('length', productData.dimensions.length.toString());
         }
-        
         if (productData.dimensions.width) {
           form.setValue('width', productData.dimensions.width.toString());
         }
-        
         if (productData.dimensions.height) {
           form.setValue('height', productData.dimensions.height.toString());
         }
@@ -2203,46 +2218,25 @@ if (existingProductDetails && existingProductDetails.length > 0) {
       }
       
       if (productData.pricing?.suggestedRetailPrice) {
-        const price = productData.pricing.suggestedRetailPrice;
-        form.setValue('defaultVariantPrice', price);
-      } else if (data.price) {
-        form.setValue('defaultVariantPrice', data.price);
-      }
-      
-      if (productData.fulfillmentSettings) {
-        if (productData.fulfillmentSettings.handlingTime) {
-          form.setValue('handlingTime', productData.fulfillmentSettings.handlingTime);
-
-        }
-        
-        if (productData.fulfillmentSettings.shippingTime) {
-          form.setValue('shippingDays', productData.fulfillmentSettings.shippingTime);
-        }
-      }
-      
-      if (productData.cost) {
-        const basePrice = productData.cost * 2.5;
-        form.setValue('defaultVariantPrice', Math.round(basePrice));
+        form.setValue('defaultVariantPrice', productData.pricing.suggestedRetailPrice);
       }
     }
     
-    // ===== 3. PRODUCT STATUS AND SETTINGS =====
+    // STEP 3: Basic settings
     form.setValue('status', 'draft');
     form.setValue('discountable', true);
     
-    // ===== 4. FIXED OPTIONS AND VARIANTS PROCESSING =====
-    
-     // Clear existing options first
+    // STEP 4: SAFE options processing - Clear existing options first
+    console.log('🎯 POPULATE DEBUG: Clearing existing options');
     const currentOptions = form.getValues('options');
     for (let i = currentOptions.length - 1; i > 0; i--) {
       removeOption(i);
     }
-
-    // 🔥 FIX: Use colorDetails as PRIMARY source, ignore options colors
-      if (data.colorDetails && Array.isArray(data.colorDetails) && data.colorDetails.length > 0) {
-      //console.log('🎨 STRICT MODE: Using ONLY canvas selected colors:', data.colorDetails.map(c => c.name));
+    
+    // STEP 5: Process colors ONLY from colorDetails (selected colors)
+    if (data.colorDetails && Array.isArray(data.colorDetails) && data.colorDetails.length > 0) {
+      console.log('🎯 POPULATE DEBUG: Processing selected colors:', data.colorDetails.length);
       
-      // Create color hex mapping from SELECTED colors only
       const colorHexValues: Record<string, string> = {};
       data.colorDetails.forEach(color => {
         if (color.name && color.value) {
@@ -2250,18 +2244,18 @@ if (existingProductDetails && existingProductDetails.length > 0) {
         }
       });
       
-      // Set ONLY the selected colors - IGNORE data.options completely
       const selectedColorNames = data.colorDetails.map(color => color.name);
       
-      form.setValue('options.0.id', generateUUID(), { shouldValidate: false, shouldTouch: false });
-      form.setValue('options.0.title', 'Color', { shouldValidate: false, shouldTouch: false });
-      form.setValue('options.0.optionValues', selectedColorNames, { shouldValidate: false, shouldTouch: false });
-      form.setValue('options.0.imageAssociation', settingsToUse.color_Images, { shouldValidate: false, shouldTouch: false });
-      form.setValue('options.0.colorHexValues', colorHexValues, { shouldValidate: false, shouldTouch: false });
+      // Set color option safely
+      form.setValue('options.0.id', generateUUID());
+      form.setValue('options.0.title', 'Color');
+      form.setValue('options.0.optionValues', selectedColorNames);
+      form.setValue('options.0.imageAssociation', settingsToUse.color_Images);
+      form.setValue('options.0.colorHexValues', colorHexValues);
       
-      //console.log('🎨 FORM SET TO SELECTED COLORS ONLY:', selectedColorNames);
+      console.log('🎯 POPULATE DEBUG: Set color option with values:', selectedColorNames);
       
-      // 🔥 CRITICAL: Find ONLY size options, completely ignore any color options from data.options
+      // STEP 6: Add size option if it exists and is different from colors
       const sizeOnlyOption = data.options?.find(opt => 
         opt.title && 
         opt.title.toLowerCase().includes('size') && 
@@ -2271,15 +2265,11 @@ if (existingProductDetails && existingProductDetails.length > 0) {
       );
 
       if (sizeOnlyOption) {
-        //console.log('👕 ADDING SIZE OPTION:', sizeOnlyOption.optionValues);
+        console.log('🎯 POPULATE DEBUG: Adding size option:', sizeOnlyOption.optionValues);
         
+        // Add size option after a small delay to prevent conflicts
         setTimeout(() => {
-          const currentOptionsAfterColor = form.getValues('options');
-          const existingSizeOption = currentOptionsAfterColor.find(opt => 
-            opt.title && opt.title.toLowerCase().includes('size')
-          );
-          
-          if (!existingSizeOption) {
+          try {
             appendOption({
               id: generateUUID(),
               title: 'Size',
@@ -2287,63 +2277,25 @@ if (existingProductDetails && existingProductDetails.length > 0) {
               imageAssociation: settingsToUse.size_Images,
               colorHexValues: {}
             });
+            console.log('🎯 POPULATE DEBUG: Size option added successfully');
+          } catch (sizeError) {
+            console.error('🎯 POPULATE ERROR: Failed to add size option:', sizeError);
           }
-        }, 100);
-      }
-      
-      // 🚫 DO NOT PROCESS data.options for colors - we have explicit selection
-      
-    } else {
-      // 🔥 FALLBACK: Only use this when NO canvas color selection exists
-      //console.log('⚠️ FALLBACK MODE: No canvas color selection found, using data.options');
-      
-      if (data.options && data.options.length > 0) {
-        const validOptions = data.options.filter(opt => 
-          opt.title && opt.optionValues && opt.optionValues.length > 0
-        );
-        
-        validOptions.forEach((option, index) => {
-          const shouldHaveImageAssociation = getImageAssociationForOption(option.title, settingsToUse);
-          
-          const enhancedOption = {
-            id: generateUUID(),
-            title: option.title,
-            optionValues: option.optionValues,
-            imageAssociation: shouldHaveImageAssociation,
-            colorHexValues: {}
-          };
-          
-          if (isColorOption(option.title) && data.colorDetails && Array.isArray(data.colorDetails)) {
-            const colorHexValues: Record<string, string> = {};
-            data.colorDetails.forEach(color => {
-              if (color.name && color.value) {
-                colorHexValues[color.name] = color.value;
-              }
-            });
-            enhancedOption.colorHexValues = colorHexValues;
-          }
-          
-          if (index < form.getValues('options').length) {
-            form.setValue(`options.${index}`, enhancedOption);
-          } else {
-            appendOption(enhancedOption);
-          }
-        });
+        }, 500); // Small delay to prevent race conditions
       }
     }
     
     setHasVariants(true);
     
-    // ===== 5. ADDITIONAL METADATA =====
-    if (data.designElements && Object.keys(data.designElements).length > 0) {
-      const elementCount = Object.values(data.designElements).flat().length;
-      const defaultStory = `This design features ${elementCount} unique design elements carefully crafted to create a distinctive and appealing product.`;
-      form.setValue('storyBehindDesign', defaultStory);
-    }
+    // STEP 7: Product details
+    const currentDetails = form.getValues('productDetails') || [];
+    currentDetails.forEach((_, index) => {
+      removeProductDetail(0);
+    });
     
     const initialDetails = [
       'High-quality materials and construction',
-      'Unique design imported from designer tools',
+      'Unique design imported from designer',
       'Carefully crafted for durability and style'
     ];
     
@@ -2351,37 +2303,41 @@ if (existingProductDetails && existingProductDetails.length > 0) {
       initialDetails.push(`Made with premium ${productData.materials.primary.toLowerCase()}`);
     }
     
-    const currentDetails = form.getValues('productDetails') || [];
-    currentDetails.forEach((_, index) => {
-      removeProductDetail(0);
-    });
-    
     initialDetails.forEach(detail => {
       appendProductDetail({ id: generateUUID(), text: detail });
     });
     
-    
-    // ===== 6. GENERATE VARIANTS =====
+    // STEP 8: Generate variants with delay to ensure options are set
     setTimeout(() => {
-      handleGenerateVariants();
-      
-      setTimeout(() => {
-        const variants = form.getValues('variants');
-        const priceToApply = productData?.pricing?.suggestedRetailPrice || 
-                            productData?.cost ? Math.round(productData.cost * 2.5) : 
-                            data.price || 25.00;
+      console.log('🎯 POPULATE DEBUG: Generating variants');
+      try {
+        handleGenerateVariants();
         
-        if (variants.length > 0) {
-          variants.forEach((_, index) => {
-            form.setValue(`variants.${index}.price`, priceToApply);
-            form.setValue(`variants.${index}.stock`, 10);
-          });
-        }
-      }, 500);
-    }, 200);
+        // Set pricing after variants are generated
+        setTimeout(() => {
+          const variants = form.getValues('variants');
+          const priceToApply = productData?.pricing?.suggestedRetailPrice || 
+                              (productData?.cost ? Math.round(productData.cost * 2.5) : 
+                              data.price || 25.00);
+          
+          if (variants && variants.length > 0) {
+            variants.forEach((_, index) => {
+              form.setValue(`variants.${index}.price`, priceToApply);
+              form.setValue(`variants.${index}.stock`, 10);
+            });
+            console.log('🎯 POPULATE DEBUG: Variant prices set');
+          }
+        }, 1000);
+      } catch (variantError) {
+        console.error('🎯 POPULATE ERROR: Variant generation failed:', variantError);
+      }
+    }, 1000);
+    
+    console.log('🎯 POPULATE DEBUG: Form population completed successfully');
     
   } catch (error) {
-    setError('Failed to populate form with design data');
+    console.error('🎯 POPULATE ERROR: Form population failed:', error);
+    setError(`Failed to populate form: ${error.message}`);
   }
 };
 
@@ -2951,6 +2907,7 @@ const processSharedImagesByColor = async (
     replaceVariants(updatedVariants);
   };
 
+  
   const getVariantAssociatedImages = (variant: Variant, mediaItems: MediaItem[]): {id: string, url: string}[] => {
     if (!variant.optionValues || !Array.isArray(variant.optionValues)) {
       return [];
@@ -3074,20 +3031,35 @@ const processSharedImagesByColor = async (
   // ✅ REPLACE WITH THIS SIMPLER VERSION
 useEffect(() => {
   const subscription = form.watch((formValues, { name, type }) => {
+    // Only handle option value changes, not other form changes
     if (name && 
         name.startsWith('options.') && 
         name.includes('optionValues') && 
-        type === 'change') {
+        type === 'change' &&
+        !isSubmittingForm) { // Don't trigger during form submission
       
-      // Only regenerate variants - don't auto-add options
-      setTimeout(() => {
-        handleGenerateVariants();
-      }, 300);
+      console.log('🎯 OPTIONS DEBUG: Option values changed:', name);
+      
+      // Debounce variant generation to prevent excessive calls
+      clearTimeout(window.variantGenerationTimeout);
+      window.variantGenerationTimeout = setTimeout(() => {
+        try {
+          console.log('🎯 OPTIONS DEBUG: Regenerating variants');
+          handleGenerateVariants();
+        } catch (error) {
+          console.error('🎯 OPTIONS ERROR: Variant generation failed:', error);
+        }
+      }, 500);
     }
   });
   
-  return () => subscription.unsubscribe();
-}, [form, handleGenerateVariants]);
+  return () => {
+    subscription.unsubscribe();
+    if (window.variantGenerationTimeout) {
+      clearTimeout(window.variantGenerationTimeout);
+    }
+  };
+}, [form, handleGenerateVariants, isSubmittingForm]);
 
 
   useEffect(() => {
@@ -3144,70 +3116,88 @@ useEffect(() => {
 useEffect(() => {
   // GUARD: Prevent multiple processing
   if (hasProcessedInitialData) {
-    //console.log('🚫 Initial data already processed, skipping...');
+    console.log('🚫 Initial data already processed, skipping...');
     return;
   }
   
   const processLocationState = async () => {
     if (location.state) {
-      setHasProcessedInitialData(true); // Set flag immediately
+      console.log('🎯 CREATE DEBUG: Starting location state processing');
+      setHasProcessedInitialData(true); // Set flag immediately to prevent re-processing
       
       const locationState = location.state as LocationState;
       
-      // STEP 1: Extract and store pre-generated images FIRST
-      const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
-      
-      // STEP 2: Process design images ONLY ONCE
-      let designImagesProcessed = false;
-      
-      if (locationState.designImages && Array.isArray(locationState.designImages) && locationState.designImages.length > 0) {
-        //console.log('🎯 Processing designImages array (new format) - ONCE ONLY');
-        const success = await processDesignImagesArray(locationState.designImages);
-        designImagesProcessed = success;
-      }
-      
-      // STEP 3: Continue with other processing...
-      if (locationState.designData) {
-        setDesignData(locationState.designData);
-        setEnhancedProductData(locationState.enhancedProductData);
+      try {
+        // STEP 1: Extract pre-generated images first
+        const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
         
-        const imageSettings = {
-          color_Images: locationState.enhancedProductData?.color_Images || false,
-          size_Images: locationState.enhancedProductData?.size_Images || false,
-          material_Images: locationState.enhancedProductData?.material_Images || false,
-          style_Images: locationState.enhancedProductData?.style_Images || false
-        };
-        
-        setPayloadImageSettings(imageSettings);
-        
-        // Populate form ONCE with delay
-       setTimeout(() => {
-        if (locationState.enhancedProductData && Object.keys(locationState.enhancedProductData).length > 10) {
-          const payloadProduct = locationState.enhancedProductData as PayloadCMSProduct;
-          populateFormWithPayloadCMSData(payloadProduct);
-        } else {
-          populateFormWithDesignData(locationState.designData, locationState.enhancedProductData, imageSettings);
+        // STEP 2: Process canvas images
+        if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
+          console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
+          setImportedCanvasImages(locationState.canvasImages);
         }
         
-        // 🔥 FIX: Process mockup images IMMEDIATELY after form population
-        if (hasPreGeneratedImages || Object.keys(locationState.mockupImages || {}).length > 0 || Object.keys(locationState.uniqueImages || {}).length > 0) {
-          //console.log('🚀 Processing mockup images...');
-          handleMockupImagesEnhanced(locationState, imageSettings);
+        // STEP 3: Process design images ONLY if they exist
+        if (locationState.designImages && Array.isArray(locationState.designImages) && locationState.designImages.length > 0) {
+          console.log('🎯 CREATE DEBUG: Processing', locationState.designImages.length, 'design images');
+          await processDesignImagesArray(locationState.designImages);
         }
-      }, 1000);
         
-        setShowImportNotification(true);
+        // STEP 4: Set design data without triggering form population yet
+        if (locationState.designData) {
+          console.log('🎯 CREATE DEBUG: Setting design data');
+          setDesignData(locationState.designData);
+          setEnhancedProductData(locationState.enhancedProductData);
+          
+          const imageSettings = {
+            color_Images: locationState.enhancedProductData?.color_Images || false,
+            size_Images: locationState.enhancedProductData?.size_Images || false,
+            material_Images: locationState.enhancedProductData?.material_Images || false,
+            style_Images: locationState.enhancedProductData?.style_Images || false
+          };
+          
+          setPayloadImageSettings(imageSettings);
+          
+          // STEP 5: Populate form with a longer delay to ensure all processing is complete
+          setTimeout(() => {
+            console.log('🎯 CREATE DEBUG: Starting form population');
+            try {
+              if (locationState.enhancedProductData && Object.keys(locationState.enhancedProductData).length > 10) {
+                console.log('🎯 CREATE DEBUG: Using PayloadCMS data');
+                const payloadProduct = locationState.enhancedProductData as PayloadCMSProduct;
+                populateFormWithPayloadCMSData(payloadProduct);
+              } else {
+                console.log('🎯 CREATE DEBUG: Using design data');
+                populateFormWithDesignData(locationState.designData, locationState.enhancedProductData, imageSettings);
+              }
+              
+              // Process mockup images AFTER form is populated
+              if (hasPreGeneratedImages || Object.keys(locationState.mockupImages || {}).length > 0) {
+                console.log('🎯 CREATE DEBUG: Processing mockup images');
+                handleMockupImagesEnhanced(locationState, imageSettings);
+              }
+              
+              setShowImportNotification(true);
+              console.log('🎯 CREATE DEBUG: Form population completed');
+              
+            } catch (populationError) {
+              console.error('🎯 CREATE ERROR: Form population failed:', populationError);
+              setError('Failed to populate form with imported data');
+            }
+          }, 2000); // Increased delay to prevent race conditions
+        }
+        
+      } catch (error) {
+        console.error('🎯 CREATE ERROR: Location state processing failed:', error);
+        setError('Failed to process imported design data');
+        setHasProcessedInitialData(false); // Reset flag on error
       }
     }
   };
   
-  // Execute ONCE
-  processLocationState().catch(error => {
-    //console.error('Failed to process imported design data:', error);
-    setError('Failed to process imported design data');
-    setHasProcessedInitialData(false); // Reset flag on error
-  });
-}, [location.state]); 
+  // Execute processing
+  processLocationState();
+}, [location.state]);
 
 // Add this debug function before your onSubmit function
 const debugMediaItems = () => {
@@ -3369,6 +3359,77 @@ const processDesignImagesArray = async (designImagesArray) => {
   }
 };
 
+const processCanvasImagesForArtwork = async (canvasImages: Array<{
+  area_id: string;
+  image_data: string | Promise<string>; // Updated type to handle Promise
+  metadata: any;
+  description: string;
+}>): Promise<Array<{
+  uploadResult: any;
+  originalMetadata: any;
+  areaId: string;
+  description: string;
+}>> => {
+  console.log('🖼️ Processing', canvasImages.length, 'canvas images for artwork');
+  
+  const processedCanvasImages = [];
+  
+  for (let i = 0; i < canvasImages.length; i++) {
+    const canvasImage = canvasImages[i];
+    
+    try {
+      // 🔥 FIX: Await the Promise if image_data is a Promise
+      let resolvedImageData: string;
+      
+      if (canvasImage.image_data instanceof Promise) {
+        console.log(`⏳ Awaiting Promise for canvas image area: ${canvasImage.area_id}`);
+        resolvedImageData = await canvasImage.image_data;
+      } else {
+        resolvedImageData = canvasImage.image_data;
+      }
+      
+      console.log(`✅ Resolved image data for area: ${canvasImage.area_id}, length: ${resolvedImageData.length}`);
+      
+      // Additional validation
+      if (!resolvedImageData || !resolvedImageData.startsWith('data:image/')) {
+        console.error(`❌ Invalid image data for area: ${canvasImage.area_id}`);
+        continue;
+      }
+      
+      // Convert base64 to file
+      const processedImage = await processBase64ToFile(
+        resolvedImageData,
+        `canvas-${canvasImage.area_id}-complete-layout.png`,
+        undefined
+      );
+      
+      if (!processedImage?.file) {
+        console.error(`❌ Failed to process canvas image for area: ${canvasImage.area_id}`);
+        continue;
+      }
+      
+      // Upload canvas image file
+      console.log(`⬆️ Uploading canvas image for area: ${canvasImage.area_id}`);
+      const uploadResult = await uploadArtworkFile(processedImage.file);
+      
+      processedCanvasImages.push({
+        uploadResult,
+        originalMetadata: canvasImage.metadata,
+        areaId: canvasImage.area_id,
+        description: canvasImage.description
+      });
+      
+      console.log(`✅ Canvas image uploaded for area: ${canvasImage.area_id}`);
+      
+    } catch (error) {
+      console.error(`❌ Error processing canvas image for area ${canvasImage.area_id}:`, error);
+    }
+  }
+  
+  return processedCanvasImages;
+};
+
+
 const onSubmit = async (values: ProductFormValues) => {
   
   // GUARD: Prevent multiple form submissions
@@ -3450,10 +3511,18 @@ const onSubmit = async (values: ProductFormValues) => {
     //console.log('✅ Valid design images for upload:', validDesignImages.length);
 
     // STEP 1: Process design images with SINGLE ARTWORK PER AREA
+   // STEP 1: Process design images AND canvas images with COMBINED ARTWORK
+if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
+  console.log('🚀 Starting artwork creation with:');
+  console.log('- Design images:', validDesignImages.length);
+  console.log('- Canvas images:', importedCanvasImages.length);
+  
+  try {
+    const allUploadedFiles = [];
+    let totalImageCount = 0;
+    
+    // PROCESS DESIGN IMAGES (existing code - keep as is)
     if (validDesignImages.length > 0) {
-      //console.log('🚀 Starting artwork creation with', validDesignImages.length, 'images');
-      
-      // Group by area and process ONLY ONCE per area
       const imagesByArea = validDesignImages.reduce((groups, designImage, index) => {
         const area = designImage.metadata?.designArea || 'front';
         if (!groups[area]) {
@@ -3463,110 +3532,124 @@ const onSubmit = async (values: ProductFormValues) => {
         return groups;
       }, {});
       
-      //console.log('📁 Grouped images by areas:', Object.keys(imagesByArea));
-      
-      // Create ONE artwork per area (not per image)
-     // 🔥 NEW: Create ONE SINGLE artwork containing ALL areas
-try {
-  //console.log(`🎨 Creating single artwork with images from ${Object.keys(imagesByArea).length} areas`);
-  
-  const allUploadedFiles = [];
-  let totalImageCount = 0;
-  
-  // Upload ALL files from ALL areas
-  for (const [areaName, areaImages] of Object.entries(imagesByArea)) {
-    //console.log(`⬆️ Uploading ${areaImages.length} files from ${areaName} area`);
+      for (const [areaName, areaImages] of Object.entries(imagesByArea)) {
+        for (const { designImage, index } of areaImages) {
+          if (!designImage.file) continue;
+          
+          const uploadResult = await uploadArtworkFile(designImage.file);
+          allUploadedFiles.push({
+            ...uploadResult,
+            originalMetadata: designImage.metadata,
+            designArea: areaName,
+            areaIndex: index,
+            fileType: 'design_element' // 🔥 ADD TYPE
+          });
+          
+          totalImageCount++;
+        }
+      }
+    }
     
-    for (const { designImage, index } of areaImages) {
-      if (!designImage.file) {
-        //console.error(`❌ Missing file for design image in area ${areaName}`);
-        continue;
+    // 🔥 NEW: PROCESS CANVAS IMAGES
+    if (importedCanvasImages.length > 0) {
+      const processedCanvasImages = await processCanvasImagesForArtwork(importedCanvasImages);
+      
+      processedCanvasImages.forEach((canvasImage, index) => {
+        allUploadedFiles.push({
+          ...canvasImage.uploadResult,
+          originalMetadata: canvasImage.originalMetadata,
+          designArea: canvasImage.areaId,
+          areaIndex: index,
+          fileType: 'canvas_layout', // 🔥 ADD TYPE
+          manufacturingDescription: canvasImage.description
+        });
+        
+        totalImageCount++;
+      });
+      
+      console.log(`✅ Added ${processedCanvasImages.length} canvas images to artwork`);
+    }
+    
+    if (allUploadedFiles.length === 0) {
+      console.log(`⚠️ No files uploaded for artwork creation`);
+    } else {
+      // Create SINGLE artwork payload with ALL files (design + canvas)
+      const combinedArtworkPayload = {
+        name: `${form.getValues('title')} - Complete Design & Layout`,
+        description: `Complete design for ${form.getValues('title')} containing ${totalImageCount} elements including design elements and manufacturing layout references`,
+        medias: allUploadedFiles.map((uploadedFile, globalIndex) => ({
+          image_url: uploadedFile.url,
+          filename: uploadedFile.filename,
+          mime_type: uploadedFile.mime_type,
+          file_id: uploadedFile.id,
+          file_type: "image",
+          file_description: uploadedFile.fileType === 'canvas_layout' 
+            ? `${uploadedFile.designArea} complete canvas layout for manufacturing`
+            : `${uploadedFile.designArea} design element ${uploadedFile.areaIndex + 1}`,
+          design_area: uploadedFile.designArea.toLowerCase(),
+          file_category: uploadedFile.fileType, // 🔥 ADD CATEGORY
+          metadata: {
+            original_filename: uploadedFile.originalMetadata?.originalFileName,
+            canvas_position: uploadedFile.originalMetadata?.canvasPosition || {},
+            source: uploadedFile.fileType === 'canvas_layout' ? 'canvas_complete_layout' : 'canvas_design_element',
+            element_index: globalIndex,
+            area_name: uploadedFile.designArea,
+            area_element_index: uploadedFile.areaIndex,
+            total_elements: totalImageCount,
+            manufacturing_description: uploadedFile.manufacturingDescription || undefined,
+            // 🔥 ADD: Canvas-specific metadata
+            ...(uploadedFile.fileType === 'canvas_layout' && uploadedFile.originalMetadata ? {
+              canvas_dimensions: uploadedFile.originalMetadata.canvas_dimensions,
+              printable_area: uploadedFile.originalMetadata.printable_area,
+              design_elements_count: uploadedFile.originalMetadata.design_elements?.length || 0,
+              canvas_settings: uploadedFile.originalMetadata.canvas_settings
+            } : {})
+          }
+        }))
+      };
+      
+      console.log(`🎨 Creating combined artwork with ${allUploadedFiles.length} files (design + canvas)`);
+      
+      // Create artwork containing everything
+      const combinedArtworkResult = await createArtworkPayload(combinedArtworkPayload);
+      console.log(`✅ Combined artwork created:`, combinedArtworkResult);
+
+      // Extract artwork ID
+      if (combinedArtworkResult?.vendor_artwork?.id) {
+        mainArtworkId = combinedArtworkResult.vendor_artwork.id;
+        console.log(`🎯 Combined artwork ID: ${mainArtworkId}`);
       }
       
-      //console.log(`⬆️ Uploading: ${designImage.file.name} (${designImage.file.size} bytes)`);
-      
-      const uploadResult = await uploadArtworkFile(designImage.file);
-      allUploadedFiles.push({
-        ...uploadResult,
-        originalMetadata: designImage.metadata,
-        designArea: areaName,
-        areaIndex: index
+      // Store artwork data with enhanced info
+      designArtworkPayloads.push({
+        artwork_data: combinedArtworkResult,
+        design_areas: [...new Set(allUploadedFiles.map(f => f.designArea))],
+        image_count: totalImageCount,
+        design_elements_count: validDesignImages.length,
+        canvas_images_count: importedCanvasImages.length,
+        is_combined_artwork: true,
+        artwork_id: mainArtworkId,
+        contains_canvas_layouts: importedCanvasImages.length > 0
       });
       
-      totalImageCount++;
-      //console.log(`✅ File uploaded: ${uploadResult.filename}`);
+      // Add product image (use first uploaded file)
+      if (combinedArtworkResult.medias?.length > 0) {
+        const primaryMedia = combinedArtworkResult.medias[0];
+        productImages.push({
+          id: primaryMedia.file_id,
+          url: primaryMedia.image_url,
+          alt: `Design: ${form.getValues('title')}`
+        });
+      }
     }
+    
+  } catch (artworkError) {
+    console.error(`❌ Error creating combined artwork:`, artworkError);
+    throw new Error(`Failed to create combined artwork: ${artworkError.message}`);
   }
-  
-  if (allUploadedFiles.length === 0) {
-    //console.log(`⚠️ No files uploaded for any area`);
-  } else {
-    // Create SINGLE artwork payload with ALL files
-    const combinedArtworkPayload = {
-      name: `${form.getValues('title')} - Complete Design`,
-      description: `Complete design for ${form.getValues('title')} containing ${totalImageCount} elements across ${Object.keys(imagesByArea).length} areas: ${Object.keys(imagesByArea).join(', ')}`,
-      medias: allUploadedFiles.map((uploadedFile, globalIndex) => ({
-        image_url: uploadedFile.url,
-        filename: uploadedFile.filename,
-        mime_type: uploadedFile.mime_type,
-        file_id: uploadedFile.id,
-        file_type: "image",
-        file_description: `${uploadedFile.designArea} design element ${uploadedFile.areaIndex + 1}`,
-        design_area: uploadedFile.designArea.toLowerCase(),
-        metadata: {
-          original_filename: uploadedFile.originalMetadata?.originalFileName,
-          canvas_position: uploadedFile.originalMetadata?.canvasPosition || {},
-          source: "canvas_design_element",
-          element_index: globalIndex,
-          area_name: uploadedFile.designArea,
-          area_element_index: uploadedFile.areaIndex,
-          total_elements: totalImageCount,
-          areas_included: Object.keys(imagesByArea)
-        }
-      }))
-    };
-    
-    //console.log(`🎨 Creating single combined artwork with ${allUploadedFiles.length} files`);
-    
-    // Create ONE artwork containing everything
-    const combinedArtworkResult = await createArtworkPayload(combinedArtworkPayload);
-    //console.log(`✅ Combined artwork created:`, combinedArtworkResult);
+}
 
-    // Extract the single artwork ID
-    if (combinedArtworkResult && combinedArtworkResult.vendor_artwork && combinedArtworkResult.vendor_artwork.id) {
-      mainArtworkId = combinedArtworkResult.vendor_artwork.id;
-      //console.log(`🎯 Single artwork ID: ${mainArtworkId}`);
-    }
-    
-    // Store single artwork data
-    designArtworkPayloads.push({
-      artwork_data: combinedArtworkResult,
-      design_areas: Object.keys(imagesByArea), // Multiple areas in one artwork
-      image_count: totalImageCount,
-      is_combined_artwork: true,
-      artwork_id: mainArtworkId
-    });
-    
-    // Add product image (use first uploaded file)
-    if (combinedArtworkResult.medias && combinedArtworkResult.medias.length > 0) {
-      const primaryMedia = combinedArtworkResult.medias[0];
-      productImages.push({
-        id: primaryMedia.file_id,
-        url: primaryMedia.image_url,
-        alt: `Design: ${form.getValues('title')}`
-      });
-    }
-  }
-  
-} catch (combinedArtworkError) {
-  //console.error(`❌ Error creating combined artwork:`, combinedArtworkError);
-  throw new Error(`Failed to create combined artwork: ${combinedArtworkError.message}`);
-}
-  
-  //console.log(`🎉 Artwork creation completed. Created ${designArtworkPayloads.length} artworks`);
-  //console.log(`🎯 Main artwork ID: ${mainArtworkId}`);
-}
-    
+// Continue with existing mockup image processing...
     // STEP 2: Upload mockup images (unchanged)
     if (mockupImages.length > 0) {
       
@@ -3825,6 +3908,20 @@ try {
         shipping_time: formValues.shippingDays?.trim() || '7-10'
       };
       productMetadata.fulfillment_type = JSON.stringify(fulfillmentData);
+    }
+
+    // 🔥 ADD THIS CANVAS IMAGE METADATA CODE HERE
+    if (importedCanvasImages.length > 0) {
+      productMetadata.canvas_layouts = JSON.stringify({
+        total_canvas_images: importedCanvasImages.length,
+        areas_covered: importedCanvasImages.map(img => img.area_id),
+        manufacturing_ready: true,
+        canvas_metadata: importedCanvasImages.map(img => ({
+          area: img.area_id,
+          elements_count: img.metadata?.design_elements?.length || 0,
+          canvas_dimensions: img.metadata?.canvas_dimensions
+        }))
+      });
     }
     
     // Add product details if present

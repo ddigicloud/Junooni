@@ -944,6 +944,7 @@ export interface BlankProduct {
   sizeChart?: (number | null) | Media;
   sizeChartHtml?: string | null;
   surfConf: {
+    No_Mockup_Compatible?: boolean | null;
     renderType: 'flat' | 'cylindrical' | 'conical' | 'spherical' | 'complex_3d' | 'apparel_body' | 'sleeve_wrap';
     surfProp?: {
       wrapAngle?: number | null;
@@ -2310,6 +2311,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
   surfConf?:
     | T
     | {
+        No_Mockup_Compatible?: T;
         renderType?: T;
         surfProp?:
           | T

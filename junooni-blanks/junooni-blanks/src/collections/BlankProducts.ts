@@ -705,6 +705,12 @@ export const BlankProducts: CollectionConfig = {
               dbName: 'surf_cfg',
               label: 'Surface Rendering Configuration',
               fields: [
+                 {
+                      name: 'No_Mockup_Compatible',
+                      type: 'checkbox',
+                      dbName: 'not_mockup_compatible',
+                      defaultValue: false,
+                    },
                 {
                   name: 'renderType',
                   type: 'select',
@@ -799,6 +805,7 @@ export const BlankProducts: CollectionConfig = {
                       dbName: 'preserve_colors',
                       defaultValue: true,
                     },
+                   
                   ],
                 },
               ],

@@ -872,32 +872,32 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="text-center max-w-md mx-auto p-8">
+        <div className="max-w-md p-8 mx-auto text-center">
+          {/* Spinner */}
           <div className="relative">
-            <div className="w-16 h-16 mx-auto border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-            <div className="absolute inset-0 w-16 h-16 mx-auto border-4 border-transparent border-r-blue-400 rounded-full animate-ping"></div>
+            <div className="w-16 h-16 mx-auto border-4 border-orange-200 border-t-[#e65100] rounded-full animate-spin"></div>
+            <div className="absolute inset-0 w-16 h-16 mx-auto border-4 border-transparent border-r-[#e65100] rounded-full animate-ping"></div>
           </div>
-          
-          <h2 className="mt-6 text-xl font-semibold text-gray-800">Loading Enhanced Product Data</h2>
-          <p className="mt-2 text-gray-600">Fetching masking features & AI configurations from PayloadCMS...</p>
-          
-          {retryCount > 0 && (
-            <p className="mt-2 text-sm text-blue-600">
-              Retry attempt {retryCount}/2
-            </p>
-          )}
-          
-          <div className="mt-4 flex items-center justify-center space-x-2">
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-          </div>
-          
-          <div className="mt-4 text-xs text-gray-500">
-            🤖 AI Features • 🎭 Masking • 🎨 Advanced Surface Mapping
+
+          {/* Title */}
+          <h2 className="mt-6 text-xl font-semibold text-gray-800">Loading...</h2>
+          <p className="mt-2 text-gray-600">Please wait a moment</p>
+
+          {/* Dots animation */}
+          <div className="flex items-center justify-center mt-4 space-x-2">
+            <div className="w-2 h-2 bg-[#e65100] rounded-full animate-bounce"></div>
+            <div
+              className="w-2 h-2 bg-[#e65100] rounded-full animate-bounce"
+              style={{ animationDelay: "0.1s" }}
+            ></div>
+            <div
+              className="w-2 h-2 bg-[#e65100] rounded-full animate-bounce"
+              style={{ animationDelay: "0.2s" }}
+            ></div>
           </div>
         </div>
       </div>
+
     );
   }
   
@@ -939,9 +939,9 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <div className={`max-w-lg p-8 text-center rounded-xl border-2 ${getErrorColor(error.type)} shadow-lg`}>
-          <div className="text-4xl mb-4">{getErrorIcon(error.type)}</div>
+          <div className="mb-4 text-4xl">{getErrorIcon(error.type)}</div>
           
-          <h2 className="text-2xl font-bold mb-4">
+          <h2 className="mb-4 text-2xl font-bold">
             {error.type === 'not_found' ? 'Enhanced Product Not Found' :
              error.type === 'network' ? 'Connection Error' :
              error.type === 'timeout' ? 'Request Timeout' :
@@ -953,17 +953,17 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
           
           {error.details && (
             <details className="mb-6 text-left">
-              <summary className="cursor-pointer font-medium mb-2">Technical Details</summary>
-              <pre className="text-xs bg-white p-3 rounded border overflow-auto">
+              <summary className="mb-2 font-medium cursor-pointer">Technical Details</summary>
+              <pre className="p-3 overflow-auto text-xs bg-white border rounded">
                 {JSON.stringify(error.details, null, 2)}
               </pre>
             </details>
           )}
           
-          <div className="flex gap-3 justify-center">
+          <div className="flex justify-center gap-3">
             {error.retryable && (
               <button 
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="px-6 py-3 font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
                 onClick={handleRetry}
               >
                 🔄 Try Again
@@ -971,16 +971,16 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
             )}
             
             <button 
-              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              className="px-6 py-3 font-medium text-white transition-colors bg-gray-600 rounded-lg hover:bg-gray-700"
               onClick={() => window.location.href = '/'}
             >
               ← Go Back
             </button>
           </div>
           
-          <div className="mt-6 p-4 bg-white bg-opacity-50 rounded-lg">
-            <p className="text-sm font-medium mb-2">Enhanced Features Troubleshooting:</p>
-            <ul className="text-sm space-y-1">
+          <div className="p-4 mt-6 bg-white bg-opacity-50 rounded-lg">
+            <p className="mb-2 text-sm font-medium">Enhanced Features Troubleshooting:</p>
+            <ul className="space-y-1 text-sm">
               <li>• Verify PayloadCMS is running with enhanced schema</li>
               <li>• Check if masking features are properly configured</li>
               <li>• Ensure AI processing services are available</li>
@@ -1000,12 +1000,12 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   if (!productData) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="max-w-lg p-8 text-center text-yellow-600 rounded-xl bg-yellow-50 border-2 border-yellow-200 shadow-lg">
-          <div className="text-4xl mb-4">🤔</div>
-          <h2 className="text-xl font-bold mb-4">No Enhanced Product Data</h2>
+        <div className="max-w-lg p-8 text-center text-yellow-600 border-2 border-yellow-200 shadow-lg rounded-xl bg-yellow-50">
+          <div className="mb-4 text-4xl">🤔</div>
+          <h2 className="mb-4 text-xl font-bold">No Enhanced Product Data</h2>
           <p className="mb-6">Enhanced product data was successfully fetched but appears to be empty.</p>
           <button 
-            className="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium"
+            className="px-6 py-3 font-medium text-white transition-colors bg-yellow-600 rounded-lg hover:bg-yellow-700"
             onClick={handleRetry}
           >
             🔄 Retry
