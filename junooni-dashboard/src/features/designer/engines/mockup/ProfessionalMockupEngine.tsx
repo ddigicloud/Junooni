@@ -2169,8 +2169,7 @@ function resolveImageUrl(url: string): string {
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   
   const baseUrl = import.meta.env?.VITE_PAYLOAD_BASE_URL || 
-                  process.env.NEXT_PUBLIC_PAYLOAD_URL || 
-                  'http://localhost:3000';
+                  process.env.VITE_PAYLOAD_BASE_URL;
   
   if (url.startsWith('/')) return `${baseUrl}${url}`;
   return `${baseUrl}/api/media/file/${url}`;

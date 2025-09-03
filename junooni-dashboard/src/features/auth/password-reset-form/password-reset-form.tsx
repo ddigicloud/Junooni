@@ -66,7 +66,7 @@ export function CreatorResetPasswordForm({ className, ...props }: CreatorResetPa
 
     try {
       const response = await fetch(
-        'http://localhost:9000/auth/vendor/emailpass/update?token=' + token,
+        `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass/update?token=` + token,
         {
           method: 'POST',
           headers: {

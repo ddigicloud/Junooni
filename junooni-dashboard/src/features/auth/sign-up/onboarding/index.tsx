@@ -1415,7 +1415,7 @@ const CreatorStoryCard = ({ story, brandColors }) => {
       <div className="p-4">
         <div className="flex items-center mb-3">
           <div className="w-12 h-12 mr-3 overflow-hidden rounded-full">
-            <img src={story.image || "http://localhost:9000/static/creator-placeholder.webp"} alt={story.name} className="object-cover w-full h-full" />
+            <img src={story.image || `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/creator-placeholder.webp`} alt={story.name} className="object-cover w-full h-full" />
           </div>
           <div>
             <h3 className="font-medium" style={{ color: brandColors.primary }}>{story.name}</h3>
@@ -1504,7 +1504,7 @@ const setupNewVendorProfile = () => {
       if (!token) return null;
       
       // You might have an endpoint like /user/me that returns basic user info
-      const response = await fetch('http://localhost:9000/vendors/me', {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1664,7 +1664,7 @@ const setupNewVendorProfile = () => {
       }
       
       console.log('Attempting to fetch vendor data with token');
-      let response = await fetch('http://localhost:9000/vendors/me', {
+      let response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1863,7 +1863,7 @@ const sanitizeVendorData = (vendorData) => {
     // Check if vendor exists on server
     let serverVendor = null;
     try {
-      const checkResponse = await fetch('http://localhost:9000/vendors/me', {
+      const checkResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1974,7 +1974,7 @@ const sanitizeVendorData = (vendorData) => {
       
       console.log('📤 PUT request with vendor payload:', updatePayload);
       
-      const updateResponse = await fetch('http://localhost:9000/vendors/me', {
+      const updateResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -2016,7 +2016,7 @@ const sanitizeVendorData = (vendorData) => {
           
           try {
             // Correct endpoint: http://localhost:9000/vendors/admins/[id]
-            const adminEndpoint = `http://localhost:9000/vendors/admins/${adminId}`;
+            const adminEndpoint = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/admins/${adminId}`;
             
             const adminResponse = await fetch(adminEndpoint, {
               method: 'PUT',
@@ -2048,7 +2048,7 @@ const sanitizeVendorData = (vendorData) => {
       
       console.log('📤 POST request with payload:', createPayload);
       
-      const createResponse = await fetch('http://localhost:9000/vendors', {
+      const createResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2136,7 +2136,7 @@ const sanitizeVendorData = (vendorData) => {
       console.log('🔍 Checking if vendor already exists...');
       let existingVendor = null;
       try {
-        const checkResponse = await fetch('http://localhost:9000/vendors/me', {
+        const checkResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}0/vendors/me`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -2219,7 +2219,7 @@ const sanitizeVendorData = (vendorData) => {
       console.log('📤 Sending final submission with payload:', finalPayload);
       
       // Always use POST for final submission if no vendor exists
-      const response = await fetch('http://localhost:9000/vendors', {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2369,7 +2369,7 @@ const uploadPendingFiles = async () => {
       
       // Try vendor-specific upload endpoint first (most reliable)
       let response;
-      let uploadUrl = 'http://localhost:9000/vendors/uploads';
+      let uploadUrl = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/uploads`;
       
       console.log(`📡 Attempting upload to: ${uploadUrl}`);
       
@@ -2390,9 +2390,9 @@ const uploadPendingFiles = async () => {
         
         // Try different endpoints based on the error
         const alternativeEndpoints = [
-          'http://localhost:9000/upload',           // Alternative 1
-          'http://localhost:9000/vendors/uploads',      // Alternative 2  
-          'http://localhost:9000/vendor/uploads' // Alternative 3
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/upload`,           // Alternative 1
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/uploads`,      // Alternative 2  
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendor/uploads` // Alternative 3
         ];
         
         let uploadSucceeded = false;
@@ -2460,7 +2460,7 @@ const uploadPendingFiles = async () => {
         fileUrl = data.file.url || data.file.path;
       } else if (data.path) {
         // Handle response format: {"success": true, "path": "/uploads/..."}
-        fileUrl = data.path.startsWith('http') ? data.path : `http://localhost:9000${data.path}`;
+        fileUrl = data.path.startsWith('http') ? data.path : `${import.meta.env.VITE_MEDUSA_BACKEND_URL}${data.path}`;
       } else if (data.location) {
         fileUrl = data.location;
       } else if (typeof data === 'string' && data.startsWith('http')) {

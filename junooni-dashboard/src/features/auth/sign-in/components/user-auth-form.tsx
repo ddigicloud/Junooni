@@ -38,7 +38,7 @@ const decodeTokenAndCheckActorId = (token: string) => {
     const parts = token.split('.');
     
     if (parts.length !== 3) {
-      console.error('Invalid JWT token format');
+      //console.error('Invalid JWT token format');
       return { hasActorId: false, payload: null, isValid: false };
     }
 
@@ -59,17 +59,17 @@ const decodeTokenAndCheckActorId = (token: string) => {
 
     const payload = JSON.parse(jsonPayload);
     
-    console.log('🔍 Token payload:', payload);
+    //console.log('🔍 Token payload:', payload);
     
     // Check if actor_id exists in the token
     const hasActorId = !!(payload.actor_id || payload.actorId || payload.actor);
     
-    console.log('🎭 Actor ID check:', { 
-      hasActorId, 
-      actor_id: payload.actor_id,
-      actorId: payload.actorId,
-      actor: payload.actor 
-    });
+    // console.log('🎭 Actor ID check:', { 
+    //   hasActorId, 
+    //   actor_id: payload.actor_id,
+    //   actorId: payload.actorId,
+    //   actor: payload.actor 
+    // });
 
     // Check if token is expired
     const currentTime = Math.floor(Date.now() / 1000);
@@ -84,7 +84,7 @@ const decodeTokenAndCheckActorId = (token: string) => {
     };
 
   } catch (error) {
-    console.error('❌ Error decoding JWT token:', error);
+    //console.error('❌ Error decoding JWT token:', error);
     return { hasActorId: false, payload: null, isValid: false, isExpired: true };
   }
 };
@@ -105,14 +105,14 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
     setIsLoading(true)
     
     try {
-      console.log('🔐 Attempting vendor login...');
+      //console.log('🔐 Attempting vendor login...');
       
-      const response = await axios.post('http://localhost:9000/auth/vendor/emailpass', {
+      const response = await axios.post(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass`, {
         email: data.email,
         password: data.password,
       })
 
-      console.log('✅ Login response:', response.data);
+      //console.log('✅ Login response:', response.data);
 
       const token = response.data.token;
       
@@ -124,10 +124,10 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
       localStorage.setItem('vendorToken', token);
       localStorage.setItem('vendorEmail', data.email);
       
-      console.log('💾 Token saved to localStorage');
+      //console.log('💾 Token saved to localStorage');
 
       // 🎭 CHECK FOR ACTOR ID IN TOKEN
-      console.log('🔍 Checking for actor_id in token...');
+      //console.log('🔍 Checking for actor_id in token...');
       const tokenCheck = decodeTokenAndCheckActorId(token);
       
       if (!tokenCheck.isValid) {
@@ -143,14 +143,14 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
 
       // 🚀 ROUTE BASED ON ACTOR ID PRESENCE
       if (tokenCheck.hasActorId) {
-        console.log('🏠 Actor ID found in token → Redirecting to Dashboard');
-        console.log('🎭 Actor ID:', tokenCheck.actorId);
+        //console.log('🏠 Actor ID found in token → Redirecting to Dashboard');
+        //console.log('🎭 Actor ID:', tokenCheck.actorId);
         
         alert('Welcome back! Redirecting to your dashboard...');
         navigate({ to: '/dashboard' });
         
       } else {
-        console.log('📝 No Actor ID found in token → Redirecting to Onboarding');
+        //console.log('📝 No Actor ID found in token → Redirecting to Onboarding');
         
         alert('Welcome! Let\'s complete your profile setup...');
         navigate({ 
@@ -162,7 +162,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
       }
 
     } catch (error: any) {
-      console.error('❌ Login error:', error);
+      //console.error('❌ Login error:', error);
       
       // Clear any stored data on error
       localStorage.removeItem('vendorToken');

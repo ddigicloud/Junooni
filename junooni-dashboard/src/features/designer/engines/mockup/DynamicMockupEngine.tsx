@@ -242,7 +242,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
       return url;
     }
     
-    const backendUrl = import.meta.env?.VITE_PAYLOAD_BASE_URL || 'http://localhost:3000';
+    const backendUrl = import.meta.env?.VITE_PAYLOAD_BASE_URL;
     return url.startsWith('/') ? `${backendUrl}${url}` : `${backendUrl}/${url}`;
   }, []);
 

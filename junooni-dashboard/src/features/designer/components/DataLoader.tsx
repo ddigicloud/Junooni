@@ -498,8 +498,7 @@ interface APIConfig {
 
 const getDynamicAPIConfig = (): APIConfig => {
   const baseUrl = import.meta.env?.VITE_PAYLOAD_BASE_URL || 
-                  process.env.REACT_APP_PAYLOAD_BASE_URL || 
-                  'http://localhost:3000';
+                  process.env.VITE_PAYLOAD_BASE_URL;
   
   return {
     baseUrl,

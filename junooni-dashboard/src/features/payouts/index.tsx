@@ -298,7 +298,7 @@ const RequestPayoutDialog = ({
         return;
       }
 
-      const response = await fetch(`http://localhost:9000/vendors/${vendorId}/payout`, {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorId}/payout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -467,7 +467,7 @@ export default function PayoutPage() {
         //console.log("Fetching payout data for vendor:", vendorIdFromStorage);
         
         // First fetch the payout summary
-        const payoutResponse = await fetch(`http://localhost:9000/vendors/${vendorIdFromStorage}/payout`, {
+        const payoutResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorIdFromStorage}/payout`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -508,7 +508,7 @@ export default function PayoutPage() {
         if (payoutInfo.id) {
           try {
             const detailsResponse = await fetch(
-              `http://localhost:9000/vendors/${vendorIdFromStorage}/payout/${payoutInfo.id}/payout-details?limit=100&offset=0`, 
+              `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorIdFromStorage}/payout/${payoutInfo.id}/payout-details?limit=100&offset=0`, 
               {
                 method: "GET",
                 headers: {
@@ -730,7 +730,7 @@ export default function PayoutPage() {
       }
 
       // Fetch order details - adjust this URL to match your API structure
-      const response = await fetch(`http://localhost:9000/vendors/orders/${orderId}`, {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders/${orderId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 
@@ -763,7 +763,7 @@ export default function PayoutPage() {
       }
 
       // Fetch product details - adjust this URL to match your API structure  
-      const response = await fetch(`http://localhost:9000/vendors/products/${productId}`, {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products/${productId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 
@@ -896,7 +896,7 @@ export default function PayoutPage() {
         if (!token || !vendorIdFromStorage) return;
 
         // Re-fetch payout summary
-        const payoutResponse = await fetch(`http://localhost:9000/vendors/${vendorIdFromStorage}/payout`, {
+        const payoutResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorIdFromStorage}/payout`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -914,7 +914,7 @@ export default function PayoutPage() {
           if (payoutInfo?.id) {
             try {
               const detailsResponse = await fetch(
-                `http://localhost:9000/vendors/${vendorIdFromStorage}/payout/${payoutInfo.id}/payout-details?limit=100&offset=0`, 
+                `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorIdFromStorage}/payout/${payoutInfo.id}/payout-details?limit=100&offset=0`, 
                 {
                   method: "GET",
                   headers: {

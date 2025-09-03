@@ -161,10 +161,10 @@ const CreatorDiscoveryPage = () => {
     const fetchCustomer = async () => {
       try {
         const customer = await retrieveCustomer()
-        console.log("Retrieved customer:", customer)
+        
         setCurrentCustomer(customer)
       } catch (error) {
-        console.error("Error retrieving customer:", error)
+       
         setCurrentCustomer(null)
       }
     }
@@ -179,8 +179,7 @@ const CreatorDiscoveryPage = () => {
       try {
         const customerFollowers = (await followerList()) as CustomerFollowers
         const allCreators = await retriveVendors()
-        console.log("All creators:", allCreators)
-        console.log("All followers:", customerFollowers)
+       
 
         const newList = customerFollowers.follow?.creators || []
         setCustomerVendors(newList)
@@ -210,7 +209,6 @@ const CreatorDiscoveryPage = () => {
 
         setFollowedCreators(followStatus)
       } catch (error) {
-        console.error("Error fetching creator data:", error)
         setCustomerVendors([])
         setFilteredVendors([])
       } finally {
@@ -303,7 +301,7 @@ const CreatorDiscoveryPage = () => {
 
       setFollowerCounts(counts)
     } catch (error) {
-      console.error("Error fetching follower counts:", error)
+     
     }
   }
 
@@ -393,7 +391,7 @@ const CreatorDiscoveryPage = () => {
   const handleFollowToggle = async (vendorId) => {
     // Check if user is logged in
     if (!currentCustomer) {
-      console.warn("User must be logged in to follow/unfollow.")
+      
       return toast.warning("Please log in to follow/unfollow.")
     }
 
@@ -405,7 +403,7 @@ const CreatorDiscoveryPage = () => {
       const isCurrentlyFollowing = followedCreators[vendorId]
 
       if (isCurrentlyFollowing) {
-        console.log("Unfollowing vendor:", vendorId)
+       
         await deletefollower(vendorId)
 
         // Update UI state immediately for better user experience
@@ -422,7 +420,7 @@ const CreatorDiscoveryPage = () => {
           prev.filter((creator) => creator.vendor?.id !== vendorId)
         )
       } else {
-        console.log("Following vendor:", vendorId)
+        
         await Addfollower(vendorId)
 
         // Update UI state immediately for better user experience
@@ -499,11 +497,11 @@ const CreatorDiscoveryPage = () => {
             }
           }
         } catch (error) {
-          console.error("Error refreshing follower data:", error)
+          
         }
       }, 1000)
     } catch (error) {
-      console.error("Error toggling follow status:", error)
+      
       toast.error("Failed to update follow status")
     } finally {
       // Clear loading state

@@ -137,9 +137,6 @@ export default function OrderRelatedProducts({
 
   useEffect(() => {
     const fetchRelatedProducts = async () => {
-      console.log('=== OrderRelatedProducts Production ===')
-      console.log('Order ID:', order?.id)
-      console.log('Country Code:', countryCode)
       
       try {
         setLoading(true)
@@ -183,7 +180,6 @@ export default function OrderRelatedProducts({
         }
 
         const data = await response.json()
-        console.log('OrderRelatedProducts - API response:', data)
         
         if (data.success) {
           setProducts(data.products || [])
@@ -192,7 +188,6 @@ export default function OrderRelatedProducts({
           throw new Error(data.error || 'Failed to fetch products')
         }
       } catch (err) {
-        console.error('OrderRelatedProducts - Error:', err)
         setError(err instanceof Error ? err.message : 'Unknown error')
       } finally {
         setLoading(false)
@@ -230,14 +225,12 @@ export default function OrderRelatedProducts({
 
   // Error state
   if (error) {
-    console.error('OrderRelatedProducts - Displaying error:', error)
     // Don't show error to users in production, just hide the section
     return null
   }
 
   // No products state
   if (!products.length) {
-    console.log('OrderRelatedProducts - No products to display')
     return null
   }
 

@@ -18,8 +18,6 @@ export default function SimpleTestProducts({
 
   useEffect(() => {
     const fetchProducts = async () => {
-      console.log('=== SimpleTestProducts Client Component ===')
-      console.log('Order ID:', order?.id)
       
       try {
         setLoading(true)
@@ -43,11 +41,9 @@ export default function SimpleTestProducts({
         }
 
         const data = await response.json()
-        console.log('SimpleTestProducts - API response:', data)
         
         setProducts(data.products || [])
       } catch (err) {
-        console.error('SimpleTestProducts - Error:', err)
         setError(err instanceof Error ? err.message : 'Unknown error')
       } finally {
         setLoading(false)

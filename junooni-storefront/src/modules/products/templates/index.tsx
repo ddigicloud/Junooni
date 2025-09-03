@@ -111,7 +111,6 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
     }
   }
 
-  console.log("Extended Product:", extendedProduct)
 
 
   return (

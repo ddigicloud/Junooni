@@ -36,7 +36,7 @@ const ColorFilter = ({
 
   // ✅ NEW: Color name normalizer to fix spacing issues
   const normalizeColorName = (colorName: string): string => {
-  console.log(`🔍 Normalizing color: "${colorName}"`)
+  //console.log(`🔍 Normalizing color: "${colorName}"`)
   
   const result = colorName
     .trim()
@@ -56,14 +56,14 @@ const ColorFilter = ({
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
   
-  console.log(`🎨 Result: "${colorName}" → "${result}"`)
+  //console.log(`🎨 Result: "${colorName}" → "${result}"`)
   return result;
 }
   // Extract dynamic colors from product metadata or use provided colors
   const colorOptions = useMemo(() => {
-    console.log('\n🎨 Professional ColorFilter: Computing color options...')
-    console.log('- availableColors prop:', availableColors)
-    console.log('- collection length:', collection?.length)
+    //console.log('\n🎨 Professional ColorFilter: Computing color options...')
+    //console.log('- availableColors prop:', availableColors)
+    //console.log('- collection length:', collection?.length)
 
     // Count products for each color
     const colorCountMap = new Map<string, number>()
@@ -71,7 +71,7 @@ const ColorFilter = ({
 
     // ✅ PRIORITY 1: Use availableColors prop if provided
     if (availableColors && availableColors.length > 0) {
-      console.log('✅ Professional ColorFilter: Using availableColors prop')
+      //console.log('✅ Professional ColorFilter: Using availableColors prop')
       
       // Initialize color data from prop
       availableColors.forEach(color => {
@@ -84,7 +84,7 @@ const ColorFilter = ({
 
     // Count products for each color by scanning the collection
     if (Array.isArray(collection) && collection.length > 0) {
-      console.log('📊 Counting products for each color...')
+      //console.log('📊 Counting products for each color...')
       
       collection.forEach((product, index) => {
         if (product.metadata?.color_hex_values) {
@@ -95,7 +95,7 @@ const ColorFilter = ({
             try {
               colorsData = JSON.parse(colorsData)
             } catch (e) {
-              console.error('JSON parse failed for product:', product.title, e)
+              //console.error('JSON parse failed for product:', product.title, e)
               return
             }
           }
@@ -154,9 +154,9 @@ const ColorFilter = ({
       return a.label.localeCompare(b.label) // Alphabetical for same count
     })
 
-    console.log('🎨 Professional ColorFilter: Final color options (filtered for count > 0):')
+    //console.log('🎨 Professional ColorFilter: Final color options (filtered for count > 0):')
     sortedOptions.forEach((option, index) => {
-      console.log(`  ${index + 1}. ${option.label} (${option.count}) -> ${option.color}`)
+      //console.log(`  ${index + 1}. ${option.label} (${option.count}) -> ${option.color}`)
     })
 
     return sortedOptions
@@ -166,36 +166,36 @@ const ColorFilter = ({
   const remainingCount = colorOptions.length - initialLimit
 
   const handleColorToggle = (colorValue: string) => {
-    console.log('🎨 Professional ColorFilter: Toggling color:', colorValue)
-    console.log('- Current selectedColors:', selectedColors)
+    //console.log('🎨 Professional ColorFilter: Toggling color:', colorValue)
+    //console.log('- Current selectedColors:', selectedColors)
     
     let newSelectedColors: string[]
     
     if (selectedColors.includes(colorValue)) {
       // Remove color
       newSelectedColors = selectedColors.filter(c => c !== colorValue)
-      console.log('  → Removing color')
+      //console.log('  → Removing color')
     } else {
       // Add color
       newSelectedColors = [...selectedColors, colorValue]
-      console.log('  → Adding color')
+      //console.log('  → Adding color')
     }
     
-    console.log('- New selectedColors:', newSelectedColors)
+    //console.log('- New selectedColors:', newSelectedColors)
     
     // Update URL params
     const colorsString = newSelectedColors.length > 0 ? newSelectedColors.join(',') : ''
-    console.log('- Setting colors param to:', colorsString)
+    //console.log('- Setting colors param to:', colorsString)
     setQueryParams('colors', colorsString)
   }
 
   // Only render if there are color options available
   if (colorOptions.length === 0) {
-    console.log('❌ Professional ColorFilter: No color options available')
+    //console.log('❌ Professional ColorFilter: No color options available')
     return null
   }
 
-  console.log('✅ Professional ColorFilter: Rendering with', colorOptions.length, 'total colors (all with count > 0)')
+  //console.log('✅ Professional ColorFilter: Rendering with', colorOptions.length, 'total colors (all with count > 0)')
 
   return (
     <div className="space-y-3" data-testid={dataTestId}>

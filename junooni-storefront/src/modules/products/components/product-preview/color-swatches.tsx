@@ -109,7 +109,7 @@ const ColorSwatches = ({
             }))
           }
         } catch (e) {
-          console.error('Failed to parse color_hex_values:', e)
+          
         }
       }
       

@@ -200,7 +200,7 @@ export default function JunooniLogin() {
     try {
       console.log('🔐 Attempting vendor login...');
       
-      const response = await axios.post('http://localhost:9000/auth/vendor/emailpass', {
+      const response = await axios.post(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass`, {
         email: data.email,
         password: data.password,
       });
@@ -303,7 +303,7 @@ export default function JunooniLogin() {
           <div className={`
             relative p-4 rounded-xl shadow-2xl border backdrop-blur-lg transform transition-all duration-300 ease-out
             ${toast.type === 'success' 
-              ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800' 
+              ? 'bg-emerald-50/95 border-emerald-200 text-orange-800' 
               : toast.type === 'error' 
               ? 'bg-red-50/95 border-red-200 text-red-800'
               : 'bg-blue-50/95 border-blue-200 text-blue-800'
@@ -312,7 +312,7 @@ export default function JunooniLogin() {
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 mt-0.5">
                 {toast.type === 'success' && (
-                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  <CheckCircle className="w-5 h-5 text-orange-600" />
                 )}
                 {toast.type === 'error' && (
                   <XCircle className="w-5 h-5 text-red-600" />

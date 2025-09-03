@@ -273,7 +273,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
       console.log('Submitting data:', data)
       
       // Use axios just like in your login form
-      const response = await axios.post('http://localhost:9000/auth/vendor/emailpass/register', {
+      const response = await axios.post(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass/register`, {
         email: data.email,
         password: data.password
       })

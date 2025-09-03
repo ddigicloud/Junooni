@@ -68,7 +68,7 @@ export function ResetPasswordForm({ className, ...props }: ResetPasswordFormProp
 
     try {
       await axios.post(
-        'http://localhost:9000/auth/vendor/emailpass/update?token=' + token,
+        `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass/update?token=` + token,
         {
           email,
           password: data.password,

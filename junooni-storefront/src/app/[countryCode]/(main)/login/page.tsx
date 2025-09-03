@@ -44,7 +44,7 @@ export default function LoginPage() {
     
     try {
       // Use Medusa's built-in auth route
-      const backendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000'
+      const backendUrl = process.env.MEDUSA_BACKEND_URL
       const redirectUri = `${window.location.origin}/${countryCode}/auth/google/callback`
       
       console.log('Starting Google OAuth with redirect URI:', redirectUri)

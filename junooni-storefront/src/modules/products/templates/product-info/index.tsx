@@ -42,10 +42,9 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
         // Use the actual length of reviews array for the count
         const actualCount = paginatedReviews?.length || 0;
         setReviewCount(actualCount);
-        console.log("ProductInfo - reviews count:", actualCount, "API count:", count);
+       
       })
       .catch((error) => {
-        console.error("Error fetching product reviews:", error);
         // Fallback to default values on error
         setAverageRating(0);
         setReviewCount(0);

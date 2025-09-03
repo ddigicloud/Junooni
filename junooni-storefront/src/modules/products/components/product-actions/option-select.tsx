@@ -103,7 +103,7 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
     
         return match?.hex || "#CCCCCC"
       } catch (e) {
-        console.warn("Failed to parse or access color_hex_values:", e)
+        
         return "#CCCCCC"
       }
     }

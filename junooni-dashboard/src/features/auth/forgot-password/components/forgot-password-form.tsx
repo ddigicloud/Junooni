@@ -42,7 +42,7 @@ export function ForgotForm({ className, ...props }: ForgotFormProps) {
     
     try {
     // Make API call to reset password endpoint
-      const response = await axios.post('http://localhost:9000/auth/vendor/emailpass/reset-password', {
+      const response = await axios.post(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass/reset-password`, {
       identifier: data.identifier,
     })
       // ✅ Save the token returned from backend

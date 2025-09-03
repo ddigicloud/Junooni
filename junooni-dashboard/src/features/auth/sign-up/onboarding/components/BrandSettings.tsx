@@ -62,7 +62,7 @@ export default function BrandSettings({
       }
       
       // Use your upload endpoint
-      const response = await fetch('http://localhost:9000/vendors/uploads', {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/uploads`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

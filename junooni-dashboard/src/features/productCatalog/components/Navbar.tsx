@@ -489,7 +489,7 @@ const Navbar = () => {
             to="/dashboard" 
             className="brand-accent font-bold hover:scale-105 transition-transform duration-300 inline-block"
           >
-            JUNOONI
+            <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
           </Link>
         </div>
         

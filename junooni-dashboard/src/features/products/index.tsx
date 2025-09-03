@@ -153,7 +153,7 @@ export default function Products() {
       setError(null);
       
       try {
-        const response = await fetch("http://localhost:9000/vendors/products", {
+        const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -352,7 +352,7 @@ export default function Products() {
                   </div>
                 </div>
                 
-                {!loading && !error && (
+                {/* {!loading && !error && (
                   <Button 
                     size="sm"
                     style={{ backgroundColor: BRAND.primary }}
@@ -361,7 +361,7 @@ export default function Products() {
                     <Plus className="w-4 h-4 mr-2" />
                     Add Product
                   </Button>
-                )}
+                )} */}
               </div>
             </CardHeader>
 

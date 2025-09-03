@@ -53,7 +53,7 @@ const VendorHandleInput = ({ vendorData, updateVendorData, brandColors }) => {
       }
       console.log("Token found:", token);
       // FIXED: Added the request body with the handle
-      const response = await fetch(`http://localhost:9000/vendors/check-handle`, {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/check-handle`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

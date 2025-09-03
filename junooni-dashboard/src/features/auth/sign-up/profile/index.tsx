@@ -411,7 +411,7 @@ const sendPasswordResetLink = useCallback(async () => {
     console.log('Sending password reset link to:', adminEmail);
     
     // Send request to forgot password endpoint
-    const response = await fetch('http://localhost:9000/auth/vendor/emailpass/reset-password', {
+    const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass/reset-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -468,7 +468,7 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
     console.log('Sending password update payload:', payload);
     
     // Use the new auth/vendor/emailpass/update endpoint
-    const response = await fetch('http://localhost:9000/auth/vendor/emailpass/update', {
+    const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass/update`, {
       method: 'POST',  // Use POST as specified in the curl example
       headers: {
         'Content-Type': 'application/json',
@@ -539,7 +539,7 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
       }
       
       // Try to fetch vendor profile directly from /vendors/me
-      const response = await fetch('http://localhost:9000/vendors/me', {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -627,7 +627,7 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
       
       console.log('Sending to API:', vendorDataWithoutAdmins);
       
-      const response = await fetch('http://localhost:9000/vendors/me', {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -683,7 +683,7 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
       console.log('Sending admin update:', payload);
       
       // Use the actual vendor ID in the URL
-      const response = await fetch(`http://localhost:9000/vendors/${vendorId}/admins`, {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorId}/admins`, {
         method: 'PUT', // or 'PATCH' depending on your API
         headers: {
           'Content-Type': 'application/json',
@@ -761,7 +761,7 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
 
     try {
       let response;
-      let uploadUrl = 'http://localhost:9000/vendors/uploads';
+      let uploadUrl = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/uploads`;
       
       console.log(`📡 Attempting upload to: ${uploadUrl}`);
       
@@ -779,8 +779,8 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
         console.log(`❌ Primary upload failed (${response.status}), trying alternatives...`);
         
         const alternativeEndpoints = [
-          'http://localhost:9000/upload',
-          'http://localhost:9000/vendor/uploads'
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/upload`,
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendor/uploads`
         ];
         
         let uploadSucceeded = false;
@@ -838,7 +838,7 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
         fileUrl = fileData.url || fileData.file_url || fileData.path || fileData.location;
         
         if (fileUrl && !fileUrl.startsWith('http')) {
-          fileUrl = `http://localhost:9000${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+          fileUrl = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
         }
       }
       else if (data.url) {
@@ -852,7 +852,7 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
       } else if (data.file && typeof data.file === 'object') {
         fileUrl = data.file.url || data.file.path;
       } else if (data.path) {
-        fileUrl = data.path.startsWith('http') ? data.path : `http://localhost:9000${data.path}`;
+        fileUrl = data.path.startsWith('http') ? data.path : `${import.meta.env.VITE_MEDUSA_BACKEND_URL}${data.path}`;
       } else if (data.location) {
         fileUrl = data.location;
       } else if (data.uploadedUrls && data.uploadedUrls[type]) {
@@ -947,7 +947,7 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 
       console.log('📤 Full payload:', payload);
 
       // Step 4: Save to backend immediately
-      const response = await fetch('http://localhost:9000/vendors/me', {
+      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

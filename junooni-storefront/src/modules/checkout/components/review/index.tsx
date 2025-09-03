@@ -224,7 +224,7 @@ const Review = ({ cart }: { cart: any }) => {
               </div>
               
               {/* Terms and Conditions */}
-            <div className="p-6 bg-gray-50 rounded-xl">
+            {/* <div className="p-6 bg-gray-50 rounded-xl">
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <svg className="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
@@ -242,7 +242,7 @@ const Review = ({ cart }: { cart: any }) => {
                   </Text>
                 </div>
               </div>
-            </div>
+            </div> */}
             
             </div>
           </div>

@@ -101,7 +101,7 @@ import {
 } from '../context/product-modules/utils';
 
 // Define the base API URL for images
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:9000';
+const API_BASE_URL = import.meta.env.VITE_MEDUSA_BACKEND_URL ;
 // Define the storefront domain for product view links
 const STOREFRONT_DOMAIN = 'https://www.junooni.com';
 // Default location ID for inventory management

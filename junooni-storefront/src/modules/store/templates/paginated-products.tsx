@@ -51,11 +51,11 @@ export default async function PaginatedProducts({
 }) {
   const region = await getRegion(countryCode)
 
-  console.log('📦 PaginatedProducts (Original) received:')
-  console.log('- collections prop:', collections)
-  console.log('- vendors prop:', vendors)
-  console.log('- colors prop:', colors)
-  console.log('- countryCode:', countryCode)
+  //console.log('📦 PaginatedProducts (Original) received:')
+  //console.log('- collections prop:', collections)
+  //console.log('- vendors prop:', vendors)
+  //console.log('- colors prop:', colors)
+  //console.log('- countryCode:', countryCode)
 
   if (!region) {
     return null
@@ -107,9 +107,9 @@ export default async function PaginatedProducts({
 
   // Step 2: Apply vendor filter if specified
   if (vendors && vendors.length > 0 && products.length > 0) {
-    console.log('🏪 Vendor Filter Debug:')
-    console.log('- Selected vendors:', vendors)
-    console.log('- Products before vendor filtering:', products.length)
+    //console.log('🏪 Vendor Filter Debug:')
+    //console.log('- Selected vendors:', vendors)
+    //console.log('- Products before vendor filtering:', products.length)
     
     products = products.filter(product => {
       if (!product.vendor) {
@@ -119,50 +119,50 @@ export default async function PaginatedProducts({
       const hasMatchingVendor = vendors.includes(product.vendor.handle)
       
       if (hasMatchingVendor) {
-        console.log(`✅ Product "${product.title}" matches vendor "${product.vendor.handle}"`)
+        //console.log(`✅ Product "${product.title}" matches vendor "${product.vendor.handle}"`)
       }
       
       return hasMatchingVendor
     })
     
     count = products.length
-    console.log('- Products after vendor filtering:', products.length)
+    //console.log('- Products after vendor filtering:', products.length)
   }
 
   // Step 3: Apply collection filter if specified
   if (collections && collections.length > 0 && products.length > 0) {
-    console.log('🏷️ Collection Filter Debug:')
-    console.log('- Selected collections:', collections)
-    console.log('- Products before filtering:', products.length)
+    //console.log('🏷️ Collection Filter Debug:')
+    //console.log('- Selected collections:', collections)
+    //console.log('- Products before filtering:', products.length)
     
     products = products.filter(product => {
       if (!product.collection) {
-        console.log(`❌ Product "${product.title}" has no collection`)
+        //console.log(`❌ Product "${product.title}" has no collection`)
         return false
       }
       
       const hasMatchingCollection = collections.includes(product.collection.handle)
       
       if (hasMatchingCollection) {
-        console.log(`✅ Product "${product.title}" matches collection "${product.collection.handle}"`)
+        //console.log(`✅ Product "${product.title}" matches collection "${product.collection.handle}"`)
       } else {
-        console.log(`❌ Product "${product.title}" collection "${product.collection.handle}" not in selected collections`)
+        //console.log(`❌ Product "${product.title}" collection "${product.collection.handle}" not in selected collections`)
       }
       
       return hasMatchingCollection
     })
     
     count = products.length
-    console.log('- Products after collection filtering:', products.length)
+    //console.log('- Products after collection filtering:', products.length)
   }
 
   // Step 4: Apply category filter with support for multiple categories
   const processedCategoryHandles = categoryHandles || (categoryHandle ? categoryHandle.split(',').map(c => c.trim()).filter(Boolean) : [])
   
-  console.log('🏷️ PaginatedProducts Debug:')
-  console.log('- categoryHandle (old):', categoryHandle)
-  console.log('- categoryHandles (new):', categoryHandles)
-  console.log('- processedCategoryHandles:', processedCategoryHandles)
+  //console.log('🏷️ PaginatedProducts Debug:')
+  //console.log('- categoryHandle (old):', categoryHandle)
+  //console.log('- categoryHandles (new):', categoryHandles)
+  //console.log('- processedCategoryHandles:', processedCategoryHandles)
   
   if (processedCategoryHandles.length > 0 && products.length > 0) {
     products = products.filter(product => {
@@ -193,12 +193,12 @@ export default async function PaginatedProducts({
     
     count = products.length
     
-    console.log('✅ After category filtering:')
-    console.log(`- Products found: ${products.length}`)
-    console.log(`- First few products:`, products.slice(0, 3).map(p => ({
-      title: p.title,
-      categories: p.categories?.map(c => c.handle)
-    })))
+    //console.log('✅ After category filtering:')
+    //console.log(`- Products found: ${products.length}`)
+    // console.log(`- First few products:`, products.slice(0, 3).map(p => ({
+    //   title: p.title,
+    //   categories: p.categories?.map(c => c.handle)
+    // })))
   }
 
   // Step 5: Apply color filter if specified
@@ -218,7 +218,7 @@ export default async function PaginatedProducts({
               })
             }
           } catch (e) {
-            console.error('Failed to parse color_hex_values:', e)
+            //console.error('Failed to parse color_hex_values:', e)
           }
         }
       }

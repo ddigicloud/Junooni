@@ -68,11 +68,11 @@
 //   const searchParams = useSearchParams()
   
 //   // ✅ ADD: Debug logging for RefinementList
-//   console.log('🎯 RefinementList Debug:')
-//   console.log('- selectedCollections prop received:', selectedCollections)
-//   console.log('- selectedVendors prop received:', selectedVendors)
-//   console.log('- selectedColors prop received:', selectedColors)
-//   console.log('- collections array:', collections)
+//   //console.log('🎯 RefinementList Debug:')
+//   //console.log('- selectedCollections prop received:', selectedCollections)
+//   //console.log('- selectedVendors prop received:', selectedVendors)
+//   //console.log('- selectedColors prop received:', selectedColors)
+//   //console.log('- collections array:', collections)
   
 //   // State for expandable sections
 //   const [expandedSections, setExpandedSections] = useState({
@@ -268,7 +268,7 @@
 //             });
 //           }
 //         } catch (e) {
-//           console.error('Failed to parse color_hex_values:', e);
+//           //console.error('Failed to parse color_hex_values:', e);
 //         }
 //       }
 //     });
@@ -309,11 +309,11 @@
 //   const PRICE_MAX = 1000
 
 //   // ✅ ADD: Debug logging after all variables are declared
-//   console.log('🚀 RefinementList final values:')
-//   console.log('- finalSelectedCollections:', finalSelectedCollections)
-//   console.log('- finalSelectedVendors:', finalSelectedVendors)
-//   console.log('- finalSelectedColors:', finalSelectedColors)
-//   console.log('- collectionsParam from URL:', collectionsParam)
+//   //console.log('🚀 RefinementList final values:')
+//   //console.log('- finalSelectedCollections:', finalSelectedCollections)
+//   //console.log('- finalSelectedVendors:', finalSelectedVendors)
+//   //console.log('- finalSelectedColors:', finalSelectedColors)
+//   //console.log('- collectionsParam from URL:', collectionsParam)
 
 //   const createQueryString = useCallback(
 //     (name: string, value: string) => {
@@ -617,11 +617,11 @@ const RefinementList = ({
   const propSelectedVendors = normalizeToArray(selectedVendors)
   const propSelectedColors = normalizeToArray(selectedColors)
   
-  console.log('🎯 RefinementList Debug:')
-  console.log('- selectedCollections prop:', selectedCollections)
-  console.log('- selectedVendors prop:', selectedVendors)
-  console.log('- selectedColors prop:', selectedColors)
-  console.log('- availableColors prop:', availableColors) // ✅ NEW: Debug availableColors
+  // //console.log('🎯 RefinementList Debug:')
+  // //console.log('- selectedCollections prop:', selectedCollections)
+  // //console.log('- selectedVendors prop:', selectedVendors)
+  // //console.log('- selectedColors prop:', selectedColors)
+  // //console.log('- availableColors prop:', availableColors) // ✅ NEW: Debug availableColors
   
   // State for expandable sections
   const [expandedSections, setExpandedSections] = useState({
@@ -779,7 +779,7 @@ const RefinementList = ({
       });
     });
     
-    console.log('🏪 Formatted vendors:', result);
+    //console.log('🏪 Formatted vendors:', result);
     
     return result;
   };
@@ -807,7 +807,7 @@ const RefinementList = ({
       });
     });
     
-    console.log('🏷️ Formatted collections:', result);
+    //console.log('🏷️ Formatted collections:', result);
     
     return result;
   };
@@ -815,16 +815,16 @@ const RefinementList = ({
   // ✅ FIXED: Get available colors with proper hex values (same logic as CategoryTemplate)
   const getAvailableColors = (): Color[] => {
   if (availableColors && availableColors.length > 0) {
-    console.log('🎨 Using availableColors prop:', availableColors);
+    //console.log('🎨 Using availableColors prop:', availableColors);
     return availableColors;
   }
 
   if (!products || products.length === 0) {
-    console.log('🎨 No products available for color extraction');
+    //console.log('🎨 No products available for color extraction');
     return [];
   }
 
-  console.log('🎨 Extracting colors from products...');
+  //console.log('🎨 Extracting colors from products...');
   const uniqueColors = new Map<string, Color>();
   
   products.forEach(product => {
@@ -852,13 +852,13 @@ const RefinementList = ({
           });
         }
       } catch (e) {
-        console.error('Failed to parse color_hex_values:', e);
+        //console.error('Failed to parse color_hex_values:', e);
       }
     }
   });
   
   const result = Array.from(uniqueColors.values());
-  console.log('🎨 Extracted colors with proper spacing:', result);
+  //console.log('🎨 Extracted colors with proper spacing:', result);
   return result;
 };
 
@@ -894,30 +894,30 @@ const RefinementList = ({
   const PRICE_MIN = 0
   const PRICE_MAX = 1000
 
-  console.log('🚀 RefinementList final values:')
-  console.log('- finalSelectedCollections:', finalSelectedCollections)
-  console.log('- finalSelectedVendors:', finalSelectedVendors)
-  console.log('- finalSelectedColors:', finalSelectedColors)
-  console.log('- colorsWithHex:', colorsWithHex) // ✅ NEW: Debug colors with hex
+  //console.log('🚀 RefinementList final values:')
+  //console.log('- finalSelectedCollections:', finalSelectedCollections)
+  //console.log('- finalSelectedVendors:', finalSelectedVendors)
+  //console.log('- finalSelectedColors:', finalSelectedColors)
+  //console.log('- colorsWithHex:', colorsWithHex) // ✅ NEW: Debug colors with hex
 
   // ✅ CRITICAL FIX: Robust createQueryString with proper array handling
   const createQueryString = useCallback(
     (name: string, value: string) => {
-      console.log(`🔧 createQueryString called: ${name} = "${value}"`)
+      //console.log(`🔧 createQueryString called: ${name} = "${value}"`)
       const params = new URLSearchParams(searchParams)
       
       if (value === "" || value === null || value === undefined) {
-        console.log(`❌ Deleting parameter: ${name}`)
+        //console.log(`❌ Deleting parameter: ${name}`)
         params.delete(name)
       } else {
         // ✅ ROBUST: Always set the complete value for multi-value fields
         // Don't try to manipulate arrays here - let components handle their own logic
-        console.log(`📝 Setting ${name} to: "${value}"`)
+        //console.log(`📝 Setting ${name} to: "${value}"`)
         params.set(name, value)
       }
 
       const result = params.toString()
-      console.log(`🎯 Final query string: ${result}`)
+      //console.log(`🎯 Final query string: ${result}`)
       return result
     },
     [searchParams]
@@ -925,25 +925,25 @@ const RefinementList = ({
 
   // ✅ CRITICAL FIX: Professional UX - Reset to page 1 when filters change
   const setQueryParamsWithPageReset = useCallback((name: string, value: string) => {
-    console.log(`🔧 setQueryParamsWithPageReset called: ${name} = "${value}"`)
+    //console.log(`🔧 setQueryParamsWithPageReset called: ${name} = "${value}"`)
     const params = new URLSearchParams(searchParams)
     
     if (value === "" || value === null || value === undefined) {
-      console.log(`❌ Deleting parameter: ${name}`)
+      //console.log(`❌ Deleting parameter: ${name}`)
       params.delete(name)
     } else {
-      console.log(`📝 Setting ${name} to: "${value}"`)
+      //console.log(`📝 Setting ${name} to: "${value}"`)
       params.set(name, value)
     }
 
     // ✅ PROFESSIONAL UX: Reset to page 1 when any filter changes (except page itself)
     if (name !== 'page') {
       params.set('page', '1')
-      console.log(`🔄 PROFESSIONAL UX: Resetting to page 1 due to filter change: ${name}`)
+      //console.log(`🔄 PROFESSIONAL UX: Resetting to page 1 due to filter change: ${name}`)
     }
 
     const query = params.toString()
-    console.log(`🎯 Final query with page reset: ${query}`)
+    //console.log(`🎯 Final query with page reset: ${query}`)
     router.push(`${pathname}?${query}`, { scroll: false })
   }, [searchParams, router, pathname])
 
@@ -952,7 +952,7 @@ const RefinementList = ({
   
   // ✅ UPDATED: Clear all filters and reset to page 1
   const clearAllFilters = () => {
-    console.log('🔄 PROFESSIONAL UX: Clearing all filters and resetting to page 1')
+    //console.log('🔄 PROFESSIONAL UX: Clearing all filters and resetting to page 1')
     const params = new URLSearchParams(searchParams)
     params.delete("category")
     params.delete("categories") // ✅ NEW: Also clear categories param

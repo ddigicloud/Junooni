@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: { countryC
   console.log('Country code:', countryCode)
 
   // Get base URL - fallback to localhost if env not set
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8000'
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL 
   
   // Handle OAuth error from Google
   if (error) {
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: { countryC
 
   try {
     // Use Medusa's built-in callback validation route
-    const backendUrl = process.env.MEDUSA_BACKEND_URL || 'http://localhost:9000'
+    const backendUrl = process.env.MEDUSA_BACKEND_URL
     const callbackUrl = `${backendUrl}/auth/customer/google/callback`
     
     console.log('Calling Medusa callback:', callbackUrl)

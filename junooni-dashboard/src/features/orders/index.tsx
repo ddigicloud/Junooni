@@ -445,7 +445,7 @@ export default function OrdersPage() {
   const fetchVendorProducts = async (token: string): Promise<Map<string, string>> => {
     try {
       
-      const productResponse = await fetch("http://localhost:9000/vendors/products", {
+      const productResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -511,8 +511,8 @@ export default function OrdersPage() {
         
         // ✅ FIXED: Simplified API call with proper error handling
         // ✅ Fetch ALL orders at once
-        const url = `http://localhost:9000/vendors/orders`; // Remove limit and offset
-        // const url = `http://localhost:9000/vendors/orders?limit=${limit}&offset=${(page - 1) * limit}`;
+        // const url = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders`; // Remove limit and offset
+        const url = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders?limit=${limit}&offset=${(page - 1) * limit}`;
   
         const response = await fetch(url, {
           method: "GET",
@@ -1106,7 +1106,7 @@ useEffect(() => {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <SidebarTrigger variant='outline' className='mr-2 scale-125 sm:scale-100' />
-              <span className="hidden text-gray-500 md:inline">|</span>
+              {/* <span className="hidden text-gray-500 md:inline">|</span> */}
               {/* <div 
                 className="ml-2 mr-2 text-2xl font-bold" 
                 style={{ color: BRAND.primary }}
@@ -1114,9 +1114,9 @@ useEffect(() => {
                 JUNOONI
               </div> */}
               {/* <span className="hidden text-gray-500 md:inline">|</span> */}
-              <h1 className="hidden ml-2 text-base font-semibold md:block" style={{ color: BRAND.secondary }}>
+              {/* <h1 className="hidden ml-2 text-base font-semibold md:block" style={{ color: BRAND.secondary }}>
                 Seller Order Page
-              </h1>
+              </h1> */}
             </div>
             
             <div className="flex items-center gap-4">

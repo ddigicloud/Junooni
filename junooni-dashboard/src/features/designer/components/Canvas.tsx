@@ -678,7 +678,7 @@ const createImageFromBase64 = (base64: string): Promise<HTMLImageElement> => {
 
 
 const getApiConfig = () => {
-  const backendUrl = import.meta.env?.VITE_PAYLOAD_BASE_URL || 'http://localhost:3000';
+  const backendUrl = import.meta.env?.VITE_PAYLOAD_BASE_URL;
   return { BACKEND_URL: backendUrl };
 };
 
@@ -4256,7 +4256,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                     className="w-full h-full p-0 transition-all cursor-default"
                     style={{ 
                       border: '3px solid',
-                      borderColor: brandColor,
+                      // borderColor: brandColor,
                       borderRadius: '8px'
                     }}
                   >
@@ -5058,9 +5058,7 @@ useEffect(() => {
       <div className="px-4 py-2 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <div className="text-xl font-bold" style={{ color: brandColor }}>
-              Junooni
-            </div>
+            <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
             {/* <div className="ml-2 text-sm text-gray-600">
               Enhanced Professional Designer
             </div> */}

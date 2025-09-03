@@ -33,9 +33,9 @@ const CollectionFilter = ({
 
   // ✅ NEW: Calculate product counts for each collection
   const collectionsWithCounts = useMemo(() => {
-    console.log('\n🏷️ CollectionFilter: Computing collection counts...')
-    console.log('- collections prop:', collections?.length)
-    console.log('- collection products:', collection?.length)
+    //console.log('\n🏷️ CollectionFilter: Computing collection counts...')
+    //console.log('- collections prop:', collections?.length)
+    //console.log('- collection products:', collection?.length)
 
     // Filter out empty collections first
     const filtered = collections.filter(coll => coll.value !== "")
@@ -44,7 +44,7 @@ const CollectionFilter = ({
     const collectionCountMap = new Map<string, number>()
 
     if (Array.isArray(collection) && collection.length > 0) {
-      console.log('📊 Counting products for each collection...')
+      //console.log('📊 Counting products for each collection...')
       
       collection.forEach((product, index) => {
         if (product.collection && product.collection.handle) {
@@ -53,14 +53,14 @@ const CollectionFilter = ({
           
           // Debug first few products
           if (index < 5) {
-            console.log(`  Product ${index + 1}: "${product.title}" -> Collection: "${collectionHandle}"`)
+            //console.log(`  Product ${index + 1}: "${product.title}" -> Collection: "${collectionHandle}"`)
           }
         }
       })
 
-      console.log('📊 Collection count map:')
+      //console.log('📊 Collection count map:')
       collectionCountMap.forEach((count, handle) => {
-        console.log(`  - "${handle}": ${count} products`)
+        //console.log(`  - "${handle}": ${count} products`)
       })
     }
 
@@ -84,9 +84,9 @@ const CollectionFilter = ({
       return a.label.localeCompare(b.label) // Alphabetical for same count
     })
 
-    console.log('🏷️ CollectionFilter: Final collections with counts:')
+    //console.log('🏷️ CollectionFilter: Final collections with counts:')
     sortedCollections.forEach((coll, index) => {
-      console.log(`  ${index + 1}. ${coll.label} (${coll.count} products) - value: "${coll.value}"`)
+      //console.log(`  ${index + 1}. ${coll.label} (${coll.count} products) - value: "${coll.value}"`)
     })
 
     return sortedCollections
@@ -121,12 +121,12 @@ const CollectionFilter = ({
     return null
   }
 
-  console.log('🔍 CollectionFilter Debug:')
-  console.log('- selectedCollections prop received:', selectedCollections)
-  console.log('- selectedCollections string:', selectedCollections)
-  console.log('- selectedArray after split:', selectedArray)
-  console.log('- allSelected calculated:', allSelected)
-  console.log('- collectionsWithCounts:', collectionsWithCounts)
+  //console.log('🔍 CollectionFilter Debug:')
+  //console.log('- selectedCollections prop received:', selectedCollections)
+  //console.log('- selectedCollections string:', selectedCollections)
+  //console.log('- selectedArray after split:', selectedArray)
+  //console.log('- allSelected calculated:', allSelected)
+  //console.log('- collectionsWithCounts:', collectionsWithCounts)
 
   return (
     <div className="space-y-2" data-testid={dataTestId}>

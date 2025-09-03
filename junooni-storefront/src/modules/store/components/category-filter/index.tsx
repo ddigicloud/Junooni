@@ -35,9 +35,9 @@ const CategoryFilter = ({
 
   // ✅ ENHANCED: Calculate category options with product counts
   const categoryOptionsWithCounts = useMemo(() => {
-    console.log('\n🏷️ CategoryFilter: Computing category options with counts...')
-    console.log('- categories prop:', categories?.length)
-    console.log('- collection length:', collection?.length)
+    //console.log('\n🏷️ CategoryFilter: Computing category options with counts...')
+    //console.log('- categories prop:', categories?.length)
+    //console.log('- collection length:', collection?.length)
 
     // Filter out "All categories" and other unwanted options first
     const filteredCategories = categories.filter(category => {
@@ -52,13 +52,13 @@ const CategoryFilter = ({
       return !isAllCategories
     })
 
-    console.log('- Filtered categories:', filteredCategories.length)
+    //console.log('- Filtered categories:', filteredCategories.length)
 
     // Count products for each category
     const categoryCountMap = new Map<string, number>()
 
     if (Array.isArray(collection) && collection.length > 0) {
-      console.log('📊 Counting products for each category...')
+      //console.log('📊 Counting products for each category...')
       
       collection.forEach((product, index) => {
         if (product.categories && Array.isArray(product.categories)) {
@@ -71,9 +71,9 @@ const CategoryFilter = ({
         }
       })
 
-      console.log('📊 Category count map:')
+      //console.log('📊 Category count map:')
       categoryCountMap.forEach((count, handle) => {
-        console.log(`  - ${handle}: ${count} products`)
+        //console.log(`  - ${handle}: ${count} products`)
       })
     }
 
@@ -99,34 +99,34 @@ const optionsWithCounts: CategoryOption[] = filteredCategories
       return a.label.localeCompare(b.label) // Alphabetical for same count
     })
 
-    console.log('🏷️ CategoryFilter: Final category options with counts:')
+    //console.log('🏷️ CategoryFilter: Final category options with counts:')
     sortedOptions.forEach((option, index) => {
-      console.log(`  ${index + 1}. ${option.label} (${option.count} products)`)
+      //console.log(`  ${index + 1}. ${option.label} (${option.count} products)`)
     })
 
     return sortedOptions
   }, [categories, collection])
 
-  console.log('🔍 categoryId from URL:', categoryId)
-  console.log('🔍 parsed selectedCategories:', selectedCategories)
+  //console.log('🔍 categoryId from URL:', categoryId)
+  //console.log('🔍 parsed selectedCategories:', selectedCategories)
 
   const handleCategoryChange = useCallback(
     (id: string, isChecked: boolean) => {
-      console.log('🏷️ CategoryFilter: Toggling category:', id, isChecked)
-      console.log('- Current selectedCategories:', selectedCategories)
+      //console.log('🏷️ CategoryFilter: Toggling category:', id, isChecked)
+      //console.log('- Current selectedCategories:', selectedCategories)
       
       let updatedCategories: string[]
       
       if (isChecked) {
         updatedCategories = [...selectedCategories, id]
-        console.log('  → Adding category')
+        //console.log('  → Adding category')
       } else {
         updatedCategories = selectedCategories.filter(catId => catId !== id)
-        console.log('  → Removing category')
+        //console.log('  → Removing category')
       }
       
-      console.log('- New selectedCategories:', updatedCategories)
-      console.log('- Setting category param to:', updatedCategories.join(','))
+      //console.log('- New selectedCategories:', updatedCategories)
+      //console.log('- Setting category param to:', updatedCategories.join(','))
       
       // Join array back to comma-separated string
       setQueryParams("category", updatedCategories.join(','))
@@ -136,11 +136,11 @@ const optionsWithCounts: CategoryOption[] = filteredCategories
 
   // Only render if there are category options available
   if (!categoryOptionsWithCounts || categoryOptionsWithCounts.length <= 0) {
-    console.log('❌ CategoryFilter: No category options available or only 1 category')
+    //console.log('❌ CategoryFilter: No category options available or only 1 category')
     return null
   }
 
-  console.log('✅ CategoryFilter: Rendering with', categoryOptionsWithCounts.length, 'categories')
+  //console.log('✅ CategoryFilter: Rendering with', categoryOptionsWithCounts.length, 'categories')
 
   return (
     <div className="mb-6" data-testid={dataTestId}>

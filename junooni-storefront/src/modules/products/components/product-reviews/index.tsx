@@ -92,7 +92,7 @@ export default function ProductReviews({
       
       return { averageRating: average_rating, count: reviewCount }
     }).catch(error => {
-      console.error("Error fetching reviews:", error)
+      // console.error("Error fetching reviews:", error)
       return { averageRating: 0, count: 0 }
     }).finally(() => {
       setIsLoading(false)

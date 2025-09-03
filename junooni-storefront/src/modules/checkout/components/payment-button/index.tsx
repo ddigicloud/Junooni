@@ -233,9 +233,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
 
   // 🔍 DEBUG: Log the actual provider ID
   useEffect(() => {
-    console.log("🔍 DEBUG Payment Session:", paymentSession)
-    console.log("🔍 DEBUG Provider ID:", paymentSession?.provider_id)
-    console.log("🔍 DEBUG All Payment Sessions:", cart.payment_collection?.payment_sessions)
+    
   }, [paymentSession, cart.payment_collection?.payment_sessions])
 
   // 🔧 IMPROVED: More flexible Razorpay detection
@@ -268,15 +266,15 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
       )
     default:
       // 🔍 DEBUG: Show what provider ID we got
-      console.log("❌ Unhandled provider ID:", paymentSession?.provider_id)
+      
       return (
         <div className="space-y-2">
           <Button disabled>
             Unhandled payment provider: {paymentSession?.provider_id || "none"}
           </Button>
-          <p className="text-sm text-gray-500">
-            Check console for debug info
-          </p>
+          {/* <p className="text-sm text-gray-500">
+            Check //console for debug info
+          </p> */}
         </div>
       )
   }
@@ -381,10 +379,10 @@ const StripePaymentButton = ({
       >
         Place order
       </Button>
-      <ErrorMessage
+      {/* <ErrorMessage
         error={errorMessage}
         data-testid="stripe-payment-error-message"
-      />
+      /> */}
     </>
   )
 }
@@ -445,7 +443,7 @@ const RazorpayPaymentButton = ({
   )
 
   useEffect(() => {
-    console.log("🎯 Razorpay Session Data:", session?.data)
+    
   }, [session])
 
   // ✅ FIXED: Use correct authorization endpoint
@@ -453,12 +451,11 @@ const RazorpayPaymentButton = ({
 
 const authorizePayment = async (razorpayResponse: any) => {
   try {
-    console.log("🔄 Starting authorization...")
-    console.log("📝 Razorpay Response:", razorpayResponse)
+   
 
     // Use the correct API endpoint
-    const authUrl = `http://localhost:9000/store/razorpay/authorize`
-    console.log("🌐 Authorization URL:", authUrl)
+    const authUrl = `${process.env.MEDUSA_BACKEND_URL}/store/razorpay/authorize`;
+
 
     const response = await fetch(authUrl, {
       method: 'POST',
@@ -475,20 +472,19 @@ const authorizePayment = async (razorpayResponse: any) => {
       }),
     })
 
-    console.log("📊 Response Status:", response.status)
 
     if (!response.ok) {
       const errorResponse = await response.json()
-      console.error("❌ Authorization failed:", errorResponse)
+     
       throw new Error(errorResponse.error || `Authorization failed: ${response.status}`)
     }
 
     const result = await response.json()
-    console.log("✅ Authorization successful:", result)
+    
     return result
 
   } catch (error) {
-    console.error('❌ Authorization error:', error)
+   
     throw error
   }
 }
@@ -497,7 +493,6 @@ const authorizePayment = async (razorpayResponse: any) => {
     setSubmitting(true)
     setErrorMessage(null)
     
-    console.log("🚀 Starting Razorpay payment flow...")
 
     const scriptLoaded = await loadRazorpayScript()
     if (!scriptLoaded || !cart) {
@@ -510,13 +505,12 @@ const authorizePayment = async (razorpayResponse: any) => {
     const razorpayOrderId = session?.data?.id
     
     if (!razorpayOrderId) {
-      console.error("❌ Missing Razorpay order ID in session")
+    
       setErrorMessage("Payment session not properly initialized. Please try again.")
       setSubmitting(false)
       return
     }
 
-    console.log("✅ Found Razorpay Order ID:", razorpayOrderId)
 
     const options: any = {
       key: session?.data?.key_id || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -526,21 +520,20 @@ const authorizePayment = async (razorpayResponse: any) => {
       description: "Order Payment",
       order_id: razorpayOrderId, // ✅ Use the correct field
       handler: async function (response: any) {
-        console.log("✅ Razorpay Payment Success:", response)
+        
         
         try {
           // ✅ Authorize payment
-          console.log("🔄 Step 1: Authorizing payment...")
+         
           await authorizePayment(response)
           
           // ✅ Place order
-          console.log("🔄 Step 2: Placing order...")
+          
           await placeOrder()
           
-          console.log("✅ Complete flow successful!")
+         
         } catch (err: any) {
-          console.error("❌ Payment flow error:", err)
-          setErrorMessage(`Payment failed: ${err.message}`)
+          
         } finally {
           setSubmitting(false)
         }
@@ -555,24 +548,24 @@ const authorizePayment = async (razorpayResponse: any) => {
       },
       modal: {
         ondismiss: function() {
-          console.log("💭 Payment modal dismissed")
+          
           setSubmitting(false)
         }
       }
     }
 
-    console.log("🚀 Razorpay Options:", options)
+
 
     try {
       const rzp = new (window as any).Razorpay(options)
       rzp.on("payment.failed", function (response: any) {
-        console.log("❌ Razorpay Payment Failed:", response)
+      
         setErrorMessage(`Payment failed: ${response.error?.description || 'Unknown error'}`)
         setSubmitting(false)
       })
       rzp.open()
     } catch (error) {
-      console.error("❌ Failed to open Razorpay:", error)
+  
       setErrorMessage("Failed to open payment interface")
       setSubmitting(false)
     }

@@ -73,7 +73,7 @@ export default function SignupForm() {
     setMessage('')
     try {
       const response = await axios.post(
-        'http://localhost:9000/auth/vendor/emailpass/register',
+        `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass/register`,
         {
           email: data.email,
           password: data.password,
@@ -119,7 +119,7 @@ export default function SignupForm() {
         },
       }
 
-      const response = await axios.post('http://localhost:9000/vendors', vendorData, {
+      const response = await axios.post(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors`, vendorData, {
         headers: {
           Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',

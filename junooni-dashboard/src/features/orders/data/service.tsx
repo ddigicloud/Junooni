@@ -2,7 +2,7 @@
 import { Order, OrderStatus } from "./types"
 
 // Base API URL based on environment
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9000'
+const API_BASE_URL = process.env.MEDUSA_BACKEND_URL
 
 // Helper to handle API responses
 const handleResponse = async (response: Response) => {

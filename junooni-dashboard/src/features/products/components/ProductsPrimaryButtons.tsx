@@ -7,8 +7,8 @@ export interface ProductsPrimaryButtonsHandle {
 import { useState, useEffect, forwardRef, useImperativeHandle, ForwardRefRenderFunction } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
-import sellSometing from '@/assets/onlineShoping.svg'
-import windowSoping from '@/assets/window_shoping.svg'
+import sellSometing from '@/assets/onlineShoping.png'
+import windowSoping from '@/assets/window_shoping.png'
 import { useNavigate } from '@tanstack/react-router'
 
 // Define BRAND object for styling
@@ -50,7 +50,7 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
           return
         }
         
-        const response = await fetch('http://localhost:9000/vendors/me', {
+        const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -105,7 +105,8 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
               <div className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
                 <img src={windowSoping} alt="Design something new" className="max-w-full max-h-full" />
               </div>
-              <h3 className="text-lg font-semibold text-center md:text-xl">Design something new</h3>
+              <h3 className="text-lg font-semibold text-center md:text-xl">Design Something Amazing</h3>
+              <p className="mt-1 text-sm text-gray-500">Recommended</p>
             </div>
 
             {/* Sell Something I Have */}
@@ -124,7 +125,8 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
               <div className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
                 <img src={sellSometing} alt="Sell something I have" className="max-w-full max-h-full" />
               </div>
-              <h3 className="text-lg font-semibold text-center md:text-xl">Sell something I have</h3>
+              <h3 className="text-lg font-semibold text-center md:text-xl">List Your Existing Products</h3>
+              <p className="mt-1 text-sm text-red-500">GST Required</p>
             </div>
           </div>
 

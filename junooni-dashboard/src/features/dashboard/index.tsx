@@ -1017,7 +1017,7 @@ const DashboardPage = () => {
         }
 
         // Fetch vendor profile
-        const vendorResponse = await fetch("http://localhost:9000/vendors/me", {
+        const vendorResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -1074,7 +1074,7 @@ const DashboardPage = () => {
         // Fetch recent vendor orders
         try {
           
-          const orderResponse = await fetch("http://localhost:9000/vendors/orders?limit=10", {
+          const orderResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders?limit=10`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -1097,7 +1097,7 @@ const DashboardPage = () => {
         
         // Fetch products
         try {
-          const productResponse = await fetch("http://localhost:9000/vendors/products", {
+          const productResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -1292,19 +1292,20 @@ const DashboardPage = () => {
               {/* Brand Name - Always visible */}
               <div className="ml-2 md:hidden">
                 <Link to="/dashboard" className="flex items-center">
-                  <span 
+                  {/* <span 
                     className="text-lg font-bold md:text-xl" 
                     style={{ color: BRAND.primary }}
                   >
                     JUNOONI
-                  </span>
+                  </span> */}
+                   <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
                 </Link>
               </div>
               
               <span className="hidden ml-2 text-gray-500 md:inline md:hidden">|</span>
-              <h1 className="hidden ml-2 text-lg font-semibold md:block" style={{ color: BRAND.secondary }}>
+              {/* <h1 className="hidden ml-2 text-lg font-semibold md:block" style={{ color: BRAND.secondary }}>
                 Seller Dashboard
-              </h1>
+              </h1> */}
             </div>
             
             <div className="flex items-center gap-4">

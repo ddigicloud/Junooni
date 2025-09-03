@@ -103,20 +103,20 @@ export default function FilterHandlersWrapper({
     }
   }, [searchParams])
 
-  console.log('🔧 FilterHandlersWrapper received:')
-  console.log('- products length:', products?.length || 0)
-  console.log('- totalCount:', totalCount)
-  console.log('- totalPages:', totalPages)
-  console.log('- region:', region?.id || 'No region')
-  console.log('- currentVendors (handles):', currentVendors)
-  console.log('- currentCollections (handles):', currentCollections)
-  console.log('- currentCategories (handles):', currentCategories)
-  console.log('- currentColors:', currentColors)
-  console.log('- selectedColors for image selection:', selectedColors) // ✅ Log selected colors
-  console.log('- availableColors for filters:', availableColors.length) // ✅ Log available colors
-  console.log('- vendorsData for mapping:', vendorsData.length)
-  console.log('- collectionsData for mapping:', collectionsData.length)
-  console.log('- categoriesData for mapping:', categoriesData.length)
+  //console.log('🔧 FilterHandlersWrapper received:')
+  //console.log('- products length:', products?.length || 0)
+  //console.log('- totalCount:', totalCount)
+  //console.log('- totalPages:', totalPages)
+  //console.log('- region:', region?.id || 'No region')
+  //console.log('- currentVendors (handles):', currentVendors)
+  //console.log('- currentCollections (handles):', currentCollections)
+  //console.log('- currentCategories (handles):', currentCategories)
+  //console.log('- currentColors:', currentColors)
+  //console.log('- selectedColors for image selection:', selectedColors) // ✅ Log selected colors
+  //console.log('- availableColors for filters:', availableColors.length) // ✅ Log available colors
+  //console.log('- vendorsData for mapping:', vendorsData.length)
+  //console.log('- collectionsData for mapping:', collectionsData.length)
+  //console.log('- categoriesData for mapping:', categoriesData.length)
 
   // ✅ Color name normalizer (same as ColorFilter)
   const normalizeColorName = useCallback((colorName: string): string => {
@@ -213,10 +213,10 @@ export default function FilterHandlersWrapper({
   const getVendorDisplayName = useCallback((vendorHandle: string): string => {
     const vendor = vendorsData.find(v => v.handle === vendorHandle)
     if (vendor) {
-      console.log(`📍 Mapped vendor handle "${vendorHandle}" → name "${vendor.name}"`)
+      //console.log(`📍 Mapped vendor handle "${vendorHandle}" → name "${vendor.name}"`)
       return vendor.name
     }
-    console.warn(`⚠️ Vendor handle "${vendorHandle}" not found in vendorsData`)
+    //console.warn(`⚠️ Vendor handle "${vendorHandle}" not found in vendorsData`)
     return formatDisplayName(vendorHandle)
   }, [vendorsData])
 
@@ -224,10 +224,10 @@ export default function FilterHandlersWrapper({
   const getCollectionDisplayName = useCallback((collectionHandle: string): string => {
     const collection = collectionsData.find(c => c.handle === collectionHandle)
     if (collection) {
-      console.log(`📍 Mapped collection handle "${collectionHandle}" → title "${collection.title}"`)
+      //console.log(`📍 Mapped collection handle "${collectionHandle}" → title "${collection.title}"`)
       return collection.title
     }
-    console.warn(`⚠️ Collection handle "${collectionHandle}" not found in collectionsData`)
+    //console.warn(`⚠️ Collection handle "${collectionHandle}" not found in collectionsData`)
     return formatDisplayName(collectionHandle)
   }, [collectionsData])
 
@@ -235,10 +235,10 @@ export default function FilterHandlersWrapper({
   const getCategoryDisplayName = useCallback((categoryHandle: string): string => {
     const category = categoriesData.find(c => c.handle === categoryHandle)
     if (category) {
-      console.log(`📍 Mapped category handle "${categoryHandle}" → name "${category.name}"`)
+      //console.log(`📍 Mapped category handle "${categoryHandle}" → name "${category.name}"`)
       return category.name
     }
-    console.warn(`⚠️ Category handle "${categoryHandle}" not found in categoriesData`)
+    //console.warn(`⚠️ Category handle "${categoryHandle}" not found in categoriesData`)
     return formatDisplayName(categoryHandle)
   }, [categoriesData])
 
@@ -313,7 +313,7 @@ export default function FilterHandlersWrapper({
       // ✅ PROFESSIONAL UX: Reset to page 1 when filters change
       if (resetPage && name !== 'page') {
         params.set('page', '1')
-        console.log(`🔄 PROFESSIONAL UX: Resetting to page 1 due to filter change: ${name}`)
+        //console.log(`🔄 PROFESSIONAL UX: Resetting to page 1 due to filter change: ${name}`)
       }
 
       return params.toString()
@@ -351,32 +351,32 @@ export default function FilterHandlersWrapper({
 
   // ✅ Handler functions with page reset for professional UX
   const handleRemoveVendor = useCallback((vendorToRemove: string) => {
-    console.log(`🗑️ Removing vendor handle: "${vendorToRemove}"`)
+    //console.log(`🗑️ Removing vendor handle: "${vendorToRemove}"`)
     const newVendors = currentVendors.filter(v => v !== vendorToRemove)
-    console.log(`🗑️ New vendors array:`, newVendors)
+    //console.log(`🗑️ New vendors array:`, newVendors)
     // ✅ PROFESSIONAL UX: Reset to page 1 when filter changes
     setQueryParamsWithPageReset("vendors", newVendors.join(","))
   }, [currentVendors, setQueryParamsWithPageReset])
 
   const handleRemoveCollection = useCallback((collectionToRemove: string) => {
-    console.log(`🗑️ Removing collection handle: "${collectionToRemove}"`)
+    //console.log(`🗑️ Removing collection handle: "${collectionToRemove}"`)
     const newCollections = currentCollections.filter(c => c !== collectionToRemove)
-    console.log(`🗑️ New collections array:`, newCollections)
+    //console.log(`🗑️ New collections array:`, newCollections)
     // ✅ PROFESSIONAL UX: Reset to page 1 when filter changes
     setQueryParamsWithPageReset("collections", newCollections.join(","))
   }, [currentCollections, setQueryParamsWithPageReset])
 
   // ✅ Handler for removing categories with page reset
   const handleRemoveCategory = useCallback((categoryToRemove: string) => {
-    console.log(`🗑️ Removing category handle: "${categoryToRemove}"`)
+    //console.log(`🗑️ Removing category handle: "${categoryToRemove}"`)
     const newCategories = currentCategories.filter(c => c !== categoryToRemove)
-    console.log(`🗑️ New categories array:`, newCategories)
+    //console.log(`🗑️ New categories array:`, newCategories)
     // ✅ PROFESSIONAL UX: Reset to page 1 when filter changes
     setQueryParamsWithPageReset("categories", newCategories.join(","))
   }, [currentCategories, setQueryParamsWithPageReset])
 
   const handleRemoveColor = useCallback((colorToRemove: string) => {
-    console.log(`🎨 Removing color: "${colorToRemove}" - This will affect image selection`)
+    //console.log(`🎨 Removing color: "${colorToRemove}" - This will affect image selection`)
     const newColors = currentColors.filter(c => c !== colorToRemove)
     // ✅ PROFESSIONAL UX: Reset to page 1 when filter changes
     setQueryParamsWithPageReset("colors", newColors.join(","))
@@ -389,7 +389,7 @@ export default function FilterHandlersWrapper({
 
   // ✅ Clear all filters and go to page 1
   const handleClearAllFilters = useCallback(() => {
-    console.log('🔄 PROFESSIONAL UX: Clearing all filters and going to page 1')
+    //console.log('🔄 PROFESSIONAL UX: Clearing all filters and going to page 1')
     // Navigate to clean URL with only page=1
     router.push(`${pathname}?page=1`, { scroll: false })
   }, [router, pathname])
@@ -404,10 +404,10 @@ export default function FilterHandlersWrapper({
   // ✅ Determine which colors to pass for image selection
   const colorsForImageSelection = selectedColors.length > 0 ? selectedColors : currentColors
   
-  console.log('🎨 COLOR SELECTION LOGIC:')
-  console.log('- selectedColors prop:', selectedColors)
-  console.log('- currentColors from URL:', currentColors) 
-  console.log('- colorsForImageSelection (final):', colorsForImageSelection)
+  //console.log('🎨 COLOR SELECTION LOGIC:')
+  //console.log('- selectedColors prop:', selectedColors)
+  //console.log('- currentColors from URL:', currentColors) 
+  //console.log('- colorsForImageSelection (final):', colorsForImageSelection)
 
   return (
     <div className="w-full">

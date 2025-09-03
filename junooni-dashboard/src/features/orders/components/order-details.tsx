@@ -1714,13 +1714,13 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
         return
       }
 
-      const response = await fetch(`http://localhost:9000/vendors/orders/${id}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      })
+     const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders/${id}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      }
+    })
       
       if (!response.ok) {
         if (response.status === 404) {

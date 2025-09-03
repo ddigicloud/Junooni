@@ -365,8 +365,11 @@ function getCanvasBlendMode(blendMode: string): GlobalCompositeOperation {
 function resolveImageUrl(url: string): string {
   if (!url) return '';
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  if (url.startsWith('/')) return `http://localhost:3000${url}`;
-  return `http://localhost:3000/api/media/file/${url}`;
+  
+  const baseUrl = import.meta.env.VITE_PAYLOAD_BASE_URL;
+  
+  if (url.startsWith('/')) return `${baseUrl}${url}`;
+  return `${baseUrl}/api/media/file/${url}`;
 }
 
 export default FlatMockupEngine;

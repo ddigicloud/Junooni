@@ -789,7 +789,7 @@ function resolveImageUrl(url: string): string {
   if (!url) return '';
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   
-  const baseUrl = import.meta.env?.VITE_PAYLOAD_BASE_URL || 'http://localhost:3000';
+  const baseUrl = import.meta.env?.VITE_PAYLOAD_BASE_URL;
   if (url.startsWith('/')) return `${baseUrl}${url}`;
   return `${baseUrl}/api/media/file/${url}`;
 }

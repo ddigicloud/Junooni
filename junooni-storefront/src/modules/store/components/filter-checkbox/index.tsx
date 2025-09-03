@@ -42,10 +42,10 @@ const FilterCheckboxGroup = ({
     })
   }, [items])
 
-  console.log('🔍 FilterCheckboxGroup Debug:')
-  console.log('- Title:', title)
-  console.log('- Original items:', items)
-  console.log('- Filtered items:', filteredItems)
+  //console.log('🔍 FilterCheckboxGroup Debug:')
+  //console.log('- Title:', title)
+  //console.log('- Original items:', items)
+  //console.log('- Filtered items:', filteredItems)
 
   const toggleItem = (item: string) => {
     if (values.includes(item)) {

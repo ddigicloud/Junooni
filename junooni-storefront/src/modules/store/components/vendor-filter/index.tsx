@@ -682,7 +682,7 @@ const VendorFilter = ({
       return
     }
     
-    console.log("🔄 Syncing internal vendor state with props:", selectedVendors)
+    //console.log("🔄 Syncing internal vendor state with props:", selectedVendors)
     const cleanVendors = selectedVendors.filter(v => v !== "")
     
     // Only update if the values are actually different
@@ -690,7 +690,7 @@ const VendorFilter = ({
     const newPropsString = cleanVendors.join(',')
     
     if (currentInternalString !== newPropsString) {
-      console.log("📝 Internal state updating from:", currentInternalString, "to:", newPropsString)
+      //console.log("📝 Internal state updating from:", currentInternalString, "to:", newPropsString)
       setInternalSelectedVendors(cleanVendors)
       lastNotifiedState.current = newPropsString
     }
@@ -705,7 +705,7 @@ const VendorFilter = ({
       return
     }
     
-    console.log("📡 Notifying parent of vendor change:", vendorParam)
+    //console.log("📡 Notifying parent of vendor change:", vendorParam)
     lastNotifiedState.current = vendorParam
     
     // Mark that this is an internal update to prevent sync loop
@@ -728,9 +728,9 @@ const VendorFilter = ({
 
   // ✅ ENHANCED: Process vendor options WITH COUNTS (like ColorFilter)
   const vendorOptions = useMemo(() => {
-    console.log('\n🏪 VendorFilter: Computing vendor options with counts...')
-    console.log('- vendors prop:', vendors?.length)
-    console.log('- collection length:', collection?.length)
+    // console.log('\n🏪 VendorFilter: Computing vendor options with counts...')
+    // console.log('- vendors prop:', vendors?.length)
+    // console.log('- collection length:', collection?.length)
 
     // Filter out empty vendors first
     const filtered = vendors.filter(vendor => vendor.value !== "")
@@ -739,7 +739,7 @@ const VendorFilter = ({
     const vendorCountMap = new Map<string, number>()
 
     if (Array.isArray(collection) && collection.length > 0) {
-      console.log('📊 Counting products for each vendor...')
+      //console.log('📊 Counting products for each vendor...')
       
       collection.forEach((product, index) => {
         if (product.vendor && product.vendor.name) {
@@ -748,9 +748,9 @@ const VendorFilter = ({
         }
       })
 
-      console.log('📊 Vendor count map:')
+      //console.log('📊 Vendor count map:')
       vendorCountMap.forEach((count, handle) => {
-        console.log(`  - ${handle}: ${count} products`)
+        //console.log(`  - ${handle}: ${count} products`)
       })
     }
 
@@ -773,9 +773,9 @@ const VendorFilter = ({
       return a.label.localeCompare(b.label) // Alphabetical for same count
     })
 
-    console.log('🏪 VendorFilter: Final vendor options with counts:')
+    //console.log('🏪 VendorFilter: Final vendor options with counts:')
     sortedOptions.forEach((option, index) => {
-      console.log(`  ${index + 1}. ${option.label} (${option.count} products)`)
+      //console.log(`  ${index + 1}. ${option.label} (${option.count} products)`)
     })
 
     return sortedOptions
@@ -846,19 +846,19 @@ const VendorFilter = ({
 
   // ✅ SIMPLIFIED: Clean toggle function
   const handleVendorToggle = useCallback((vendorValue: string, vendorLabel: string) => {
-    console.log(`🔄 TOGGLE: ${vendorLabel} (${vendorValue})`)
-    console.log(`📋 Current selected:`, cleanSelectedVendors)
+    //console.log(`🔄 TOGGLE: ${vendorLabel} (${vendorValue})`)
+    //console.log(`📋 Current selected:`, cleanSelectedVendors)
     
     let newValues: string[]
     if (cleanSelectedVendors.includes(vendorValue)) {
-      console.log(`❌ Removing ${vendorValue}`)
+      //console.log(`❌ Removing ${vendorValue}`)
       newValues = cleanSelectedVendors.filter(v => v !== vendorValue)
     } else {
-      console.log(`✅ Adding ${vendorValue}`)
+      //console.log(`✅ Adding ${vendorValue}`)
       newValues = [...cleanSelectedVendors, vendorValue]
     }
     
-    console.log(`✅ New selected:`, newValues)
+    //console.log(`✅ New selected:`, newValues)
     
     // Update internal state immediately for responsive UI
     setInternalSelectedVendors(newValues)
@@ -884,11 +884,11 @@ const VendorFilter = ({
 
   // Only render if there are vendor options available
   if (vendorOptions.length === 0) {
-    console.log('❌ VendorFilter: No vendor options available')
+    //console.log('❌ VendorFilter: No vendor options available')
     return null
   }
 
-  console.log('✅ VendorFilter: Rendering with', vendorOptions.length, 'vendors')
+  //console.log('✅ VendorFilter: Rendering with', vendorOptions.length, 'vendors')
 
   if (!needsCustomRendering) {
     // Convert back to simple format for FilterCheckboxGroup

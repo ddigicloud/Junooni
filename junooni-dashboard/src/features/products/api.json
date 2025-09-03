@@ -2035,7 +2035,7 @@
             "handle": "winter-jacket",
             "is_giftcard": false,
             "discountable": true,
-            "thumbnail": "http://localhost:9000/static/1739785803074-61Mb+jXh0pL._SX679_.jpg",
+            "thumbnail": "${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/1739785803074-61Mb+jXh0pL._SX679_.jpg",
             "collection_id": "pcol_01JM78MJ4XXDMVCP5BNTG97A7T",
             "type_id": null,
             "weight": null,
@@ -2133,7 +2133,7 @@
             "images": [
                 {
                     "id": "img_01JM9T5TBH3QYEXGCK0K7AB2A5",
-                    "url": "http://localhost:9000/static/1739785803074-61+MGVW+vPL._SX679_.jpg",
+                    "url": "${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/1739785803074-61+MGVW+vPL._SX679_.jpg",
                     "metadata": null,
                     "rank": 0,
                     "product_id": "prod_01JM9N15FN5MD27N3QGFDNDW2B",
@@ -2143,7 +2143,7 @@
                 },
                 {
                     "id": "img_01JM9T5TBJFKM2ZF3N1JMQGED7",
-                    "url": "http://localhost:9000/static/1739785803074-71nfljA-dHL._SX679_.jpg",
+                    "url": "${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/1739785803074-71nfljA-dHL._SX679_.jpg",
                     "metadata": null,
                     "rank": 1,
                     "product_id": "prod_01JM9N15FN5MD27N3QGFDNDW2B",
@@ -2153,7 +2153,7 @@
                 },
                 {
                     "id": "img_01JM9T5TBJ9DATC8SFJPTGPKS9",
-                    "url": "http://localhost:9000/static/1739785803072-61bdIIXxeFL._SX679_.jpg",
+                    "url": "${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/1739785803072-61bdIIXxeFL._SX679_.jpg",
                     "metadata": null,
                     "rank": 2,
                     "product_id": "prod_01JM9N15FN5MD27N3QGFDNDW2B",
@@ -2163,7 +2163,7 @@
                 },
                 {
                     "id": "img_01JM9T5TBJV95VRT2K6DE14ATS",
-                    "url": "http://localhost:9000/static/1739785803075-715feNATuIL._SX679_.jpg",
+                    "url": "${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/1739785803075-715feNATuIL._SX679_.jpg",
                     "metadata": null,
                     "rank": 3,
                     "product_id": "prod_01JM9N15FN5MD27N3QGFDNDW2B",
@@ -2173,7 +2173,7 @@
                 },
                 {
                     "id": "img_01JM9T5TBJ8VY8RXZVFXGQ5R2V",
-                    "url": "http://localhost:9000/static/1739785803075-61znkKAf87L._SX679_.jpg",
+                    "url": "${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/1739785803075-61znkKAf87L._SX679_.jpg",
                     "metadata": null,
                     "rank": 4,
                     "product_id": "prod_01JM9N15FN5MD27N3QGFDNDW2B",
@@ -2183,7 +2183,7 @@
                 },
                 {
                     "id": "img_01JM9T5TBJDPM4SWY5ZPVZDPGZ",
-                    "url": "http://localhost:9000/static/1739785803074-61Mb+jXh0pL._SX679_.jpg",
+                    "url": "${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/1739785803074-61Mb+jXh0pL._SX679_.jpg",
                     "metadata": null,
                     "rank": 5,
                     "product_id": "prod_01JM9N15FN5MD27N3QGFDNDW2B",

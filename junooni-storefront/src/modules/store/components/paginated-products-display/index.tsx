@@ -34,62 +34,62 @@ export default function PaginatedProductsDisplay({
 
   // Debug logging
   useEffect(() => {
-    console.log('📦 PaginatedProductsDisplay:')
-    console.log('- products length:', products.length)
-    console.log('- totalCount:', totalCount)
-    console.log('- currentPage:', currentPage)
-    console.log('- totalPages:', totalPages)
-    console.log('- selectedColors for image selection:', selectedColors)
-    console.log('- reviewsLoading:', reviewsLoading)
-    console.log('- reviewsData loaded:', Object.keys(reviewsData).length, '/', products.length)
+    //console.log('📦 PaginatedProductsDisplay:')
+    //console.log('- products length:', products.length)
+    //console.log('- totalCount:', totalCount)
+    //console.log('- currentPage:', currentPage)
+    //console.log('- totalPages:', totalPages)
+    //console.log('- selectedColors for image selection:', selectedColors)
+    //console.log('- reviewsLoading:', reviewsLoading)
+    //console.log('- reviewsData loaded:', Object.keys(reviewsData).length, '/', products.length)
   }, [products, totalCount, currentPage, totalPages, selectedColors, reviewsLoading, reviewsData])
 
   // Enhanced debugging with color info
   useEffect(() => {
-    console.log('\n🔍 PAGINATEDPRODUCTSDISPLAY DETAILED DEBUG:')
-    console.log('- region received:', region ? {
-      id: region.id,
-      currency_code: region.currency_code,
-      name: region.name
-    } : 'NULL REGION')
-    console.log('- selectedColors for ProductPreview:', selectedColors)
-    console.log('- Color-based image selection:', selectedColors.length > 0 ? 'ENABLED' : 'DISABLED')
-    console.log('- Reviews batch loading:', reviewsLoading ? 'IN PROGRESS' : 'COMPLETE')
-    console.log('- Reviews data:', reviewsData)
+    //console.log('\n🔍 PAGINATEDPRODUCTSDISPLAY DETAILED DEBUG:')
+    // console.log('- region received:', region ? {
+    //   id: region.id,
+    //   currency_code: region.currency_code,
+    //   name: region.name
+    // } : 'NULL REGION')
+    //console.log('- selectedColors for ProductPreview:', selectedColors)
+    //console.log('- Color-based image selection:', selectedColors.length > 0 ? 'ENABLED' : 'DISABLED')
+    //console.log('- Reviews batch loading:', reviewsLoading ? 'IN PROGRESS' : 'COMPLETE')
+    //console.log('- Reviews data:', reviewsData)
     
     if (products.length > 0) {
       const sampleProduct = products[0]
-      console.log('- First product title:', sampleProduct.title)
-      console.log('- First product has variants:', !!sampleProduct.variants)
-      console.log('- First product variants length:', sampleProduct.variants?.length || 0)
+      //console.log('- First product title:', sampleProduct.title)
+      //console.log('- First product has variants:', !!sampleProduct.variants)
+      //console.log('- First product variants length:', sampleProduct.variants?.length || 0)
       
       if (sampleProduct.variants?.[0]?.calculated_price) {
-        console.log('- First product calculated_amount:', sampleProduct.variants[0].calculated_price.calculated_amount)
-        console.log('- First product currency_code:', sampleProduct.variants[0].calculated_price.currency_code)
-        console.log('✅ PRODUCT DATA LOOKS CORRECT FOR PRODUCTPREVIEW')
+        //console.log('- First product calculated_amount:', sampleProduct.variants[0].calculated_price.calculated_amount)
+        //console.log('- First product currency_code:', sampleProduct.variants[0].calculated_price.currency_code)
+        //console.log('✅ PRODUCT DATA LOOKS CORRECT FOR PRODUCTPREVIEW')
       } else {
-        console.log('❌ PRODUCT MISSING PRICE DATA - PRODUCTPREVIEW WILL SHOW N/A')
+        //console.log('❌ PRODUCT MISSING PRICE DATA - PRODUCTPREVIEW WILL SHOW N/A')
       }
       
       // Check review data for first product
       const firstProductReviewData = reviewsData[sampleProduct.id]
       if (firstProductReviewData) {
-        console.log('- First product review data:', firstProductReviewData)
-        console.log('✅ REVIEW DATA AVAILABLE FOR FIRST PRODUCT')
+        //console.log('- First product review data:', firstProductReviewData)
+        //console.log('✅ REVIEW DATA AVAILABLE FOR FIRST PRODUCT')
       } else {
-        console.log('⏳ REVIEW DATA NOT YET LOADED FOR FIRST PRODUCT')
+        //console.log('⏳ REVIEW DATA NOT YET LOADED FOR FIRST PRODUCT')
       }
       
       // Check if product has color data for the selected colors
       if (selectedColors.length > 0 && sampleProduct.metadata?.color_hex_values) {
-        console.log('- First product has color metadata for image selection')
+        //console.log('- First product has color metadata for image selection')
         try {
           const colorData = typeof sampleProduct.metadata.color_hex_values === 'string' 
             ? JSON.parse(sampleProduct.metadata.color_hex_values)
             : sampleProduct.metadata.color_hex_values
-          console.log('- Available colors in first product:', Array.isArray(colorData) ? colorData.map(c => c.name) : 'Invalid format')
+          //console.log('- Available colors in first product:', Array.isArray(colorData) ? colorData.map(c => c.name) : 'Invalid format')
         } catch (e) {
-          console.log('- Color data parsing failed for first product')
+          //console.log('- Color data parsing failed for first product')
         }
       }
     }
@@ -152,17 +152,17 @@ export default function PaginatedProductsDisplay({
           
           // Enhanced debug for color-based image selection (first product only)
           if (index === 0) {
-            console.log(`\n🎯 PASSING TO PRODUCTPREVIEW #${index}:`)
-            console.log('- Product:', product.title)
-            console.log('- Region:', region?.currency_code || 'NO REGION')
-            console.log('- Has price data:', !!product.variants?.[0]?.calculated_price?.calculated_amount)
-            console.log('- selectedColors passed:', selectedColors)
-            console.log('- Color-based image selection:', selectedColors.length > 0 ? 'ENABLED' : 'DISABLED')
-            console.log('- Review data passed:', {
-              averageRating: productReviewData.averageRating,
-              reviewCount: productReviewData.reviewCount,
-              isLoading: reviewsLoading && !reviewsData[product.id]
-            })
+            //console.log(`\n🎯 PASSING TO PRODUCTPREVIEW #${index}:`)
+            //console.log('- Product:', product.title)
+            //console.log('- Region:', region?.currency_code || 'NO REGION')
+            //console.log('- Has price data:', !!product.variants?.[0]?.calculated_price?.calculated_amount)
+            //console.log('- selectedColors passed:', selectedColors)
+            //console.log('- Color-based image selection:', selectedColors.length > 0 ? 'ENABLED' : 'DISABLED')
+            // console.log('- Review data passed:', {
+            //   averageRating: productReviewData.averageRating,
+            //   reviewCount: productReviewData.reviewCount,
+            //   isLoading: reviewsLoading && !reviewsData[product.id]
+            // })
           }
           
           return (

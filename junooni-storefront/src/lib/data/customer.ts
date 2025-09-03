@@ -1208,7 +1208,7 @@ export const fetchOrderInvoice = async (orderId: string) => {
   }
 
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"
+    const baseUrl = process.env.MEDUSA_BACKEND_URL
     const publishableKey = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
 
     // Use raw fetch instead of SDK for binary responses

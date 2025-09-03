@@ -123,9 +123,7 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
 
-      console.log("Invoice downloaded successfully.")
     } catch (err) {
-      console.error("Error generating invoice:", err)
       setInvoiceError(err instanceof Error ? err.message : "Unexpected error")
     } finally {
       setIsGeneratingInvoice(false)

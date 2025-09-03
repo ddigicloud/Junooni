@@ -96,7 +96,7 @@ export const OrderTable: React.FC = () => {
       console.log("🔍 Fetching vendor-specific orders...")
 
       // ✅ Use the new vendor-filtered API endpoint
-      const response = await fetch(`http://localhost:9000/api/vendors/orders`, {
+     const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/api/vendors/orders`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

@@ -4,7 +4,7 @@ export async function updatePasswordWithToken(
   password: string,
   token: string
 ) {
-  const baseUrl = process.env.MEDUSA_BACKEND_URL || "http://localhost:9000"
+  const baseUrl = process.env.MEDUSA_BACKEND_URL
   const path = `/auth/${provider}/emailpass/update`
 
   const res = await fetch(`${baseUrl}${path}`, {

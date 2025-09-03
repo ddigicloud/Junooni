@@ -5014,7 +5014,7 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
                               Draft
                             </div>
                           </SelectItem>
-                          <SelectItem value="published">
+                          <SelectItem value="proposed">
                             <div className="flex items-center">
                               <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
                               Proposed

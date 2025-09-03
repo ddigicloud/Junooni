@@ -275,7 +275,7 @@ export const RazorpayContainer = ({
         setRazorpayReady(true)
       }
       script.onerror = () => {
-        console.error('Failed to load Razorpay script')
+        // console.error('Failed to load Razorpay script')
         setRazorpayReady(false)
       }
       document.body.appendChild(script)

@@ -313,7 +313,7 @@ useEffect(() => {
       if (!token) return;
       
       // Fetch vendor data to check GST status
-      const response = await fetch('http://localhost:9000/vendors/me', {
+      const response = await fetch('${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

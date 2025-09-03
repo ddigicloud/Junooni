@@ -998,7 +998,7 @@ const variantImageUrls = allVariantImages
 .map(item => {
   // If URL is a blob URL and we have an ID, use the server URL format instead
   if (item.url && item.url.startsWith('blob:') && item.id) {
-    return `http://localhost:9000/static/${item.id}`;
+    return `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/${item.id}`;
   }
   return item.url;
 })
@@ -1034,7 +1034,7 @@ if (variant.optionValues) {
       // Transform blob URLs to server URLs
       let url = item.url;
       if (url.startsWith('blob:') && item.id) {
-        url = `http://localhost:9000/static/${item.id}`;
+        url = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/${item.id}`;
       }
       
       // Create option image entry for ALL option types

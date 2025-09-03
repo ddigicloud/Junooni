@@ -89,7 +89,7 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
     if (process.env.NODE_ENV === 'development' && normalizedProduct.variants?.length > 0) {
       const firstVariant = normalizedProduct.variants[0]
       if (!firstVariant.id) {
-        console.warn(`⚠️ Product "${normalizedProduct.title}" has variant without ID:`, firstVariant)
+        //console.warn(`⚠️ Product "${normalizedProduct.title}" has variant without ID:`, firstVariant)
       }
     }
 
@@ -112,7 +112,7 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
     const loadFilterData = async () => {
       setFiltersLoading(true)
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000'
+        const backendUrl = process.env.MEDUSA_BACKEND_URL
         const headers = getApiHeaders()
 
         const [categoriesResponse, vendorsResponse] = await Promise.all([
@@ -126,7 +126,7 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
         try {
           vendorsResult = await vendorsResponse.json()
         } catch (e) {
-          // console.warn('Vendors endpoint not available, will extract from search results')
+          // //console.warn('Vendors endpoint not available, will extract from search results')
         }
 
         setCategoriesData(categoriesResult.categories || [])
@@ -134,7 +134,7 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
         setAvailableColors([])
         
       } catch (error) {
-        // console.error('Error loading filter data:', error)
+        // //console.error('Error loading filter data:', error)
         setCategoriesData([])
         setVendorsData([])
         setAvailableColors([])
@@ -321,7 +321,7 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
       
       // Debug first few products
       if (process.env.NODE_ENV === 'development' && filteredProducts.indexOf(product) < 3) {
-        console.log(`${inRange ? '✅' : '❌'} ${product.title}: ${price} (range: ${minPrice}-${maxPrice || '∞'})`)
+        //console.log(`${inRange ? '✅' : '❌'} ${product.title}: ${price} (range: ${minPrice}-${maxPrice || '∞'})`)
       }
       
       return inRange
@@ -367,7 +367,7 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
 
   // ✅ ENHANCED: Direct use of backend products (no transformation needed since backend now returns complete format)
   const performSearch = async (searchQuery: string) => {
-    const backendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000'
+    const backendUrl = process.env.MEDUSA_BACKEND_URL
     const searchUrl = `${backendUrl}/store/products/search`
     
     const requestBody = {
@@ -525,9 +525,9 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
       const paginatedProducts = paginateProducts(allProducts, page, PRODUCT_LIMIT)
       setDisplayProducts(paginatedProducts)
       
-      // console.log(`📄 [PAGINATION] Page ${page} of ${totalPagesCalculated}`)
-      // console.log(`📊 [PAGINATION] Showing ${paginatedProducts.length} of ${allProducts.length} total products`)
-      // console.log(`📍 [PAGINATION] Products ${((page - 1) * PRODUCT_LIMIT) + 1} - ${Math.min(page * PRODUCT_LIMIT, allProducts.length)}`)
+      // //console.log(`📄 [PAGINATION] Page ${page} of ${totalPagesCalculated}`)
+      // //console.log(`📊 [PAGINATION] Showing ${paginatedProducts.length} of ${allProducts.length} total products`)
+      // //console.log(`📍 [PAGINATION] Products ${((page - 1) * PRODUCT_LIMIT) + 1} - ${Math.min(page * PRODUCT_LIMIT, allProducts.length)}`)
       
     } else {
       setDisplayProducts([])
@@ -547,10 +547,10 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
         return
       }
 
-      // console.log('\n🚀 [FETCH] Starting product fetch process with pagination support')
-      // console.log('  Query:', query)
-      // console.log('  Current page:', page)
-      // console.log('  Filters:', { vendors, colors, collections, categories, priceRange })
+      // //console.log('\n🚀 [FETCH] Starting product fetch process with pagination support')
+      // //console.log('  Query:', query)
+      // //console.log('  Current page:', page)
+      // //console.log('  Filters:', { vendors, colors, collections, categories, priceRange })
       
       setLoading(true)
       setError(null)
@@ -559,28 +559,28 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
         const searchResults = await performSearch(query.trim())
         let processedProducts = searchResults.products || []
         
-        // console.log('\n🔄 [PROCESSING] Post-search processing:')
-        // console.log('  Raw search results:', processedProducts.length)
+        // //console.log('\n🔄 [PROCESSING] Post-search processing:')
+        // //console.log('  Raw search results:', processedProducts.length)
         
         // Apply client-side filters
         processedProducts = applyFilters(processedProducts)
-        //console.log('  After filtering:', processedProducts.length)
+        ////console.log('  After filtering:', processedProducts.length)
         
         // Apply sorting
         processedProducts = sortProducts(processedProducts, sortBy)
-        //console.log('  After sorting:', processedProducts.length)
+        ////console.log('  After sorting:', processedProducts.length)
         
-        // console.log('\n✅ [FETCH SUCCESS] Search and processing complete:')
-        // console.log('  Final product count:', processedProducts.length)
-        // console.log('  Query:', query)
-        // console.log('  Active filters:', { vendors, colors, collections, categories, priceRange })
+        // //console.log('\n✅ [FETCH SUCCESS] Search and processing complete:')
+        // //console.log('  Final product count:', processedProducts.length)
+        // //console.log('  Query:', query)
+        // //console.log('  Active filters:', { vendors, colors, collections, categories, priceRange })
 
         // ✅ FIX: Store all products for pagination
         setAllProducts(processedProducts)
         setTotalCount(processedProducts.length)
         
       } catch (error) {
-        //console.error('❌ [FETCH ERROR] Search failed:', error)
+        ////console.error('❌ [FETCH ERROR] Search failed:', error)
         setError(`Failed to load search results: ${error.message}`)
         setAllProducts([])
         setDisplayProducts([])

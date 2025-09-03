@@ -20,7 +20,7 @@ export default function ShareButton({ url, title }: { url: string; title: string
         setCopyPosition(null);
       }, 1000);
     } catch (error) {
-      console.error("Failed to copy:", error);
+      
     }
   };
 

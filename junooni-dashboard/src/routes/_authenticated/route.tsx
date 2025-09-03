@@ -61,7 +61,7 @@ function RouteComponent() {
         }
         
         // Check if vendor exists using vendors/me endpoint
-        const response = await fetch('http://localhost:9000/vendors', {
+        const response = await fetch('${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
