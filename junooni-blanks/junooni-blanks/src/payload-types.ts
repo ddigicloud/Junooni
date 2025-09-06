@@ -788,10 +788,10 @@ export interface BlankProduct {
   vendorInfo?: {
     supplier?: ('printful' | 'printify' | 'gooten' | 'qikink' | 'local' | 'direct' | 'other') | null;
     supplierProductId?: string | null;
-    countryOfOrigin?: string | null;
+    countryOrigin?: string | null;
   };
   sourcing?: {
-    minimumOrderQuantity?: number | null;
+    minOrderQty?: number | null;
     leadTimeDays?: number | null;
     rushAvailable?: boolean | null;
     rushLeadTimeDays?: number | null;
@@ -800,7 +800,7 @@ export interface BlankProduct {
   pricing?: {
     markupType?: ('percentage' | 'fixed' | 'tiered') | null;
     markupValue?: number | null;
-    suggestedRetailPrice?: number | null;
+    suggestedRetail?: number | null;
   };
   pricingTiers?:
     | {
@@ -989,7 +989,7 @@ export interface BlankProduct {
     ambientLight?: number | null;
     shadowIntensity?: number | null;
   };
-  printTechn?:
+  printT?:
     | {
         id?: string | null;
         technologyName: 'dtg' | 'dtf' | 'screen' | 'sublimation' | 'embroidery' | 'vinyl' | 'digital' | 'uv' | 'laser';
@@ -1054,7 +1054,7 @@ export interface BlankProduct {
                      * PNG displacement map (512x512 recommended)
                      */
                     dispImg: number | Media;
-                    dsrfaceTy?: ('cylindrical' | 'conical' | 'spherical') | null;
+                    dsrface?: ('cylindrical' | 'conical' | 'spherical') | null;
                     /**
                      * Displacement intensity (0.1 = subtle, 1.5 = strong)
                      */
@@ -1069,7 +1069,7 @@ export interface BlankProduct {
               /**
                * Alpha masks to define precise printable areas (white = printable, black = non-printable)
                */
-              alphaMasks?:
+              alpMasks?:
                 | {
                     /**
                      * PNG with alpha channel (same dimensions as mockup photo)
@@ -1079,7 +1079,7 @@ export interface BlankProduct {
                      * Which area this mask applies to (must match visibleArea areaName)
                      */
                     alfarea: string;
-                    alfamask?: ('alpha' | 'luminance' | 'red_channel') | null;
+                    alfmask?: ('alpha' | 'luminance' | 'red_channel') | null;
                     /**
                      * Edge softness in pixels (0 = sharp, 5 = soft)
                      */
@@ -1090,13 +1090,13 @@ export interface BlankProduct {
               /**
                * Lighting and shadow overlays for realistic mockup effects
                */
-              lightingOverlays?:
+              light?:
                 | {
                     /**
                      * PNG lighting/shadow overlay (same dimensions as mockup photo)
                      */
                     overImage: number | Media;
-                    overlayType?: ('lighting' | 'shadow' | 'reflection' | 'ambient') | null;
+                    ovrlyTyp?: ('lighting' | 'shadow' | 'reflection' | 'ambient') | null;
                     overbldMde?: ('overlay' | 'multiply' | 'screen' | 'soft-light' | 'hard-light') | null;
                     /**
                      * Overlay strength (0.1 = subtle, 0.8 = strong)
@@ -1112,16 +1112,16 @@ export interface BlankProduct {
               /**
                * Control rendering engine and quality settings
                */
-              renderPref?: {
+              render?: {
                 /**
                  * Auto selects best engine based on complexity
                  */
-                preferredEngine?: ('auto' | 'canvas' | 'pixi') | null;
+                pfEngine?: ('auto' | 'canvas' | 'pixi') | null;
                 /**
                  * Enable displacement, masking, and lighting effects
                  */
                 enableAdvancedEffects?: boolean | null;
-                qualityLevel?: ('draft' | 'standard' | 'high' | 'ultra') | null;
+                quality?: ('draft' | 'standard' | 'high' | 'ultra') | null;
                 /**
                  * Export resolution multiplier (1x to 4x for print)
                  */
@@ -1131,12 +1131,12 @@ export interface BlankProduct {
                  */
                 enableProgTrack?: boolean | null;
               };
-              fabricProp?: {
-                mfabType?:
+              fbrcProp?: {
+                mfab?:
                   | ('cotton' | 'polyester' | 'cotton_blend' | 'canvas' | 'leather' | 'denim' | 'fleece' | 'jersey')
                   | null;
                 fabricWeight?: number | null;
-                surfaceTexture?: ('smooth' | 'textured' | 'rough' | 'glossy' | 'matte') | null;
+                Texture?: ('smooth' | 'textured' | 'rough' | 'glossy' | 'matte') | null;
                 stretchability?: number | null;
                 transparency?: number | null;
               };
@@ -1146,7 +1146,7 @@ export interface BlankProduct {
                 ambientLight?: number | null;
                 shadowIntensity?: number | null;
               };
-              visibleAreas?:
+              area?:
                 | {
                     areaName: string;
                     visibility?: ('full' | 'partial' | 'edge' | 'sleeve' | 'shadow' | 'reflection') | null;
@@ -1154,16 +1154,16 @@ export interface BlankProduct {
                      * Percentage of area visible (0-100%)
                      */
                     visibilityPercentage?: number | null;
-                    maskingConfiguration?: {
+                    Config?: {
                       enableMasking?: boolean | null;
-                      maskTypes?: ('gradient' | 'sharp' | 'soft' | 'svg' | 'fold' | 'seam') | null;
+                      mask?: ('gradient' | 'sharp' | 'soft' | 'svg' | 'fold' | 'seam') | null;
                       /**
                        * SVG path data for custom masking
                        */
                       maskPath?: string | null;
                     };
-                    gradientMaskSettings?: {
-                      gradientDirection?: ('horizontal' | 'vertical' | 'radial' | 'angle') | null;
+                    grdnmsk?: {
+                      grdn?: ('horizontal' | 'vertical' | 'radial' | 'angle') | null;
                       gradientAngle?: number | null;
                       /**
                        * Where fade starts (0-1)
@@ -1183,16 +1183,16 @@ export interface BlankProduct {
                        */
                       edgeSoftness?: number | null;
                     };
-                    fabricIntegration?: {
+                    fbrc?: {
                       enableFabricBlend?: boolean | null;
-                      bfabType?: ('cotton' | 'polyester' | 'canvas' | 'leather' | 'denim') | null;
+                      bfab?: ('cotton' | 'polyester' | 'canvas' | 'leather' | 'denim') | null;
                       foldAwareness?: boolean | null;
                       seamAwareness?: boolean | null;
                       textureIntensity?: number | null;
                       fabricColor?: string | null;
                       fabricRoughness?: number | null;
                     };
-                    designPlacement: {
+                    design: {
                       /**
                        * X position (0.0-1.0)
                        */
@@ -1214,7 +1214,7 @@ export interface BlankProduct {
                       skewY?: number | null;
                       scaleX?: number | null;
                       scaleY?: number | null;
-                      blendMode?: ('normal' | 'multiply' | 'screen' | 'overlay' | 'soft_light') | null;
+                      blend?: ('normal' | 'multiply' | 'screen' | 'overlay' | 'soft_light') | null;
                       opacity?: number | null;
                       preserveColors?: boolean | null;
                     };
@@ -1230,10 +1230,10 @@ export interface BlankProduct {
                       perspectiveIntensity?: number | null;
                       dynamicPerspective?: boolean | null;
                     };
-                    fabricEffectsSettings?: {
+                    fbrEft?: {
                       enableFolds?: boolean | null;
                       foldIntensity?: number | null;
-                      foldDirection?: ('horizontal' | 'vertical' | 'radial' | 'random') | null;
+                      fold?: ('horizontal' | 'vertical' | 'radial' | 'random') | null;
                       seamDistrt?: boolean | null;
                       /**
                        * Fabric depth effect in pixels
@@ -1383,14 +1383,14 @@ export interface BlankProduct {
       };
     };
   };
-  smartPrintTech?:
+  PrntTch?:
     | {
         id?: string | null;
         technologyName: 'dtg' | 'dtf' | 'screen' | 'sublimation' | 'embroidery' | 'vinyl' | 'digital' | 'uv' | 'laser';
         /**
          * Upload mockup photos and let AI detect customizable areas automatically
          */
-        smartMockupPhotos?:
+        smtMckpPht?:
           | {
               /**
                * e.g., "Front View", "Folded Style", "Lifestyle Shot"
@@ -1400,7 +1400,7 @@ export interface BlankProduct {
                * Upload high-quality mockup image (AI will analyze automatically)
                */
               photo: number | Media;
-              viewAngle?:
+              view?:
                 | (
                     | 'front'
                     | 'back'
@@ -1414,7 +1414,7 @@ export interface BlankProduct {
                     | 'top'
                   )
                 | null;
-              mockupStyle?: ('studio' | 'lifestyle' | 'model' | 'flat_lay' | 'folded' | 'detail') | null;
+              mock?: ('studio' | 'lifestyle' | 'model' | 'flat_lay' | 'folded' | 'detail') | null;
               /**
                * Base color of the product in this mockup
                */
@@ -1422,8 +1422,8 @@ export interface BlankProduct {
               /**
                * Automatically populated by AI image analysis
                */
-              aiAnalRes?: {
-                analStat?: ('pending' | 'processing' | 'completed' | 'failed' | 'needs_review') | null;
+              Anl?: {
+                Sts?: ('pending' | 'processing' | 'completed' | 'failed' | 'needs_review') | null;
                 /**
                  * AI-detected product type
                  */
@@ -1455,9 +1455,9 @@ export interface BlankProduct {
                 /**
                  * AI-detected obstructions (camera holes, seams, etc.)
                  */
-                dtcObs?:
+                dtc?:
                   | {
-                      obsType?:
+                      obs?:
                         | ('camera_hole' | 'speaker_hole' | 'seam' | 'port' | 'button' | 'fold' | 'shadow' | 'unknown')
                         | null;
                       boundbox?: {
@@ -1474,7 +1474,7 @@ export interface BlankProduct {
               /**
                * AI-detected areas with smart defaults + manual overrides
                */
-              smartVisA?:
+              Vsa?:
                 | {
                     /**
                      * Area name (auto-populated from AI or manual entry)
@@ -1483,27 +1483,27 @@ export interface BlankProduct {
                     /**
                      * How this area configuration was created
                      */
-                    dataSource?: ('ai_detected' | 'template' | 'manual' | 'hybrid') | null;
+                    Src?: ('ai_detected' | 'template' | 'manual' | 'hybrid') | null;
                     /**
                      * Manual review status for AI-detected areas
                      */
-                    appStat?: ('pending_review' | 'approved' | 'rejected' | 'needs_adjustment') | null;
-                    visibility?:
+                    apStt?: ('pending_review' | 'approved' | 'rejected' | 'needs_adjustment') | null;
+                    vsblty?:
                       | ('full' | 'partial' | 'edge' | 'sleeve' | 'shadow' | 'reflection' | 'device_cutout')
                       | null;
                     /**
                      * Percentage of area visible (AI can auto-calculate)
                      */
                     visibilityPercentage?: number | null;
-                    smartMasking?: {
+                    smrt?: {
                       /**
                        * Use AI-powered smart masking for this area
                        */
                       enableSmartMask?: boolean | null;
-                      maskingStrategy?: ('ai_automatic' | 'template' | 'manual' | 'hybrid') | null;
+                      Srtgy?: ('ai_automatic' | 'template' | 'manual' | 'hybrid') | null;
                     };
-                    aiMaskSettings?: {
-                      edgeDetectLevel?: ('soft' | 'medium' | 'sharp' | 'ultra') | null;
+                    Msk?: {
+                      edg?: ('soft' | 'medium' | 'sharp' | 'ultra') | null;
                       /**
                        * Automatically adapt masking based on lighting conditions
                        */
@@ -1520,12 +1520,12 @@ export interface BlankProduct {
                     /**
                      * Automatically generated by AI analysis
                      */
-                    generatedMask?: {
+                    gnMsk?: {
                       /**
                        * SVG path for the generated mask
                        */
                       maskPath?: string | null;
-                      maskTypes?: ('gradient' | 'vector' | 'bitmap' | 'composite') | null;
+                      mskTyp?: ('gradient' | 'vector' | 'bitmap' | 'composite') | null;
                       /**
                        * AI confidence in generated mask quality
                        */
@@ -1581,7 +1581,7 @@ export interface BlankProduct {
         /**
          * AI-enhanced customization areas with smart defaults
          */
-        smartCustomizationAreas?:
+        smtCstmtnAr?:
           | {
               areaId?: string | null;
               /**
@@ -2197,12 +2197,12 @@ export interface BlankProductsSelect<T extends boolean = true> {
     | {
         supplier?: T;
         supplierProductId?: T;
-        countryOfOrigin?: T;
+        countryOrigin?: T;
       };
   sourcing?:
     | T
     | {
-        minimumOrderQuantity?: T;
+        minOrderQty?: T;
         leadTimeDays?: T;
         rushAvailable?: T;
         rushLeadTimeDays?: T;
@@ -2213,7 +2213,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
     | {
         markupType?: T;
         markupValue?: T;
-        suggestedRetailPrice?: T;
+        suggestedRetail?: T;
       };
   pricingTiers?:
     | T
@@ -2360,7 +2360,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
         ambientLight?: T;
         shadowIntensity?: T;
       };
-  printTechn?:
+  printT?:
     | T
     | {
         id?: T;
@@ -2409,45 +2409,45 @@ export interface BlankProductsSelect<T extends boolean = true> {
                 | T
                 | {
                     dispImg?: T;
-                    dsrfaceTy?: T;
+                    dsrface?: T;
                     disint?: T;
                     disarea?: T;
                     id?: T;
                   };
-              alphaMasks?:
+              alpMasks?:
                 | T
                 | {
                     maskImg?: T;
                     alfarea?: T;
-                    alfamask?: T;
+                    alfmask?: T;
                     featherEdge?: T;
                     id?: T;
                   };
-              lightingOverlays?:
+              light?:
                 | T
                 | {
                     overImage?: T;
-                    overlayType?: T;
+                    ovrlyTyp?: T;
                     overbldMde?: T;
                     ovlayOpa?: T;
                     overlayArea?: T;
                     id?: T;
                   };
-              renderPref?:
+              render?:
                 | T
                 | {
-                    preferredEngine?: T;
+                    pfEngine?: T;
                     enableAdvancedEffects?: T;
-                    qualityLevel?: T;
+                    quality?: T;
                     exportRes?: T;
                     enableProgTrack?: T;
                   };
-              fabricProp?:
+              fbrcProp?:
                 | T
                 | {
-                    mfabType?: T;
+                    mfab?: T;
                     fabricWeight?: T;
-                    surfaceTexture?: T;
+                    Texture?: T;
                     stretchability?: T;
                     transparency?: T;
                   };
@@ -2459,23 +2459,23 @@ export interface BlankProductsSelect<T extends boolean = true> {
                     ambientLight?: T;
                     shadowIntensity?: T;
                   };
-              visibleAreas?:
+              area?:
                 | T
                 | {
                     areaName?: T;
                     visibility?: T;
                     visibilityPercentage?: T;
-                    maskingConfiguration?:
+                    Config?:
                       | T
                       | {
                           enableMasking?: T;
-                          maskTypes?: T;
+                          mask?: T;
                           maskPath?: T;
                         };
-                    gradientMaskSettings?:
+                    grdnmsk?:
                       | T
                       | {
-                          gradientDirection?: T;
+                          grdn?: T;
                           gradientAngle?: T;
                           fadeStart?: T;
                           fadeEnd?: T;
@@ -2488,18 +2488,18 @@ export interface BlankProductsSelect<T extends boolean = true> {
                           edgeThreshold?: T;
                           edgeSoftness?: T;
                         };
-                    fabricIntegration?:
+                    fbrc?:
                       | T
                       | {
                           enableFabricBlend?: T;
-                          bfabType?: T;
+                          bfab?: T;
                           foldAwareness?: T;
                           seamAwareness?: T;
                           textureIntensity?: T;
                           fabricColor?: T;
                           fabricRoughness?: T;
                         };
-                    designPlacement?:
+                    design?:
                       | T
                       | {
                           coordinateX?: T;
@@ -2511,7 +2511,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
                           skewY?: T;
                           scaleX?: T;
                           scaleY?: T;
-                          blendMode?: T;
+                          blend?: T;
                           opacity?: T;
                           preserveColors?: T;
                         };
@@ -2531,12 +2531,12 @@ export interface BlankProductsSelect<T extends boolean = true> {
                           perspectiveIntensity?: T;
                           dynamicPerspective?: T;
                         };
-                    fabricEffectsSettings?:
+                    fbrEft?:
                       | T
                       | {
                           enableFolds?: T;
                           foldIntensity?: T;
-                          foldDirection?: T;
+                          fold?: T;
                           seamDistrt?: T;
                           fabricDpth?: T;
                         };
@@ -2655,23 +2655,23 @@ export interface BlankProductsSelect<T extends boolean = true> {
                   };
             };
       };
-  smartPrintTech?:
+  PrntTch?:
     | T
     | {
         id?: T;
         technologyName?: T;
-        smartMockupPhotos?:
+        smtMckpPht?:
           | T
           | {
               title?: T;
               photo?: T;
-              viewAngle?: T;
-              mockupStyle?: T;
+              view?: T;
+              mock?: T;
               photoColor?: T;
-              aiAnalRes?:
+              Anl?:
                 | T
                 | {
-                    analStat?: T;
+                    Sts?: T;
                     detProdTy?: T;
                     confScore?: T;
                     detAr?:
@@ -2690,10 +2690,10 @@ export interface BlankProductsSelect<T extends boolean = true> {
                           suggesMask?: T;
                           id?: T;
                         };
-                    dtcObs?:
+                    dtc?:
                       | T
                       | {
-                          obsType?: T;
+                          obs?: T;
                           boundbox?:
                             | T
                             | {
@@ -2706,33 +2706,33 @@ export interface BlankProductsSelect<T extends boolean = true> {
                           id?: T;
                         };
                   };
-              smartVisA?:
+              Vsa?:
                 | T
                 | {
                     areaName?: T;
-                    dataSource?: T;
-                    appStat?: T;
-                    visibility?: T;
+                    Src?: T;
+                    apStt?: T;
+                    vsblty?: T;
                     visibilityPercentage?: T;
-                    smartMasking?:
+                    smrt?:
                       | T
                       | {
                           enableSmartMask?: T;
-                          maskingStrategy?: T;
+                          Srtgy?: T;
                         };
-                    aiMaskSettings?:
+                    Msk?:
                       | T
                       | {
-                          edgeDetectLevel?: T;
+                          edg?: T;
                           adaptToLighting?: T;
                           fabricAwareness?: T;
                           seamDetection?: T;
                         };
-                    generatedMask?:
+                    gnMsk?:
                       | T
                       | {
                           maskPath?: T;
-                          maskTypes?: T;
+                          mskTyp?: T;
                           maskConfidence?: T;
                         };
                     smartPlacement?:
@@ -2764,7 +2764,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
                   };
               id?: T;
             };
-        smartCustomizationAreas?:
+        smtCstmtnAr?:
           | T
           | {
               areaId?: T;

@@ -3050,7 +3050,7 @@ if (!vendorData) {
                 })}
               </nav>
               
-              {/* Success stories */}
+              {/* Success stories
               {currentStep !== "welcome" && currentStep !== "final-review" && (
                 <div className="px-4 py-6 border-t border-gray-100">
                   <h3 className="mb-3 text-sm font-semibold" style={{ color: BRAND.secondary }}>Success Stories</h3>
@@ -3058,7 +3058,7 @@ if (!vendorData) {
                     <CreatorStoryCard story={CREATOR_STORIES[0]} brandColors={BRAND} />
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
           

@@ -4,7 +4,7 @@ import type { CollectionConfig, PayloadRequest } from 'payload';
 
 export const BlankProducts: CollectionConfig = {
   slug: 'blank-products',
-  dbName: 'blank_products',
+  //dbName: 'blank_products',
   access: {
     read: () => true,
   },
@@ -131,7 +131,7 @@ export const BlankProducts: CollectionConfig = {
             { 
               name: 'brandSku',
               type: 'text',
-              dbName: 'brand_sku',
+              //dbName: 'brand_sku',
             },
             { 
               name: 'sku', 
@@ -142,7 +142,7 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'vendorInfo',
               type: 'group',
-              dbName: 'vendor_info',
+              //dbName: 'vendor_info',
               label: 'Additional Vendor Information',
               fields: [
                 {
@@ -161,40 +161,40 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'supplierProductId',
                   type: 'text',
-                  dbName: 'supplier_prod_id',
+                  //dbName: 'supplier_prod_id',
                 },
                 {
-                  name: 'countryOfOrigin',
+                  name: 'countryOrigin',
                   type: 'text',
-                  dbName: 'country_origin',
+                  //dbName: 'country_origin',
                 },
               ],
             },
             {
               name: 'sourcing',
               type: 'group',
-              dbName: 'sourcing_info',
+              //dbName: 'sourcing_info',
               fields: [
                 {
-                  name: 'minimumOrderQuantity',
+                  name: 'minOrderQty',
                   type: 'number',
-                  dbName: 'min_order_qty',
+                  //dbName: 'min_order_qty',
                   min: 1,
                 },
                 {
                   name: 'leadTimeDays',
                   type: 'number',
-                  dbName: 'lead_time_days',
+                  //dbName: 'lead_time_days',
                 },
                 {
                   name: 'rushAvailable',
                   type: 'checkbox',
-                  dbName: 'rush_available',
+                  //dbName: 'rush_available',
                 },
                 {
                   name: 'rushLeadTimeDays',
                   type: 'number',
-                  dbName: 'rush_lead_days',
+                  //dbName: 'rush_lead_days',
                   admin: {
                     condition: (data) => data?.sourcing?.rushAvailable,
                   },
@@ -219,12 +219,12 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'pricing',
               type: 'group',
-              dbName: 'pricing_info',
+              //dbName: 'pricing_info',
               fields: [
                 {
                   name: 'markupType',
                   type: 'select',
-                  dbName: 'markup_type',
+                  //dbName: 'markup_type',
                   options: [
                     { label: 'Percentage', value: 'percentage' },
                     { label: 'Fixed Amount', value: 'fixed' },
@@ -234,22 +234,22 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'markupValue',
                   type: 'number',
-                  dbName: 'markup_value',
+                  //dbName: 'markup_value',
                   admin: {
                     condition: (data) => data?.pricing?.markupType !== 'tiered',
                   },
                 },
                 {
-                  name: 'suggestedRetailPrice',
+                  name: 'suggestedRetail',
                   type: 'number',
-                  dbName: 'suggested_retail',
+                  //dbName: 'suggested_retail',
                 },
               ],
             },
             {
               name: 'pricingTiers',
               type: 'array',
-              dbName: 'pricing_tiers',
+              //dbName: 'pricing_tiers',
               admin: {
                 condition: (data) => data?.pricing?.markupType === 'tiered',
               },
@@ -257,18 +257,18 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'minQuantity',
                   type: 'number',
-                  dbName: 'min_quantity',
+                  //dbName: 'min_quantity',
                   required: true,
                 },
                 {
                   name: 'maxQuantity',
                   type: 'number',
-                  dbName: 'max_quantity',
+                  //dbName: 'max_quantity',
                 },
                 {
                   name: 'markupPercentage',
                   type: 'number',
-                  dbName: 'markup_percentage',
+                  //dbName: 'markup_percentage',
                   required: true,
                 },
               ],
@@ -276,22 +276,22 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'additionalCosts',
               type: 'group',
-              dbName: 'additional_costs',
+              //dbName: 'additional_costs',
               fields: [
                 {
                   name: 'printingCostPerArea',
                   type: 'number',
-                  dbName: 'printing_cost_area',
+                  //dbName: 'printing_cost_area',
                 },
                 {
                   name: 'setupFee',
                   type: 'number',
-                  dbName: 'setup_fee',
+                  //dbName: 'setup_fee',
                 },
                 {
                   name: 'rushSurcharge',
                   type: 'number',
-                  dbName: 'rush_surcharge',
+                  //dbName: 'rush_surcharge',
                 },
               ],
             },
@@ -316,17 +316,17 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'materials',
               type: 'group',
-              dbName: 'material',
+              //dbName: 'material',
               fields: [
                 {
                   name: 'primary',
                   type: 'text',
-                  dbName: 'prim_mat',
+                  //dbName: 'prim_mat',
                 },
                 {
                   name: 'weight',
                   type: 'text',
-                  dbName: 'mat_wght',
+                  //dbName: 'mat_wght',
                 },
                 {
                   name: 'construction',
@@ -341,7 +341,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'efabType',
                   type: 'select',
-                  dbName: 'efabty',
+                  //dbName: 'efabty',
                   defaultValue: 'cotton',
                  
                   options: [
@@ -367,7 +367,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'fabricWeight',
                   type: 'number',
-                  dbName: 'fabric_weight_gsm',
+                  //dbName: 'fabric_weight_gsm',
                   min: 50,
                   max: 1000,
                   defaultValue: 180,
@@ -378,7 +378,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'surfaceTexture',
                   type: 'select',
-                  dbName: 'surface_texture',
+                  //dbName: 'surface_texture',
                   defaultValue: 'smooth',
                   options: [
                     { label: 'Smooth', value: 'smooth' },
@@ -393,7 +393,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'stretchability',
                   type: 'number',
-                  dbName: 'fabric_stretch',
+                  //dbName: 'fabric_stretch',
                   min: 0,
                   max: 1,
                   defaultValue: 0.1,
@@ -405,7 +405,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'transparency',
                   type: 'number',
-                  dbName: 'fabric_transparency',
+                  //dbName: 'fabric_transparency',
                   min: 0,
                   max: 1,
                   defaultValue: 0.05,
@@ -417,7 +417,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'reflectivity',
                   type: 'number',
-                  dbName: 'fabric_reflectivity',
+                  //dbName: 'fabric_reflectivity',
                   min: 0,
                   max: 1,
                   defaultValue: 0.1,
@@ -431,7 +431,7 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'careInstructions',
               type: 'array',
-              dbName: 'care_instructions',
+              //dbName: 'care_instructions',
               fields: [
                 {
                   name: 'instruction',
@@ -469,23 +469,23 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'physicalDimensions',
               type: 'group',
-              dbName: 'physical_dimensions',
+              //dbName: 'physical_dimensions',
               label: 'Physical Product Dimensions',
               fields: [
                 { 
                   name: 'widthInches', 
                   type: 'number',
-                  dbName: 'width_inches',
+                  //dbName: 'width_inches',
                 },
                 { 
                   name: 'heightInches', 
                   type: 'number',
-                  dbName: 'height_inches',
+                  //dbName: 'height_inches',
                 },
                 { 
                   name: 'depthInches', 
                   type: 'number',
-                  dbName: 'depth_inches',
+                  //dbName: 'depth_inches',
                 },
                 {
                   name: 'diameter',
@@ -506,7 +506,7 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'shippingInfo',
               type: 'group',
-              dbName: 'shipping_info',
+              //dbName: 'shipping_info',
               fields: [
                 { 
                   name: 'weight', 
@@ -516,17 +516,17 @@ export const BlankProducts: CollectionConfig = {
                 { 
                   name: 'shippingDimensions', 
                   type: 'text',
-                  dbName: 'shipping_dimensions',
+                  //dbName: 'shipping_dimensions',
                 },
                 { 
                   name: 'shippingLocationID', 
                   type: 'text',
-                  dbName: 'shipping_location_id',
+                  //dbName: 'shipping_location_id',
                 },
                 {
                   name: 'packageType',
                   type: 'select',
-                  dbName: 'package_type',
+                  //dbName: 'package_type',
                   options: [
                     { label: 'Poly Mailer', value: 'poly_mailer' },
                     { label: 'Box', value: 'box' },
@@ -550,38 +550,38 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'colorOptions',
               type: 'array',
-              dbName: 'color_options',
+              //dbName: 'color_options',
               label: 'Color Options',
               minRows: 1,
               fields: [
                 {
                   name: 'colorName',
                   type: 'text',
-                  dbName: 'color_name',
+                  //dbName: 'color_name',
                   required: true,
                 },
                 {
                   name: 'colorHex',
                   type: 'text',
-                  dbName: 'color_hex',
+                  //dbName: 'color_hex',
                   required: true,
                 },
                 {
                   name: 'isPrimary',
                   type: 'checkbox',
-                  dbName: 'is_primary_color',
+                  //dbName: 'is_primary_color',
                 },
                 // 🆕 ENHANCED COLOR PROPERTIES FOR ACCURATE RENDERING
                 {
                   name: 'fabricInteraction',
                   type: 'group',
-                  dbName: 'fabric_interaction',
+                  //dbName: 'fabric_interaction',
                   label: 'Fabric Color Interaction',
                   fields: [
                     {
                       name: 'absorptionRate',
                       type: 'number',
-                      dbName: 'absorption_rate',
+                      //dbName: 'absorption_rate',
                       min: 0,
                       max: 1,
                       defaultValue: 0.1,
@@ -593,7 +593,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'blendMode',
                       type: 'select',
-                      dbName: 'color_blend_mode',
+                      //dbName: 'color_blend_mode',
                       defaultValue: 'multiply',
                       options: [
                         { label: 'Normal', value: 'normal' },
@@ -606,12 +606,12 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'colorShift',
                       type: 'group',
-                      dbName: 'color_shift_values',
+                      //dbName: 'color_shift_values',
                       fields: [
                         {
                           name: 'hueShift',
                           type: 'number',
-                          dbName: 'hue_shift',
+                          //dbName: 'hue_shift',
                           min: -180,
                           max: 180,
                           defaultValue: 0,
@@ -619,7 +619,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'saturationShift',
                           type: 'number',
-                          dbName: 'saturation_shift',
+                          //dbName: 'saturation_shift',
                           min: -100,
                           max: 100,
                           defaultValue: 0,
@@ -627,7 +627,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'lightnessShift',
                           type: 'number',
-                          dbName: 'lightness_shift',
+                          //dbName: 'lightness_shift',
                           min: -100,
                           max: 100,
                           defaultValue: 0,
@@ -641,31 +641,31 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'color_Images',
               type: 'checkbox',
-              dbName: 'color_Images',
+              //dbName: 'color_Images',
               defaultValue: true,
             },
             {
               name: 'sizeOptions',
               type: 'array',
-              dbName: 'size_options',
+              //dbName: 'size_options',
               label: 'Size Options',
               minRows: 1,
               fields: [
                 {
                   name: 'sizeName',
                   type: 'text',
-                  dbName: 'size_name',
+                  //dbName: 'size_name',
                   required: true,
                 },
                 {
                   name: 'sizeDescription',
                   type: 'textarea',
-                  dbName: 'size_description',
+                  //dbName: 'size_description',
                 },
                 {
                   name: 'dimensions',
                   type: 'group',
-                  dbName: 'size_dimensions',
+                  //dbName: 'size_dimensions',
                   fields: [
                     { name: 'width', type: 'number' },
                     { name: 'height', type: 'number' },
@@ -676,7 +676,7 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'size_Images',
               type: 'checkbox',
-              dbName: 'size_Images',
+              //dbName: 'size_Images',
               defaultValue: false,
             },
             {
@@ -702,19 +702,19 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'surfConf',
               type: 'group',
-              dbName: 'surf_cfg',
+              //dbName: 'surf_cfg',
               label: 'Surface Rendering Configuration',
               fields: [
                  {
                       name: 'No_Mockup_Compatible',
                       type: 'checkbox',
-                      dbName: 'not_mockup_compatible',
+                      //dbName: 'not_mockup_compatible',
                       defaultValue: false,
                     },
                 {
                   name: 'renderType',
                   type: 'select',
-                  dbName: 'render_type',
+                  //dbName: 'render_type',
                   required: true,
                   defaultValue: 'flat',
                   options: [
@@ -730,12 +730,12 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'surfProp',
                   type: 'group',
-                  dbName: 'surf_props',
+                  //dbName: 'surf_props',
                   fields: [
                     {
                       name: 'wrapAngle',
                       type: 'number',
-                      dbName: 'wrap_angle',
+                      //dbName: 'wrap_angle',
                       defaultValue: 280,
                       min: 0,
                       max: 360,
@@ -743,7 +743,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'curveInten',
                       type: 'number',
-                      dbName: 'curve_intensity',
+                      //dbName: 'curve_intensity',
                       min: 0,
                       max: 1,
                       defaultValue: 0.8,
@@ -754,19 +754,19 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'designRatio',
                       type: 'group',
-                      dbName: 'ratio',
+                      //dbName: 'ratio',
                       fields: [
                         {
                           name: 'widthRatio',
                           type: 'number',
-                          dbName: 'width',
+                          //dbName: 'width',
                           min: 0.1,
                           max: 2.0,
                         },
                         {
                           name: 'heightRatio',
                           type: 'number',
-                          dbName: 'height',
+                          //dbName: 'height',
                           min: 0.1,
                           max: 2.0,
                         },
@@ -777,12 +777,12 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'blendSet',
                   type: 'group',
-                  dbName: 'blend',
+                  //dbName: 'blend',
                   fields: [
                     {
                       name: 'defaultBlendMode',
                       type: 'select',
-                      dbName: 'mode',
+                      //dbName: 'mode',
                       defaultValue: 'normal',
                       options: [
                         { label: 'Normal', value: 'normal' },
@@ -795,14 +795,14 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'defaultOpacity',
                       type: 'number',
-                      dbName: 'opacity',
+                      //dbName: 'opacity',
                       min: 0.1,
                       max: 1.0,
                     },
                     {
                       name: 'preserveColors',
                       type: 'checkbox',
-                      dbName: 'preserve_colors',
+                      //dbName: 'preserve_colors',
                       defaultValue: true,
                     },
                    
@@ -814,13 +814,13 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'advanSurfMap',
               type: 'group',
-              dbName: 'adv_surf_map',
+              //dbName: 'adv_surf_map',
               label: 'Advanced Surface Mapping',
               fields: [
                 {
                   name: 'curvProf',
                   type: 'select',
-                  dbName: 'curve_profile',
+                  //dbName: 'curve_profile',
                   defaultValue: 'smooth',
                   options: [
                     { label: 'Linear', value: 'linear' },
@@ -834,7 +834,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'barrelDist',
                   type: 'number',
-                  dbName: 'barrel',
+                  //dbName: 'barrel',
                   min: -1,
                   max: 1,
                   defaultValue: 0,
@@ -846,7 +846,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'pincushiDistor',
                   type: 'number',
-                  dbName: 'pincushion',
+                  //dbName: 'pincushion',
                   min: -1,
                   max: 1,
                   defaultValue: 0,
@@ -857,7 +857,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'perspDis',
                   type: 'number',
-                  dbName: 'perspective',
+                  //dbName: 'perspective',
                   min: 0,
                   max: 2,
                   defaultValue: 1,
@@ -868,7 +868,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'hasSeams',
                   type: 'checkbox',
-                  dbName: 'has_seams',
+                  //dbName: 'has_seams',
                   defaultValue: false,
                 },
               ],
@@ -877,7 +877,7 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'seamPositions',
               type: 'array',
-              dbName: 'seam_pos',
+              //dbName: 'seam_pos',
               label: 'Seam Positions',
               admin: {
                 condition: (data) => data?.advancedSurfaceMapping?.hasSeams,
@@ -886,7 +886,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'seamTypes',
                   type: 'select',
-                  dbName: 'seamtype',
+                  //dbName: 'seamtype',
                   options: [
                     { label: 'Side Seam', value: 'side' },
                     { label: 'Shoulder Seam', value: 'shoulder' },
@@ -899,7 +899,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'positionX',
                   type: 'number',
-                  dbName: 'x',
+                  //dbName: 'x',
                   min: 0,
                   max: 1,
                   step: 0.01,
@@ -907,7 +907,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'positionY',
                   type: 'number',
-                  dbName: 'y',
+                  //dbName: 'y',
                   min: 0,
                   max: 1,
                   step: 0.01,
@@ -915,7 +915,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'width',
                   type: 'number',
-                  dbName: 'width',
+                  //dbName: 'width',
                   min: 0,
                   max: 0.1,
                   step: 0.001,
@@ -923,7 +923,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'seamEffect',
                   type: 'select',
-                  dbName: 'effect',
+                  //dbName: 'effect',
                   defaultValue: 'indent',
                   options: [
                     { label: 'Indent', value: 'indent' },
@@ -938,13 +938,13 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'lightingConfiguration',
               type: 'group',
-              dbName: 'lighting',
+              //dbName: 'lighting',
               label: 'Lighting Configuration',
               fields: [
                 {
                   name: 'lightDirection',
                   type: 'number',
-                  dbName: 'direction',
+                  //dbName: 'direction',
                   min: 0,
                   max: 360,
                   defaultValue: 45,
@@ -955,7 +955,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'lightIntensity',
                   type: 'number',
-                  dbName: 'intensity',
+                  //dbName: 'intensity',
                   min: 0,
                   max: 2,
                   defaultValue: 0.8,
@@ -966,7 +966,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'ambientLight',
                   type: 'number',
-                  dbName: 'ambient',
+                  //dbName: 'ambient',
                   min: 0,
                   max: 1,
                   defaultValue: 0.3,
@@ -977,7 +977,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'shadowIntensity',
                   type: 'number',
-                  dbName: 'shadow',
+                  //dbName: 'shadow',
                   min: 0,
                   max: 1,
                   defaultValue: 0.4,
@@ -997,9 +997,9 @@ export const BlankProducts: CollectionConfig = {
           label: 'Printing & Customization',
           fields: [
             {
-              name: 'printTechn',
+              name: 'printT',
               type: 'array',
-              dbName: 'print_tech',
+              //dbName: 'print_tech',
               label: 'Printing Technologies',
               fields: [
                 {
@@ -1016,7 +1016,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'technologyName',
                   type: 'select',
-                  dbName: 'technology_name',
+                  //dbName: 'technology_name',
                   defaultValue: 'dtg',
                   required: true,
                   options: [
@@ -1034,12 +1034,12 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'printingConstraints',
                   type: 'group',
-                  dbName: 'printing_constraints',
+                  //dbName: 'printing_constraints',
                   fields: [
                     {
                       name: 'dpiRequirements',
                       type: 'group',
-                      dbName: 'dpi_requirements',
+                      //dbName: 'dpi_requirements',
                       fields: [
                         {
                           name: 'minimum',
@@ -1061,12 +1061,12 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'sizeLimits',
                       type: 'group',
-                      dbName: 'size_limits',
+                      //dbName: 'size_limits',
                       fields: [
                         {
                           name: 'minWidthInch',
                           type: 'number',
-                          dbName: 'min_width_inch',
+                          //dbName: 'min_width_inch',
                           defaultValue: 1.0,
                         },
                         {
@@ -1074,35 +1074,35 @@ export const BlankProducts: CollectionConfig = {
                           
                           name: 'minHeightInch',
                           type: 'number',
-                          dbName: 'min_height_inch',
+                          //dbName: 'min_height_inch',
                           defaultValue: 1.0,
                         },
                         {
                           name: 'maxWidthInch',
                           type: 'number',
-                          dbName: 'max_width_inch',
+                          //dbName: 'max_width_inch',
                         },
                         {
                           name: 'maxHeightInch',
                           type: 'number',
-                          dbName: 'max_height_inch',
+                          //dbName: 'max_height_inch',
                         },
                       ],
                     },
                     {
                       name: 'colorLimits',
                       type: 'group',
-                      dbName: 'color_limits',
+                      //dbName: 'color_limits',
                       fields: [
                         {
                           name: 'maxColors',
                           type: 'number',
-                          dbName: 'max_colors',
+                          //dbName: 'max_colors',
                         },
                         {
                           name: 'supportsFullColor',
                           type: 'checkbox',
-                          dbName: 'supports_full_color',
+                          //dbName: 'supports_full_color',
                           defaultValue: true,
                         },
                       ],
@@ -1111,13 +1111,13 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'printBleeds',
                       type: 'group',
-                      dbName: 'print_bleeds',
+                      //dbName: 'print_bleeds',
                       label: 'Print Bleeds & Safety Margins',
                       fields: [
                         {
                           name: 'bleedMargin',
                           type: 'number',
-                          dbName: 'bleed_margin',
+                          //dbName: 'bleed_margin',
                           min: 0,
                           max: 20,
                           defaultValue: 3,
@@ -1128,7 +1128,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'safetyMargin',
                           type: 'number',
-                          dbName: 'safety_margin',
+                          //dbName: 'safety_margin',
                           min: 0,
                           max: 50,
                           defaultValue: 5,
@@ -1139,7 +1139,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'trimTolerance',
                           type: 'number',
-                          dbName: 'trim_tolerance',
+                          //dbName: 'trim_tolerance',
                           min: 0,
                           max: 5,
                           defaultValue: 1,
@@ -1158,7 +1158,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'mockupPhotos',
                   type: 'array',
-                  dbName: 'tech_mockup_photos',
+                  //dbName: 'tech_mockup_photos',
                   label: 'Technology Mockup Photos',
                   fields: [
                     { 
@@ -1195,7 +1195,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'mockupType',
                       type: 'select',
-                      dbName: 'mockup_type',
+                      //dbName: 'mockup_type',
                       defaultValue: 'studio',
                       options: [
                         { label: 'Studio Shot', value: 'studio' },
@@ -1207,14 +1207,14 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'photoColor',
                       type: 'text',
-                      dbName: 'photo_color',
+                      //dbName: 'photo_color',
                       label: 'Product Color (Hex)',
                       required: true,
                     },
                     {
       name: 'dispMaps',
       type: 'array',
-      dbName: 'dis_maps',
+      //dbName: 'dis_maps',
       label: 'Displacement Maps',
       admin: {
         description: 'Displacement maps for curved surfaces (mugs, bottles, curved products)',
@@ -1230,9 +1230,9 @@ export const BlankProducts: CollectionConfig = {
           }
         },
         {
-          name: 'dsrfaceTy',
+          name: 'dsrface',
           type: 'select',
-          dbname: 'dsrfaceTy',
+          //dbName: 'dsrfaceTy',
           defaultValue: 'cylindrical',
           label: 'Surface Type',
           options: [
@@ -1266,9 +1266,9 @@ export const BlankProducts: CollectionConfig = {
 
     // 2. ALPHA MASKS (for printable area clipping)
     {
-      name: 'alphaMasks',
+      name: 'alpMasks',
       type: 'array',
-      dbName: 'alpha_masks',
+      //dbName: 'alpha_masks',
       label: 'Alpha Masks',
       admin: {
         description: 'Alpha masks to define precise printable areas (white = printable, black = non-printable)',
@@ -1287,17 +1287,17 @@ export const BlankProducts: CollectionConfig = {
           name: 'alfarea',
           type: 'text',
           required: true,
-          dbName: 'alfarea',
+          //dbName: 'alfarea',
           label: 'Area Name',
           admin: {
             description: 'Which area this mask applies to (must match visibleArea areaName)',
           }
         },
         {
-          name: 'alfamask',
+          name: 'alfmask',
           type: 'select',
           label: 'Mask Type',
-          dbName: 'alfamask',
+          //dbName: 'alfamask',
           defaultValue: 'alpha',
           options: [
             { label: 'Alpha Channel', value: 'alpha' },
@@ -1310,7 +1310,7 @@ export const BlankProducts: CollectionConfig = {
           type: 'number',
           min: 0,
           max: 10,
-          dbName: 'fea_edge',
+          //dbName: 'fea_edge',
           label: 'Feather Edge',
           defaultValue: 1,
           admin: {
@@ -1322,9 +1322,9 @@ export const BlankProducts: CollectionConfig = {
 
     // 3. LIGHTING OVERLAYS (for realism - shadows, highlights)
     {
-      name: 'lightingOverlays',
+      name: 'light',
       type: 'array',
-      dbName: 'light_over',
+      //dbName: 'light_over',
       label: 'Lighting Overlays',
       admin: {
         description: 'Lighting and shadow overlays for realistic mockup effects',
@@ -1341,7 +1341,7 @@ export const BlankProducts: CollectionConfig = {
           }
         },
         {
-          name: 'overlayType',
+          name: 'ovrlyTyp',
           type: 'select',
           defaultValue: 'lighting',
           options: [
@@ -1354,7 +1354,7 @@ export const BlankProducts: CollectionConfig = {
         {
           name: 'overbldMde',
           type: 'select',
-          dbName: 'overbldMde',
+          //dbName: 'overbldMde',
           label: 'Blend Mode',
           defaultValue: 'overlay',
           options: [
@@ -1380,7 +1380,7 @@ export const BlankProducts: CollectionConfig = {
           name: 'overlayArea',
           type: 'text',
           label: 'Overlay Area Name',
-          dbName: 'overlay_area',
+          //dbName: 'overlay_area',
           admin: {
             description: 'Specific area (leave empty for entire mockup)',
           }
@@ -1390,16 +1390,16 @@ export const BlankProducts: CollectionConfig = {
 
     // 4. RENDERING PREFERENCES (engine selection and quality)
     {
-      name: 'renderPref',
+      name: 'render',
       type: 'group',
-      dbName: 'render_pref',
+      //dbName: 'render_pref',
       label: 'Advanced Rendering',
       admin: {
         description: 'Control rendering engine and quality settings',
       },
       fields: [
         {
-          name: 'preferredEngine',
+          name: 'pfEngine',
           type: 'select',
           defaultValue: 'auto',
           options: [
@@ -1420,7 +1420,7 @@ export const BlankProducts: CollectionConfig = {
           }
         },
         {
-          name: 'qualityLevel',
+          name: 'quality',
           type: 'select',
           defaultValue: 'high',
           options: [
@@ -1452,15 +1452,15 @@ export const BlankProducts: CollectionConfig = {
     },
                     // 🆕 ENHANCED FABRIC PROPERTIES FOR MOCKUP
                     {
-                      name: 'fabricProp',
+                      name: 'fbrcProp',
                       type: 'group',
-                      dbName: 'm_fabric_prop',
+                      //dbName: 'm_fabric_prop',
                       label: 'Fabric Properties for Rendering',
                       fields: [
                         {
-                          name: 'mfabType',
+                          name: 'mfab',
                           type: 'select',
-                          dbName: 'mfab_type',
+                          //dbName: 'mfab_type',
                           defaultValue: 'cotton',
                           options: [
                             { label: 'Cotton', value: 'cotton' },
@@ -1476,15 +1476,15 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'fabricWeight',
                           type: 'number',
-                          dbName: 'mockup_fabric_weight',
+                          //dbName: 'mockup_fabric_weight',
                           min: 50,
                           max: 1000,
                           defaultValue: 180,
                         },
                         {
-                          name: 'surfaceTexture',
+                          name: 'Texture',
                           type: 'select',
-                          dbName: 'mockup_surface_texture',
+                          //dbName: 'mockup_surface_texture',
                           defaultValue: 'textured',
                           options: [
                             { label: 'Smooth', value: 'smooth' },
@@ -1497,7 +1497,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'stretchability',
                           type: 'number',
-                          dbName: 'mockup_stretchability',
+                          //dbName: 'mockup_stretchability',
                           min: 0,
                           max: 1,
                           defaultValue: 0.3,
@@ -1508,7 +1508,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'transparency',
                           type: 'number',
-                          dbName: 'mockup_transparency',
+                          //dbName: 'mockup_transparency',
                           min: 0,
                           max: 1,
                           defaultValue: 0.05,
@@ -1522,13 +1522,13 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'lightingConditions',
                       type: 'group',
-                      dbName: 'mockup_lighting_conditions',
+                      //dbName: 'mockup_lighting_conditions',
                       label: 'Lighting Conditions',
                       fields: [
                         {
                           name: 'lightDirection',
                           type: 'number',
-                          dbName: 'mockup_light_direction',
+                          //dbName: 'mockup_light_direction',
                           min: 0,
                           max: 360,
                           defaultValue: 45,
@@ -1536,7 +1536,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'lightIntensity',
                           type: 'number',
-                          dbName: 'mockup_light_intensity',
+                          //dbName: 'mockup_light_intensity',
                           min: 0,
                           max: 2,
                           defaultValue: 0.8,
@@ -1547,7 +1547,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'ambientLight',
                           type: 'number',
-                          dbName: 'mockup_ambient_light',
+                          //dbName: 'mockup_ambient_light',
                           min: 0,
                           max: 1,
                           defaultValue: 0.3,
@@ -1558,7 +1558,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'shadowIntensity',
                           type: 'number',
-                          dbName: 'mockup_shadow_intensity',
+                          //dbName: 'mockup_shadow_intensity',
                           min: 0,
                           max: 1,
                           defaultValue: 0.4,
@@ -1570,16 +1570,16 @@ export const BlankProducts: CollectionConfig = {
                     },
                     // 🆕 ADVANCED VISIBLE AREAS WITH MASKING
                     {
-                      name: 'visibleAreas',
+                      name: 'area',
                       type: 'array',
-                      dbName: 'mockup_visible_areas',
+                      //dbName: 'mockup_visible_areas',
                       label: 'Visible Areas with Advanced Masking',
                       minRows: 0,
                       fields: [
                         {
                           name: 'areaName',
                           type: 'text',
-                          dbName: 'visible_area_name',
+                          //dbName: 'visible_area_name',
                           required: true,
                         },
                         {
@@ -1598,7 +1598,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'visibilityPercentage',
                           type: 'number',
-                          dbName: 'visibility_percentage',
+                          //dbName: 'visibility_percentage',
                           min: 0,
                           max: 100,
                           defaultValue: 100,
@@ -1609,21 +1609,21 @@ export const BlankProducts: CollectionConfig = {
                         },
                         // 🆕 ADVANCED MASKING CONFIGURATION (FLATTENED)
                         {
-                          name: 'maskingConfiguration',
+                          name: 'Config',
                           type: 'group',
-                          dbName: 'masking',
+                          //dbName: 'masking',
                           label: 'Advanced Masking Configuration',
                           fields: [
                             {
                               name: 'enableMasking',
                               type: 'checkbox',
-                              dbName: 'enable',
+                              //dbName: 'enable',
                               defaultValue: false,
                             },
                             {
-                              name: 'maskTypes',
+                              name: 'mask',
                               type: 'select',
-                              dbName: 'masktype',
+                              //dbName: 'masktype',
                               defaultValue: 'gradient',
                               options: [
                                 { label: 'Gradient Mask', value: 'gradient' },
@@ -1640,7 +1640,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'maskPath',
                               type: 'textarea',
-                              dbName: 'path',
+                              //dbName: 'path',
                               admin: {
                                 description: 'SVG path data for custom masking',
                                 condition: (data, siblingData) => siblingData?.maskTypes === 'svg',
@@ -1650,18 +1650,19 @@ export const BlankProducts: CollectionConfig = {
                         },
                         // GRADIENT MASK SETTINGS (FLATTENED)
                         {
-                          name: 'gradientMaskSettings',
+                          name: 'grdnmsk',
                           type: 'group',
-                          dbName: 'gradient',
+                          //dbName: 'gradient',
                           label: 'Gradient Mask Settings',
                           admin: {
                             condition: (data, siblingData) => siblingData?.maskingConfiguration?.maskTypes === 'gradient',
                           },
                           fields: [
                             {
-                              name: 'gradientDirection',
+                              name: 'grdn',
                               type: 'select',
-                              dbName: 'direction',
+                              //dbName: 'direction',
+                               label: 'Gradient direction',
                               defaultValue: 'horizontal',
                               options: [
                                 { label: 'Horizontal', value: 'horizontal' },
@@ -1673,7 +1674,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'gradientAngle',
                               type: 'number',
-                              dbName: 'angle',
+                              //dbName: 'angle',
                               min: 0,
                               max: 360,
                               defaultValue: 0,
@@ -1684,7 +1685,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'fadeStart',
                               type: 'number',
-                              dbName: 'start',
+                              //dbName: 'start',
                               min: 0,
                               max: 1,
                               defaultValue: 0.7,
@@ -1696,7 +1697,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'fadeEnd',
                               type: 'number',
-                              dbName: 'end',
+                              //dbName: 'end',
                               min: 0,
                               max: 1,
                               defaultValue: 1.0,
@@ -1708,7 +1709,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'fadeIntensity',
                               type: 'number',
-                              dbName: 'intensity',
+                              //dbName: 'intensity',
                               min: 0,
                               max: 1,
                               defaultValue: 0.8,
@@ -1722,19 +1723,19 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'edgeDetectionSettings',
                           type: 'group',
-                          dbName: 'edge_detect',
+                          //dbName: 'edge_detect',
                           label: 'Edge Detection Parameters',
                           fields: [
                             {
                               name: 'enableEdgeDetection',
                               type: 'checkbox',
-                              dbName: 'enable',
+                              //dbName: 'enable',
                               defaultValue: false,
                             },
                             {
                               name: 'edgeThreshold',
                               type: 'number',
-                              dbName: 'threshold',
+                              //dbName: 'threshold',
                               min: 0,
                               max: 255,
                               defaultValue: 128,
@@ -1745,7 +1746,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'edgeSoftness',
                               type: 'number',
-                              dbName: 'softness',
+                              //dbName: 'softness',
                               min: 0,
                               max: 20,
                               defaultValue: 2,
@@ -1758,21 +1759,21 @@ export const BlankProducts: CollectionConfig = {
                         },
                         // 🆕 FABRIC INTEGRATION FOR AREA (FLATTENED)
                         {
-                          name: 'fabricIntegration',
+                          name: 'fbrc',
                           type: 'group',
-                          dbName: 'fabric_integ',
+                          //dbName: 'fabric_integ',
                           label: 'Fabric Integration',
                           fields: [
                             {
                               name: 'enableFabricBlend',
                               type: 'checkbox',
-                              dbName: 'enable',
+                              //dbName: 'enable',
                               defaultValue: true,
                             },
                             {
-                              name: 'bfabType',
+                              name: 'bfab',
                               type: 'select',
-                              dbName: 'ftype',
+                              //dbName: 'ftype',
                               defaultValue: 'cotton',
                               label: 'Fabric Type',
                               options: [
@@ -1789,7 +1790,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'foldAwareness',
                               type: 'checkbox',
-                              dbName: 'fold_aware',
+                              //dbName: 'fold_aware',
                               defaultValue: true,
                               admin: {
                                 condition: (data, siblingData) => siblingData?.enableFabricBlend,
@@ -1798,7 +1799,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'seamAwareness',
                               type: 'checkbox',
-                              dbName: 'seam_aware',
+                              //dbName: 'seam_aware',
                               defaultValue: true,
                               admin: {
                                 condition: (data, siblingData) => siblingData?.enableFabricBlend,
@@ -1807,7 +1808,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'textureIntensity',
                               type: 'number',
-                              dbName: 'texture',
+                              //dbName: 'texture',
                               min: 0,
                               max: 1,
                               defaultValue: 0.3,
@@ -1819,7 +1820,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'fabricColor',
                               type: 'text',
-                              dbName: 'color',
+                              //dbName: 'color',
                               defaultValue: '#ffffff',
                               admin: {
                                 condition: (data, siblingData) => siblingData?.enableFabricBlend,
@@ -1828,7 +1829,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'fabricRoughness',
                               type: 'number',
-                              dbName: 'roughness',
+                              //dbName: 'roughness',
                               min: 0,
                               max: 1,
                               defaultValue: 0.3,
@@ -1841,16 +1842,16 @@ export const BlankProducts: CollectionConfig = {
                         },
                         // DESIGN PLACEMENT CONFIGURATION (FLATTENED)
                         {
-                          name: 'designPlacement',
+                          name: 'design',
                           type: 'group',
-                          dbName: 'placement',
+                          //dbName: 'placement',
                           label: 'Design Placement Configuration',
                           fields: [
                             // Base Coordinates
                             {
                               name: 'coordinateX',
                               type: 'number',
-                              dbName: 'x',
+                              //dbName: 'x',
                               min: 0,
                               max: 1,
                               required: true,
@@ -1861,7 +1862,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'coordinateY',
                               type: 'number',
-                              dbName: 'y',
+                              //dbName: 'y',
                               min: 0,
                               max: 1,
                               required: true,
@@ -1872,7 +1873,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'coordinateWidth',
                               type: 'number',
-                              dbName: 'width',
+                              //dbName: 'width',
                               min: 0,
                               max: 1,
                               required: true,
@@ -1883,7 +1884,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'coordinateHeight',
                               type: 'number',
-                              dbName: 'height',
+                              //dbName: 'height',
                               min: 0,
                               max: 1,
                               required: true,
@@ -1895,38 +1896,38 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'rotation',
                               type: 'number',
-                              dbName: 'rotation',
+                              //dbName: 'rotation',
                               defaultValue: 0,
                             },
                             {
                               name: 'skewX',
                               type: 'number',
-                              dbName: 'skew_x',
+                              //dbName: 'skew_x',
                               defaultValue: 0,
                             },
                             {
                               name: 'skewY',
                               type: 'number',
-                              dbName: 'skew_y',
+                              //dbName: 'skew_y',
                               defaultValue: 0,
                             },
                             {
                               name: 'scaleX',
                               type: 'number',
-                              dbName: 'scale_x',
+                              //dbName: 'scale_x',
                               defaultValue: 1,
                             },
                             {
                               name: 'scaleY',
                               type: 'number',
-                              dbName: 'scale_y',
+                              //dbName: 'scale_y',
                               defaultValue: 1,
                             },
                             // Render Settings
                             {
-                              name: 'blendMode',
+                              name: 'blend',
                               type: 'select',
-                              dbName: 'blend_mode',
+                              //dbName: 'blend_mode',
                               defaultValue: 'normal',
                               options: [
                                 { label: 'Normal', value: 'normal' },
@@ -1939,14 +1940,14 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'opacity',
                               type: 'number',
-                              dbName: 'opacity',
+                              //dbName: 'opacity',
                               min: 0.1,
                               max: 1,
                             },
                             {
                               name: 'preserveColors',
                               type: 'checkbox',
-                              dbName: 'preserve_colors',
+                              //dbName: 'preserve_colors',
                             },
                           ],
                         },
@@ -1954,18 +1955,18 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'surfaceWrapSettings',
                           type: 'group',
-                          dbName: 'wrap_sets',
+                          //dbName: 'wrap_sets',
                           label: 'Surface Wrap Settings',
                           fields: [
                             {
                               name: 'enableWrap',
                               type: 'checkbox',
-                              dbName: 'enable',
+                              //dbName: 'enable',
                             },
                             {
                               name: 'wrapAngle',
                               type: 'number',
-                              dbName: 'angle',
+                              //dbName: 'angle',
                               min: 0,
                               max: 360,
                               defaultValue: 280,
@@ -1973,7 +1974,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'wrapIntensity',
                               type: 'number',
-                              dbName: 'intensity',
+                              //dbName: 'intensity',
                               min: 0,
                               max: 1,
                               defaultValue: 0.8,
@@ -1981,13 +1982,13 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'dynamicWrap',
                               type: 'checkbox',
-                              dbName: 'dynamic',
+                              //dbName: 'dynamic',
                               defaultValue: false,
                             },
                             {
                               name: 'wrapFalloff',
                               type: 'number',
-                              dbName: 'falloff',
+                              //dbName: 'falloff',
                               min: 0,
                               max: 1,
                               defaultValue: 0.8,
@@ -2001,19 +2002,19 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'perspectiveSettings',
                           type: 'group',
-                          dbName: 'perspective',
+                          //dbName: 'perspective',
                           label: 'Perspective Correction',
                           fields: [
                             {
                               name: 'enablePerspective',
                               type: 'checkbox',
-                              dbName: 'enable',
+                              //dbName: 'enable',
                               defaultValue: false,
                             },
                             {
                               name: 'perspectiveIntensity',
                               type: 'number',
-                              dbName: 'intensity',
+                              //dbName: 'intensity',
                               min: 0,
                               max: 1,
                               defaultValue: 0.5,
@@ -2021,28 +2022,28 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'dynamicPerspective',
                               type: 'checkbox',
-                              dbName: 'dynamic',
+                              //dbName: 'dynamic',
                               defaultValue: false,
                             },
                           ],
                         },
                         // FABRIC EFFECTS (FLATTENED)
                         {
-                          name: 'fabricEffectsSettings',
+                          name: 'fbrEft',
                           type: 'group',
-                          dbName: 'fabric_fx',
+                          //dbName: 'fabric_fx',
                           label: 'Advanced Fabric Effects',
                           fields: [
                             {
                               name: 'enableFolds',
                               type: 'checkbox',
-                              dbName: 'enable_folds',
+                              //dbName: 'enable_folds',
                               defaultValue: false,
                             },
                             {
                               name: 'foldIntensity',
                               type: 'number',
-                              dbName: 'fold_intensity',
+                              //dbName: 'fold_intensity',
                               min: 0,
                               max: 1,
                               defaultValue: 0.3,
@@ -2052,9 +2053,9 @@ export const BlankProducts: CollectionConfig = {
                               },
                             },
                             {
-                              name: 'foldDirection',
+                              name: 'fold',
                               type: 'select',
-                              dbName: 'fold_direction',
+                              //dbName: 'fold_direction',
                               defaultValue: 'horizontal',
                               options: [
                                 { label: 'Horizontal', value: 'horizontal' },
@@ -2069,7 +2070,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'seamDistrt',
                               type: 'checkbox',
-                              dbName: 'seam_distrt',
+                              //dbName: 'seam_distrt',
                               label: 'Seam Distortion',
                               defaultValue: false,
                               admin: {
@@ -2079,7 +2080,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'fabricDpth',
                               type: 'number',
-                              dbName: 'depth',
+                              //dbName: 'depth',
                               label: 'Fabric Depth',
                               min: 0,
                               max: 10,
@@ -2101,7 +2102,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'tags',
                       type: 'array',
-                      dbName: 'mockup_tags',
+                      //dbName: 'mockup_tags',
                       fields: [
                         {
                           name: 'tag',
@@ -2118,7 +2119,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'custAreas',
                   type: 'array',
-                  dbName: 'cust_areas',
+                  //dbName: 'cust_areas',
                   label: 'Customization Areas',
                   fields: [
                     {
@@ -2135,14 +2136,14 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'areaName',
                       type: 'text',
-                      dbName: 'cust_area_name',
+                      //dbName: 'cust_area_name',
                       label: 'Area Name',
                       required: true,
                     },
                     {
                       name: 'areaType',
                       type: 'select',
-                      dbName: 'cust_ar_type',
+                      //dbName: 'cust_ar_type',
                       label: 'Area Type',
                       options: [
                         { label: 'Primary', value: 'primary' },
@@ -2157,40 +2158,40 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'canvasDim',
                       type: 'group',
-                      dbName: 'canvas_dim',
+                      //dbName: 'canvas_dim',
                       label: 'Canvas Dimensions',
                       fields: [
                         {
                           name: 'widthInch',
                           type: 'number',
-                          dbName: 'canvas_wid_inc',
+                          //dbName: 'canvas_wid_inc',
                           label:'Width (inches)',
                           required: true,
                         },
                         {
                           name: 'heightInch',
                           type: 'number',
-                          dbName: 'canvas_ht_inch',
+                          //dbName: 'canvas_ht_inch',
                           label: 'Height (inches)',
                           required: true,
                         },
                         {
                           name: 'canvasPixWid',
                           type: 'number',
-                          dbName: 'canvas_pix_wid',
+                          //dbName: 'canvas_pix_wid',
                           label: 'Canvas Width (pixels)',
                           defaultValue: 800,
                         },
                         {
                           name: 'canvasPixHeight',
                           type: 'number',
-                          dbName: 'canvas_pix_ht',
+                          //dbName: 'canvas_pix_ht',
                           defaultValue: 600,
                         },
                         {
                           name: 'aspectRatioLocked',
                           type: 'checkbox',
-                          dbName: 'asp_rat_locked',
+                          //dbName: 'asp_rat_locked',
                           defaultValue: true,
                         },
                       ],
@@ -2198,7 +2199,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'designCanvasPhotos',
                       type: 'array',
-                      dbName: 'design_canvas_photos',
+                      //dbName: 'design_canvas_photos',
                       fields: [
                         {
                           name: 'photo',
@@ -2209,12 +2210,12 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'photoColor',
                           type: 'text',
-                          dbName: 'canvas_photo_color',
+                          //dbName: 'canvas_photo_color',
                         },
                         {
                           name: 'printAreaCoord',
                           type: 'group',
-                          dbName: 'print_area_coord',
+                          //dbName: 'print_area_coord',
                           label: 'Printable Area Coordinates',
                           fields: [
                             { name: 'x', type: 'number', min: 0, max: 1 },
@@ -2228,12 +2229,12 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'restrictions',
                       type: 'group',
-                      dbName: 'area_rest',
+                      //dbName: 'area_rest',
                       fields: [
                         {
                           name: 'minElementSize',
                           type: 'group',
-                          dbName: 'min_element_size',
+                          //dbName: 'min_element_size',
                           fields: [
                             { name: 'width', type: 'number' },
                             { name: 'height', type: 'number' },
@@ -2242,7 +2243,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'maxElements',
                           type: 'number',
-                          dbName: 'max_elements',
+                          //dbName: 'max_elements',
                         },
                       ],
                     },
@@ -2253,25 +2254,25 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'areaSynchRules',
               type: 'array',
-              dbName: 'area_sync_rules',
+              //dbName: 'area_sync_rules',
               label: 'Design Synchronization Rules',
               fields: [
                 {
                   name: 'ruleName',
                   type: 'text',
-                  dbName: 'sync_rule_name',
+                  //dbName: 'sync_rule_name',
                   required: true,
                 },
                 {
                   name: 'sourceArea',
                   type: 'text',
-                  dbName: 'sync_source_area',
+                  //dbName: 'sync_source_area',
                   required: true,
                 },
                 {
                   name: 'targetAreas',
                   type: 'array',
-                  dbName: 'sync_target_areas',
+                  //dbName: 'sync_target_areas',
                   fields: [
                     {
                       name: 'area',
@@ -2282,7 +2283,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'syncType',
                   type: 'select',
-                  dbName: 'sync_type',
+                  //dbName: 'sync_type',
                   options: [
                     { label: 'Copy', value: 'copy' },
                     { label: 'Mirror Horizontal', value: 'mirror_h' },
@@ -2304,7 +2305,7 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'displayImages',
               type: 'array',
-              dbName: 'display_images',
+              //dbName: 'display_images',
               label: 'Product Gallery',
               minRows: 1,
               maxRows: 10,
@@ -2328,17 +2329,17 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'seo',
               type: 'group',
-              dbName: 'seo_info',
+              //dbName: 'seo_info',
               fields: [
                 {
                   name: 'metaTitle',
                   type: 'text',
-                  dbName: 'meta_title',
+                  //dbName: 'meta_title',
                 },
                 {
                   name: 'metaDescription',
                   type: 'textarea',
-                  dbName: 'meta_description',
+                  //dbName: 'meta_description',
                 },
               ],
             },
@@ -2355,13 +2356,13 @@ export const BlankProducts: CollectionConfig = {
             {
               name: 'prodInt',
               type: 'group',
-              dbName: 'prod_int',
+              //dbName: 'prod_int',
               label: 'Product Intelligence Configuration',
               fields: [
                 {
                   name: 'prodTemp',
                   type: 'select',
-                  dbName: 'prod_temp',
+                  //dbName: 'prod_temp',
                   required: true,
                   defaultValue: 'auto_detect',
                   options: [
@@ -2388,7 +2389,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'autoDetSett',
                   type: 'group',
-                  dbName: 'au_det_sett',
+                  //dbName: 'au_det_sett',
                   label: 'Auto-Detection Settings',
                   admin: {
                     condition: (data) => data?.productIntelligence?.productTemplate === 'auto_detect',
@@ -2397,7 +2398,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'enImgAnal',
                       type: 'checkbox',
-                      dbName: 'enaimg_anal',
+                      //dbName: 'enaimg_anal',
                       label: 'Enable Image Analysis',
                       defaultValue: true,
                       admin: {
@@ -2407,7 +2408,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'anAcc',
                       type: 'select',
-                      dbName: 'anal_acc',
+                      //dbName: 'anal_acc',
                       defaultValue: 'balanced',
                       options: [
                         { label: '⚡ Fast (Good for simple products)', value: 'fast' },
@@ -2419,7 +2420,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'detThres',
                       type: 'number',
-                      dbName: 'detthrs',
+                      //dbName: 'detthrs',
                       label: 'Detection Confidence Threshold',
                       min: 0.1,
                       max: 1.0,
@@ -2432,7 +2433,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'manlReq',
                       type: 'checkbox',
-                      dbName: 'manual_rev_req',
+                      //dbName: 'manual_rev_req',
                       label: 'Manual Review Required',
                       defaultValue: true,
                       admin: {
@@ -2444,13 +2445,13 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'srtDef',
                   type: 'group',
-                  dbName: 'smtdef',
+                  //dbName: 'smtdef',
                   label: 'Smart Defaults & Templates',
                   fields: [
                     {
                       name: 'intfrmTlt',
                       type: 'checkbox',
-                      dbName: 'inht_fm_temp',
+                      //dbName: 'inht_fm_temp',
                       label: 'Inherit From Template',
                       defaultValue: true,
                       admin: {
@@ -2460,13 +2461,13 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'oMskRls',
                       type: 'group',
-                      dbName: 'atmskrule',
+                      //dbName: 'atmskrule',
                       label: 'Auto-Masking Intelligence',
                       fields: [
                         {
                           name: 'enablesMask',
                           type: 'checkbox',
-                          dbName: 'enble_smrt_msk',
+                          //dbName: 'enble_smrt_msk',
                           label: 'Enable Smart Masking',
                           defaultValue: true,
                           admin: {
@@ -2476,7 +2477,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'edgeDetctMode',
                           type: 'select',
-                          dbName: 'edge_detect_mode',
+                          //dbName: 'edge_detect_mode',
                           defaultValue: 'automatic',
                           options: [
                             { label: '🤖 Automatic (AI-powered)', value: 'automatic' },
@@ -2492,7 +2493,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'occlDetct',
                           type: 'group',
-                          dbName: 'occ_detect',
+                          //dbName: 'occ_detect',
                           label: 'Occlusion Detection',
                           admin: {
                             condition: (data) => data?.smartDefaults?.autoMaskingRules?.enableSmartMasking,
@@ -2501,7 +2502,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'detectCamHole',
                               type: 'checkbox',
-                              dbName: 'detect_cam_holes',
+                              //dbName: 'detect_cam_holes',
                               defaultValue: true,
                               admin: {
                                 description: 'Automatically detect and mask camera holes in phone cases',
@@ -2510,7 +2511,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'detectSeams',
                               type: 'checkbox',
-                              dbName: 'detect_seams',
+                              //dbName: 'detect_seams',
                               defaultValue: true,
                               admin: {
                                 description: 'Automatically detect seam lines in apparel',
@@ -2519,7 +2520,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'detectFolds',
                               type: 'checkbox',
-                              dbName: 'detect_folds',
+                              //dbName: 'detect_folds',
                               defaultValue: true,
                               admin: {
                                 description: 'Automatically detect fabric folds and wrinkles',
@@ -2528,7 +2529,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'detectShadows',
                               type: 'checkbox',
-                              dbName: 'detect_shadows',
+                              //dbName: 'detect_shadows',
                               defaultValue: true,
                               admin: {
                                 description: 'Automatically detect shadow areas for realistic rendering',
@@ -2552,9 +2553,9 @@ export const BlankProducts: CollectionConfig = {
           label: 'Smart Printing & Mockups',
           fields: [
             {
-              name: 'smartPrintTech',
+              name: 'PrntTch',
               type: 'array',
-              dbName: 'smart_print_tech',
+              //dbName: 'smart_print_tech',
               label: 'Printing Technologies with Smart Mockups',
               fields: [
                 {
@@ -2571,7 +2572,7 @@ export const BlankProducts: CollectionConfig = {
                 {
                   name: 'technologyName',
                   type: 'select',
-                  dbName: 'smart_technology_name',
+                  //dbName: 'smart_technology_name',
                   defaultValue: 'dtg',
                   required: true,
                   options: [
@@ -2591,9 +2592,9 @@ export const BlankProducts: CollectionConfig = {
                 // 🆕 SMART MOCKUP PHOTOS WITH AUTO-DETECTION
                 // =====================================
                 {
-                  name: 'smartMockupPhotos',
+                  name: 'smtMckpPht',
                   type: 'array',
-                  dbName: 'smart_mockup_photos',
+                  //dbName: 'smart_mockup_photos',
                   label: 'Smart Mockup Photos',
                   admin: {
                     description: 'Upload mockup photos and let AI detect customizable areas automatically',
@@ -2618,7 +2619,7 @@ export const BlankProducts: CollectionConfig = {
                       },
                     },
                     {
-                      name: 'viewAngle',
+                      name: 'view',
                       type: 'select',
                       label: 'View Angle',
                       defaultValue: 'front',
@@ -2636,9 +2637,9 @@ export const BlankProducts: CollectionConfig = {
                       ],
                     },
                     {
-                      name: 'mockupStyle',
+                      name: 'mock',
                       type: 'select',
-                      dbName: 'smart_mockup_style',
+                      //dbName: 'smart_mockup_style',
                       defaultValue: 'studio',
                       options: [
                         { label: '📸 Studio Shot (Clean background)', value: 'studio' },
@@ -2652,7 +2653,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'photoColor',
                       type: 'text',
-                      dbName: 'smart_photo_color',
+                      //dbName: 'smart_photo_color',
                       label: 'Product Color (Hex)',
                       required: true,
                       admin: {
@@ -2664,9 +2665,9 @@ export const BlankProducts: CollectionConfig = {
                     // 🆕 AI ANALYSIS RESULTS (AUTO-POPULATED)
                     // =====================================
                     {
-                      name: 'aiAnalRes',
+                      name: 'Anl',
                       type: 'group',
-                      dbName: 'ai_anal_results',
+                      //dbName: 'ai_anal_results',
                       label: 'AI Analysis Results',
                       admin: {
                         description: 'Automatically populated by AI image analysis',
@@ -2674,9 +2675,9 @@ export const BlankProducts: CollectionConfig = {
                       },
                       fields: [
                         {
-                          name: 'analStat',
+                          name: 'Sts',
                           type: 'select',
-                          dbName: 'ai_analysis_status',
+                          //dbName: 'ai_analysis_status',
                           defaultValue: 'pending',
                           label: 'Analysis Status',
                           options: [
@@ -2693,7 +2694,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'detProdTy',
                           type: 'text',
-                          dbName: 'ai_det_prod_type',
+                          //dbName: 'ai_det_prod_type',
                           admin: {
                             description: 'AI-detected product type',
                             readOnly: true,
@@ -2702,7 +2703,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'confScore',
                           type: 'number',
-                          dbName: 'ai_confidence_score',
+                          //dbName: 'ai_confidence_score',
                           min: 0,
                           max: 1,
                           admin: {
@@ -2714,7 +2715,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'detAr',
                           type: 'array',
-                          dbName: 'ai_detected_areas',
+                          //dbName: 'ai_detected_areas',
                           admin: {
                             description: 'AI-detected customizable areas',
                             readOnly: true,
@@ -2723,13 +2724,13 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'arNme',
                               type: 'text',
-                              dbName: 'ai_area_name',
+                              //dbName: 'ai_area_name',
                               admin: { readOnly: true },
                             },
                             {
                               name: 'bodBx',
                               type: 'group',
-                              dbName: 'ai_bou_box',
+                              //dbName: 'ai_bou_box',
                               label: 'Bounding Box',
                               fields: [
                                 { name: 'x', type: 'number', min: 0, max: 1, admin: { readOnly: true } },
@@ -2741,7 +2742,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'confdnce',
                               type: 'number',
-                              dbName: 'ai_area_confidence',
+                              //dbName: 'ai_area_confidence',
                               min: 0,
                               max: 1,
                               admin: { readOnly: true },
@@ -2749,7 +2750,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'suggesMask',
                               type: 'textarea',
-                              dbName: 'ai_sugg_mask',
+                              //dbName: 'ai_sugg_mask',
                               admin: {
                                 description: 'AI-suggested masking path (SVG)',
                                 readOnly: true,
@@ -2758,18 +2759,18 @@ export const BlankProducts: CollectionConfig = {
                           ],
                         },
                         {
-                          name: 'dtcObs',
+                          name: 'dtc',
                           type: 'array',
-                          dbName: 'ai_det_obs',
+                          //dbName: 'ai_det_obs',
                           admin: {
                             description: 'AI-detected obstructions (camera holes, seams, etc.)',
                             readOnly: true,
                           },
                           fields: [
                             {
-                              name: 'obsType',
+                              name: 'obs',
                               type: 'select',
-                              dbName: 'ai_obs_type',
+                              //dbName: 'ai_obs_type',
                               options: [
                                 { label: '📷 Camera Hole', value: 'camera_hole' },
                                 { label: '🔊 Speaker Hole', value: 'speaker_hole' },
@@ -2785,7 +2786,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'boundbox',
                               type: 'group',
-                              dbName: 'ai_obstruction_bbox',
+                              //dbName: 'ai_obstruction_bbox',
                               label: 'Bounding Box',
                               fields: [
                                 { name: 'x', type: 'number', min: 0, max: 1, admin: { readOnly: true } },
@@ -2797,7 +2798,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'confidence',
                               type: 'number',
-                              dbName: 'ai_obs_conf',
+                              //dbName: 'ai_obs_conf',
                               min: 0,
                               max: 1,
                               admin: { readOnly: true },
@@ -2811,9 +2812,9 @@ export const BlankProducts: CollectionConfig = {
                     // 🆕 SMART VISIBLE AREAS (AI + MANUAL)
                     // =====================================
                     {
-                      name: 'smartVisA',
+                      name: 'Vsa',
                       type: 'array',
-                      dbName: 'smart_visible_areas',
+                      //dbName: 'smart_visible_areas',
                       label: 'Smart Visible Areas',
                       admin: {
                         description: 'AI-detected areas with smart defaults + manual overrides',
@@ -2822,16 +2823,16 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'areaName',
                           type: 'text',
-                          dbName: 'sm_ar_name',
+                          //dbName: 'sm_ar_name',
                           required: true,
                           admin: {
                             description: 'Area name (auto-populated from AI or manual entry)',
                           },
                         },
                         {
-                          name: 'dataSource',
+                          name: 'Src',
                           type: 'select',
-                          dbName: 'smart_data_source',
+                          //dbName: 'smart_data_source',
                           defaultValue: 'ai_detected',
                           options: [
                             { label: '🤖 AI Detected', value: 'ai_detected' },
@@ -2844,9 +2845,9 @@ export const BlankProducts: CollectionConfig = {
                           },
                         },
                         {
-                          name: 'appStat',
+                          name: 'apStt',
                           type: 'select',
-                          dbName: 'smrt_app_stats',
+                          //dbName: 'smrt_app_stats',
                           defaultValue: 'pending_review',
                           options: [
                             { label: '⏳ Pending Review', value: 'pending_review' },
@@ -2859,9 +2860,9 @@ export const BlankProducts: CollectionConfig = {
                           },
                         },
                         {
-                          name: 'visibility',
+                          name: 'vsblty',
                           type: 'select',
-                          dbName: 'smart_visibility',
+                          //dbName: 'smart_visibility',
                           defaultValue: 'full',
                           options: [
                             { label: '✅ Fully Visible', value: 'full' },
@@ -2876,7 +2877,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'visibilityPercentage',
                           type: 'number',
-                          dbName: 'smart_visibility_percentage',
+                          //dbName: 'smart_visibility_percentage',
                           min: 0,
                           max: 100,
                           defaultValue: 100,
@@ -2893,24 +2894,24 @@ export const BlankProducts: CollectionConfig = {
                         // 🆕 SMART MASKING (AI-POWERED) - FLATTENED
                         // =====================================
                         {
-                          name: 'smartMasking',
+                          name: 'smrt',
                           type: 'group',
-                          dbName: 'smart_mask',
+                          //dbName: 'smart_mask',
                           label: 'Smart Masking Configuration',
                           fields: [
                             {
                               name: 'enableSmartMask',
                               type: 'checkbox',
-                              dbName: 'enable',
+                              //dbName: 'enable',
                               defaultValue: true,
                               admin: {
                                 description: 'Use AI-powered smart masking for this area',
                               },
                             },
                             {
-                              name: 'maskingStrategy',
+                              name: 'Srtgy',
                               type: 'select',
-                              dbName: 'strategy',
+                              //dbName: 'strategy',
                               defaultValue: 'ai_automatic',
                               options: [
                                 { label: '🤖 AI Automatic', value: 'ai_automatic' },
@@ -2926,9 +2927,9 @@ export const BlankProducts: CollectionConfig = {
                         },
                         // AI MASK SETTINGS (FLATTENED)
                         {
-                          name: 'aiMaskSettings',
+                          name: 'Msk',
                           type: 'group',
-                          dbName: 'ai_mask_sets',
+                          //dbName: 'ai_mask_sets',
                           label: 'AI Mask Settings',
                           admin: {
                             condition: (data, siblingData) => 
@@ -2937,9 +2938,9 @@ export const BlankProducts: CollectionConfig = {
                           },
                           fields: [
                             {
-                              name: 'edgeDetectLevel',
+                              name: 'edg',
                               type: 'select',
-                              dbName: 'edgelevel',
+                              //dbName: 'edgelevel',
                               defaultValue: 'medium',
                               options: [
                                 { label: '🔸 Soft (Gentle transitions)', value: 'soft' },
@@ -2951,7 +2952,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'adaptToLighting',
                               type: 'checkbox',
-                              dbName: 'adapt_lighting',
+                              //dbName: 'adapt_lighting',
                               defaultValue: true,
                               admin: {
                                 description: 'Automatically adapt masking based on lighting conditions',
@@ -2960,7 +2961,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'fabricAwareness',
                               type: 'checkbox',
-                              dbName: 'fabric_aware',
+                              //dbName: 'fabric_aware',
                               defaultValue: true,
                               admin: {
                                 description: 'Consider fabric properties when creating masks',
@@ -2969,7 +2970,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'seamDetection',
                               type: 'checkbox',
-                              dbName: 'seam_detect',
+                              //dbName: 'seam_detect',
                               defaultValue: true,
                               admin: {
                                 description: 'Automatically detect and handle seam lines',
@@ -2979,9 +2980,9 @@ export const BlankProducts: CollectionConfig = {
                         },
                         // AI GENERATED MASK (FLATTENED)
                         {
-                          name: 'generatedMask',
+                          name: 'gnMsk',
                           type: 'group',
-                          dbName: 'gen_mask',
+                          //dbName: 'gen_mask',
                           label: 'AI-Generated Mask (Auto-populated)',
                           admin: {
                             description: 'Automatically generated by AI analysis',
@@ -2991,16 +2992,16 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'maskPath',
                               type: 'textarea',
-                              dbName: 'path',
+                              //dbName: 'path',
                               admin: {
                                 description: 'SVG path for the generated mask',
                                 readOnly: true,
                               },
                             },
                             {
-                              name: 'maskTypes',
+                              name: 'mskTyp',
                               type: 'select',
-                              dbName: 'aimask_type',
+                              //dbName: 'aimask_type',
                               options: [
                                 { label: 'Gradient Mask', value: 'gradient' },
                                 { label: 'Vector Path', value: 'vector' },
@@ -3012,7 +3013,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'maskConfidence',
                               type: 'number',
-                              dbName: 'confidence',
+                              //dbName: 'confidence',
                               min: 0,
                               max: 1,
                               admin: {
@@ -3029,14 +3030,14 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'smartPlacement',
                           type: 'group',
-                          dbName: 'smart_place',
+                          //dbName: 'smart_place',
                           label: 'Smart Design Placement',
                           fields: [
                             // Auto-Calculated Coordinates (Read-only)
                             {
                               name: 'autoX',
                               type: 'number',
-                              dbName: 'auto_x',
+                              //dbName: 'auto_x',
                               min: 0,
                               max: 1,
                               admin: {
@@ -3047,7 +3048,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'autoY',
                               type: 'number',
-                              dbName: 'auto_y',
+                              //dbName: 'auto_y',
                               min: 0,
                               max: 1,
                               admin: {
@@ -3058,7 +3059,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'autoWidth',
                               type: 'number',
-                              dbName: 'auto_width',
+                              //dbName: 'auto_width',
                               min: 0,
                               max: 1,
                               admin: {
@@ -3069,7 +3070,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'autoHeight',
                               type: 'number',
-                              dbName: 'auto_height',
+                              //dbName: 'auto_height',
                               min: 0,
                               max: 1,
                               admin: {
@@ -3081,7 +3082,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'enableManualOverride',
                               type: 'checkbox',
-                              dbName: 'enable_override',
+                              //dbName: 'enable_override',
                               defaultValue: false,
                               admin: {
                                 description: 'Override AI-calculated placement with manual values',
@@ -3090,7 +3091,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'manualX',
                               type: 'number',
-                              dbName: 'manual_x',
+                              //dbName: 'manual_x',
                               min: 0,
                               max: 1,
                               admin: {
@@ -3100,7 +3101,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'manualY',
                               type: 'number',
-                              dbName: 'manual_y',
+                              //dbName: 'manual_y',
                               min: 0,
                               max: 1,
                               admin: {
@@ -3110,7 +3111,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'manualWidth',
                               type: 'number',
-                              dbName: 'manual_width',
+                              //dbName: 'manual_width',
                               min: 0,
                               max: 1,
                               admin: {
@@ -3120,7 +3121,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'manualHeight',
                               type: 'number',
-                              dbName: 'manual_height',
+                              //dbName: 'manual_height',
                               min: 0,
                               max: 1,
                               admin: {
@@ -3131,7 +3132,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'rotation',
                               type: 'number',
-                              dbName: 'rotation',
+                              //dbName: 'rotation',
                               defaultValue: 0,
                               admin: {
                                 condition: (data, siblingData) => siblingData?.enableManualOverride,
@@ -3140,7 +3141,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'skewX',
                               type: 'number',
-                              dbName: 'skew_x',
+                              //dbName: 'skew_x',
                               defaultValue: 0,
                               admin: {
                                 condition: (data, siblingData) => siblingData?.enableManualOverride,
@@ -3149,7 +3150,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'skewY',
                               type: 'number',
-                              dbName: 'skew_y',
+                              //dbName: 'skew_y',
                               defaultValue: 0,
                               admin: {
                                 condition: (data, siblingData) => siblingData?.enableManualOverride,
@@ -3158,7 +3159,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'scaleX',
                               type: 'number',
-                              dbName: 'scale_x',
+                              //dbName: 'scale_x',
                               defaultValue: 1,
                               admin: {
                                 condition: (data, siblingData) => siblingData?.enableManualOverride,
@@ -3167,7 +3168,7 @@ export const BlankProducts: CollectionConfig = {
                             {
                               name: 'scaleY',
                               type: 'number',
-                              dbName: 'scale_y',
+                              //dbName: 'scale_y',
                               defaultValue: 1,
                               admin: {
                                 condition: (data, siblingData) => siblingData?.enableManualOverride,
@@ -3189,7 +3190,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'tags',
                       type: 'array',
-                      dbName: 'smart_mockup_tags',
+                      //dbName: 'smart_mockup_tags',
                       fields: [
                         {
                           name: 'tag',
@@ -3204,9 +3205,9 @@ export const BlankProducts: CollectionConfig = {
                 // SIMPLIFIED CUSTOMIZATION AREAS
                 // =====================================
                 {
-                  name: 'smartCustomizationAreas',
+                  name: 'smtCstmtnAr',
                   type: 'array',
-                  dbName: 'smart_customization_areas',
+                  //dbName: 'smart_customization_areas',
                   label: 'Smart Customization Areas',
                   admin: {
                     description: 'AI-enhanced customization areas with smart defaults',
@@ -3226,7 +3227,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'areaName',
                       type: 'text',
-                      dbName: 'smart_customization_area_name',
+                      //dbName: 'smart_customization_area_name',
                       required: true,
                       admin: {
                         description: 'e.g., "Front", "Back", "Left Sleeve", "Camera Area"',
@@ -3235,7 +3236,7 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'areaType',
                       type: 'select',
-                      dbName: 'smart_customization_area_type',
+                      //dbName: 'smart_customization_area_type',
                       options: [
                         { label: '🎯 Primary Design Area', value: 'primary' },
                         { label: '📋 Secondary Area', value: 'secondary' },
@@ -3250,13 +3251,13 @@ export const BlankProducts: CollectionConfig = {
                     {
                       name: 'smartCanvasConfig',
                       type: 'group',
-                      dbName: 'smart_canvas',
+                      //dbName: 'smart_canvas',
                       label: 'Smart Canvas Configuration',
                       fields: [
                         {
                           name: 'useAICalculatedDimensions',
                           type: 'checkbox',
-                          dbName: 'use_ai_dims',
+                          //dbName: 'use_ai_dims',
                           defaultValue: true,
                           admin: {
                             description: 'Use AI-calculated optimal dimensions for this area',
@@ -3266,7 +3267,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'aiWidthInches',
                           type: 'number',
-                          dbName: 'ai_width',
+                          //dbName: 'ai_width',
                           admin: { 
                             readOnly: true,
                             condition: (data, siblingData) => siblingData?.useAICalculatedDimensions,
@@ -3275,7 +3276,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'aiHeightInches',
                           type: 'number',
-                          dbName: 'ai_height',
+                          //dbName: 'ai_height',
                           admin: { 
                             readOnly: true,
                             condition: (data, siblingData) => siblingData?.useAICalculatedDimensions,
@@ -3284,7 +3285,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'aiCanvasPixelWidth',
                           type: 'number',
-                          dbName: 'ai_pixel_w',
+                          //dbName: 'ai_pixel_w',
                           admin: { 
                             readOnly: true,
                             condition: (data, siblingData) => siblingData?.useAICalculatedDimensions,
@@ -3293,7 +3294,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'aiCanvasPixelHeight',
                           type: 'number',
-                          dbName: 'ai_pixel_h',
+                          //dbName: 'ai_pixel_h',
                           admin: { 
                             readOnly: true,
                             condition: (data, siblingData) => siblingData?.useAICalculatedDimensions,
@@ -3303,7 +3304,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'manualWidthInches',
                           type: 'number',
-                          dbName: 'manual_width',
+                          //dbName: 'manual_width',
                           required: true,
                           admin: {
                             condition: (data, siblingData) => !siblingData?.useAICalculatedDimensions,
@@ -3312,7 +3313,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'manualHeightInches',
                           type: 'number',
-                          dbName: 'manual_height',
+                          //dbName: 'manual_height',
                           required: true,
                           admin: {
                             condition: (data, siblingData) => !siblingData?.useAICalculatedDimensions,
@@ -3321,7 +3322,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'manualCanvasPixelWidth',
                           type: 'number',
-                          dbName: 'manual_pixel_w',
+                          //dbName: 'manual_pixel_w',
                           defaultValue: 800,
                           admin: {
                             condition: (data, siblingData) => !siblingData?.useAICalculatedDimensions,
@@ -3330,7 +3331,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'manualCanvasPixelHeight',
                           type: 'number',
-                          dbName: 'manual_pixel_h',
+                          //dbName: 'manual_pixel_h',
                           defaultValue: 600,
                           admin: {
                             condition: (data, siblingData) => !siblingData?.useAICalculatedDimensions,
@@ -3339,7 +3340,7 @@ export const BlankProducts: CollectionConfig = {
                         {
                           name: 'aspectRatioLocked',
                           type: 'checkbox',
-                          dbName: 'aspect_locked',
+                          //dbName: 'aspect_locked',
                           defaultValue: true,
                         },
                       ],

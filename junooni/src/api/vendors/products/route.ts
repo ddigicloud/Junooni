@@ -9,12 +9,15 @@ import {
   ContainerRegistrationKeys
 } from "@medusajs/framework/utils"
 import createVendorProductWorkflow from "../../../workflows/marketplace/create-vendor-product";
+ import {  QueryContext } from "@medusajs/framework/utils";
+
 
 export const GET = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse
 ) => {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  
 
 
   if (!req.auth_context) {
@@ -32,6 +35,8 @@ export const GET = async (
       "vendor.products.options.metadata.*",
       "vendor.products.variants.options.*",
       "vendor.products.options.values.*",
+     // "vendor.products.variants.calculated_price.*",
+     
      
       "vendor.products.variants.inventory_items.*",
       "vendor.products.description_parts",
@@ -49,7 +54,7 @@ export const GET = async (
         // ID of the authenticated vendor admin
         req.auth_context.actor_id
       ],
-    },
+    }
   })
 
   res.json({

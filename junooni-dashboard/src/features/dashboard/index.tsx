@@ -773,7 +773,7 @@ const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: P
             <div>
               <p className="mb-1 text-sm text-gray-500">Pending Orders</p>
               <h3 className="text-lg font-bold">{pendingOrders}</h3>
-              <p className="mt-1 text-sm text-gray-500">Need attention</p>
+              {/* <p className="mt-1 text-sm text-gray-500">Need attention</p> */}
             </div>
             <div className="p-3 rounded-lg bg-amber-100">
               <Clock className="w-6 h-6 text-amber-600" />
@@ -789,7 +789,7 @@ const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: P
             <div>
               <p className="mb-1 text-sm text-gray-500">Your Products</p>
               <h3 className="text-lg font-bold">{products.length}</h3>
-              <p className="mt-1 text-sm text-gray-500">Listed in store</p>
+              {/* <p className="mt-1 text-sm text-gray-500">Listed in store</p> */}
             </div>
             <div className="p-3 bg-blue-100 rounded-lg">
               <Package className="w-6 h-6 text-blue-600" />
@@ -1109,6 +1109,7 @@ const DashboardPage = () => {
             setProducts([]);
           } else {
             const productData = await productResponse.json();
+            console.log("product response data:", productData);
             
             // Transform products
             const transformedProducts = (productData.products || []).map((product: any): Product => {
@@ -1128,6 +1129,7 @@ const DashboardPage = () => {
                 variants: product.variants || []
               };
             });
+            console.log("Transformed product with price:", transformedProducts);
             
             setProducts(transformedProducts);
           }
@@ -1299,11 +1301,12 @@ const DashboardPage = () => {
                     JUNOONI
                   </span> */}
                    <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
+                   
                 </Link>
               </div>
               
-              <span className="hidden ml-2 text-gray-500 md:inline md:hidden">|</span>
-              {/* <h1 className="hidden ml-2 text-lg font-semibold md:block" style={{ color: BRAND.secondary }}>
+              {/* <span className="hidden ml-2 text-gray-500 md:inline md:hidden">|</span>
+              <h1 className="hidden ml-2 text-lg font-semibold md:block" style={{ color: BRAND.secondary }}>
                 Seller Dashboard
               </h1> */}
             </div>
@@ -1518,9 +1521,9 @@ const DashboardPage = () => {
                             <StatusBadge status={product.status} />
                           </div>
                         </div>
-                        <div className="text-sm font-medium">
+                        {/* <div className="text-sm font-medium">
                           {formatPrice(product.price)}
-                        </div>
+                        </div> */}
                       </div>
                     ))}
                   </div>
@@ -1600,7 +1603,7 @@ const DashboardPage = () => {
         </div>
         
         {/* Order Distribution Stats */}
-        {orders.length > 0 && (
+        {/* {orders.length > 0 && (
           <Card className="mt-6 shadow-md">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center text-lg">
@@ -1655,10 +1658,10 @@ const DashboardPage = () => {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
         
         {/* Help Section */}
-        <Card className="mt-6 shadow-md">
+        {/* <Card className="mt-6 shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center">
               <HelpCircle className="w-5 h-5 mr-2" style={{ color: BRAND.primary }} />
@@ -1685,7 +1688,7 @@ const DashboardPage = () => {
               </Button>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
         <ChatwootWidget />
       </div>
     </div>

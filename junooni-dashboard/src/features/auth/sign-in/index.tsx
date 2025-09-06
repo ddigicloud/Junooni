@@ -303,7 +303,7 @@ export default function JunooniLogin() {
           <div className={`
             relative p-4 rounded-xl shadow-2xl border backdrop-blur-lg transform transition-all duration-300 ease-out
             ${toast.type === 'success' 
-              ? 'bg-emerald-50/95 border-emerald-200 text-orange-800' 
+              ? 'bg-orange-50/95 border-orange-200 text-orange-800' 
               : toast.type === 'error' 
               ? 'bg-red-50/95 border-red-200 text-red-800'
               : 'bg-blue-50/95 border-blue-200 text-blue-800'
@@ -403,7 +403,7 @@ export default function JunooniLogin() {
             {/* Enhanced Branding */}
             <div className="flex items-center gap-4 p-8">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#e65100] shadow-xl">
-                <span className="text-2xl font-black">J</span>
+                <img src="/src/assets/favicon-3.png" alt="Junooni Logo" className="h-12 lg:h-12 sm:h-8 w-12 lg:w-12" />
               </div>
               <h1 className="text-3xl font-black tracking-wide text-white drop-shadow-2xl">JUNOONI</h1>
             </div>
@@ -467,11 +467,11 @@ export default function JunooniLogin() {
         </div>
         
         {/* Right Panel - Enhanced Login Form */}
-        <div className="flex flex-col items-center justify-center h-full px-6 pt-0 bg-gradient-to-br from-gray-50 to-white pb-28">
+        <div className="flex flex-col items-center justify-center h-screen px-6 pt-12 bg-gradient-to-br from-gray-50 to-white pb-28">
           <div className="w-full max-w-md mx-auto">
             {/* Mobile Logo - Enhanced */}
             <div className="flex items-center justify-center gap-3 mt-4 mb-10 lg:hidden">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e65100] text-white shadow-lg">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e65100] text-white shadow-lg"> 
                 <span className="text-2xl font-black">J</span>
               </div>
               <h1 className="text-3xl font-black text-[#e65100]">JUNOONI</h1>
@@ -556,7 +556,7 @@ export default function JunooniLogin() {
                 />
                 
                 {/* Enhanced Remember Me */}
-                <div className="flex items-center space-x-3">
+                {/* <div className="flex items-center space-x-3">
                   <Checkbox id="remember" className="border-2 border-gray-300 data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]" />
                   <label
                     htmlFor="remember"
@@ -564,7 +564,7 @@ export default function JunooniLogin() {
                   >
                     Remember me for 30 days
                   </label>
-                </div>
+                </div> */}
                 
                 {/* Enhanced Sign In Button */}
                 <Button 
@@ -628,7 +628,7 @@ export default function JunooniLogin() {
                 </Link>
               </p>
               
-              <p className="max-w-sm mx-auto text-sm leading-relaxed text-gray-500">
+              {/* <p className="max-w-sm mx-auto text-sm leading-relaxed text-gray-500">
                 By clicking sign in, you agree to our{" "}
                 <Link to="/terms" className="font-medium text-[#e65100] hover:text-[#d84315] transition-colors duration-200 hover:underline">
                   Terms of Service
@@ -637,7 +637,7 @@ export default function JunooniLogin() {
                 <Link to="/privacy" className="font-medium text-[#e65100] hover:text-[#d84315] transition-colors duration-200 hover:underline">
                   Privacy Policy
                 </Link>
-              </p>
+              </p> */}
             </div>
           </div>
         </div>

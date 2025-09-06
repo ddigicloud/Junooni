@@ -101,19 +101,58 @@ interface FabricEffectsSettings {
 }
 
 // Enhanced visible area with all masking features
+// Line ~85: Update EnhancedVisibleArea interface
+// Line ~85: Complete visible area field name updates
 interface EnhancedVisibleArea {
   id: string;
   areaName: string;
   visibility: 'full' | 'partial' | 'edge' | 'sleeve';
   visibilityPercentage: number;
-  maskingConfiguration: MaskingConfiguration;
-  gradientMaskSettings: GradientMaskSettings;
-  edgeDetectionSettings: EdgeDetectionSettings;
-  fabricIntegration: FabricIntegration;
-  designPlacement: DesignPlacement;
-  surfaceWrapSettings: SurfaceWrapSettings;
-  perspectiveSettings: PerspectiveSettings;
-  fabricEffectsSettings: FabricEffectsSettings;
+  Config: {                         // Changed from 'maskingConfiguration'
+    enableMasking: boolean;
+    mask: string;                   // Changed from 'maskType'
+    maskPath?: string;
+  };
+  grdnmsk: {                        // Changed from 'gradientMaskSettings'
+    grdn: string;                   // Changed from 'gradientDirection'
+    gradientAngle: number;
+    fadeStart: number;
+    fadeEnd: number;
+    fadeIntensity: number;
+  };
+  edgeDetectionSettings: EdgeDetectionSettings; // This stays the same
+  fbrc: {                           // Changed from 'fabricIntegration'
+    enableFabricBlend: boolean;
+    bfab: string;                   // Changed from 'bfabType'
+    foldAwareness: boolean;
+    seamAwareness: boolean;
+    textureIntensity: number;
+    fabricColor: string;
+    fabricRoughness: number;
+  };
+  design: {                         // Changed from 'designPlacement'
+    coordinateX: number;
+    coordinateY: number;
+    coordinateWidth: number;
+    coordinateHeight: number;
+    rotation: number;
+    skewX: number;
+    skewY: number;
+    scaleX: number;
+    scaleY: number;
+    blend: string;                  // Changed from 'blendMode'
+    opacity?: number;
+    preserveColors?: boolean;
+  };
+  surfaceWrapSettings: SurfaceWrapSettings; // This stays the same
+  perspectiveSettings: PerspectiveSettings; // This stays the same
+  fbrEft: {                         // Changed from 'fabricEffectsSettings'
+    enableFolds: boolean;
+    foldIntensity: number;
+    fold: string;                   // Changed from 'foldDirection'
+    seamDistrt: boolean;
+    fabricDpth: number;
+  };
 }
 
 // Smart masking for AI features
@@ -214,6 +253,7 @@ interface DynamicCustomizableArea {
 }
 
 // Enhanced mockup photo with masking features
+// Line ~180: Complete mockup photo field name updates
 interface DynamicMockupPhoto {
   id: string;
   title: string;
@@ -228,8 +268,24 @@ interface DynamicMockupPhoto {
   mockupType: string;
   photoColor: string;
   priority: number;
-  visibleAreas: EnhancedVisibleArea[];
-  fabricProp?: FabricProperties;
+  area: EnhancedVisibleArea[];      // Changed from 'visibleAreas'
+  dispMaps?: any[];                 // Changed from 'disMaps' 
+  alpMasks?: any[];                 // This one was correct
+  light?: any[];                    // Changed from 'lightOver'
+  render?: {                        // Changed from 'renderPref'
+    pfEngine: string;               // Changed from 'preferredEngine'
+    enableAdvancedEffects: boolean;
+    quality: string;                // Changed from 'qualityLevel'
+    exportRes: number;              // Changed from 'exportRes'
+    enableProgTrack: boolean;       // Changed from 'enableProgTrack'
+  };
+  fbrcProp?: {                      // Changed from 'mFabricProp'
+    mfab: string;                   // Changed from 'mfabType'
+    fabricWeight: number;           // Changed from 'mockupFabricWeight'
+    Texture: string;                // Changed from 'mockupSurfaceTexture'
+    stretchability: number;         // Changed from 'mockupStretchability'
+    transparency: number;           // Changed from 'mockupTransparency'
+  };
   lightingConditions?: {
     lightDirection: number;
     lightIntensity: number;
@@ -426,10 +482,10 @@ interface DynamicProductData {
   };
   
   // Main printing technologies (updated field name)
-  printTechn: DynamicPrintingTechnology[];
+  printT: DynamicPrintingTechnology[];
   
   // Smart printing technologies with AI features
-  smartPrintTech?: SmartPrintingTechnology[];
+   PrntTch?: SmartPrintingTechnology[];
   smartCustomizationAreas?: SmartCustomizationArea[];
   
   // Product intelligence for AI features
@@ -573,9 +629,9 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
       }));
     }
     
-    // Process main printing technologies (printTechn)
-    if (processedData.printTechn) {
-      processedData.printTechn = processedData.printTechn.map((tech: any) => {
+    // Process main printing technologies (printT)
+    if (processedData.printT) {
+      processedData.printT = processedData.printT.map((tech: any) => {
         const newTech = { ...tech };
         
         // Process custAreas (customization areas)
@@ -608,8 +664,8 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     }
     
     // Process smart printing technologies
-    if (processedData.smartPrintTech) {
-      processedData.smartPrintTech = processedData.smartPrintTech.map((tech: any) => {
+    if (processedData.smartprintT) {
+      processedData.smartprintT = processedData.smartprintT.map((tech: any) => {
         const newTech = { ...tech };
         
         // Process smartMockupPhotos
@@ -734,8 +790,8 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     }
     
     // Check for main printing technologies (note field name change)
-    if (!data.printTechn || !Array.isArray(data.printTechn) || data.printTechn.length === 0) {
-      //console.error('❌ No printing technologies configured (printTechn)');
+    if (!data.printT || !Array.isArray(data.printT) || data.printT.length === 0) {
+      //console.error('❌ No printing technologies configured (printT)');
       return false;
     }
     
@@ -750,7 +806,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     }
     
     // Validate at least one technology has customization areas (custAreas)
-    const hasValidTech = data.printTechn.some((tech: any) => 
+    const hasValidTech = data.printT.some((tech: any) => 
       tech.custAreas && Array.isArray(tech.custAreas) && tech.custAreas.length > 0
     );
     
@@ -761,11 +817,11 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     
     // Log enhanced features detection
     // console.log('🤖 Enhanced features detected:', {
-    //   hasSmartPrintTech: !!data.smartPrintTech?.length,
+    //   hasSmartprintT: !!data.smartprintT?.length,
     //   hasProductIntelligence: !!data.prodInt,
     //   hasAdvancedSurfaceMapping: !!data.advanSurfMap,
     //   hasLightingConfiguration: !!data.lightingConfiguration,
-    //   hasMaskingFeatures: data.printTechn.some((tech: any) => 
+    //   hasMaskingFeatures: data.printT.some((tech: any) => 
     //     tech.mockupPhotos?.some((photo: any) => 
     //       photo.visibleAreas?.some((area: any) => area.maskingConfiguration?.enableMasking)
     //     )
@@ -798,8 +854,8 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
       //   name: data.name,
       //   id: data.id,
       //   productType: data.productType,
-      //   mainTechnologiesCount: data.printTechn?.length || 0,
-      //   smartTechnologiesCount: data.smartPrintTech?.length || 0,
+      //   mainTechnologiesCount: data.printT?.length || 0,
+      //   smartTechnologiesCount: data.smartprintT?.length || 0,
       //   colorsCount: data.colorOptions?.length || 0,
       //   sizesCount: data.sizeOptions?.length || 0,
       //   hasProductIntelligence: !!data.prodInt,
@@ -983,7 +1039,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
               <li>• Verify PayloadCMS is running with enhanced schema</li>
               <li>• Check if masking features are properly configured</li>
               <li>• Ensure AI processing services are available</li>
-              <li>• Validate printTechn field naming in PayloadCMS</li>
+              <li>• Validate printT field naming in PayloadCMS</li>
               <li>• Check CORS configuration for enhanced endpoints</li>
             </ul>
           </div>

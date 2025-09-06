@@ -34,7 +34,7 @@ interface DynamicMockupPhoto {
     disarea: string;
   }>;
   
-  alphaMasks?: Array<{
+  alpMasks?: Array<{
     id: string;
     maskImg: {
       id: number;
@@ -48,7 +48,7 @@ interface DynamicMockupPhoto {
     featherEdge: number;
   }>;
   
-  lightingOverlays?: Array<{
+  light?: Array<{
     id: string;
     overImage: {
       id: number;
@@ -63,20 +63,20 @@ interface DynamicMockupPhoto {
     overlayArea?: string;
   }>;
   
-  renderPref?: {
-    preferredEngine: 'auto' | 'canvas' | 'pixi';
+  render?: {
+    pfEngine: 'auto' | 'canvas' | 'pixi';
     enableAdvancedEffects: boolean;
-    qualityLevel: 'draft' | 'standard' | 'high' | 'ultra';
+    quality: 'draft' | 'standard' | 'high' | 'ultra';
     exportRes: number;
     enableProgTrack: boolean;
   };
   
-  visibleAreas: Array<{
+  area: Array<{
     id: string;
     areaName: string;
     visibility: 'full' | 'partial' | 'edge' | 'sleeve';
     visibilityPercentage?: number;
-    designPlacement: {
+    design: {
       coordinateX: number;
       coordinateY: number;
       coordinateWidth: number;
@@ -86,13 +86,13 @@ interface DynamicMockupPhoto {
       skewY: number;
       scaleX: number;
       scaleY: number;
-      blendMode: string;
+      blend: string;
       opacity: number | null;
       preserveColors: boolean | null;
     };
-    fabricIntegration?: {
+    fbrc?: {
       enableFabricBlend: boolean;
-      bfabType: string;
+      bfab: string;
       foldAwareness: boolean;
       seamAwareness: boolean;
       textureIntensity: number;
@@ -111,12 +111,12 @@ interface DynamicMockupPhoto {
       perspectiveIntensity: number;
       dynamicPerspective: boolean;
     };
-    maskingConfiguration?: {
+    Config?: {
       enableMasking: boolean;
-      maskType: string;
+      mask: string;
     };
-    gradientMaskSettings?: {
-      gradientDirection: string;
+    grdnmsk?: {
+      grdn: string;
       gradientAngle: number;
       fadeStart: number;
       fadeEnd: number;
@@ -124,10 +124,10 @@ interface DynamicMockupPhoto {
     };
   }>;
   
-  fabricProp?: {
-    mfabType: string;
+  fbrcProp?: {
+    mfab: string;
     fabricWeight: number;
-    surfaceTexture: string;
+    Texture: string;
     stretchability: number;
     transparency: number;
   };
@@ -161,7 +161,7 @@ interface SurfaceConfiguration {
   };
   
   renderingPrefs?: {
-    preferredEngine: 'auto' | 'canvas' | 'pixi';
+    pfEngine: 'auto' | 'canvas' | 'pixi';
     enableAdvancedEffects: boolean;
     enableDynamicFeatures: boolean;
     stabilityMode: boolean;
@@ -248,17 +248,17 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
     }
 
     // Check if Pixi.js features are needed
-    const needsPixiFeatures = mockup.visibleAreas.some(area => 
+    const needsPixiFeatures = mockup.area.some(area => 
       area.surfaceWrapSettings?.enableWrap ||
       area.perspectiveSettings?.enablePerspective ||
-      (area.maskingConfiguration?.enableMasking && area.maskingConfiguration.maskType !== 'gradient') ||
-      area.fabricIntegration?.enableFabricBlend
+      (area.Config?.enableMasking && area.Config.mask !== 'gradient') ||
+      area.fbrc?.enableFabricBlend
     );
 
     // Check for PayloadCMS Pixi.js assets
     const hasPixiAssets = !!(mockup as any).dispMaps?.length || 
-                         !!(mockup as any).alphaMasks?.length || 
-                         !!(mockup as any).lightingOverlays?.length;
+                         !!(mockup as any).alpMasks?.length || 
+                         !!(mockup as any).light?.length;
 
     // Check surface complexity
     const surfaceType = surfaceConfiguration?.renderType || 'flat';
@@ -400,24 +400,24 @@ class ErrorBoundary extends React.Component<
  * Detect if mockup requires advanced Pixi.js features using actual PayloadCMS field names
  */
 export function requiresPixiFeatures(mockup: DynamicMockupPhoto): boolean {
-  return mockup.visibleAreas.some(area => 
+  return mockup.area.some(area => 
     // Surface wrapping/displacement
     area.surfaceWrapSettings?.enableWrap ||
     // Advanced perspective
     area.perspectiveSettings?.enablePerspective ||
     // Complex masking
-    (area.maskingConfiguration?.enableMasking && area.maskingConfiguration.maskType !== 'gradient') ||
+    (area.Config?.enableMasking && area.Config.mask !== 'gradient') ||
     // Fabric integration
-    area.fabricIntegration?.enableFabricBlend ||
+    area.fbrc?.enableFabricBlend ||
     // Complex visibility patterns
     area.visibility === 'edge' || area.visibility === 'sleeve'
   ) || 
   // Check for PayloadCMS Pixi.js assets
   !!(mockup as any).dispMaps?.length || 
-  !!(mockup as any).alphaMasks?.length || 
-  !!(mockup as any).lightingOverlays?.length ||
+  !!(mockup as any).alpMasks?.length || 
+  !!(mockup as any).light?.length ||
   // Check rendering preferences
-  (mockup as any).renderPref?.preferredEngine === 'pixi';
+  (mockup as any).render?.pfEngine === 'pixi';
 }
 
 /**
@@ -462,7 +462,7 @@ export function getEngineRecommendation(
   displayDimensions: { width: number; height: number }
 ): 'canvas' | 'pixi' {
   const pixelCount = displayDimensions.width * displayDimensions.height;
-  const elementCount = Object.values(mockup.visibleAreas).flat().length;
+  const elementCount = Object.values(mockup.area).flat().length;
   const hasComplexFeatures = requiresPixiFeatures(mockup);
 
   // High resolution with complex features = Pixi.js

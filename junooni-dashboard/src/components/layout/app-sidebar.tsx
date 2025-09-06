@@ -115,12 +115,12 @@ function SidebarHeader() {
               />
             </div> */}
             <div className="flex items-center min-w-0 flex-1">
-              <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
-              {/* <Separator orientation='vertical' className='h-6 ml-3 mr-3 w-[2px] bg-border' />
+              <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8 w-33 -ml-4 -mr-4" />
+              <Separator orientation='vertical' className='h-6 ml-1 mr-3 w-[2px] bg-border' />
               <div className="flex flex-col items-start text-xs font-medium leading-tight text-muted-foreground">
                 <span className="text-xs">Creator</span>
-                <span className="text-xs">Dashboard</span>
-              </div> */}
+                <span className="text-xs">Studio</span>
+              </div>
             </div>
           </>
         )}

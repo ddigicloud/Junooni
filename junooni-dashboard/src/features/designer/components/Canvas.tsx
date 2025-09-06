@@ -12,7 +12,7 @@ import {
 } from 'react-konva';
 import EnhancedMockupEngine from '../engines/mockup/MockupEngine';
 import { useNavigate } from '@tanstack/react-router';
-
+import { Palette, Ruler, Upload, FolderOpen, Layers, Package, PenTool, Eye } from 'lucide-react';
 // =====================================
 // TYPE DEFINITIONS
 // =====================================
@@ -130,7 +130,7 @@ interface DynamicMockupPhoto {
     disint: number;
     disarea: string;
   }>;
-  alphaMasks?: Array<{
+  alpMasks?: Array<{
     id: string;
     maskImg: {
       id: number;
@@ -143,7 +143,7 @@ interface DynamicMockupPhoto {
     alfamask: 'alpha' | 'luminance' | 'red_channel';
     featherEdge: number;
   }>;
-  lightingOverlays?: Array<{
+  light?: Array<{
     id: string;
     overImage: {
       id: number;
@@ -157,19 +157,19 @@ interface DynamicMockupPhoto {
     ovlayOpa: number;
     overlayArea?: string;
   }>;
-  renderPref?: {
-    preferredEngine: 'auto' | 'canvas' | 'pixi';
+  render?: {
+    pfEngine: 'auto' | 'canvas' | 'pixi';
     enableAdvancedEffects: boolean;
-    qualityLevel: 'draft' | 'standard' | 'high' | 'ultra';
+    quality: 'draft' | 'standard' | 'high' | 'ultra';
     exportRes: number;
     enableProgTrack: boolean;
   };
-  visibleAreas: Array<{
+  area: Array<{
     id: string;
     areaName: string;
     visibility: 'full' | 'partial' | 'edge' | 'sleeve';
     visibilityPercentage?: number;
-    designPlacement: {
+    design: {
       coordinateX: number;
       coordinateY: number;
       coordinateWidth: number;
@@ -179,13 +179,13 @@ interface DynamicMockupPhoto {
       skewY: number;
       scaleX: number;
       scaleY: number;
-      blendMode: string;
+      blend: string;
       opacity: number | null;
       preserveColors: boolean | null;
     };
-    fabricIntegration?: {
+    fbrc?: {
       enableFabricBlend: boolean;
-      bfabType: string;
+      bfab: string;
       foldAwareness: boolean;
       seamAwareness: boolean;
       textureIntensity: number;
@@ -204,13 +204,13 @@ interface DynamicMockupPhoto {
       perspectiveIntensity: number;
       dynamicPerspective: boolean;
     };
-    maskingConfiguration?: {
+    Config?: {
       enableMasking: boolean;
       maskTypes: string;
       maskPath?: string;
     };
-    gradientMaskSettings?: {
-      gradientDirection: string;
+    grdnmsk?: {
+      grdn: string;
       gradientAngle: number;
       fadeStart: number;
       fadeEnd: number;
@@ -221,18 +221,18 @@ interface DynamicMockupPhoto {
       edgeThreshold: number;
       edgeSoftness: number;
     };
-    fabricEffectsSettings?: {
+    fbrEft?: {
       enableFolds: boolean;
       foldIntensity: number;
-      foldDirection: string;
+      fold: string;
       seamDistrt: boolean;
       fabricDpth: number;
     };
   }>;
-  fabricProp?: {
-    mfabType: string;
+  fbrcProp?: {
+    mfab: string;
     fabricWeight: number;
-    surfaceTexture: string;
+    Texture: string;
     stretchability: number;
     transparency: number;
   };
@@ -275,7 +275,7 @@ interface PayloadProductData {
   }>;
   color_Images: boolean;  // PayloadCMS: Different images for different colors
   size_Images: boolean;   // PayloadCMS: Different images for different sizes
-  printTechn: Array<{
+  printT: Array<{
     id: string;
     technologyName: string;
     mockupPhotos: DynamicMockupPhoto[];
@@ -475,6 +475,98 @@ interface DesignData {
     productName: string;
   };
 }
+
+// =====================================
+// AREA SELECTION THUMBNAIL COMPONENT (INLINE)
+// =====================================
+
+interface AreaSelectionThumbnailProps {
+  areaId: string;
+  areaName: string;
+  isActive: boolean;
+  onSelect: (areaId: string) => void;
+  canvasImage: HTMLImageElement | null;
+  activeColor: string;
+  elementCount: number;
+}
+
+// Replace the AreaSelectionThumbnail component with this fixed version:
+
+const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
+  areaId,
+  areaName,
+  isActive,
+  onSelect,
+  canvasImage,
+  activeColor,
+  elementCount
+}) => {
+  const [isImageLoading, setIsImageLoading] = useState(!canvasImage);
+  
+  // 🔥 ADD: Update loading state when image changes
+  useEffect(() => {
+    setIsImageLoading(!canvasImage);
+  }, [canvasImage]);
+
+  return (
+    <button
+      onClick={() => onSelect(areaId)}
+      className={`w-full p-2 border rounded-lg transition-all ${
+        isActive
+          ? 'border-orange-500 border-2 '
+          : 'hover:border-gray-300 hover:shadow-sm border-[#F3F4F6]'
+      }`}
+    >
+      <div className="relative mb-2 overflow-hidden bg-gray-100 rounded aspect-square">
+        {canvasImage ? (
+          <div className="relative w-full h-full">
+            {/* 🔥 FIXED: Use CSS mask instead of background + multiply */}
+            <div 
+              className="absolute inset-0 w-full h-full"
+              style={{ 
+                backgroundColor: activeColor,
+                WebkitMask: `url(${canvasImage.src}) center/cover no-repeat`,
+                mask: `url(${canvasImage.src}) center/cover no-repeat`,
+                WebkitMaskComposite: 'source-in',
+                maskComposite: 'intersect'
+              }}
+            />
+            
+            {/* Optional: Very subtle texture overlay for depth */}
+            <img
+              src={canvasImage.src}
+              alt={areaName}
+              className="absolute inset-0 w-full h-full object-cover opacity-5"
+              style={{ mixBlendMode: 'multiply' }}
+            />
+            
+            {elementCount > 0 && (
+              <div className="absolute top-1 right-1">
+                <div className="w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                  {elementCount}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center w-full h-full text-gray-400">
+            {/* 🔥 ADD: Show loading state */}
+            {isImageLoading ? (
+              <div className="text-center">
+                <div className="w-4 h-4 mx-auto mb-1 border-b-2 border-gray-400 rounded-full animate-spin"></div>
+                <span className="text-xs">Loading...</span>
+              </div>
+            ) : (
+              <span className="text-xs">No Image</span>
+            )}
+          </div>
+        )}
+      </div>
+      
+      <p className="text-xs font-medium text-center">{areaName}</p>
+    </button>
+  );
+};
 
 // =====================================
 // UTILITY FUNCTIONS
@@ -705,16 +797,16 @@ const validateImageFile = (file: File): { valid: boolean; error?: string } => {
 const extractAllMockupsFromPayload = (productData: PayloadProductData): DynamicMockupPhoto[] => {
   try {
 
-    if (!productData?.printTechn || !Array.isArray(productData.printTechn)) {
+    if (!productData?.printT || !Array.isArray(productData.printT)) {
       return [];
     }
 
     const allMockups: DynamicMockupPhoto[] = [];
 
-    productData.printTechn.forEach((tech: any) => {
+    productData.printT.forEach((tech: any) => {
       if (tech.mockupPhotos && Array.isArray(tech.mockupPhotos)) {
         tech.mockupPhotos.forEach((mockup: any) => {
-          if (mockup?.photo?.url && mockup?.visibleAreas?.length) {
+          if (mockup?.photo?.url && mockup?.area?.length) {
             allMockups.push(mockup);
           }
         });
@@ -748,7 +840,7 @@ const getMockupsForColor = (
   const allMockups: DynamicMockupPhoto[] = [];
   
   // Extract all mockups from all print techniques
-  productData.printTechn?.forEach(tech => {
+  productData.printT?.forEach(tech => {
     tech.mockupPhotos?.forEach(mockup => {
       allMockups.push(mockup);
     });
@@ -1361,15 +1453,15 @@ private determineEngine = (mockup: DynamicMockupPhoto): 'canvas_professional' | 
   
   const hasComplexFeatures = !!(
     mockup.dispMaps?.length ||
-    mockup.alphaMasks?.length ||
-    mockup.lightingOverlays?.length ||
-    mockup.visibleAreas?.some(area => 
+    mockup.alpMasks?.length ||
+    mockup.light?.length ||
+    mockup.area?.some(area => 
       area.surfaceWrapSettings?.enableWrap ||
       area.perspectiveSettings?.enablePerspective ||
-      area.fabricIntegration?.enableFabricBlend ||
-      area.maskingConfiguration?.enableMasking
+      area.fbrc?.enableFabricBlend ||
+      area.Config?.enableMasking
     ) ||
-    mockup.renderPref?.enableAdvancedEffects
+    mockup.render?.enableAdvancedEffects
   );
   
   if (hasComplexFeatures) {
@@ -1396,8 +1488,8 @@ public setProductData(productData: any) {
     return 'canvas_professional';
   }
 
-  if (mockup.renderPref?.preferredEngine) {
-    switch (mockup.renderPref.preferredEngine) {
+  if (mockup.render?.pfEngine) {
+    switch (mockup.render.pfEngine) {
       case 'canvas':
         return 'canvas_professional';
       case 'pixi':
@@ -1409,15 +1501,15 @@ public setProductData(productData: any) {
 
   const requiresPixi = !!(
     mockup.dispMaps?.length ||
-    mockup.alphaMasks?.length ||
-    mockup.lightingOverlays?.length ||
-    mockup.visibleAreas?.some(area => 
+    mockup.alpMasks?.length ||
+    mockup.light?.length ||
+    mockup.area?.some(area => 
       area.surfaceWrapSettings?.enableWrap ||
       area.perspectiveSettings?.enablePerspective ||
-      area.fabricIntegration?.enableFabricBlend ||
-      area.maskingConfiguration?.enableMasking
+      area.fbrc?.enableFabricBlend ||
+      area.Config?.enableMasking
     ) ||
-    mockup.renderPref?.enableAdvancedEffects
+    mockup.render?.enableAdvancedEffects
   );
 
   return requiresPixi ? 'pixi_dynamic' : 'canvas_professional';
@@ -1788,8 +1880,8 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   }, [mockup?.photo?.url]);
 
   const determineRenderEngine = useCallback((): 'canvas' | 'pixi' | 'auto' => {
-    if (mockup.renderPref?.preferredEngine) {
-      switch (mockup.renderPref.preferredEngine) {
+    if (mockup.render?.pfEngine) {
+      switch (mockup.render.pfEngine) {
         case 'canvas':
           return 'canvas';
         case 'pixi':
@@ -1801,15 +1893,15 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
 
     const requiresPixi = !!(
       mockup.dispMaps?.length ||
-      mockup.alphaMasks?.length ||
-      mockup.lightingOverlays?.length ||
-      mockup.visibleAreas?.some(area => 
+      mockup.alpMasks?.length ||
+      mockup.light?.length ||
+      mockup.area?.some(area => 
         area.surfaceWrapSettings?.enableWrap ||
         area.perspectiveSettings?.enablePerspective ||
-        area.fabricIntegration?.enableFabricBlend ||
-        area.maskingConfiguration?.enableMasking
+        area.fbrc?.enableFabricBlend ||
+        area.Config?.enableMasking
       ) ||
-      mockup.renderPref?.enableAdvancedEffects
+      mockup.render?.enableAdvancedEffects
     );
 
     return requiresPixi ? 'pixi' : 'canvas';
@@ -1941,11 +2033,11 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
           {getEngineType}
         </span>
         {mockup.dispMaps?.length > 0 && <span className="text-xs" title="Displacement Maps">ðŸŒŠ</span>}
-        {mockup.alphaMasks?.length > 0 && <span className="text-xs" title="Alpha Masks">ðŸŽ­</span>}
-        {mockup.lightingOverlays?.length > 0 && <span className="text-xs" title="Lighting Effects">ðŸ’¡</span>}
+        {mockup.alpMasks?.length > 0 && <span className="text-xs" title="Alpha Masks">ðŸŽ­</span>}
+        {mockup.light?.length > 0 && <span className="text-xs" title="Lighting Effects">ðŸ’¡</span>}
       </div>
       
-      {isSelected && (
+      {/* {isSelected && (
         <div className="absolute top-1 right-1">
           <div className="flex items-center justify-center w-4 h-4 bg-blue-600 rounded-full">
             <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -1953,7 +2045,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
             </svg>
           </div>
         </div>
-      )}
+      )} */}
     </button>
   );
 };
@@ -1983,6 +2075,45 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
   onMoveLayer,
   onDuplicateLayer
 }) => {
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setDraggedIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const dragIndex = parseInt(e.dataTransfer.getData('text/plain'));
+    
+    if (dragIndex !== dropIndex) {
+      const draggedLayer = layers[dragIndex];
+      if (draggedLayer) {
+        // Use the existing onMoveLayer function
+        if (dragIndex > dropIndex) {
+          // Moving up in list = moving layer to front
+          for (let i = 0; i < dragIndex - dropIndex; i++) {
+            onMoveLayer(draggedLayer.element.id, 'up');
+          }
+        } else {
+          // Moving down in list = moving layer to back  
+          for (let i = 0; i < dropIndex - dragIndex; i++) {
+            onMoveLayer(draggedLayer.element.id, 'down');
+          }
+        }
+      }
+    }
+    setDraggedIndex(null);
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between mb-4">
@@ -1992,19 +2123,36 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
         </div>
       </div>
       
+      <div className="mb-2 text-xs text-gray-600 bg-orange-50 p-2 rounded">
+        Drag to reorder • Top = Front
+      </div>
+      
       <div className="space-y-1 overflow-y-auto max-h-80">
         {layers.map((layer, index) => (
           <div
             key={layer.element.id}
-            className={`group border rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm ${
+            draggable
+            onDragStart={(e) => handleDragStart(e, index)}
+            onDragEnd={handleDragEnd}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, index)}
+            className={`group border rounded-lg p-3 cursor-move transition-all hover:shadow-sm ${
               selectedId === layer.element.id
-                ? 'border-blue-500 bg-blue-50 shadow-sm'
+                ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
                 : 'border-gray-200 hover:border-gray-300'
-            }`}
+            } ${draggedIndex === index ? 'opacity-50' : ''}`}
             onClick={() => onSelectLayer(layer.element.id)}
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
+                {/* Drag handle */}
+                <div className="flex flex-col space-y-0.5 text-gray-400 group-hover:text-gray-600">
+                  <div className="w-1 h-1 bg-current rounded-full"></div>
+                  <div className="w-1 h-1 bg-current rounded-full"></div>
+                  <div className="w-1 h-1 bg-current rounded-full"></div>
+                  <div className="w-1 h-1 bg-current rounded-full"></div>
+                </div>
+                
                 <div className="flex-shrink-0 w-8 h-8 overflow-hidden bg-gray-100 border rounded">
                   {layer.element.type === 'image' && layer.element.image ? (
                     <img
@@ -2028,7 +2176,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
                     {layer.element.layerName || layer.element.imageName || layer.element.text || `Layer ${index + 1}`}
                   </div>
                   <div className="text-xs text-gray-500 uppercase">
-                    {layer.element.type}
+                    {layer.element.type} • Z:{layer.element.zIndex || 0}
                   </div>
                 </div>
               </div>
@@ -2071,6 +2219,19 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
                     )}
                   </svg>
                 </button>
+                
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteLayer(layer.element.id);
+                  }}
+                  className="p-1 text-red-600 rounded hover:bg-red-50"
+                  title="Delete layer"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
             </div>
             
@@ -2099,7 +2260,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
       
       {layers.length === 0 && (
         <div className="py-8 text-center text-gray-500">
-          <div className="mb-2 text-2xl">ðŸ“„</div>
+          <div className="mb-2 text-2xl">📄</div>
           <p className="text-sm">No layers yet</p>
           <p className="mt-1 text-xs">Upload images to create layers</p>
         </div>
@@ -2417,15 +2578,26 @@ const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ product
   // =====================================
   
   const [activeView, setActiveView] = useState<'design' | 'preview'>('design');
-  const [activeTab, setActiveTab] = useState<'colors' | 'sizes' | 'upload' | 'library' | 'layers'>('upload');
+  const [activeTab, setActiveTab] = useState<'product' | 'colors' | 'sizes' | 'upload' | 'library' | 'layers'>('upload');
   const [debugMode, setDebugMode] = useState(false);
   const navigate = useNavigate();
   const designElementsRef = useRef<Record<string, DesignElement[]>>({});
+  // Add this with your other useState declarations
+const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   const [activeTechnology, setActiveTechnology] = useState<string>(() => {
-    return productData?.printTechn?.[0]?.id || productData?.printTechn?.[0]?.technologyName || 'dtg';
+    return productData?.printT?.[0]?.id || productData?.printT?.[0]?.technologyName || 'dtg';
   });
   const [activeArea, setActiveArea] = useState<string>('front');
+  // Replace simple string array with rich area objects
+const [availableAreasData, setAvailableAreasData] = useState<Array<{
+  id: string;
+  name: string; 
+  displayName: string;
+  canvasDim?: any;
+  designCanvasPhotos?: any[];
+  restrictions?: any;
+}>>([]);
   
 const [selectedColors, setSelectedColors] = useState<Array<{ name: string; value: string }>>(() => {
   // Use dynamic color detection instead of hardcoded fallback
@@ -2553,25 +2725,51 @@ const [activeColor, setActiveColor] = useState<string>(() => {
   // =====================================
   
   const getCurrentTechnology = useCallback(() => {
-    return productData?.printTechn?.find((tech: any) => tech.id === activeTechnology || tech.technologyName === activeTechnology);
+    return productData?.printT?.find((tech: any) => tech.id === activeTechnology || tech.technologyName === activeTechnology);
   }, [productData, activeTechnology]);
   
   const getAvailableAreas = useCallback(() => {
-    try {
-      const technology = getCurrentTechnology();
-      if (!technology?.custAreas?.length) {
-        return ['front'];
-      }
-      
-      const areas = technology.custAreas
-        .filter((area: any) => area?.areaName)
-        .map((area: any) => area.areaName.toLowerCase());
-      
-      return areas.length > 0 ? areas : ['front'];
-    } catch (error) {
+  try {
+    const technology = getCurrentTechnology();
+    if (!technology?.custAreas?.length) {
       return ['front'];
     }
-  }, [getCurrentTechnology]);
+    
+    // Keep returning simple strings like before
+    const areas = technology.custAreas
+      .filter((area: any) => area?.areaName)
+      .map((area: any) => area.areaName.toLowerCase());
+    
+    return areas.length > 0 ? areas : ['front'];
+  } catch (error) {
+    return ['front'];
+  }
+}, [getCurrentTechnology]);
+
+const getAreaDisplayData = useCallback((areaId: string) => {
+  try {
+    const technology = getCurrentTechnology();
+    const custArea = technology?.custAreas?.find(
+      (area: any) => area.areaName.toLowerCase() === areaId.toLowerCase()
+    );
+    
+    return {
+      id: areaId,
+      name: custArea?.areaName || areaId,
+      displayName: custArea?.areaName || areaId.charAt(0).toUpperCase() + areaId.slice(1),
+      canvasDim: custArea?.canvasDim,
+      designCanvasPhotos: custArea?.designCanvasPhotos || [],
+      restrictions: custArea?.restrictions
+    };
+  } catch (error) {
+    return {
+      id: areaId,
+      name: areaId,
+      displayName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
+      designCanvasPhotos: []
+    };
+  }
+}, [getCurrentTechnology]);
   
   const availableAreas = useMemo(() => getAvailableAreas(), [getAvailableAreas]);
   
@@ -2682,6 +2880,17 @@ const [activeColor, setActiveColor] = useState<string>(() => {
       };
     }
   }, [getCustomizationAreaByName, activeColor, getCanvasConfig]);
+
+  // Filter out hidden design elements for mockup rendering
+const getVisibleDesignElements = useCallback((elements: Record<string, DesignElement[]>) => {
+  const visibleElements: Record<string, DesignElement[]> = {};
+  
+  Object.keys(elements).forEach(area => {
+    visibleElements[area] = (elements[area] || []).filter(element => element.visible !== false);
+  });
+  
+  return visibleElements;
+}, []);
 
   const calculateDPI = useCallback((element: DesignElement): { dpi: number; quality: 'Poor' | 'Good' | 'Excellent'; color: string } => {
     if (!element.image || !element.originalImageWidth || !element.originalImageHeight) {
@@ -3575,7 +3784,7 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
       productData,
       selectedColors,
       selectedSizes,
-      designElements,
+      getVisibleDesignElements(designElements),
       getAllCanvasConfigs,
       getAllPrintableAreas,
       mockupCalculation,
@@ -3621,58 +3830,107 @@ const renderUploadPanel = () => {
     .reduce((total, el) => total + (el.imageBase64?.length || 0), 0);
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-medium">Upload Design Images</h3>
-      
+    <div className="space-y-6">
       {/* Enhanced storage info */}
       {totalImages > 0 && (
-        <div className="p-3 rounded-lg bg-blue-50">
-          <div className="mb-1 text-sm font-medium text-blue-800">
-            ðŸ’¾ Storage Information
-          </div>
-          <div className="text-sm text-blue-700">
-            Images with base64: <strong>{imagesWithBase64}/{totalImages}</strong>
-          </div>
-          <div className="text-sm text-blue-700">
-            Storage size: <strong>{(totalBase64Size / 1024 / 1024).toFixed(2)} MB</strong>
-          </div>
-          {imagesWithBase64 === totalImages ? (
-            <div className="mt-1 text-sm text-green-700">
-              âœ… All images will be saved in JSON export
+        <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
+          <div className="flex items-center mb-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center mr-3">
+              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+              </svg>
             </div>
-          ) : (
-            <div className="mt-1 text-sm text-orange-700">
-              âš ï¸ Some images may not persist in export
+            <div>
+              <h4 className="font-semibold text-blue-900">Storage Information</h4>
+              <p className="text-xs text-blue-600">{(totalBase64Size / 1024 / 1024).toFixed(2)} MB used</p>
             </div>
-          )}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="bg-white/60 rounded-lg p-3">
+              <div className="text-xs text-blue-600 font-medium">IMAGES</div>
+              <div className="text-lg font-bold text-blue-900">{imagesWithBase64}/{totalImages}</div>
+              <div className="text-xs text-blue-600">with base64</div>
+            </div>
+            <div className="bg-white/60 rounded-lg p-3">
+              <div className="text-xs text-blue-600 font-medium">STATUS</div>
+              <div className={`text-lg font-bold ${imagesWithBase64 === totalImages ? 'text-green-600' : 'text-orange-600'}`}>
+                {imagesWithBase64 === totalImages ? '✓' : '⚠'}
+              </div>
+              <div className="text-xs text-blue-600">
+                {imagesWithBase64 === totalImages ? 'All stored' : 'Partial storage'}
+              </div>
+            </div>
+          </div>
         </div>
       )}
       
+      {/* Enhanced upload area */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+        className={`relative rounded-xl border-2 border-dashed transition-all duration-300 ${
           isDragging 
-            ? 'border-orange-500 bg-orange-50' 
-            : 'border-gray-300 hover:border-gray-400'
+            ? 'border-orange-400 bg-orange-50 scale-102' 
+            : 'border-gray-300 hover:border-orange-300 hover:bg-orange-50/30'
         }`}
       >
-        <div className="text-gray-500">
-          <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          <p>Drop images here or click to upload</p>
-          <p className="mt-1 text-sm">PNG, JPG, GIF up to 10MB</p>
-          <p className="mt-1 text-xs text-green-600">âœ… Images will be stored as base64 in JSON</p>
+        <div className="p-12 text-center">
+          <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center transition-all ${
+            isDragging ? 'bg-orange-100' : 'bg-gray-100'
+          }`}>
+            <svg 
+              className={`w-8 h-8 transition-colors ${isDragging ? 'text-orange-600' : 'text-gray-400'}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+          </div>
+          
+          <h3 className="mb-2 text-lg font-semibold text-gray-900">
+            {isDragging ? 'Drop your images here' : 'Upload design images'}
+          </h3>
+          <p className="mb-1 text-sm text-gray-600">
+            Drag and drop your files or click to browse
+          </p>
+          <p className="mb-6 text-xs text-gray-500">
+            Supports PNG, JPG, GIF up to 10MB each
+          </p>
+          
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center px-6 py-3 text-sm font-medium text-white rounded-lg transition-all hover:shadow-lg transform hover:scale-105"
+            style={{ backgroundColor: brandColor }}
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Choose Files
+          </button>
+          
+          <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+            <p className="text-xs text-green-700 font-medium">
+              All images are automatically converted to base64 for persistent storage
+            </p>
+          </div>
         </div>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="px-4 py-2 mt-4 text-white rounded hover:opacity-90"
-          style={{ backgroundColor: brandColor }}
-        >
-          Choose Files
-        </button>
+        
+        {/* Drag overlay */}
+        {isDragging && (
+          <div className="absolute inset-0 bg-orange-100/50 rounded-xl flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 shadow-lg">
+              <div className="text-center">
+                <svg className="w-12 h-12 mx-auto mb-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p className="text-lg font-semibold text-orange-800">Drop to upload</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       <input
@@ -3684,21 +3942,72 @@ const renderUploadPanel = () => {
         className="hidden"
       />
       
+      {/* Enhanced uploaded files list */}
+      {/* Enhanced uploaded files list */}
       {uploadedFiles.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="font-medium">Uploaded Files</h4>
-          {uploadedFiles.map(file => (
-            <div key={file.id} className="flex items-center p-2 space-x-2 text-sm rounded bg-gray-50">
-              <img src={file.url} alt={file.name} className="object-cover w-8 h-8 rounded" />
-              <span className="flex-1 truncate">{file.name}</span>
-              <span className="text-gray-500">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
-              {file.base64Data ? (
-                <span className="text-xs text-green-600">âœ… Base64</span>
-              ) : (
-                <span className="text-xs text-orange-600">âš ï¸ No Base64</span>
-              )}
-            </div>
-          ))}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-gray-900">Recent Uploads</h4>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+              {uploadedFiles.length} file{uploadedFiles.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          
+          <div className="space-y-2">
+            {uploadedFiles.map(file => {
+              // Truncate long filenames
+              const displayName = file.name.length > 25 
+                ? `${file.name.substring(0, 20)}...${file.name.split('.').pop()}` 
+                : file.name;
+              
+              return (
+                <div key={file.id} className="flex items-center p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                  <div className="relative mr-3 flex-shrink-0">
+                    <img 
+                      src={file.url} 
+                      alt={file.name} 
+                      className="object-cover w-12 h-12 rounded-lg border border-gray-200" 
+                    />
+                    <div className="absolute -top-1 -right-1">
+                      {file.base64Data ? (
+                        <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                          <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <div className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+                          <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <p 
+                      className="text-sm font-medium text-gray-900 truncate cursor-pointer hover:text-blue-600" 
+                      title={file.name}
+                    >
+                      {displayName}
+                    </p>
+                    <div className="flex items-center mt-1 space-x-3 text-xs text-gray-500">
+                      <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                      <span>•</span>
+                      <span className={file.base64Data ? 'text-green-600' : 'text-orange-600'}>
+                        {file.base64Data ? 'Base64 stored' : 'Not stored'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="ml-2 flex-shrink-0">
+                    <div className={`w-2 h-2 rounded-full ${file.base64Data ? 'bg-green-500' : 'bg-orange-500'}`} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -3954,43 +4263,35 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
   }, [selectedId]);
   
   const handleMoveLayer = useCallback((layerId: string, direction: 'up' | 'down') => {
-    setDesignElements(prev => {
-      const updated = { ...prev };
+  setDesignElements(prev => {
+    const updated = { ...prev };
+    
+    Object.keys(updated).forEach(area => {
+      const elements = [...updated[area]];
+      const elementIndex = elements.findIndex(el => el.id === layerId);
       
-      Object.keys(updated).forEach(area => {
-        const elements = [...updated[area]];
-        const elementIndex = elements.findIndex(el => el.id === layerId);
-        
-        if (elementIndex === -1) return;
-        
-        if (direction === 'up' && elementIndex > 0) {
-          const currentElement = elements[elementIndex];
-          const targetElement = elements[elementIndex - 1];
-          
-          const tempZIndex = currentElement.zIndex;
-          currentElement.zIndex = targetElement.zIndex;
-          targetElement.zIndex = tempZIndex;
-          
-          elements.sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
-        } else if (direction === 'down' && elementIndex < elements.length - 1) {
-          const currentElement = elements[elementIndex];
-          const targetElement = elements[elementIndex + 1];
-          
-          const tempZIndex = currentElement.zIndex;
-          currentElement.zIndex = targetElement.zIndex;
-          targetElement.zIndex = tempZIndex;
-          
-          elements.sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
-        }
-        
-        updated[area] = elements;
-      });
+      if (elementIndex === -1) return;
       
-      return updated;
+      const currentElement = elements[elementIndex];
+      
+      if (direction === 'up') {
+        // Move layer up in z-index (to front)
+        const maxZIndex = Math.max(...elements.map(el => el.zIndex || 0));
+        currentElement.zIndex = maxZIndex + 1;
+      } else {
+        // Move layer down in z-index (to back)
+        const minZIndex = Math.min(...elements.map(el => el.zIndex || 0));
+        currentElement.zIndex = Math.max(0, minZIndex - 1);
+      }
+      
+      updated[area] = elements;
     });
     
-    triggerUpdate();
-  }, [triggerUpdate]);
+    return updated;
+  });
+  
+  triggerUpdate();
+}, [triggerUpdate]);
   
   const handleDuplicateLayer = useCallback((layerId: string) => {
     setDesignElements(prev => {
@@ -4136,7 +4437,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
             </div>
           )} */}
           
-          <div className="space-y-2 max-h-[calc(100vh-275px)] overflow-y-auto">
+          <div className="space-y-2 max-h-[calc(100vh-190px)] overflow-y-auto">
             {colorSpecificMockupGroups.length > 0 ? (
               colorSpecificMockupGroups.flatMap(group => 
               group.mockups.map((mockup, index) => {
@@ -4155,7 +4456,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                   <ThumbnailPreview
                     key={`${group.colorHex}-${mockup.id}`}
                     mockup={mockup}
-                    designElements={designElements}
+                   designElements={getVisibleDesignElements(designElements)} 
                     canvasConfigs={canvasConfigs}
                     canvasPrintableAreas={printableAreas}
                     productColor={mockupProductColor} // ✅ This will now be the correct group color
@@ -4175,7 +4476,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                   <ThumbnailPreview
                     key={mockup.id}
                     mockup={mockup}
-                    designElements={designElements}
+                   designElements={getVisibleDesignElements(designElements)} 
                     canvasConfigs={canvasConfigs}
                     canvasPrintableAreas={printableAreas}
                     productColor={mockupProductColor}
@@ -4198,7 +4499,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
         </div>
         
         {/* Main Preview */}
-        <div className="flex flex-col flex-1 p-4">
+        <div className="flex flex-col flex-1 p-4 overflow-y-auto">
           {/* Enhanced Export Button Row */}
           {/* <div className="flex items-center justify-between mb-4">
             <div className="text-sm text-gray-600">
@@ -4231,9 +4532,50 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           {/* Main Preview Content */}
           <div className="flex items-center justify-center flex-1">
           <div className="relative">
-            <div className="w-[500px] h-[500px] relative bg-gray-50 rounded-lg overflow-hidden shadow-lg">
+            <div className="w-[400px] h-[400px] relative bg-gray-50 rounded-lg overflow-hidden shadow-lg">
               {(() => {
-                const heroMockup = selectedHeroMockup || allMockups[0];
+                // const heroMockup = selectedHeroMockup || allMockups[0];
+                const heroMockup = selectedHeroMockup || (() => {
+                // 1. First try exact color match
+                let matchingMockup = allMockups.find(mockup => {
+                  const mockupColor = mockup.photoColor?.toLowerCase() || '';
+                  return mockupColor === activeColor?.toLowerCase();
+                });
+                
+                if (matchingMockup) {
+                  console.log('Found exact color match:', matchingMockup.photoColor);
+                  return matchingMockup;
+                }
+                
+                // 2. Try to find neutral mockups that can be colored
+                const neutralColors = ['#ffffff', '#f5f5f5', '#fafafa', 'white'];
+                matchingMockup = allMockups.find(mockup => {
+                  const mockupColor = mockup.photoColor?.toLowerCase() || '';
+                  return neutralColors.includes(mockupColor);
+                });
+                
+                if (matchingMockup) {
+                  console.log('Found neutral mockup for coloring:', matchingMockup.photoColor);
+                  return matchingMockup;
+                }
+                
+                // 3. Use dynamic neutral detector to find more neutral options
+                const neutralDetector = createDynamicNeutralDetector(productData);
+                matchingMockup = allMockups.find(mockup => {
+                  const mockupColor = mockup.photoColor || '';
+                  return neutralDetector.isNeutral(mockupColor);
+                });
+                
+                if (matchingMockup) {
+                  console.log('Found neutral mockup via detector:', matchingMockup.photoColor);
+                  return matchingMockup;
+                }
+                
+                // 4. Last resort: use first mockup but log the mismatch
+                console.log('No matching mockup found, using first available:', allMockups[0]?.photoColor, 'for active color:', activeColor);
+                return allMockups[0];
+              })();
+              console.log("mockup selected color:",heroMockup);
                 
                 if (!heroMockup) {
                   return (
@@ -4254,16 +4596,16 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                   {/* ✅ CUSTOM MAIN PREVIEW - Using ThumbnailPreview logic but styled for main preview */}
                   <div 
                     className="w-full h-full p-0 transition-all cursor-default"
-                    style={{ 
-                      border: '3px solid',
-                      // borderColor: brandColor,
-                      borderRadius: '8px'
-                    }}
+                    // style={{ 
+                    //   // border: '3px solid',
+                    //   // borderColor: brandColor,
+                    //   borderRadius: '8px'
+                    // }}
                   >
                     <div className="relative w-full h-full overflow-hidden rounded">
                       <ThumbnailPreview
                         mockup={heroMockup}
-                        designElements={designElements}
+                        designElements={getVisibleDesignElements(designElements)}  
                         canvasConfigs={canvasConfigs}
                         canvasPrintableAreas={printableAreas}
                         productColor={heroProductColor}
@@ -4281,9 +4623,9 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                     </div> */}
                     
                     {/* Color info overlay */}
-                    <div className="absolute px-2 py-1 text-xs text-white rounded bottom-2 left-2 bg-black/70 backdrop-blur-sm">
+                    {/* <div className="absolute px-2 py-1 text-xs text-white rounded bottom-2 left-2 bg-black/70 backdrop-blur-sm">
                       {selectedColors.find(c => c.value === activeColor)?.name || 'Active Color'}: {heroProductColor}
-                    </div>
+                    </div> */}
                     
                     {/* Engine info overlay */}
                     {/* <div className="absolute px-2 py-1 text-xs font-medium text-white rounded top-2 right-2 bg-green-500/90 backdrop-blur-sm">
@@ -4325,11 +4667,11 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                     </div>
                   </div>
                   
-                  {(selectedHeroMockup || allMockups[0])?.visibleAreas?.[0]?.fabricIntegration && (
+                  {(selectedHeroMockup || allMockups[0])?.area?.[0]?.fabricIntegration && (
                     <div className="pt-2 mt-2 border-t">
-                      <span className="font-medium">Fabric:</span> {(selectedHeroMockup || allMockups[0]).visibleAreas[0].fabricIntegration.bfabType}
+                      <span className="font-medium">Fabric:</span> {(selectedHeroMockup || allMockups[0]).area[0].fabricIntegration.bfabType}
                       {' | '}
-                      <span className="font-medium">Intensity:</span> {(selectedHeroMockup || allMockups[0]).visibleAreas[0].fabricIntegration.textureIntensity}
+                      <span className="font-medium">Intensity:</span> {(selectedHeroMockup || allMockups[0]).area[0].fabricIntegration.textureIntensity}
                     </div>
                   )}
                 </div>
@@ -4368,6 +4710,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
     
     return elements
       .filter(element => element.visible !== false)
+      .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
       .map(element => {
         const isSelected = selectedId === element.id;
         const isLocked = element.locked || false;
@@ -4670,6 +5013,168 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
   
   const renderSettingsPanel = () => {
     switch (activeTab) {
+    case 'product':
+      return (
+        <div className="space-y-4">
+          <h3 className="font-semibold text-lg">{productData?.name || 'Unnamed Product'}</h3>
+          
+          {/* Product Basic Info */}
+          <div className="p-1  rounded-l">
+            <div className="space-y-2">
+              {/* <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</label>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{productData?.name || 'Unnamed Product'}</p>
+              </div> */}
+              
+              <div>
+                <label className="text-xs font-medium text-black uppercase tracking-wider">Product Type</label>
+                <p className="mt-1 text-sm text-black capitalize">{productData?.productType || 'Unknown'}</p>
+              </div>
+              
+              <div>
+                <label className="text-xs font-medium text-black uppercase tracking-wider">Brand</label>
+                <p className="mt-1 text-sm text-black">{productData?.brand || 'Junooni'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Technology Information */}
+          <div className="p-2  rounded-lg ">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Technology</label>
+                <span className="px-2 py-1 text-xs font-medium text-white rounded" style={{ backgroundColor: brandColor }}>
+                  Active
+                </span>
+              </div>
+              
+              <div className="p-0  rounded-md">
+                <div className="flex items-center justify-between mb-2">
+                  <select
+                    value={activeTechnology}
+                    onChange={(e) => setActiveTechnology(e.target.value)}
+                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  >
+                    {productData?.printT?.map((tech: any) => (
+                      <option key={tech.id} value={tech.id}>
+                        {tech.technologyName.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+
+                
+                {/* Current Area */}
+                {/* <div className="mt-2">
+                  <label className="text-xs text-gray-600">Current Area:</label>
+                  <div className="flex space-x-1 mt-1">
+                    {availableAreas.map(area => (
+                      <button
+                        key={area}
+                        onClick={() => setActiveArea(area)}
+                        className={`px-2 py-1 text-xs rounded capitalize transition-all ${
+                          activeArea === area 
+                            ? 'text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                        }`}
+                        style={{
+                          backgroundColor: activeArea === area ? brandColor : '',
+                        }}
+                      >
+                        {area}
+                        {designElements[area]?.length > 0 && (
+                          <span className="ml-1 opacity-75">
+                            ({designElements[area].length})
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div> */}
+              </div>
+            </div>
+          </div>
+
+          {/* Product Statistics */}
+          {/* <div className="p-4 bg-white rounded-lg border border-gray-200">
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Design Statistics</label>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="text-center p-2 bg-gray-50 rounded">
+                <div className="text-lg font-bold" style={{ color: brandColor }}>
+                  {Object.values(designElements).flat().length}
+                </div>
+                <div className="text-xs text-gray-600">Total Elements</div>
+              </div>
+              <div className="text-center p-2 bg-gray-50 rounded">
+                <div className="text-lg font-bold" style={{ color: brandColor }}>
+                  {Object.keys(designElements).filter(area => designElements[area]?.length > 0).length}
+                </div>
+                <div className="text-xs text-gray-600">Active Areas</div>
+              </div>
+              <div className="text-center p-2 bg-gray-50 rounded">
+                <div className="text-lg font-bold" style={{ color: brandColor }}>
+                  {selectedColors.length}
+                </div>
+                <div className="text-xs text-gray-600">Colors</div>
+              </div>
+              <div className="text-center p-2 bg-gray-50 rounded">
+                <div className="text-lg font-bold" style={{ color: brandColor }}>
+                  {selectedSizes.length}
+                </div>
+                <div className="text-xs text-gray-600">Sizes</div>
+              </div>
+            </div>
+          </div> */}
+
+          {/* Product Pricing/Cost Info */}
+          {/* {(productData?.cost || productData?.pricing) && (
+            <div className="p-4 bg-white rounded-lg border border-gray-200">
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing Information</label>
+              <div className="space-y-2 mt-3">
+                {productData.cost && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Base Cost:</span>
+                    <span className="font-medium">₹{productData.cost}</span>
+                  </div>
+                )}
+                {productData.pricing?.suggestedRetailPrice && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Suggested Retail:</span>
+                    <span className="font-medium">₹{productData.pricing.suggestedRetailPrice}</span>
+                  </div>
+                )}
+                {productData.pricing?.markupValue && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Markup:</span>
+                    <span className="font-medium">{productData.pricing.markupValue}%</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )} */}
+
+          {/* Available Options */}
+          {/* <div className="p-4 bg-white rounded-lg border border-gray-200">
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Available Options</label>
+            <div className="space-y-2 mt-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Color Options:</span>
+                <span className="font-medium">{productData?.colorOptions?.length || 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Size Options:</span>
+                <span className="font-medium">{productData?.sizeOptions?.length || 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Print Technologies:</span>
+                <span className="font-medium">{productData?.printT?.length || 0}</span>
+              </div>
+            </div>
+          </div> */}
+        </div>
+      );
+
       case 'colors':
         return (
           <div className="space-y-4">
@@ -4799,10 +5304,10 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                 isDragging 
                   ? 'border-orange-500 bg-orange-50' 
-                  : 'border-gray-300 hover:border-gray-400'
+                  : 'border-gray-500 hover:border-gray-400'
               }`}
             >
-              <div className="text-gray-500">
+              <div className="text-gray-700">
                 <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
@@ -4828,17 +5333,70 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
             />
             
             {uploadedFiles.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium">Uploaded Files</h4>
-                {uploadedFiles.map(file => (
-                  <div key={file.id} className="flex items-center space-x-2 text-sm">
-                    <img src={file.url} alt={file.name} className="object-cover w-8 h-8 rounded" />
-                    <span className="flex-1 truncate">{file.name}</span>
-                    <span className="text-gray-500">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
-                  </div>
-                ))}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-gray-900">Uploaded Files</h4>
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                  {uploadedFiles.length} file{uploadedFiles.length !== 1 ? 's' : ''}
+                </span>
               </div>
-            )}
+              
+              <div className="space-y-2">
+                {uploadedFiles.map(file => {
+                  // Create a shorter display name
+                  const getShortName = (filename) => {
+                    if (filename.length <= 20) return filename;
+                    const extension = filename.split('.').pop();
+                    const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+                    return `${nameWithoutExt.substring(0, 12)}...${extension ? `.${extension}` : ''}`;
+                  };
+                  
+                  const shortName = getShortName(file.name);
+                  
+                  return (
+                    <div key={file.id} className="flex items-center p-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                      <div className="relative mr-3 flex-shrink-0">
+                        <img 
+                          src={file.url} 
+                          alt={file.name} 
+                          className="object-cover w-10 h-10 rounded border border-gray-200" 
+                        />
+                        <div className="absolute -top-1 -right-1">
+                          {file.base64Data ? (
+                            <div className="w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
+                              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          ) : (
+                            <div className="w-3 h-3 bg-orange-500 rounded-full">
+                              <span className="text-xs text-white">!</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <p 
+                          className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600" 
+                          title={file.name}
+                        >
+                          {shortName}
+                        </p>
+                        <div className="flex items-center mt-1 text-xs text-gray-500">
+                          <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                          <span className="mx-1">•</span>
+                          <span className={file.base64Data ? 'text-green-600' : 'text-orange-600'}>
+                            {file.base64Data ? 'Stored' : 'Not stored'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           </div>
         );
 
@@ -4899,7 +5457,44 @@ useEffect(() => {
   return () => clearInterval(validator);
 }, [designElements]);
 
-
+// Auto-select hero mockup based on active color
+// Auto-select hero mockup based on active color
+useEffect(() => {
+  if (allMockups.length > 0) {
+    // Always try to find the best mockup for current active color
+    let bestMockup = null;
+    
+    // 1. Exact match
+    bestMockup = allMockups.find(mockup => {
+      const mockupColor = mockup.photoColor?.toLowerCase() || '';
+      return mockupColor === activeColor?.toLowerCase();
+    });
+    
+    // 2. Neutral mockup
+    if (!bestMockup) {
+      const neutralColors = ['#ffffff', '#f5f5f5', '#fafafa', 'white'];
+      bestMockup = allMockups.find(mockup => {
+        const mockupColor = mockup.photoColor?.toLowerCase() || '';
+        return neutralColors.includes(mockupColor);
+      });
+    }
+    
+    // 3. Use dynamic neutral detector
+    if (!bestMockup) {
+      const neutralDetector = createDynamicNeutralDetector(productData);
+      bestMockup = allMockups.find(mockup => {
+        const mockupColor = mockup.photoColor || '';
+        return neutralDetector.isNeutral(mockupColor);
+      });
+    }
+    
+    // Update if we found a better match
+    if (bestMockup && (!selectedHeroMockup || selectedHeroMockup.photoColor !== bestMockup.photoColor)) {
+      console.log('Auto-selecting better mockup:', bestMockup.photoColor, 'for color:', activeColor);
+      setSelectedHeroMockup(bestMockup);
+    }
+  }
+}, [activeColor, allMockups, selectedHeroMockup, productData]);
   
   useEffect(() => {
     const transformer = transformerRef.current;
@@ -4925,20 +5520,86 @@ useEffect(() => {
     }
   }, [selectedId, designElements, activeArea]);
   
-  useEffect(() => {
-  const loadCanvasImages = async () => {
+  // 🔥 FIX: Load canvas images for ALL areas, not just the active one
+useEffect(() => {
+  const loadAllAreaImages = async () => {
+    const technology = getCurrentTechnology();
+    if (!technology?.custAreas?.length) return;
+    
+    // Load images for ALL available areas
+    for (const area of availableAreas) {
+      try {
+        const custArea = getCustomizationAreaByName(area);
+        if (!custArea?.designCanvasPhotos?.length) {
+          console.log(`No designCanvasPhotos for area: ${area}`);
+          continue;
+        }
+        
+        // Find the best photo for this area
+        let photo = custArea.designCanvasPhotos.find((p: any) => 
+          p?.photoColor?.toLowerCase() === activeColor?.toLowerCase()
+        );
+        
+        if (!photo) {
+          photo = custArea.designCanvasPhotos.find((p: any) => 
+            p?.photoColor?.toLowerCase() === '#ffffff'
+          );
+        }
+        
+        if (!photo && custArea.designCanvasPhotos.length > 0) {
+          photo = custArea.designCanvasPhotos[0];
+        }
+        
+        if (!photo?.photo?.url) continue;
+        
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        const resolvedUrl = resolveImageUrl(photo.photo.url);
+        
+        // Use Promise to handle async loading
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            const key = `${area}_${activeColor}`;
+            setCanvasImages(prev => ({ 
+              ...prev, 
+              [key]: img, 
+              [area]: img
+            }));
+            console.log(`Preloaded image for area: ${area}`);
+            resolve();
+          };
+          
+          img.onerror = (error) => {
+            console.error(`Failed to preload image for area: ${area}`, error);
+            reject(error);
+          };
+          
+          img.src = resolvedUrl;
+        });
+      } catch (error) {
+        console.error(`Error preloading image for area: ${area}:`, error);
+      }
+    }
+  };
+  
+  loadAllAreaImages();
+}, [activeColor, activeTechnology, availableAreas, getCurrentTechnology, getCustomizationAreaByName]);
+
+// 🔥 ADD: Separate effect for active area changes
+useEffect(() => {
+  const loadActiveAreaImage = async () => {
     const area = getCustomizationAreaByName(activeArea);
-    if (!area?.designCanvasPhotos?.length) {
+    if (!area?.designCanvasPhotos?.length) return;
+    
+    // Check if image is already loaded
+    const existingImage = canvasImages[`${activeArea}_${activeColor}`] || canvasImages[activeArea];
+    if (existingImage) {
+      console.log(`Image already loaded for active area: ${activeArea}`);
       return;
     }
     
+    // Load image for active area if not already loaded
     try {
-      const overlayNeeded = checkIfColorOverlayNeeded(activeArea, activeColor);
-      setNeedsColorOverlay(prev => ({
-        ...prev,
-        [`${activeArea}_${activeColor}`]: overlayNeeded
-      }));
-      
       let photo = area.designCanvasPhotos.find((p: any) => 
         p?.photoColor?.toLowerCase() === activeColor?.toLowerCase()
       );
@@ -4953,9 +5614,7 @@ useEffect(() => {
         photo = area.designCanvasPhotos[0];
       }
       
-      if (!photo?.photo?.url) {
-        return;
-      }
+      if (!photo?.photo?.url) return;
       
       const img = new Image();
       img.crossOrigin = "anonymous";
@@ -4968,19 +5627,21 @@ useEffect(() => {
           [key]: img, 
           [activeArea]: img
         }));
-        // ✅ REMOVED triggerUpdate() call
+        console.log(`Loaded image for active area: ${activeArea}`);
       };
       
       img.onerror = (error) => {
+        console.error(`Failed to load image for active area: ${activeArea}`, error);
       };
       
       img.src = resolvedUrl;
     } catch (error) {
+      console.error(`Error loading active area image: ${activeArea}:`, error);
     }
   };
   
-  loadCanvasImages();
-}, [activeColor, activeTechnology, activeArea, getCustomizationAreaByName, checkIfColorOverlayNeeded]); // ✅ REMOVED triggerUpdate from deps
+  loadActiveAreaImage();
+}, [activeArea]);
   
   useEffect(() => {
     const currentAreas = getAvailableAreas();
@@ -5029,6 +5690,24 @@ useEffect(() => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedId, deleteSelectedElement]);
   
+// 🔥 ADD: Initialize canvas images on component mount
+useEffect(() => {
+  console.log('Component mounted, initializing canvas images...');
+  
+  // Trigger initial load of all area images
+  setForceUpdate(prev => prev + 1);
+}, []); // Empty dependency array - only run on mount
+
+useEffect(() => {
+  const areas = getAvailableAreas();
+  setAvailableAreasData(areas);
+  
+  // Set first area as active if current active area doesn't exist
+  if (!areas.find(a => a.id === activeArea) && areas.length > 0) {
+    setActiveArea(areas[0].id);
+  }
+}, [activeTechnology, getAvailableAreas]);
+
   useEffect(() => {
     return () => {
       uploadedFiles.forEach(file => {
@@ -5055,248 +5734,362 @@ useEffect(() => {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
       {/* Enhanced Top Header */}
-      <div className="px-4 py-2 bg-white border-b border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
-            {/* <div className="ml-2 text-sm text-gray-600">
-              Enhanced Professional Designer
-            </div> */}
-            {/* {mockupCalculation && (
-              <div className="px-3 py-1 ml-4 text-xs text-blue-800 bg-blue-100 rounded-full">
-                {mockupCalculation.strategy.replace(/_/g, ' ')}: {mockupCalculation.totalMockups} unique mockups
-              </div>
-            )} */}
-          </div>
-          
-          <button
-            onClick={handleImportToStore}
-            disabled={!hasDesignElements || isGeneratingForStore || !mockupCalculation}
-            className="flex items-center gap-2 px-4 py-2 font-medium text-white transition-colors rounded-lg shadow-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ backgroundColor: brandColor }}
-          >
-            {isGeneratingForStore ? (
-              <>
-                <div className="w-4 h-4 border-b-2 border-white rounded-full animate-spin"></div>
-                Generating Mockups...
-              </>
-            ) : (
-              <>
-                Import to Store 
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content Container */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Enhanced Sidebar - Design Mode Only */}
-        {activeView === 'design' && (
-          <div className="flex flex-col w-1/4 bg-white border-r border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-              <div>
-                {/* <h1 className="text-lg font-semibold text-gray-800">{productData.name}</h1>
-                <p className="text-xs text-gray-500">Brand: {productData.brand}</p> */}
-                
-                <div className="flex items-center mt-2 text-xs" style={{ color: brandColor }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {selectedColors.find(c => c.value === activeColor)?.name || 'Active Color'}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {/* <div className="px-2 py-1 text-xs text-gray-500 text-orange-800 bg-orange-100 rounded-full">
-                  {getSurfaceConfiguration().renderType.toUpperCase()}
-                </div> */}
-                {isGeneratingForStore && (
-                  <div className="px-2 py-1 text-xs text-white bg-green-500 rounded-full animate-pulse">
-                    GENERATING
-                  </div>
-                )}
-                {/* {mockupCalculation && (
-                  <div className="px-2 py-1 text-xs text-purple-800 bg-purple-100 rounded-full">
-                    {mockupCalculation.totalMockups}M
-                  </div>
-                )} */}
-              </div>
+        <div className="px-4 py-2 bg-white border-b border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            {/* Left: Logo */}
+            <div className="flex items-center">
+              <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
             </div>
             
-            <div className="flex overflow-x-auto border-b border-gray-200">
-              {(['colors', 'sizes', 'upload', 'library', 'layers'] as const).map(tab => (
-                <button
-                  key={tab}
-                  className={`flex-1 py-4 px-2 text-sm font-medium capitalize transition-all whitespace-nowrap relative ${
-                    activeTab === tab 
-                      ? 'border-b-2 bg-orange-50' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}
-                  style={{ 
-                    borderColor: activeTab === tab ? brandColor : '',
-                    color: activeTab === tab ? brandColor : ''
-                  }}
-                  onClick={() => setActiveTab(tab)}
-                >
-                  {tab}
-                  {tab === 'layers' && (
-                    <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-orange-500 rounded-full -top-0 -right-1">
-                      {getLayersInfo().length}
-                    </span>
-                  )}
-                  {tab === 'colors' && mockupCalculation && (
-                    <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-orange-500 rounded-full -top-0 -right-1">
-                      {selectedColors.length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-            
-            <div className="flex-1 p-4 overflow-y-auto">
-              {renderSettingsPanel()}
-            </div>
-            
-            <div className="p-4 space-y-2 border-t border-gray-100">
-              <div className="mb-2 text-xs text-gray-600">
-                {/* <div className="flex justify-between">
-                  <span>Layers: {getLayersInfo().length}</span>
-                  <span>Files: {uploadedFiles.length}</span>
-                </div>
-                <div className="flex justify-between mt-1">
-                  <span>Colors: {selectedColors.length}</span>
-                  <span>Sizes: {selectedSizes.length}</span>
-                </div>
-                <div className="flex justify-between mt-1">
-                  <span>Strategy: {mockupCalculation?.strategy.replace(/_/g, ' ') || 'calculating...'}</span>
-                  <span>Unique: {mockupCalculation?.totalMockups || 0}</span>
-                </div>
-                <div className="flex justify-between mt-1">
-                  <span>Total Images: {(mockupCalculation?.totalMockups || 0) * selectedSizes.length}</span>
-                  <span className="font-medium" style={{ color: brandColor }}>
-                    ENHANCED
-                  </span>
-                </div> */}
-                {getLayersInfo().length > 0 && (
-                  <div className="flex justify-between mt-1">
-                    <span>Avg DPI: {Math.round(getLayersInfo().reduce((acc, layer) => acc + layer.dpi, 0) / getLayersInfo().length)}</span>
-                    <span className={getLayersInfo().every(layer => layer.printQuality === 'Excellent') ? 'text-green-600' : 
-                                   getLayersInfo().some(layer => layer.printQuality === 'Poor') ? 'text-red-600' : 'text-yellow-600'}>
-                      Quality: {getLayersInfo().every(layer => layer.printQuality === 'Excellent') ? 'Excellent' : 
-                               getLayersInfo().some(layer => layer.printQuality === 'Poor') ? 'Poor' : 'Good'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              
-            </div>
-          </div>
-        )}
-
-        {/* Main Content Area */}
-        <div className={`flex flex-col ${activeView === 'design' ? 'w-3/4' : 'flex-1'}`}>
-          <div className="flex items-center justify-between p-2 bg-white border-b border-gray-200 shadow-sm">
-            <div className="flex items-center space-x-3">
-              {activeView === 'design' && (
-                <>
-                  <div className="flex items-center">
-                    <span className="mr-2 text-sm font-medium">Technology:</span>
-                    <select
-                      value={activeTechnology}
-                      onChange={(e) => setActiveTechnology(e.target.value)}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:ring-2"
-                      style={{ focusRingColor: brandColor, focusBorderColor: brandColor }}
-                    >
-                      {productData.printTechn?.map((tech: any) => (
-                        <option key={tech.id} value={tech.id}>
-                          {tech.technologyName.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <span className="mr-2 text-sm font-medium">Area:</span>
-                    <div className="flex space-x-1">
-                      {availableAreas.map(area => (
-                        <button
-                          key={area}
-                          onClick={() => {
-                            setActiveArea(area);
-                          }}
-                          className={`px-3 py-1 text-sm rounded capitalize transition-all ${
-                            activeArea === area 
-                              ? 'text-white shadow-sm'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                          style={{
-                            backgroundColor: activeArea === area ? brandColor : '',
-                          }}
-                        >
-                          {area}
-                          {designElements[area]?.length > 0 && (
-                            <span className="ml-1 text-xs opacity-75">
-                              ({designElements[area].length})
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-              
-              {activeView === 'preview' && (
-                <div className="flex items-center space-x-2">
-                  {/* <h2 className="text-lg font-semibold">Enhanced Preview</h2> */}
-                  {/* <div className="text-sm text-gray-600">
-                    {Object.values(designElements).flat().length} design elements
-                  </div> */}
-                  {/* {mockupCalculation && (
-                    <div className="px-3 py-1 text-sm text-green-800 bg-green-100 rounded-full">
-                      {mockupCalculation.totalMockups} unique mockups
-                    </div>
-                  )} */}
-                  {isGeneratingForStore && (
-                    <div className="flex items-center text-sm text-green-600">
-                      <div className="w-3 h-3 mr-2 border-b-2 border-green-600 rounded-full animate-spin"></div>
-                      Generating enhanced data...
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <div className="flex p-1 bg-gray-100 rounded-lg">
+            {/* Center: Design/Preview Toggle Buttons */}
+            <div className="flex p-1 bg-gray-100 rounded-lg border border-gray-200">
               <button
                 onClick={() => setActiveView('design')}
-                className={`px-2 py-1 text-sm font-small rounded-md transition-all ${
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
                   activeView === 'design'
                     ? 'text-white shadow-sm'
-                    : 'text-gray-700 hover:text-gray-900'
+                    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                 }`}
                 style={{
                   backgroundColor: activeView === 'design' ? brandColor : 'transparent'
                 }}
               >
+                <PenTool size={16} strokeWidth={2} />
                 Design
               </button>
               <button
                 onClick={() => setActiveView('preview')}
-                className={`px-2 py-1 text-sm font-medium rounded-md transition-all ${
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
                   activeView === 'preview'
                     ? 'text-white shadow-sm'
-                    : 'text-gray-700 hover:text-gray-900'
+                    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                 }`}
                 style={{
                   backgroundColor: activeView === 'preview' ? brandColor : 'transparent'
                 }}
               >
+                <Eye size={16} strokeWidth={2} />
                 Preview
               </button>
             </div>
+            
+            {/* Right: Import to Store + Exit Button */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleImportToStore}
+                disabled={!hasDesignElements || isGeneratingForStore || !mockupCalculation}
+                className="flex items-center gap-2 px-4 py-2 font-medium text-white transition-colors rounded-lg shadow-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: brandColor }}
+              >
+                {isGeneratingForStore ? (
+                  <>
+                    <div className="w-4 h-4 border-b-2 border-white rounded-full animate-spin"></div>
+                    Generating Mockups...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    Import to Store
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={() => window.close()}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Close Designer"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
+        </div>
+
+      {/* Full Width Technology and Area Header - Moved Outside */}
+      {/* <div className="w-full px-8 py-1 bg-gray-50 border-b border-gray-200">
+        <div className="flex items-center space-x-6"> */}
+          {/* <div className="flex items-center">
+            <span className="mr-3 text-sm font-medium text-gray-700">Technology:</span>
+            <select
+              value={activeTechnology}
+              onChange={(e) => setActiveTechnology(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            >
+              {productData.printT?.map((tech: any) => (
+                <option key={tech.id} value={tech.id}>
+                  {tech.technologyName.toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </div> */}
+          
+          {/* <div className="flex items-center">
+            <span className="mr-3 text-sm font-medium text-gray-700">Area:</span>
+            <div className="flex space-x-2">
+              {availableAreas.map(area => (
+                <button
+                  key={area}
+                  onClick={() => setActiveArea(area)}
+                  className={`px-3 py-1 text-sm rounded-lg capitalize transition-all font-medium ${
+                    activeArea === area 
+                      ? 'text-white shadow-sm'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  }`}
+                  style={{
+                    backgroundColor: activeArea === area ? brandColor : '',
+                  }}
+                >
+                  {area}
+                  {designElements[area]?.length > 0 && (
+                    <span className="ml-2 text-xs opacity-75">
+                      ({designElements[area].length})
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div> */}
+          
+          {/* <div className="flex-1"></div> */}
+          
+          {/* <div className="flex p-1 bg-white rounded-lg border border-gray-200">
+            <button
+              onClick={() => setActiveView('design')}
+              className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
+                activeView === 'design'
+                  ? 'text-white shadow-sm'
+                  : 'text-gray-700 hover:text-gray-900'
+              }`}
+              style={{
+                backgroundColor: activeView === 'design' ? brandColor : 'transparent'
+              }}
+            >
+              Design
+            </button>
+            <button
+              onClick={() => setActiveView('preview')}
+              className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
+                activeView === 'preview'
+                  ? 'text-white shadow-sm'
+                  : 'text-gray-700 hover:text-gray-900'
+              }`}
+              style={{
+                backgroundColor: activeView === 'preview' ? brandColor : 'transparent'
+              }}
+            >
+              Preview
+            </button>
+          </div> */}
+        {/* </div>
+      </div> */}
+
+      {/* Main Content Container - Now Below Technology Header */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Collapsible Toggle Button */}
+        {activeView === 'design' && (
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className={`fixed z-40 p-2 bg-white border border-gray-300 rounded-r-lg shadow-md hover:bg-gray-50 transition-all duration-300 ${
+              sidebarCollapsed ? 'left-20' : 'left-96'
+            } top-[calc(50%+4rem)] -translate-y-1/2`}
+            title={sidebarCollapsed ? 'Expand content panel' : 'Collapse content panel'}
+          >
+            <svg 
+              className={`w-3 h-3 text-[#e65100] transition-transform duration-300 ${sidebarCollapsed ? 'rotate-0' : 'rotate-180'}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+
+        {/* Enhanced Vertical Sidebar - Design Mode Only */}
+        {activeView === 'design' && (
+          <div className="flex bg-white border-r border-gray-200 shadow-sm">
+            {/* Vertical Navigation - Always Visible */}
+            <div className="flex flex-col w-17 border-r border-gray-200" style={{ backgroundColor: '#e65100' }}>
+              {/* <div className="p-3 border-b border-orange-600">
+                <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div> */}
+              
+              <nav className="flex flex-col flex-1 p-2 space-y-1">
+                {([
+                  { id: 'product', icon: Package, label: 'Product', count: 1 }, // NEW: Product tab
+                  { id: 'colors', icon: Palette, label: 'Colors', count: selectedColors.length },
+                  { id: 'sizes', icon: Ruler, label: 'Sizes', count: selectedSizes.length },
+                  { id: 'upload', icon: Upload, label: 'Upload', count: uploadedFiles.length },
+                  { id: 'library', icon: FolderOpen, label: 'Library', count: 0 },
+                  { id: 'layers', icon: Layers, label: 'Layers', count: getLayersInfo().length }
+                ] as const).map(tab => {
+                  const IconComponent = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={`relative group flex flex-col items-center justify-center p-3 rounded-lg transition-all duration-200 ${
+                        activeTab === tab.id 
+                          ? 'bg-white text-[#e65100] shadow-sm' 
+                          : 'text-white hover:text-[#e65100] hover:bg-white/70'
+                      }`}
+                      title={tab.label}
+                    >
+                      <div className="relative">
+                        <IconComponent 
+                          size={20}
+                          strokeWidth={activeTab === tab.id ? 2.5 : 2}
+                        />
+                        
+                        {tab.count > 0 && tab.id !== 'product' && (
+                          <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-orange-600 bg-white rounded-full">
+                            {tab.count > 99 ? '99+' : tab.count}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <span className="mt-1 text-xs font-medium">{tab.label}</span>
+                      
+                      {/* Active indicator */}
+                      {activeTab === tab.id && (
+                        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-white rounded-r-full" />
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+              
+              {/* Status indicators at bottom */}
+              <div className="p-2 border-t border-orange-600">
+                <div className="space-y-2">
+                  {isGeneratingForStore && (
+                    <div className="flex items-center justify-center p-1">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    </div>
+                  )}
+                  
+                  {getLayersInfo().length > 0 && (
+                    <div className="flex items-center justify-center">
+                      <div 
+                        className={`w-2 h-2 rounded-full ${
+                          getLayersInfo().every(layer => layer.printQuality === 'Excellent') ? 'bg-green-400' : 
+                          getLayersInfo().some(layer => layer.printQuality === 'Poor') ? 'bg-red-400' : 'bg-yellow-400'
+                        }`}
+                        title={`Print Quality: ${getLayersInfo().every(layer => layer.printQuality === 'Excellent') ? 'Excellent' : 
+                              getLayersInfo().some(layer => layer.printQuality === 'Poor') ? 'Poor' : 'Good'}`}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Content Panel - Collapsible */}
+            <div className={`flex flex-col transition-all duration-300 overflow-hidden h-full ${
+              sidebarCollapsed ? 'w-0' : 'w-80'
+            }`}>
+              {/* Header */}
+              <div className="px-6 py-4 border-l-3 border-r-2 border-b border-t-2  border-[#e65100] bg-[#fed7aa]">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 capitalize">{activeTab}</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {activeTab === 'colors' && `${selectedColors.length} selected`}
+                      {activeTab === 'sizes' && `${selectedSizes.length} selected`}
+                      {activeTab === 'upload' && `${uploadedFiles.length} files`}
+                      {activeTab === 'library' && 'Browse templates'}
+                      {activeTab === 'layers' && `${getLayersInfo().length} layers`}
+                    </p>
+                  </div>
+                  
+                  {/* Active color indicator */}
+                  {activeTab === 'colors' && activeColor && (
+                    <div className="flex items-center space-x-2">
+                      <div 
+                        className="w-6 h-6 rounded-full border-2 border-gray-300 shadow-sm"
+                        style={{ backgroundColor: activeColor }}
+                        title="Active color"
+                      />
+                      <span className="text-xs font-medium text-gray-600">
+                        {selectedColors.find(c => c.value === activeColor)?.name || 'Active'}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Layer quality indicator */}
+                  {activeTab === 'layers' && getLayersInfo().length > 0 && (
+                    <div className="flex items-center space-x-2 text-xs">
+                      <div 
+                        className={`w-2 h-2 rounded-full ${
+                          getLayersInfo().every(layer => layer.printQuality === 'Excellent') ? 'bg-green-500' : 
+                          getLayersInfo().some(layer => layer.printQuality === 'Poor') ? 'bg-red-500' : 'bg-yellow-500'
+                        }`}
+                      />
+                      <span className="font-medium text-gray-600">
+                        Avg: {Math.round(getLayersInfo().reduce((acc, layer) => acc + layer.dpi, 0) / getLayersInfo().length)} DPI
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto border-l-3 border-r-2 border-b-2 border-[#e65100] bg-[#fed7aa] 
+                      [scrollbar-width:thin] [scrollbar-color:#4B4B4B_#ffccbc]">
+                <div className="px-3 py-3 bg-[#fed7aa] border-[#e65100]">
+                  {renderSettingsPanel()}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content Area - Now Without Technology Header */}
+        {/* Main Content Area - Now Without Technology Header */}
+        <div className={`flex transition-all duration-300 ${
+          activeView === 'design' 
+            ? sidebarCollapsed 
+              ? 'w-[calc(100%-4rem)]' 
+              : 'w-[calc(100%-24rem)]' 
+            : 'flex-1'
+        }`}>
+          {/* Add Area Thumbnails for Design Mode */}
+          {activeView === 'design' && (
+            <div className="w-40 p-3 bg-[#F3F4F6] ">
+              {/* <div className="mb-3">
+                <h4 className="text-sm font-medium text-gray-900">Areas</h4>
+              </div> */}
+              
+              <div className="space-y-2">
+                {availableAreas.map(area => {
+                  const areaData = getAreaDisplayData(area);
+                  const elementCount = designElements[area]?.length || 0;
+                  const canvasImage = canvasImages[`${area}_${activeColor}`] || canvasImages[area];
+                  
+                  return (
+                    <AreaSelectionThumbnail
+                      key={area}
+                      areaId={area}
+                      areaName={areaData.displayName}
+                      isActive={activeArea === area}
+                      onSelect={setActiveArea}
+                      canvasImage={canvasImage}
+                      activeColor={activeColor}
+                      elementCount={elementCount}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
           
           <div className="flex-1 p-2 overflow-hidden">
             {activeView === 'design' ? (
@@ -5321,9 +6114,9 @@ useEffect(() => {
       />
       
       {/* Enhanced Debug Panel */}
-      {debugMode && (
+      {/* {debugMode && (
         <div className="fixed z-50 max-w-md p-4 text-xs text-white rounded-lg bottom-4 left-4 bg-black/90">
-          <div className="mb-2 font-medium">ðŸ”§ Enhanced Debug Information</div>
+          <div className="mb-2 font-medium">🔧 Enhanced Debug Information</div>
           <div className="space-y-1">
             <div>Product: {productData?.name}</div>
             <div>Type: {productData?.productType}</div>
@@ -5365,7 +6158,7 @@ useEffect(() => {
             Close Debug
           </button>
         </div>
-      )}
+      )} */}
       
       {/* Debug Mode Toggle */}
       <button

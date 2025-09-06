@@ -1124,26 +1124,26 @@ useEffect(() => {
                 variant="ghost"
                 className="hidden md:flex"
               >
-                Dashboard
+              <a href="/dashboard">Dashboard</a>
               </Button>
               <Button 
                 variant="ghost"
                 className="hidden md:flex"
               >
-                Products
+                <a href="/products">Products</a>
               </Button>
               <Button 
                 variant="ghost"
                 className="hidden font-medium md:flex"
                 style={{ color: BRAND.primary }}
               >
-                Orders
+               <a href="/Orders">Orders</a>
               </Button>
               <Button 
                 variant="ghost"
                 className="hidden md:flex"
               >
-                Analytics
+                <a href="/Analytics">Analytics</a>
               </Button>
             </div>
           </div>

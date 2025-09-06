@@ -35,13 +35,15 @@ interface PayloadCMSMockupData {
   photoColor: string;
   priority: number;
   
-  // Standard visible areas
-  visibleAreas?: Array<{
+  // Standard visible areas with PayloadCMS field names
+  area?: Array<{
     id: string;
     areaName: string;
     visibility: 'full' | 'partial' | 'edge' | 'sleeve' | 'shadow' | 'reflection';
     visibilityPercentage?: number;
-    designPlacement: {
+    
+    // PayloadCMS uses 'design' not 'designPlacement'
+    design: {
       coordinateX: number;
       coordinateY: number;
       coordinateWidth: number;
@@ -51,19 +53,38 @@ interface PayloadCMSMockupData {
       skewY: number;
       scaleX: number;
       scaleY: number;
-      blendMode: string;
+      blend: string; // PayloadCMS uses 'blend' not 'blendMode'
       opacity: number | null;
       preserveColors: boolean | null;
     };
-    fabricIntegration?: {
+    
+    // PayloadCMS uses 'fbrc' not 'fabricIntegration'
+    fbrc?: {
       enableFabricBlend: boolean;
-      bfabType: string;
+      bfab: string; // PayloadCMS uses 'bfab' not 'bfabType'
       foldAwareness: boolean;
       seamAwareness: boolean;
       textureIntensity: number;
       fabricColor: string;
       fabricRoughness: number;
     };
+    
+    // PayloadCMS uses 'Config' not 'maskingConfiguration'
+    Config?: {
+      enableMasking: boolean;
+      mask: string; // PayloadCMS uses 'mask' not 'maskTypes'
+      maskPath?: string;
+    };
+    
+    // PayloadCMS uses 'grdnmsk' not 'gradientMaskSettings'
+    grdnmsk?: {
+      grdn: string; // PayloadCMS uses 'grdn' not 'gradientDirection'
+      gradientAngle: number;
+      fadeStart: number;
+      fadeEnd: number;
+      fadeIntensity: number;
+    };
+    
     surfaceWrapSettings?: {
       enableWrap: boolean;
       wrapAngle: number;
@@ -71,38 +92,30 @@ interface PayloadCMSMockupData {
       dynamicWrap: boolean;
       wrapFalloff: number;
     };
+    
     perspectiveSettings?: {
       enablePerspective: boolean;
       perspectiveIntensity: number;
       dynamicPerspective: boolean;
     };
-    maskingConfiguration?: {
-      enableMasking: boolean;
-      maskTypes: string;
-      maskPath?: string;
-    };
-    gradientMaskSettings?: {
-      gradientDirection: string;
-      gradientAngle: number;
-      fadeStart: number;
-      fadeEnd: number;
-      fadeIntensity: number;
-    };
+    
     edgeDetectionSettings?: {
       enableEdgeDetection: boolean;
       edgeThreshold: number;
       edgeSoftness: number;
     };
-    fabricEffectsSettings?: {
+    
+    // PayloadCMS uses 'fbrEft' not 'fabricEffectsSettings'
+    fbrEft?: {
       enableFolds: boolean;
       foldIntensity: number;
-      foldDirection: string;
+      fold: string; // PayloadCMS uses 'fold' not 'foldDirection'
       seamDistrt: boolean;
       fabricDpth: number;
     };
   }>;
   
-  // Smart visible areas (AI-powered)
+  // Smart visible areas (AI-powered) - keeping original structure
   smartVisA?: Array<{
     id: string;
     areaName: string;
@@ -143,11 +156,11 @@ interface PayloadCMSMockupData {
     };
   }>;
   
-  // Fabric properties from PayloadCMS
-  fabricProp?: {
-    mfabType: string;
+  // PayloadCMS uses 'fbrcProp' not 'fabricProp'
+  fbrcProp?: {
+    mfab: string; // PayloadCMS uses 'mfab' not 'mfabType'
     fabricWeight: number;
-    surfaceTexture: string;
+    Texture: string; // PayloadCMS uses 'Texture' not 'surfaceTexture'
     stretchability: number;
     transparency: number;
   };
@@ -168,6 +181,77 @@ interface PayloadCMSMockupData {
     detAr: any[];
     dtcObs: any[];
   };
+  
+  // PayloadCMS uses 'surfConf' not 'surfaceConfiguration'
+  surfConf?: {
+    No_Mockup_Compatible?: boolean;
+    renderType: 'flat' | 'cylindrical' | 'conical' | 'spherical' | 'complex_3d' | 'apparel_body' | 'sleeve_wrap';
+    surfProp?: {
+      wrapAngle?: number;
+      curveInten?: number; // PayloadCMS uses 'curveInten' not 'curveIntensity'
+      designRatio?: {
+        widthRatio?: number;
+        heightRatio?: number;
+      };
+    };
+    blendSet?: {
+      defaultBlendMode?: string;
+      defaultOpacity?: number;
+      preserveColors?: boolean;
+    };
+  };
+  
+  // PayloadCMS uses 'advanSurfMap' not 'advancedSurfaceMapping'
+  advanSurfMap?: {
+    curvProf: string; // PayloadCMS uses 'curvProf' not 'curveProfile'
+    barrelDist: number;
+    pincushiDistor: number;
+    perspDis: number;
+    hasSeams: boolean;
+  };
+  
+  // Seam positions
+  seamPositions?: any[];
+  
+  // Lighting configuration
+  lightingConfiguration?: {
+    lightDirection: number;
+    lightIntensity: number;
+    ambientLight: number;
+    shadowIntensity: number;
+  };
+  
+  // Materials from product data
+  materials?: {
+    primary: string;
+    weight: string;
+    construction: string;
+    finish: string | null;
+    efabType: string;
+    fabricWeight: number;
+    surfaceTexture: string;
+    stretchability: number;
+    transparency: number;
+    reflectivity: number;
+  };
+  
+  // Render settings
+  render?: {
+    pfEngine: string;
+    enableAdvancedEffects: boolean;
+    quality: string;
+    exportRes: number;
+    enableProgTrack: boolean;
+  };
+  
+  // Display maps
+  dispMaps?: any[];
+  
+  // Alpha masks
+  alpMasks?: any[];
+  
+  // Light maps
+  light?: any[];
   
   tags?: { tag: string }[];
 }
@@ -191,7 +275,7 @@ interface SurfaceConfiguration {
   renderType: 'flat' | 'cylindrical' | 'conical' | 'spherical' | 'complex_3d' | 'apparel_body' | 'sleeve_wrap';
   surfProp?: {
     wrapAngle?: number;
-    curveInten?: number;
+    curveInten?: number; // PayloadCMS field name
     designRatio?: {
       widthRatio?: number;
       heightRatio?: number;
@@ -235,7 +319,7 @@ interface ProfessionalMockupEngineProps {
   canvasPrintableAreas: Record<string, PrintableArea>;
   displayDimensions: { width: number; height: number };
   productType: string;
-   onRenderComplete?: (imageData: string) => void;
+  onRenderComplete?: (imageData: string) => void;
   onProgress?: (progress: number) => void;
   onError?: (error: any) => void;
   productColor: string;
@@ -341,88 +425,106 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
 
   // Enhanced surface type detection from PayloadCMS
   const getSurfaceTypeFromPayloadCMS = useCallback(() => {
-    // Priority 1: Use surface configuration from PayloadCMS
-    if (surfaceConfiguration?.renderType) {
-      return surfaceConfiguration.renderType;
-    }
-    
-    // Priority 2: Detect from product type
-    const productTypeLower = productType.toLowerCase();
-    if (productTypeLower.includes('mug') || productTypeLower.includes('bottle') || productTypeLower.includes('tumbler')) {
-      return 'cylindrical';
-    }
-    if (productTypeLower.includes('tshirt') || productTypeLower.includes('hoodie') || productTypeLower.includes('apparel')) {
-      return 'apparel_body';
-    }
-    if (productTypeLower.includes('phone_case') || productTypeLower.includes('case')) {
-      return 'flat';
-    }
-    
-    // Priority 3: Default fallback
+  // Priority 1: Use surface configuration from PayloadCMS 'surfConf'
+  if (mockup.surfConf?.renderType) {
+    return mockup.surfConf.renderType;
+  }
+  
+  // Priority 2: Use surface configuration from props
+  if (surfaceConfiguration?.renderType) {
+    return surfaceConfiguration.renderType;
+  }
+  
+  // Priority 3: Detect from product type
+  const productTypeLower = productType.toLowerCase();
+  if (productTypeLower.includes('mug') || productTypeLower.includes('bottle') || productTypeLower.includes('tumbler')) {
+    return 'cylindrical';
+  }
+  if (productTypeLower.includes('tshirt') || productTypeLower.includes('hoodie') || productTypeLower.includes('apparel')) {
+    return 'apparel_body';
+  }
+  if (productTypeLower.includes('phone_case') || productTypeLower.includes('case')) {
     return 'flat';
-  }, [surfaceConfiguration, productType]);
+  }
+  
+  // Priority 4: Default fallback
+  return 'flat';
+}, [surfaceConfiguration, productType, mockup]);
 
   // Get dynamic surface properties from PayloadCMS
   const getDynamicSurfaceProperties = useCallback(() => {
-    const surfaceType = getSurfaceTypeFromPayloadCMS();
-    
-    return {
-      renderType: surfaceType,
-      wrapAngle: surfaceConfiguration?.surfProp?.wrapAngle || 280,
-      curveIntensity: surfaceConfiguration?.surfProp?.curveInten || 0.8,
-      designRatio: surfaceConfiguration?.surfProp?.designRatio || { widthRatio: 1.0, heightRatio: 1.0 },
-      blendMode: surfaceConfiguration?.blendSet?.defaultBlendMode || 'normal',
-      opacity: surfaceConfiguration?.blendSet?.defaultOpacity || 1.0,
-      preserveColors: surfaceConfiguration?.blendSet?.preserveColors !== false,
-      // Advanced properties
-      barrelDistortion: surfaceConfiguration?.advancedSurfaceMapping?.barrelDist || 0,
-      pincushionDistortion: surfaceConfiguration?.advancedSurfaceMapping?.pincushiDistor || 0,
-      perspectiveDistortion: surfaceConfiguration?.advancedSurfaceMapping?.perspDis || 1,
-      hasSeams: surfaceConfiguration?.advancedSurfaceMapping?.hasSeams || false,
-      curveProfile: surfaceConfiguration?.advancedSurfaceMapping?.curvProf || 'smooth'
-    };
-  }, [surfaceConfiguration, getSurfaceTypeFromPayloadCMS]);
+  const surfaceType = getSurfaceTypeFromPayloadCMS();
+  
+  return {
+    renderType: surfaceType,
+    // Use PayloadCMS 'surfConf' field
+    wrapAngle: mockup.surfConf?.surfProp?.wrapAngle || surfaceConfiguration?.surfProp?.wrapAngle || 280,
+    curveIntensity: mockup.surfConf?.surfProp?.curveInten || surfaceConfiguration?.surfProp?.curveInten || 0.8,
+    designRatio: mockup.surfConf?.surfProp?.designRatio || surfaceConfiguration?.surfProp?.designRatio || { widthRatio: 1.0, heightRatio: 1.0 },
+    blendMode: mockup.surfConf?.blendSet?.defaultBlendMode || surfaceConfiguration?.blendSet?.defaultBlendMode || 'normal',
+    opacity: mockup.surfConf?.blendSet?.defaultOpacity || surfaceConfiguration?.blendSet?.defaultOpacity || 1.0,
+    preserveColors: mockup.surfConf?.blendSet?.preserveColors !== false,
+    // Advanced properties from PayloadCMS 'advanSurfMap'
+    barrelDistortion: mockup.advanSurfMap?.barrelDist || surfaceConfiguration?.advancedSurfaceMapping?.barrelDist || 0,
+    pincushionDistortion: mockup.advanSurfMap?.pincushiDistor || surfaceConfiguration?.advancedSurfaceMapping?.pincushiDistor || 0,
+    perspectiveDistortion: mockup.advanSurfMap?.perspDis || surfaceConfiguration?.advancedSurfaceMapping?.perspDis || 1,
+    hasSeams: mockup.advanSurfMap?.hasSeams || surfaceConfiguration?.advancedSurfaceMapping?.hasSeams || false,
+    curveProfile: mockup.advanSurfMap?.curvProf || surfaceConfiguration?.advancedSurfaceMapping?.curvProf || 'smooth'
+  };
+}, [surfaceConfiguration, getSurfaceTypeFromPayloadCMS, mockup]);
 
   // Get dynamic fabric properties from PayloadCMS
   const getDynamicFabricProperties = useCallback(() => {
-    // Priority 1: From mockup fabric properties
-    if (mockup.fabricProp) {
-      return {
-        fabricType: mockup.fabricProp.mfabType,
-        fabricWeight: mockup.fabricProp.fabricWeight,
-        surfaceTexture: mockup.fabricProp.surfaceTexture,
-        stretchability: mockup.fabricProp.stretchability,
-        transparency: mockup.fabricProp.transparency
-      };
-    }
-    
-    // Priority 2: From surface configuration
-    if (surfaceConfiguration?.fabricProperties) {
-      return surfaceConfiguration.fabricProperties;
-    }
-    
-    // Priority 3: Default based on product type
-    const productTypeLower = productType.toLowerCase();
-    if (productTypeLower.includes('mug') || productTypeLower.includes('ceramic')) {
-      return {
-        fabricType: 'ceramic',
-        fabricWeight: 180,
-        surfaceTexture: 'glossy',
-        stretchability: 0,
-        transparency: 0,
-        reflectivity: 0.3
-      };
-    }
-    
+  // Priority 1: From mockup fabric properties (PayloadCMS uses 'fbrcProp')
+  if (mockup.fbrcProp) {
     return {
-      fabricType: 'cotton',
-      fabricWeight: 180,
-      surfaceTexture: 'smooth',
-      stretchability: 0.1,
-      transparency: 0.05,
-      reflectivity: 0.1
+      fabricType: mockup.fbrcProp.mfab, // PayloadCMS uses 'mfab' not 'mfabType'
+      fabricWeight: mockup.fbrcProp.fabricWeight,
+      surfaceTexture: mockup.fbrcProp.Texture, // PayloadCMS uses 'Texture' not 'surfaceTexture'
+      stretchability: mockup.fbrcProp.stretchability,
+      transparency: mockup.fbrcProp.transparency
     };
-  }, [mockup, surfaceConfiguration, productType]);
+  }
+  
+  // Priority 2: From surface configuration
+  if (surfaceConfiguration?.fabricProperties) {
+    return surfaceConfiguration.fabricProperties;
+  }
+  
+  // Priority 3: From product materials field
+  if (mockup.materials) {
+    return {
+      fabricType: mockup.materials.efabType || 'cotton',
+      fabricWeight: mockup.materials.fabricWeight || 180,
+      surfaceTexture: mockup.materials.surfaceTexture || 'smooth',
+      stretchability: mockup.materials.stretchability || 0.1,
+      transparency: mockup.materials.transparency || 0.05,
+      reflectivity: mockup.materials.reflectivity || 0.1
+    };
+  }
+  
+  // Priority 4: Default based on product type
+  const productTypeLower = productType.toLowerCase();
+  if (productTypeLower.includes('mug') || productTypeLower.includes('ceramic')) {
+    return {
+      fabricType: 'ceramic',
+      fabricWeight: 180,
+      surfaceTexture: 'glossy',
+      stretchability: 0,
+      transparency: 0,
+      reflectivity: 0.3
+    };
+  }
+  
+  return {
+    fabricType: 'cotton',
+    fabricWeight: 180,
+    surfaceTexture: 'smooth',
+    stretchability: 0.1,
+    transparency: 0.05,
+    reflectivity: 0.1
+  };
+}, [mockup, surfaceConfiguration, productType]);
 
   // Get dynamic lighting from PayloadCMS
   const getDynamicLighting = useCallback(() => {
@@ -462,189 +564,286 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
 
   // Get visible areas (standard or smart)
   const getVisibleAreas = useCallback(() => {
-    if (isSmartMockup()) {
-      // Convert smart visible areas to standard format
-      return mockup.smartVisA?.map(area => ({
-        id: area.id,
-        areaName: area.areaName,
-        visibility: area.visibility,
-        visibilityPercentage: area.visibilityPercentage,
-        designPlacement: {
-          // Use auto placement if available, otherwise manual override
-          coordinateX: area.smartPlacement.enableManualOverride && area.smartPlacement.manualX !== null 
-            ? area.smartPlacement.manualX 
-            : (area.smartPlacement.autoX || 0.3),
-          coordinateY: area.smartPlacement.enableManualOverride && area.smartPlacement.manualY !== null 
-            ? area.smartPlacement.manualY 
-            : (area.smartPlacement.autoY || 0.3),
-          coordinateWidth: area.smartPlacement.enableManualOverride && area.smartPlacement.manualWidth !== null 
-            ? area.smartPlacement.manualWidth 
-            : (area.smartPlacement.autoWidth || 0.4),
-          coordinateHeight: area.smartPlacement.enableManualOverride && area.smartPlacement.manualHeight !== null 
-            ? area.smartPlacement.manualHeight 
-            : (area.smartPlacement.autoHeight || 0.4),
-          rotation: area.smartPlacement.rotation,
-          skewX: area.smartPlacement.skewX,
-          skewY: area.smartPlacement.skewY,
-          scaleX: area.smartPlacement.scaleX,
-          scaleY: area.smartPlacement.scaleY,
-          blendMode: 'normal',
-          opacity: 1,
-          preserveColors: true
-        },
-        // Convert smart masking to standard masking
-        maskingConfiguration: {
-          enableMasking: area.smartMasking.enableSmartMask,
-          maskTypes: area.generatedMask.maskTypes || 'gradient'
-        },
-        gradientMaskSettings: {
-          gradientDirection: 'horizontal', // Default for smart
-          gradientAngle: 0,
-          fadeStart: 0.7,
-          fadeEnd: 1.0,
-          fadeIntensity: 0.8
-        },
-        // Smart areas get enhanced wrapping by default
-        surfaceWrapSettings: {
-          enableWrap: true,
-          wrapAngle: 280,
-          wrapIntensity: 0.8,
-          dynamicWrap: true,
-          wrapFalloff: 0.8
-        }
-      })) || [];
-    } else {
-      return mockup.visibleAreas || [];
-    }
-  }, [mockup, isSmartMockup]);
+  if (isSmartMockup()) {
+    // Convert smart visible areas to standard format
+    return mockup.smartVisA?.map(smartArea => ({
+      id: smartArea.id,
+      areaName: smartArea.areaName,
+      visibility: smartArea.visibility,
+      visibilityPercentage: smartArea.visibilityPercentage,
+      designPlacement: {
+        // Use auto placement if available, otherwise manual override
+        coordinateX: smartArea.smartPlacement.enableManualOverride && smartArea.smartPlacement.manualX !== null 
+          ? smartArea.smartPlacement.manualX 
+          : (smartArea.smartPlacement.autoX || 0.3),
+        coordinateY: smartArea.smartPlacement.enableManualOverride && smartArea.smartPlacement.manualY !== null 
+          ? smartArea.smartPlacement.manualY 
+          : (smartArea.smartPlacement.autoY || 0.3),
+        coordinateWidth: smartArea.smartPlacement.enableManualOverride && smartArea.smartPlacement.manualWidth !== null 
+          ? smartArea.smartPlacement.manualWidth 
+          : (smartArea.smartPlacement.autoWidth || 0.4),
+        coordinateHeight: smartArea.smartPlacement.enableManualOverride && smartArea.smartPlacement.manualHeight !== null 
+          ? smartArea.smartPlacement.manualHeight 
+          : (smartArea.smartPlacement.autoHeight || 0.4),
+        rotation: smartArea.smartPlacement.rotation,
+        skewX: smartArea.smartPlacement.skewX,
+        skewY: smartArea.smartPlacement.skewY,
+        scaleX: smartArea.smartPlacement.scaleX,
+        scaleY: smartArea.smartPlacement.scaleY,
+        blendMode: 'normal',
+        opacity: 1,
+        preserveColors: true
+      },
+      // Convert smart masking to standard masking
+      maskingConfiguration: {
+        enableMasking: smartArea.smartMasking.enableSmartMask,
+        maskTypes: smartArea.generatedMask.maskTypes || 'gradient'
+      },
+      gradientMaskSettings: {
+        gradientDirection: 'horizontal', // Default for smart
+        gradientAngle: 0,
+        fadeStart: 0.7,
+        fadeEnd: 1.0,
+        fadeIntensity: 0.8
+      },
+      // Smart areas get enhanced wrapping by default
+      surfaceWrapSettings: {
+        enableWrap: true,
+        wrapAngle: 280,
+        wrapIntensity: 0.8,
+        dynamicWrap: true,
+        wrapFalloff: 0.8
+      }
+    })) || [];
+  } else {
+    // Map standard PayloadCMS area structure to expected format
+    return mockup.area?.map(payloadArea => ({
+      id: payloadArea.id,
+      areaName: payloadArea.areaName,
+      visibility: payloadArea.visibility,
+      visibilityPercentage: payloadArea.visibilityPercentage,
+      
+      // Map PayloadCMS 'design' field to 'designPlacement'
+      designPlacement: {
+        coordinateX: payloadArea.design?.coordinateX || 0.3,
+        coordinateY: payloadArea.design?.coordinateY || 0.3,
+        coordinateWidth: payloadArea.design?.coordinateWidth || 0.4,
+        coordinateHeight: payloadArea.design?.coordinateHeight || 0.4,
+        rotation: payloadArea.design?.rotation || 0,
+        skewX: payloadArea.design?.skewX || 0,
+        skewY: payloadArea.design?.skewY || 0,
+        scaleX: payloadArea.design?.scaleX || 1,
+        scaleY: payloadArea.design?.scaleY || 1,
+        blendMode: payloadArea.design?.blend || 'normal', // PayloadCMS uses 'blend' not 'blendMode'
+        opacity: payloadArea.design?.opacity !== null ? payloadArea.design.opacity : 1,
+        preserveColors: payloadArea.design?.preserveColors !== false
+      },
+      
+      // Map PayloadCMS 'fbrc' field to 'fabricIntegration'
+      fabricIntegration: payloadArea.fbrc ? {
+        enableFabricBlend: payloadArea.fbrc.enableFabricBlend || true,
+        bfabType: payloadArea.fbrc.bfab || 'cotton', // PayloadCMS uses 'bfab' not 'bfabType'
+        foldAwareness: payloadArea.fbrc.foldAwareness || false,
+        seamAwareness: payloadArea.fbrc.seamAwareness || false,
+        textureIntensity: payloadArea.fbrc.textureIntensity || 0.3,
+        fabricColor: payloadArea.fbrc.fabricColor || '#ffffff',
+        fabricRoughness: payloadArea.fbrc.fabricRoughness || 0.3
+      } : undefined,
+      
+      // Map PayloadCMS 'Config' field to 'maskingConfiguration'
+      maskingConfiguration: payloadArea.Config ? {
+        enableMasking: payloadArea.Config.enableMasking || false,
+        maskTypes: payloadArea.Config.mask || 'gradient', // PayloadCMS uses 'mask' not 'maskTypes'
+        maskPath: payloadArea.Config.maskPath || undefined
+      } : {
+        enableMasking: false,
+        maskTypes: 'gradient'
+      },
+      
+      // Map PayloadCMS 'grdnmsk' field to 'gradientMaskSettings'
+      gradientMaskSettings: payloadArea.grdnmsk ? {
+        gradientDirection: payloadArea.grdnmsk.grdn || 'horizontal', // PayloadCMS uses 'grdn' not 'gradientDirection'
+        gradientAngle: payloadArea.grdnmsk.gradientAngle || 0,
+        fadeStart: payloadArea.grdnmsk.fadeStart || 0.7,
+        fadeEnd: payloadArea.grdnmsk.fadeEnd || 1.0,
+        fadeIntensity: payloadArea.grdnmsk.fadeIntensity || 0.8
+      } : {
+        gradientDirection: 'horizontal',
+        gradientAngle: 0,
+        fadeStart: 0.7,
+        fadeEnd: 1.0,
+        fadeIntensity: 0.8
+      },
+      
+      // Map surface wrap settings
+      surfaceWrapSettings: payloadArea.surfaceWrapSettings || {
+        enableWrap: false,
+        wrapAngle: 280,
+        wrapIntensity: 0.8,
+        dynamicWrap: false,
+        wrapFalloff: 0.8
+      },
+      
+      // Map perspective settings
+      perspectiveSettings: payloadArea.perspectiveSettings || {
+        enablePerspective: false,
+        perspectiveIntensity: 0.5,
+        dynamicPerspective: false
+      },
+      
+      // Map edge detection settings
+      edgeDetectionSettings: payloadArea.edgeDetectionSettings || {
+        enableEdgeDetection: false,
+        edgeThreshold: 128,
+        edgeSoftness: 2
+      },
+      
+      // Map PayloadCMS 'fbrEft' field to 'fabricEffectsSettings'
+      fabricEffectsSettings: payloadArea.fbrEft ? {
+        enableFolds: payloadArea.fbrEft.enableFolds || false,
+        foldIntensity: payloadArea.fbrEft.foldIntensity || 0.3,
+        foldDirection: payloadArea.fbrEft.fold || 'horizontal', // PayloadCMS uses 'fold' not 'foldDirection'
+        seamDistrt: payloadArea.fbrEft.seamDistrt || false,
+        fabricDpth: payloadArea.fbrEft.fabricDpth || 1
+      } : {
+        enableFolds: false,
+        foldIntensity: 0.3,
+        foldDirection: 'horizontal',
+        seamDistrt: false,
+        fabricDpth: 1
+      }
+    })) || [];
+  }
+}, [mockup, isSmartMockup]);
 
   useEffect(() => {
-    if (!canvasRef.current || !mockup?.photo?.url) {
-      log('Missing canvas or mockup photo URL');
-      setIsLoading(false);
+  if (!canvasRef.current || !mockup?.photo?.url) {
+    log('Missing canvas or mockup photo URL');
+    setIsLoading(false);
+    return;
+  }
+
+  const renderProfessionalMockup = async () => {
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext('2d', {
+      willReadFrequently: false,
+      alpha: true,
+      desynchronized: true
+    });
+
+    if (!ctx) {
+      setRenderError('Failed to get canvas context');
       return;
     }
 
-    const renderProfessionalMockup = async () => {
-      const canvas = canvasRef.current!;
-      const ctx = canvas.getContext('2d', {
-        willReadFrequently: false,
-        alpha: true,
-        desynchronized: true
+    try {
+      log('Starting professional mockup render');
+      setRenderProgress(10);
+
+      validateDimensions(displayDimensions.width, displayDimensions.height, 'display');
+
+      const mockupImg = await loadImageWithProgress(
+        resolveImageUrl(mockup.photo.url),
+        (progress) => setRenderProgress(10 + progress * 0.2)
+      );
+      
+      log('Mockup image loaded', { 
+        width: mockupImg.width, 
+        height: mockupImg.height,
+        isSmartMockup: isSmartMockup(),
+        aiAnalysisStatus: mockup.aiAnalRes?.analStat
+      });
+      setRenderProgress(30);
+
+      canvas.width = displayDimensions.width;
+      canvas.height = displayDimensions.height;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Draw base mockup
+      ctx.drawImage(mockupImg, 0, 0, displayDimensions.width, displayDimensions.height);
+      log('Base mockup drawn');
+      setRenderProgress(40);
+
+      // Get dynamic configurations from PayloadCMS
+      const surfaceProps = getDynamicSurfaceProperties();
+      const fabricProps = getDynamicFabricProperties();
+      const lightingProps = getDynamicLighting();
+      const visibleAreas = getVisibleAreas(); // FIXED: Call the function and assign to variable
+
+      log('Dynamic PayloadCMS configurations loaded', {
+        surfaceType: surfaceProps.renderType,
+        fabricType: fabricProps.fabricType,
+        lighting: lightingProps,
+        isSmartMockup: isSmartMockup(),
+        areaCount: visibleAreas.length
       });
 
-      if (!ctx) {
-        setRenderError('Failed to get canvas context');
-        return;
-      }
-
-      try {
-        log('Starting professional mockup render');
-        setRenderProgress(10);
-
-        validateDimensions(displayDimensions.width, displayDimensions.height, 'display');
-
-        const mockupImg = await loadImageWithProgress(
-          resolveImageUrl(mockup.photo.url),
-          (progress) => setRenderProgress(10 + progress * 0.2)
-        );
+      // Process visible areas with professional rendering
+      if (visibleAreas && visibleAreas.length > 0) {
+        log(`Processing ${visibleAreas.length} visible areas (${isSmartMockup() ? 'Smart AI' : 'Standard'})`);
         
-        log('Mockup image loaded', { 
-          width: mockupImg.width, 
-          height: mockupImg.height,
-          isSmartMockup: isSmartMockup(),
-          aiAnalysisStatus: mockup.aiAnalRes?.analStat
-        });
-        setRenderProgress(30);
-
-        canvas.width = displayDimensions.width;
-        canvas.height = displayDimensions.height;
+        console.log(`👁️ Visible areas:`, visibleAreas.map(visibleArea => ({
+          areaName: visibleArea.areaName,
+          visibility: visibleArea.visibility,
+          hasDesignPlacement: !!visibleArea.designPlacement,
+          wrapEnabled: visibleArea.surfaceWrapSettings?.enableWrap || false,
+          wrapAngle: visibleArea.surfaceWrapSettings?.wrapAngle,
+          wrapIntensity: visibleArea.surfaceWrapSettings?.wrapIntensity,
+          maskingEnabled: visibleArea.maskingConfiguration?.enableMasking || false
+        })));
         
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-
-        // Draw base mockup
-        ctx.drawImage(mockupImg, 0, 0, displayDimensions.width, displayDimensions.height);
-        log('Base mockup drawn');
-        setRenderProgress(40);
-
-        // Get dynamic configurations from PayloadCMS
-        const surfaceProps = getDynamicSurfaceProperties();
-        const fabricProps = getDynamicFabricProperties();
-        const lightingProps = getDynamicLighting();
-        const visibleAreas = getVisibleAreas();
-
-        log('Dynamic PayloadCMS configurations loaded', {
-          surfaceType: surfaceProps.renderType,
-          fabricType: fabricProps.fabricType,
-          lighting: lightingProps,
-          isSmartMockup: isSmartMockup(),
-          visibleAreasCount: visibleAreas.length
-        });
-
-        // Process visible areas with professional rendering
-        if (visibleAreas && visibleAreas.length > 0) {
-          log(`Processing ${visibleAreas.length} visible areas (${isSmartMockup() ? 'Smart AI' : 'Standard'})`);
+        console.log(`🎨 Available design element areas:`, Object.entries(designElements).map(([areaName, elems]) => ({
+          area: areaName,
+          count: elems.length,
+          elementIds: elems.map(el => el.id)
+        })));
+        
+        for (let i = 0; i < visibleAreas.length; i++) {
+          const currentArea = visibleAreas[i]; // FIXED: Use currentArea instead of area
+          log(`Processing area ${i + 1}/${visibleAreas.length}: ${currentArea.areaName}`);
           
-          console.log(`👁️ Visible areas:`, visibleAreas.map(area => ({
-            areaName: area.areaName,
-            visibility: area.visibility,
-            hasDesignPlacement: !!area.designPlacement,
-            wrapEnabled: area.surfaceWrapSettings?.enableWrap || false,
-            wrapAngle: area.surfaceWrapSettings?.wrapAngle,
-            wrapIntensity: area.surfaceWrapSettings?.wrapIntensity,
-            maskingEnabled: area.maskingConfiguration?.enableMasking || false
-          })));
+          await renderDynamicProfessionalArea(
+            ctx,
+            currentArea, // FIXED: Pass currentArea
+            designElements,
+            canvasConfigs,
+            canvasPrintableAreas,
+            displayDimensions,
+            mockup,
+            surfaceProps,
+            fabricProps,
+            lightingProps,
+            fabricSettings,
+            validateCanvas,
+            safeCreateCanvas,
+            normalizeCoordinates
+          );
           
-          console.log(`🎨 Available design element areas:`, Object.entries(designElements).map(([area, elems]) => ({
-            area,
-            count: elems.length,
-            elementIds: elems.map(el => el.id)
-          })));
-          
-          for (let i = 0; i < visibleAreas.length; i++) {
-            const area = visibleAreas[i];
-            log(`Processing area ${i + 1}/${visibleAreas.length}: ${area.areaName}`);
-            
-            await renderDynamicProfessionalArea(
-              ctx,
-              area,
-              designElements,
-              canvasConfigs,
-              canvasPrintableAreas,
-              displayDimensions,
-              mockup,
-              surfaceProps,
-              fabricProps,
-              lightingProps,
-              fabricSettings,
-              validateCanvas,
-              safeCreateCanvas,
-              normalizeCoordinates
-            );
-            
-            setRenderProgress(40 + ((i + 1) / visibleAreas.length) * 50);
-          }
-        } else {
-          console.warn(`⚠️ No visible areas found in mockup data`);
+          setRenderProgress(40 + ((i + 1) / visibleAreas.length) * 50);
         }
-
-        await applyFinalEnhancements(ctx, displayDimensions, mockup, surfaceProps, lightingProps);
-        setRenderProgress(100);
-
-        log(`Professional mockup render complete (${isSmartMockup() ? 'Smart AI' : 'Standard'})`);
-        setIsLoading(false);
-
-      } catch (error) {
-        console.error('Professional mockup render error:', error);
-        setRenderError(`Render failed: ${error.message}`);
-        setIsLoading(false);
+      } else {
+        console.warn(`⚠️ No visible areas found in mockup data`);
       }
-    };
 
-    renderProfessionalMockup();
-  }, [mockup, designElements, canvasConfigs, canvasPrintableAreas, displayDimensions, productType, productColor, surfaceConfiguration, fabricSettings, log, validateDimensions, validateCanvas, safeCreateCanvas, getDynamicSurfaceProperties, getDynamicFabricProperties, getDynamicLighting, getVisibleAreas, isSmartMockup]);
+      await applyFinalEnhancements(ctx, displayDimensions, mockup, surfaceProps, lightingProps);
+      setRenderProgress(100);
+
+      log(`Professional mockup render complete (${isSmartMockup() ? 'Smart AI' : 'Standard'})`);
+      setIsLoading(false);
+
+    } catch (error) {
+      console.error('Professional mockup render error:', error);
+      setRenderError(`Render failed: ${error.message}`);
+      setIsLoading(false);
+    }
+  };
+
+  renderProfessionalMockup();
+}, [mockup, designElements, canvasConfigs, canvasPrintableAreas, displayDimensions, productType, productColor, surfaceConfiguration, fabricSettings, log, validateDimensions, validateCanvas, safeCreateCanvas, getDynamicSurfaceProperties, getDynamicFabricProperties, getDynamicLighting, getVisibleAreas, isSmartMockup]);
+// FIXED: Updated dependency array to use getVisibleAreas instead of getarea
 
   if (isLoading) {
     const smartStatus = isSmartMockup() ? 'Smart AI' : 'Standard';
@@ -1171,7 +1370,7 @@ async function applyDynamicWrapping(
   )) * Math.PI / 180;
   
   const wrapIntensity = Math.max(0, Math.min(1, 
-    wrapSettings.wrapIntensity || surfaceProps.curveIntensity || 0.8
+    wrapSettings.wrapIntensity || surfaceProps.curveInten|| 0.8
   ));
   
   const dynamicWrap = wrapSettings.dynamicWrap || false;
@@ -1774,7 +1973,7 @@ function createGradientMask(
 ): CanvasGradient {
   let gradient;
   
-  switch (gradientSettings.gradientDirection || 'horizontal') {
+  switch (gradientSettings.grdn|| 'horizontal') {
     case 'vertical':
       gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
       break;

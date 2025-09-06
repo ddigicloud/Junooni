@@ -327,7 +327,7 @@ const Catalog = () => {
             </p>
           </div>
           
-          {!loading && (
+          {/* {!loading && (
             <div className="flex gap-4 mt-4 sm:mt-0">
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                 <div className="w-3 h-3 bg-[#e65100] rounded-full"></div>
@@ -338,7 +338,7 @@ const Catalog = () => {
                 <span>Staff Picks</span>
               </div>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Products Grid */}

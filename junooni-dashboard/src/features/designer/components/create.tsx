@@ -97,7 +97,7 @@ interface PayloadProductData {
     secondary?: string[];
   };
   pricing?: {
-    suggestedRetailPrice?: number;
+    suggestedRetail?: number;
     markupValue?: number;
     costBreakdown?: any;
   };
@@ -158,7 +158,7 @@ interface PayloadCMSProduct {
   pricing: {
     markupType: string;
     markupValue: number;
-    suggestedRetailPrice: number;
+    suggestedRetail: number;
   };
   description: string;
   materials: {
@@ -1939,7 +1939,7 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
         value: color.colorHex
       })),
       printingTechnology: 'dtg',
-      price: payloadProduct.pricing.suggestedRetailPrice
+      price: payloadProduct.pricing.suggestedRetail
     };
     
     const enhancedProductData: PayloadProductData = {
@@ -1956,12 +1956,12 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
         secondary: payloadProduct.materials.construction ? [payloadProduct.materials.construction] : []
       },
       pricing: {
-        suggestedRetailPrice: payloadProduct.pricing.suggestedRetailPrice,
+        suggestedRetail: payloadProduct.pricing.suggestedRetail,
         markupValue: payloadProduct.pricing.markupValue,
         costBreakdown: {
           baseCost: payloadProduct.cost,
           markup: payloadProduct.pricing.markupValue,
-          total: payloadProduct.pricing.suggestedRetailPrice
+          total: payloadProduct.pricing.suggestedRetail
         }
       },
       fulfillmentSettings: {
@@ -2012,7 +2012,7 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
       form.setValue('material', materialInfo);
       form.setValue('origin_country', 'IN');
       
-      const suggestedPrice = payloadProduct.pricing.suggestedRetailPrice;
+      const suggestedPrice = payloadProduct.pricing.suggestedRetail;
       form.setValue('defaultVariantPrice', suggestedPrice);
       console.log("Mug/shirt Price", suggestedPrice);
       
@@ -2099,6 +2099,25 @@ for (const field of detailsFields) {
   }
 }
 
+// ✅ FIX: Map PayloadCMS status to valid form values
+    let formStatus = 'draft'; // default fallback
+    
+    if (payloadProduct.status) {
+      const statusMap: Record<string, string> = {
+        'active': 'published',
+        'inactive': 'draft',
+        'draft': 'draft',
+        'published': 'published',
+        'proposed': 'proposed',
+        'archived': 'archived',
+        'rejected': 'draft' // fallback for rejected
+      };
+      
+      formStatus = statusMap[payloadProduct.status.toLowerCase()] || 'draft';
+    }
+    
+    form.setValue('status', formStatus);
+
 if (existingProductDetails && existingProductDetails.length > 0) {
   
   existingProductDetails.forEach(detail => {
@@ -2146,7 +2165,7 @@ if (existingProductDetails && existingProductDetails.length > 0) {
         
         setTimeout(() => {
           const variants = form.getValues('variants');
-          const correctPrice = payloadProduct.pricing.suggestedRetailPrice;
+          const correctPrice = payloadProduct.pricing.suggestedRetail;
           
           variants.forEach((_, index) => {
             form.setValue(`variants.${index}.price`, correctPrice);
@@ -2217,8 +2236,8 @@ if (existingProductDetails && existingProductDetails.length > 0) {
         form.setValue('material', productData.materials.primary);
       }
       
-      if (productData.pricing?.suggestedRetailPrice) {
-        form.setValue('defaultVariantPrice', productData.pricing.suggestedRetailPrice);
+      if (productData.pricing?.suggestedRetail) {
+        form.setValue('defaultVariantPrice', productData.pricing.suggestedRetail);
       }
     }
     
@@ -2316,7 +2335,7 @@ if (existingProductDetails && existingProductDetails.length > 0) {
         // Set pricing after variants are generated
         setTimeout(() => {
           const variants = form.getValues('variants');
-          const priceToApply = productData?.pricing?.suggestedRetailPrice || 
+          const priceToApply = productData?.pricing?.suggestedRetail || 
                               (productData?.cost ? Math.round(productData.cost * 2.5) : 
                               data.price || 25.00);
           
@@ -5001,7 +5020,7 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
                   render={({ field }) => (
                     <FormItem className="mb-5">
                       <FormLabel className="font-medium text-gray-700">Product Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange}  value={field.value || "draft"}  defaultValue="draft">
                         <FormControl>
                           <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
                             <SelectValue placeholder="Select status" />

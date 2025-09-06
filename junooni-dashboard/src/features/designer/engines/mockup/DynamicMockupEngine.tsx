@@ -36,12 +36,12 @@ interface PayloadCMSMockupData {
     width: number;
     height: number;
   };
-  visibleAreas: Array<{
+  area: Array<{
     id: string;
     areaName: string;
     visibility: 'full' | 'partial' | 'edge' | 'sleeve';
     visibilityPercentage?: number;
-    designPlacement: {
+    design: {
       coordinateX: number;
       coordinateY: number;
       coordinateWidth: number;
@@ -51,7 +51,7 @@ interface PayloadCMSMockupData {
       skewY: number;
       scaleX: number;
       scaleY: number;
-      blendMode: string;
+      blend: string;
       opacity: number | null;
       preserveColors: boolean | null;
     };
@@ -62,22 +62,22 @@ interface PayloadCMSMockupData {
       dynamicWrap: boolean;
       wrapFalloff: number;
     };
-    fabricIntegration?: {
+    fbrc?: {
       enableFabricBlend: boolean;
-      bfabType: string;
+      bfab: string;
       foldAwareness: boolean;
       seamAwareness: boolean;
       textureIntensity: number;
       fabricColor: string;
       fabricRoughness: number;
     };
-    maskingConfiguration?: {
+    Config?: {
       enableMasking: boolean;
-      maskType: string;
+      mask: string;
       maskPath?: string;
     };
-    gradientMaskSettings?: {
-      gradientDirection: string;
+    grdnmsk?: {
+      grdn: string;
       gradientAngle: number;
       fadeStart: number;
       fadeEnd: number;
@@ -97,7 +97,7 @@ interface PayloadCMSMockupData {
     disint: number;
     disarea: string;
   }>;
-  alphaMasks?: Array<{
+  alpMasks?: Array<{
     id: string;
     maskImg: {
       id: number;
@@ -110,7 +110,7 @@ interface PayloadCMSMockupData {
     alfamask: 'alpha' | 'luminance' | 'red_channel';
     featherEdge: number;
   }>;
-  lightingOverlays?: Array<{
+  light?: Array<{
     id: string;
     overImage: {
       id: number;
@@ -402,8 +402,8 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
   // PIXI BLEND MODE CONVERSION
   // =====================================
   
-  const getPixiBlendMode = useCallback((blendMode: string): PIXI.BLEND_MODES => {
-    switch (blendMode?.toLowerCase()) {
+  const getPixiblend = useCallback((blend: string): PIXI.BLEND_MODES => {
+    switch (blend?.toLowerCase()) {
       case 'multiply': return PIXI.BLEND_MODES.MULTIPLY;
       case 'screen': return PIXI.BLEND_MODES.SCREEN;
       case 'overlay': return PIXI.BLEND_MODES.OVERLAY;
@@ -511,7 +511,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
     try {
       debugMessage(`Creating alpha mask for ${areaName}`);
       
-      const alphaMask = mockup.alphaMasks?.find(mask => 
+      const alphaMask = mockup.alpMasks?.find(mask => 
         mask.alfarea.toLowerCase() === areaName.toLowerCase()
       );
       
@@ -537,13 +537,13 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
       }
 
       // Create gradient mask for partial visibility
-      if (visibleArea.gradientMaskSettings || visibleArea.visibility === 'partial') {
+      if (visibleArea.grdnmsk || visibleArea.visibility === 'partial') {
         debugMessage(`Creating gradient mask for ${areaName}`);
         
         const gradientMask = createGradientMask(
           mockupDimensions.width,
           mockupDimensions.height,
-          visibleArea.gradientMaskSettings,
+          visibleArea.grdnmsk,
           visibleArea.visibilityPercentage,
           visibleArea.visibility
         );
@@ -575,7 +575,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
     } catch (error) {
       debugMessage(`Failed to create alpha mask for ${areaName}`, 'error', error);
     }
-  }, [mockup.alphaMasks, loadImageSafely, debugMessage]);
+  }, [mockup.alpMasks, loadImageSafely, debugMessage]);
 
   // =====================================
   // GRADIENT MASK GENERATION
@@ -892,8 +892,8 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
       updateProgress(40);
 
       // STEP 2: Process visible areas and design elements WITH RESTORED COORDINATE TRANSFORMATION
-      const visibleAreas = mockup.visibleAreas || [];
-      debugMessage(`Processing ${visibleAreas.length} visible areas`);
+      const area = mockup.area || [];
+      debugMessage(`Processing ${area.length} visible areas`);
       debugMessage(`Available design element keys:`, Object.keys(designElements));
       debugMessage(`Design elements summary:`, Object.keys(designElements).map(key => ({
         key,
@@ -901,13 +901,13 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
         elements: designElements[key]?.map(el => el.id) || []
       })));
 
-      for (let index = 0; index < visibleAreas.length; index++) {
+      for (let index = 0; index < area.length; index++) {
         if (!mountedRef.current || !renderingRef.current) break;
         
-        const visibleArea = visibleAreas[index];
+        const visibleArea = area[index];
         const areaName = visibleArea.areaName;
         
-        debugMessage(`Processing area ${index + 1}/${visibleAreas.length}: ${areaName}`);
+        debugMessage(`Processing area ${index + 1}/${area.length}: ${areaName}`);
         
         // Find design elements for this area with extensive variations
         const areaVariations = [
@@ -961,7 +961,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
           designContainer.zIndex = 10 + index;
           
           // RESTORED: Apply design placement from PayloadCMS with CORRECT coordinate transformation
-          const placement = visibleArea.designPlacement;
+          const placement = visibleArea.design;
           
           if (!placement) {
             debugMessage(`No design placement found for area ${areaName}, skipping`, 'warn');
@@ -1134,12 +1134,12 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
 
             // RESTORED: Set blend mode
             try {
-              const blendMode = getPixiBlendMode(placement.blendMode || 'normal');
-              designContainer.blendMode = blendMode;
-              debugMessage(`✅ Applied blend mode "${placement.blendMode || 'normal'}" for ${areaName}`);
+              const blend = getPixiblend(placement.blend || 'normal');
+              designContainer.blend = blend;
+              debugMessage(`✅ Applied blend mode "${placement.blend || 'normal'}" for ${areaName}`);
             } catch (blendError) {
               debugMessage(`Error setting blend mode for ${areaName}`, 'warn', blendError);
-              designContainer.blendMode = PIXI.BLEND_MODES.NORMAL;
+              designContainer.blend = PIXI.BLEND_MODES.NORMAL;
             }
           } catch (effectsError) {
             debugMessage(`Error applying effects for ${areaName}`, 'error', effectsError);
@@ -1150,7 +1150,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
 
           // RESTORED: Apply alpha masking with error handling
           try {
-            if (visibleArea.maskingConfiguration?.enableMasking || visibleArea.visibility === 'partial') {
+            if (visibleArea.Config?.enableMasking || visibleArea.visibility === 'partial') {
               debugMessage(`Applying alpha masking for ${areaName}`);
               await createAlphaMask(visibleArea, areaName, designContainer, mockupDimensions);
             }
@@ -1168,8 +1168,8 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
             foundAreaKey,
             hasDesignElements: areaDesignElements.length > 0,
             hasCanvasConfig: !!canvasConfig,
-            hasPlacement: !!visibleArea.designPlacement,
-            placement: visibleArea.designPlacement
+            hasPlacement: !!visibleArea.design,
+            placement: visibleArea.design
           });
           // Continue processing other areas even if this one fails
           continue;
@@ -1180,8 +1180,8 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
       updateProgress(85);
       debugMessage('STEP 3: Applying lighting overlays');
       
-      if (mockup.lightingOverlays && mockup.lightingOverlays.length > 0) {
-        for (const [overlayIndex, lightingOverlay] of mockup.lightingOverlays.entries()) {
+      if (mockup.light && mockup.light.length > 0) {
+        for (const [overlayIndex, lightingOverlay] of mockup.light.entries()) {
           if (!mountedRef.current || !renderingRef.current) break;
           
           if (lightingOverlay.overImage?.url) {
@@ -1202,8 +1202,8 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
               lightingSprite.alpha = lightingOverlay.ovlayOpa || 0.5;
               lightingSprite.zIndex = 100 + overlayIndex;
               
-              const lightingBlendMode = getPixiBlendMode(lightingOverlay.overbldMde);
-              lightingSprite.blendMode = lightingBlendMode;
+              const lightingblend = getPixiblend(lightingOverlay.overbldMde);
+              lightingSprite.blend = lightingblend;
               
               app.stage.addChild(lightingSprite);
               debugMessage(`Added lighting overlay: ${lightingOverlay.overlayType} with blend mode ${lightingOverlay.overbldMde}`);
@@ -1251,7 +1251,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
     debugMessage,
     createDisplacementFilter,
     createAlphaMask,
-    getPixiBlendMode
+    getPixiblend
   ]);
 
   // =====================================

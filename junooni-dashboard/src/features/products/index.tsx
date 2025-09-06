@@ -1,97 +1,3 @@
-// import { Header } from '@/components/layout/header'
-// import { Main } from '@/components/layout/main'
-// import { ProfileDropdown } from '@/components/profile-dropdown'
-// import { Search } from '@/components/search'
-// import { useToast } from '@/hooks/use-toast'
-// import { ThemeSwitch } from '@/components/theme-switch'
-// import { columns } from './components/product-columns'
-// import { DataTable } from './components/data-tables'
-// import ChatwootWidget from '@/components/ChatwootWidget'
-// import { ProductsPrimaryButtons } from './components/ProductsPrimaryButtons'
-// import ProductsProvider from './context/products-context'
-// import { useEffect,useState } from 'react'
-
-// export default function Products() {
-
-//     const [products, setProducts] = useState([])
-//  const { toast } = useToast();
-//   // Add this useEffect near the top of your component, right after your state declarations
-// useEffect(() => {
-//   // Check if user is authenticated by looking for token
-//   const token = localStorage.getItem('vendorToken');
-  
-//   // If no token is found, redirect to sign-in page
-//   if (!token) {
-//     // Show a toast notification
-//     toast({
-//       title: "Authentication Required",
-//       description: "Please sign in to access your profile.",
-//       variant: "destructive",
-//     });
-    
-//     // Redirect to sign-in page
-//     window.location.href = '/sign-in';
-//     return;
-//   }
-// }, []); // Empty dependency array means this runs once when component mounts
-//     useEffect(() => {
-//       const fetchProducts = async () => {
-//         const token = localStorage.getItem("vendorToken");
-//         try {
-//           const response = await fetch("http://localhost:9000/vendors/products", {
-//             method: "GET", // GET request method (no body needed)
-//             headers: {
-//               Authorization: `Bearer ${token}`,
-//             },
-//           });
-    
-//           // Check if response is successful
-//           if (!response.ok) {
-//             const responseBody = await response.json();
-//             throw new Error(`HTTP error! Status: ${response.status}, Message: ${responseBody.message}`);
-//           }
-    
-//           const responseBody = await response.json();
-    
-//           setProducts(responseBody.products);
-//         } catch (error) {
-//           console.error("Error fetching products:", error);
-//         }
-//       };
-    
-//       fetchProducts();
-//     }, []);
-  
-  
-  
-//   return (
-//     <ProductsProvider>
-//       <Header fixed>
-//         <Search />
-//         <div className='flex items-center ml-auto space-x-4'>
-//           <ThemeSwitch />
-//           <ProfileDropdown />
-//         </div>
-//       </Header>
-
-//       <Main>
-//         <div className='flex flex-wrap items-center justify-between mb-2 space-y-2 gap-x-4'>
-//           <div>
-//             <h2 className='text-2xl font-bold tracking-tight'>Products</h2>
-//             <p className='text-muted-foreground'>Manage your product inventory here.</p>
-//           </div>
-//           <ProductsPrimaryButtons />
-//         </div>
-//         <div className='flex-1 px-4 py-1 -mx-4 overflow-auto lg:flex-row lg:space-x-12 lg:space-y-0'>
-//           <DataTable data={products} columns={columns} />
-//         </div>
-//       </Main>
-//       <ChatwootWidget />
-//     </ProductsProvider>
-//   )
-// }
-
-
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -104,9 +10,10 @@ import ChatwootWidget from '@/components/ChatwootWidget'
 import { ProductsPrimaryButtons } from './components/ProductsPrimaryButtons'
 import ProductsProvider from './context/products-context'
 import { useEffect, useState } from 'react'
-import { Package, Plus, AlertTriangle, Loader2 } from 'lucide-react'
+import { Package, Plus, AlertTriangle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 // Junooni brand colors
 const BRAND = {
@@ -123,10 +30,133 @@ const BRAND = {
   textLight: "#999999"
 };
 
+// Pagination Component
+const Pagination = ({ 
+  currentPage, 
+  totalPages, 
+  totalItems, 
+  itemsPerPage, 
+  onPageChange, 
+  onItemsPerPageChange 
+}) => {
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-between gap-4 px-6 py-4 border-t sm:flex-row" 
+         style={{ borderColor: `${BRAND.primary}11` }}>
+      {/* Items per page selector */}
+      <div className="flex items-center space-x-2">
+        <span className="text-sm text-gray-600">Show</span>
+        <Select value={itemsPerPage.toString()} onValueChange={(value) => onItemsPerPageChange(parseInt(value))}>
+          <SelectTrigger className="w-20 h-8">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="5">5</SelectItem>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="20">20</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-gray-600">items per page</span>
+      </div>
+
+      {/* Page info */}
+      <div className="text-sm text-gray-600">
+        Showing {totalItems > 0 ? startItem : 0} to {endItem} of {totalItems} results
+      </div>
+
+      {/* Page navigation */}
+      <div className="flex items-center space-x-1">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="h-8 w-8 p-0"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        {getPageNumbers().map((page, index) => (
+          page === '...' ? (
+            <span key={`ellipsis-${index}`} className="px-2 py-1 text-sm text-gray-500">
+              ...
+            </span>
+          ) : (
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(page)}
+              className="h-8 w-8 p-0"
+              style={currentPage === page ? { backgroundColor: BRAND.primary } : {}}
+            >
+              {page}
+            </Button>
+          )
+        ))}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="h-8 w-8 p-0"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export default function Products() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  
   const { toast } = useToast();
 
   // Authentication check
@@ -182,6 +212,27 @@ export default function Products() {
     fetchProducts();
   }, []);
 
+  // Reset to first page when items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProducts = products.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    // Scroll to top of table when page changes
+    document.querySelector('[data-table-container]')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+  };
+
   return (
     <div 
       className="min-h-screen"
@@ -223,8 +274,6 @@ export default function Products() {
             <ProfileDropdown />
           </div>
         </Header>
-
-
 
         <Main className="container px-4 py-6 mx-auto">
           {/* Page Header with Enhanced Styling */}
@@ -330,7 +379,7 @@ export default function Products() {
           </div>
 
           {/* Main Content Area */}
-          <Card className="shadow-xl">
+          <Card className="shadow-xl" data-table-container>
             <CardHeader className="border-b" style={{ borderColor: `${BRAND.primary}11` }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -352,16 +401,11 @@ export default function Products() {
                   </div>
                 </div>
                 
-                {/* {!loading && !error && (
-                  <Button 
-                    size="sm"
-                    style={{ backgroundColor: BRAND.primary }}
-                    className="hidden sm:flex"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Product
-                  </Button>
-                )} */}
+                {!loading && !error && products.length > 0 && (
+                  <div className="text-sm text-gray-500">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                )}
               </div>
             </CardHeader>
 
@@ -402,8 +446,20 @@ export default function Products() {
                   </Button>
                 </div>
               ) : (
-                <div className="p-6">
-                  <DataTable data={products} columns={columns} />
+                <div>
+                  <div className="p-6">
+                    <DataTable data={paginatedProducts} columns={columns} />
+                  </div>
+                  
+                  {/* Pagination Controls */}
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={products.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={handlePageChange}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                  />
                 </div>
               )}
             </CardContent>

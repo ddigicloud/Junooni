@@ -397,7 +397,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               )}
             </Button>
 
-            <div className='relative my-6'>
+            {/* <div className='relative my-6'>
               <div className='absolute inset-0 flex items-center'>
                 <span className='w-full border-t border-gray-200' />
               </div>
@@ -406,9 +406,9 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                   Or continue with
                 </span>
               </div>
-            </div>
+            </div> */}
 
-            <div className='flex items-center gap-3'>
+            {/* <div className='flex items-center gap-3'>
               <Button
                 variant='outline'
                 className='w-full h-12 border-2 border-gray-200 hover:border-[#e65100] hover:bg-[#e65100]/5 text-gray-700 hover:text-[#e65100] font-medium transition-all duration-200 rounded-lg'
@@ -427,7 +427,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                 <IconBrandFacebook className='w-5 h-5 mr-2' /> 
                 Facebook
               </Button>
-            </div>
+            </div> */}
           </div>
         </form>
       </Form>

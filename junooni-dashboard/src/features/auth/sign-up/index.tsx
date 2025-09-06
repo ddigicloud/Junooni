@@ -95,7 +95,7 @@ export default function SignUp() {
           {/* Enhanced Branding */}
           <div className="flex items-center gap-4 p-8">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#e65100] shadow-xl">
-              <span className="text-2xl font-black">J</span>
+             <img src="/src/assets/favicon-3-copyyy.png" alt="Junooni Logo" className="h-6 lg:h-10 sm:h-8 w-10 lg:w-18" />
             </div>
             <h1 className="text-3xl font-black text-white drop-shadow-2xl tracking-wide">JUNOONI</h1>
           </div>
@@ -159,7 +159,7 @@ export default function SignUp() {
       </div>
       
       {/* Right Panel - Enhanced Sign Up Form */}
-      <div className="flex h-full flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-white px-6 py-12">
+      <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-white px-6 pt-8">
         <div className="mx-auto w-full max-w-md">
           {/* Mobile Logo - Enhanced */}
           <div className="mb-10 flex items-center justify-center gap-3 lg:hidden">
@@ -188,16 +188,16 @@ export default function SignUp() {
               </Link>
             </p>
             
-            <p className="text-sm text-gray-500 leading-relaxed max-w-sm mx-auto">
+            {/* <p className="text-sm text-gray-500 leading-relaxed max-w-sm mx-auto">
               By creating an account, you agree to our{" "}
               <Link to="/terms" className="font-medium text-[#e65100] hover:text-[#d84315] transition-colors duration-200 hover:underline">
-                Terms of Service
+                Terms of Servicess
               </Link>{" "}
               and{" "}
               <Link to="/privacy" className="font-medium text-[#e65100] hover:text-[#d84315] transition-colors duration-200 hover:underline">
                 Privacy Policy
               </Link>
-            </p>
+            </p> */}
           </div>
         </div>
       </div>

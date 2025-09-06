@@ -1059,7 +1059,7 @@ export default function PayoutPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <h1 className="ml-2 text-base font-semibold" style={{ color: BRAND.secondary }}>
-                Seller Payout Page
+               
               </h1>
             </div>
             
