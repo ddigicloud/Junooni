@@ -133,10 +133,16 @@ export const extractOptionValuesFromNestedVariants = (variant: ApiVariant, optio
   
   if (Array.isArray(variant.options)) {
     return variant.options.map((optVal: ApiOptionValue) => {
+      // return {
+      //   optionId: optVal.option_id || (optVal.option && optVal.option.id),
+      //   optionName: (optVal.option && optVal.option.title) || 
+      //              optionMap[optVal.option_id as string] || 'Option',
+      //   value: optVal.value
+      // };
       return {
-        optionId: optVal.option_id || (optVal.option && optVal.option.id),
+        optionId: optVal.option_id || (optVal.option && optVal.option.id) || '',
         optionName: (optVal.option && optVal.option.title) || 
-                   optionMap[optVal.option_id as string] || 'Option',
+                  optionMap[optVal.option_id as string] || 'Option',
         value: optVal.value
       };
     });
@@ -391,8 +397,14 @@ export const loadProductForEditing = async (
         if (variant.options) {
           if (Array.isArray(variant.options)) {
             optionValues = variant.options.map((optVal: any) => {
+              // return {
+              //   optionId: optVal.option_id || (optVal.option && optVal.option.id),
+              //   optionName: (optVal.option && optVal.option.title) || 
+              //             optionMap[optVal.option_id] || 'Option',
+              //   value: optVal.value
+              // };
               return {
-                optionId: optVal.option_id || (optVal.option && optVal.option.id),
+                optionId: optVal.option_id || (optVal.option && optVal.option.id) || '',
                 optionName: (optVal.option && optVal.option.title) || 
                           optionMap[optVal.option_id] || 'Option',
                 value: optVal.value
@@ -416,7 +428,7 @@ export const loadProductForEditing = async (
           if (transformedOptions.length === titleParts.length) {
             optionValues = transformedOptions.map((option, index) => {
               return {
-                optionId: option.id,
+                optionId: option.id || '',
                 optionName: option.title,
                 value: titleParts[index]
               };
