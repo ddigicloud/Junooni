@@ -71,7 +71,7 @@ export interface VariantInfo {
 }
 
 export interface MediaItem {
-  file?: File;
+  file?: File | null;
   url: string;
   rank: number;
   isNew: boolean;

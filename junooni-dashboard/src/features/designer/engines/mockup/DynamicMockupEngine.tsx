@@ -1325,7 +1325,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
         ref={canvasRef}
         className="w-full h-full border border-gray-200 rounded-lg"
         style={{ 
-          imageRendering: 'high-quality',
+          imageRendering: 'auto',
           maxWidth: '100%',
           height: 'auto'
         }}
