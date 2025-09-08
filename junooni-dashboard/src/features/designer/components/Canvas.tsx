@@ -536,13 +536,13 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
             <img
               src={canvasImage.src}
               alt={areaName}
-              className="absolute inset-0 w-full h-full object-cover opacity-5"
+              className="absolute inset-0 object-cover w-full h-full opacity-5"
               style={{ mixBlendMode: 'multiply' }}
             />
             
             {elementCount > 0 && (
               <div className="absolute top-1 right-1">
-                <div className="w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                <div className="flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-orange-500 rounded-full">
                   {elementCount}
                 </div>
               </div>
@@ -2123,7 +2123,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
         </div>
       </div>
       
-      <div className="mb-2 text-xs text-gray-600 bg-orange-50 p-2 rounded">
+      <div className="p-2 mb-2 text-xs text-gray-600 rounded bg-orange-50">
         Drag to reorder • Top = Front
       </div>
       
@@ -3833,9 +3833,9 @@ const renderUploadPanel = () => {
     <div className="space-y-6">
       {/* Enhanced storage info */}
       {totalImages > 0 && (
-        <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
+        <div className="p-4 border border-blue-100 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center mb-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center mr-3">
+            <div className="flex items-center justify-center w-8 h-8 mr-3 bg-blue-100 rounded-lg">
               <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
               </svg>
@@ -3847,13 +3847,13 @@ const renderUploadPanel = () => {
           </div>
           
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="bg-white/60 rounded-lg p-3">
-              <div className="text-xs text-blue-600 font-medium">IMAGES</div>
+            <div className="p-3 rounded-lg bg-white/60">
+              <div className="text-xs font-medium text-blue-600">IMAGES</div>
               <div className="text-lg font-bold text-blue-900">{imagesWithBase64}/{totalImages}</div>
               <div className="text-xs text-blue-600">with base64</div>
             </div>
-            <div className="bg-white/60 rounded-lg p-3">
-              <div className="text-xs text-blue-600 font-medium">STATUS</div>
+            <div className="p-3 rounded-lg bg-white/60">
+              <div className="text-xs font-medium text-blue-600">STATUS</div>
               <div className={`text-lg font-bold ${imagesWithBase64 === totalImages ? 'text-green-600' : 'text-orange-600'}`}>
                 {imagesWithBase64 === totalImages ? '✓' : '⚠'}
               </div>
@@ -3902,7 +3902,7 @@ const renderUploadPanel = () => {
           
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center px-6 py-3 text-sm font-medium text-white rounded-lg transition-all hover:shadow-lg transform hover:scale-105"
+            className="inline-flex items-center px-6 py-3 text-sm font-medium text-white transition-all transform rounded-lg hover:shadow-lg hover:scale-105"
             style={{ backgroundColor: brandColor }}
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3911,8 +3911,8 @@ const renderUploadPanel = () => {
             Choose Files
           </button>
           
-          <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-            <p className="text-xs text-green-700 font-medium">
+          <div className="p-3 mt-4 border border-green-200 rounded-lg bg-green-50">
+            <p className="text-xs font-medium text-green-700">
               All images are automatically converted to base64 for persistent storage
             </p>
           </div>
@@ -3920,8 +3920,8 @@ const renderUploadPanel = () => {
         
         {/* Drag overlay */}
         {isDragging && (
-          <div className="absolute inset-0 bg-orange-100/50 rounded-xl flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 shadow-lg">
+          <div className="absolute inset-0 flex items-center justify-center bg-orange-100/50 rounded-xl">
+            <div className="p-6 bg-white rounded-lg shadow-lg">
               <div className="text-center">
                 <svg className="w-12 h-12 mx-auto mb-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -3948,7 +3948,7 @@ const renderUploadPanel = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-gray-900">Recent Uploads</h4>
-            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+            <span className="px-2 py-1 text-xs text-gray-500 bg-gray-100 rounded-full">
               {uploadedFiles.length} file{uploadedFiles.length !== 1 ? 's' : ''}
             </span>
           </div>
@@ -3961,22 +3961,22 @@ const renderUploadPanel = () => {
                 : file.name;
               
               return (
-                <div key={file.id} className="flex items-center p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
-                  <div className="relative mr-3 flex-shrink-0">
+                <div key={file.id} className="flex items-center p-3 transition-colors bg-white border border-gray-200 rounded-lg hover:border-gray-300">
+                  <div className="relative flex-shrink-0 mr-3">
                     <img 
                       src={file.url} 
                       alt={file.name} 
-                      className="object-cover w-12 h-12 rounded-lg border border-gray-200" 
+                      className="object-cover w-12 h-12 border border-gray-200 rounded-lg" 
                     />
                     <div className="absolute -top-1 -right-1">
                       {file.base64Data ? (
-                        <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                        <div className="flex items-center justify-center w-4 h-4 bg-green-500 rounded-full">
                           <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>
                       ) : (
-                        <div className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+                        <div className="flex items-center justify-center w-4 h-4 bg-orange-500 rounded-full">
                           <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
@@ -4001,7 +4001,7 @@ const renderUploadPanel = () => {
                     </div>
                   </div>
                   
-                  <div className="ml-2 flex-shrink-0">
+                  <div className="flex-shrink-0 ml-2">
                     <div className={`w-2 h-2 rounded-full ${file.base64Data ? 'bg-green-500' : 'bg-orange-500'}`} />
                   </div>
                 </div>
@@ -4442,15 +4442,16 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
               colorSpecificMockupGroups.flatMap(group => 
               group.mockups.map((mockup, index) => {
                 // 🔥 FIXED: Each thumbnail uses its group's specific color
-                const mockupProductColor = getProductColorForMockup(
-                  mockup, 
-                  group.colorHex, // ✅ Use group's specific color for this thumbnail
-                  productData
-                );
+                // const mockupProductColor = getProductColorForMockup(
+                //   mockup, 
+                //   group.colorHex, // ✅ Use group's specific color for this thumbnail
+                //   productData
+                // );
+                const thumbnailProductColor = group.colorHex;
                 
-                // Verify the color is correct
-                if (mockupProductColor !== group.colorHex) {
-                }
+                // // Verify the color is correct
+                // if (mockupProductColor !== group.colorHex) {
+                // }
                 
                 return (
                   <ThumbnailPreview
@@ -4459,9 +4460,12 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                    designElements={getVisibleDesignElements(designElements)} 
                     canvasConfigs={canvasConfigs}
                     canvasPrintableAreas={printableAreas}
-                    productColor={mockupProductColor} // ✅ This will now be the correct group color
+                    productColor={thumbnailProductColor} // ✅ This will now be the correct group color
                     isSelected={selectedHeroMockup?.id === mockup.id || (!selectedHeroMockup && index === 0)}
-                    onSelect={() => setSelectedHeroMockup(mockup)}
+                    onSelect={() => {
+                      console.log('Manual mockup selection:', mockup.title, mockup.photoColor);
+                      setSelectedHeroMockup(mockup); // Allow manual selection
+                    }}
                     productData={productData}
                   />
                 );
@@ -4535,46 +4539,24 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
             <div className="w-[400px] h-[400px] relative bg-gray-50 rounded-lg overflow-hidden shadow-lg">
               {(() => {
                 // const heroMockup = selectedHeroMockup || allMockups[0];
-                const heroMockup = selectedHeroMockup || (() => {
-                // 1. First try exact color match
-                let matchingMockup = allMockups.find(mockup => {
-                  const mockupColor = mockup.photoColor?.toLowerCase() || '';
-                  return mockupColor === activeColor?.toLowerCase();
-                });
-                
-                if (matchingMockup) {
-                  console.log('Found exact color match:', matchingMockup.photoColor);
-                  return matchingMockup;
-                }
-                
-                // 2. Try to find neutral mockups that can be colored
-                const neutralColors = ['#ffffff', '#f5f5f5', '#fafafa', 'white'];
-                matchingMockup = allMockups.find(mockup => {
-                  const mockupColor = mockup.photoColor?.toLowerCase() || '';
-                  return neutralColors.includes(mockupColor);
-                });
-                
-                if (matchingMockup) {
-                  console.log('Found neutral mockup for coloring:', matchingMockup.photoColor);
-                  return matchingMockup;
-                }
-                
-                // 3. Use dynamic neutral detector to find more neutral options
-                const neutralDetector = createDynamicNeutralDetector(productData);
-                matchingMockup = allMockups.find(mockup => {
-                  const mockupColor = mockup.photoColor || '';
-                  return neutralDetector.isNeutral(mockupColor);
-                });
-                
-                if (matchingMockup) {
-                  console.log('Found neutral mockup via detector:', matchingMockup.photoColor);
-                  return matchingMockup;
-                }
-                
-                // 4. Last resort: use first mockup but log the mismatch
-                console.log('No matching mockup found, using first available:', allMockups[0]?.photoColor, 'for active color:', activeColor);
-                return allMockups[0];
-              })();
+                const heroMockup = selectedHeroMockup || allMockups[0];
+
+                // For the main preview, use the active color if mockup is neutral, otherwise use mockup's color
+                const heroProductColor = (() => {
+                  if (!heroMockup) return activeColor;
+                  
+                  const mockupColor = heroMockup.photoColor?.toLowerCase() || '';
+                  const neutralColors = ['#ffffff', '#f5f5f5', '#fafafa', 'white'];
+                  
+                  // If mockup is neutral, use active color
+                  if (neutralColors.includes(mockupColor)) {
+                    return activeColor;
+                  }
+                  
+                  // If mockup has specific color, use that
+                  return heroMockup.photoColor || activeColor;
+                })();
+
               console.log("mockup selected color:",heroMockup);
                 
                 if (!heroMockup) {
@@ -4589,7 +4571,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                   );
                 }
                 
-                const heroProductColor = getProductColorForMockup(heroMockup, activeColor, productData);
+                //const heroProductColor = getProductColorForMockup(heroMockup, activeColor, productData);
                 
         return (
                 <div className="w-full h-full">
@@ -5016,39 +4998,39 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
     case 'product':
       return (
         <div className="space-y-4">
-          <h3 className="font-semibold text-lg">{productData?.name || 'Unnamed Product'}</h3>
+          <h3 className="text-lg font-semibold">{productData?.name || 'Unnamed Product'}</h3>
           
           {/* Product Basic Info */}
-          <div className="p-1  rounded-l">
+          <div className="p-1 rounded-l">
             <div className="space-y-2">
               {/* <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</label>
+                <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">Product Name</label>
                 <p className="mt-1 text-sm font-semibold text-gray-900">{productData?.name || 'Unnamed Product'}</p>
               </div> */}
               
               <div>
-                <label className="text-xs font-medium text-black uppercase tracking-wider">Product Type</label>
+                <label className="text-xs font-medium tracking-wider text-black uppercase">Product Type</label>
                 <p className="mt-1 text-sm text-black capitalize">{productData?.productType || 'Unknown'}</p>
               </div>
               
               <div>
-                <label className="text-xs font-medium text-black uppercase tracking-wider">Brand</label>
+                <label className="text-xs font-medium tracking-wider text-black uppercase">Brand</label>
                 <p className="mt-1 text-sm text-black">{productData?.brand || 'Junooni'}</p>
               </div>
             </div>
           </div>
 
           {/* Technology Information */}
-          <div className="p-2  rounded-lg ">
+          <div className="p-2 rounded-lg ">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Technology</label>
+                <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">Current Technology</label>
                 <span className="px-2 py-1 text-xs font-medium text-white rounded" style={{ backgroundColor: brandColor }}>
                   Active
                 </span>
               </div>
               
-              <div className="p-0  rounded-md">
+              <div className="p-0 rounded-md">
                 <div className="flex items-center justify-between mb-2">
                   <select
                     value={activeTechnology}
@@ -5068,7 +5050,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                 {/* Current Area */}
                 {/* <div className="mt-2">
                   <label className="text-xs text-gray-600">Current Area:</label>
-                  <div className="flex space-x-1 mt-1">
+                  <div className="flex mt-1 space-x-1">
                     {availableAreas.map(area => (
                       <button
                         key={area}
@@ -5097,28 +5079,28 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           </div>
 
           {/* Product Statistics */}
-          {/* <div className="p-4 bg-white rounded-lg border border-gray-200">
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Design Statistics</label>
+          {/* <div className="p-4 bg-white border border-gray-200 rounded-lg">
+            <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">Design Statistics</label>
             <div className="grid grid-cols-2 gap-3 mt-3">
-              <div className="text-center p-2 bg-gray-50 rounded">
+              <div className="p-2 text-center rounded bg-gray-50">
                 <div className="text-lg font-bold" style={{ color: brandColor }}>
                   {Object.values(designElements).flat().length}
                 </div>
                 <div className="text-xs text-gray-600">Total Elements</div>
               </div>
-              <div className="text-center p-2 bg-gray-50 rounded">
+              <div className="p-2 text-center rounded bg-gray-50">
                 <div className="text-lg font-bold" style={{ color: brandColor }}>
                   {Object.keys(designElements).filter(area => designElements[area]?.length > 0).length}
                 </div>
                 <div className="text-xs text-gray-600">Active Areas</div>
               </div>
-              <div className="text-center p-2 bg-gray-50 rounded">
+              <div className="p-2 text-center rounded bg-gray-50">
                 <div className="text-lg font-bold" style={{ color: brandColor }}>
                   {selectedColors.length}
                 </div>
                 <div className="text-xs text-gray-600">Colors</div>
               </div>
-              <div className="text-center p-2 bg-gray-50 rounded">
+              <div className="p-2 text-center rounded bg-gray-50">
                 <div className="text-lg font-bold" style={{ color: brandColor }}>
                   {selectedSizes.length}
                 </div>
@@ -5129,9 +5111,9 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
 
           {/* Product Pricing/Cost Info */}
           {/* {(productData?.cost || productData?.pricing) && (
-            <div className="p-4 bg-white rounded-lg border border-gray-200">
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing Information</label>
-              <div className="space-y-2 mt-3">
+            <div className="p-4 bg-white border border-gray-200 rounded-lg">
+              <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">Pricing Information</label>
+              <div className="mt-3 space-y-2">
                 {productData.cost && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Base Cost:</span>
@@ -5155,9 +5137,9 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           )} */}
 
           {/* Available Options */}
-          {/* <div className="p-4 bg-white rounded-lg border border-gray-200">
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Available Options</label>
-            <div className="space-y-2 mt-3">
+          {/* <div className="p-4 bg-white border border-gray-200 rounded-lg">
+            <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">Available Options</label>
+            <div className="mt-3 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Color Options:</span>
                 <span className="font-medium">{productData?.colorOptions?.length || 0}</span>
@@ -5336,7 +5318,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold text-gray-900">Uploaded Files</h4>
-                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                <span className="px-2 py-1 text-xs text-gray-500 bg-gray-100 rounded-full">
                   {uploadedFiles.length} file{uploadedFiles.length !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -5354,16 +5336,16 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                   const shortName = getShortName(file.name);
                   
                   return (
-                    <div key={file.id} className="flex items-center p-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
-                      <div className="relative mr-3 flex-shrink-0">
+                    <div key={file.id} className="flex items-center p-2 transition-colors bg-white border border-gray-200 rounded-lg hover:border-gray-300">
+                      <div className="relative flex-shrink-0 mr-3">
                         <img 
                           src={file.url} 
                           alt={file.name} 
-                          className="object-cover w-10 h-10 rounded border border-gray-200" 
+                          className="object-cover w-10 h-10 border border-gray-200 rounded" 
                         />
                         <div className="absolute -top-1 -right-1">
                           {file.base64Data ? (
-                            <div className="w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
+                            <div className="flex items-center justify-center w-3 h-3 bg-green-500 rounded-full">
                               <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
@@ -5459,18 +5441,17 @@ useEffect(() => {
 
 // Auto-select hero mockup based on active color
 // Auto-select hero mockup based on active color
+// Auto-select hero mockup based on active color (only when no manual selection)
+// Auto-select hero mockup based on active color, allow manual override
 useEffect(() => {
   if (allMockups.length > 0) {
-    // Always try to find the best mockup for current active color
-    let bestMockup = null;
-    
-    // 1. Exact match
-    bestMockup = allMockups.find(mockup => {
+    // Find mockup that matches active color
+    let bestMockup = allMockups.find(mockup => {
       const mockupColor = mockup.photoColor?.toLowerCase() || '';
       return mockupColor === activeColor?.toLowerCase();
     });
     
-    // 2. Neutral mockup
+    // Fallback to neutral mockup
     if (!bestMockup) {
       const neutralColors = ['#ffffff', '#f5f5f5', '#fafafa', 'white'];
       bestMockup = allMockups.find(mockup => {
@@ -5479,7 +5460,7 @@ useEffect(() => {
       });
     }
     
-    // 3. Use dynamic neutral detector
+    // Use dynamic neutral detector as last resort
     if (!bestMockup) {
       const neutralDetector = createDynamicNeutralDetector(productData);
       bestMockup = allMockups.find(mockup => {
@@ -5488,13 +5469,13 @@ useEffect(() => {
       });
     }
     
-    // Update if we found a better match
-    if (bestMockup && (!selectedHeroMockup || selectedHeroMockup.photoColor !== bestMockup.photoColor)) {
-      console.log('Auto-selecting better mockup:', bestMockup.photoColor, 'for color:', activeColor);
+    // Auto-select the best mockup for active color
+    if (bestMockup) {
+      console.log('Auto-selecting mockup for active color:', activeColor, '-> mockup:', bestMockup.photoColor);
       setSelectedHeroMockup(bestMockup);
     }
   }
-}, [activeColor, allMockups, selectedHeroMockup, productData]);
+}, [activeColor, allMockups, productData]); // This will re-run when activeColor changes
   
   useEffect(() => {
     const transformer = transformerRef.current;
@@ -5742,7 +5723,7 @@ useEffect(() => {
             </div>
             
             {/* Center: Design/Preview Toggle Buttons */}
-            <div className="flex p-1 bg-gray-100 rounded-lg border border-gray-200">
+            <div className="flex p-1 bg-gray-100 border border-gray-200 rounded-lg">
               <button
                 onClick={() => setActiveView('design')}
                 className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
@@ -5798,7 +5779,7 @@ useEffect(() => {
               
               <button
                 onClick={() => window.close()}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-500 transition-colors rounded-lg hover:text-gray-700 hover:bg-gray-100"
                 title="Close Designer"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5810,7 +5791,7 @@ useEffect(() => {
         </div>
 
       {/* Full Width Technology and Area Header - Moved Outside */}
-      {/* <div className="w-full px-8 py-1 bg-gray-50 border-b border-gray-200">
+      {/* <div className="w-full px-8 py-1 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center space-x-6"> */}
           {/* <div className="flex items-center">
             <span className="mr-3 text-sm font-medium text-gray-700">Technology:</span>
@@ -5856,7 +5837,7 @@ useEffect(() => {
           
           {/* <div className="flex-1"></div> */}
           
-          {/* <div className="flex p-1 bg-white rounded-lg border border-gray-200">
+          {/* <div className="flex p-1 bg-white border border-gray-200 rounded-lg">
             <button
               onClick={() => setActiveView('design')}
               className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
@@ -5913,9 +5894,9 @@ useEffect(() => {
         {activeView === 'design' && (
           <div className="flex bg-white border-r border-gray-200 shadow-sm">
             {/* Vertical Navigation - Always Visible */}
-            <div className="flex flex-col w-17 border-r border-gray-200" style={{ backgroundColor: '#e65100' }}>
+            <div className="flex flex-col border-r border-gray-200 w-17" style={{ backgroundColor: '#e65100' }}>
               {/* <div className="p-3 border-b border-orange-600">
-                <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/20">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -5950,7 +5931,7 @@ useEffect(() => {
                         />
                         
                         {tab.count > 0 && tab.id !== 'product' && (
-                          <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-orange-600 bg-white rounded-full">
+                          <span className="absolute flex items-center justify-center w-4 h-4 text-xs font-bold text-orange-600 bg-white rounded-full -top-1 -right-1">
                             {tab.count > 99 ? '99+' : tab.count}
                           </span>
                         )}
@@ -5960,7 +5941,7 @@ useEffect(() => {
                       
                       {/* Active indicator */}
                       {activeTab === tab.id && (
-                        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-white rounded-r-full" />
+                        <div className="absolute left-0 w-1 h-8 transform -translate-y-1/2 bg-white rounded-r-full top-1/2" />
                       )}
                     </button>
                   );
@@ -6014,7 +5995,7 @@ useEffect(() => {
                   {activeTab === 'colors' && activeColor && (
                     <div className="flex items-center space-x-2">
                       <div 
-                        className="w-6 h-6 rounded-full border-2 border-gray-300 shadow-sm"
+                        className="w-6 h-6 border-2 border-gray-300 rounded-full shadow-sm"
                         style={{ backgroundColor: activeColor }}
                         title="Active color"
                       />
