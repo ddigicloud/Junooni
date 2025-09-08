@@ -1,6 +1,6 @@
 // ../context/product-components/VariantComponents.tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { IconPhotoPlus } from '@tabler/icons-react';
 import { isColorOption } from './utils';

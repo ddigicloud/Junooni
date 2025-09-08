@@ -29,13 +29,22 @@ interface InventoryManagementModalProps {
   ) => void;
   updateVariant: (index: number, data: any) => void;
   defaultLocationId: string;
-  batchUpdateInventoryLevels: (changes: any) => Promise<any>;
-  inventoryChanges: {
-    create: any[];
-    update: any[];
-    delete: string[];
-  };
+   batchUpdateInventoryLevels: (changes: InventoryChanges) => Promise<any>;
+  inventoryChanges: InventoryChanges;
   onClose: () => void;
+}
+
+// Add these interfaces before the main component
+interface InventoryUpdateItem {
+  inventory_item_id: string;
+  location_id: string;
+  stocked_quantity: number;
+}
+
+interface InventoryChanges {
+  create: InventoryUpdateItem[];
+  update: InventoryUpdateItem[];
+  delete: string[];
 }
 
 const InventoryManagementModal: React.FC<InventoryManagementModalProps> = ({
@@ -56,7 +65,7 @@ const InventoryManagementModal: React.FC<InventoryManagementModalProps> = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   
   // Local state to track changes made in the modal
-  const [localInventoryChanges, setLocalInventoryChanges] = useState({
+  const [localInventoryChanges, setLocalInventoryChanges] = useState<InventoryChanges>({
     create: [...(inventoryChanges.create || [])],
     update: [...(inventoryChanges.update || [])],
     delete: [...(inventoryChanges.delete || [])]
@@ -66,8 +75,8 @@ const InventoryManagementModal: React.FC<InventoryManagementModalProps> = ({
   useEffect(() => {
     console.log("Initializing inventory changes from props:", inventoryChanges);
     setLocalInventoryChanges({
-      create: [...(inventoryChanges.create || [])],
-      update: [...(inventoryChanges.update || [])],
+      create: [...(inventoryChanges.create || [])] as InventoryUpdateItem[],
+      update: [...(inventoryChanges.update || [])] as InventoryUpdateItem[],
       delete: [...(inventoryChanges.delete || [])]
     });
   }, [inventoryChanges]);
@@ -235,9 +244,9 @@ const InventoryManagementModal: React.FC<InventoryManagementModalProps> = ({
     
     try {
       // CRITICAL SAFETY FIX: Scan for any updates that should be creates
-      const safeInventoryChanges = {
+      const safeInventoryChanges: InventoryChanges = {
         create: [...localInventoryChanges.create],
-        update: [],
+        update: [] as InventoryUpdateItem[],
         delete: [...localInventoryChanges.delete]
       };
 
