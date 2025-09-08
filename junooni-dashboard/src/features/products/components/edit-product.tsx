@@ -2496,12 +2496,14 @@ const onSubmit = async (values: ProductFormValues) => {
             }
             
             // Process fulfillment data (creator fulfillment)
-            const fulfillmentData = {
-              type: "Creator-fulfilment",
+            // Process fulfillment data (preserve original type)
+            const fulfillmentInfo = {
+              type: fulfillmentData?.type || "Creator-fulfilment", // Use original type or fallback
               handling_time: values.handlingTime || '2-3',
               shipping_time: values.shippingDays || '7-10'
             };
-            metadata.fulfillment_type = JSON.stringify(fulfillmentData);
+            metadata.fulfillment_type = JSON.stringify(fulfillmentInfo);
+            console.log("product fulfillment type:", fulfillmentInfo);
 
             // --- STEP 5: Process Colors and Image Associations (wrapped with try/catch) ---
             try {
@@ -4215,8 +4217,22 @@ const handleApiError = (apiError: any) => {
                       <IconTruck size={24} />
                     </div>
                     <div>
-                      <h3 className="font-medium text-gray-800">Creator Fulfillment</h3>
-                      <p className="text-sm text-gray-600">You'll handle all order shipping</p>
+                       <h3 className="font-medium text-gray-800">
+                        {fulfillmentData?.type === "Creator-fulfilment" 
+                          ? "Creator Fulfillment" 
+                          : fulfillmentData?.type === "Junooni-fulfilment"
+                          ? "Junooni Fulfillment"
+                          : "Standard Fulfillment"
+                        }
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {fulfillmentData?.type === "Creator-fulfilment" 
+                          ? "You'll handle all order shipping" 
+                          : fulfillmentData?.type === "Junooni-fulfilment"
+                          ? "Junooni will handle order fulfillment"
+                          : "Standard fulfillment process"
+                        }
+                      </p>
                     </div>
                   </div>
                   
