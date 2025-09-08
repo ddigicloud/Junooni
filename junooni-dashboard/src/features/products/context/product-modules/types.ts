@@ -27,86 +27,108 @@
 //     imageAssociation?: boolean;
 //     [key: string]: any;
 //   }
-export type OptionValue = {
+// ../context/product-components/types.ts
+
+// Variant option value - used in variants to specify which option and value
+export interface VariantOptionValue {
   id?: string;
-  value: string;
-  label?: string;
   optionId?: string;
   optionName?: string;
+  value: string;
   [k: string]: any;
-};
+}
 
-export type Option = {
+// Option definition - contains the option title and possible string values
+export interface Option {
   id: string;
   title: string;
-  optionValues: OptionValue[];
+  optionValues: string[]; // Array of strings like ["Red", "Blue", "Green"]
   imageAssociation?: boolean;
-  colorHexValues?: Record<string, string>;
+  colorHexValues?: Record<string, string>; // Maps option value strings to hex colors
   [k: string]: any;
-};
+}
 
-export type Variant = {
+// Variant - references option values by optionName and value
+export interface Variant {
   id: string;
   sku?: string;
-  optionValues: OptionValue[];
+  title?: string;
+  price?: number | string;
+  compareAtPrice?: number | string;
+  stock?: number | string;
+  allowBackorder?: boolean;
+  manageInventory?: boolean;
+  optionValues: VariantOptionValue[]; // Array of objects with optionName and value
   [k: string]: any;
-};
-  
+}
 
+export interface VariantInfo {
+  optionId?: string;
+  optionName?: string;
+  optionValues?: string[];
+  variantId?: string;
+  variantTitle?: string;
+}
 
-  export interface VariantInfo {
-    optionId?: string;
-    optionName?: string;
-    optionValues?: string[];
-    variantId?: string;
-    variantTitle?: string;
-  }
-  
-  export interface MediaItem {
-    file?: File;
-    url: string;
-    rank: number;
-    isNew: boolean;
-    colorValue?: string;
-    variantInfo?: VariantInfo | null;
-  }
-  
-  export interface ProductDetail {
-    id: string;
-    text: string;
-  }
-  
-  export interface ProductFormValues {
-    title: string;
-    subtitle?: string;
-    handle: string;
-    description: string;
-    status: string;
-    thumbnail: string;
-    discountable: boolean;
-    category_id: string;
-    options: Option[];
-    variants: Variant[];
-    defaultVariantPrice: number | string;
-    defaultVariantSku: string;
-    defaultVariantStock: number | string;
-    weight: string;
-    length: string;
-    width: string;
-    height: string;
-    material: string;
-    origin_country: string;
-    productDetails: ProductDetail[];
-    storyBehindDesign: string;
-    locationId: string;
-    metadata?: Record<string, any>;
-    shippingDays?: string;
-    handlingTime?: string;
-  }
-  
-  export interface ProductFormProps {
-    initialData?: ProductFormValues;
-    isEditing?: boolean;
-  }
+export interface MediaItem {
+  file?: File;
+  url: string;
+  rank: number;
+  isNew: boolean;
+  colorValue?: string;
+  variantInfo?: VariantInfo | null;
+}
 
-  
+export interface ProductDetail {
+  id: string;
+  text: string;
+}
+
+export interface ProductFormValues {
+  title: string;
+  subtitle?: string;
+  handle: string;
+  description: string;
+  status: string;
+  thumbnail: string;
+  discountable: boolean;
+  category_id: string;
+  options: Option[];
+  variants: Variant[];
+  defaultVariantPrice: number | string;
+  defaultVariantSku: string;
+  defaultVariantStock: number | string;
+  weight: string;
+  length: string;
+  width: string;
+  height: string;
+  material: string;
+  origin_country: string;
+  productDetails: ProductDetail[];
+  storyBehindDesign: string;
+  locationId: string;
+  metadata?: Record<string, any>;
+  shippingDays?: string;
+  handlingTime?: string;
+}
+
+export interface ProductFormProps {
+  initialData?: ProductFormValues;
+  isEditing?: boolean;
+}
+
+// Add Product type that was missing
+export interface Product {
+  id: string;
+  title: string;
+  subtitle?: string;
+  handle: string;
+  description?: string;
+  status: string;
+  thumbnail?: string;
+  discountable?: boolean;
+  category_id?: string;
+  options?: Option[];
+  variants?: Variant[];
+  [k: string]: any;
+}

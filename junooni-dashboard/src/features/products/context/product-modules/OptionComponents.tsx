@@ -10,8 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { HexColorPicker } from 'react-colorful';
 
 import { isColorOption } from './utils';
-// import { Option } from './types';
-import type { Option, OptionValue } from './types';
+import type { Option } from './types';
 
 
 // Enhanced Option Component with consistent layout and image association checkbox
@@ -231,17 +230,13 @@ export const EnhancedOptionComponent = ({
     setShowImageAssociation(checked);
     
     try {
-      // Create a completely flat object - no nesting at all
-      // const flatOption = {};
-      const flatOption: Option = {};
-      
-      // Copy only essential properties
-      flatOption.id = currentOption.id;
-      flatOption.title = currentOption.title;
-      flatOption.optionValues = [...currentOption.optionValues];
-      
-      // Set the boolean flag
-      flatOption.imageAssociation = checked;
+      // Create a properly initialized Option object
+      const flatOption: Option = {
+        id: currentOption.id,
+        title: currentOption.title,
+        optionValues: [...currentOption.optionValues],
+        imageAssociation: checked
+      };
       
       // For color options, preserve color hex values
       if (isColorOpt && currentOption.colorHexValues) {
@@ -249,8 +244,7 @@ export const EnhancedOptionComponent = ({
       }
       
       // Update with the flat structure
-      //updateOption(optionIndex, flatOption);
-      updateOption(optionIndex, flatOption as Option);
+      updateOption(optionIndex, flatOption);
       
       console.log("Updated image association to:", checked);
     } catch (err) {
@@ -277,7 +271,7 @@ export const EnhancedOptionComponent = ({
       {/* Display option values - CONSISTENT UI FOR ALL OPTIONS */}
       {optionValues.length > 0 ? (
         <div className="flex flex-wrap gap-3 mb-4">
-          {optionValues.map((value: OptionValue, valueIndex: number) => (
+          {optionValues.map((value: string, valueIndex: number) => (
             <div key={valueIndex} className="relative">
               {isColorOpt ? (
                 // Color option value display
@@ -403,16 +397,17 @@ export const NonColorButtonSelector = ({
   selectedValue, 
   setSelectedOptionValues, 
   countImagesForOptionValue 
+}: {
+  option: Option;
+  selectedValue: string;
+  setSelectedOptionValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  countImagesForOptionValue: (optionName: string, value: string) => number;
 }) => {
   return (
     <div className="space-y-3">
-      {/* <label className="block text-sm font-medium text-gray-700">
-        Select {option.title}
-      </label> */}
-      
       {/* Simple buttons instead of complex dropdown */}
       <div className="flex flex-wrap gap-2">
-        {option.optionValues && option.optionValues.map((value: OptionValue, index: number) => {
+        {option.optionValues && option.optionValues.map((value: string, index: number) => {
           const isActive = selectedValue === value;
           const imageCount = countImagesForOptionValue(option.title, value);
           

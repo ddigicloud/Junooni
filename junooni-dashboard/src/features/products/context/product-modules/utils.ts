@@ -1,6 +1,6 @@
 // ../context/product-components/utils.ts
 
-import { Option, Variant, OptionValue, MediaItem } from './types';
+import { Option, Variant, VariantOptionValue, MediaItem } from './types';
 
 // Helper function to determine which option type is a color option
 export const isColorOption = (optionTitle: string): boolean => {
@@ -62,7 +62,7 @@ export function generateVariantsFromOptions(options: any[]): Variant[] {
     }));
     
     // Create variant title (e.g. "Small / Red / Cotton")
-    const title = optionValues.map((opt: OptionValue) => opt.value).join(' / ');
+    const title = optionValues.map((opt: VariantOptionValue) => opt.value).join(' / ');
     
     // Create unique SKU with timestamp to avoid duplicates
     const sku = generateUniqueSku(title);
@@ -165,8 +165,12 @@ export const prepareVariantImageMetadata = (
 
 // Get color images metadata for a variant
 export function getColorImagesMetadata(variant: Variant, mediaItems: MediaItem[]): any[] {
-  const colorOption = variant.optionValues.find(opt => isColorOption(opt.optionName));
-  if (!colorOption) return [];
+  // Add proper null/undefined checks
+  const colorOption = variant.optionValues.find(opt => 
+    opt.optionName && isColorOption(opt.optionName)
+  );
+  
+  if (!colorOption || !colorOption.optionName) return [];
   
   const colorImages = getOptionValueImages(colorOption.optionName, colorOption.value, mediaItems)
     .map(img => ({ url: img.url, color: colorOption.value }));

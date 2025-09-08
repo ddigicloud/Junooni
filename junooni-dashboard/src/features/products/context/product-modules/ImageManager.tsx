@@ -35,21 +35,20 @@ export const StreamlinedImageManager: React.FC<{
   );
 
   // Find options that have imageAssociation set to true
-  // const imageAssociatedOptions = validOptions.filter(opt => opt.imageAssociation === true);
   const imageAssociatedOptions = useMemo(() => {
-  return validOptions.filter(opt => opt.imageAssociation === true);
-}, [validOptions]);
+    return validOptions.filter(opt => opt.imageAssociation === true);
+  }, [validOptions]);
 
   // Determine association mode based on checked options and variant availability
- const associationMode = useMemo(() => {
-  if (variants.length === 0 || imageAssociatedOptions.length === 0) {
-    return 'none';
-  } else if (imageAssociatedOptions.length === 1) {
-    return 'single';
-  } else {
-    return 'combination';
-  }
-}, [variants.length, imageAssociatedOptions.length]);
+  const associationMode = useMemo(() => {
+    if (variants.length === 0 || imageAssociatedOptions.length === 0) {
+      return 'none';
+    } else if (imageAssociatedOptions.length === 1) {
+      return 'single';
+    } else {
+      return 'combination';
+    }
+  }, [variants.length, imageAssociatedOptions.length]);
 
   // Filter variants to only show those with values for checked options
   const getFilteredVariants = useCallback(() => {
@@ -71,7 +70,7 @@ export const StreamlinedImageManager: React.FC<{
   
         // Create a filtered set of option values that only includes the associated options
         const relevantOptionValues = variant.optionValues.filter(ov => 
-          associatedOptionTitles.includes(ov.optionName)
+          ov.optionName && associatedOptionTitles.includes(ov.optionName)
         );
         
         // If the filtered set doesn't contain all the associated options, exclude this variant
@@ -121,27 +120,26 @@ export const StreamlinedImageManager: React.FC<{
     setError(null);
     
     try {
-      
       const newSelections: Record<string, string> = {};
       
-       // Just collect selections, don't update state inside loop
-    imageAssociatedOptions.forEach(option => {
-      if (option.optionValues && option.optionValues.length > 0) {
-        const currentSelection = selectedOptionValues[option.title];
-        
-        if (currentSelection && option.optionValues.includes(currentSelection)) {
-          newSelections[option.title] = currentSelection;
-        } else {
-          newSelections[option.title] = option.optionValues[0];
+      // Just collect selections, don't update state inside loop
+      imageAssociatedOptions.forEach(option => {
+        if (option.optionValues && option.optionValues.length > 0) {
+          const currentSelection = selectedOptionValues[option.title];
+          
+          if (currentSelection && option.optionValues.includes(currentSelection)) {
+            newSelections[option.title] = currentSelection;
+          } else {
+            newSelections[option.title] = option.optionValues[0];
+          }
         }
-      }
-    });
+      });
       
-       // Only update state ONCE after processing all options
-    if (Object.keys(newSelections).length > 0 && 
-        JSON.stringify(newSelections) !== JSON.stringify(selectedOptionValues)) {
-      setSelectedOptionValues(newSelections);
-    }
+      // Only update state ONCE after processing all options
+      if (Object.keys(newSelections).length > 0 && 
+          JSON.stringify(newSelections) !== JSON.stringify(selectedOptionValues)) {
+        setSelectedOptionValues(newSelections);
+      }
       
       // If we switched to variant mode, pre-select first variant
       if (associationMode === 'combination') {
@@ -168,7 +166,7 @@ export const StreamlinedImageManager: React.FC<{
       console.error("Error in preselection effect:", err);
       setError("Error setting up variant options. Please try again.");
     }
-  }, [associationMode, imageAssociatedOptions, getFilteredVariants,selectedOptionValues]);
+  }, [associationMode, imageAssociatedOptions, getFilteredVariants, selectedOptionValues]);
 
   // Handle option-specific upload with simplified metadata
   const handleOptionValueUpload = (
@@ -438,22 +436,21 @@ export const StreamlinedImageManager: React.FC<{
   };
 
   // Render the image gallery if there are images
- const renderImageGallery = () => {
-  // Get filtered images based on current selection
-  const imagesForSelection = getFilteredImages();
-  
-  // If no images match the current selection, show all images as fallback
-  const displayImages = imagesForSelection.length > 0 ? imagesForSelection : mediaItems;
-  
-  if (displayImages.length === 0) {
-    return (
-      <div className="p-6 mt-4 text-center border border-gray-300 border-dashed rounded-md bg-gray-50">
-        <p className="text-gray-500">No images added yet. {associationMode !== 'none' && 'Upload specific images for your selection.'}</p>
-      </div>
-    );
-  }
-  
+  const renderImageGallery = () => {
+    // Get filtered images based on current selection
+    const imagesForSelection = getFilteredImages();
     
+    // If no images match the current selection, show all images as fallback
+    const displayImages = imagesForSelection.length > 0 ? imagesForSelection : mediaItems;
+    
+    if (displayImages.length === 0) {
+      return (
+        <div className="p-6 mt-4 text-center border border-gray-300 border-dashed rounded-md bg-gray-50">
+          <p className="text-gray-500">No images added yet. {associationMode !== 'none' && 'Upload specific images for your selection.'}</p>
+        </div>
+      );
+    }
+      
     return (
       <div className="grid grid-cols-1 gap-4 mt-6 sm:grid-cols-2 lg:grid-cols-3">
         {filteredImages.sort((a, b) => a.rank - b.rank).map((item, index) => {

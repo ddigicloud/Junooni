@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { IconPhotoPlus } from '@tabler/icons-react';
 import { isColorOption } from './utils';
-// import { Option, Variant } from './types';
-import type { Option, Variant, OptionValue } from './types';
+import type { Option, Variant, VariantOptionValue } from './types';
 
 
 interface SimplifiedStorefrontSelectorProps {
@@ -91,14 +90,14 @@ export const SimplifiedStorefrontSelector = ({
     }
     
     // Find the matching variant
-    let matchingVariantId = null;
+    let matchingVariantId: string | null = null;
     
     for (const variant of variants) {
       let isMatch = true;
       
       // Check color match if we have a color option and selection
       if (colorOption && colorSelection) {
-        const colorMatch = variant.optionValues.some((ov: OptionValue) =>
+        const colorMatch = variant.optionValues.some((ov: VariantOptionValue) =>
           ov.optionName === colorOption.title && ov.value === colorSelection
         );
         if (!colorMatch) {
@@ -111,7 +110,7 @@ export const SimplifiedStorefrontSelector = ({
       if (sizeSelection) {
         const sizeOption = nonColorOptions[0]; // Assuming first non-color is size
         if (sizeOption) {
-          const sizeMatch = variant.optionValues.some((ov: OptionValue) => 
+          const sizeMatch = variant.optionValues.some((ov: VariantOptionValue) => 
             ov.optionName === sizeOption.title && ov.value === sizeSelection
           );
           if (!sizeMatch) {
@@ -125,7 +124,7 @@ export const SimplifiedStorefrontSelector = ({
       if (otherSelection) {
         const otherOption = nonColorOptions[1]; // Assuming second non-color is other
         if (otherOption) {
-          const otherMatch = variant.optionValues.some((ov: OptionValue) =>
+          const otherMatch = variant.optionValues.some((ov: VariantOptionValue) =>
             ov.optionName === otherOption.title && ov.value === otherSelection
           );
           if (!otherMatch) {
@@ -172,7 +171,7 @@ export const SimplifiedStorefrontSelector = ({
             Select {colorOption.title}
           </label>
           <div className="flex flex-wrap gap-3">
-            {colorOption.optionValues.map((value: OptionValue, index: number) => {
+            {colorOption.optionValues.map((value: string, index: number) => {
               const isActive = colorSelection === value;
               const hexValue = colorOption.colorHexValues?.[value] || '#000000';
               
@@ -205,7 +204,7 @@ export const SimplifiedStorefrontSelector = ({
             Select {nonColorOptions[0].title}
           </label>
           <div className="flex flex-wrap gap-2">
-            {nonColorOptions[0].optionValues.map((value: OptionValue, valueIndex: number) => {
+            {nonColorOptions[0].optionValues.map((value: string, valueIndex: number) => {
               const isActive = sizeSelection === value;
               
               return (
@@ -234,7 +233,7 @@ export const SimplifiedStorefrontSelector = ({
             Select {nonColorOptions[1].title}
           </label>
           <div className="flex flex-wrap gap-2">
-            {nonColorOptions[1].optionValues.map((value: OptionValue, valueIndex: number) => {
+            {nonColorOptions[1].optionValues.map((value: string, valueIndex: number) => {
               const isActive = otherSelection === value;
               
               return (
@@ -316,7 +315,6 @@ export const RobustOptionSelector = ({
   const nonColorOptions = imageAssociatedOptions.filter(opt => !isColorOption(opt.title));
   
   // Dynamic state for selections
-  //const [selections, setSelections] = useState({});
   const [selections, setSelections] = useState<Record<string, string>>({});
   
   // THIS IS THE KEY FIX: Run whenever imageAssociatedOptions changes
@@ -355,7 +353,7 @@ export const RobustOptionSelector = ({
   }, [imageAssociatedOptions]);
   
   // Handle selecting an option value
-  const handleSelect = (optionTitle, value) => {
+  const handleSelect = (optionTitle: string, value: string) => {
     console.log(`Selecting ${optionTitle}: ${value}`);
     setSelections(prev => ({
       ...prev,
@@ -374,7 +372,7 @@ export const RobustOptionSelector = ({
     
     // Find the matching variant
     const optionTitles = imageAssociatedOptions.map(opt => opt.title);
-    let matchingVariantId = null;
+    let matchingVariantId: string | null = null;
     
     for (const variant of variants) {
       let isMatch = true;
@@ -384,7 +382,7 @@ export const RobustOptionSelector = ({
         const selectedValue = selections[optionTitle];
         if (!selectedValue) continue; // Skip if no selection for this option
         
-        const optionMatch = variant.optionValues.some((ov: OptionValue) =>
+        const optionMatch = variant.optionValues.some((ov: VariantOptionValue) =>
           ov.optionName === optionTitle && ov.value === selectedValue
         );
         
@@ -427,7 +425,7 @@ export const RobustOptionSelector = ({
             Select {colorOption.title}
           </label>
           <div className="flex flex-wrap gap-3">
-            {colorOption.optionValues.map((value: OptionValue, index: number) => {
+            {colorOption.optionValues.map((value: string, index: number) => {
               const isActive = selections[colorOption.title] === value;
               const hexValue = colorOption.colorHexValues?.[value] || '#000000';
               
@@ -460,7 +458,7 @@ export const RobustOptionSelector = ({
             Select {option.title}
           </label>
           <div className="flex flex-wrap gap-2">
-            {option.optionValues.map((value: OptionValue, valueIndex: number) => {
+            {option.optionValues.map((value: string, valueIndex: number) => {
               const isActive = selections[option.title] === value;
               
               return (
@@ -555,7 +553,7 @@ export const VariantCombinationButtonSelector = ({
             
             // Create a filtered title showing only the associated options
             const filteredOptionValues = variant.optionValues
-              .filter(ov => associatedOptionTitles.includes(ov.optionName))
+              .filter(ov => ov.optionName && associatedOptionTitles.includes(ov.optionName))
               .map(ov => ov.value);
             
             const filteredTitle = filteredOptionValues.join(' / ');

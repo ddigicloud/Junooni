@@ -9,6 +9,7 @@ import { DataTable } from './components/data-tables'
 import ChatwootWidget from '@/components/ChatwootWidget'
 import { ProductsPrimaryButtons } from './components/ProductsPrimaryButtons'
 import ProductsProvider from './context/products-context'
+import { Product } from './context/product-modules/types'
 import { useEffect, useState } from 'react'
 import { Package, Plus, AlertTriangle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -30,6 +31,16 @@ const BRAND = {
   textLight: "#999999"
 };
 
+// Pagination Component Props Interface
+interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (itemsPerPage: number) => void;
+}
+
 // Pagination Component
 const Pagination = ({ 
   currentPage, 
@@ -38,12 +49,12 @@ const Pagination = ({
   itemsPerPage, 
   onPageChange, 
   onItemsPerPageChange 
-}) => {
+}: PaginationProps) => {
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-  const getPageNumbers = () => {
-    const pages = [];
+  const getPageNumbers = (): (number | string)[] => {
+    const pages: (number | string)[] = [];
     const maxVisiblePages = 5;
     
     if (totalPages <= maxVisiblePages) {
@@ -125,7 +136,7 @@ const Pagination = ({
               key={page}
               variant={currentPage === page ? "default" : "outline"}
               size="sm"
-              onClick={() => onPageChange(page)}
+              onClick={() => onPageChange(page as number)}
               className="w-8 h-8 p-0"
               style={currentPage === page ? { backgroundColor: BRAND.primary } : {}}
             >
@@ -223,13 +234,13 @@ export default function Products() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedProducts = products.slice(startIndex, endIndex);
 
-  const handlePageChange = (page) => {
+  const handlePageChange = (page: number) => {
     setCurrentPage(page);
     // Scroll to top of table when page changes
     document.querySelector('[data-table-container]')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleItemsPerPageChange = (newItemsPerPage) => {
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage);
   };
 
