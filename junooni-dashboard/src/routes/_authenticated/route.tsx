@@ -72,7 +72,7 @@ function RouteComponent() {
         // If response is not ok or empty, redirect to onboarding
         if (!response.ok) {
           console.log("Vendor profile not found. Redirecting to onboarding page.")
-          window.location.href = '/onboarding?step=basic-info'
+            router.navigate({ to: '/onboarding', search: '?step=basic-info' } as any)
           return
         }
         
@@ -81,7 +81,7 @@ function RouteComponent() {
         // Check if vendor data exists in the response
         if (!data || !data.vendor) {
           console.log("Vendor data empty. Redirecting to onboarding page.")
-          window.location.href = '/onboarding?step=basic-info'
+           router.navigate({ to: '/onboarding', search: '?step=basic-info' } as any)
           return
         }
         

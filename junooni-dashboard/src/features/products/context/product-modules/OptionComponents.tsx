@@ -10,7 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { HexColorPicker } from 'react-colorful';
 
 import { isColorOption } from './utils';
-import { Option } from './types';
+// import { Option } from './types';
+import type { Option, OptionValue } from './types';
+
 
 // Enhanced Option Component with consistent layout and image association checkbox
 export const EnhancedOptionComponent = ({ 
@@ -230,7 +232,8 @@ export const EnhancedOptionComponent = ({
     
     try {
       // Create a completely flat object - no nesting at all
-      const flatOption = {};
+      // const flatOption = {};
+      const flatOption: Option = {};
       
       // Copy only essential properties
       flatOption.id = currentOption.id;
@@ -246,7 +249,8 @@ export const EnhancedOptionComponent = ({
       }
       
       // Update with the flat structure
-      updateOption(optionIndex, flatOption);
+      //updateOption(optionIndex, flatOption);
+      updateOption(optionIndex, flatOption as Option);
       
       console.log("Updated image association to:", checked);
     } catch (err) {
@@ -273,7 +277,7 @@ export const EnhancedOptionComponent = ({
       {/* Display option values - CONSISTENT UI FOR ALL OPTIONS */}
       {optionValues.length > 0 ? (
         <div className="flex flex-wrap gap-3 mb-4">
-          {optionValues.map((value, valueIndex) => (
+          {optionValues.map((value: OptionValue, valueIndex: number) => (
             <div key={valueIndex} className="relative">
               {isColorOpt ? (
                 // Color option value display
@@ -408,7 +412,7 @@ export const NonColorButtonSelector = ({
       
       {/* Simple buttons instead of complex dropdown */}
       <div className="flex flex-wrap gap-2">
-        {option.optionValues && option.optionValues.map((value, index) => {
+        {option.optionValues && option.optionValues.map((value: OptionValue, index: number) => {
           const isActive = selectedValue === value;
           const imageCount = countImagesForOptionValue(option.title, value);
           

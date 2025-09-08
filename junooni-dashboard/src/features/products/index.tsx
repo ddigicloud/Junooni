@@ -110,9 +110,9 @@ const Pagination = ({
           size="sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="h-8 w-8 p-0"
+          className="w-8 h-8 p-0"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="w-4 h-4" />
         </Button>
 
         {getPageNumbers().map((page, index) => (
@@ -126,7 +126,7 @@ const Pagination = ({
               variant={currentPage === page ? "default" : "outline"}
               size="sm"
               onClick={() => onPageChange(page)}
-              className="h-8 w-8 p-0"
+              className="w-8 h-8 p-0"
               style={currentPage === page ? { backgroundColor: BRAND.primary } : {}}
             >
               {page}
@@ -139,9 +139,9 @@ const Pagination = ({
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="h-8 w-8 p-0"
+          className="w-8 h-8 p-0"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
     </div>
@@ -149,7 +149,7 @@ const Pagination = ({
 };
 
 export default function Products() {
-  const [products, setProducts] = useState([])
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   

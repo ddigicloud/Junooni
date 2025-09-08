@@ -101,7 +101,7 @@
 //     fulfillment_status: string;
 //   }
   
-interface OrderItem {
+export interface OrderItem {
     id: string
     name: string     // OrdersPage expects name, but transformation creates title
     title?: string   // Add this for OrderDetails component
@@ -109,21 +109,21 @@ interface OrderItem {
     price: number
     unit_price?: number // Add this for OrderDetails component
     total?: number    // Add this for OrderDetails component
-  }
-  
-  interface ShippingMethod {
+}
+
+export interface ShippingMethod {
     id: string
     name: string
     amount: number
-  }
-  
-  interface PaymentCollection {
+}
+
+export interface PaymentCollection {
     id: string
     status: string
     amount: number
-  }
-  
-  interface Order {
+}
+
+export interface Order {
     id: string
     display_id: number
     customer: {
@@ -141,4 +141,4 @@ interface OrderItem {
     shipping_total?: number       // Add this for OrderDetails
     shipping_methods?: ShippingMethod[] // Add this for OrderDetails
     payment_collections?: PaymentCollection[] // Add this for OrderDetails
-  }
+}

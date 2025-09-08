@@ -28,7 +28,8 @@ export const decodeJWTToken = (token: string) => {
     );
 
     return JSON.parse(jsonPayload);
-  } catch (error) {
+  } catch (e) {
+    const error = e instanceof Error ? e : new Error(String(e));
     console.error('Error decoding JWT token:', error);
     return null;
   }
@@ -44,7 +45,8 @@ export const isTokenExpired = (token: string): boolean => {
     
     const currentTime = Math.floor(Date.now() / 1000);
     return payload.exp < currentTime;
-  } catch {
+   } catch (e) {
+    const error = e instanceof Error ? e : new Error(String(e));
     return true;
   }
 };
@@ -57,13 +59,14 @@ export const analyzeVendorToken = (token: string) => {
     const payload = decodeJWTToken(token);
     
     if (!payload) {
-      return {
+     return {
         isValid: false,
         hasVendorData: false,
         hasAdminData: false,
         tokenType: 'invalid',
         vendorId: null,
         adminData: null,
+        isExpired: true,
         error: 'Unable to decode token'
       };
     }
@@ -129,7 +132,8 @@ export const analyzeVendorToken = (token: string) => {
     console.log('📊 Token analysis result:', result);
     return result;
 
-  } catch (error) {
+} catch (e) {
+    const error = e instanceof Error ? e : new Error(String(e));
     console.error('❌ Error analyzing token:', error);
     return {
       isValid: false,
@@ -138,6 +142,7 @@ export const analyzeVendorToken = (token: string) => {
       tokenType: 'invalid' as const,
       vendorId: null,
       adminData: null,
+      isExpired: true,
       error: error.message
     };
   }

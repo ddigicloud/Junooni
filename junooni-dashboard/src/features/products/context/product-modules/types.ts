@@ -1,33 +1,59 @@
 // ../context/product-components/types.ts
 
-export interface OptionValue {
-    optionId: string;
-    optionName: string;
-    value: string;
-  }
+// export interface OptionValue {
+//     optionId: string;
+//     optionName: string;
+//     value: string;
+//   }
   
-  export interface Variant {
-    id: string;
-    title: string;
-    price: number | string;
-    compareAtPrice?: number | string;
-    stock: number | string;
-    sku: string;
-    allowBackorder?: boolean;
-    manageInventory?: boolean;
-    optionValues: OptionValue[];
-    [key: string]: any;
-  }
+//   export interface Variant {
+//     id: string;
+//     title: string;
+//     price: number | string;
+//     compareAtPrice?: number | string;
+//     stock: number | string;
+//     sku: string;
+//     allowBackorder?: boolean;
+//     manageInventory?: boolean;
+//     optionValues: OptionValue[];
+//     [key: string]: any;
+//   }
   
-  export interface Option {
-    id: string;
-    title: string;
-    optionValues: string[];
-    colorHexValues?: Record<string, string>;
-    imageAssociation?: boolean;
-    [key: string]: any;
-  }
+//   export interface Option {
+//     id: string;
+//     title: string;
+//     optionValues: string[];
+//     colorHexValues?: Record<string, string>;
+//     imageAssociation?: boolean;
+//     [key: string]: any;
+//   }
+export type OptionValue = {
+  id?: string;
+  value: string;
+  label?: string;
+  optionId?: string;
+  optionName?: string;
+  [k: string]: any;
+};
+
+export type Option = {
+  id: string;
+  title: string;
+  optionValues: OptionValue[];
+  imageAssociation?: boolean;
+  colorHexValues?: Record<string, string>;
+  [k: string]: any;
+};
+
+export type Variant = {
+  id: string;
+  sku?: string;
+  optionValues: OptionValue[];
+  [k: string]: any;
+};
   
+
+
   export interface VariantInfo {
     optionId?: string;
     optionName?: string;
@@ -82,3 +108,5 @@ export interface OptionValue {
     initialData?: ProductFormValues;
     isEditing?: boolean;
   }
+
+  

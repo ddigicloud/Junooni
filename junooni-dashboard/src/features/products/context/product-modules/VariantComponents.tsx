@@ -4,8 +4,39 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { IconPhotoPlus } from '@tabler/icons-react';
 import { isColorOption } from './utils';
-import { Option, Variant } from './types';
+// import { Option, Variant } from './types';
+import type { Option, Variant, OptionValue } from './types';
 
+
+interface SimplifiedStorefrontSelectorProps {
+  imageAssociatedOptions: Option[];
+  variants: Variant[];
+  options: Option[];
+  selectedVariantId: string | null;
+  setSelectedVariantId: (id: string | null) => void;
+  countImagesForVariant: (variantId: string) => number;
+  handleVariantUpload: (variantId: string, e: React.MouseEvent) => void;
+}
+
+interface RobustOptionSelectorProps {
+  imageAssociatedOptions: Option[];
+  variants: Variant[];
+  options: Option[];
+  selectedVariantId: string | null;
+  setSelectedVariantId: (id: string | null) => void;
+  countImagesForVariant: (variantId: string) => number;
+  handleVariantUpload: (variantId: string, e: React.MouseEvent) => void;
+}
+
+interface VariantCombinationButtonSelectorProps {
+  filteredVariants: Variant[];
+  selectedVariantId: string | null;
+  setSelectedVariantId: (id: string | null) => void;
+  imageAssociatedOptions: Option[];
+  countImagesForVariant: (variantId: string) => number;
+}
+
+// Similar interfaces needed for RobustOptionSelector and VariantCombinationButtonSelector
 // Variant selector that uses a combination of storefront-style layout
 export const SimplifiedStorefrontSelector = ({
   imageAssociatedOptions,
@@ -15,7 +46,7 @@ export const SimplifiedStorefrontSelector = ({
   setSelectedVariantId,
   countImagesForVariant,
   handleVariantUpload
-}) => {
+}: SimplifiedStorefrontSelectorProps) => {
   // Split options by type
   const colorOption = imageAssociatedOptions.find(opt => isColorOption(opt.title));
   const nonColorOptions = imageAssociatedOptions.filter(opt => !isColorOption(opt.title));
@@ -67,7 +98,7 @@ export const SimplifiedStorefrontSelector = ({
       
       // Check color match if we have a color option and selection
       if (colorOption && colorSelection) {
-        const colorMatch = variant.optionValues.some(ov => 
+        const colorMatch = variant.optionValues.some((ov: OptionValue) =>
           ov.optionName === colorOption.title && ov.value === colorSelection
         );
         if (!colorMatch) {
@@ -80,7 +111,7 @@ export const SimplifiedStorefrontSelector = ({
       if (sizeSelection) {
         const sizeOption = nonColorOptions[0]; // Assuming first non-color is size
         if (sizeOption) {
-          const sizeMatch = variant.optionValues.some(ov => 
+          const sizeMatch = variant.optionValues.some((ov: OptionValue) => 
             ov.optionName === sizeOption.title && ov.value === sizeSelection
           );
           if (!sizeMatch) {
@@ -94,7 +125,7 @@ export const SimplifiedStorefrontSelector = ({
       if (otherSelection) {
         const otherOption = nonColorOptions[1]; // Assuming second non-color is other
         if (otherOption) {
-          const otherMatch = variant.optionValues.some(ov => 
+          const otherMatch = variant.optionValues.some((ov: OptionValue) =>
             ov.optionName === otherOption.title && ov.value === otherSelection
           );
           if (!otherMatch) {
@@ -118,7 +149,7 @@ export const SimplifiedStorefrontSelector = ({
   
   // Helper function to get current selection text
   const getSelectionText = () => {
-    const parts = [];
+    const parts: string[] = [];
     if (colorSelection) parts.push(colorSelection);
     if (sizeSelection) parts.push(sizeSelection);
     if (otherSelection) parts.push(otherSelection);
@@ -137,11 +168,11 @@ export const SimplifiedStorefrontSelector = ({
       {/* Color Selection (if present) */}
       {colorOption && (
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block mb-2 text-sm font-medium text-gray-700">
             Select {colorOption.title}
           </label>
           <div className="flex flex-wrap gap-3">
-            {colorOption.optionValues.map((value, index) => {
+            {colorOption.optionValues.map((value: OptionValue, index: number) => {
               const isActive = colorSelection === value;
               const hexValue = colorOption.colorHexValues?.[value] || '#000000';
               
@@ -149,7 +180,7 @@ export const SimplifiedStorefrontSelector = ({
                 <div 
                   key={index}
                   onClick={() => setColorSelection(value)}
-                  className="cursor-pointer text-center"
+                  className="text-center cursor-pointer"
                 >
                   <div 
                     className={`w-10 h-10 rounded-full mx-auto transition-all
@@ -170,11 +201,11 @@ export const SimplifiedStorefrontSelector = ({
       {/* First non-color option (likely Size) */}
       {nonColorOptions.length > 0 && (
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block mb-2 text-sm font-medium text-gray-700">
             Select {nonColorOptions[0].title}
           </label>
           <div className="flex flex-wrap gap-2">
-            {nonColorOptions[0].optionValues.map((value, valueIndex) => {
+            {nonColorOptions[0].optionValues.map((value: OptionValue, valueIndex: number) => {
               const isActive = sizeSelection === value;
               
               return (
@@ -199,11 +230,11 @@ export const SimplifiedStorefrontSelector = ({
       {/* Second non-color option (if exists) */}
       {nonColorOptions.length > 1 && (
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block mb-2 text-sm font-medium text-gray-700">
             Select {nonColorOptions[1].title}
           </label>
           <div className="flex flex-wrap gap-2">
-            {nonColorOptions[1].optionValues.map((value, valueIndex) => {
+            {nonColorOptions[1].optionValues.map((value: OptionValue, valueIndex: number) => {
               const isActive = otherSelection === value;
               
               return (
@@ -232,24 +263,24 @@ export const SimplifiedStorefrontSelector = ({
           ${selectedVariantId ? 'border-gray-300 hover:border-[#e65100] hover:bg-orange-50 cursor-pointer' : 'border-gray-200 bg-gray-50 cursor-not-allowed'} 
           rounded-lg transition-all duration-200`}
       >
-        <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-2">
+        <div className="flex items-center justify-center w-12 h-12 mb-2 bg-orange-100 rounded-full">
           <IconPhotoPlus size={24} className="text-[#e65100]" />
         </div>
         
         {/* Show color circle if available */}
         {colorOption && colorSelection && (
           <div 
-            className="w-6 h-6 rounded-full border border-gray-300 mb-2" 
+            className="w-6 h-6 mb-2 border border-gray-300 rounded-full" 
             style={{ backgroundColor: colorOption.colorHexValues?.[colorSelection] || '#000000' }}
           />
         )}
         
         {selectedVariantId ? (
           <>
-            <p className="text-gray-700 font-medium text-center">
+            <p className="font-medium text-center text-gray-700">
               Upload images for {getSelectionText()}
             </p>
-            <p className="mt-1 text-xs text-gray-500 text-center">
+            <p className="mt-1 text-xs text-center text-gray-500">
               Click to browse your files
             </p>
             
@@ -261,7 +292,7 @@ export const SimplifiedStorefrontSelector = ({
             )}
           </>
         ) : (
-          <p className="text-gray-500 font-medium text-center">
+          <p className="font-medium text-center text-gray-500">
             Select options above to upload images
           </p>
         )}
@@ -279,13 +310,14 @@ export const RobustOptionSelector = ({
   setSelectedVariantId,
   countImagesForVariant,
   handleVariantUpload
-}) => {
+}: RobustOptionSelectorProps) => {
   // Split options by type
   const colorOption = imageAssociatedOptions.find(opt => isColorOption(opt.title));
   const nonColorOptions = imageAssociatedOptions.filter(opt => !isColorOption(opt.title));
   
   // Dynamic state for selections
-  const [selections, setSelections] = useState({});
+  //const [selections, setSelections] = useState({});
+  const [selections, setSelections] = useState<Record<string, string>>({});
   
   // THIS IS THE KEY FIX: Run whenever imageAssociatedOptions changes
   // This ensures we catch newly added options
@@ -352,7 +384,7 @@ export const RobustOptionSelector = ({
         const selectedValue = selections[optionTitle];
         if (!selectedValue) continue; // Skip if no selection for this option
         
-        const optionMatch = variant.optionValues.some(ov => 
+        const optionMatch = variant.optionValues.some((ov: OptionValue) =>
           ov.optionName === optionTitle && ov.value === selectedValue
         );
         
@@ -391,11 +423,11 @@ export const RobustOptionSelector = ({
       {/* Color Option (if present) */}
       {colorOption && (
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block mb-2 text-sm font-medium text-gray-700">
             Select {colorOption.title}
           </label>
           <div className="flex flex-wrap gap-3">
-            {colorOption.optionValues.map((value, index) => {
+            {colorOption.optionValues.map((value: OptionValue, index: number) => {
               const isActive = selections[colorOption.title] === value;
               const hexValue = colorOption.colorHexValues?.[value] || '#000000';
               
@@ -403,7 +435,7 @@ export const RobustOptionSelector = ({
                 <div 
                   key={index}
                   onClick={() => handleSelect(colorOption.title, value)}
-                  className="cursor-pointer text-center"
+                  className="text-center cursor-pointer"
                 >
                   <div 
                     className={`w-10 h-10 rounded-full mx-auto transition-all
@@ -424,11 +456,11 @@ export const RobustOptionSelector = ({
       {/* Non-Color Options */}
       {nonColorOptions.map((option, optIndex) => (
         <div key={option.id || optIndex} className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block mb-2 text-sm font-medium text-gray-700">
             Select {option.title}
           </label>
           <div className="flex flex-wrap gap-2">
-            {option.optionValues.map((value, valueIndex) => {
+            {option.optionValues.map((value: OptionValue, valueIndex: number) => {
               const isActive = selections[option.title] === value;
               
               return (
@@ -457,24 +489,24 @@ export const RobustOptionSelector = ({
           ${selectedVariantId ? 'border-gray-300 hover:border-[#e65100] hover:bg-orange-50 cursor-pointer' : 'border-gray-200 bg-gray-50 cursor-not-allowed'} 
           rounded-lg transition-all duration-200`}
       >
-        <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-2">
+        <div className="flex items-center justify-center w-12 h-12 mb-2 bg-orange-100 rounded-full">
           <IconPhotoPlus size={24} className="text-[#e65100]" />
         </div>
         
         {/* Show color circle if available */}
         {colorOption && selections[colorOption.title] && (
           <div 
-            className="w-6 h-6 rounded-full border border-gray-300 mb-2" 
+            className="w-6 h-6 mb-2 border border-gray-300 rounded-full" 
             style={{ backgroundColor: colorOption.colorHexValues?.[selections[colorOption.title]] || '#000000' }}
           />
         )}
         
         {selectedVariantId ? (
           <>
-            <p className="text-gray-700 font-medium text-center">
+            <p className="font-medium text-center text-gray-700">
               Upload images for {getSelectionText()}
             </p>
-            <p className="mt-1 text-xs text-gray-500 text-center">
+            <p className="mt-1 text-xs text-center text-gray-500">
               Click to browse your files
             </p>
             
@@ -486,7 +518,7 @@ export const RobustOptionSelector = ({
             )}
           </>
         ) : (
-          <p className="text-gray-500 font-medium text-center">
+          <p className="font-medium text-center text-gray-500">
             Select options above to upload images
           </p>
         )}
@@ -502,7 +534,7 @@ export const VariantCombinationButtonSelector = ({
   setSelectedVariantId, 
   imageAssociatedOptions, 
   countImagesForVariant 
-}) => {
+}: VariantCombinationButtonSelectorProps) => {
   // Extract just the titles of the associated options
   const associatedOptionTitles = imageAssociatedOptions.map(opt => opt.title);
   
@@ -517,7 +549,7 @@ export const VariantCombinationButtonSelector = ({
       
       {filteredVariants.length > 0 ? (
         <div className="flex flex-wrap gap-2">
-          {filteredVariants.map(variant => {
+          {filteredVariants.map((variant: Variant) => {
             const isActive = selectedVariantId === variant.id;
             const imageCount = countImagesForVariant(variant.id);
             
@@ -548,7 +580,7 @@ export const VariantCombinationButtonSelector = ({
           })}
         </div>
       ) : (
-        <div className="p-4 text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-md">
+        <div className="p-4 text-sm text-gray-500 border border-gray-200 rounded-md bg-gray-50">
           No combinations available. Please check your option selections.
         </div>
       )}
