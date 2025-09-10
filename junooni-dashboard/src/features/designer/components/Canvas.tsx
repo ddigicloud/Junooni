@@ -2371,8 +2371,8 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
                   <span>Engine:</span>
                   <span className={`px-2 py-1 rounded text-xs ${
                     generationProgress.current_engine === 'pixi_dynamic'
-                      ? 'bg-purple-100 text-purple-700'
-                      : 'bg-blue-100 text-blue-700'
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-orange-100 text-orange-700'
                   }`}>
                     {generationProgress.current_engine === 'pixi_dynamic' ? 'PIXI Dynamic' : 'Canvas Professional'}
                   </span>
@@ -3944,7 +3944,7 @@ const renderUploadPanel = () => {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Enhanced storage info */}
-      {totalImages > 0 && (
+      {/* {totalImages > 0 && (
         <div className="p-3 border border-blue-100 sm:p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center mb-3">
             <div className="flex items-center justify-center w-6 h-6 mr-3 bg-blue-100 rounded-lg sm:w-8 sm:h-8">
@@ -3975,7 +3975,7 @@ const renderUploadPanel = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
       
       {/* Enhanced upload area */}
       <div
@@ -4023,11 +4023,11 @@ const renderUploadPanel = () => {
             Choose Files
           </button>
           
-          <div className="p-3 mt-4 border border-green-200 rounded-lg bg-green-50">
+          {/* <div className="p-3 mt-4 border border-green-200 rounded-lg bg-green-50">
             <p className="text-xs font-medium text-green-700">
               All images are automatically converted to base64 for persistent storage
             </p>
-          </div>
+          </div> */}
         </div>
         
         {/* Drag overlay */}
@@ -5492,7 +5492,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
               </div>
               
               {/* Center: Design/Preview Toggle Buttons */}
-              <div className="flex p-0.5 sm:p-1 bg-gray-100 border border-gray-200 rounded-lg">
+              <div className="flex p-0.5 mr-2 sm:p-1 bg-gray-100 border border-gray-200 rounded-lg">
                 <button
                   onClick={() => setActiveView('design')}
                   className={`flex items-center gap-0.5 sm:gap-2 
@@ -5532,7 +5532,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
 
               
               {/* Right: Import to Store + Exit Button */}
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-0 sm:gap-3">
                 <button
                   onClick={handleImportToStore}
                   disabled={!hasDesignElements || isGeneratingForStore || !mockupCalculation}
@@ -5623,7 +5623,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                           />
                           
                           {tab.count > 0 && tab.id !== 'product' && (
-                            <span className="absolute flex items-center justify-center w-4 h-4 text-xs font-bold text-orange-600 bg-white rounded-full -top-1 -right-1">
+                            <span className="absolute flex items-center justify-center w-4 h-4 text-xs font-bold text-orange-600 bg-white rounded-full -top-3 -right-1">
                               {tab.count > 99 ? '99+' : tab.count}
                             </span>
                           )}
@@ -5736,7 +5736,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
               : 'flex-1'
           }`}>
             {/* Add Area Thumbnails for Design Mode - Desktop Only */}
-            {activeView === 'design' && !isMobile && (
+            {activeView === 'design' && !isMobile && availableAreas.length > 1 && (
               <div className="w-40 p-3 bg-[#F3F4F6] ">
                 
                 <div className="space-y-2">

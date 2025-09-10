@@ -24,6 +24,7 @@ type CreateVendorStepInput = {
   instagram?: string
   xtwitter?: string
   othersocial?: string
+  facebook?: string
   phonenumber?: string
   GSTIN?: string
   companyname?: string

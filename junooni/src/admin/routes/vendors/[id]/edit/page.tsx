@@ -21,6 +21,7 @@ interface Vendor {
   youtube?: string;
   instagram?: string;
   xtwitter?: string;
+  facebook?: string;
   othersocial?: string;
   phonenumber?: string;
   GSTIN?: string;
@@ -62,6 +63,7 @@ interface VendorFormData {
   youtube?: string;
   instagram?: string;
   xtwitter?: string;
+  facebook?: string;
   othersocial?: string;
   phonenumber?: string;
   GSTIN?: string;
@@ -177,6 +179,7 @@ const CreatorEditPage = () => {
           youtube: data.vendor.youtube || "",
           instagram: data.vendor.instagram || "",
           xtwitter: data.vendor.xtwitter || "",
+          facebook: data.vendor.facebook || "",
           othersocial: data.vendor.othersocial || "",
           phonenumber: data.vendor.phonenumber || "",
           GSTIN: data.vendor.GSTIN || "",
@@ -467,6 +470,7 @@ const CreatorEditPage = () => {
             youtube: formData.youtube,
             instagram: formData.instagram,
             xtwitter: formData.xtwitter,
+            facebook: formData.facebook,
             othersocial: formData.othersocial,
             phonenumber: formData.phonenumber,
             address: formData.address,
@@ -710,8 +714,8 @@ const CreatorEditPage = () => {
   if (error) {
     return (
       <Container className="py-8">
-        <div className="p-4 border border-red-300 rounded bg-red-50 text-red-600">
-          <Heading level="h2" className="text-lg mb-2">Error</Heading>
+        <div className="p-4 text-red-600 border border-red-300 rounded bg-red-50">
+          <Heading level="h2" className="mb-2 text-lg">Error</Heading>
           <Text>{error}</Text>
           <Button 
             variant="secondary" 
@@ -729,7 +733,7 @@ const CreatorEditPage = () => {
     return (
       <Container className="py-8">
         <div className="p-4 border border-gray-300 rounded bg-gray-50">
-          <Heading level="h2" className="text-lg mb-2">Creator Not Found</Heading>
+          <Heading level="h2" className="mb-2 text-lg">Creator Not Found</Heading>
           <Text>The requested creator could not be found.</Text>
           <Button 
             variant="secondary" 
@@ -745,7 +749,7 @@ const CreatorEditPage = () => {
 
   return (
     <Container className="py-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <Heading level="h1">Edit {vendor.name}</Heading>
         <div className="flex gap-2">
           <Button
@@ -765,7 +769,7 @@ const CreatorEditPage = () => {
       
       {/* Success message */}
       {saveSuccess && (
-        <div className="p-4 mb-4 border border-green-300 rounded bg-green-50 text-green-600">
+        <div className="p-4 mb-4 text-green-600 border border-green-300 rounded bg-green-50">
           <div className="flex items-center gap-2">
             <span className="font-bold">Success:</span>
             <span>Changes saved successfully!</span>
@@ -775,8 +779,8 @@ const CreatorEditPage = () => {
       
       {/* Error message */}
       {saveError && (
-        <div className="p-4 mb-4 border border-red-300 rounded bg-red-50 text-red-600">
-          <Heading level="h2" className="text-lg mb-2">Error</Heading>
+        <div className="p-4 mb-4 text-red-600 border border-red-300 rounded bg-red-50">
+          <Heading level="h2" className="mb-2 text-lg">Error</Heading>
           <Text>{saveError}</Text>
         </div>
       )}
@@ -791,7 +795,7 @@ const CreatorEditPage = () => {
           </Badge>
           
           {vendor.gst_verification_status === "verified" && (
-            <Badge className="bg-blue-100 text-blue-800">
+            <Badge className="text-blue-800 bg-blue-100">
               GST Verified
             </Badge>
           )}
@@ -799,7 +803,7 @@ const CreatorEditPage = () => {
       </div>
 
       {/* Tabs navigation */}
-      <div className="border-b mb-6">
+      <div className="mb-6 border-b">
         <div className="flex gap-6">
           <Button 
             variant="transparent" 
@@ -848,15 +852,15 @@ const CreatorEditPage = () => {
       
       {/* Basic Info Tab */}
       {activeTab === "basic" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <div className="md:col-span-2">
-            <div className="bg-white p-6 border rounded-lg mb-6">
+            <div className="p-6 mb-6 bg-white border rounded-lg">
               <Heading level="h2" className="mb-4">Basic Information</Heading>
               
               <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor="name" className="mb-2 block">Creator Name*</Label>
+                    <Label htmlFor="name" className="block mb-2">Creator Name*</Label>
                     <Input 
                       id="name"
                       name="name"
@@ -869,7 +873,7 @@ const CreatorEditPage = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="handle" className="mb-2 block">Handle</Label>
+                    <Label htmlFor="handle" className="block mb-2">Handle</Label>
                     <Input 
                       id="handle"
                       name="handle"
@@ -878,14 +882,14 @@ const CreatorEditPage = () => {
                       onChange={handleFormChange}
                       placeholder="Enter handle (URL-friendly name)"
                     />
-                    <Text className="text-xs text-gray-500 mt-1">
+                    <Text className="mt-1 text-xs text-gray-500">
                       Will be displayed as @{formData.handle || 'handle'}
                     </Text>
                   </div>
                 </div>
                 
                 <div>
-                  <Label htmlFor="creator_title" className="mb-2 block">Professional Title</Label>
+                  <Label htmlFor="creator_title" className="block mb-2">Professional Title</Label>
                   <Input 
                     id="creator_title"
                     name="creator_title"
@@ -897,14 +901,14 @@ const CreatorEditPage = () => {
                 </div>
                 
                 {/* Verification Status */}
-                <div className="border-t pt-4">
+                <div className="pt-4 border-t">
                   <Heading level="h3" className="mb-3 text-lg">Verification Status</Heading>
                   
                   <div className="space-y-4">
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <div>
-                          <Label htmlFor="verified" className="mb-1 block">Creator Verification</Label>
+                          <Label htmlFor="verified" className="block mb-1">Creator Verification</Label>
                           <Text className="text-sm text-gray-500">
                             Mark this creator as verified
                           </Text>
@@ -926,7 +930,7 @@ const CreatorEditPage = () => {
                       </div>
                       
                       {/* Display current verification status */}
-                      <div className="p-2 bg-gray-50 rounded border">
+                      <div className="p-2 border rounded bg-gray-50">
                         <Badge 
                           className={formData.verified === "Yes" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
                         >
@@ -937,12 +941,12 @@ const CreatorEditPage = () => {
                   </div>
                 </div>
                 
-                <div className="border-t pt-4">
+                <div className="pt-4 border-t">
                   <Heading level="h3" className="mb-3 text-lg">Creator Images</Heading>
                   
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="logo" className="mb-2 block">Logo URL</Label>
+                      <Label htmlFor="logo" className="block mb-2">Logo URL</Label>
                       <Input 
                         id="logo"
                         name="logo"
@@ -955,12 +959,12 @@ const CreatorEditPage = () => {
                       {/* Logo preview */}
                       {formData.logo && (
                         <div className="mt-2">
-                          <Label className="mb-2 block">Logo Preview</Label>
-                          <div className="w-20 h-20 border rounded overflow-hidden">
+                          <Label className="block mb-2">Logo Preview</Label>
+                          <div className="w-20 h-20 overflow-hidden border rounded">
                             <img 
                               src={formData.logo} 
                               alt="Creator logo" 
-                              className="w-full h-full object-contain"
+                              className="object-contain w-full h-full"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=Error';
                               }}
@@ -971,7 +975,7 @@ const CreatorEditPage = () => {
                       
                       {/* Logo upload */}
                       <div className="mt-2">
-                        <Label htmlFor="logoFile" className="mb-2 block">Upload New Logo</Label>
+                        <Label htmlFor="logoFile" className="block mb-2">Upload New Logo</Label>
                         <div className="flex items-center gap-2">
                           <Input 
                             id="logoFile"
@@ -1004,7 +1008,7 @@ const CreatorEditPage = () => {
                     </div>
                     
                     <div>
-                      <Label htmlFor="coverphoto" className="mb-2 block">Cover Photo URL</Label>
+                      <Label htmlFor="coverphoto" className="block mb-2">Cover Photo URL</Label>
                       <Input 
                         id="coverphoto"
                         name="coverphoto"
@@ -1017,12 +1021,12 @@ const CreatorEditPage = () => {
                       {/* Cover photo preview */}
                       {formData.coverphoto && (
                         <div className="mt-2">
-                          <Label className="mb-2 block">Cover Photo Preview</Label>
-                          <div className="w-full h-32 border rounded overflow-hidden">
+                          <Label className="block mb-2">Cover Photo Preview</Label>
+                          <div className="w-full h-32 overflow-hidden border rounded">
                             <img 
                               src={formData.coverphoto} 
                               alt="Cover photo" 
-                              className="w-full h-full object-cover"
+                              className="object-cover w-full h-full"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800x200?text=Error';
                               }}
@@ -1033,7 +1037,7 @@ const CreatorEditPage = () => {
                       
                       {/* Cover photo upload */}
                       <div className="mt-2">
-                        <Label htmlFor="coverFile" className="mb-2 block">Upload New Cover Photo</Label>
+                        <Label htmlFor="coverFile" className="block mb-2">Upload New Cover Photo</Label>
                         <div className="flex items-center gap-2">
                           <Input 
                             id="coverFile"
@@ -1070,7 +1074,7 @@ const CreatorEditPage = () => {
             </div>
             
             {/* Login Information */}
-            <div className="bg-white p-6 border rounded-lg mb-6">
+            <div className="p-6 mb-6 bg-white border rounded-lg">
               <Heading level="h2" className="mb-4">Login Information</Heading>
               
               <div className="space-y-4">
@@ -1090,7 +1094,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="login_email" className="mb-2 block">Login Email</Label>
+                  <Label htmlFor="login_email" className="block mb-2">Login Email</Label>
                   <Input 
                     id="login_email"
                     name="login_email"
@@ -1100,7 +1104,7 @@ const CreatorEditPage = () => {
                     placeholder="Enter login email"
                     disabled={!formData.auth_enabled}
                   />
-                  <Text className="text-xs text-gray-500 mt-1">
+                  <Text className="mt-1 text-xs text-gray-500">
                     The creator will use this email to log in to their account
                   </Text>
                 </div>
@@ -1137,12 +1141,12 @@ const CreatorEditPage = () => {
           
           {/* Creator Bio */}
           <div className="md:col-span-1">
-            <div className="bg-white p-6 border rounded-lg mb-6">
+            <div className="p-6 mb-6 bg-white border rounded-lg">
               <Heading level="h2" className="mb-4">Creator Bio</Heading>
               
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="creator_bio" className="mb-2 block">Biography</Label>
+                  <Label htmlFor="creator_bio" className="block mb-2">Biography</Label>
                   <Textarea
                     id="creator_bio"
                     name="creator_bio"
@@ -1151,7 +1155,7 @@ const CreatorEditPage = () => {
                     placeholder="Enter creator biography"
                     rows={10}
                   />
-                  <Text className="text-xs text-gray-500 mt-1">
+                  <Text className="mt-1 text-xs text-gray-500">
                     Describe the creator's background, expertise, and story
                   </Text>
                 </div>
@@ -1160,7 +1164,7 @@ const CreatorEditPage = () => {
           </div>
           
           <div className="md:col-span-3">
-            <div className="flex justify-end border-t pt-4">
+            <div className="flex justify-end pt-4 border-t">
               <Button
                 variant="primary"
                 onClick={handleSaveVendor}
@@ -1175,15 +1179,15 @@ const CreatorEditPage = () => {
       
       {/* Profile & Social Tab */}
       {activeTab === "profile" && (
-        <div className="bg-white p-6 border rounded-lg mb-6">
+        <div className="p-6 mb-6 bg-white border rounded-lg">
           <Heading level="h2" className="mb-4">Social Media & Contact</Heading>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-              <Heading level="h3" className="text-lg mb-3">Social Profiles</Heading>
+              <Heading level="h3" className="mb-3 text-lg">Social Profiles</Heading>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="youtube" className="mb-2 block">YouTube</Label>
+                  <Label htmlFor="youtube" className="block mb-2">YouTube</Label>
                   <Input 
                     id="youtube"
                     name="youtube"
@@ -1195,7 +1199,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="instagram" className="mb-2 block">Instagram</Label>
+                  <Label htmlFor="instagram" className="block mb-2">Instagram</Label>
                   <Input 
                     id="instagram"
                     name="instagram"
@@ -1207,7 +1211,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="xtwitter" className="mb-2 block">X (Twitter)</Label>
+                  <Label htmlFor="xtwitter" className="block mb-2">X (Twitter)</Label>
                   <Input 
                     id="xtwitter"
                     name="xtwitter"
@@ -1217,9 +1221,21 @@ const CreatorEditPage = () => {
                     placeholder="Enter X (Twitter) handle or URL"
                   />
                 </div>
+
+                <div>
+                  <Label htmlFor="facebook" className="block mb-2">Facebook</Label>
+                  <Input 
+                    id="facebook"
+                    name="facebook"
+                    type="text" 
+                    value={formData.facebook || ''} 
+                    onChange={handleFormChange}
+                    placeholder="Enter facebook handle or URL"
+                  />
+                </div>
                 
                 <div>
-                  <Label htmlFor="othersocial" className="mb-2 block">Other Social</Label>
+                  <Label htmlFor="othersocial" className="block mb-2">Other Social</Label>
                   <Input 
                     id="othersocial"
                     name="othersocial"
@@ -1233,10 +1249,10 @@ const CreatorEditPage = () => {
             </div>
             
             <div>
-              <Heading level="h3" className="text-lg mb-3">Contact Information</Heading>
+              <Heading level="h3" className="mb-3 text-lg">Contact Information</Heading>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="phonenumber" className="mb-2 block">Phone Number</Label>
+                  <Label htmlFor="phonenumber" className="block mb-2">Phone Number</Label>
                   <Input 
                     id="phonenumber"
                     name="phonenumber"
@@ -1248,7 +1264,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="address" className="mb-2 block">Address</Label>
+                  <Label htmlFor="address" className="block mb-2">Address</Label>
                   <Textarea
                     id="address"
                     name="address"
@@ -1261,7 +1277,7 @@ const CreatorEditPage = () => {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="city" className="mb-2 block">City</Label>
+                    <Label htmlFor="city" className="block mb-2">City</Label>
                     <Input 
                       id="city"
                       name="city"
@@ -1273,7 +1289,7 @@ const CreatorEditPage = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="state" className="mb-2 block">State</Label>
+                    <Label htmlFor="state" className="block mb-2">State</Label>
                     <Input 
                       id="state"
                       name="state"
@@ -1286,7 +1302,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="pincode" className="mb-2 block">Pincode</Label>
+                  <Label htmlFor="pincode" className="block mb-2">Pincode</Label>
                   <Input 
                     id="pincode"
                     name="pincode"
@@ -1300,7 +1316,7 @@ const CreatorEditPage = () => {
             </div>
           </div>
           
-          <div className="flex justify-end border-t pt-4 mt-6">
+          <div className="flex justify-end pt-4 mt-6 border-t">
             <Button
               variant="primary"
               onClick={handleSaveVendor}
@@ -1314,15 +1330,15 @@ const CreatorEditPage = () => {
       
       {/* Business Details Tab */}
       {activeTab === "business" && (
-        <div className="bg-white p-6 border rounded-lg mb-6">
+        <div className="p-6 mb-6 bg-white border rounded-lg">
           <Heading level="h2" className="mb-4">Business Information</Heading>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-              <Heading level="h3" className="text-lg mb-3">Company Details</Heading>
+              <Heading level="h3" className="mb-3 text-lg">Company Details</Heading>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="companyname" className="mb-2 block">Company Name</Label>
+                  <Label htmlFor="companyname" className="block mb-2">Company Name</Label>
                   <Input 
                     id="companyname"
                     name="companyname"
@@ -1334,7 +1350,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="GSTIN" className="mb-2 block">GSTIN</Label>
+                  <Label htmlFor="GSTIN" className="block mb-2">GSTIN</Label>
                   <div className="flex items-center gap-2">
                     <Input 
                       id="GSTIN"
@@ -1345,7 +1361,7 @@ const CreatorEditPage = () => {
                       placeholder="Enter GSTIN"
                     />
                     {formData.gst_verification_status === "verified" && (
-                      <Badge className="bg-green-100 text-green-800 whitespace-nowrap">
+                      <Badge className="text-green-800 bg-green-100 whitespace-nowrap">
                         Verified
                       </Badge>
                     )}
@@ -1354,14 +1370,14 @@ const CreatorEditPage = () => {
                 
                 {/* GST Verification Status */}
                 <div>
-                  <Label htmlFor="gst_verification_status" className="mb-2 block">GST Verification Status</Label>
+                  <Label htmlFor="gst_verification_status" className="block mb-2">GST Verification Status</Label>
                   <div className="relative">
                     <select
                       id="gst_verification_status"
                       name="gst_verification_status"
                       value={formData.gst_verification_status || 'pending'} 
                       onChange={handleFormChange}
-                      className="block w-full rounded-md border border-gray-200 py-2 px-3 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full px-3 py-2 text-sm border border-gray-200 rounded-md placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="pending">Pending</option>
                       <option value="verified">Verified</option>
@@ -1413,10 +1429,10 @@ const CreatorEditPage = () => {
             </div>
             
             <div>
-              <Heading level="h3" className="text-lg mb-3">Tax Information</Heading>
+              <Heading level="h3" className="mb-3 text-lg">Tax Information</Heading>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="pan_number" className="mb-2 block">PAN Number</Label>
+                  <Label htmlFor="pan_number" className="block mb-2">PAN Number</Label>
                   <Input 
                     id="pan_number"
                     name="pan_number"
@@ -1428,7 +1444,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="tan_number" className="mb-2 block">TAN Number</Label>
+                  <Label htmlFor="tan_number" className="block mb-2">TAN Number</Label>
                   <Input 
                     id="tan_number"
                     name="tan_number"
@@ -1442,7 +1458,7 @@ const CreatorEditPage = () => {
             </div>
           </div>
           
-          <div className="flex justify-end border-t pt-4 mt-6">
+          <div className="flex justify-end pt-4 mt-6 border-t">
             <Button
               variant="primary"
               onClick={handleSaveVendor}
@@ -1456,15 +1472,15 @@ const CreatorEditPage = () => {
       
       {/* Banking Info Tab */}
       {activeTab === "banking" && (
-        <div className="bg-white p-6 border rounded-lg mb-6">
+        <div className="p-6 mb-6 bg-white border rounded-lg">
           <Heading level="h2" className="mb-4">Banking Details</Heading>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-              <Heading level="h3" className="text-lg mb-3">Account Information</Heading>
+              <Heading level="h3" className="mb-3 text-lg">Account Information</Heading>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="bank_account_holder_name" className="mb-2 block">Account Holder Name</Label>
+                  <Label htmlFor="bank_account_holder_name" className="block mb-2">Account Holder Name</Label>
                   <Input 
                     id="bank_account_holder_name"
                     name="bank_account_holder_name"
@@ -1476,7 +1492,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="bank_name" className="mb-2 block">Bank Name</Label>
+                  <Label htmlFor="bank_name" className="block mb-2">Bank Name</Label>
                   <Input 
                     id="bank_name"
                     name="bank_name"
@@ -1488,14 +1504,14 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="bank_account_type" className="mb-2 block">Account Type</Label>
+                  <Label htmlFor="bank_account_type" className="block mb-2">Account Type</Label>
                   <div className="relative">
                     <select
                       id="bank_account_type"
                       name="bank_account_type"
                       value={formData.bank_account_type || 'Saving'} 
                       onChange={handleFormChange}
-                      className="block w-full rounded-md border border-gray-200 py-2 px-3 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full px-3 py-2 text-sm border border-gray-200 rounded-md placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="Saving">Saving</option>
                       <option value="Current">Current</option>
@@ -1506,10 +1522,10 @@ const CreatorEditPage = () => {
             </div>
             
             <div>
-              <Heading level="h3" className="text-lg mb-3">Account Details</Heading>
+              <Heading level="h3" className="mb-3 text-lg">Account Details</Heading>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="bank_account_number" className="mb-2 block">Account Number</Label>
+                  <Label htmlFor="bank_account_number" className="block mb-2">Account Number</Label>
                   <Input 
                     id="bank_account_number"
                     name="bank_account_number"
@@ -1521,7 +1537,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="bank_account_ifsc_code" className="mb-2 block">IFSC Code</Label>
+                  <Label htmlFor="bank_account_ifsc_code" className="block mb-2">IFSC Code</Label>
                   <Input 
                     id="bank_account_ifsc_code"
                     name="bank_account_ifsc_code"
@@ -1533,7 +1549,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="cancelled_checkque" className="mb-2 block">Cancelled Cheque</Label>
+                  <Label htmlFor="cancelled_checkque" className="block mb-2">Cancelled Cheque</Label>
                   <Input 
                     id="cancelled_checkque"
                     name="cancelled_checkque"
@@ -1546,7 +1562,7 @@ const CreatorEditPage = () => {
                   
                   {formData.cancelled_checkque && (
                     <div className="mt-2">
-                      <Badge className="bg-green-100 text-green-800">Uploaded</Badge>
+                      <Badge className="text-green-800 bg-green-100">Uploaded</Badge>
                       <Button
                         variant="secondary"
                         size="small"
@@ -1560,7 +1576,7 @@ const CreatorEditPage = () => {
                   
                   {/* Cheque upload */}
                   <div className="mt-4">
-                    <Label htmlFor="chequeFile" className="mb-2 block">Upload New Cheque</Label>
+                    <Label htmlFor="chequeFile" className="block mb-2">Upload New Cheque</Label>
                     <div className="flex items-center gap-2">
                       <Input 
                         id="chequeFile"
@@ -1595,7 +1611,7 @@ const CreatorEditPage = () => {
             </div>
           </div>
           
-          <div className="flex justify-end border-t pt-4 mt-6">
+          <div className="flex justify-end pt-4 mt-6 border-t">
             <Button
               variant="primary"
               onClick={handleSaveVendor}
@@ -1609,8 +1625,8 @@ const CreatorEditPage = () => {
       
       {/* Admins Tab */}
       {activeTab === "admins" && (
-        <div className="bg-white p-6 border rounded-lg mb-6">
-          <div className="flex justify-between items-center mb-4">
+        <div className="p-6 mb-6 bg-white border rounded-lg">
+          <div className="flex items-center justify-between mb-4">
             <Heading level="h2">Account Administrators</Heading>
             <Button
               variant="secondary"
@@ -1623,8 +1639,8 @@ const CreatorEditPage = () => {
           
           {/* Add admin form */}
           {showAddAdmin && (
-            <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-              <div className="flex justify-between items-center mb-4">
+            <div className="p-4 mb-6 border rounded-lg bg-gray-50">
+              <div className="flex items-center justify-between mb-4">
                 <Heading level="h3" className="text-md">Add New Admin</Heading>
                 <Button
                   variant="secondary"
@@ -1637,7 +1653,7 @@ const CreatorEditPage = () => {
               
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="adminEmail" className="mb-2 block">Email Address*</Label>
+                  <Label htmlFor="adminEmail" className="block mb-2">Email Address*</Label>
                   <Input 
                     id="adminEmail"
                     name="email"
@@ -1647,13 +1663,13 @@ const CreatorEditPage = () => {
                     placeholder="Enter admin email"
                     required
                   />
-                  <Text className="text-xs text-gray-500 mt-1">
+                  <Text className="mt-1 text-xs text-gray-500">
                     The admin will receive an invitation email to join as a creator administrator.
                   </Text>
                 </div>
                 
                 <div>
-                  <Label htmlFor="adminFirstName" className="mb-2 block">First Name</Label>
+                  <Label htmlFor="adminFirstName" className="block mb-2">First Name</Label>
                   <Input 
                     id="adminFirstName"
                     name="first_name"
@@ -1665,7 +1681,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="adminLastName" className="mb-2 block">Last Name</Label>
+                  <Label htmlFor="adminLastName" className="block mb-2">Last Name</Label>
                   <Input 
                     id="adminLastName"
                     name="last_name"
@@ -1676,7 +1692,7 @@ const CreatorEditPage = () => {
                   />
                 </div>
                 
-                <div className="flex justify-end mt-4 pt-2 border-t">
+                <div className="flex justify-end pt-2 mt-4 border-t">
                   <Button
                     variant="primary"
                     size="small"
@@ -1697,7 +1713,7 @@ const CreatorEditPage = () => {
               {vendor.admins.map((admin) => (
                 <div key={admin.id} className="p-4 border rounded-lg bg-gray-50">
                   <div className="space-y-2">
-                    <div className="flex justify-between items-start">
+                    <div className="flex items-start justify-between">
                       <div>
                         <Text className="font-medium">
                           {admin.first_name || admin.last_name ? 
@@ -1724,7 +1740,7 @@ const CreatorEditPage = () => {
               ))}
             </div>
           ) : (
-            <div className="p-4 border rounded-lg bg-gray-50 text-center">
+            <div className="p-4 text-center border rounded-lg bg-gray-50">
               <Text className="text-gray-500">No admins assigned to this creator</Text>
             </div>
           )}
@@ -1733,8 +1749,8 @@ const CreatorEditPage = () => {
       
       {/* Metadata Tab */}
       {activeTab === "metadata" && (
-        <div className="bg-white p-6 border rounded-lg mb-6">
-          <div className="flex justify-between items-center mb-4">
+        <div className="p-6 mb-6 bg-white border rounded-lg">
+          <div className="flex items-center justify-between mb-4">
             <Heading level="h2">Metadata</Heading>
             <Button
               variant="secondary"
@@ -1757,7 +1773,7 @@ const CreatorEditPage = () => {
             {metadataItems.map((item, index) => (
               <div key={index} className="flex items-start gap-2">
                 <div className="flex-1">
-                  <Label htmlFor={`meta-key-${index}`} className="mb-1 block">Key</Label>
+                  <Label htmlFor={`meta-key-${index}`} className="block mb-1">Key</Label>
                   <Input 
                     id={`meta-key-${index}`}
                     type="text" 
@@ -1768,7 +1784,7 @@ const CreatorEditPage = () => {
                 </div>
                 
                 <div className="flex-1">
-                  <Label htmlFor={`meta-value-${index}`} className="mb-1 block">Value</Label>
+                  <Label htmlFor={`meta-value-${index}`} className="block mb-1">Value</Label>
                   <Input 
                     id={`meta-value-${index}`}
                     type="text" 
@@ -1792,7 +1808,7 @@ const CreatorEditPage = () => {
             ))}
           </div>
           
-          <div className="flex justify-end border-t pt-4 mt-6">
+          <div className="flex justify-end pt-4 mt-6 border-t">
             <Button
               variant="primary"
               onClick={handleSaveVendor}

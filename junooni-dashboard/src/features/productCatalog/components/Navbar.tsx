@@ -229,6 +229,11 @@
 import { useEffect, useState } from "react"
 import { ProfileDropdown } from "../../../components/profile-dropdown"
 import { Link } from "@tanstack/react-router"
+import {
+  SidebarFooter,
+} from '@/components/ui/sidebar'
+import { NavUser } from '@/components/layout/nav-user'
+import { sidebarData } from '../../../components/layout/data/sidebar-data'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ChevronDown, Star, TrendingUp } from 'lucide-react'
 
@@ -462,7 +467,7 @@ const Navbar = () => {
         </Link>
         
         {hasChildren && (
-          <ul className="space-y-1 ml-0">
+          <ul className="ml-0 space-y-1">
             {subcategory.children?.map(childCategory => (
               <li key={childCategory.id}>
                 <Link 
@@ -480,14 +485,14 @@ const Navbar = () => {
   };
   
   return (
-    <div className="fixed w-full z-50 navbar-gradient backdrop-blur-sm border-b border-orange-200/30 dark:border-gray-700/50">
+    <div className="fixed z-50 w-full border-b navbar-gradient backdrop-blur-sm border-orange-200/30 dark:border-gray-700/50">
       {/* Main navbar */}
       <div className="py-4 w-full max-w-[95%] mx-auto flex items-center justify-between">
         {/* Logo with enhanced styling */}
-        <div className="font-mono text-2xl uppercase logo tracking-wide logo-glow">
+        <div className="font-mono text-2xl tracking-wide uppercase logo logo-glow">
           <Link 
             to="/dashboard" 
-            className="brand-accent font-bold hover:scale-105 transition-transform duration-300 inline-block"
+            className="inline-block font-bold transition-transform duration-300 brand-accent hover:scale-105"
           >
             <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
           </Link>
@@ -541,11 +546,13 @@ const Navbar = () => {
         
         {/* Right side controls with enhanced styling */}
         <div className="flex items-center gap-4">
-          <div className="p-2 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors duration-300">
+          <div className="p-2 transition-colors duration-300 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20">
             <ThemeSwitch />
           </div>
-          <div className="p-1 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors duration-300">
-            <ProfileDropdown />
+          <div className="p-1 transition-colors duration-300 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20">
+            <SidebarFooter className="p-2 border-t border-border/40">
+              <NavUser user={sidebarData.user} />
+            </SidebarFooter>
           </div>
         </div>
       </div>
@@ -569,7 +576,7 @@ const Navbar = () => {
             onMouseEnter={() => setActiveCategory(category.id)}
             onMouseLeave={() => setActiveCategory(null)}
           >
-            <div className="max-w-5xl mx-auto py-6 px-6">
+            <div className="max-w-5xl px-6 py-6 mx-auto">
               <div className="grid grid-cols-4 gap-6">
                 {/* Category columns */}
                 {columnGroups.map((columnItems, columnIndex) => (
@@ -581,11 +588,11 @@ const Navbar = () => {
                 ))}
                 
                 {/* Simple Featured Section */}
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800">
+                  <h3 className="mb-2 font-semibold text-gray-900 dark:text-gray-100">
                     Featured
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
                     Explore top picks in {category.title}
                   </p>
                   <Link 

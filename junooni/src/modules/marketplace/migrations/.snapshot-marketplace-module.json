@@ -78,6 +78,15 @@
           "nullable": true,
           "mappedType": "text"
         },
+        "facebook": {
+          "name": "facebook",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
         "othersocial": {
           "name": "othersocial",
           "type": "text",

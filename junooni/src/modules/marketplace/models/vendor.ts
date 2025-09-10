@@ -50,6 +50,7 @@ const Vendor = model.define("vendor", {
   youtube: model.text().nullable(),
   instagram: model.text().nullable(),
   xtwitter: model.text().nullable(),
+  facebook: model.text().nullable(),
   othersocial: model.text().nullable(),
   phonenumber: model.text().nullable(),
   GSTIN: model.text().nullable(),

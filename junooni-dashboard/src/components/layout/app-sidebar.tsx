@@ -95,12 +95,12 @@ function SidebarHeader() {
       <div className="flex items-center w-full h-full">
         {isCollapsed ? (
           // Collapsed state - show only favicon
-          <div className="flex w-20 h-16 items-center justify-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg shadow-sm">
+          <div className="flex items-center justify-center w-20 h-16">
+            <div className="flex items-center justify-center w-12 h-12 rounded-lg shadow-sm">
               <img 
                 src={JunooniFavicon} 
                 alt="Junooni" 
-                className="w-8 h-8 object-cover filter ml-1"
+                className="object-cover w-8 h-8 ml-1 filter"
               />
             </div>
           </div>
@@ -111,11 +111,11 @@ function SidebarHeader() {
               <img 
                 src={JunooniFavicon} 
                 alt="Junooni" 
-                className="h-5 w-5 object-contain filter brightness-0 invert"
+                className="object-contain w-5 h-5 filter brightness-0 invert"
               />
             </div> */}
-            <div className="flex items-center min-w-0 flex-1">
-              <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8 w-33 -ml-4 -mr-4" />
+            <div className="flex items-center flex-1 min-w-0">
+              <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 -ml-4 -mr-4 sm:h-8 w-33" />
               <Separator orientation='vertical' className='h-6 ml-1 mr-3 w-[2px] bg-border' />
               <div className="flex flex-col items-start text-xs font-medium leading-tight text-muted-foreground">
                 <span className="text-xs">Creator</span>

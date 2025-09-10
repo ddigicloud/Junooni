@@ -55,6 +55,7 @@ export const UpdateVendorSchema = z.object({
   instagram: z.string().optional(),
   xtwitter: z.string().optional(),
   othersocial: z.string().optional(),
+  facebook: z.string().optional(),
   phonenumber: z.string().optional(),
   GSTIN: z.string().optional(),
   companyname: z.string().optional(),

@@ -199,22 +199,22 @@ export default defineMiddlewares({
       
     },
     
-    // {
-    //   matcher: "/vendors/me",
-    //   method: ["GET"],
-    //   middlewares: [
-    //     (req, res, next) => {
-    //       const configModule = req.scope.resolve("configModule");
-    //       cors({
-    //         origin: true,
-    //         credentials: true,
-    //       })(req, res, next);
-    //     },
+    {
+      matcher: "/vendors/me",
+      method: ["GET","PUT"],
+      middlewares: [
+        (req, res, next) => {
+          const configModule = req.scope.resolve("configModule");
+          cors({
+            origin: true,
+            credentials: true,
+          })(req, res, next);
+        },
        
-    //     authenticate("vendor", ["session", "bearer"])
+        authenticate("vendor", ["session", "bearer"])
        
-    //   ],
-    // },
+      ],
+    },
     {
       matcher: "/vendors/check-handle",
       method: ["OPTIONS", "POST"], // Handle preflight OPTIONS and POST
@@ -270,7 +270,7 @@ export default defineMiddlewares({
         /^\/vendors\/[^/]+\/followers$/, // Regex to match /vendors/[id]/followers
         /^\/vendors\/check-handle$/,      // /vendors/check-handle
         /^\/vendors\/uploads$/,  
-        //  /^\/vendors\/me$/,         // /vendors/uploads
+          /^\/vendors\/me$/,         // /vendors/uploads
       ];
 
       const isPublic = publicPaths.some((pattern) => pattern.test(req.path));

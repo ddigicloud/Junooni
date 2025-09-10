@@ -31,6 +31,7 @@ export type CreateVendorWorkflowInput = {
   instagram?: string
   xtwitter?: string
   othersocial?: string
+  facebook?: string
   phonenumber?: string
   GSTIN?: string
   companyname?: string
@@ -72,6 +73,7 @@ const createVendorWorkflow = createWorkflow(
       youtube: input.youtube,
       instagram: input.instagram,
       xtwitter: input.xtwitter,
+      facebook: input.facebook,
       othersocial: input.othersocial,
       phonenumber: input.phonenumber,
       GSTIN: input.GSTIN,

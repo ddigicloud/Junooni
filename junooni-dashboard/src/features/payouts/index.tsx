@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import * as XLSX from 'xlsx';
 import { 
   Download, Search, MoreHorizontal, Filter, 
@@ -11,8 +11,11 @@ import {
   ChevronRight, CircleCheck, Info,
   DollarSign, TrendingUp, Wallet,
   Plus, FileText, ArrowUpRight,
-  ArrowDownRight, Minus, CalendarDays
+  ArrowDownRight, Minus, CalendarDays,
+  Building2, Receipt, ChartPie
 } from "lucide-react"
+import { Link } from '@tanstack/react-router'
+import { ProductsPrimaryButtons, ProductsPrimaryButtonsHandle } from '../products/components/ProductsPrimaryButtons'
 
 import { Button } from "@/components/ui/button"
 import {
@@ -107,6 +110,28 @@ interface VendorPayout {
   payout_details: PayoutDetail[]
 }
 
+// Utility function to decode JWT token and get vendor info
+const getVendorInfoFromToken = () => {
+  try {
+    const token = localStorage.getItem('vendorToken');
+    if (!token) return { vendorId: null, isAuthenticated: false };
+
+    // Decode JWT token
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    
+    // Try different possible vendor ID fields
+    const vendorId = payload.vendor_id || payload.actor_id || payload.sub || payload.id;
+    
+    return { 
+      vendorId, 
+      isAuthenticated: !!token 
+    };
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return { vendorId: null, isAuthenticated: false };
+  }
+};
+
 // Status badge component with icons for payout types
 const PayoutTypeBadge = ({ type }: { type: string }) => {
   const getTypeProps = (type: string) => {
@@ -146,7 +171,6 @@ const PayoutTypeBadge = ({ type }: { type: string }) => {
 
   const { variant, className, icon } = getTypeProps(type);
 
-  // Format type text for display
   const formatType = (type: string) => {
     switch (type) {
       case "earning":
@@ -240,7 +264,7 @@ const PayoutSummaryCards = ({ data }: { data: VendorPayout | null }) => {
               <h3 className="text-lg font-bold">{formatPrice(pendingAmount)}</h3>
               <p className="mt-1 text-sm text-gray-500">Being processed</p>
             </div>
-            <div className="p-3 bg-amber-100 rounded-lg">
+            <div className="p-3 rounded-lg bg-amber-100">
               <Clock className="w-6 h-6 text-amber-600" />
             </div>
           </div>
@@ -266,6 +290,38 @@ const PayoutSummaryCards = ({ data }: { data: VendorPayout | null }) => {
   );
 };
 
+// Empty State Component
+const EmptyPayoutState = () => {
+  const popupButtonsRef = useRef<ProductsPrimaryButtonsHandle>(null);
+  return (
+    <div className="py-16 text-center">
+      <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 rounded-full" style={{ backgroundColor: `${BRAND.primary}11` }}>
+        <Building2 className="w-12 h-12" style={{ color: BRAND.primary }} />
+      </div>
+      <h3 className="mb-2 text-xl font-semibold" style={{ color: BRAND.secondary }}>
+        Welcome to Junooni Payouts
+      </h3>
+      <p className="max-w-md mx-auto mb-6 text-gray-600">
+        Your payout account is being set up. Once you start selling products and earning commissions, 
+        your transaction history and earnings will appear here.
+      </p>
+      <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+        <Button  className="bg-[#e65100] text-white hover:bg-[#cc4400] hover:text-white"   variant="outline" onClick={() => popupButtonsRef.current?.openPopup()}>
+          <Package className="w-4 h-4 mr-2"  />
+          Add Your First Product
+        </Button>
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+          <ProductsPrimaryButtons ref={popupButtonsRef} />
+        </div>
+        {/* <Button variant="ghost" size="sm">
+          <Info className="w-4 h-4 mr-2" />
+          Learn About Payouts
+        </Button> */}
+      </div>
+    </div>
+  );
+};
+
 // Request Payout Dialog Component
 const RequestPayoutDialog = ({ 
   availableAmount, 
@@ -282,7 +338,7 @@ const RequestPayoutDialog = ({
 
   const handleRequestPayout = async () => {
     if (!vendorId) {
-      setError("Vendor ID not found. Please refresh and try again.");
+      setError("Unable to process payout request. Please refresh and try again.");
       return;
     }
 
@@ -310,8 +366,6 @@ const RequestPayoutDialog = ({
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        
         if (response.status === 401) {
           setError("Your session has expired. Please log in again.");
         } else if (response.status === 400) {
@@ -319,7 +373,7 @@ const RequestPayoutDialog = ({
         } else if (response.status === 409) {
           setError("A payout request is already pending. Please wait for it to be processed.");
         } else {
-          setError(`Failed to request payout: ${response.status} ${response.statusText}`);
+          setError("Unable to process payout request. Please try again later.");
         }
         setLoading(false);
         return;
@@ -328,17 +382,14 @@ const RequestPayoutDialog = ({
       const responseData = await response.json();
       
       if (responseData.Payout) {
-        // Success - close dialog and refresh data
         setOpen(false);
         onRequestPayout();
-        // Could add a success toast notification here
       } else {
-        setError("Unexpected response format. Please try again.");
+        setError("Unexpected response. Please try again.");
       }
       
     } catch (error: any) {
-      //console.error('Payout request error:', error);
-      setError(error.message || "Network error. Please check your connection and try again.");
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -424,6 +475,8 @@ export default function PayoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [authError, setAuthError] = useState(false);
   const [vendorId, setVendorId] = useState<string | null>(null);
+  const [hasPayoutAccount, setHasPayoutAccount] = useState(false);
+
   
   // Transaction details modal state
   const [selectedTransaction, setSelectedTransaction] = useState<PayoutDetail | null>(null);
@@ -460,14 +513,65 @@ export default function PayoutPage() {
           return;
         }
 
-        // Get vendor ID from token or localStorage
-        const vendorIdFromStorage = localStorage.getItem("vendorId") || localStorage.getItem("vendor_id") || "01JN475VCB34HJ702Q242JCDEZ"; // Use actual vendor ID
-        setVendorId(vendorIdFromStorage);
+        // Get vendor ID from token
+        const { vendorId: tokenVendorId, isAuthenticated } = getVendorInfoFromToken();
         
-        //console.log("Fetching payout data for vendor:", vendorIdFromStorage);
+        if (!isAuthenticated) {
+          setAuthError(true);
+          setError("Invalid authentication. Please log in again.");
+          setLoading(false);
+          return;
+        }
+
+        if (!tokenVendorId) {
+          // If no vendor ID in token, try to get it from /vendors/me endpoint
+          try {
+            const vendorResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+              }
+            });
+
+            if (vendorResponse.ok) {
+              const vendorData = await vendorResponse.json();
+              const extractedVendorId = vendorData.vendor?.id;
+              
+              if (extractedVendorId) {
+                setVendorId(extractedVendorId);
+              } else {
+                // No vendor account found - show empty state instead of error
+                setHasPayoutAccount(false);
+                setLoading(false);
+                return;
+              }
+            } else {
+              // Failed to get vendor info - show empty state
+              setHasPayoutAccount(false);
+              setLoading(false);
+              return;
+            }
+          } catch (vendorError) {
+            // Error getting vendor info - show empty state
+            setHasPayoutAccount(false);
+            setLoading(false);
+            return;
+          }
+        } else {
+          setVendorId(tokenVendorId);
+        }
+        
+        const finalVendorId = tokenVendorId || vendorId;
+        
+        if (!finalVendorId) {
+          setHasPayoutAccount(false);
+          setLoading(false);
+          return;
+        }
         
         // First fetch the payout summary
-        const payoutResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorIdFromStorage}/payout`, {
+        const payoutResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${finalVendorId}/payout`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -476,31 +580,30 @@ export default function PayoutPage() {
         });
         
         if (!payoutResponse.ok) {
-          const errorText = await payoutResponse.text();
           if (payoutResponse.status === 401) {
             setAuthError(true);
             setError("Your session has expired. Please log in again.");
           } else if (payoutResponse.status === 404) {
-            setError("Payout account not found. Please contact support.");
+            // No payout account found - show empty state
+            setHasPayoutAccount(false);
           } else {
-            setError(`Error fetching payout data: ${payoutResponse.status} ${payoutResponse.statusText}`);
+            // Other errors - show empty state instead of error
+            setHasPayoutAccount(false);
           }
           setLoading(false);
           return;
         }
 
         const payoutData = await payoutResponse.json();
-        //console.log("Payout API response:", payoutData);
         const payoutInfo = payoutData.payout;
         
         if (!payoutInfo) {
-          //console.error("No payout info in response:", payoutData);
-          setError("No payout data received from server");
+          setHasPayoutAccount(false);
           setLoading(false);
           return;
         }
 
-        //console.log("Payout info:", payoutInfo);
+        setHasPayoutAccount(true);
 
         // Now fetch payout details if we have a payout ID
         let payoutDetailsData: PayoutDetail[] = [];
@@ -508,7 +611,7 @@ export default function PayoutPage() {
         if (payoutInfo.id) {
           try {
             const detailsResponse = await fetch(
-              `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorIdFromStorage}/payout/${payoutInfo.id}/payout-details?limit=100&offset=0`, 
+              `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${finalVendorId}/payout/${payoutInfo.id}/payout-details?limit=100&offset=0`, 
               {
                 method: "GET",
                 headers: {
@@ -520,39 +623,31 @@ export default function PayoutPage() {
             
             if (detailsResponse.ok) {
               const detailsData = await detailsResponse.json();
-              //console.log("Payout details API response:", detailsData);
-              
-              // Extract transactions from the payout_details structure
               const transactionsArray = detailsData.payout_details?.transactions || [];
-              //console.log("Transactions array:", transactionsArray);
-              
               payoutDetailsData = transactionsArray;
-            } else {
-              //console.warn("Failed to fetch payout details:", detailsResponse.status);
-              // Continue without details rather than failing completely
             }
           } catch (detailsError) {
-            //console.warn("Error fetching payout details:", detailsError);
             // Continue without details rather than failing completely
+            console.warn("Could not fetch payout details:", detailsError);
           }
         }
 
         // Transform the API response to match our interface
         const transformedPayout: VendorPayout = {
           id: payoutInfo.id || `payout_${Date.now()}`,
-          vendor_id: payoutInfo.vendor_id || vendorIdFromStorage,
-          total_earnings: payoutInfo.total_earned || 0, // API field: total_earned
-          pending_amount: payoutInfo.total_pending_payout || 0, // API field: total_pending_payout
-          paid_amount: payoutInfo.total_paid || 0, // API field: total_paid
-          available_for_payout: payoutInfo.current_balance || 0, // API field: current_balance
-          last_payout_date: payoutInfo.last_payout_at, // API field: last_payout_at
+          vendor_id: payoutInfo.vendor_id || finalVendorId,
+          total_earnings: payoutInfo.total_earned || 0,
+          pending_amount: payoutInfo.total_pending_payout || 0,
+          paid_amount: payoutInfo.total_paid || 0,
+          available_for_payout: payoutInfo.current_balance || 0,
+          last_payout_date: payoutInfo.last_payout_at,
           next_payout_date: payoutInfo.next_payout_date,
           created_at: payoutInfo.created_at || new Date().toISOString(),
           updated_at: payoutInfo.updated_at || new Date().toISOString(),
-          status: payoutInfo.is_payout_enabled ? "active" : "inactive", // API field: is_payout_enabled
+          status: payoutInfo.is_payout_enabled ? "active" : "inactive",
           payout_details: payoutDetailsData.map((transaction: any) => ({
             id: transaction.id || `detail_${Date.now()}_${Math.random()}`,
-            type: transaction.type || "earning", // API returns: earning, payout, adjustment, refund
+            type: transaction.type || "earning",
             amount: transaction.amount || 0,
             reason: transaction.reason || "No description",
             notes: transaction.notes || undefined,
@@ -560,8 +655,8 @@ export default function PayoutPage() {
             order_item_id: transaction.order_item_id || undefined,
             product_id: transaction.product_id || undefined,
             created_at: transaction.created_at || new Date().toISOString(),
-            status: transaction.status || "confirmed", // API returns: completed, pending, etc.
-            reference_id: transaction.id // Use transaction ID as reference
+            status: transaction.status || "confirmed",
+            reference_id: transaction.id
           }))
         };
 
@@ -569,8 +664,9 @@ export default function PayoutPage() {
         setPayoutDetails(transformedPayout.payout_details);
         
       } catch (err: any) {
-        //console.error("Error fetching payout data:", err);
-        setError(err.message || "Failed to load payout data. Please check your connection and try again.");
+        console.error("Error fetching payout data:", err);
+        // Show empty state instead of error for better UX
+        setHasPayoutAccount(false);
       } finally {
         setLoading(false);
       }
@@ -724,12 +820,10 @@ export default function PayoutPage() {
       const token = localStorage.getItem("vendorToken");
       if (!token) return null;
 
-      // Check if we already have this order number cached
       if (orderDisplayNumbers.has(orderId)) {
         return orderDisplayNumbers.get(orderId)!;
       }
 
-      // Fetch order details - adjust this URL to match your API structure
       const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders/${orderId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -744,7 +838,7 @@ export default function PayoutPage() {
         }
       }
     } catch (error) {
-      //console.warn("Failed to fetch order display number:", error);
+      // Silently fail for better UX
     }
     return null;
   };
@@ -757,12 +851,10 @@ export default function PayoutPage() {
       const token = localStorage.getItem("vendorToken");
       if (!token) return null;
 
-      // Check if we already have this product title cached
       if (productTitles.has(productId)) {
         return productTitles.get(productId)!;
       }
 
-      // Fetch product details - adjust this URL to match your API structure  
       const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products/${productId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -777,7 +869,7 @@ export default function PayoutPage() {
         }
       }
     } catch (error) {
-      //console.warn("Failed to fetch product title:", error);
+      // Silently fail for better UX
     }
     return null;
   };
@@ -821,7 +913,6 @@ export default function PayoutPage() {
       return `Order #${displayNumber}`;
     }
     
-    // Fallback to shortened technical ID if display number not available
     const orderPart = orderId.replace('order_', '').substring(0, 8).toUpperCase();
     return `Order #${orderPart}`;
   };
@@ -835,7 +926,6 @@ export default function PayoutPage() {
       return productTitle.length > 30 ? `${productTitle.substring(0, 27)}...` : productTitle;
     }
     
-    // Fallback to shortened product ID
     return truncateId(productId, 16);
   };
 
@@ -844,7 +934,6 @@ export default function PayoutPage() {
     const orderRef = detail.order_id ? formatOrderReference(detail.order_id) : '';
     const productName = detail.product_id ? getProductDisplayName(detail.product_id) : '';
     
-    // Create a more professional display based on transaction type
     switch (detail.type) {
       case 'earning':
         if (orderRef && productName && productTitles.has(detail.product_id!)) {
@@ -873,9 +962,9 @@ export default function PayoutPage() {
         return detail.reason || 'Transaction';
     }
   };
+
   const viewOrderDetails = (orderId: string) => {
     if (orderId) {
-      // Open order details in new tab - adjust URL as needed for your routing
       window.open(`/orders/${orderId}`, '_blank');
     }
   };
@@ -888,93 +977,8 @@ export default function PayoutPage() {
 
   const handleRequestPayout = () => {
     // Re-fetch all payout data after successful payout request
-    const fetchPayoutData = async () => {
-      try {
-        const token = localStorage.getItem("vendorToken");
-        const vendorIdFromStorage = localStorage.getItem("vendorId") || vendorId;
-        
-        if (!token || !vendorIdFromStorage) return;
-
-        // Re-fetch payout summary
-        const payoutResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorIdFromStorage}/payout`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
-        });
-        
-        if (payoutResponse.ok) {
-          const payoutData = await payoutResponse.json();
-          const payoutInfo = payoutData.payout;
-          
-          // Re-fetch payout details if we have a payout ID
-          let payoutDetailsData: PayoutDetail[] = [];
-          
-          if (payoutInfo?.id) {
-            try {
-              const detailsResponse = await fetch(
-                `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorIdFromStorage}/payout/${payoutInfo.id}/payout-details?limit=100&offset=0`, 
-                {
-                  method: "GET",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                  }
-                }
-              );
-              
-              if (detailsResponse.ok) {
-                const detailsData = await detailsResponse.json();
-                //console.log("Refresh - Payout details API response:", detailsData);
-                
-                // Extract transactions from the payout_details structure
-                const transactionsArray = detailsData.payout_details?.transactions || [];
-                payoutDetailsData = transactionsArray;
-              }
-            } catch (error) {
-              //console.warn("Error re-fetching payout details:", error);
-            }
-          }
-
-          // Update state with fresh data
-          const transformedPayout: VendorPayout = {
-            id: payoutInfo.id || `payout_${Date.now()}`,
-            vendor_id: payoutInfo.vendor_id || vendorIdFromStorage,
-            total_earnings: payoutInfo.total_earned || 0, // API field: total_earned
-            pending_amount: payoutInfo.total_pending_payout || 0, // API field: total_pending_payout
-            paid_amount: payoutInfo.total_paid || 0, // API field: total_paid
-            available_for_payout: payoutInfo.current_balance || 0, // API field: current_balance
-            last_payout_date: payoutInfo.last_payout_at, // API field: last_payout_at
-            next_payout_date: payoutInfo.next_payout_date,
-            created_at: payoutInfo.created_at || new Date().toISOString(),
-            updated_at: payoutInfo.updated_at || new Date().toISOString(),
-            status: payoutInfo.is_payout_enabled ? "active" : "inactive", // API field: is_payout_enabled
-            payout_details: payoutDetailsData.map((transaction: any) => ({
-              id: transaction.id || `detail_${Date.now()}_${Math.random()}`,
-              type: transaction.type || "earning", // API returns: earning, payout, adjustment, refund
-              amount: transaction.amount || 0,
-              reason: transaction.reason || "No description", 
-              notes: transaction.notes || undefined,
-              order_id: transaction.order_id || undefined,
-              order_item_id: transaction.order_item_id || undefined,
-              product_id: transaction.product_id || undefined,
-              created_at: transaction.created_at || new Date().toISOString(),
-              status: transaction.status || "confirmed", // API returns: completed, pending, etc.
-              reference_id: transaction.id // Use transaction ID as reference
-            }))
-          };
-
-          setPayout(transformedPayout);
-          setPayoutDetails(transformedPayout.payout_details);
-        }
-        
-      } catch (error) {
-        //console.error("Error refreshing payout data:", error);
-      }
-    };
-
-    fetchPayoutData();
+    // You can add the refresh logic here similar to the useEffect
+    window.location.reload(); // Simple approach for now
   };
 
   const exportPayoutDetailsToExcel = () => {
@@ -997,17 +1001,8 @@ export default function PayoutPage() {
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       
       const columnWidths = [
-        { wch: 25 }, // Transaction ID
-        { wch: 18 }, // Date
-        { wch: 12 }, // Type
-        { wch: 12 }, // Amount
-        { wch: 12 }, // Amount Type
-        { wch: 40 }, // Reason
-        { wch: 25 }, // Order ID
-        { wch: 25 }, // Product ID
-        { wch: 25 }, // Order Item ID
-        { wch: 12 }, // Status
-        { wch: 30 }, // Notes
+        { wch: 25 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+        { wch: 40 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 12 }, { wch: 30 },
       ];
       worksheet['!cols'] = columnWidths;
       
@@ -1017,7 +1012,6 @@ export default function PayoutPage() {
       const dateStr = now.toISOString().split('T')[0];
       let filename = `payout-details-export-${dateStr}`;
       
-      // Add date range info to filename if filtering is applied
       if (dateRangeFilter?.from && dateRangeFilter?.to) {
         const fromDate = dateRangeFilter.from.toISOString().split('T')[0];
         const toDate = dateRangeFilter.to.toISOString().split('T')[0];
@@ -1058,19 +1052,29 @@ export default function PayoutPage() {
         <div className="container px-4 py-2 mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <h1 className="ml-2 text-base font-semibold" style={{ color: BRAND.secondary }}>
-               
-              </h1>
+              {/* <h1 className="ml-2 text-base font-semibold" style={{ color: BRAND.secondary }}>
+                Junooni Creator Dashboard
+              </h1> */}
             </div>
             
             <div className="flex items-center gap-4">
-              <Button variant="ghost" className="hidden md:flex">Dashboard</Button>
-              <Button variant="ghost" className="hidden md:flex">Products</Button>
-              <Button variant="ghost" className="hidden md:flex">Orders</Button>
-              <Button variant="ghost" className="hidden font-medium md:flex" style={{ color: BRAND.primary }}>
-                Payouts
-              </Button>
-              <Button variant="ghost" className="hidden md:flex">Analytics</Button>
+              <Link to="/dashboard">
+                <Button variant="ghost" className="hidden md:flex">
+                  Dashboard
+                </Button>
+              </Link>
+              <Link to="/products">
+                <Button variant="ghost" className="hidden md:flex">
+                  Products
+                </Button>
+              </Link>
+              <Link to="/orders">
+                <Button variant="ghost" className="hidden md:flex">
+                  Orders
+                </Button>
+              </Link>
+
+              {/* <Button variant="ghost" className="hidden md:flex">Analytics</Button> */}
             </div>
           </div>
         </div>
@@ -1098,7 +1102,7 @@ export default function PayoutPage() {
             <p className="text-sm text-muted-foreground">Track your earnings and request payouts</p>
           </div>
           
-          {!loading && payout && (
+          {!loading && payout && hasPayoutAccount && (
             <RequestPayoutDialog
               availableAmount={payout.available_for_payout}
               onRequestPayout={handleRequestPayout}
@@ -1107,343 +1111,302 @@ export default function PayoutPage() {
           )}
         </div>
         
-        {error && !authError && (
-          <Card className="mb-4 border-red-200 bg-red-50">
-            <CardContent className="p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <div className="flex items-center justify-center w-8 h-8 bg-red-100 rounded-full">
-                    <AlertTriangle className="w-4 h-4 text-red-600" />
-                  </div>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Error Loading Payouts</h3>
-                  <p className="mt-1 text-sm text-red-700">{error}</p>
-                  <div className="mt-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => window.location.reload()}
-                      className="text-red-800 border-red-300 hover:bg-red-100"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Try Again
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        {!loading && !error && <PayoutSummaryCards data={payout} />}
-        
-        {/* Transaction type tab filters */}
-        {!loading && (
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <Button 
-              variant={currentTab === "all" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("all")}
-              className={currentTab === "all" ? "bg-gray-200 hover:bg-gray-300 text-gray-800" : ""}
-            >
-              All Transactions
-              <Badge variant="secondary" className="ml-2 text-gray-800 bg-gray-100">
-                {payoutDetails.length}
-              </Badge>
-            </Button>
-            
-            <Button 
-              variant={currentTab === "earning" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("earning")}
-              className={currentTab === "earning" ? "bg-green-100 hover:bg-green-200 text-green-800 border-green-200" : ""}
-            >
-              <ArrowUpRight className="w-4 h-4 mr-2" />
-              Earnings
-              <Badge variant="secondary" className="ml-2 text-green-800 bg-green-50">
-                {earningCount}
-              </Badge>
-            </Button>
-            
-            <Button 
-              variant={currentTab === "payout" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("payout")}
-              className={currentTab === "payout" ? "bg-blue-100 hover:bg-blue-200 text-blue-800 border-blue-200" : ""}
-            >
-              <Wallet className="w-4 h-4 mr-2" />
-              Payouts
-              <Badge variant="secondary" className="ml-2 text-blue-800 bg-blue-50">
-                {payoutCount}
-              </Badge>
-            </Button>
-            
-            <Button 
-              variant={currentTab === "adjustment" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("adjustment")}
-              className={currentTab === "adjustment" ? "bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-200" : ""}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Adjustments
-              <Badge variant="secondary" className="ml-2 text-amber-800 bg-amber-50">
-                {adjustmentCount}
-              </Badge>
-            </Button>
-            
-            <Button 
-              variant={currentTab === "refund" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("refund")}
-              className={currentTab === "refund" ? "bg-red-100 hover:bg-red-200 text-red-800 border-red-200" : ""}
-            >
-              <ArrowDownRight className="w-4 h-4 mr-2" />
-              Refunds
-              <Badge variant="secondary" className="ml-2 text-red-800 bg-red-50">
-                {refundCount}
-              </Badge>
-            </Button>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin" style={{ color: BRAND.primary }} />
+              <p className="text-gray-600">Loading payout data...</p>
+            </div>
           </div>
-        )}
-        
-        {/* Search and filters */}
-        {!loading && (
-          <div className="flex flex-col gap-3 mb-4 md:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by transaction ID, reason, or order ID..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+        ) : !hasPayoutAccount ? (
+          <EmptyPayoutState />
+        ) : (
+          <>
+            <PayoutSummaryCards data={payout} />
+            
+            {/* Transaction type tab filters */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <Button 
+                variant={currentTab === "all" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("all")}
+                className={currentTab === "all" ? "bg-gray-200 hover:bg-gray-300 text-gray-800" : ""}
+              >
+                All Transactions
+                <Badge variant="secondary" className="ml-2 text-gray-800 bg-gray-100">
+                  {payoutDetails.length}
+                </Badge>
+              </Button>
+              
+              <Button 
+                variant={currentTab === "earning" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("earning")}
+                className={currentTab === "earning" ? "bg-green-100 hover:bg-green-200 text-green-800 border-green-200" : ""}
+              >
+                <ArrowUpRight className="w-4 h-4 mr-2" />
+                Earnings
+                <Badge variant="secondary" className="ml-2 text-green-800 bg-green-50">
+                  {earningCount}
+                </Badge>
+              </Button>
+              
+              <Button 
+                variant={currentTab === "payout" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("payout")}
+                className={currentTab === "payout" ? "bg-blue-100 hover:bg-blue-200 text-blue-800 border-blue-200" : ""}
+              >
+                <Wallet className="w-4 h-4 mr-2" />
+                Payouts
+                <Badge variant="secondary" className="ml-2 text-blue-800 bg-blue-50">
+                  {payoutCount}
+                </Badge>
+              </Button>
+              
+              <Button 
+                variant={currentTab === "adjustment" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("adjustment")}
+                className={currentTab === "adjustment" ? "bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-200" : ""}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Adjustments
+                <Badge variant="secondary" className="ml-2 text-amber-800 bg-amber-50">
+                  {adjustmentCount}
+                </Badge>
+              </Button>
+              
+              <Button 
+                variant={currentTab === "refund" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("refund")}
+                className={currentTab === "refund" ? "bg-red-100 hover:bg-red-200 text-red-800 border-red-200" : ""}
+              >
+                <ArrowDownRight className="w-4 h-4 mr-2" />
+                Refunds
+                <Badge variant="secondary" className="ml-2 text-red-800 bg-red-50">
+                  {refundCount}
+                </Badge>
+              </Button>
             </div>
             
-            <div className="flex flex-wrap gap-3 md:flex-nowrap">
-              {/* Date Range Filter */}
-              <div className="flex items-center gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={`w-48 justify-start text-left font-normal ${
-                        dateRangeFilter ? "text-gray-900" : "text-gray-500"
-                      }`}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {dateRangeFilter?.from ? (
-                        dateRangeFilter.to ? (
-                          `${dateRangeFilter.from.toLocaleDateString()} - ${dateRangeFilter.to.toLocaleDateString()}`
+            {/* Search and filters */}
+            <div className="flex flex-col gap-3 mb-4 md:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by transaction ID, reason, or order ID..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex flex-wrap gap-3 md:flex-nowrap">
+                {/* Date Range Filter */}
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`w-48 justify-start text-left font-normal ${
+                          dateRangeFilter ? "text-gray-900" : "text-gray-500"
+                        }`}
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {dateRangeFilter?.from ? (
+                          dateRangeFilter.to ? (
+                            `${dateRangeFilter.from.toLocaleDateString()} - ${dateRangeFilter.to.toLocaleDateString()}`
+                          ) : (
+                            dateRangeFilter.from.toLocaleDateString()
+                          )
                         ) : (
-                          dateRangeFilter.from.toLocaleDateString()
-                        )
-                      ) : (
-                        "Select date range"
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <div className="p-4 space-y-4">
-                      <div>
-                        <h4 className="font-medium leading-none">Quick Filters</h4>
-                        <div className="grid grid-cols-2 gap-2 mt-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const today = new Date();
-                              setDateRangeFilter({ from: today, to: today });
-                              setDateFilter(undefined);
-                              setDateFilterMode('range');
-                            }}
-                          >
-                            Today
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const today = new Date();
-                              const lastWeek = new Date(today);
-                              lastWeek.setDate(today.getDate() - 7);
-                              setDateRangeFilter({ from: lastWeek, to: today });
-                              setDateFilter(undefined);
-                              setDateFilterMode('range');
-                            }}
-                          >
-                            Last 7 days
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const today = new Date();
-                              const lastMonth = new Date(today);
-                              lastMonth.setDate(today.getDate() - 30);
-                              setDateRangeFilter({ from: lastMonth, to: today });
-                              setDateFilter(undefined);
-                              setDateFilterMode('range');
-                            }}
-                          >
-                            Last 30 days
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const today = new Date();
-                              const lastQuarter = new Date(today);
-                              lastQuarter.setDate(today.getDate() - 90);
-                              setDateRangeFilter({ from: lastQuarter, to: today });
-                              setDateFilter(undefined);
-                              setDateFilterMode('range');
-                            }}
-                          >
-                            Last 90 days
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="border-t pt-4">
-                        <h4 className="font-medium leading-none mb-3">Custom Range</h4>
-                        <div className="space-y-3">
-                          <div>
-                            <label className="text-sm font-medium">From Date</label>
-                            <Input
-                              type="date"
-                              value={dateRangeFilter?.from ? dateRangeFilter.from.toISOString().split('T')[0] : ''}
-                              onChange={(e) => {
-                                const newDate = e.target.value ? new Date(e.target.value) : undefined;
-                                setDateRangeFilter(prev => ({ ...prev, from: newDate }));
+                          "Select date range"
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <div className="p-4 space-y-4">
+                        <div>
+                          <h4 className="font-medium leading-none">Quick Filters</h4>
+                          <div className="grid grid-cols-2 gap-2 mt-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const today = new Date();
+                                setDateRangeFilter({ from: today, to: today });
                                 setDateFilter(undefined);
                                 setDateFilterMode('range');
                               }}
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium">To Date</label>
-                            <Input
-                              type="date"
-                              value={dateRangeFilter?.to ? dateRangeFilter.to.toISOString().split('T')[0] : ''}
-                              onChange={(e) => {
-                                const newDate = e.target.value ? new Date(e.target.value) : undefined;
-                                setDateRangeFilter(prev => ({ ...prev, to: newDate }));
+                            >
+                              Today
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const today = new Date();
+                                const lastWeek = new Date(today);
+                                lastWeek.setDate(today.getDate() - 7);
+                                setDateRangeFilter({ from: lastWeek, to: today });
                                 setDateFilter(undefined);
                                 setDateFilterMode('range');
                               }}
-                              className="mt-1"
-                            />
+                            >
+                              Last 7 days
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const today = new Date();
+                                const lastMonth = new Date(today);
+                                lastMonth.setDate(today.getDate() - 30);
+                                setDateRangeFilter({ from: lastMonth, to: today });
+                                setDateFilter(undefined);
+                                setDateFilterMode('range');
+                              }}
+                            >
+                              Last 30 days
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const today = new Date();
+                                const lastQuarter = new Date(today);
+                                lastQuarter.setDate(today.getDate() - 90);
+                                setDateRangeFilter({ from: lastQuarter, to: today });
+                                setDateFilter(undefined);
+                                setDateFilterMode('range');
+                              }}
+                            >
+                              Last 90 days
+                            </Button>
                           </div>
                         </div>
+                        
+                        <div className="pt-4 border-t">
+                          <h4 className="mb-3 font-medium leading-none">Custom Range</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-sm font-medium">From Date</label>
+                              <Input
+                                type="date"
+                                value={dateRangeFilter?.from ? dateRangeFilter.from.toISOString().split('T')[0] : ''}
+                                onChange={(e) => {
+                                  const newDate = e.target.value ? new Date(e.target.value) : undefined;
+                                  setDateRangeFilter(prev => ({ ...prev, from: newDate }));
+                                  setDateFilter(undefined);
+                                  setDateFilterMode('range');
+                                }}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium">To Date</label>
+                              <Input
+                                type="date"
+                                value={dateRangeFilter?.to ? dateRangeFilter.to.toISOString().split('T')[0] : ''}
+                                onChange={(e) => {
+                                  const newDate = e.target.value ? new Date(e.target.value) : undefined;
+                                  setDateRangeFilter(prev => ({ ...prev, to: newDate }));
+                                  setDateFilter(undefined);
+                                  setDateFilterMode('range');
+                                }}
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between pt-4 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDateRangeFilter(undefined);
+                              setDateFilter(undefined);
+                            }}
+                          >
+                            Clear Filter
+                          </Button>
+                        </div>
                       </div>
-                      
-                      <div className="border-t pt-4 flex justify-between">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setDateRangeFilter(undefined);
-                            setDateFilter(undefined);
-                          }}
-                        >
-                          Clear Filter
-                        </Button>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              <Select 
-                value={typeFilter} 
-                onValueChange={setTypeFilter}
-              >
-                <SelectTrigger className="w-32 text-sm">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    <span>Type</span>
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="earning">Earnings</SelectItem>
-                  <SelectItem value="payout">Payouts</SelectItem>
-                  <SelectItem value="adjustment">Adjustments</SelectItem>
-                  <SelectItem value="refund">Refunds</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select 
-                value={sortOrder}
-                onValueChange={setSortOrder}
-              >
-                <SelectTrigger className="w-32 text-sm">
-                  <span>Sort By</span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="latest">Latest</SelectItem>
-                  <SelectItem value="oldest">Oldest</SelectItem>
-                  <SelectItem value="highest">Highest Amount</SelectItem>
-                  <SelectItem value="lowest">Lowest Amount</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-        
-        {/* Payout details card */}
-        <Card className="mb-6 shadow-xl">
-          <CardHeader className="pb-2 border-b" style={{ borderColor: `${BRAND.primary}11` }}>
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center">
-                <div className="p-3 mr-4 rounded-lg" style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
-                  <DollarSign className="w-6 h-6 text-white" />
+                    </PopoverContent>
+                  </Popover>
                 </div>
-                <div>
-                  <CardTitle className="text-lg font-bold" style={{ color: BRAND.secondary }}>
-                    Transaction History
-                  </CardTitle>
-                  <CardDescription className="text-sm" style={{ color: BRAND.textSecondary }}>
-                    {loading ? "Loading transactions..." : `Showing ${filteredDetails.length} of ${payoutDetails.length} transactions`}
-                  </CardDescription>
-                </div>
-              </div>
-              
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  className="hidden md:flex"
-                  disabled={loading || paginatedDetails.length === 0}
-                  onClick={exportPayoutDetailsToExcel}
+                
+                <Select 
+                  value={typeFilter} 
+                  onValueChange={setTypeFilter}
                 >
-                  <Download className="w-4 h-4 mr-2" />
-                  Export ({filteredDetails.length} records)
-                </Button>
+                  <SelectTrigger className="w-32 text-sm">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      <span>Type</span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="earning">Earnings</SelectItem>
+                    <SelectItem value="payout">Payouts</SelectItem>
+                    <SelectItem value="adjustment">Adjustments</SelectItem>
+                    <SelectItem value="refund">Refunds</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Select 
+                  value={sortOrder}
+                  onValueChange={setSortOrder}
+                >
+                  <SelectTrigger className="w-32 text-sm">
+                    <span>Sort By</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="latest">Latest</SelectItem>
+                    <SelectItem value="oldest">Oldest</SelectItem>
+                    <SelectItem value="highest">Highest Amount</SelectItem>
+                    <SelectItem value="lowest">Lowest Amount</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </CardHeader>
-      
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="text-center">
-                  <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin" style={{ color: BRAND.primary }} />
-                  <p className="text-gray-600">Loading payout data...</p>
+            
+            {/* Payout details card */}
+            <Card className="mb-6 shadow-xl">
+              <CardHeader className="pb-2 border-b" style={{ borderColor: `${BRAND.primary}11` }}>
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center">
+                    <div className="p-3 mr-4 rounded-lg" style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
+                      <DollarSign className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg font-bold" style={{ color: BRAND.secondary }}>
+                        Transaction History
+                      </CardTitle>
+                      <CardDescription className="text-sm" style={{ color: BRAND.textSecondary }}>
+                        Showing {filteredDetails.length} of {payoutDetails.length} transactions
+                      </CardDescription>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      className="hidden md:flex"
+                      disabled={paginatedDetails.length === 0}
+                      onClick={exportPayoutDetailsToExcel}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export ({filteredDetails.length} records)
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : error && !authError ? (
-              <div className="py-8 text-center text-destructive">
-                <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-400" />
-                <h3 className="mb-2 text-lg font-medium text-red-600">Error Loading Payout Data</h3>
-                <p className="mb-4 text-red-500">{error}</p>
-                <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Try Again
-                </Button>
-              </div>
-            ) : (
-              <>
+              </CardHeader>
+          
+              <CardContent className="p-0">
                 {filteredDetails.length === 0 ? (
                   <div className="py-12 text-center">
-                    <DollarSign className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <Receipt className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                     <h3 className="mb-1 text-lg font-medium text-gray-500">No transactions found</h3>
                     <p className="mb-4 text-gray-400">
                       {searchTerm || typeFilter !== "all" || dateFilter ? 
@@ -1490,7 +1453,7 @@ export default function PayoutPage() {
                               <h4 className="text-sm font-medium text-gray-900">
                                 {getTransactionDisplayText(detail)}
                               </h4>
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="mt-1 text-xs text-gray-500">
                                 {formatDate(detail.created_at)}
                                 {detail.order_id && (
                                   <span className="ml-2">• 
@@ -1545,7 +1508,6 @@ export default function PayoutPage() {
                               )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => {
-                                // Generate a simple receipt text
                                 const receiptText = `
 PAYOUT TRANSACTION RECEIPT
 ==========================
@@ -1561,7 +1523,6 @@ ${detail.reason ? `Reason: ${detail.reason}` : ''}
 Thank you for using Junooni!
                                 `;
                                 
-                                // Create and download text file
                                 const blob = new Blob([receiptText], { type: 'text/plain' });
                                 const url = URL.createObjectURL(blob);
                                 const a = document.createElement('a');
@@ -1584,7 +1545,7 @@ Thank you for using Junooni!
                 )}
                 
                 {/* Pagination */}
-                {!loading && paginatedDetails.length > 0 && totalFilteredCount > limit && (
+                {paginatedDetails.length > 0 && totalFilteredCount > limit && (
                   <div className="flex items-center justify-between p-4 border-t">
                     <div className="text-sm text-muted-foreground">
                       Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
@@ -1647,141 +1608,141 @@ Thank you for using Junooni!
                     </div>
                   </div>
                 )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-        
-        {/* Payout Distribution Charts */}
-        {!loading && !error && payoutDetails.length > 0 && (
-          <div className="grid grid-cols-1 gap-3 mb-4 md:grid-cols-7">
-            <Card className="shadow-md md:col-span-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold">Transaction Distribution</CardTitle>
-                <CardDescription>Breakdown by transaction type</CardDescription>
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className="space-y-4">
-                  {/* Earnings */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 mr-2 bg-green-500 rounded-full"></div>
-                        <span className="text-sm">Earnings</span>
-                      </div>
-                      <span className="text-sm">{earningCount} transactions</span>
-                    </div>
-                    <div className="w-full h-2 overflow-hidden bg-gray-100 rounded-full">
-                      <div 
-                        className="h-full bg-green-500 rounded-full"
-                        style={{ width: `${(earningCount / Math.max(payoutDetails.length, 1)) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  {/* Payouts */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 mr-2 bg-blue-500 rounded-full"></div>
-                        <span className="text-sm">Payouts</span>
-                      </div>
-                      <span className="text-sm">{payoutCount} transactions</span>
-                    </div>
-                    <div className="w-full h-2 overflow-hidden bg-gray-100 rounded-full">
-                      <div 
-                        className="h-full bg-blue-500 rounded-full"
-                        style={{ width: `${(payoutCount / Math.max(payoutDetails.length, 1)) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  {/* Adjustments */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 mr-2 bg-amber-500 rounded-full"></div>
-                        <span className="text-sm">Adjustments</span>
-                      </div>
-                      <span className="text-sm">{adjustmentCount} transactions</span>
-                    </div>
-                    <div className="w-full h-2 overflow-hidden bg-gray-100 rounded-full">
-                      <div 
-                        className="h-full bg-amber-500 rounded-full"
-                        style={{ width: `${(adjustmentCount / Math.max(payoutDetails.length, 1)) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  {/* Refunds */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 mr-2 bg-red-500 rounded-full"></div>
-                        <span className="text-sm">Refunds</span>
-                      </div>
-                      <span className="text-sm">{refundCount} transactions</span>
-                    </div>
-                    <div className="w-full h-2 overflow-hidden bg-gray-100 rounded-full">
-                      <div 
-                        className="h-full bg-red-500 rounded-full"
-                        style={{ width: `${(refundCount / Math.max(payoutDetails.length, 1)) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
               </CardContent>
             </Card>
             
-            {/* Recent Transactions */}
-            <Card className="shadow-md md:col-span-3">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold">Recent Transactions</CardTitle>
-                <CardDescription>Latest payout activities</CardDescription>
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  {filteredDetails.slice(0, 4).map((detail) => (
-                    <div key={detail.id} className="flex items-start space-x-3">
-                      <div className={`p-1.5 rounded-full ${
-                        detail.type === 'earning' ? 'bg-green-100' :
-                        detail.type === 'payout' ? 'bg-blue-100' :
-                        detail.type === 'adjustment' ? 'bg-amber-100' :
-                        'bg-red-100'
-                      }`}>
-                        {detail.type === 'earning' ? <ArrowUpRight className="w-4 h-4 text-green-600" /> :
-                         detail.type === 'payout' ? <Wallet className="w-4 h-4 text-blue-600" /> :
-                         detail.type === 'adjustment' ? <RefreshCw className="w-4 h-4 text-amber-600" /> :
-                         <ArrowDownRight className="w-4 h-4 text-red-600" />}
-                      </div>
-                      <div className="flex-1">
+            {/* Payout Distribution Charts */}
+            {payoutDetails.length > 0 && (
+              <div className="grid grid-cols-1 gap-3 mb-4 md:grid-cols-7">
+                <Card className="shadow-md md:col-span-4">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold">Transaction Distribution</CardTitle>
+                    <CardDescription>Breakdown by transaction type</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      {/* Earnings */}
+                      <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">
-                            {detail.reason || 'Transaction'}
-                          </p>
-                          <p className="text-xs text-gray-500">{formatDate(detail.created_at)}</p>
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 mr-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm">Earnings</span>
+                          </div>
+                          <span className="text-sm">{earningCount} transactions</span>
                         </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <PayoutTypeBadge type={detail.type} />
-                          <p className={`text-xs font-medium ${
-                            detail.amount >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {detail.amount >= 0 ? '+' : ''}{formatPrice(detail.amount)}
-                          </p>
+                        <div className="w-full h-2 overflow-hidden bg-gray-100 rounded-full">
+                          <div 
+                            className="h-full bg-green-500 rounded-full"
+                            style={{ width: `${(earningCount / Math.max(payoutDetails.length, 1)) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      {/* Payouts */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 mr-2 bg-blue-500 rounded-full"></div>
+                            <span className="text-sm">Payouts</span>
+                          </div>
+                          <span className="text-sm">{payoutCount} transactions</span>
+                        </div>
+                        <div className="w-full h-2 overflow-hidden bg-gray-100 rounded-full">
+                          <div 
+                            className="h-full bg-blue-500 rounded-full"
+                            style={{ width: `${(payoutCount / Math.max(payoutDetails.length, 1)) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      {/* Adjustments */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 mr-2 rounded-full bg-amber-500"></div>
+                            <span className="text-sm">Adjustments</span>
+                          </div>
+                          <span className="text-sm">{adjustmentCount} transactions</span>
+                        </div>
+                        <div className="w-full h-2 overflow-hidden bg-gray-100 rounded-full">
+                          <div 
+                            className="h-full rounded-full bg-amber-500"
+                            style={{ width: `${(adjustmentCount / Math.max(payoutDetails.length, 1)) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      {/* Refunds */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 mr-2 bg-red-500 rounded-full"></div>
+                            <span className="text-sm">Refunds</span>
+                          </div>
+                          <span className="text-sm">{refundCount} transactions</span>
+                        </div>
+                        <div className="w-full h-2 overflow-hidden bg-gray-100 rounded-full">
+                          <div 
+                            className="h-full bg-red-500 rounded-full"
+                            style={{ width: `${(refundCount / Math.max(payoutDetails.length, 1)) * 100}%` }}
+                          ></div>
                         </div>
                       </div>
                     </div>
-                  ))}
-                  
-                  {filteredDetails.length === 0 && (
-                    <div className="py-8 text-center text-gray-500">
-                      No recent transactions found
+                  </CardContent>
+                </Card>
+                
+                {/* Recent Transactions */}
+                <Card className="shadow-md md:col-span-3">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold">Recent Transactions</CardTitle>
+                    <CardDescription>Latest payout activities</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      {filteredDetails.slice(0, 4).map((detail) => (
+                        <div key={detail.id} className="flex items-start space-x-3">
+                          <div className={`p-1.5 rounded-full ${
+                            detail.type === 'earning' ? 'bg-green-100' :
+                            detail.type === 'payout' ? 'bg-blue-100' :
+                            detail.type === 'adjustment' ? 'bg-amber-100' :
+                            'bg-red-100'
+                          }`}>
+                            {detail.type === 'earning' ? <ArrowUpRight className="w-4 h-4 text-green-600" /> :
+                             detail.type === 'payout' ? <Wallet className="w-4 h-4 text-blue-600" /> :
+                             detail.type === 'adjustment' ? <RefreshCw className="w-4 h-4 text-amber-600" /> :
+                             <ArrowDownRight className="w-4 h-4 text-red-600" />}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium">
+                                {detail.reason || 'Transaction'}
+                              </p>
+                              <p className="text-xs text-gray-500">{formatDate(detail.created_at)}</p>
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                              <PayoutTypeBadge type={detail.type} />
+                              <p className={`text-xs font-medium ${
+                                detail.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {detail.amount >= 0 ? '+' : ''}{formatPrice(detail.amount)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {filteredDetails.length === 0 && (
+                        <div className="py-8 text-center text-gray-500">
+                          No recent transactions found
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </>
         )}
       </div>
       
@@ -1835,18 +1796,18 @@ Thank you for using Junooni!
                   }`}>
                     {selectedTransaction.amount >= 0 ? '+' : ''}{formatPrice(selectedTransaction.amount)}
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="mt-1 text-sm text-gray-500">
                     {formatDate(selectedTransaction.created_at)}
                   </p>
                 </div>
               </div>
 
               {/* Transaction Details Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Transaction ID</label>
-                    <div className="mt-1 p-2 bg-gray-50 rounded-md border">
+                    <div className="p-2 mt-1 border rounded-md bg-gray-50">
                       <code className="text-sm text-gray-900">{selectedTransaction.id}</code>
                     </div>
                   </div>
@@ -1897,7 +1858,7 @@ Thank you for using Junooni!
                   {selectedTransaction.reference_id && (
                     <div>
                       <label className="text-sm font-medium text-gray-500">Reference ID</label>
-                      <div className="mt-1 p-2 bg-gray-50 rounded-md border">
+                      <div className="p-2 mt-1 border rounded-md bg-gray-50">
                         <code className="text-sm text-gray-900">{selectedTransaction.reference_id}</code>
                       </div>
                     </div>
@@ -1908,7 +1869,7 @@ Thank you for using Junooni!
               {/* Related Information */}
               {(selectedTransaction.order_id || selectedTransaction.product_id || selectedTransaction.order_item_id) && (
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Related Information</h4>
+                  <h4 className="mb-3 text-sm font-semibold text-gray-900">Related Information</h4>
                   <div className="grid grid-cols-1 gap-3">
                     {selectedTransaction.order_id && (
                       <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -1960,8 +1921,8 @@ Thank you for using Junooni!
               {/* Additional Notes */}
               {selectedTransaction.notes && (
                 <div>
-                  <label className="text-sm font-semibold text-gray-900 mb-2 block">Notes</label>
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <label className="block mb-2 text-sm font-semibold text-gray-900">Notes</label>
+                  <div className="p-3 border border-blue-200 rounded-lg bg-blue-50">
                     <p className="text-sm text-blue-900">{selectedTransaction.notes}</p>
                   </div>
                 </div>
@@ -1970,8 +1931,8 @@ Thank you for using Junooni!
               {/* Reason */}
               {selectedTransaction.reason && (
                 <div>
-                  <label className="text-sm font-semibold text-gray-900 mb-2 block">Reason</label>
-                  <div className="p-3 bg-gray-50 border rounded-lg">
+                  <label className="block mb-2 text-sm font-semibold text-gray-900">Reason</label>
+                  <div className="p-3 border rounded-lg bg-gray-50">
                     <p className="text-sm text-gray-700">{selectedTransaction.reason}</p>
                   </div>
                 </div>
@@ -1994,7 +1955,6 @@ Thank you for using Junooni!
                 variant="outline"
                 onClick={() => {
                   if (selectedTransaction) {
-                    // Generate a detailed receipt
                     const receiptText = `
 PAYOUT TRANSACTION RECEIPT
 ==========================

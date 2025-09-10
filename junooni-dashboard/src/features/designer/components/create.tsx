@@ -2099,24 +2099,17 @@ for (const field of detailsFields) {
   }
 }
 
-// ✅ FIX: Map PayloadCMS status to valid form values
-    let formStatus = 'draft'; // default fallback
-    
-    if (payloadProduct.status) {
-      const statusMap: Record<string, string> = {
-        'active': 'published',
-        'inactive': 'draft',
-        'draft': 'draft',
-        'published': 'published',
-        'proposed': 'proposed',
-        'archived': 'archived',
-        'rejected': 'draft' // fallback for rejected
-      };
-      
-      formStatus = statusMap[payloadProduct.status.toLowerCase()] || 'draft';
-    }
-    
-    form.setValue('status', formStatus);
+// Add this safety check in both population functions
+const ensureValidStatus = (status: any): string => {
+  const validStatuses = ['published', 'draft', 'archived', 'proposed', 'rejected'];
+  if (validStatuses.includes(status)) {
+    return status;
+  }
+  return 'draft'; // Always fallback to draft
+};
+
+// Then use it:
+form.setValue('status', ensureValidStatus('draft'));
 
 if (existingProductDetails && existingProductDetails.length > 0) {
   
@@ -2313,9 +2306,9 @@ if (existingProductDetails && existingProductDetails.length > 0) {
     });
     
     const initialDetails = [
-      'High-quality materials and construction',
-      'Unique design imported from designer',
-      'Carefully crafted for durability and style'
+      // 'High-quality materials and construction',
+      // 'Unique design imported from designer',
+      // 'Carefully crafted for durability and style'
     ];
     
     if (productData?.materials?.primary) {
@@ -5253,13 +5246,13 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
                     )}
                   />
                   
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <FormField
                       control={form.control}
                       name="length"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-medium text-gray-700">Length(inches)</FormLabel>
+                          <FormLabel className="font-medium text-gray-700">Length(inch)</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
@@ -5277,7 +5270,7 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
                       name="width"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-medium text-gray-700">Width(inches)</FormLabel>
+                          <FormLabel className="font-medium text-gray-700">Width(inch)</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
@@ -5295,7 +5288,7 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
                       name="height"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-medium text-gray-700">Height(inches)</FormLabel>
+                          <FormLabel className="font-medium text-gray-700">Height(inch)</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
