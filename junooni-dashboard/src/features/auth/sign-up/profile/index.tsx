@@ -1102,12 +1102,12 @@ const openChatwoot = () => {
               >
                 Orders
               </Button>
-              <Button
+              {/* <Button
                 variant="ghost"
                 className="hidden md:flex"
               >
                 Analytics
-              </Button>
+              </Button> */}
              
               <div className="flex items-center">
                 <div className="w-8 h-8 mr-2 overflow-hidden rounded-full">
@@ -1238,8 +1238,8 @@ const openChatwoot = () => {
               </nav>
              
               <div className="p-4 mt-8 border-t border-gray-100">
-                <div className="px-4 py-3 text-sm border border-blue-100 rounded-lg bg-blue-50">
-                  <p className="text-blue-800">Need help updating your profile?</p>
+                <div className="px-4 py-3 text-sm border border-orange-100 rounded-lg bg-orange-50">
+                  <p className="text-orange-800">Need help updating your profile?</p>
                   <Button
                     variant="link"
                     className="h-auto p-0 mt-1 text-sm"
@@ -2186,10 +2186,10 @@ const openChatwoot = () => {
                               </div>
                             )}
                            
-                            <Alert className="mt-4 border border-blue-100 bg-blue-50">
-                              <IconShield className="w-4 h-4 text-blue-500" />
-                              <AlertTitle className="text-blue-700">Secure Banking</AlertTitle>
-                              <AlertDescription className="text-blue-600">
+                            <Alert className="mt-4 border border-orange-100 bg-orange-50">
+                              <IconShield className="w-4 h-4 text-orange-500" />
+                              <AlertTitle className="text-orange-700">Secure Banking</AlertTitle>
+                              <AlertDescription className="text-orange-600">
                                 Your banking information is encrypted and securely stored. We only use it for processing payments to you.
                               </AlertDescription>
                             </Alert>
@@ -2443,7 +2443,7 @@ const openChatwoot = () => {
                      
                       <Separator className="my-6" />
                      
-                      <div className="mb-6">
+                      {/* <div className="mb-6">
                         <h2 className="mb-4 text-lg font-semibold">Notifications</h2>
                        
                         <div className="space-y-4">
@@ -2480,7 +2480,7 @@ const openChatwoot = () => {
                             </label>
                           </div>
                         </div>
-                      </div>
+                      </div> */}
                      
                       <Separator className="my-6" />
                      

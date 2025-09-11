@@ -76,6 +76,7 @@ import { z } from 'zod';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import JunooniLogo from "@/assets/junooni-favicon.png";
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -306,7 +307,7 @@ export default function JunooniLogin() {
               ? 'bg-orange-50/95 border-orange-200 text-orange-800' 
               : toast.type === 'error' 
               ? 'bg-red-50/95 border-red-200 text-red-800'
-              : 'bg-blue-50/95 border-blue-200 text-blue-800'
+              : 'bg-orange-50/95 border-orange-200 text-orange-800'
             }
           `}>
             <div className="flex items-start gap-3">
@@ -403,7 +404,7 @@ export default function JunooniLogin() {
             {/* Enhanced Branding */}
             <div className="flex items-center gap-4 p-8">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#e65100] shadow-xl">
-                <img src="/src/assets/favicon-3.png" alt="Junooni Logo" className="h-12 lg:h-12 sm:h-8 w-12 lg:w-12" />
+                <img src={JunooniLogo} alt="Junooni Logo" className="w-12 h-12 lg:h-12 sm:h-8 lg:w-12" />
               </div>
               <h1 className="text-3xl font-black tracking-wide text-white drop-shadow-2xl">JUNOONI</h1>
             </div>

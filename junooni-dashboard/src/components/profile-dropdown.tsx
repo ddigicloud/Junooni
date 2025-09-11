@@ -35,7 +35,7 @@ export function ProfileDropdown() {
         const token = localStorage.getItem("vendorToken")
         //console.log("Using token:", token)
       
-        const response = await fetch("http://localhost:9000/vendors/me", {
+        const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -114,8 +114,8 @@ export function ProfileDropdown() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to='/settings'>
-              Settings
+            <Link to='/help-center'>
+              Help Center
               <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
             </Link>
           </DropdownMenuItem>

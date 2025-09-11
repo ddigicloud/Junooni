@@ -48,15 +48,16 @@
 import { Link } from '@tanstack/react-router'
 import { SignUpForm } from './components/sign-up-form'
 import CreatorJunooni from '../../../assets/junooni-creators.png'
+import JunooniLogo from "@/assets/junooni-favicon.png";
 
 export default function SignUp() {
   return (
-    <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2">
+    <div className="grid w-full min-h-screen grid-cols-1 lg:grid-cols-2">
       {/* Left Panel - Enhanced Branded Section */}
       <div className="relative hidden h-full lg:flex flex-col overflow-hidden bg-gradient-to-br from-[#e65100] to-[#d84315]">
         {/* Main background image with enhanced overlay */}
         <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat" 
+          className="absolute inset-0 bg-center bg-no-repeat bg-cover" 
           style={{ 
             backgroundImage: `url(${CreatorJunooni})`,
             filter: 'brightness(0.85) contrast(1.1)' 
@@ -95,14 +96,14 @@ export default function SignUp() {
           {/* Enhanced Branding */}
           <div className="flex items-center gap-4 p-8">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#e65100] shadow-xl">
-             <img src="/src/assets/favicon-3-copyyy.png" alt="Junooni Logo" className="h-6 lg:h-10 sm:h-8 w-10 lg:w-18" />
+             <img src={JunooniLogo} alt="Junooni Logo" className="w-12 h-8 lg:h-10 sm:h-8 lg:w-18" />
             </div>
-            <h1 className="text-3xl font-black text-white drop-shadow-2xl tracking-wide">JUNOONI</h1>
+            <h1 className="text-3xl font-black tracking-wide text-white drop-shadow-2xl">JUNOONI</h1>
           </div>
           
           {/* Centered Content with enhanced design */}
-          <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-            <div className="mb-12 rounded-3xl bg-white/10 p-8 backdrop-blur-lg shadow-2xl border border-white/20">
+          <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
+            <div className="p-8 mb-12 border shadow-2xl rounded-3xl bg-white/10 backdrop-blur-lg border-white/20">
               <svg 
                 width="120" 
                 height="120" 
@@ -112,7 +113,7 @@ export default function SignUp() {
                 strokeWidth="1.5" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
-                className="drop-shadow-2xl mx-auto"
+                className="mx-auto drop-shadow-2xl"
               >
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
@@ -121,24 +122,24 @@ export default function SignUp() {
               </svg>
             </div>
             
-            <div className="bg-black/30 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-white/10 max-w-lg">
+            <div className="max-w-lg p-8 border shadow-2xl bg-black/30 backdrop-blur-lg rounded-2xl border-white/10">
               <h2 className="mb-6 text-4xl font-black text-white drop-shadow-2xl">Join Our Community</h2>
-              <p className="max-w-md text-xl text-white/95 drop-shadow-lg leading-relaxed font-medium">
+              <p className="max-w-md text-xl font-medium leading-relaxed text-white/95 drop-shadow-lg">
                 Start your creator journey today. Build your brand, connect with fans, and monetize your passion.
               </p>
               
-              <div className="mt-10 grid grid-cols-3 gap-6">
-                <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+              <div className="grid grid-cols-3 gap-6 mt-10">
+                <div className="flex flex-col items-center p-4 border bg-white/10 rounded-xl backdrop-blur-sm border-white/20">
                   <div className="text-3xl font-black text-white drop-shadow-lg">Free</div>
-                  <div className="text-sm text-white/90 font-medium mt-1">To get started</div>
+                  <div className="mt-1 text-sm font-medium text-white/90">To get started</div>
                 </div>
-                <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+                <div className="flex flex-col items-center p-4 border bg-white/10 rounded-xl backdrop-blur-sm border-white/20">
                   <div className="text-3xl font-black text-white drop-shadow-lg">24/7</div>
-                  <div className="text-sm text-white/90 font-medium mt-1">Support available</div>
+                  <div className="mt-1 text-sm font-medium text-white/90">Support available</div>
                 </div>
-                <div className="flex flex-col items-center p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+                <div className="flex flex-col items-center p-4 border bg-white/10 rounded-xl backdrop-blur-sm border-white/20">
                   <div className="text-3xl font-black text-white drop-shadow-lg">∞</div>
-                  <div className="text-sm text-white/90 font-medium mt-1">Earning potential</div>
+                  <div className="mt-1 text-sm font-medium text-white/90">Earning potential</div>
                 </div>
               </div>
             </div>
@@ -146,8 +147,8 @@ export default function SignUp() {
           
           {/* Enhanced Footer Quote */}
           <div className="p-8">
-            <blockquote className="bg-black/20 backdrop-blur-lg p-6 rounded-2xl shadow-xl border border-white/10 border-l-4 border-l-white">
-              <p className="italic text-white text-lg font-medium leading-relaxed">
+            <blockquote className="p-6 border border-l-4 shadow-xl bg-black/20 backdrop-blur-lg rounded-2xl border-white/10 border-l-white">
+              <p className="text-lg italic font-medium leading-relaxed text-white">
                 "Every creator's journey begins with a single step. Take yours today with Junooni."
               </p>
               <footer className="mt-3 text-base font-semibold text-white/95">
@@ -159,10 +160,10 @@ export default function SignUp() {
       </div>
       
       {/* Right Panel - Enhanced Sign Up Form */}
-      <div className="flex h-screen flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-white px-6 pt-8">
-        <div className="mx-auto w-full max-w-md">
+      <div className="flex flex-col items-center justify-center h-screen px-6 pt-8 bg-gradient-to-br from-gray-50 to-white">
+        <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo - Enhanced */}
-          <div className="mb-10 flex items-center justify-center gap-3 lg:hidden">
+          <div className="flex items-center justify-center gap-3 mb-10 lg:hidden">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e65100] text-white shadow-lg">
               <span className="text-2xl font-black">J</span>
             </div>
@@ -171,8 +172,8 @@ export default function SignUp() {
           
           {/* Enhanced Header */}
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</h1>
-            <p className="text-base text-gray-600 leading-relaxed">
+            <h1 className="mb-2 text-3xl font-bold text-gray-900">Create Your Account</h1>
+            <p className="text-base leading-relaxed text-gray-600">
               Join thousands of creators building their brands on Junooni
             </p>
           </div>
@@ -180,7 +181,7 @@ export default function SignUp() {
           <SignUpForm />
           
           {/* Enhanced Footer Links */}
-          <div className="mt-8 text-center space-y-4">
+          <div className="mt-8 space-y-4 text-center">
             <p className="text-base text-gray-600">
               Already have an account?{" "}
               <Link to="/sign-in" className="font-semibold text-[#e65100] hover:text-[#d84315] transition-colors duration-200 hover:underline">
@@ -188,7 +189,7 @@ export default function SignUp() {
               </Link>
             </p>
             
-            {/* <p className="text-sm text-gray-500 leading-relaxed max-w-sm mx-auto">
+            {/* <p className="max-w-sm mx-auto text-sm leading-relaxed text-gray-500">
               By creating an account, you agree to our{" "}
               <Link to="/terms" className="font-medium text-[#e65100] hover:text-[#d84315] transition-colors duration-200 hover:underline">
                 Terms of Servicess

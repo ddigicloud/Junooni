@@ -33,6 +33,26 @@ type Vendor = {
   logo?: string 
 }
 
+// Utility function to decode JWT token and check for actor_id
+const checkTokenForActorId = () => {
+  try {
+    const token = localStorage.getItem('vendorToken');
+    if (!token) return { hasActorId: false, actorId: null };
+
+    // Decode JWT token (assuming it's base64 encoded)
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    console.log('Token payload:', payload);
+    
+    const actorId = payload.actor_id || payload.sub || payload.id;
+    return { 
+      hasActorId: !!actorId, 
+      actorId: actorId 
+    };
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return { hasActorId: false, actorId: null };
+  }
+};
 
 export function NavUser({
   user,
@@ -45,60 +65,113 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const [vendor, setVendor] = useState<Vendor | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
+  
   const handleLogout = () => {
     localStorage.clear() // or remove specific keys like 'auth_token' & 'vendorToken'
     navigate({ to: '/sign-in' })
   }
   
-useEffect(() => {
-  const fetchVendor = async () => {
-    const token = localStorage.getItem("vendorToken")
-    
-    if (!token) {
-      console.error("No vendor token found")
-      navigate({ to: '/sign-in' })
-      return
-    }
-    
-    try {
-      // Try to fetch vendor profile directly from /vendors/me
-      const res = await fetch("http://localhost:9000/vendors/me", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-      })
+  useEffect(() => {
+    const validateAndFetchVendor = async () => {
+      try {
+        setIsLoading(true)
+        const token = localStorage.getItem("vendorToken")
+        
+        if (!token) {
+          console.error("No vendor token found")
+          navigate({ to: '/sign-in' })
+          return
+        }
+        
+        // Check if token has actor_id
+        const { hasActorId, actorId } = checkTokenForActorId()
+        
+        if (!hasActorId) {
+          console.log("No actor_id in token. Redirecting to onboarding.")
+          window.location.href = '/onboarding?step=basic-info'
+          return
+        }
+        
+        console.log("Valid vendor token found with actor_id:", actorId)
+        
+        // Only fetch vendor data if token is valid (has actor_id)
+        // This call is now just for getting display data, not for validation
+        try {
+          const res = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+          })
 
-      // If response is not ok (e.g. 401, 404)
-      if (!res.ok) {
-        console.log("Vendor profile not found. Redirecting to onboarding page.")
-        window.location.href = '/onboarding?step=basic-info'
-        return
+          if (res.ok) {
+            const data = await res.json()
+            if (data?.vendor) {
+              setVendor(data.vendor)
+            } else {
+              // Even if API fails, we know user is valid from token
+              // Set fallback vendor data
+              setVendor({
+                name: 'Vendor Profile',
+                handle: 'loading...',
+                logo: undefined
+              })
+            }
+          } else {
+            // API failed but token is valid, set fallback
+            console.warn("Failed to fetch vendor profile, but token is valid")
+            setVendor({
+              name: 'Vendor Profile',
+              handle: 'loading...',
+              logo: undefined
+            })
+          }
+        } catch (apiError) {
+          console.error("API error:", apiError)
+          // Even if API fails, we know user is valid from token
+          setVendor({
+            name: 'Vendor Profile',
+            handle: 'loading...',
+            logo: undefined
+          })
+        }
+        
+      } catch (err) {
+        console.error("Token validation error:", err)
+        // If token validation fails, redirect to sign-in
+        navigate({ to: '/sign-in' })
+      } finally {
+        setIsLoading(false)
       }
-
-      const data = await res.json()
-      
-      // Check if vendor data exists in the response
-      if (!data || !data.vendor) {
-        console.log("Vendor data empty. Redirecting to onboarding page.")
-        window.location.href = '/onboarding?step=basic-info'
-        return
-      }
-      
-      setVendor(data.vendor)
-    } catch (err) {
-      console.error("Failed to load vendor:", err)
-      // You might want to handle the error differently, maybe show an error state
-      // instead of redirecting immediately
     }
+
+    validateAndFetchVendor()
+  }, [navigate])
+
+  // Show loading state while validating
+  if (isLoading) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton size='lg' disabled>
+            <Avatar className='w-8 h-8 rounded-lg'>
+              <AvatarFallback className='rounded-lg'>...</AvatarFallback>
+            </Avatar>
+            <div className='grid flex-1 text-sm leading-tight text-left'>
+              <span className='font-semibold truncate'>Loading...</span>
+              <span className='text-xs truncate'>Validating...</span>
+            </div>
+            <ChevronsUpDown className='ml-auto size-4' />
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
   }
 
-  fetchVendor()
-}, [])
-
   return (
-    <SidebarMenu >
+    <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -107,16 +180,18 @@ useEffect(() => {
               className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
             >
               <Avatar className='w-8 h-8 rounded-lg'>
-                {/* <AvatarImage src={user.avatar} alt={user.name} /> */}
-                {/* <AvatarFallback className='rounded-lg'>SN</AvatarFallback> */}
+                <AvatarImage src={vendor?.logo || ''} alt={vendor?.name || 'Vendor'} />
+                <AvatarFallback className='rounded-lg'>
+                  {vendor?.name?.charAt(0).toUpperCase() || 'V'}
+                </AvatarFallback>
               </Avatar>
               <div className='grid flex-1 text-sm leading-tight text-left'>
-              <span className='font-semibold truncate'>
-                {vendor?.name || 'Loading...'}
-              </span>
-              <span className='text-xs truncate'>
-                @{vendor?.handle || '...'}
-              </span>
+                <span className='font-semibold truncate'>
+                  {vendor?.name || 'Vendor Profile'}
+                </span>
+                <span className='text-xs truncate'>
+                  @{vendor?.handle || 'loading...'}
+                </span>
               </div>
               <ChevronsUpDown className='ml-auto size-4' />
             </SidebarMenuButton>
@@ -130,14 +205,14 @@ useEffect(() => {
             <DropdownMenuLabel className='p-0 font-normal'>
               <div className='flex items-center gap-2 px-1 py-1.5 text-left text-sm'>
                 <Avatar className='w-8 h-8 rounded-lg'>
-                <AvatarImage src={vendor?.logo || ''} alt={vendor?.name || 'Vendor'} />
+                  <AvatarImage src={vendor?.logo || ''} alt={vendor?.name || 'Vendor'} />
                   <AvatarFallback className='rounded-lg'>
                     {vendor?.name?.charAt(0).toUpperCase() || 'V'}       
                   </AvatarFallback>
                 </Avatar>
                 <div className='grid flex-1 text-sm leading-tight text-left'>
                   <span className='font-semibold truncate'>
-                    {vendor?.name || 'Loading...'}
+                    {vendor?.name || 'Vendor Profile'}
                   </span>
                   <span className='text-xs truncate'>
                     @{vendor?.handle || 'loading...'}

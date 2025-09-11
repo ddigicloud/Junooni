@@ -558,7 +558,7 @@
 //                                   }}
 //                                 ></div>
 //                               </TooltipTrigger>
-//                               <TooltipContent>
+//                               <TooltipConte
 //                                 <p>{color.colorName}</p>
 //                               </TooltipContent>
 //                             </Tooltip>
@@ -788,15 +788,16 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, Star, Shield, Truck, Palette } from "lucide-react";
+import { ChevronDown, ChevronUp, Star, Shield, Truck, Palette, Tag } from "lucide-react";
 import Navbar from "./Navbar";
 
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
 
-// Interface definitions
+// Updated interfaces based on actual API response
 interface Image {
   id: number;
-  alt: string;
+  alt: string | null;
+  caption: string | null;
   url: string;
   thumbnailURL: string | null;
   filename: string;
@@ -808,6 +809,24 @@ interface Image {
   focalY: number;
   updatedAt: string;
   createdAt: string;
+  sizes: {
+    thumbnail?: ImageSize;
+    square?: ImageSize;
+    small?: ImageSize;
+    medium?: ImageSize;
+    large?: ImageSize;
+    xlarge?: ImageSize;
+    og?: ImageSize;
+  };
+}
+
+interface ImageSize {
+  url: string | null;
+  width: number | null;
+  height: number | null;
+  mimeType: string | null;
+  filesize: number | null;
+  filename: string | null;
 }
 
 interface DisplayImage {
@@ -821,41 +840,130 @@ interface ColorOption {
   id: string;
   colorName: string;
   colorHex: string;
+  isPrimary: boolean | null;
+  fabricInteraction: {
+    absorptionRate: number;
+    blendMode: string;
+    colorShift: {
+      hueShift: number;
+      saturationShift: number;
+      lightnessShift: number;
+    };
+  };
 }
 
 interface SizeOption {
   id: string;
   sizeName: string;
   sizeDescription: string | null;
+  dimensions: {
+    width: number;
+    height: number;
+  };
 }
 
-interface PrintingTechnology {
-  id: string;
-  technologyName: string;
-  customizationAreas: any[];
-  mockupPhotos: any[];
-}
-
-interface Dimensions {
-  x: number;
-  y: number;
-  customizableWidth: number;
-  customizableHeight: number;
+interface PhysicalDimensions {
+  widthInches: number;
+  heightInches: number;
+  depthInches: number;
+  diameter: number | null;
+  units: string;
 }
 
 interface ShippingInfo {
   weight: number;
-  dimensions: string;
+  shippingDimensions: string;
+  shippingLocationID: string;
+  packageType: string;
 }
 
 interface Category {
   id: number;
   title: string;
   slug: string;
+  slugLock: boolean;
   parent: Category | null;
   breadcrumbs: Breadcrumb[];
   updatedAt: string;
   createdAt: string;
+}
+
+interface ProductTag {
+  id: string;
+  tag: string; // Note: field name is 'tag' not 'name'
+}
+
+interface PrintingTechnology {
+  id: string;
+  technologyName: string;
+  mockupPhotos: MockupPhoto[];
+  custAreas: CustomizationArea[];
+  tags: ProductTag[];
+  // ... other fields from printT
+}
+
+interface MockupPhoto {
+  id: string;
+  title: string;
+  photo: Image;
+  viewAngle: string;
+  mockupType: string;
+  photoColor: string;
+  priority: number;
+  // ... other fields
+}
+
+interface CustomizationArea {
+  id: string;
+  areaId: string;
+  areaName: string;
+  areaType: string;
+  designCanvasPhotos: any[];
+  canvasDim: {
+    widthInch: number;
+    heightInch: number;
+    canvasPixWid: number;
+    canvasPixHeight: number;
+    aspectRatioLocked: boolean;
+  };
+  restrictions: any;
+}
+
+interface Materials {
+  primary: string;
+  weight: string;
+  construction: string;
+  finish: string | null;
+  efabType: string;
+  fabricWeight: number;
+  surfaceTexture: string;
+  stretchability: number;
+  transparency: number;
+  reflectivity: number;
+}
+
+interface CareInstruction {
+  id: string;
+  instruction: string;
+  icon: string;
+}
+
+interface VendorInfo {
+  supplier: string;
+  supplierProductId: string | null;
+  countryOrigin: string | null;
+}
+
+interface Pricing {
+  markupType: string;
+  markupValue: number;
+  suggestedRetail: number;
+}
+
+interface AdditionalCosts {
+  printingCostPerArea: number;
+  setupFee: number;
+  rushSurcharge: number | null;
 }
 
 interface TextNode {
@@ -879,34 +987,12 @@ interface ParagraphNode {
   textFormat?: number;
 }
 
-interface ListItem {
-  type: string;
-  value: number;
-  format: string;
-  indent: number;
-  version: number;
-  children: TextNode[];
-  direction: string;
-}
-
-interface ListNode {
-  tag: string;
-  type: string;
-  start: number;
-  format: string;
-  indent: number;
-  version: number;
-  children: ListItem[];
-  listType: string;
-  direction: string;
-}
-
 interface RootNode {
   type: string;
   format: string;
   indent: number;
   version: number;
-  children: (ListNode | ParagraphNode)[];
+  children: ParagraphNode[];
   direction: string;
 }
 
@@ -924,21 +1010,33 @@ interface Breadcrumb {
 interface Product {
   id: number;
   name: string;
-  cost: number;
-  sku: string;
-  brand: string;
-  Brandsku: string | null;
-  dimensions: Dimensions;
+  slug: string;
+  status: string;
+  productType: string;
   categories: Category[];
-  colorOptions: ColorOption[];
-  sizeOptions: SizeOption[];
-  sizeChart: any | null;
-  description: string | null;
-  features: Features | null;
-  displayImages: DisplayImage[];
-  mockupImages: any[];
+  tags: ProductTag[]; // Top-level tags (currently empty in API)
+  brand: string;
+  brandSku: string;
+  sku: string;
+  vendorInfo: VendorInfo;
+  cost: number;
+  pricing: Pricing;
+  additionalCosts: AdditionalCosts;
+  description: string;
+  features: Features;
+  materials: Materials;
+  careInstructions: CareInstruction[];
+  physicalDimensions: PhysicalDimensions;
   shippingInfo: ShippingInfo;
-  printingTechnologies: PrintingTechnology[];
+  colorOptions: ColorOption[];
+  color_Images: boolean;
+  sizeOptions: SizeOption[];
+  size_Images: boolean;
+  sizeChart: any | null;
+  sizeChartHtml: string;
+  printT: PrintingTechnology[]; // Note: field name is 'printT' not 'printingTechnologies'
+  custAreas: CustomizationArea[];
+  displayImages: DisplayImage[];
   updatedAt: string;
   createdAt: string;
 }
@@ -1046,30 +1144,108 @@ const ProductPage = () => {
     }).format(amount);
   };
 
+  // Get all tags from product and printing technologies
+  const getAllTags = (): ProductTag[] => {
+    if (!product) return [];
+    
+    const allTags: ProductTag[] = [];
+    
+    // Add top-level product tags
+    if (product.tags && product.tags.length > 0) {
+      allTags.push(...product.tags);
+    }
+    
+    // Add tags from printing technologies
+    if (product.printT && product.printT.length > 0) {
+      product.printT.forEach(tech => {
+        if (tech.tags && tech.tags.length > 0) {
+          allTags.push(...tech.tags);
+        }
+      });
+    }
+    
+    // Remove duplicates based on id
+    const uniqueTags = allTags.filter((tag, index, self) => 
+      index === self.findIndex(t => t.id === tag.id)
+    );
+    
+    return uniqueTags;
+  };
+
+  // Get icon for tag based on common tag names
+  const getTagIcon = (tagName: string): React.ReactNode => {
+    const name = tagName.toLowerCase();
+    if (name.includes('premium') || name.includes('quality') || name.includes('cloths')) {
+      return <Star className="w-4 h-4 fill-current" />;
+    } else if (name.includes('eco') || name.includes('sustainable')) {
+      return <Shield className="w-4 h-4" />;
+    } else if (name.includes('fast') || name.includes('quick')) {
+      return <Truck className="w-4 h-4" />;
+    } else if (name.includes('custom') || name.includes('design')) {
+      return <Palette className="w-4 h-4" />;
+    }
+    return <Tag className="w-4 h-4" />;
+  };
+
+  // Render dynamic tags
+  const renderTags = () => {
+    const allTags = getAllTags();
+    
+    if (allTags.length === 0) {
+      // Fallback to default tag if no tags available
+      return (
+        <div className="flex items-center gap-1 text-[#e65100]">
+          {/* <Star className="w-4 h-4 fill-current" /> */}
+          <span className="text-sm font-semibold"></span>
+        </div>
+      );
+    }
+
+    // Display first tag prominently, others as smaller badges
+    const [primaryTag, ...otherTags] = allTags;
+    
+    return (
+      <div className="flex items-center gap-2">
+        {/* Primary tag with icon */}
+        <div className="flex items-center gap-1 text-[#e65100]">
+          {getTagIcon(primaryTag.tag)}
+          <span className="text-sm font-semibold">{primaryTag.tag}</span>
+        </div>
+        
+        {/* Additional tags as small badges */}
+        {otherTags.length > 0 && (
+          <div className="flex gap-1">
+            {otherTags.slice(0, 2).map((tag) => (
+              <Badge 
+                key={tag.id}
+                variant="secondary"
+                className="text-xs h-5 px-2 bg-[#e65100]/10 text-[#e65100] border-[#e65100]/20"
+              >
+                {tag.tag}
+              </Badge>
+            ))}
+            {otherTags.length > 2 && (
+              <Badge 
+                variant="secondary"
+                className="h-5 px-2 text-xs text-gray-600 bg-gray-100"
+              >
+                +{otherTags.length - 2}
+              </Badge>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Extract features from the product data if available
   const extractFeatures = (): string[] => {
     if (product?.features && product.features.root && product.features.root.children) {
-      return product.features.root.children.map((node: ListNode | ParagraphNode) => {
-        // Handle different node types
-        if (node.type === "paragraph" && 'children' in node) {
-          // Extract text from paragraph nodes
-          const paragraphNode = node as ParagraphNode;
-          const textNodes = paragraphNode.children.filter((child: TextNode) => child.type === "text");
+      return product.features.root.children.map((node: ParagraphNode) => {
+        // Extract text from paragraph nodes
+        if (node.type === "paragraph" && node.children) {
+          const textNodes = node.children.filter((child: TextNode) => child.type === "text");
           return textNodes.map((textNode: TextNode) => textNode.text).join(" ");
-        } else if (node.type === "list" && 'children' in node) {
-          // Extract text from list items (for backward compatibility)
-          const listNode = node as ListNode;
-          return listNode.children
-            .filter((item: ListItem) => item.type === "listitem")
-            .map((item: ListItem) => {
-              if (item.children && item.children.length > 0) {
-                const textNode = item.children.find((child: TextNode) => child.type === "text");
-                return textNode ? textNode.text : "";
-              }
-              return "";
-            })
-            .filter((text: string) => text !== "")
-            .join(", ");
         }
         return "";
       }).filter((text: string) => text !== "");
@@ -1088,7 +1264,7 @@ const ProductPage = () => {
       <>
         <Navbar />
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-          <div className="container p-4 mx-auto pt-24">
+          <div className="container p-4 pt-24 mx-auto">
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
               <div>
                 {/* Image gallery skeleton */}
@@ -1140,10 +1316,10 @@ const ProductPage = () => {
     return (
       <>
         <Navbar />
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
           <div className="container p-4 mx-auto">
-            <Card className="max-w-md mx-auto shadow-xl border-0">
-              <CardHeader className="text-center pb-4">
+            <Card className="max-w-md mx-auto border-0 shadow-xl">
+              <CardHeader className="pb-4 text-center">
                 <div className="w-16 h-16 bg-gradient-to-r from-[#e65100] to-[#ff7043] rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -1171,6 +1347,7 @@ const ProductPage = () => {
 
   const features = extractFeatures();
   const descriptionParagraphs = formatDescription();
+  const allTags = getAllTags();
   
   // Get primary category for breadcrumbs (most specific)
   const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
@@ -1206,9 +1383,9 @@ const ProductPage = () => {
     <>
       <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="w-full max-w-7xl mx-auto p-4 pt-24">
+        <div className="w-full p-4 pt-24 mx-auto max-w-7xl">
           {/* Enhanced Breadcrumbs */}
-          <nav className="flex flex-wrap items-center mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+          <nav className="flex flex-wrap items-center p-4 mt-4 mb-6 bg-white border border-gray-100 shadow-sm rounded-xl">
             {breadcrumbs.map((crumb, index) => (
               <div key={index} className="flex items-center">
                 {index > 0 && <span className="mx-2 text-gray-400">/</span>}
@@ -1227,13 +1404,13 @@ const ProductPage = () => {
             ))}
           </nav>
 
-          <div className="grid grid-cols-1 md:flex lg:w-full gap-8">
+          <div className="grid grid-cols-1 gap-8 md:flex lg:w-full">
             {/* Left Column - Product Images */}
             <div className="md:w-[60%]">
               {/* Main Product Images - 2 column grid */}
               {product.displayImages && product.displayImages.length > 0 ? (
                 <div>
-                  <div className="hidden grid-cols-2 gap-3 mb-4 md:grid ml-2">
+                  <div className="hidden grid-cols-2 gap-3 mb-4 ml-2 md:grid">
                     {product.displayImages.map((img: DisplayImage, index: number) => (
                       <div 
                         key={img.id}
@@ -1254,7 +1431,7 @@ const ProductPage = () => {
 
                   <div className="grid gap-2 mb-4 md:hidden">
                     {product.displayImages && product.displayImages.length > 0 && (
-                      <div className="relative overflow-hidden cursor-pointer bg-white rounded-xl shadow-lg">
+                      <div className="relative overflow-hidden bg-white shadow-lg cursor-pointer rounded-xl">
                         <img
                           src={`${vite_payload}${product.displayImages[selectedImage].image.url}`}
                           alt={product.displayImages[selectedImage].image.alt || `${product.name} view`}
@@ -1265,14 +1442,14 @@ const ProductPage = () => {
                   </div>
                 </div> 
               ) : (
-                <div className="flex items-center justify-center h-48 mb-4 bg-white rounded-xl shadow-lg">
+                <div className="flex items-center justify-center h-48 mb-4 bg-white shadow-lg rounded-xl">
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <div className="flex items-center justify-center w-16 h-16 mx-auto mb-3 bg-gray-100 rounded-full">
                       <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <p className="text-gray-400 font-medium">No Images Available</p>
+                    <p className="font-medium text-gray-400">No Images Available</p>
                   </div>
                 </div>
               )}
@@ -1303,9 +1480,9 @@ const ProductPage = () => {
             
             {/* Right Column - Product Details */}
             <div className="md:w-[40%]">
-              <Card className="border-0 shadow-xl bg-white rounded-2xl overflow-hidden">
+              <Card className="overflow-hidden bg-white border-0 shadow-xl rounded-2xl">
                 <CardHeader className="px-6 pt-6 pb-4 bg-gradient-to-r from-gray-50 to-white">
-                  {/* Categories and Quality Badge */}
+                  {/* Categories and Dynamic Tags */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex gap-2">
                       {product.categories && product.categories.slice(0, 2).map((category: Category) => (
@@ -1314,19 +1491,17 @@ const ProductPage = () => {
                         </Badge>
                       ))}
                     </div>
-                    <div className="flex items-center gap-1 text-[#e65100]">
-                      <Star className="w-4 h-4 fill-current" />
-                      <span className="text-sm font-semibold">Premium Quality</span>
-                    </div>
+                    {/* Dynamic Tags Section */}
+                    {renderTags()}
                   </div>
                   
                   {/* Product Name */}
-                  <CardTitle className="text-2xl font-bold text-gray-900 leading-tight">
+                  <CardTitle className="text-2xl font-bold leading-tight text-gray-900">
                     {product.name}
                   </CardTitle>
                   
                   {/* SKU and Brand */}
-                  <CardDescription className="flex items-center gap-3 text-sm bg-white px-3 py-2 rounded-lg border">
+                  <CardDescription className="flex items-center gap-3 px-3 py-2 text-sm bg-white border rounded-lg">
                     <div className="flex items-center gap-1">
                       <Shield className="w-4 h-4 text-[#e65100]" />
                       <span className="font-medium">Brand:</span> 
@@ -1342,11 +1517,11 @@ const ProductPage = () => {
                       <span className="text-3xl font-bold text-[#e65100]">
                         {formatCurrency(product.cost)}
                       </span>
-                      <span className="text-sm text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-full">
+                      <span className="px-2 py-1 text-sm font-semibold text-green-600 rounded-full bg-green-50">
                         ✓ Best Price
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">No minimum order • Free design consultation</p>
+                    <p className="mt-1 text-sm text-gray-600">No minimum order • Free design consultation</p>
                   </div>
                 </CardHeader>
                 
@@ -1379,7 +1554,7 @@ const ProductPage = () => {
                                     }}
                                   ></div>
                                 </TooltipTrigger>
-                                <TooltipContent className="bg-gray-900 text-white">
+                                <TooltipContent className="text-white bg-gray-900">
                                   <p>{color.colorName}</p>
                                 </TooltipContent>
                               </Tooltip>
@@ -1389,7 +1564,7 @@ const ProductPage = () => {
                         {selectedColor && (
                           <div className="flex items-center gap-2 p-3 bg-[#e65100]/5 rounded-lg border border-[#e65100]/20">
                             <div 
-                              className="w-4 h-4 rounded-full border border-gray-300"
+                              className="w-4 h-4 border border-gray-300 rounded-full"
                               style={{ backgroundColor: selectedColor.colorHex }}
                             />
                             <span className="text-sm font-medium text-[#e65100]">
@@ -1405,9 +1580,6 @@ const ProductPage = () => {
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-semibold text-gray-900">Select Size</h3>
-                          <Button variant="link" className="h-auto p-0 text-sm text-[#e65100] hover:text-[#d84315]">
-                            📏 Size Guide
-                          </Button>
                         </div>
                         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                           {product.sizeOptions.map((size: SizeOption) => (
@@ -1427,10 +1599,28 @@ const ProductPage = () => {
                           ))}
                         </div>
                         {selectedSize?.sizeDescription && (
-                          <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded-lg">
+                          <p className="p-2 text-xs text-gray-600 rounded-lg bg-gray-50">
                             💡 {selectedSize.sizeDescription}
                           </p>
                         )}
+                      </div>
+                    )}
+
+                    {/* Show all tags in a dedicated section if there are many */}
+                    {allTags.length > 3 && (
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-semibold text-gray-900">Product Tags</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {allTags.map((tag) => (
+                            <Badge 
+                              key={tag.id}
+                              variant="outline"
+                              className="text-xs border-[#e65100]/30 text-[#e65100] hover:bg-[#e65100]/10 transition-colors"
+                            >
+                              {tag.tag}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -1454,8 +1644,8 @@ const ProductPage = () => {
                         <CollapsibleContent className="p-4 bg-white">
                           {/* Description */}
                           {descriptionParagraphs.length > 0 && (
-                            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                              <h4 className="text-sm font-semibold text-gray-900 mb-2">Product Description</h4>
+                            <div className="p-3 mb-4 rounded-lg bg-gray-50">
+                              <h4 className="mb-2 text-sm font-semibold text-gray-900">Product Description</h4>
                               <div className="space-y-2 text-gray-700">
                                 {descriptionParagraphs.map((paragraph: string, index: number) => (
                                   <p key={index} className="text-sm leading-relaxed">{paragraph}</p>
@@ -1464,35 +1654,56 @@ const ProductPage = () => {
                             </div>
                           )}
                           
-                          {/* Dimensions */}
-                          {product.dimensions && (
+                          {/* Physical Dimensions */}
+                          {/* {product.physicalDimensions && (
                             <div className="mb-4 p-3 bg-[#e65100]/5 rounded-lg border border-[#e65100]/20">
-                              <h4 className="text-sm font-semibold text-[#e65100] mb-2">✨ Customization Area</h4>
+                              <h4 className="text-sm font-semibold text-[#e65100] mb-2">📐 Physical Dimensions</h4>
                               <div className="grid grid-cols-2 text-sm gap-x-4 gap-y-2">
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Width:</span>
-                                  <span className="font-medium">{product.dimensions.x} units</span>
+                                  <span className="font-medium">{product.physicalDimensions.widthInches} {product.physicalDimensions.units}</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Height:</span>
-                                  <span className="font-medium">{product.dimensions.y} units</span>
+                                  <span className="font-medium">{product.physicalDimensions.heightInches} {product.physicalDimensions.units}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span className="text-gray-600">Design Width:</span>
-                                  <span className="font-medium">{product.dimensions.customizableWidth} px</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Design Height:</span>
-                                  <span className="font-medium">{product.dimensions.customizableHeight} px</span>
+                                  <span className="text-gray-600">Depth:</span>
+                                  <span className="font-medium">{product.physicalDimensions.depthInches} {product.physicalDimensions.units}</span>
                                 </div>
                               </div>
                             </div>
-                          )}
+                          )} */}
+
+                          {/* Materials */}
+                          {/* {product.materials && (
+                            <div className="p-3 mb-4 border border-blue-200 rounded-lg bg-orange-50">
+                              <h4 className="mb-2 text-sm font-semibold text-orange-700">🧵 Materials & Fabric</h4>
+                              <div className="grid grid-cols-1 text-sm gap-y-2">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Primary Material:</span>
+                                  <span className="font-medium">{product.materials.primary}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Construction:</span>
+                                  <span className="font-medium">{product.materials.construction}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Fabric Weight:</span>
+                                  <span className="font-medium">{product.materials.fabricWeight}gsm</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Surface:</span>
+                                  <span className="font-medium">{product.materials.surfaceTexture}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )} */}
                           
                           {/* Categories */}
                           {product.categories && product.categories.length > 0 && (
                             <div>
-                              <h4 className="text-sm font-semibold text-gray-900 mb-2">Product Categories</h4>
+                              <h4 className="mb-2 text-sm font-semibold text-gray-900">Product Categories</h4>
                               <div className="flex flex-wrap gap-2">
                                 {product.categories.map((category: Category) => (
                                   <Badge 
@@ -1530,7 +1741,7 @@ const ProductPage = () => {
                               {features.map((feature: string, index: number) => (
                                 <li key={index} className="flex items-start gap-2 text-sm">
                                   <span className="text-[#e65100] mt-1">✓</span>
-                                  <span className="text-gray-700 leading-relaxed">{feature}</span>
+                                  <span className="leading-relaxed text-gray-700">{feature}</span>
                                 </li>
                               ))}
                             </ul>
@@ -1562,30 +1773,20 @@ const ProductPage = () => {
                         <CollapsibleContent className="p-4 bg-white">
                           {product.shippingInfo ? (
                             <div className="space-y-3">
-                              <div className="grid grid-cols-1 gap-3 p-3 rounded-lg bg-gradient-to-r from-green-50 to-blue-50 border border-green-200">
+                              <div className="grid grid-cols-1 gap-3 p-3 border border-orange-200 rounded-lg bg-gradient-to-r from-orange-50 to-orange-50">
                                 <div className="flex items-center justify-between">
                                   <span className="text-sm font-medium text-gray-700">Package Weight:</span>
-                                  <span className="text-sm font-semibold text-green-700">{product.shippingInfo.weight}g</span>
+                                  <span className="text-sm font-semibold text-orange-700">{product.shippingInfo.weight}g</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <span className="text-sm font-medium text-gray-700">Dimensions:</span>
-                                  <span className="text-sm font-semibold text-blue-700">{product.shippingInfo.dimensions}</span>
+                                  <span className="text-sm font-semibold text-orange-700">{product.shippingInfo.shippingDimensions}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-gray-700">Package Type:</span>
+                                  <span className="text-sm font-semibold text-orange-700">{product.shippingInfo.packageType}</span>
                                 </div>
                               </div>
-                              {/* <div className="space-y-2 text-sm">
-                                <div className="flex items-center gap-2 text-green-600">
-                                  <span>🚚</span>
-                                  <span className="font-medium">Fast & reliable delivery across India</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-blue-600">
-                                  <span>📦</span>
-                                  <span className="font-medium">Secure packaging for premium protection</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-purple-600">
-                                  <span>💰</span>
-                                  <span className="font-medium">Shipping costs calculated at checkout</span>
-                                </div>
-                              </div> */}
                             </div>
                           ) : (
                             <Alert className="border-blue-200 bg-blue-50">
@@ -1603,7 +1804,7 @@ const ProductPage = () => {
                     {/* Enhanced Product Customization Alert */}
                     <Alert className="p-4 border-[#e65100]/30 bg-gradient-to-r from-[#e65100]/10 to-[#ff7043]/10">
                       <Palette className="w-5 h-5 text-[#e65100]" />
-                      <AlertDescription className="text-sm font-medium text-gray-700 ml-2">
+                      <AlertDescription className="ml-2 text-sm font-medium text-gray-700">
                         🎨 <span className="font-semibold text-[#e65100]">Ready to customize?</span> This premium product awaits your unique design. Select your preferred color and size to unleash your creativity with our professional design tools.
                       </AlertDescription>
                     </Alert>

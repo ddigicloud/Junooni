@@ -75,7 +75,7 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
   return (
     <div className="relative">
       <div className="flex gap-2">
-        <Button variant="outline">Import Products</Button>
+        {/* <Button variant="outline">Import Products</Button> */}
         <Button style={{ backgroundColor: BRAND.primary }} onClick={() => setShowPopup(true)}>
           Add Product
         </Button>

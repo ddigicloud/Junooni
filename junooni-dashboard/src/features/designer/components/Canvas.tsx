@@ -1,6 +1,7 @@
 // src/components/Designer/Canvas.tsx - Complete Rewrite with Fixed Mockup Calculation
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import Konva from 'konva';
+import JunooniLogo from "@/assets/junooni_logo_brand_color.png";
 import {
   Stage,
   Layer,
@@ -4501,7 +4502,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
         {/* Enhanced Mockup Thumbnails - Hidden on Mobile */}
         <div className="hidden w-64 p-4 bg-white border-r border-gray-200 sm:block">
           
-          <div className="space-y-2 max-h-[calc(100vh-190px)] overflow-y-auto">
+          <div className="space-y-2 max-h-[calc(100vh-120px)] overflow-y-auto">
             {colorSpecificMockupGroups.length > 0 ? (
               colorSpecificMockupGroups.flatMap(group => 
               group.mockups.map((mockup, index) => {
@@ -5488,7 +5489,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
             <div className="flex items-center justify-between">
               {/* Left: Logo */}
               <div className="flex items-center">
-                <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
+                <img src={JunooniLogo} alt="Junooni Logo" className="h-6 sm:h-8" />
               </div>
               
               {/* Center: Design/Preview Toggle Buttons */}

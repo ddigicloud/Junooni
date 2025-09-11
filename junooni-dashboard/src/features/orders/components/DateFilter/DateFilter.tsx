@@ -26,6 +26,13 @@ const DateFilter: React.FC<DateFilterProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [tempRange, setTempRange] = useState<{ from?: Date; to?: Date }>({});
 
+  // Helper function to normalize date to start of day (midnight)
+  const normalizeDate = (date: Date): Date => {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  };
+
   // Helper function to format date
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-IN', {
@@ -35,41 +42,35 @@ const DateFilter: React.FC<DateFilterProps> = ({
     }).format(date);
   };
 
-  // Helper function to get quick filter dates
+  // Helper function to get quick filter dates - FIXED
   const getQuickFilterDate = (filter: string): Date | { from: Date; to: Date } => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
+    const today = normalizeDate(new Date());
     
-    const weekAgo = new Date(today);
-    weekAgo.setDate(today.getDate() - 7);
+    // Create dates by subtracting milliseconds to avoid month boundary issues
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
     
-    const monthAgo = new Date(today);
-    monthAgo.setDate(today.getDate() - 30);
-    
+    // Start of current month
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    // Start and end of last month
     const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
 
-    switch (filter) {
-      case 'today':
-        return today;
-      case 'yesterday':
-        return yesterday;
-      case 'last7days':
-        return { from: weekAgo, to: today };
-      case 'last30days':
-        return { from: monthAgo, to: today };
-      case 'thisMonth':
-        return { from: startOfMonth, to: today };
-      case 'lastMonth':
-        return { from: startOfLastMonth, to: endOfLastMonth };
-      default:
-        return today;
-    }
+    const results = {
+      'today': today,
+      'yesterday': yesterday,
+      'last7days': { from: weekAgo, to: today },
+      'last30days': { from: monthAgo, to: today },
+      'thisMonth': { from: startOfMonth, to: today },
+      'lastMonth': { from: startOfLastMonth, to: endOfLastMonth }
+    };
+
+    return results[filter] || today;
   };
 
-  // Handle quick filter selection
+  // Handle quick filter selection - FIXED for immediate UX
   const handleQuickFilter = (filter: string) => {
     if (filter === 'custom') {
       // Switch to range mode for custom selection
@@ -80,13 +81,44 @@ const DateFilter: React.FC<DateFilterProps> = ({
 
     const result = getQuickFilterDate(filter);
     
-    if (mode === 'single') {
-      const date = result instanceof Date ? result : result.to;
-      onDateSelect?.(date);
-    } else {
-      const range = result instanceof Date ? { from: result, to: result } : result;
-      onDateRangeSelect?.(range);
+    // Determine if this filter naturally returns a range
+    const rangeFilters = ['last7days', 'last30days', 'thisMonth', 'lastMonth'];
+    const isRangeFilter = rangeFilters.includes(filter);
+    
+    if (isRangeFilter) {
+      // For multi-day filters, ALWAYS use range callback and auto-switch mode if needed
+      const range = result instanceof Date 
+        ? { from: result, to: result } 
+        : result;
+      
+      // Auto-switch to range mode if currently in single mode
+      if (mode === 'single' && onCustomModeToggle) {
+        onCustomModeToggle();
+      }
+      
+      // Always call the range callback for range filters
+      if (onDateRangeSelect) {
+        onDateRangeSelect(range);
+      } else if (onDateSelect) {
+        // Fallback: if no range callback available, use the end date
+        const date = range.to || range.from;
+        onDateSelect(date);
+      }
       setTempRange({});
+    } else {
+      // For single day filters (today, yesterday)
+      const date = result instanceof Date ? result : result.to;
+      
+      if (mode === 'single' && onDateSelect) {
+        onDateSelect(date);
+      } else if (mode === 'range' && onDateRangeSelect) {
+        // Create single-day range
+        onDateRangeSelect({ from: date, to: date });
+        setTempRange({});
+      } else if (onDateSelect) {
+        // Fallback to single date selection
+        onDateSelect(date);
+      }
     }
     
     setIsOpen(false);
@@ -117,70 +149,86 @@ const DateFilter: React.FC<DateFilterProps> = ({
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
-      days.push(date);
+      days.push(normalizeDate(date)); // Normalize calendar dates too
     }
     
     return days;
   };
 
-  // Check if date is selected
+  // Check if date is selected - FIXED with proper date comparison
   const isDateSelected = (date: Date) => {
+    const normalizedDate = normalizeDate(date);
+    
     if (mode === 'single') {
       return selectedDate && 
-        date.getDate() === selectedDate.getDate() &&
-        date.getMonth() === selectedDate.getMonth() &&
-        date.getFullYear() === selectedDate.getFullYear();
+        normalizedDate.getTime() === normalizeDate(selectedDate).getTime();
     } else {
       const range = selectedDateRange || tempRange;
       if (!range.from) return false;
       
       if (!range.to) {
-        return date.getTime() === range.from.getTime();
+        return normalizedDate.getTime() === normalizeDate(range.from).getTime();
       }
       
-      return date.getTime() >= range.from.getTime() && date.getTime() <= range.to.getTime();
+      const fromTime = normalizeDate(range.from).getTime();
+      const toTime = normalizeDate(range.to).getTime();
+      const dateTime = normalizedDate.getTime();
+      
+      return dateTime >= fromTime && dateTime <= toTime;
     }
   };
 
-  // Check if date is in range (for range mode)
+  // Check if date is in range (for range mode) - FIXED
   const isDateInRange = (date: Date) => {
     if (mode !== 'range') return false;
     
     const range = selectedDateRange || tempRange;
     if (!range.from || !range.to) return false;
     
-    return date.getTime() > range.from.getTime() && date.getTime() < range.to.getTime();
+    const normalizedDate = normalizeDate(date);
+    const fromTime = normalizeDate(range.from).getTime();
+    const toTime = normalizeDate(range.to).getTime();
+    const dateTime = normalizedDate.getTime();
+    
+    return dateTime > fromTime && dateTime < toTime;
   };
 
-  // Check if date is range start/end
+  // Check if date is range start/end - FIXED
   const isRangeStart = (date: Date) => {
     if (mode !== 'range') return false;
     const range = selectedDateRange || tempRange;
-    return range.from && date.getTime() === range.from.getTime();
+    return range.from && 
+      normalizeDate(date).getTime() === normalizeDate(range.from).getTime();
   };
 
   const isRangeEnd = (date: Date) => {
     if (mode !== 'range') return false;
     const range = selectedDateRange || tempRange;
-    return range.to && date.getTime() === range.to.getTime();
+    return range.to && 
+      normalizeDate(date).getTime() === normalizeDate(range.to).getTime();
   };
 
-  // Handle date click
+  // Handle date click - FIXED
   const handleDateClick = (date: Date) => {
+    const normalizedDate = normalizeDate(date);
+    
     if (mode === 'single') {
-      onDateSelect?.(date);
+      onDateSelect?.(normalizedDate);
       setIsOpen(false);
     } else {
       const currentRange = tempRange.from ? tempRange : (selectedDateRange || {});
       
       if (!currentRange.from || (currentRange.from && currentRange.to)) {
         // Start new range
-        setTempRange({ from: date, to: undefined });
+        setTempRange({ from: normalizedDate, to: undefined });
       } else {
         // Complete range
-        const newRange = currentRange.from <= date 
-          ? { from: currentRange.from, to: date }
-          : { from: date, to: currentRange.from };
+        const fromTime = normalizeDate(currentRange.from).getTime();
+        const dateTime = normalizedDate.getTime();
+        
+        const newRange = fromTime <= dateTime 
+          ? { from: currentRange.from, to: normalizedDate }
+          : { from: normalizedDate, to: currentRange.from };
         
         onDateRangeSelect?.(newRange);
         setTempRange({});
@@ -203,10 +251,8 @@ const DateFilter: React.FC<DateFilterProps> = ({
   };
 
   const isToday = (date: Date) => {
-    const today = new Date();
-    return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
+    const today = normalizeDate(new Date());
+    return normalizeDate(date).getTime() === today.getTime();
   };
 
   // Get display text for the button
@@ -244,18 +290,18 @@ const DateFilter: React.FC<DateFilterProps> = ({
           {hasFilter && (
             <Badge 
               variant="secondary" 
-              className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-xs bg-blue-500 text-white"
+              className="absolute flex items-center justify-center w-4 h-4 p-0 text-xs text-white bg-blue-500 -top-2 -right-2"
             >
               1
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
+      <PopoverContent className="p-0 w-80" align="start">
         <div className="p-4">
           {/* Quick Filters */}
           <div className="mb-4">
-            <h4 className="text-sm font-medium mb-2">Quick Filters</h4>
+            <h4 className="mb-2 text-sm font-medium">Quick Filters</h4>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="ghost"
@@ -277,7 +323,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleQuickFilter('last7days')}
-                className="justify-start h-8 text-xs"
+                className="justify-start h-8 text-xs border border-blue-200 border-dashed hover:border-blue-400 hover:bg-blue-50"
               >
                 Last 7 days
               </Button>
@@ -285,7 +331,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleQuickFilter('last30days')}
-                className="justify-start h-8 text-xs"
+                className="justify-start h-8 text-xs border border-blue-200 border-dashed hover:border-blue-400 hover:bg-blue-50"
               >
                 Last 30 days
               </Button>
@@ -293,7 +339,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleQuickFilter('thisMonth')}
-                className="justify-start h-8 text-xs"
+                className="justify-start h-8 text-xs border border-blue-200 border-dashed hover:border-blue-400 hover:bg-blue-50"
               >
                 This month
               </Button>
@@ -301,7 +347,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleQuickFilter('lastMonth')}
-                className="justify-start h-8 text-xs"
+                className="justify-start h-8 text-xs border border-blue-200 border-dashed hover:border-blue-400 hover:bg-blue-50"
               >
                 Last month
               </Button>
@@ -331,9 +377,9 @@ const DateFilter: React.FC<DateFilterProps> = ({
               variant="ghost"
               size="sm"
               onClick={previousMonth}
-              className="h-8 w-8 p-0"
+              className="w-8 h-8 p-0"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="w-4 h-4" />
             </Button>
             
             <h3 className="text-sm font-medium">
@@ -344,16 +390,16 @@ const DateFilter: React.FC<DateFilterProps> = ({
               variant="ghost"
               size="sm"
               onClick={nextMonth}
-              className="h-8 w-8 p-0"
+              className="w-8 h-8 p-0"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
 
           {/* Calendar Grid */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {dayNames.map(day => (
-              <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+              <div key={day} className="py-2 text-xs font-medium text-center text-gray-500">
                 {day}
               </div>
             ))}
@@ -387,7 +433,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
                 >
                   {date.getDate()}
                   {todayDate && (
-                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full" />
+                    <div className="absolute bottom-0 w-1 h-1 transform -translate-x-1/2 bg-blue-500 rounded-full left-1/2" />
                   )}
                 </Button>
               );
@@ -395,7 +441,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="flex justify-between items-center mt-4 pt-3 border-t">
+          <div className="flex items-center justify-between pt-3 mt-4 border-t">
             <div className="text-xs text-gray-500">
               {mode === 'range' ? (
                 tempRange.from && !tempRange.to ? (

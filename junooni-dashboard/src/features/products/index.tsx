@@ -453,8 +453,11 @@ export default function Products() {
                       <CardDescription style={{ color: BRAND.textSecondary }}>
                         {loading
                           ? "Loading products..."
-                          : `Manage your ${products.length} products`}
+                          : products.length > 0
+                          ? `Manage your ${products.length} products`
+                          : ""}
                       </CardDescription>
+
                     </div>
                   </div>
 

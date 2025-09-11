@@ -173,6 +173,7 @@ const BRAND = {
 const FIELD_EXPLANATIONS = {
   GSTIN: "Your Goods and Services Tax Identification Number issued by the Indian government.",
   pan_number: "Permanent Account Number (PAN) is a 10-character alphanumeric identifier issued by the Income Tax Department.",
+  tan_number: "10-digit alphanumeric number to all persons who bear the responsibility of collecting tax at source (TCS) or deducting tax at source (TDS).",
   bank_account_ifsc_code: "11-character code that uniquely identifies a bank branch participating in electronic funds transfer systems.",
   creator_category: "Select the category that best describes your creative work to help buyers find you."
 };
@@ -781,6 +782,29 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                   placeholder="ABCDE1234F"
                 />
               </div>
+
+              <div>
+                <div className="flex justify-between mb-2">
+                  <div className="flex items-center">
+                    <label className="block text-sm font-medium">TAN Number</label>
+                    <div className="relative ml-1 group">
+                      <IconHelpCircle className="w-4 h-4 text-gray-400" />
+                      <div className="absolute left-0 z-10 px-2 py-1 -mt-1 text-xs text-white transition-opacity bg-gray-800 rounded-lg opacity-0 pointer-events-none w-60 group-hover:opacity-100">
+                        {FIELD_EXPLANATIONS.tan_number}
+                      </div>
+                    </div>
+                  </div>
+                  {/* <span className="text-xs text-gray-400">Required</span> */}
+                </div>
+                <input
+                  type="text"
+                  value={vendorData.vendor.tan_number || ''}
+                  onChange={(e) => updateVendorData('tan_number', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
+                  style={{ focusRing: brandColors.primary }}
+                  placeholder="ABCDE1234F"
+                />
+              </div>
             </div>
             
             <div>
@@ -832,13 +856,33 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                   >
                     <option value="">Select State</option>
                     <option value="Andhra Pradesh">Andhra Pradesh</option>
-                    <option value="Delhi">Delhi</option>
+                    <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                    <option value="Assam">Assam</option>
+                    <option value="Bihar">Bihar</option>
+                    <option value="Chhattisgarh">Chhattisgarh</option>
+                    <option value="Goa">Goa</option>
                     <option value="Gujarat">Gujarat</option>
+                    <option value="Haryana">Haryana</option>
+                    <option value="Himachal Pradesh">Himachal Pradesh</option>
+                    <option value="Jharkhand">Jharkhand</option>
                     <option value="Karnataka">Karnataka</option>
+                    <option value="Kerala">Kerala</option>
+                    <option value="Madhya Pradesh">Madhya Pradesh</option>
                     <option value="Maharashtra">Maharashtra</option>
+                    <option value="Manipur">Manipur</option>
+                    <option value="Meghalaya">Meghalaya</option>
+                    <option value="Mizoram">Mizoram</option>
+                    <option value="Nagaland">Nagaland</option>
+                    <option value="Odisha">Odisha</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Rajasthan">Rajasthan</option>
+                    <option value="Sikkim">Sikkim</option>
                     <option value="Tamil Nadu">Tamil Nadu</option>
                     <option value="Telangana">Telangana</option>
+                    <option value="Tripura">Tripura</option>
                     <option value="Uttar Pradesh">Uttar Pradesh</option>
+                    <option value="Uttarakhand">Uttarakhand</option>
+                    <option value="West Bengal">West Bengal</option>
                   </select>
                 </div>
                 
@@ -893,17 +937,17 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         }
         return (
           <div className="py-4 space-y-6">
-            <div className="flex items-center p-4 mb-6 border border-blue-100 rounded-lg bg-blue-50">
-              <div className="flex items-center justify-center w-10 h-10 mr-3 bg-blue-100 rounded-full">
-                <IconCreditCard className="w-5 h-5 text-blue-600" />
+            <div className="flex items-center p-4 mb-6 border border-orange-100 rounded-lg bg-orange-50">
+              <div className="flex items-center justify-center w-10 h-10 mr-3 bg-orange-100 rounded-full">
+                <IconCreditCard className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-              <p className="text-sm font-medium text-blue-800">
+              <p className="text-sm font-medium text-orange-800">
                 {!vendorData.vendor.id 
                   ? "Please provide your banking details so we can send your earnings."
                   : "Your banking details are needed for payouts"}
               </p>
-                <p className="mt-1 text-xs text-blue-700">We'll transfer your earnings to this account when customers purchase your products</p>
+                <p className="mt-1 text-xs text-orange-700">We'll transfer your earnings to this account when customers purchase your products</p>
               </div>
             </div>
             
@@ -1772,6 +1816,101 @@ useEffect(() => {
   }
 }, [shouldAutoSave]);
 
+
+// Add this useEffect after your existing useEffects to recalculate step completion
+useEffect(() => {
+  if (vendorData && vendorData.vendor) {
+    const newCompletion = {
+      "welcome": true,
+      "basic-info": Boolean(
+        vendorData.vendor.name && 
+        vendorData.vendor.phonenumber &&
+        vendorData.vendor.admins && 
+        Array.isArray(vendorData.vendor.admins) && 
+        vendorData.vendor.admins.length > 0 &&
+        vendorData.vendor.admins[0].first_name &&
+        vendorData.vendor.admins[0].last_name
+      ),
+      "business-details": Boolean(
+        vendorData.vendor.GSTIN && 
+        vendorData.vendor.companyname && 
+        vendorData.vendor.pan_number
+      ),
+      "banking-info": Boolean(
+        vendorData.vendor.bank_account_holder_name && 
+        vendorData.vendor.bank_account_number && 
+        vendorData.vendor.bank_account_ifsc_code
+      ),
+      "creator-profile": Boolean(
+        vendorData.vendor.creator_bio && 
+        vendorData.vendor.creator_category
+      ),
+      "final-review": false
+    };
+    
+    setStepCompletion(newCompletion);
+    calculateProgress(newCompletion);
+  }
+}, [vendorData]); // Recalculate whenever vendorData changes
+
+// Also update your STEPS array to reflect the actual required fields:
+const STEPS = [
+  { 
+    id: "welcome", 
+    title: "Welcome", 
+    description: "Start your creator journey", 
+    icon: IconAward,
+    isSkippable: false,
+    requiredFields: [],
+  },
+  { 
+    id: "basic-info", 
+    title: "Basic Information", 
+    description: "Brand profile and contact details", 
+    icon: IconUser,
+    isSkippable: false,
+    requiredFields: ["name", "phonenumber", "first_name", "last_name"], // Updated
+    estimatedTime: "3 min",
+  },
+  { 
+    id: "business-details", 
+    title: "Business Details", 
+    description: "Company and tax information", 
+    icon: IconBuilding,
+    isSkippable: true,
+    requiredFields: ["GSTIN", "companyname", "pan_number"],
+    estimatedTime: "5 min",
+  },
+  { 
+    id: "banking-info", 
+    title: "Banking Information", 
+    description: "Payment account details", 
+    icon: IconCreditCard,
+    isSkippable: false,
+    requiredFields: ["bank_account_holder_name", "bank_account_number", "bank_account_ifsc_code"], // Updated
+    estimatedTime: "4 min",
+  },
+  { 
+    id: "creator-profile", 
+    title: "Creator Profile", 
+    description: "Bio and category", 
+    icon: IconFileText,
+    isSkippable: true,
+    requiredFields: ["creator_bio", "creator_category"],
+    estimatedTime: "5 min",
+  },
+  { 
+    id: "final-review", 
+    title: "Final Review", 
+    description: "Review and submit", 
+    icon: IconCheckbox,
+    isSkippable: false,
+    requiredFields: [],
+    estimatedTime: "2 min",
+  }
+];
+
+
 // NEW: Handle local payload save
 const handleLocalSave = () => {
   try {
@@ -1927,7 +2066,7 @@ const handleFormChange = () => {
         handleLocalSave();
         toast({
           title: "Progress Saved",
-          description: "Your progress has been saved locally. Continue filling the form.",
+          description: "Your progress has been saved. Continue filling the form.",
         });
       }
       

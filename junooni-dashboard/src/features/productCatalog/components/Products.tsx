@@ -296,38 +296,38 @@ const Products = () => {
     <>
       <Navbar/>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16">
+        <div className="w-full px-4 pb-16 mx-auto max-w-7xl sm:px-6 lg:px-8 pt-28">
           {/* Enhanced Header Section */}
-          <div className="text-center mb-12">
+          <div className="mb-12 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-[#e65100] to-[#ff7043] rounded-full mb-6">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            <h1 className="mb-4 text-4xl font-bold text-gray-900">
               What would you like to 
               <span className="bg-gradient-to-r from-[#e65100] to-[#ff7043] bg-clip-text text-transparent"> create</span>?
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="max-w-2xl mx-auto text-lg text-gray-600">
               Discover our premium collection of customizable products. From apparel to accessories, bring your designs to life.
             </p>
           </div>
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
+          {/* <div className="grid grid-cols-1 gap-6 mb-12 md:grid-cols-3">
+            <div className="p-6 text-center bg-white border border-gray-200 shadow-sm rounded-xl">
               <div className="text-3xl font-bold text-[#e65100] mb-2">{products.length}+</div>
               <div className="text-gray-600">Premium Products</div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
+            <div className="p-6 text-center bg-white border border-gray-200 shadow-sm rounded-xl">
               <div className="text-3xl font-bold text-[#e65100] mb-2">24/7</div>
               <div className="text-gray-600">Customer Support</div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
+            <div className="p-6 text-center bg-white border border-gray-200 shadow-sm rounded-xl">
               <div className="text-3xl font-bold text-[#e65100] mb-2">Fast</div>
               <div className="text-gray-600">Delivery</div>
             </div>
-          </div>
+          </div> */}
 
           {/* Products Grid */}
           {loading ? (
@@ -358,13 +358,13 @@ const Products = () => {
                 })
               ) : (
                 <div className="col-span-full">
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
-                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <div className="p-12 text-center bg-white border border-gray-200 shadow-sm rounded-2xl">
+                    <div className="flex items-center justify-center w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full">
                       <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                       </svg>
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+                    <h3 className="mb-2 text-xl font-semibold text-gray-900">No products found</h3>
                     <p className="text-gray-500">We're currently updating our catalog. Please check back soon!</p>
                   </div>
                 </div>
@@ -373,15 +373,15 @@ const Products = () => {
           )}
 
           {/* Call to Action Section */}
-          {!loading && products.length > 0 && (
+          {/* {!loading && products.length > 0 && (
             <div className="mt-16 bg-gradient-to-r from-[#e65100] to-[#ff7043] rounded-2xl p-8 text-center text-white">
-              <h2 className="text-2xl font-bold mb-4">Ready to start creating?</h2>
-              <p className="text-lg opacity-90 mb-6">Choose from our wide selection of premium products and bring your designs to life.</p>
+              <h2 className="mb-4 text-2xl font-bold">Ready to start creating?</h2>
+              <p className="mb-6 text-lg opacity-90">Choose from our wide selection of premium products and bring your designs to life.</p>
               <button className="bg-white text-[#e65100] font-semibold px-8 py-3 rounded-lg hover:bg-gray-50 transition-colors duration-200">
                 Get Started Today
               </button>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </>

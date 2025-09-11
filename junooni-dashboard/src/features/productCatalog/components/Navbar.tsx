@@ -236,6 +236,7 @@ import { NavUser } from '@/components/layout/nav-user'
 import { sidebarData } from '../../../components/layout/data/sidebar-data'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ChevronDown, Star, TrendingUp } from 'lucide-react'
+import JunooniLogo from "@/assets/junooni_logo_brand_color.png";
 
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL
 
@@ -494,7 +495,7 @@ const Navbar = () => {
             to="/dashboard" 
             className="inline-block font-bold transition-transform duration-300 brand-accent hover:scale-105"
           >
-            <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
+            <img src={JunooniLogo} alt="Junooni Logo" className="h-6 sm:h-8" />
           </Link>
         </div>
         
@@ -546,9 +547,9 @@ const Navbar = () => {
         
         {/* Right side controls with enhanced styling */}
         <div className="flex items-center gap-4">
-          <div className="p-2 transition-colors duration-300 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20">
+          {/* <div className="p-2 transition-colors duration-300 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20">
             <ThemeSwitch />
-          </div>
+          </div> */}
           <div className="p-1 transition-colors duration-300 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20">
             <SidebarFooter className="p-2 border-t border-border/40">
               <NavUser user={sidebarData.user} />

@@ -274,12 +274,12 @@
 //   if (!isOpen) return null;
 
 //   return (
-//     <div className="fixed inset-0 bg-white/90 z-50 flex justify-end">
+//     <div className="fixed inset-0 z-50 flex justify-end bg-white/90">
 //       <div 
 //         ref={overlayRef}
-//         className="bg-white w-full h-full overflow-y-auto shadow-xl animate-slide-in-right"
+//         className="w-full h-full overflow-y-auto bg-white shadow-xl animate-slide-in-right"
 //       >
-//         <div className="p-4 border-b sticky top-0 bg-white z-10 flex items-center justify-between">
+//         <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-white border-b">
 //           <div className="flex items-center">
 //             <button 
 //               onClick={onClose}
@@ -304,8 +304,8 @@
 //         <div className="p-4">
 //           {children}
 //         </div>
-//         <div className="p-4 border-t sticky bottom-0 bg-white">
-//           <Button onClick={onClose} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+//         <div className="sticky bottom-0 p-4 bg-white border-t">
+//           <Button onClick={onClose} className="w-full text-white bg-blue-600 hover:bg-blue-700">
 //             Show results
 //           </Button>
 //         </div>
@@ -352,14 +352,14 @@
 //     <div className="mb-4">
 //       <button 
 //         onClick={() => setIsOpen(!isOpen)}
-//         className="flex items-center justify-between w-full py-2 text-left font-medium md:cursor-default"
+//         className="flex items-center justify-between w-full py-2 font-medium text-left md:cursor-default"
 //       >
 //         {title}
 //         <span className="md:hidden">
 //           {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
 //         </span>
 //       </button>
-//       {isOpen && <div className="mt-2 pl-2">{children}</div>}
+//       {isOpen && <div className="pl-2 mt-2">{children}</div>}
 //     </div>
 //   );
 // };
@@ -798,10 +798,10 @@
 //         )}
         
 //         {/* Category Pill Navigation */}
-//         <div className="md:hidden flex flex-nowrap overflow-x-auto mb-4 gap-2 pb-2">
+//         <div className="flex gap-2 pb-2 mb-4 overflow-x-auto md:hidden flex-nowrap">
 //           {
 //             categories.map((item)=>(
-//               <div className="border-gray-400 border rounded-full px-4 py-2 whitespace-nowrap text-sm">
+//               <div className="px-4 py-2 text-sm border border-gray-400 rounded-full whitespace-nowrap">
 //             <Link to={`/productCatalog/category/${item.slug}`}>
 //                {item.title}
 //             </Link>
@@ -812,7 +812,7 @@
 //         </div>
         
 //         {/* Filter Button and Product Count */}
-//         <div className="md:hidden flex items-center justify-between mb-4">
+//         <div className="flex items-center justify-between mb-4 md:hidden">
 //           <div className="text-sm text-gray-700">
 //             {filteredProducts.length} products
 //           </div>
@@ -825,7 +825,7 @@
 //             >
 //               <span>Filters</span>
 //               {getTotalActiveFilterCount() > 0 && (
-//                 <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1">
+//                 <Badge variant="secondary" className="h-5 px-1 ml-1 min-w-5">
 //                   {getTotalActiveFilterCount()}
 //                 </Badge>
 //               )}
@@ -833,11 +833,11 @@
 //           )}
 //         </div>
         
-//         <div className="flex flex-col md:flex-row gap-6">
+//         <div className="flex flex-col gap-6 md:flex-row">
 //           {/* Filter Sidebar - Desktop version */}
-//           <div className="w-full md:w-64 flex-shrink-0 hidden md:block">
+//           <div className="flex-shrink-0 hidden w-full md:w-64 md:block">
 //             {loading ? (
-//               <div className="h-96 rounded-md bg-gray-100 animate-pulse"></div>
+//               <div className="bg-gray-100 rounded-md h-96 animate-pulse"></div>
 //             ) : (
 //               <>
 //                 {/* Desktop Filter Sections */}
@@ -862,7 +862,7 @@
 //                         variant="ghost" 
 //                         size="sm" 
 //                         onClick={clearAllFilters}
-//                         className="h-7 text-xs"
+//                         className="text-xs h-7"
 //                       >
 //                         Clear All
 //                       </Button>
@@ -992,7 +992,7 @@
 //               {/* Colors */}
 //               {availableColors.length > 0 && (
 //                 <div className="mb-6">
-//                   <h3 className="text-base font-medium mb-4">Colors</h3>
+//                   <h3 className="mb-4 text-base font-medium">Colors</h3>
 //                   <ColorFilter 
 //                     colors={availableColors}
 //                     selectedColors={selectedColorHexes}
@@ -1006,7 +1006,7 @@
 //               {/* Other filters */}
 //               {availableSizes.length > 0 && (
 //                 <div className="mb-6">
-//                   <h3 className="text-base font-medium mb-2">Sizes</h3>
+//                   <h3 className="mb-2 text-base font-medium">Sizes</h3>
 //                   <CheckboxFilter 
 //                     items={availableSizes}
 //                     selectedItems={selectedSizeNames}
@@ -1019,7 +1019,7 @@
               
 //               {availableTechnologies.length > 0 && (
 //                 <div className="mb-6">
-//                   <h3 className="text-base font-medium mb-2">Printing Technologies</h3>
+//                   <h3 className="mb-2 text-base font-medium">Printing Technologies</h3>
 //                   <CheckboxFilter 
 //                     items={availableTechnologies}
 //                     selectedItems={selectedTechnologyNames}
@@ -1043,14 +1043,14 @@
 //               </div>
 //             ) : (
 //               <>
-//                 <div className="hidden md:block mb-4">
+//                 <div className="hidden mb-4 md:block">
 //                   <span className="text-sm text-gray-500">
 //                     {filteredProducts.length} products found
 //                   </span>
 //                 </div>
                 
 //                 {filteredProducts.length === 0 ? (
-//                   <div className="p-6 text-center bg-gray-50 rounded-md">
+//                   <div className="p-6 text-center rounded-md bg-gray-50">
 //                     <h3 className="mb-2 text-lg font-medium">No products match your filters</h3>
 //                     <p className="text-gray-500">Try adjusting your filter criteria or</p>
 //                     <Button 
@@ -1084,10 +1084,10 @@
                           
 //                           {/* Additional badges that aren't part of the standard ProductCard */}
 //                           {product.isNew && (
-//                             <Badge className="absolute top-2 left-2 z-20">New</Badge>
+//                             <Badge className="absolute z-20 top-2 left-2">New</Badge>
 //                           )}
 //                           {product.onSale && (
-//                             <Badge variant="destructive" className="absolute top-2 right-2 z-20">
+//                             <Badge variant="destructive" className="absolute z-20 top-2 right-2">
 //                               Sale
 //                             </Badge>
 //                           )}
@@ -1437,12 +1437,12 @@ const MobileFilterOverlay: React.FC<MobileFilterOverlayProps> = ({ isOpen, onClo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
       <div 
         ref={overlayRef}
-        className="bg-white w-full h-full overflow-y-auto shadow-2xl animate-slide-in-right"
+        className="w-full h-full overflow-y-auto bg-white shadow-2xl animate-slide-in-right"
       >
-        <div className="p-6 border-b bg-gradient-to-r from-orange-50 to-amber-50 sticky top-0 bg-white z-10 flex items-center justify-between">
+        <div className="sticky top-0 z-10 flex items-center justify-between p-6 bg-white border-b bg-gradient-to-r from-orange-50 to-amber-50">
           <div className="flex items-center">
             <button 
               onClick={onClose}
@@ -1467,7 +1467,7 @@ const MobileFilterOverlay: React.FC<MobileFilterOverlayProps> = ({ isOpen, onClo
         <div className="p-6">
           {children}
         </div>
-        <div className="p-6 border-t bg-gray-50 sticky bottom-0 bg-white">
+        <div className="sticky bottom-0 p-6 bg-white border-t bg-gray-50">
           <Button 
             onClick={onClose} 
             className="w-full bg-gradient-to-r from-[#e65100] to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium py-3 rounded-xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg"
@@ -1514,7 +1514,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, children, defaultO
   }
   
   return (
-    <div className="mb-6 filter-section rounded-xl p-4 border border-gray-100">
+    <div className="p-4 mb-6 border border-gray-100 filter-section rounded-xl">
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between w-full py-2 text-left font-semibold text-gray-900 md:cursor-default hover:text-[#e65100] transition-colors"
@@ -1601,7 +1601,7 @@ const CheckboxFilter: React.FC<CheckboxFilterProps> = ({
         const value = getItemValue(item);
         const isSelected = selectedItems.includes(value);
         return (
-          <label key={value} className="flex items-center space-x-3 cursor-pointer group hover:bg-orange-50 p-2 rounded-lg transition-colors">
+          <label key={value} className="flex items-center p-2 space-x-3 transition-colors rounded-lg cursor-pointer group hover:bg-orange-50">
             <Checkbox 
               checked={isSelected} 
               onCheckedChange={(checked) => {
@@ -1649,7 +1649,7 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({ categories, currentCategory
           {category.title}
         </button>
         {children.length > 0 && (
-          <div className="pl-4 border-l-2 border-orange-100 ml-2">
+          <div className="pl-4 ml-2 border-l-2 border-orange-100">
             {children.map((child) => renderCategory(child))}
           </div>
         )}
@@ -1736,6 +1736,7 @@ const CategoryPage: React.FC = () => {
         const response = await fetch(`${vite_payload}/api/categories`);
         const data = await response.json();
         setCategories(data.docs);
+        console.log("category response:", data);
         
         // Find the category matching the current slug
         const matchedCategory = data.docs.find((item: Category) => item.slug === slug);
@@ -1952,20 +1953,20 @@ const CategoryPage: React.FC = () => {
     <>
       <Navbar/>
       <div className="min-h-screen bg-gradient-to-br from-orange-50/30 via-white to-amber-50/30">
-        <div className="container py-8 mx-auto px-4 mt-12">
+        <div className="container px-4 py-8 mx-auto mt-12">
           {/* Hero Section */}
-          <div className="mb-4 animate-fadeIn">
+          <div className="mt-12 mb-4 animate-fadeIn">
             <h1 className="mb-4 text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#e65100] to-orange-600 bg-clip-text text-transparent">
               {currentCategory ? currentCategory.title : "Online Store Essentials"}
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl">
+            <p className="max-w-2xl text-lg text-gray-600">
               Discover our curated collection of premium products designed to meet your needs.
             </p>
           </div>
           
           {/* Breadcrumb Navigation based on Category */}
           {!loadingCategories && currentCategory && (
-            <div className="flex items-center mb-3 text-sm bg-white rounded-full px-4 py-2 shadow-sm border border-orange-100 w-fit animate-fadeIn">
+            <div className="flex items-center px-4 py-2 mb-3 text-sm bg-white border border-orange-100 rounded-full shadow-sm w-fit animate-fadeIn">
               <a href="/" className="hover:text-[#e65100] transition-colors text-gray-600">Home</a>
               <span className="mx-2 text-gray-400">/</span>
               {currentCategory.breadcrumbs.map((crumb, idx) => (
@@ -1978,7 +1979,7 @@ const CategoryPage: React.FC = () => {
           )}
           
           {/* Category Pill Navigation */}
-          <div className="md:hidden flex flex-nowrap overflow-x-auto mb-6 gap-3 pb-2">
+          <div className="flex gap-3 pb-2 mb-6 overflow-x-auto md:hidden flex-nowrap">
             {categories.map((item) => (
               <div 
                 key={item.id}
@@ -1994,8 +1995,8 @@ const CategoryPage: React.FC = () => {
           </div>
           
           {/* Filter Button and Product Count */}
-          <div className="md:hidden flex items-center justify-between mb-6 bg-white rounded-xl p-4 shadow-sm border border-orange-100">
-            <div className="text-sm text-gray-700 font-medium">
+          <div className="flex items-center justify-between p-4 mb-6 bg-white border border-orange-100 shadow-sm md:hidden rounded-xl">
+            <div className="text-sm font-medium text-gray-700">
               <span className="text-[#e65100] font-semibold">{filteredProducts.length}</span> products found
             </div>
             {isMobileView && (
@@ -2008,7 +2009,7 @@ const CategoryPage: React.FC = () => {
                 <Filter size={16} />
                 <span>Filters</span>
                 {getTotalActiveFilterCount() > 0 && (
-                  <Badge className="ml-1 h-5 min-w-5 px-1 filter-badge">
+                  <Badge className="h-5 px-1 ml-1 min-w-5 filter-badge">
                     {getTotalActiveFilterCount()}
                   </Badge>
                 )}
@@ -2016,16 +2017,16 @@ const CategoryPage: React.FC = () => {
             )}
           </div>
           
-          <div className="flex flex-col md:flex-row gap-8">
+          <div className="flex flex-col gap-8 md:flex-row">
             {/* Filter Sidebar - Desktop version */}
-            <div className="w-full md:w-80 flex-shrink-0 hidden md:block">
+            <div className="flex-shrink-0 hidden w-full md:w-80 md:block">
               {loading ? (
                 <div className="h-96 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 animate-pulse"></div>
               ) : (
                 <>
                   {/* Desktop Filter Sections */}
-                  <div className="mb-8 bg-white rounded-xl p-6 shadow-sm border border-orange-100">
-                    <h3 className="mb-4 text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <div className="p-6 mb-8 bg-white border border-orange-100 shadow-sm rounded-xl">
+                    <h3 className="flex items-center gap-2 mb-4 text-xl font-semibold text-gray-900">
                       <div className="w-2 h-6 bg-gradient-to-b from-[#e65100] to-orange-600 rounded-full"></div>
                       Categories
                     </h3>
@@ -2039,9 +2040,9 @@ const CategoryPage: React.FC = () => {
                   {/* Active Filters Summary */}
                   {(selectedColorHexes.length > 0 || selectedSizeNames.length > 0 || 
                     selectedTechnologyNames.length > 0 || selectedCategories.length > 0) && (
-                    <div className="mb-6 bg-white rounded-xl p-6 shadow-sm border border-orange-100">
+                    <div className="p-6 mb-6 bg-white border border-orange-100 shadow-sm rounded-xl">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
                           <div className="w-2 h-6 bg-gradient-to-b from-[#e65100] to-orange-600 rounded-full"></div>
                           Active Filters
                         </h3>
@@ -2061,16 +2062,16 @@ const CategoryPage: React.FC = () => {
                           return color ? (
                             <Badge 
                               key={`color-${colorHex}`} 
-                              className="flex items-center gap-2 pl-2 pr-1 py-1 filter-badge"
+                              className="flex items-center gap-2 py-1 pl-2 pr-1 filter-badge"
                             >
                               <span 
-                                className="w-3 h-3 rounded-full border border-white/30" 
+                                className="w-3 h-3 border rounded-full border-white/30" 
                                 style={{ backgroundColor: colorHex }}
                               />
                               {color.colorName}
                               <button
                                 onClick={() => setSelectedColorHexes(selectedColorHexes.filter(hex => hex !== colorHex))}
-                                className="ml-1 hover:bg-white/20 rounded-full p-1 transition-colors"
+                                className="p-1 ml-1 transition-colors rounded-full hover:bg-white/20"
                               >
                                 <X size={12} />
                               </button>
@@ -2084,12 +2085,12 @@ const CategoryPage: React.FC = () => {
                           return size ? (
                             <Badge 
                               key={`size-${sizeName}`} 
-                              className="flex items-center gap-1 pl-2 pr-1 py-1 filter-badge"
+                              className="flex items-center gap-1 py-1 pl-2 pr-1 filter-badge"
                             >
                               {sizeName}
                               <button
                                 onClick={() => setSelectedSizeNames(selectedSizeNames.filter(name => name !== sizeName))}
-                                className="ml-1 hover:bg-white/20 rounded-full p-1 transition-colors"
+                                className="p-1 ml-1 transition-colors rounded-full hover:bg-white/20"
                               >
                                 <X size={12} />
                               </button>
@@ -2103,12 +2104,12 @@ const CategoryPage: React.FC = () => {
                           return tech ? (
                             <Badge 
                               key={`tech-${techName}`} 
-                              className="flex items-center gap-1 pl-2 pr-1 py-1 filter-badge"
+                              className="flex items-center gap-1 py-1 pl-2 pr-1 filter-badge"
                             >
                               {techName}
                               <button
                                 onClick={() => setSelectedTechnologyNames(selectedTechnologyNames.filter(name => name !== techName))}
-                                className="ml-1 hover:bg-white/20 rounded-full p-1 transition-colors"
+                                className="p-1 ml-1 transition-colors rounded-full hover:bg-white/20"
                               >
                                 <X size={12} />
                               </button>
@@ -2169,7 +2170,7 @@ const CategoryPage: React.FC = () => {
                 {/* Colors */}
                 {availableColors.length > 0 && (
                   <div className="mb-8">
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center gap-2">
+                    <h3 className="flex items-center gap-2 mb-4 text-lg font-semibold text-gray-900">
                       <div className="w-2 h-5 bg-gradient-to-b from-[#e65100] to-orange-600 rounded-full"></div>
                       Colors
                     </h3>
@@ -2186,7 +2187,7 @@ const CategoryPage: React.FC = () => {
                 {/* Other filters */}
                 {availableSizes.length > 0 && (
                   <div className="mb-8">
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center gap-2">
+                    <h3 className="flex items-center gap-2 mb-4 text-lg font-semibold text-gray-900">
                       <div className="w-2 h-5 bg-gradient-to-b from-[#e65100] to-orange-600 rounded-full"></div>
                       Sizes
                     </h3>
@@ -2202,7 +2203,7 @@ const CategoryPage: React.FC = () => {
                 
                 {availableTechnologies.length > 0 && (
                   <div className="mb-8">
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center gap-2">
+                    <h3 className="flex items-center gap-2 mb-4 text-lg font-semibold text-gray-900">
                       <div className="w-2 h-5 bg-gradient-to-b from-[#e65100] to-orange-600 rounded-full"></div>
                       Printing Technologies
                     </h3>
@@ -2228,7 +2229,7 @@ const CategoryPage: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <div className="hidden md:flex items-center justify-between mb-4 bg-white rounded-xl p-4 shadow-sm border border-orange-100">
+                  <div className="items-center justify-between hidden p-4 mb-4 bg-white border border-orange-100 shadow-sm md:flex rounded-xl">
                     <span className="text-sm text-gray-600">
                       Showing <span className="font-semibold text-[#e65100]">{filteredProducts.length}</span> products
                     </span>
@@ -2241,13 +2242,13 @@ const CategoryPage: React.FC = () => {
                   </div>
                   
                   {filteredProducts.length === 0 ? (
-                    <div className="p-8 text-center bg-white rounded-xl shadow-sm border border-orange-100 animate-fadeIn">
+                    <div className="p-8 text-center bg-white border border-orange-100 shadow-sm rounded-xl animate-fadeIn">
                       <div className="max-w-md mx-auto">
-                        <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-orange-100 to-orange-200">
                           <Search className="w-8 h-8 text-[#e65100]" />
                         </div>
                         <h3 className="mb-3 text-xl font-semibold text-gray-900">No products found</h3>
-                        <p className="text-gray-600 mb-6">We couldn't find any products matching your current filters. Try adjusting your criteria or explore our full collection.</p>
+                        <p className="mb-6 text-gray-600">We couldn't find any products matching your current filters. Try adjusting your criteria or explore our full collection.</p>
                         <Button 
                           onClick={clearAllFilters} 
                           className="bg-gradient-to-r from-[#e65100] to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200 transform hover:scale-105"
@@ -2257,7 +2258,7 @@ const CategoryPage: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="product-grid grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-6 product-grid sm:grid-cols-2 lg:grid-cols-3">
                       {filteredProducts.map((product, index) => {
                         // Get the product card data format
                         const productCardData = getProductCardData(product.id);
@@ -2280,12 +2281,12 @@ const CategoryPage: React.FC = () => {
                             
                             {/* Additional badges that aren't part of the standard ProductCard */}
                             {product.isNew && (
-                              <Badge className="absolute top-3 left-3 z-20 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium">
+                              <Badge className="absolute z-20 font-medium text-white top-3 left-3 bg-gradient-to-r from-green-500 to-emerald-600">
                                 New
                               </Badge>
                             )}
                             {product.onSale && (
-                              <Badge className="absolute top-3 right-3 z-20 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium">
+                              <Badge className="absolute z-20 font-medium text-white top-3 right-3 bg-gradient-to-r from-red-500 to-red-600">
                                 Sale
                               </Badge>
                             )}

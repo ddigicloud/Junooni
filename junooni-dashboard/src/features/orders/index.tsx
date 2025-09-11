@@ -1139,12 +1139,12 @@ useEffect(() => {
               >
                <a href="/Orders">Orders</a>
               </Button>
-              <Button 
+              {/* <Button 
                 variant="ghost"
                 className="hidden md:flex"
               >
                 <a href="/Analytics">Analytics</a>
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>
@@ -1414,9 +1414,13 @@ useEffect(() => {
                   <CardTitle className="text-lg font-bold" style={{ color: BRAND.secondary }}>
                     Your Orders
                   </CardTitle>
-                  <CardDescription className="text-sm" style={{ color: BRAND.textSecondary }}>
-                    {loading ? "Loading your orders..." : `Showing ${filteredOrders.length} of ${count} orders with your products`}
-                  </CardDescription>
+                  {(loading || filteredOrders.length > 0) && (
+                    <CardDescription className="text-sm" style={{ color: BRAND.textSecondary }}>
+                      {loading
+                        ? "Loading your orders..."
+                        : `Showing ${filteredOrders.length} of ${count} orders with your products`}
+                    </CardDescription>
+                  )}
                 </div>
               </div>
               
