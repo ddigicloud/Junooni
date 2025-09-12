@@ -107,6 +107,7 @@ interface VendorData {
 const FIELD_EXPLANATIONS = {
   GSTIN: "Your Goods and Services Tax Identification Number issued by the Indian government.",
   pan_number: "Permanent Account Number (PAN) is a 10-character alphanumeric identifier issued by the Income Tax Department.",
+  tan_number: "10-digit alphanumeric number to all persons who bear the responsibility of collecting tax at source (TCS) or deducting tax at source (TDS).",
   bank_account_ifsc_code: "11-character code that uniquely identifies a bank branch participating in electronic funds transfer systems.",
   creator_category: "The category that best describes your creative work to help buyers find you."
 };
@@ -1791,6 +1792,26 @@ const openChatwoot = () => {
                                   type="text"
                                   value={vendorData.vendor.pan_number || ''}
                                   onChange={(e) => updateVendorData('pan_number', e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
+                                  style={{ focusRing: BRAND.primary }}
+                                  placeholder="ABCDE1234F"
+                                />
+                              </div>
+
+                              <div>
+                                <div className="flex items-center mb-1">
+                                  <label className="block text-sm font-medium">TAN Number <span className="text-red-500">*</span></label>
+                                  <div className="relative ml-1 group">
+                                    <IconHelpCircle className="w-4 h-4 text-gray-400" />
+                                    <div className="absolute left-0 z-10 px-2 py-1 -mt-1 text-xs text-white transition-opacity bg-gray-800 rounded-lg opacity-0 pointer-events-none w-60 group-hover:opacity-100">
+                                      {FIELD_EXPLANATIONS.tan_number}
+                                    </div>
+                                  </div>
+                                </div>
+                                <input
+                                  type="text"
+                                  value={vendorData.vendor.tan_number || ''}
+                                  onChange={(e) => updateVendorData('tan_number', e.target.value)}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
                                   style={{ focusRing: BRAND.primary }}
                                   placeholder="ABCDE1234F"

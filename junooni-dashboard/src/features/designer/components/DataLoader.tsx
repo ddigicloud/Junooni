@@ -1018,7 +1018,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
           <div className="flex justify-center gap-3">
             {error.retryable && (
               <button 
-                className="px-6 py-3 font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+                className="px-6 py-3 font-medium text-white transition-colors bg-orange-600 rounded-lg hover:bg-orange-700"
                 onClick={handleRetry}
               >
                 🔄 Try Again

@@ -1121,6 +1121,35 @@ import { Link } from '@tanstack/react-router';
 // Use the same environment variable as ProductCard component
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
 
+// Helper function to parse the rich text description from payload
+const parseRichTextDescription = (description: any): string => {
+  if (!description || !description.root || !description.root.children) {
+    return "Discover our curated collection of premium products designed to meet your needs.";
+  }
+  
+  let extractedText = "";
+  
+  const extractTextFromChildren = (children: any[]): string => {
+    let text = "";
+    children.forEach((child: any) => {
+      if (child.type === "text") {
+        text += child.text + " ";
+      } else if (child.children && Array.isArray(child.children)) {
+        text += extractTextFromChildren(child.children);
+      }
+    });
+    return text;
+  };
+  
+  description.root.children.forEach((child: any) => {
+    if (child.children && Array.isArray(child.children)) {
+      extractedText += extractTextFromChildren(child.children);
+    }
+  });
+  
+  return extractedText.trim() || "Discover our curated collection of premium products designed to meet your needs.";
+};
+
 // Type definitions from your original file
 type SimplifiedProduct = {
   id: string;
@@ -1203,6 +1232,7 @@ interface Breadcrumb {
 interface Category {
   id: number;
   title: string;
+  description?: any; // Rich text description from payload
   slug: string;
   parent: Category | null;
   breadcrumbs: Breadcrumb[];
@@ -1310,6 +1340,53 @@ const isLightColor = (hex: string): boolean => {
   
   // Return true if color is light (brightness > 128)
   return brightness > 128;
+};
+
+// Helper function to parse the rich text description from payload
+const parseRichTextContent = (description: any): { heading: string; subheading: string } => {
+  const fallback = {
+    heading: "Products",
+    subheading: "Discover our curated collection of premium products designed to meet your needs."
+  };
+
+  console.log("Parsing description:", description); // Debug log
+
+  if (!description || !description.root || !description.root.children) {
+    console.log("No description structure found, using fallback");
+    return fallback;
+  }
+  
+  const extractTextFromChildren = (children: any[]): string => {
+    let text = "";
+    children.forEach((child: any) => {
+      if (child.type === "text") {
+        text += child.text;
+      } else if (child.children && Array.isArray(child.children)) {
+        text += extractTextFromChildren(child.children);
+      }
+    });
+    return text.trim();
+  };
+  
+  let heading = fallback.heading;
+  let subheading = fallback.subheading;
+  
+  console.log("Description children:", description.root.children); // Debug log
+  
+  description.root.children.forEach((child: any, index: number) => {
+    console.log(`Child ${index}:`, child); // Debug log
+    
+    if (child.type === "heading" && child.tag === "h1" && child.children) {
+      heading = extractTextFromChildren(child.children);
+      console.log("Found heading:", heading);
+    } else if (child.type === "paragraph" && child.children) {
+      subheading = extractTextFromChildren(child.children);
+      console.log("Found subheading:", subheading);
+    }
+  });
+  
+  console.log("Final result:", { heading, subheading });
+  return { heading, subheading };
 };
 
 // Custom hook for animation styles
@@ -1694,6 +1771,10 @@ const CategoryPage: React.FC = () => {
   const params = useParams({strict:false});
   const slug = params.slug as string;
 
+  console.log("🔗 URL params:", params);
+  console.log("🔗 Extracted slug:", slug);
+  console.log("🔗 Slug type:", typeof slug);
+
   // Check if we're in mobile view
   useEffect(() => {
     const checkMobileView = () => {
@@ -1730,19 +1811,42 @@ const CategoryPage: React.FC = () => {
   };
 
   // Fetch categories and products from API
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch(`${vite_payload}/api/categories`);
-        const data = await response.json();
-        setCategories(data.docs);
-        console.log("category response:", data);
+useEffect(() => {
+  console.log("🚀 useEffect triggered with slug:", slug);
+  
+  const fetchCategories = async () => {
+    console.log("📡 Starting API fetch...");
+    try {
+      const response = await fetch(`${vite_payload}/api/categories`);
+      const data = await response.json();
+      setCategories(data.docs);
+      console.log("📦 category response:", data);
+      
+      console.log("🔍 Looking for slug:", slug);
+      console.log("🔍 Available categories:", data.docs.map((cat: Category) => ({ 
+        id: cat.id, 
+        slug: cat.slug, 
+        title: cat.title,
+        hasDescription: !!cat.description 
+      })));
+      
+      // Find the category matching the current slug
+      const matchedCategory = data.docs.find((item: Category) => {
+        console.log(`🔍 Comparing "${item.slug}" with "${slug}"`);
+        return item.slug === slug;
+      });
+      
+      console.log("✅ Matched category:", matchedCategory);
+      
+      if (matchedCategory) {
+        // Always set the current category for description/hero section
+        console.log("🎯 Setting currentCategory to:", matchedCategory.title);
+        setCurrentCategory(matchedCategory);
+        console.log("✅ setCurrentCategory called");
+        console.log("✅ Category description exists:", !!matchedCategory.description);
         
-        // Find the category matching the current slug
-        const matchedCategory = data.docs.find((item: Category) => item.slug === slug);
-        
-        if (matchedCategory && matchedCategory.products) {
-          setCurrentCategory(matchedCategory);
+        // Only process products if they exist
+        if (matchedCategory.products && matchedCategory.products.length > 0) {
           console.log("Found category with products:", matchedCategory.title);
           
           // Store the original API products
@@ -1757,7 +1861,6 @@ const CategoryPage: React.FC = () => {
             // Add colors
             if (product.colorOptions && product.colorOptions.length > 0) {
               product.colorOptions.forEach((color: ColorOption) => {
-                // Only add if not already in our array
                 if (!colors.some((c) => c.id === color.id)) {
                   colors.push(color);
                 }
@@ -1789,14 +1892,13 @@ const CategoryPage: React.FC = () => {
           
           // Convert API products to the simplified Product type for internal state
           const formattedProducts: SimplifiedProduct[] = matchedCategory.products.map((apiProduct: APIProduct) => {
-            // Extract color hex values from the API color options
             const productColors = apiProduct.colorOptions?.map((color: ColorOption) => color.colorHex) || [];
             
             return {
-              id: String(apiProduct.id), // Keep as string for internal state
+              id: String(apiProduct.id),
               name: apiProduct.name,
-              price: apiProduct.cost, // Map 'cost' to 'price'
-              rating: 4.5, // Default rating if not in API
+              price: apiProduct.cost,
+              rating: 4.5,
               image: apiProduct.displayImages && apiProduct.displayImages.length > 0 
                 ? apiProduct.displayImages[0].image.url 
                 : '/placeholder-image.jpg',
@@ -1806,35 +1908,41 @@ const CategoryPage: React.FC = () => {
               sizeOptions: apiProduct.sizeOptions || [],
               printingTechnologies: apiProduct.printingTechnologies || [],
               description: apiProduct.description,
-              isNew: false, // Set default if not available in API
-              onSale: false, // Set default if not available in API
+              isNew: false,
+              onSale: false,
             };
           });
           
-          // Sort products by newest (default)
           const sortedProducts = formattedProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id));
           setSimplifiedProducts(sortedProducts);
           setFilteredProducts(sortedProducts);
           
           console.log("Set products:", formattedProducts.length);
         } else {
-          console.log("No matching category found for slug:", slug);
+          console.log("Category found but no products directly attached");
           setSimplifiedProducts([]);
           setApiProducts([]);
           setFilteredProducts([]);
         }
-        
-        setLoadingCategories(false);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        setLoadingCategories(false);
-        setLoading(false);
+      } else {
+        console.log("No matching category found for slug:", slug);
+        setCurrentCategory(null);
+        setSimplifiedProducts([]);
+        setApiProducts([]);
+        setFilteredProducts([]);
       }
-    };
+      
+      setLoadingCategories(false);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      setLoadingCategories(false);
+      setLoading(false);
+    }
+  };
 
-    fetchCategories();
-  }, [slug]);
+  fetchCategories();
+}, [slug, vite_payload]);
 
   // Apply filters when filter selections change
   useEffect(() => {
@@ -1954,18 +2062,34 @@ const CategoryPage: React.FC = () => {
       <Navbar/>
       <div className="min-h-screen bg-gradient-to-br from-orange-50/30 via-white to-amber-50/30">
         <div className="container px-4 py-8 mx-auto mt-12">
-          {/* Hero Section */}
+          {/* Dynamic Hero Section */}
           <div className="mt-12 mb-4 animate-fadeIn">
-            <h1 className="mb-4 text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#e65100] to-orange-600 bg-clip-text text-transparent">
-              {currentCategory ? currentCategory.title : "Online Store Essentials"}
-            </h1>
-            <p className="max-w-2xl text-lg text-gray-600">
-              Discover our curated collection of premium products designed to meet your needs.
-            </p>
+            {(() => {
+              console.log("🎯 Hero section - currentCategory:", currentCategory);
+              console.log("🎯 Hero section - has description:", !!currentCategory?.description);
+              
+              const { heading, subheading } = currentCategory && currentCategory.description 
+                ? parseRichTextContent(currentCategory.description)
+                : { heading: "Products", subheading: "Discover our curated collection of premium products designed to meet your needs." };
+              
+              console.log("🎯 Final heading:", heading);
+              console.log("🎯 Final subheading:", subheading);
+              
+              return (
+                <>
+                  <h1 className="mb-4 text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#e65100] to-orange-600 bg-clip-text text-transparent">
+                    {heading}
+                  </h1>
+                  <p className="max-w-2xl text-lg text-gray-600">
+                    {subheading}
+                  </p>
+                </>
+              );
+            })()}
           </div>
           
           {/* Breadcrumb Navigation based on Category */}
-          {!loadingCategories && currentCategory && (
+          {/* {!loadingCategories && currentCategory && (
             <div className="flex items-center px-4 py-2 mb-3 text-sm bg-white border border-orange-100 rounded-full shadow-sm w-fit animate-fadeIn">
               <a href="/" className="hover:text-[#e65100] transition-colors text-gray-600">Home</a>
               <span className="mx-2 text-gray-400">/</span>
@@ -1976,7 +2100,7 @@ const CategoryPage: React.FC = () => {
                 </div>
               ))}
             </div>
-          )}
+          )} */}
           
           {/* Category Pill Navigation */}
           <div className="flex gap-3 pb-2 mb-6 overflow-x-auto md:hidden flex-nowrap">
@@ -2222,7 +2346,7 @@ const CategoryPage: React.FC = () => {
             {/* Products Grid */}
             <div className="flex-1">
               {loading ? (
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <ProductCardSkeleton key={index} />
                   ))}

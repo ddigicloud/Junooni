@@ -120,7 +120,7 @@ function RouteComponent() {
           {isPending ? (
             // Loading state - display while route is changing
             <div className="flex items-center justify-center w-full h-full">
-              <div className="w-12 h-12 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin"></div>
+              <div className="w-12 h-12 border-t-2 border-b-2 border-orange-500 rounded-full animate-spin"></div>
             </div>
           ) : (
             // Render the actual route content when loading is complete

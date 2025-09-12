@@ -1767,6 +1767,12 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
     return colorMatcher.getAllColorNames().includes(colorName);
   };
 
+
+  const getStaticUrl = (fileId: string): string => {
+  const baseUrl = import.meta.env.VITE_STATIC_BASE_URL || 'https://files.junooni.com/junooni-files';
+  return `${baseUrl}/${fileId}`;
+};
+
   const getColorHex = (colorName: string, designData: DesignData): string | undefined => {
     const colorMatcher = createColorMatcher(designData);
     return colorMatcher.getHexForColor(colorName);
@@ -2179,7 +2185,7 @@ if (existingProductDetails && existingProductDetails.length > 0) {
   };
 
   // ===== FORM POPULATION WITH DYNAMIC IMAGE ASSOCIATION =====
-  const populateFormWithDesignData = (
+const populateFormWithDesignData = (
   data: DesignData, 
   productData?: PayloadProductData,
   directImageSettings?: ImageAssociationSettings
@@ -2238,14 +2244,8 @@ if (existingProductDetails && existingProductDetails.length > 0) {
     form.setValue('status', 'draft');
     form.setValue('discountable', true);
     
-    // STEP 4: SAFE options processing - Clear existing options first
-    console.log('🎯 POPULATE DEBUG: Clearing existing options');
-    const currentOptions = form.getValues('options');
-    for (let i = currentOptions.length - 1; i > 0; i--) {
-      removeOption(i);
-    }
-    
-    // STEP 5: Process colors ONLY from colorDetails (selected colors)
+    // STEP 4: Process colors ONLY from colorDetails (selected colors)
+    // NO cleanup loops, NO appendOption calls - just update existing option
     if (data.colorDetails && Array.isArray(data.colorDetails) && data.colorDetails.length > 0) {
       console.log('🎯 POPULATE DEBUG: Processing selected colors:', data.colorDetails.length);
       
@@ -2258,7 +2258,7 @@ if (existingProductDetails && existingProductDetails.length > 0) {
       
       const selectedColorNames = data.colorDetails.map(color => color.name);
       
-      // Set color option safely
+      // Update existing first option with color data (no cleanup needed)
       form.setValue('options.0.id', generateUUID());
       form.setValue('options.0.title', 'Color');
       form.setValue('options.0.optionValues', selectedColorNames);
@@ -2266,60 +2266,11 @@ if (existingProductDetails && existingProductDetails.length > 0) {
       form.setValue('options.0.colorHexValues', colorHexValues);
       
       console.log('🎯 POPULATE DEBUG: Set color option with values:', selectedColorNames);
-      
-      // STEP 6: Add size option if it exists and is different from colors
-      const sizeOnlyOption = data.options?.find(opt => 
-        opt.title && 
-        opt.title.toLowerCase().includes('size') && 
-        !opt.title.toLowerCase().includes('color') &&
-        opt.optionValues && 
-        opt.optionValues.length > 0
-      );
-
-      if (sizeOnlyOption) {
-        console.log('🎯 POPULATE DEBUG: Adding size option:', sizeOnlyOption.optionValues);
-        
-        // Add size option after a small delay to prevent conflicts
-        setTimeout(() => {
-          try {
-            appendOption({
-              id: generateUUID(),
-              title: 'Size',
-              optionValues: sizeOnlyOption.optionValues,
-              imageAssociation: settingsToUse.size_Images,
-              colorHexValues: {}
-            });
-            console.log('🎯 POPULATE DEBUG: Size option added successfully');
-          } catch (sizeError) {
-            console.error('🎯 POPULATE ERROR: Failed to add size option:', sizeError);
-          }
-        }, 500); // Small delay to prevent race conditions
-      }
     }
     
     setHasVariants(true);
     
-    // STEP 7: Product details
-    const currentDetails = form.getValues('productDetails') || [];
-    currentDetails.forEach((_, index) => {
-      removeProductDetail(0);
-    });
-    
-    const initialDetails = [
-      // 'High-quality materials and construction',
-      // 'Unique design imported from designer',
-      // 'Carefully crafted for durability and style'
-    ];
-    
-    if (productData?.materials?.primary) {
-      initialDetails.push(`Made with premium ${productData.materials.primary.toLowerCase()}`);
-    }
-    
-    initialDetails.forEach(detail => {
-      appendProductDetail({ id: generateUUID(), text: detail });
-    });
-    
-    // STEP 8: Generate variants with delay to ensure options are set
+    // STEP 5: Generate variants with delay to ensure options are set
     setTimeout(() => {
       console.log('🎯 POPULATE DEBUG: Generating variants');
       try {
@@ -3795,7 +3746,7 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
         const variantImageUrls = allVariantImages
           .map(item => {
             if (item.url && item.url.startsWith('blob:') && item.id) {
-              return `http://localhost:9000/static/${item.id}`;
+              return getStaticUrl(item.id);
             }
             return item.url;
           })
@@ -3838,9 +3789,10 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
             
             optionSpecificImages.forEach(item => {
               let url = item.url;
-              if (url.startsWith('blob:') && item.id) {
-                url = `http://localhost:9000/static/${item.id}`;
-              }
+              const STATIC_BASE_URL = import.meta.env.VITE_STATIC_BASE_URL || 'https://yourdomain.com/static';
+                if (url.startsWith('blob:') && item.id) {
+                  url = `${STATIC_BASE_URL}/${item.id}`;
+                }
               
               // Add to general option images
               allOptionImages.push({

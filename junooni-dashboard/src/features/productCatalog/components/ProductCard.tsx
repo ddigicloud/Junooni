@@ -305,7 +305,8 @@ interface Product {
   displayImages: DisplayImage[];
   colorOptions: ColorOption[];
   sizeOptions: SizeOption[];
-  printingTechnologies: PrintingTechnology[];
+  printingTechnologies?: PrintingTechnology[]; // Optional for backward compatibility
+  printT?: PrintingTechnology[]; // Added to support the actual payload structure
 }
 
 interface ProductMetadata {
@@ -335,29 +336,29 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
   };
 
   // Function to render star ratings with half stars
-  const renderStarRating = () => {
-    const { rating, reviewCount } = metadata;
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
+  // const renderStarRating = () => {
+  //   const { rating, reviewCount } = metadata;
+  //   const fullStars = Math.floor(rating);
+  //   const hasHalfStar = rating % 1 >= 0.5;
     
-    return (
-      <div className="flex items-center gap-2">
-        <div className="flex">
-          {[...Array(5)].map((_, i) => {
-            if (i < fullStars) {
-              return <span key={i} className="text-[#e65100] text-sm">★</span>;
-            } else if (i === fullStars && hasHalfStar) {
-              return <span key={i} className="text-[#e65100] text-sm">★</span>;
-            } else {
-              return <span key={i} className="text-gray-300 text-sm">★</span>;
-            }
-          })}
-        </div>
-        <span className="text-sm text-gray-500 font-medium">({reviewCount})</span>
-        <span className="text-sm font-semibold text-gray-700">{rating.toFixed(1)}</span>
-      </div>
-    );
-  };
+  //   return (
+  //     <div className="flex items-center gap-2">
+  //       <div className="flex">
+  //         {[...Array(5)].map((_, i) => {
+  //           if (i < fullStars) {
+  //             return <span key={i} className="text-[#e65100] text-sm">★</span>;
+  //           } else if (i === fullStars && hasHalfStar) {
+  //             return <span key={i} className="text-[#e65100] text-sm">★</span>;
+  //           } else {
+  //             return <span key={i} className="text-sm text-gray-300">★</span>;
+  //           }
+  //         })}
+  //       </div>
+  //       <span className="text-sm font-medium text-gray-500">({reviewCount})</span>
+  //       <span className="text-sm font-semibold text-gray-700">{rating.toFixed(1)}</span>
+  //     </div>
+  //   );
+  // };
 
   // Function to format technology names for display
   const formatTechnologyName = (techName: string): string => {
@@ -390,12 +391,13 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
       .join(' ');
   };
 
-  // Function to get production options from the product's printing technologies
+  // FIXED: Function to get production options from the product's printing technologies
   const getProductionOptions = (): string[] => {
-    // If the product has printing technologies, use those
-    if (product.printingTechnologies && product.printingTechnologies.length > 0) {
-      // Map over the printing technologies and format their names
-      return product.printingTechnologies.map(tech => 
+    // Support both property names for flexibility - check printT first (actual payload structure)
+    const printingTechs = (product as any).printT || product.printingTechnologies || [];
+    
+    if (printingTechs.length > 0) {
+      return printingTechs.map((tech: any) => 
         formatTechnologyName(tech.technologyName)
       );
     }
@@ -410,7 +412,7 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-[#e65100]/10 hover:border-[#e65100]/20 group">
       {/* Product badges */}
-      {/* <div className="absolute top-4 left-4 z-10 flex gap-2">
+      {/* <div className="absolute z-10 flex gap-2 top-4 left-4">
         {metadata.isBestSeller && (
           // <span className="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-[#e65100] to-[#ff7043] rounded-full shadow-lg">
           //   🏆 Best Seller
@@ -427,33 +429,33 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
 
       {/* Product Image with enhanced styling */}
       <div 
-        className="relative w-full h-72 bg-gradient-to-br from-gray-50 to-gray-100 cursor-pointer overflow-hidden group-hover:scale-105 transition-transform duration-300" 
+        className="relative w-full overflow-hidden transition-transform duration-300 cursor-pointer h-72 bg-gradient-to-br from-gray-50 to-gray-100 group-hover:scale-105" 
         onClick={handleProductClick}
       >
         {product.displayImages?.length > 0 ? (
           <img
-            src={`${vite_payload}/${product.displayImages[0].image.url}`}
+            src={`${vite_payload}${product.displayImages[0].image.url}`}
             alt={product.displayImages[0].image.alt}
             className="object-cover object-center w-full h-full transition-transform duration-300"
           />
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-3 bg-gray-200 rounded-full">
                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <p className="text-gray-400 text-sm font-medium">No Image Available</p>
+              <p className="text-sm font-medium text-gray-400">No Image Available</p>
             </div>
           </div>
         )}
         
         {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+        <div className="absolute inset-0 transition-colors duration-300 bg-black/0 group-hover:bg-black/10" />
         
         {/* Quick view button */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-300 opacity-0 group-hover:opacity-100">
           <button className="bg-white/90 backdrop-blur-sm text-[#e65100] font-semibold px-6 py-2 rounded-full shadow-lg hover:bg-white transition-colors duration-200">
             Quick View
           </button>
@@ -464,14 +466,14 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
       <div className="p-3 space-y-2">
         {/* Product model/SKU number */}
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full">
+          <span className="px-3 py-1 text-sm font-medium text-gray-500 rounded-full bg-gray-50">
             {product.brand} • {product.sku}
           </span>
-          <div className="flex items-center gap-1">
+          {/* <div className="flex items-center gap-1">
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
-          </div>
+          </div> */}
         </div>
 
         {/* Product Name */}
@@ -482,9 +484,9 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
         </div>
 
         {/* Star Rating */}
-        <div className="py-1">
+        {/* <div className="py-1">
           {renderStarRating()}
-        </div>
+        </div> */}
 
         {/* Production Options */}
         <div className="flex flex-wrap gap-2">
@@ -515,12 +517,12 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
                 title={color.colorName}
               >
                 {color.colorHex.toLowerCase() === '#ffffff' && (
-                  <div className="absolute inset-0 rounded-full border border-gray-300" />
+                  <div className="absolute inset-0 border border-gray-300 rounded-full" />
                 )}
               </div>
             ))}
             {additionalColors > 0 && (
-              <div className="w-6 h-6 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+              <div className="flex items-center justify-center w-6 h-6 bg-gray-100 border-2 border-gray-200 rounded-full">
                 <span className="text-xs font-medium text-gray-600">+{additionalColors}</span>
               </div>
             )}
@@ -528,13 +530,13 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
         </div>
 
         {/* Pricing */}
-        <div className="border-t border-gray-100 pt-4">
+        <div className="pt-4 border-t border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-bold text-gray-900">₹{product.cost.toFixed(2)}</span>
-              <span className="text-sm text-gray-500 font-medium">no minimum</span>
+              <span className="text-sm font-medium text-gray-500">no minimum</span>
             </div>
-            <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
+            <div className="flex items-center gap-1 text-sm font-medium text-green-600">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
@@ -550,8 +552,8 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
 // Enhanced loading skeleton component for the product card
 export const ProductCardSkeleton = () => {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <Skeleton className="w-full h-72 rounded-none" />
+    <div className="overflow-hidden bg-white border border-gray-100 shadow-sm rounded-2xl">
+      <Skeleton className="w-full rounded-none h-72" />
       <div className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <Skeleton className="w-24 h-6 rounded-full" />
@@ -571,7 +573,7 @@ export const ProductCardSkeleton = () => {
             ))}
           </div>
         </div>
-        <div className="border-t border-gray-100 pt-4">
+        <div className="pt-4 border-t border-gray-100">
           <div className="flex items-center justify-between">
             <Skeleton className="w-20 h-6" />
             <Skeleton className="w-16 h-5" />

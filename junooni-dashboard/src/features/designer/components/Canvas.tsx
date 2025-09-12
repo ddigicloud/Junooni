@@ -2322,196 +2322,113 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isGenerating) {
-          onClose();
-        }
-      }}
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+    onClick={(e) => {
+      if (e.target === e.currentTarget && !isGenerating) onClose();
+    }}
+  >
+    <div
+      className="bg-white rounded-lg shadow-xl w-full max-w-lg sm:max-w-3xl max-h-[90vh] overflow-auto"
+      onClick={(e) => e.stopPropagation()}
     >
-      <div 
-        className="bg-white rounded-xl shadow-2xl max-w-sm sm:max-w-4xl w-full max-h-[90vh] overflow-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-4 border-b sm:p-6">
-          <h2 className="text-lg font-bold sm:text-xl" style={{ color: brandColor }}>
-            Enhanced Store Import Generation
-          </h2>
-        </div>
-        
-        <div className="p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b">
+        <h2 className="text-lg font-semibold" style={{ color: brandColor }}>
+          Store Import
+        </h2>
+      </div>
 
-          {/* Generation Progress */}
-          {isGenerating && generationProgress && (
-            <div className="p-4 mb-6 border border-orange-200 rounded-lg bg-orange-50">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-orange-800"> Generating Enhanced Store Data...</h4>
-                <div className="text-sm text-orange-600">
-                  {generationProgress.completed}/{generationProgress.total}
-                </div>
-              </div>
-              
-              <div className="w-full h-3 mb-3 bg-gray-200 rounded-full">
-                <div 
-                  className="h-3 transition-all duration-300 bg-orange-600 rounded-full"
-                  style={{ 
-                    width: `${(generationProgress.completed / generationProgress.total) * 100}%` 
-                  }}
-                ></div>
-              </div>
-              
-              <div className="space-y-1 text-sm text-orange-700">
-                {generationProgress.current_combination && (
-                  <div>Combination: <strong>{generationProgress.current_combination}</strong></div>
-                )}
-                {generationProgress.current_mockup && (
-                  <div>Mockup: <strong>{generationProgress.current_mockup}</strong></div>
-                )}
-                <div className="flex items-center space-x-2">
-                  <span>Engine:</span>
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    generationProgress.current_engine === 'pixi_dynamic'
-                      ? 'bg-orange-100 text-orange-700'
-                      : 'bg-orange-100 text-orange-700'
-                  }`}>
-                    {generationProgress.current_engine === 'pixi_dynamic' ? 'PIXI Dynamic' : 'Canvas Professional'}
-                  </span>
-                </div>
-                {generationProgress.estimated_time_remaining_ms && (
-                  <div className="text-gray-600">
-                    ETA: {Math.round(generationProgress.estimated_time_remaining_ms / 1000)}s
-                  </div>
-                )}
-              </div>
-              
-              {generationProgress.errors.length > 0 && (
-                <div className="mt-2 text-sm text-red-600">
-                  Errors: {generationProgress.errors.length}
-                </div>
-              )}
+      <div className="px-4 py-5 space-y-5">
+        {/* Progress */}
+        {isGenerating && generationProgress && (
+          <div className="p-3 border rounded bg-orange-50">
+            <div className="flex items-center justify-between mb-2 text-sm">
+              <span className="font-medium text-[#e65100]">Generating...</span>
+              <span className="text-gray-600">
+                {generationProgress.completed}/{generationProgress.total}
+              </span>
             </div>
-          )}
-
-          {/* Generation Complete */}
-          {!isGenerating && importData && (
-            <div className="space-y-6">
-              <div className="p-4 border border-green-200 rounded-lg bg-green-50">
-                <div className="flex items-center">
-                  <div className="mr-2 text-xl text-green-600">✨</div>
-                  <div>
-                    <h4 className="font-semibold text-green-800">Enhanced Store Import Data Generated!</h4>
-                    <p className="text-sm text-green-700">
-                      Generated {importData.generation_summary.total_images_generated} images 
-                      in {Math.round(importData.generation_summary.total_time_ms / 1000)} seconds
-                    </p>
-                  </div>
-                </div>
+            <div className="w-full h-2 mb-2 bg-gray-200 rounded">
+              <div
+                className="h-2 rounded bg-[#e65100] transition-all"
+                style={{
+                  width: `${
+                    (generationProgress.completed / generationProgress.total) * 100
+                  }%`,
+                }}
+              ></div>
+            </div>
+            {generationProgress.estimated_time_remaining_ms && (
+              <div className="text-xs text-gray-500">
+                ETA: {Math.round(generationProgress.estimated_time_remaining_ms / 1000)}s
               </div>
+            )}
+          </div>
+        )}
 
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div className="p-4 text-center rounded-lg bg-gray-50">
-                  <div className="text-2xl font-bold" style={{ color: brandColor }}>
-                    {importData.mockup_variants.length}
-                  </div>
-                  <div className="text-sm text-gray-600">Mockup Variants</div>
+        {/* Completed */}
+        {!isGenerating && importData && (
+          <div className="space-y-4">
+            <div className="p-3 border rounded bg-green-50 flex items-center gap-2">
+              <span className="text-green-600">✅</span>
+              <span className="text-sm text-green-700">
+                {importData.generation_summary.total_images_generated} images generated in{" "}
+                {Math.round(importData.generation_summary.total_time_ms / 1000)}s
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-center text-sm">
+              <div className="p-3 bg-gray-50 rounded">
+                <div className="text-xl font-bold" style={{ color: brandColor }}>
+                  {importData.mockup_variants.length}
                 </div>
-                <div className="p-4 text-center rounded-lg bg-gray-50">
-                  <div className="text-2xl font-bold" style={{ color: brandColor }}>
-                    {importData.generation_summary.total_images_generated}
-                  </div>
-                  <div className="text-sm text-gray-600">Total Images</div>
-                </div>
-                <div className="p-4 text-center rounded-lg bg-purple-50">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {importData.generation_summary.engine_usage.pixi_dynamic}
-                  </div>
-                  <div className="text-sm text-gray-600">PIXI Dynamic</div>
-                </div>
-                <div className="p-4 text-center rounded-lg bg-blue-50">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {importData.generation_summary.engine_usage.canvas_professional}
-                  </div>
-                  <div className="text-sm text-gray-600">Canvas Professional</div>
-                </div>
+                <div className="text-gray-600">Variants</div>
               </div>
-
-              <div className="p-4 rounded-lg bg-gray-50">
-                <h4 className="mb-3 font-medium">🚀 Enhanced Generation Summary</h4>
-                <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-                  <div>
-                    <span className="font-medium">Product:</span> {importData.product_name}
-                  </div>
-                  <div>
-                    <span className="font-medium">Type:</span> {importData.product_type}
-                  </div>
-                  <div>
-                    <span className="font-medium">Strategy:</span> {importData.generation_summary.mockup_calculation.strategy.replace(/_/g, ' ')}
-                  </div>
-                  <div>
-                    <span className="font-medium">Design Areas:</span> {importData.design_configuration.design_metadata.areas_used.join(', ')}
-                  </div>
-                  <div>
-                    <span className="font-medium">Total Elements:</span> {importData.design_configuration.design_metadata.total_elements}
-                  </div>
-                  <div>
-                    <span className="font-medium">Completed:</span> {new Date(importData.generation_summary.generation_completed).toLocaleString()}
-                  </div>
+              <div className="p-3 bg-gray-50 rounded">
+                <div className="text-xl font-bold" style={{ color: brandColor }}>
+                  {importData.generation_summary.total_images_generated}
                 </div>
-                
-                {importData.generation_summary.errors.length > 0 && (
-                  <div className="pt-3 mt-3 border-t">
-                    <div className="text-sm text-red-600">
-                      <strong>Errors ({importData.generation_summary.errors.length}):</strong>
-                      <ul className="mt-1 overflow-y-auto max-h-20">
-                        {importData.generation_summary.errors.slice(0, 3).map((error, index) => (
-                          <li key={index} className="text-xs">• {error}</li>
-                        ))}
-                        {importData.generation_summary.errors.length > 3 && (
-                          <li className="text-xs text-gray-500">... and {importData.generation_summary.errors.length - 3} more</li>
-                        )}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <button
-                  onClick={handleImportToStore}
-                  className="flex-1 px-6 py-3 font-medium text-white transition-colors rounded-lg hover:opacity-90"
-                  style={{ backgroundColor: brandColor }}
-                >
-                  Import to Store
-                </button>
-                <button
-                  onClick={downloadImportData}
-                  className="px-6 py-3 font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
-                >
-                  📎 Download Data
-                </button>
-                <button
-                  onClick={onClose}
-                  className="px-6 py-3 font-medium text-white transition-colors bg-gray-600 rounded-lg hover:bg-gray-700"
-                >
-                  Close
-                </button>
+                <div className="text-gray-600">Images</div>
               </div>
             </div>
-          )}
 
-          {/* No data and not generating */}
-          {!isGenerating && !importData && (
-            <div className="py-8 text-center">
-              <div className="mb-4 text-4xl">🎪</div>
-              <p className="text-gray-600">No import data available.</p>
-              <p className="mt-1 text-sm text-gray-500">Click "Generate & Import to Store" to generate mockups.</p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                onClick={handleImportToStore}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white rounded bg-[#e65100] hover:opacity-90"
+              >
+                Import
+              </button>
+              <button
+                onClick={downloadImportData}
+                className="px-4 py-2 text-sm font-medium text-white rounded bg-blue-600 hover:bg-blue-700"
+              >
+                Download
+              </button>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-white rounded bg-gray-600 hover:bg-gray-700"
+              >
+                Close
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Empty */}
+        {!isGenerating && !importData && (
+          <div className="py-6 text-center text-sm text-gray-600">
+            <div className="mb-2 text-3xl">🎪</div>
+            No import data yet. <br />
+            <span className="text-gray-500">Generate & import to see results.</span>
+          </div>
+        )}
       </div>
     </div>
-  );
+  </div>
+);
+
 };
 
 // =====================================

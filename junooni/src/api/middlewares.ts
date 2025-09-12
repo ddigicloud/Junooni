@@ -211,7 +211,7 @@ export default defineMiddlewares({
           })(req, res, next);
         },
        
-        authenticate("vendor", ["session", "bearer"])
+        authenticate(["vendor","user"], ["session", "bearer"])
        
       ],
     },
@@ -270,7 +270,7 @@ export default defineMiddlewares({
         /^\/vendors\/[^/]+\/followers$/, // Regex to match /vendors/[id]/followers
         /^\/vendors\/check-handle$/,      // /vendors/check-handle
         /^\/vendors\/uploads$/,  
-          /^\/vendors\/me$/,         // /vendors/uploads
+         /^\/vendors\/me$/,         // /vendors/uploads
       ];
 
       const isPublic = publicPaths.some((pattern) => pattern.test(req.path));
