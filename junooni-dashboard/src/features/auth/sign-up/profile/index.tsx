@@ -46,6 +46,8 @@ import {
   IconCamera,
   IconBrandInstagram,
   IconBrandYoutube,
+  IconBrandX,
+  IconBrandFacebook,
   IconLogout,
   IconPhone,
   IconMail,
@@ -76,6 +78,7 @@ interface VendorData {
   youtube: string | null;
   instagram: string | null;
   xtwitter: string | null;
+  facebook: string | null;
   othersocial: string | null;
   phonenumber: string | null;
   GSTIN: string | null;
@@ -629,7 +632,7 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
       console.log('Sending to API:', vendorDataWithoutAdmins);
       
       const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -942,6 +945,7 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 
         youtube: vendorData.vendor.youtube || '',
         instagram: vendorData.vendor.instagram || '',
         xtwitter: vendorData.vendor.xtwitter || '',
+        facebook: vendorData.vendor.facebook || '',
       };
 
       console.log(`💾 Saving ${field} immediately with URL:`, imageUrl);
@@ -1604,6 +1608,22 @@ const openChatwoot = () => {
                                   />
                                 </div>
                               </div>
+
+                              <div>
+                                <label className="block mb-1 text-sm font-medium">Facebook</label>
+                                <div className="flex">
+                                  <div className="flex items-center justify-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
+                                    <span className="text-sm text-gray-500">facebook.com/</span>
+                                  </div>
+                                  <input
+                                    type="text"
+                                    value={vendorData.vendor.facebook || ''}
+                                    onChange={(e) => updateVendorData('facebook', e.target.value)}
+                                    className="flex-grow px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none"
+                                    placeholder="@yourhandle"
+                                  />
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ) : (
@@ -1643,7 +1663,7 @@ const openChatwoot = () => {
 
                             {vendorData.vendor.xtwitter && (
                               <div className="flex items-center gap-2">
-                                <IconBrandYoutube className="w-5 h-5 text-gray-400" />
+                                <IconBrandX className="w-5 h-5 text-gray-400" />
                                 <a
                                   href={`https://youtube.com/${vendorData.vendor.xtwitter}`}
                                   target="_blank"
@@ -1651,6 +1671,20 @@ const openChatwoot = () => {
                                   style={{ color: BRAND.primary }}
                                 >
                                   {vendorData.vendor.xtwitter}
+                                </a>
+                              </div>
+                            )}
+
+                            {vendorData.vendor.facebook && (
+                              <div className="flex items-center gap-2">
+                                <IconBrandFacebook className="w-5 h-5 text-gray-400" />
+                                <a
+                                  href={`https://youtube.com/${vendorData.vendor.facebook}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: BRAND.primary }}
+                                >
+                                  {vendorData.vendor.facebook}
                                 </a>
                               </div>
                             )}
@@ -2193,7 +2227,7 @@ const openChatwoot = () => {
                                
                                 <div>
                                   <h3 className="text-sm font-medium text-gray-500">Account Type</h3>
-                                  <p>{vendorData.bank_account_type}</p>
+                                  <p>{vendorData.vendor.bank_account_type}</p>
                                 </div>
                                
                                 <div>
@@ -2223,11 +2257,16 @@ const openChatwoot = () => {
                       {/* Payout History */}
                       <div className="mb-6">
                         <h2 className="mb-4 text-lg font-semibold">Payout History</h2>
-                       
+
                         <div className="border rounded-lg">
                           <div className="p-4 text-center">
-                            <p className="text-gray-500">No payout history available yet.</p>
-                            <p className="mt-2 text-sm text-gray-400">Your payment history will appear here once you start selling.</p>
+                            <button
+                              onClick={() => (window.location.href = "/payouts")}
+                              className="px-4 py-2 text-white rounded-lg shadow-md transition-colors"
+                              style={{ backgroundColor: "#e65100" }}
+                            >
+                              Click here to check your payout history
+                            </button>
                           </div>
                         </div>
                       </div>

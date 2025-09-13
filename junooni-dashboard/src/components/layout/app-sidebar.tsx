@@ -84,6 +84,7 @@ import { sidebarData } from './data/sidebar-data'
 import { cn } from '@/lib/utils'
 // Import your Junooni favicon
 import JunooniFavicon from '../../assets/favicon-3.png' // Adjust path as needed
+import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 // import CreatorJunooni from '../../../assets/junooni-creators.png'
 
 function SidebarHeader() {
@@ -115,7 +116,7 @@ function SidebarHeader() {
               />
             </div> */}
             <div className="flex items-center flex-1 min-w-0">
-              <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 -ml-4 -mr-4 sm:h-8 w-33" />
+              <img src={Junoonilogo}  alt="Junooni Logo" className="h-6 -ml-4 -mr-4 sm:h-8 w-33" />
               <Separator orientation='vertical' className='h-6 ml-1 mr-3 w-[2px] bg-border' />
               <div className="flex flex-col items-start text-xs font-medium leading-tight text-muted-foreground">
                 <span className="text-xs">Creator</span>
