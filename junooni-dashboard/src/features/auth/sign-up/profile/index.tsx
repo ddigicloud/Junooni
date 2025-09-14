@@ -528,48 +528,55 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
   // Fetch vendor data when component mounts
   useEffect(() => {
   const fetchVendorData = async () => {
-    try {
-      // Get authentication token from localStorage
-      const token = localStorage.getItem('vendorToken');
-      
-      if (!token) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to access your profile.",
-          variant: "destructive",
-        });
-        navigate({ to: '/sign-in' });
-        return;
-      }
-      
-      // Try to fetch vendor profile directly from /vendors/me
-      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+  try {
+    const token = localStorage.getItem('vendorToken');
+    
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to access your profile.",
+        variant: "destructive",
       });
-      
-      // If response is not ok (e.g. 401, 404), assume vendor doesn't exist
-      if (!response.ok) {
-        console.log("Vendor profile not found. Redirecting to onboarding page.");
-        window.location.href = '/onboarding?step=basic-info';
-        return;
+      navigate({ to: '/sign-in' });
+      return;
+    }
+    
+    const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       }
-      
-      const data = await response.json();
-      
-      // Check if vendor data exists in the response
-      if (!data || !data.vendor) {
-        console.log("Vendor data empty. Redirecting to onboarding page.");
-        window.location.href = '/onboarding?step=basic-info';
-        return;
-      }
-      
+    });
+    
+    if (!response.ok) {
+      console.log("Vendor profile not found. Redirecting to onboarding page.");
+      window.location.href = '/onboarding?step=basic-info';
+      return;
+    }
+    
+    const data = await response.json();
+    console.log('📥 Initial fetch response:', data);
+    
+    // Handle array response structure for initial fetch too
+    if (data.vendor && Array.isArray(data.vendor) && data.vendor.length > 0) {
+      console.log('✅ Initial fetch: Converting array to object structure');
+      const correctedData = {
+        vendor: data.vendor[0],
+        message: data.message
+      };
+      setVendorData(correctedData);
+    } else if (data.vendor && !Array.isArray(data.vendor)) {
+      console.log('✅ Initial fetch: Vendor already in object format');
       setVendorData(data);
-    } catch (error) {
-      console.error('Error fetching vendor data:', error);
+    } else {
+      console.log("Vendor data empty. Redirecting to onboarding page.");
+      window.location.href = '/onboarding?step=basic-info';
+      return;
+    }
+    
+  } catch (error) {
+    console.error('Error fetching vendor data:', error);
       toast({
         title: "Error",
         description: "Failed to load your profile data. Please try again.",
@@ -618,54 +625,193 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
   }, []);
 
   // Save vendor data
-  const saveVendorData = async (section: string) => {
-    if (!vendorData) return;
+  // const saveVendorData = async (section: string) => {
+  //   if (!vendorData) return;
     
-    setIsSaving(true);
+  //   setIsSaving(true);
     
-    try {
-      const token = localStorage.getItem('vendorToken');
+  //   try {
+  //     const token = localStorage.getItem('vendorToken');
       
-      // Create a copy of the vendor data without the admins array
-      const { admins, ...vendorDataWithoutAdmins } = vendorData.vendor;
+  //     // Create a copy of the vendor data without the admins array
+  //     const { admins, ...vendorDataWithoutAdmins } = vendorData.vendor;
       
-      console.log('Sending to API:', vendorDataWithoutAdmins);
+  //     console.log('Sending to API:', vendorDataWithoutAdmins);
       
-      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(vendorDataWithoutAdmins)
-      });
+  //     const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
+  //       method: 'PUT',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': `Bearer ${token}`
+  //       },
+  //       body: JSON.stringify(vendorDataWithoutAdmins)
+  //     });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`API error: ${response.status} - ${JSON.stringify(errorData)}`);
-      }
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       throw new Error(`API error: ${response.status} - ${JSON.stringify(errorData)}`);
+  //     }
       
-      // Turn off edit mode for the section
-      setEditMode({
-        ...editMode,
-        [section]: false
-      });
+  //     // Turn off edit mode for the section
+  //     setEditMode({
+  //       ...editMode,
+  //       [section]: false
+  //     });
       
-      toast({
-        title: "Changes Saved",
-        description: `Your ${section} information has been updated successfully.`,
-      });
-    } catch (error) {
-      console.error('Error saving vendor data:', error);
-      toast({
-        title: "Error",
-        description: `Failed to save changes to your ${section} information. Please try again.`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
+  //     toast({
+  //       title: "Changes Saved",
+  //       description: `Your ${section} information has been updated successfully.`,
+  //     });
+  //   } catch (error) {
+  //     console.error('Error saving vendor data:', error);
+  //     toast({
+  //       title: "Error",
+  //       description: `Failed to save changes to your ${section} information. Please try again.`,
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
+
+  // Fixed saveVendorData function
+// ULTIMATE FIX - Replace your saveVendorData function with this
+const saveVendorData = async (section) => {
+  if (!vendorData) {
+    console.error('❌ No vendor data available');
+    return;
+  }
+  
+  setIsSaving(true);
+  
+  try {
+    const token = localStorage.getItem('vendorToken');
+    if (!token) {
+      throw new Error('No authentication token found');
     }
-  };
+    
+    // Get current vendor data
+    const currentVendor = vendorData.vendor;
+    
+    // Create COMPLETE payload with ALL required fields
+    const completePayload = {
+      // Basic Information
+      name: currentVendor.name || '',
+      handle: currentVendor.handle || '',
+      
+      // Creator Information  
+      creator_bio: currentVendor.creator_bio || '',
+      creator_title: currentVendor.creator_title || '',
+      creator_category: currentVendor.creator_category || '',
+      
+      // Contact Information
+      phonenumber: currentVendor.phonenumber || '',
+      
+      // Images
+      logo: currentVendor.logo || '',
+      coverphoto: currentVendor.coverphoto || '',
+      
+      // Social Media
+      youtube: currentVendor.youtube || '',
+      instagram: currentVendor.instagram || '',
+      xtwitter: currentVendor.xtwitter || '',
+      facebook: currentVendor.facebook || '',
+      othersocial: currentVendor.othersocial || '',
+      
+      // Business Information
+      companyname: currentVendor.companyname || '',
+      GSTIN: currentVendor.GSTIN || '',
+      gst_verification_status: currentVendor.gst_verification_status || 'pending',
+      pan_number: currentVendor.pan_number || '',
+      tan_number: currentVendor.tan_number || '',
+      
+      // Address
+      address: currentVendor.address || '',
+      city: currentVendor.city || '',
+      state: currentVendor.state || '',
+      pincode: currentVendor.pincode || '',
+      
+      // Banking
+      bank_account_holder_name: currentVendor.bank_account_holder_name || '',
+      bank_account_number: currentVendor.bank_account_number || '',
+      bank_account_ifsc_code: currentVendor.bank_account_ifsc_code || '',
+      bank_name: currentVendor.bank_name || '',
+      bank_account_type: currentVendor.bank_account_type || 'Saving',
+      cancelled_checkque: currentVendor.cancelled_checkque || ''
+    };
+    
+    const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(completePayload)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Backend error:', errorText);
+      throw new Error(`API error: ${response.status} - ${errorText}`);
+    }
+    
+    const responseData = await response.json();
+    console.log('✅ Raw backend response:', responseData);
+    
+    // CRITICAL FIX: Handle array response structure
+    if (responseData.vendor && Array.isArray(responseData.vendor) && responseData.vendor.length > 0) {
+      console.log('✅ Backend returned vendor as array, extracting first element');
+      
+      // Convert array response to object structure that frontend expects
+      const correctedResponse = {
+        vendor: responseData.vendor[0], // Extract the first (and only) vendor object
+        message: responseData.message
+      };
+      
+      console.log('✅ Corrected response structure:', {
+        hasVendor: !!correctedResponse.vendor,
+        vendorIsArray: Array.isArray(correctedResponse.vendor),
+        name: correctedResponse.vendor.name,
+        creator_title: correctedResponse.vendor.creator_title,
+        logo: correctedResponse.vendor.logo ? 'SET' : 'MISSING',
+        coverphoto: correctedResponse.vendor.coverphoto ? 'SET' : 'MISSING'
+      });
+      
+      // Update state with corrected structure
+      setVendorData(correctedResponse);
+      
+    } else if (responseData.vendor && !Array.isArray(responseData.vendor)) {
+      // Handle case where vendor is already an object (shouldn't happen based on your logs, but just in case)
+      console.log('✅ Backend returned vendor as object directly');
+      setVendorData(responseData);
+      
+    } else {
+      console.error('❌ Unexpected response structure:', responseData);
+      throw new Error('Server response has unexpected structure');
+    }
+    
+    // Turn off edit mode
+    setEditMode(prev => ({
+      ...prev,
+      [section]: false
+    }));
+    
+    toast({
+      title: "Changes Saved",
+      description: `Your ${section} information has been updated successfully.`,
+    });
+    
+  } catch (error) {
+    console.error('❌ Save operation failed:', error);
+    toast({
+      title: "Error",
+      description: `Failed to save changes: ${error.message}`,
+      variant: "destructive",
+    });
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   //save admin data
   const saveAdminData = async (adminData) => {
@@ -730,17 +876,32 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
   };
   // Update vendor data
  // Update vendor data function for the nested vendor structure
-const updateVendorData = (field: keyof VendorData['vendor'], value: any) => {
-  if (vendorData) {
-    setVendorData({
-      ...vendorData,
+const updateVendorData = (field, value) => {
+  console.log(`🔄 Updating ${field} to:`, value);
+  
+  setVendorData(prevData => {
+    if (!prevData) return prevData;
+    
+    const newData = {
+      ...prevData,
       vendor: {
-        ...vendorData.vendor,
+        ...prevData.vendor,
         [field]: value
       },
       updated_at: new Date().toISOString()
+    };
+    
+    console.log('📝 State updated. Current values:', {
+      name: newData.vendor.name || 'EMPTY',
+      creator_title: newData.vendor.creator_title || 'EMPTY', 
+      creator_bio: newData.vendor.creator_bio || 'EMPTY',
+      logo: newData.vendor.logo || 'EMPTY',
+      coverphoto: newData.vendor.coverphoto || 'EMPTY',
+      phonenumber: newData.vendor.phonenumber || 'EMPTY'
     });
-  }
+    
+    return newData;
+  });
 };
   // Fixed uploadImageToServer function based on the working code
 // Fix your uploadImageToServer function - change PUT to POST
@@ -881,124 +1042,74 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
   };
 
 // Updated handleImageUpload function
-const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'logo' | 'coverphoto') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+const handleImageUpload = async (e, field) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      toast({
-        title: "Invalid File Type",
-        description: "Please upload a JPG, PNG, or WebP image.",
-        variant: "destructive",
-      });
-      return;
+  // Validate file type
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    toast({
+      title: "Invalid File Type",
+      description: "Please upload a JPG, PNG, or WebP image.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  // Validate file size (5MB limit)
+  const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+  if (file.size > maxSize) {
+    toast({
+      title: "File Too Large",
+      description: "Please upload an image smaller than 5MB.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsUploadingImage(true);
+
+  try {
+    console.log(`🔄 Starting ${field} upload...`);
+    
+    // Step 1: Upload file to server and get the URL
+    const imageUrl = await uploadImageToServer(file, field);
+    console.log(`✅ Image uploaded successfully: ${imageUrl}`);
+    
+    // Step 2: ONLY update the image field in local state, don't save to backend yet
+    updateVendorData(field, imageUrl);
+    
+    console.log(`🔄 Updated local state for ${field}. Will save when user clicks "Save Changes"`);
+    
+    toast({
+      title: "Image Uploaded",
+      description: `Your ${field === 'logo' ? 'logo' : 'cover photo'} has been uploaded. Click "Save Changes" to save all your profile updates.`,
+    });
+    
+  } catch (error) {
+    console.error(`Error uploading ${field}:`, error);
+    toast({
+      title: "Upload Failed",
+      description: error instanceof Error ? error.message : `Failed to upload your ${field === 'logo' ? 'logo' : 'cover photo'}. Please try again.`,
+      variant: "destructive",
+    });
+  } finally {
+    setIsUploadingImage(false);
+    
+    // Clear the input so the same file can be selected again if needed
+    if (e.target) {
+      e.target.value = '';
     }
-
-    // Validate file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-    if (file.size > maxSize) {
-      toast({
-        title: "File Too Large",
-        description: "Please upload an image smaller than 5MB.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsUploadingImage(true);
-
-    try {
-      console.log(`🔄 Starting ${field} upload...`);
-      
-      // Step 1: Upload file to server and get the URL
-      const imageUrl = await uploadImageToServer(file, field);
-      console.log(`✅ Image uploaded successfully: ${imageUrl}`);
-      
-      // Step 2: Update local state with the server URL
-      updateVendorData(field, imageUrl);
-      
-      // Step 3: IMMEDIATELY prepare the payload and save to backend
-      // We create the payload manually to ensure we're saving the correct URL
-      const token = localStorage.getItem('vendorToken');
-      
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      if (!vendorData?.vendor) {
-        throw new Error('Vendor data not available');
-      }
-
-      // Create the payload with the new image URL
-      const payload = {
-        name: vendorData.vendor.name || '',
-        handle: vendorData.vendor.handle || '',
-        creator_bio: vendorData.vendor.creator_bio || '',
-        creator_title: vendorData.vendor.creator_title || '',
-        phonenumber: vendorData.vendor.phonenumber || '',
-        // CRITICAL: Use the newly uploaded URL directly
-        logo: field === 'logo' ? imageUrl : (vendorData.vendor.logo || ''),
-        coverphoto: field === 'coverphoto' ? imageUrl : (vendorData.vendor.coverphoto || ''),
-        // Social media
-        youtube: vendorData.vendor.youtube || '',
-        instagram: vendorData.vendor.instagram || '',
-        xtwitter: vendorData.vendor.xtwitter || '',
-        facebook: vendorData.vendor.facebook || '',
-      };
-
-      console.log(`💾 Saving ${field} immediately with URL:`, imageUrl);
-      console.log('📤 Full payload:', payload);
-
-      // Step 4: Save to backend immediately
-      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Save failed:', errorText);
-        throw new Error(`Failed to save ${field}: ${response.status}`);
-      }
-
-      const updatedData = await response.json();
-      console.log('✅ Backend save successful:', updatedData);
-      
-      // Step 5: Update local state with server response to ensure consistency
-      if (updatedData.vendor) {
-        setVendorData(updatedData);
-        console.log(`🔄 Local state updated with server data for ${field}`);
-      }
-      
-      toast({
-        title: "Image Uploaded",
-        description: `Your ${field === 'logo' ? 'logo' : 'cover photo'} has been updated successfully.`,
-      });
-      
-    } catch (error) {
-      console.error(`Error uploading ${field}:`, error);
-      toast({
-        title: "Upload Failed",
-        description: error instanceof Error ? error.message : `Failed to upload your ${field === 'logo' ? 'logo' : 'cover photo'}. Please try again.`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploadingImage(false);
-      
-      // Clear the input so the same file can be selected again if needed
-      if (e.target) {
-        e.target.value = '';
-      }
-    }
-  };
+  }
+};
 
     console.log('vendor data:', vendorData);
+
+//     const updatedData = await response.json();
+// console.log('🔍 FULL RESPONSE DATA:', JSON.stringify(updatedData, null, 2));
+// console.log('🔍 COVERPHOTO IN RESPONSE:', updatedData.vendor?.coverphoto);
+// console.log('🔍 EXPECTED URL:', imageUrl);
     // Helper function to safely get the vendor email
 const getVendorEmail = (vendorData) => {
   // First check if the email is in the first admin's data
@@ -2262,7 +2373,7 @@ const openChatwoot = () => {
                           <div className="p-4 text-center">
                             <button
                               onClick={() => (window.location.href = "/payouts")}
-                              className="px-4 py-2 text-white rounded-lg shadow-md transition-colors"
+                              className="px-4 py-2 text-white transition-colors rounded-lg shadow-md"
                               style={{ backgroundColor: "#e65100" }}
                             >
                               Click here to check your payout history

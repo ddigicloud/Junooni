@@ -145,6 +145,7 @@ interface SelectedProductInfo {
   productName: string;
 }
 
+// Updated PayloadCMSProduct interface to match the actual API response
 interface PayloadCMSProduct {
   id: number;
   name: string;
@@ -155,20 +156,79 @@ interface PayloadCMSProduct {
   brandSku: string;
   sku: string;
   cost: number;
+  
+  // Pricing information
   pricing: {
     markupType: string;
     markupValue: number;
     suggestedRetail: number;
   };
-  description: string;
+  
+  // Additional cost information
+  additionalCosts?: {
+    printingCostPerArea?: number;
+    setupFee?: number;
+    rushSurcharge?: number;
+  };
+  
+  // Pricing tiers
+  pricingTiers?: any[];
+  
+  // Product description
+  description: string | RichTextContent; 
+  
+  // Features field - Rich text structure
+  features?: {
+    root?: {
+      type: string;
+      format: string;
+      indent: number;
+      version: number;
+      children: Array<{
+        type: string;
+        format?: string;
+        indent?: number;
+        version?: number;
+        children: Array<{
+          mode?: string;
+          text: string;
+          type: string;
+          style?: string;
+          detail?: number;
+          format?: number;
+          version?: number;
+        }>;
+        direction?: string;
+        textStyle?: string;
+        textFormat?: number;
+        tag?: string;
+      }>;
+      direction: string;
+    };
+  };
+  
+  // Materials information
   materials: {
     primary: string;
-    weight: string;
-    construction: string;
+    weight?: string;
+    construction?: string;
     finish?: string;
-    efabType: string;
-    fabricWeight: number;
+    efabType?: string;
+    fabricWeight?: number;
+    surfaceTexture?: string;
+    stretchability?: number;
+    transparency?: number;
+    reflectivity?: number;
   };
+  
+  // Care instructions
+  careInstructions?: Array<{
+    id: string;
+    instruction: string;
+    icon?: string;
+  }>;
+  
+  // Physical dimensions
   physicalDimensions: {
     widthInches: number;
     heightInches: number;
@@ -176,29 +236,261 @@ interface PayloadCMSProduct {
     diameter?: number;
     units: string;
   };
+  
+  // Shipping information
   shippingInfo: {
     weight: number;
     shippingDimensions: string;
+    shippingLocationID?: string;
     packageType: string;
   };
+  
+  // Sourcing information
+  sourcing?: {
+    minOrderQty?: number;
+    leadTimeDays?: number;
+    rushAvailable?: boolean;
+    rushLeadTimeDays?: number;
+  };
+  
+  // Vendor information
+  vendorInfo?: {
+    supplier?: string;
+    supplierProductId?: string;
+    countryOrigin?: string;
+  };
+  
+  // Color options
   colorOptions: Array<{
     id: string;
     colorName: string;
     colorHex: string;
     isPrimary?: boolean;
+    fabricInteraction?: {
+      absorptionRate?: number;
+      blendMode?: string;
+      colorShift?: {
+        hueShift: number;
+        saturationShift: number;
+        lightnessShift: number;
+      };
+    };
   }>;
+  
+  // Size options
   sizeOptions: Array<{
     id: string;
     sizeName: string;
     sizeDescription?: string;
+    dimensions?: {
+      width: number;
+      height: number;
+    };
   }>;
+  
+  // Image settings
   color_Images: boolean;
   size_Images: boolean;
+  
+  // Size chart
+  sizeChart?: string;
+  sizeChartHtml?: string;
+  
+  // Categories
   categories: Array<{
     id: number;
     title: string;
     slug: string;
+    description?: any;
+    products?: any[];
+    breadcrumbs?: any[];
+    parent?: any;
+    slugLock?: boolean;
+    updatedAt?: string;
+    createdAt?: string;
   }>;
+  
+  // Tags
+  tags?: any[];
+  
+  // Surface configuration
+  surfConf?: {
+    No_Mockup_Compatible?: boolean;
+    renderType?: string;
+    surfProp?: {
+      wrapAngle?: number;
+      curveInten?: number;
+      designRatio?: {
+        widthRatio?: number;
+        heightRatio?: number;
+      };
+    };
+    blendSet?: {
+      defaultBlendMode?: string;
+      defaultOpacity?: number;
+      preserveColors?: boolean;
+    };
+  };
+  
+  // Advanced surface mapping
+  advanSurfMap?: {
+    curvProf?: string;
+    barrelDist?: number;
+    pincushiDistor?: number;
+    perspDis?: number;
+    hasSeams?: boolean;
+  };
+  
+  // Seam positions
+  seamPositions?: any[];
+  
+  // Lighting configuration
+  lightingConfiguration?: {
+    lightDirection?: number;
+    lightIntensity?: number;
+    ambientLight?: number;
+    shadowIntensity?: number;
+  };
+  
+  // Print technologies
+  printT?: Array<{
+    id: string;
+    technologyName: string;
+    mockupPhotos?: any[];
+    custAreas?: any[];
+    areaSynchRules?: any[];
+    printingConstraints?: {
+      dpiRequirements?: {
+        minimum?: number;
+        recommended?: number;
+        maximum?: number;
+      };
+      sizeLimits?: {
+        minWidthInch?: number;
+        minHeightInch?: number;
+        maxWidthInch?: number;
+        maxHeightInch?: number;
+      };
+      colorLimits?: {
+        maxColors?: number;
+        supportsFullColor?: boolean;
+      };
+      printBleeds?: {
+        bleedMargin?: number;
+        safetyMargin?: number;
+        trimTolerance?: number;
+      };
+    };
+  }>;
+  
+  // Custom areas
+  custAreas?: Array<{
+    id: string;
+    areaId: string;
+    areaName: string;
+    areaType: string;
+    designCanvasPhotos?: any[];
+    canvasDim?: {
+      widthInch: number;
+      heightInch: number;
+      canvasPixWid: number;
+      canvasPixHeight: number;
+      aspectRatioLocked: boolean;
+    };
+    restrictions?: {
+      minElementSize?: {
+        width?: number;
+        height?: number;
+      };
+      maxElements?: number;
+    };
+  }>;
+  
+  // Area sync rules
+  areaSynchRules?: any[];
+  
+  // Display images
+  displayImages?: Array<{
+    id: string;
+    image: any;
+    title?: string;
+    caption?: string;
+  }>;
+  
+  // SEO information
+  seo?: {
+    metaTitle?: string;
+    metaDescription?: string;
+  };
+  
+  // Product integration settings
+  prodInt?: {
+    prodTemp?: string;
+    autoDetSett?: {
+      enImgAnal?: boolean;
+      anAcc?: string;
+      detThres?: number;
+      manlReq?: boolean;
+    };
+    srtDef?: {
+      intfrmTlt?: boolean;
+      oMskRls?: {
+        enablesMask?: boolean;
+        edgeDetctMode?: string;
+        occlDetct?: {
+          detectCamHole?: boolean;
+          detectSeams?: boolean;
+          detectFolds?: boolean;
+          detectShadows?: boolean;
+        };
+      };
+    };
+  };
+  
+  // Print techniques
+  PrntTch?: any[];
+  
+  // Timestamps
+  updatedAt: string;
+  createdAt: string;
+}
+
+interface LexicalTextNode {
+  type: "text";
+  text: string;
+  format?: number; // Bit flags for formatting: 1=bold, 2=italic, 4=strikethrough, 8=underline
+  style?: string;
+  mode?: string;
+  detail?: number;
+  version?: number;
+}
+
+interface LexicalElementNode {
+  type: "paragraph" | "heading" | "list" | "listitem" | "linebreak" | "link";
+  children?: (LexicalTextNode | LexicalElementNode)[];
+  format?: string;
+  indent?: number;
+  version?: number;
+  direction?: string;
+  tag?: string; // for headings: h1, h2, h3, etc.
+  listType?: "bullet" | "number"; // for lists
+  start?: number; // for numbered lists
+  url?: string; // for links
+  target?: string; // for links
+  rel?: string; // for links
+}
+
+interface LexicalRootNode {
+  type: "root";
+  format: string;
+  indent: number;
+  version: number;
+  children: LexicalElementNode[];
+  direction: string;
+}
+
+interface RichTextContent {
+  root: LexicalRootNode;
 }
 
 // ===== ENHANCED TYPE DEFINITIONS =====
@@ -305,12 +597,263 @@ interface PreGeneratedImageData {
   sizeName?: string;
   key: string;
 }
+// Paste this AFTER the interfaces but BEFORE the ProductPage component (around line 300-400)
+const RichTextRenderer: React.FC<{ content: RichTextContent | string }> = ({ content }) => {
+  if (typeof content === 'string') {
+    if (content.includes('<') && content.includes('>')) {
+      return (
+        <div 
+          className="space-y-2 text-gray-700 rich-text-content"
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
+      );
+    } else {
+      return (
+        <div className="space-y-2 text-gray-700 rich-text-content">
+          {content.split('\n').map((line, index) => (
+            <p key={index} className="text-sm leading-relaxed">
+              {line || '\u00A0'}
+            </p>
+          ))}
+        </div>
+      );
+    }
+  }
+
+  if (!content?.root?.children) {
+    return <p className="text-sm text-gray-500">No description available.</p>;
+  }
+
+  const renderTextNode = (node: LexicalTextNode): JSX.Element => {
+    let text = node.text;
+    let className = "";
+    let style: React.CSSProperties = {};
+
+    if (node.format) {
+      const formatFlags = node.format;
+      if (formatFlags & 1) className += " font-bold";
+      if (formatFlags & 2) className += " italic";
+      if (formatFlags & 4) className += " line-through";
+      if (formatFlags & 8) className += " underline";
+    }
+
+    if (node.style) {
+      const styles = node.style.split(';').filter(s => s.trim());
+      styles.forEach(styleRule => {
+        const [property, value] = styleRule.split(':').map(s => s.trim());
+        if (property && value) {
+          const camelProperty = property.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+          style[camelProperty as any] = value;
+        }
+      });
+    }
+
+    return (
+      <span key={Math.random()} className={className} style={style}>
+        {text}
+      </span>
+    );
+  };
+
+  const renderElementNode = (node: LexicalElementNode, index: number): JSX.Element => {
+    const children = node.children?.map((child, childIndex) => 
+      child.type === "text" 
+        ? renderTextNode(child as LexicalTextNode)
+        : renderElementNode(child as LexicalElementNode, childIndex)
+    ) || [];
+
+    switch (node.type) {
+      case "paragraph":
+        return (
+          <p key={index} className="mb-2 text-sm leading-relaxed">
+            {children.length > 0 ? children : '\u00A0'}
+          </p>
+        );
+
+      case "heading":
+        const HeadingTag = (node.tag || 'h2') as keyof JSX.IntrinsicElements;
+        const headingClasses = {
+          h1: "text-2xl font-bold mb-3 text-gray-900",
+          h2: "text-xl font-bold mb-2 text-gray-900", 
+          h3: "text-lg font-semibold mb-2 text-gray-900",
+          h4: "text-base font-semibold mb-1 text-gray-900",
+          h5: "text-sm font-semibold mb-1 text-gray-900",
+          h6: "text-xs font-semibold mb-1 text-gray-900"
+        };
+        return (
+          <HeadingTag key={index} className={headingClasses[node.tag as keyof typeof headingClasses] || headingClasses.h2}>
+            {children}
+          </HeadingTag>
+        );
+
+      case "list":
+        const ListTag = node.listType === "number" ? "ol" : "ul";
+        const listClasses = node.listType === "number" 
+          ? "list-decimal list-inside space-y-1 mb-3 ml-4" 
+          : "list-disc list-inside space-y-1 mb-3 ml-4";
+        return (
+          <ListTag key={index} className={listClasses} start={node.start}>
+            {children}
+          </ListTag>
+        );
+
+      case "listitem":
+        return (
+          <li key={index} className="text-sm leading-relaxed">
+            {children}
+          </li>
+        );
+
+      case "linebreak":
+        return <br key={index} />;
+
+      case "link":
+        return (
+          <a 
+            key={index}
+            href={node.url}
+            target={node.target || "_blank"}
+            rel={node.rel || "noopener noreferrer"}
+            className="text-[#e65100] hover:text-[#d84315] underline transition-colors duration-200"
+          >
+            {children}
+          </a>
+        );
+
+      default:
+        return (
+          <span key={index}>
+            {children}
+          </span>
+        );
+    }
+  };
+
+  return (
+    <div className="space-y-1 rich-text-content">
+      {content.root.children.map((node, index) => renderElementNode(node, index))}
+    </div>
+  );
+};
+
+/**
+ * Convert PayloadCMS Lexical rich text to HTML string for TipTapEditor
+ */
+/**
+ * Enhanced conversion for mixed HTML and newline content
+ */
+const convertLexicalToHtml = (content: RichTextContent | string): string => {
+  if (typeof content === 'string') {
+    // Split by newlines first, then process each line
+    const lines = content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    
+    if (lines.length === 0) {
+      return '<p></p>';
+    }
+    
+    // Convert each line to a paragraph, preserving any HTML within the line
+    return lines.map(line => `<p>${line}</p>`).join('');
+  }
+
+  // Lexical JSON processing remains the same...
+  if (!content?.root?.children) {
+    return '<p></p>';
+  }
+
+  const convertTextNode = (node: LexicalTextNode): string => {
+    let text = node.text;
+    
+    if (node.format) {
+      const formatFlags = node.format;
+      if (formatFlags & 1) text = `<strong>${text}</strong>`;
+      if (formatFlags & 2) text = `<em>${text}</em>`;
+      if (formatFlags & 4) text = `<s>${text}</s>`;
+      if (formatFlags & 8) text = `<u>${text}</u>`;
+    }
+
+    if (node.style) {
+      text = `<span style="${node.style}">${text}</span>`;
+    }
+
+    return text;
+  };
+
+  const convertElementNode = (node: LexicalElementNode): string => {
+    const children = node.children?.map(child => 
+      child.type === "text" 
+        ? convertTextNode(child as LexicalTextNode)
+        : convertElementNode(child as LexicalElementNode)
+    ).join('') || '';
+
+    switch (node.type) {
+      case "paragraph":
+        return `<p>${children || '<br>'}</p>`;
+      case "heading":
+        const tag = node.tag || 'h2';
+        return `<${tag}>${children}</${tag}>`;
+      case "list":
+        const listTag = node.listType === "number" ? "ol" : "ul";
+        return `<${listTag}${node.start ? ` start="${node.start}"` : ''}>${children}</${listTag}>`;
+      case "listitem":
+        return `<li>${children}</li>`;
+      case "linebreak":
+        return '<br>';
+      case "link":
+        return `<a href="${node.url || '#'}"${node.target ? ` target="${node.target}"` : ''}${node.rel ? ` rel="${node.rel}"` : ''}>${children}</a>`;
+      default:
+        return children;
+    }
+  };
+
+  return content.root.children.map(node => convertElementNode(node)).join('');
+};
 
 // ===== UTILITY FUNCTIONS =====
 
 /**
  * Enhanced function to check if an option is a size option
  */
+
+
+// ===== ADD THIS NEW HELPER FUNCTION =====
+/**
+ * Parse PayloadCMS rich text content to extract plain text
+ */
+const parsePayloadRichText = (richTextObject: any): string[] => {
+  if (!richTextObject || typeof richTextObject !== 'object') {
+    return [];
+  }
+
+  const extractTextFromChildren = (children: any[]): string[] => {
+    const texts: string[] = [];
+    
+    if (!Array.isArray(children)) return texts;
+    
+    children.forEach(child => {
+      if (child.type === 'text' && child.text && child.text.trim()) {
+        texts.push(child.text.trim());
+      } else if (child.children && Array.isArray(child.children)) {
+        // Recursively extract from nested children
+        const nestedTexts = extractTextFromChildren(child.children);
+        texts.push(...nestedTexts);
+      }
+    });
+    
+    return texts;
+  };
+
+  // Handle PayloadCMS rich text structure
+  if (richTextObject.root && richTextObject.root.children) {
+    return extractTextFromChildren(richTextObject.root.children);
+  }
+  
+  // Handle direct children array
+  if (richTextObject.children && Array.isArray(richTextObject.children)) {
+    return extractTextFromChildren(richTextObject.children);
+  }
+  
+  return [];
+};
 
 const createColorMatcher = (designData: DesignData) => {
   // Extract all available colors from design data
@@ -415,6 +958,18 @@ const createColorMatcher = (designData: DesignData) => {
     }
   };
 };
+
+// Add this function INSIDE the ProductPage component with your other helper functions
+// const renderProductDescription = () => {
+//   if (!product?.description) return null;
+
+//   return (
+//     <div className="p-3 mb-4 rounded-lg bg-gray-50">
+//       <h4 className="mb-3 text-sm font-semibold text-gray-900">Product Description</h4>
+//       <RichTextRenderer content={product.description} />
+//     </div>
+//   );
+// };
 
 const createCommonColorPatterns = (availableColors: Map<string, { name: string; hex?: string }>): Map<string, string> => {
   const patterns = new Map<string, string>();
@@ -582,6 +1137,40 @@ const shouldOptionHaveImages = (
   imageAssociationSettings: PayloadImageSettings
 ): boolean => {
   return getImageAssociationForOption(optionTitle, imageAssociationSettings);
+};
+
+// ✅ ADD THIS NEW FUNCTION HERE:
+/**
+ * Extract actual shipping/handling times from PayloadCMS only
+ */
+const extractFulfillmentTimesFromPayload = (payloadProduct: PayloadCMSProduct): {
+  shippingTime: string | null;
+  handlingTime: string | null;
+  rushAvailable: boolean;
+  rushTime: string | null;
+} => {
+  let shippingTime: string | null = null;
+  let handlingTime: string | null = null;
+  let rushAvailable = false;
+  let rushTime: string | null = null;
+
+  // Extract from sourcing.leadTimeDays (this is shipping time)
+  if (payloadProduct.sourcing?.leadTimeDays) {
+    const leadDays = payloadProduct.sourcing.leadTimeDays;
+    shippingTime = `${leadDays} business days`;
+  }
+
+  // Extract rush shipping if available
+  if (payloadProduct.sourcing?.rushAvailable && payloadProduct.sourcing?.rushLeadTimeDays) {
+    rushAvailable = true;
+    rushTime = `${payloadProduct.sourcing.rushLeadTimeDays} business days`;
+  }
+
+  // For handling time, we might need to look at other fields or set based on product type
+  // Since it's not explicitly in the PayloadCMS data, we'll leave it null for now
+  // You can add specific logic here if you have handling time data elsewhere
+
+  return { shippingTime, handlingTime, rushAvailable, rushTime };
 };
 
 
@@ -882,10 +1471,27 @@ const Create: React.FC = () => {
   const [enhancedProductData, setEnhancedProductData] = useState<PayloadProductData | null>(null);
   // Add this state variable with your other state declarations
   const [dynamicLocationId, setDynamicLocationId] = useState<string>('');
+  // near other hooks at component top
+const didPopulateRef = useRef(false);
+
   // Add these with your other state declarations
 const [isProcessingDesignImages, setIsProcessingDesignImages] = useState<boolean>(false);
 const [hasProcessedInitialData, setHasProcessedInitialData] = useState<boolean>(false);
 const [isSubmittingForm, setIsSubmittingForm] = useState<boolean>(false);
+// ✅ ADD: New state for PayloadCMS fulfillment data
+const [payloadFulfillmentData, setPayloadFulfillmentData] = useState<{
+  shippingTime: string | null;
+  handlingTime: string | null;
+  rushAvailable: boolean;
+  rushTime: string | null;
+  hasData: boolean;
+}>({
+  shippingTime: null,
+  handlingTime: null,
+  rushAvailable: false,
+  rushTime: null,
+  hasData: false
+});
 // Add with your other state declarations
 const [importedCanvasImages, setImportedCanvasImages] = useState<Array<{
   area_id: string;
@@ -954,7 +1560,7 @@ const [importedCanvasImages, setImportedCanvasImages] = useState<Array<{
       subtitle: '',
       handle: '',
       description: '',
-      status: 'draft',
+      status: 'proposed',
       thumbnail: '',
       discountable: true,
       category_id: '',
@@ -983,8 +1589,8 @@ const [importedCanvasImages, setImportedCanvasImages] = useState<Array<{
       locationId: '',
     
       // Default shipping fields
-      shippingDays: '7-10',
-      handlingTime: '2-3',
+      // shippingDays: '7-10',
+      // handlingTime: '2-3',
     },
   });
 
@@ -1190,20 +1796,24 @@ useEffect(() => {
         setPayloadImageSettings(imageSettings);
         
         // Populate form - add delay to ensure processing completes
-       setTimeout(() => {
+       // Populate form - add delay to ensure processing completes
+      setTimeout(() => {
         // ALWAYS prioritize selected colors from canvas over PayloadCMS data
         if (locationState.designData?.colorDetails && 
             Array.isArray(locationState.designData.colorDetails) && 
             locationState.designData.colorDetails.length > 0) {
           
-          // Use SELECTED colors from canvas
+          // Use SELECTED colors from canvas - this handles both colors and sizes
           populateFormWithDesignData(locationState.designData, locationState.enhancedProductData, imageSettings);
           
         } else if (locationState.enhancedProductData && Object.keys(locationState.enhancedProductData).length > 10) {
           
-          // Only fall back to PayloadCMS if no selected colors from canvas
+          // Convert PayloadCMS to designData format and use populateFormWithDesignData
           const payloadProduct = locationState.enhancedProductData as PayloadCMSProduct;
-          populateFormWithPayloadCMSData(payloadProduct);
+          const { designData: convertedDesignData, enhancedProductData: convertedEnhanced } = convertPayloadCMSToFormData(payloadProduct);
+          
+          // Use the same function for consistency - no dual population
+          populateFormWithDesignData(convertedDesignData, convertedEnhanced, imageSettings);
           
         } else {
           populateFormWithDesignData(locationState.designData, locationState.enhancedProductData, imageSettings);
@@ -1918,35 +2528,36 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
 
   // ===== PAYLOADCMS DATA CONVERTER =====
   const convertPayloadCMSToFormData = (payloadProduct: PayloadCMSProduct): {
-    designData: DesignData;
-    enhancedProductData: PayloadProductData;
-  } => {
-    
-    const designData: DesignData = {
-      productInfo: {
-        title: payloadProduct.name,
-        description: payloadProduct.description,
-        sku: payloadProduct.sku,
-        brand: payloadProduct.brand
-      },
-      options: [
-        {
-          title: 'Color',
-          optionValues: payloadProduct.colorOptions.map(color => color.colorName)
-        },
-        {
-          title: 'Size', 
-          optionValues: payloadProduct.sizeOptions.map(size => size.sizeName)
-        }
-      ].filter(option => option.optionValues.length > 0),
-      designElements: {},
-      colorDetails: payloadProduct.colorOptions.map(color => ({
-        name: color.colorName,
-        value: color.colorHex
-      })),
-      printingTechnology: 'dtg',
-      price: payloadProduct.pricing.suggestedRetail
-    };
+  designData: DesignData;
+  enhancedProductData: PayloadProductData;
+} => {
+  
+  const designData: DesignData = {
+    productInfo: {
+      title: payloadProduct.name,
+      description: convertLexicalToHtml(payloadProduct.description),
+      sku: payloadProduct.sku,
+      brand: payloadProduct.brand
+    },
+    // ✅ ENHANCED: Include both color and size options properly
+    options: [
+      ...(payloadProduct.colorOptions.length > 0 ? [{
+        title: 'Color',
+        optionValues: payloadProduct.colorOptions.map(color => color.colorName)
+      }] : []),
+      ...(payloadProduct.sizeOptions.length > 0 ? [{
+        title: 'Size', 
+        optionValues: payloadProduct.sizeOptions.map(size => size.sizeName)
+      }] : [])
+    ],
+    designElements: {},
+    colorDetails: payloadProduct.colorOptions.map(color => ({
+      name: color.colorName,
+      value: color.colorHex
+    })),
+    printingTechnology: payloadProduct.printT?.[0]?.technologyName || '',
+    price: payloadProduct.pricing.suggestedRetail
+  };
     
     const enhancedProductData: PayloadProductData = {
       id: payloadProduct.id.toString(),
@@ -2001,7 +2612,9 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
       // ===== 1. BASIC PRODUCT INFORMATION =====
       
       form.setValue('title', payloadProduct.name);
-      form.setValue('description', payloadProduct.description);
+     // Convert PayloadCMS description to HTML format for TipTapEditor
+      const convertedDescription = convertLexicalToHtml(payloadProduct.description);
+      form.setValue('description', convertedDescription);
       form.setValue('subtitle', `${payloadProduct.brand} - ${payloadProduct.productType.replace('_', ' ')}`);
       
       const widthInCm = Math.round(payloadProduct.physicalDimensions.widthInches);
@@ -2023,7 +2636,7 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
       console.log("Mug/shirt Price", suggestedPrice);
       
       // ===== 5. STATUS AND SETTINGS =====
-      form.setValue('status', payloadProduct.status === 'active' ? 'published' : 'draft');
+      form.setValue('status', payloadProduct.status === 'active' ? 'published' : 'proposed');
       form.setValue('discountable', true);
       
       // ===== 6. IMAGE SETTINGS =====
@@ -2036,35 +2649,45 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
       
       setPayloadImageSettings(imageSettings);
       
-      const currentOptions = form.getValues('options');
-      for (let i = currentOptions.length - 1; i > 0; i--) {
-        removeOption(i);
-      }
+      // const currentOptions = form.getValues('options');
+      // for (let i = currentOptions.length - 1; i > 0; i--) {
+      //   removeOption(i);
+      // }
       
+      const { shippingTime, handlingTime, rushAvailable, rushTime } = extractFulfillmentTimesFromPayload(payloadProduct);
+    
+    // Store the extracted data in state instead of form fields
+      setPayloadFulfillmentData({
+        shippingTime,
+        handlingTime,
+        rushAvailable,
+        rushTime,
+        hasData: !!(shippingTime || handlingTime)
+      });
       // ===== COLOR OPTIONS REMOVED - NOW HANDLED BY populateFormWithDesignData =====
       
       // ===== SIZE OPTIONS ONLY =====
-      if (payloadProduct.sizeOptions && payloadProduct.sizeOptions.length > 0) {
-        // ✅ CHECK if Size option already exists
-        const currentOptions = form.getValues('options');
-        const existingSizeOption = currentOptions.find(opt => 
-          opt.title && opt.title.toLowerCase().includes('size')
-        );
+      // if (payloadProduct.sizeOptions && payloadProduct.sizeOptions.length > 0) {
+      //   // ✅ CHECK if Size option already exists
+      //   const currentOptions = form.getValues('options');
+      //   const existingSizeOption = currentOptions.find(opt => 
+      //     opt.title && opt.title.toLowerCase().includes('size')
+      //   );
         
-        if (!existingSizeOption) {
-          const sizeOption = {
-            id: generateUUID(),
-            title: 'Size',
-            optionValues: payloadProduct.sizeOptions.map(size => size.sizeName),
-            imageAssociation: payloadProduct.size_Images,
-            colorHexValues: {}
-          };
+      //   if (!existingSizeOption) {
+      //     const sizeOption = {
+      //       id: generateUUID(),
+      //       title: 'Size',
+      //       optionValues: payloadProduct.sizeOptions.map(size => size.sizeName),
+      //       imageAssociation: payloadProduct.size_Images,
+      //       colorHexValues: {}
+      //     };
           
-          appendOption(sizeOption);
-        } else {
-          //console.log('Size option already exists, skipping duplicate');
-        }
-      }
+      //     appendOption(sizeOption);
+      //   } else {
+      //     //console.log('Size option already exists, skipping duplicate');
+      //   }
+      // }
       
       setHasVariants(true);
 
@@ -2073,8 +2696,81 @@ for (let i = currentDetails.length - 1; i >= 0; i--) {
   removeProductDetail(i);
 }
 
-// Check for existing product details in PayloadCMS data
-let existingProductDetails = null;
+// Enhanced product details extraction
+let existingProductDetails: string[] = [];
+
+// STEP 1: Try to extract from features field (rich text)
+if (payloadProduct.features) {
+  console.log('📝 Found features field, parsing rich text...');
+  const featuresText = parsePayloadRichText(payloadProduct.features);
+  if (featuresText.length > 0) {
+    existingProductDetails.push(...featuresText);
+    console.log('✅ Extracted from features:', featuresText);
+  }
+}
+
+// STEP 2: Extract from materials.primary 
+if (payloadProduct.materials?.primary && 
+    !existingProductDetails.some(detail => 
+      detail.toLowerCase().includes(payloadProduct.materials.primary.toLowerCase())
+    )) {
+  existingProductDetails.push(payloadProduct.materials.primary);
+  console.log('✅ Added material as product detail:', payloadProduct.materials.primary);
+}
+
+// STEP 3: Add construction details if available
+if (payloadProduct.materials?.construction && 
+    !existingProductDetails.some(detail => 
+      detail.toLowerCase().includes(payloadProduct.materials.construction.toLowerCase())
+    )) {
+  existingProductDetails.push(payloadProduct.materials.construction);
+  console.log('✅ Added construction detail:', payloadProduct.materials.construction);
+}
+
+// STEP 4: Try other field names as fallback
+if (existingProductDetails.length === 0) {
+  const detailsFields = [
+    'productDetails', 'product_details', 'details', 'highlights',
+    'bullet_points', 'key_features', 'specifications'
+  ];
+
+  for (const field of detailsFields) {
+    if (payloadProduct[field] && Array.isArray(payloadProduct[field]) && payloadProduct[field].length > 0) {
+      const fieldDetails = payloadProduct[field].map(item => {
+        const detailText = typeof item === 'string' ? item : item.text || item.content || String(item);
+        return detailText.trim();
+      }).filter(item => item.length > 0);
+      
+      if (fieldDetails.length > 0) {
+        existingProductDetails.push(...fieldDetails);
+        break;
+      }
+    }
+  }
+}
+
+// STEP 5: Populate form with extracted details
+if (existingProductDetails.length > 0) {
+  console.log(`📝 Populating ${existingProductDetails.length} product details`);
+
+  const uniqueDetails = [...new Set(existingProductDetails)]
+    .map(detail => detail.trim())
+    .filter(detail => detail.length > 0)
+    .slice(0, 10);
+
+  const replaced = uniqueDetails.map(detail => ({
+    id: generateUUID(),
+    text: detail,
+  }));
+
+  // ✅ Replace the entire field at once (no duplicates possible)
+  form.setValue("productDetails", replaced, { shouldDirty: true, shouldTouch: true });
+
+  console.log("✅ Product details populated successfully", replaced);
+} else {
+  console.log("⚠️ No product details found in PayloadCMS data");
+}
+
 
 // Try different possible field names for product details
 const detailsFields = [
@@ -2111,23 +2807,23 @@ const ensureValidStatus = (status: any): string => {
   if (validStatuses.includes(status)) {
     return status;
   }
-  return 'draft'; // Always fallback to draft
+  return 'proposed'; // Always fallback to draft
 };
 
 // Then use it:
-form.setValue('status', ensureValidStatus('draft'));
+form.setValue('status', ensureValidStatus('proposed'));
 
-if (existingProductDetails && existingProductDetails.length > 0) {
+// if (existingProductDetails && existingProductDetails.length > 0) {
   
-  existingProductDetails.forEach(detail => {
-    const detailText = typeof detail === 'string' ? detail : detail.text || detail.content || String(detail);
-    if (detailText.trim()) {
-      appendProductDetail({ id: generateUUID(), text: detailText.trim() });
-    }
-  });
+//   existingProductDetails.forEach(detail => {
+//     const detailText = typeof detail === 'string' ? detail : detail.text || detail.content || String(detail);
+//     if (detailText.trim()) {
+//       appendProductDetail({ id: generateUUID(), text: detailText.trim() });
+//     }
+//   });
   
-} else {
-}
+// } else {
+// }
 
         let existingStory = null;
 
@@ -2192,6 +2888,12 @@ const populateFormWithDesignData = (
 ) => {
   try {
     console.log('🎯 POPULATE DEBUG: Starting form population with design data');
+    // Clear existing product details first to avoid duplicates when this fn is called multiple times
+    const currentDetails = form.getValues('productDetails') || [];
+    for (let i = currentDetails.length - 1; i >= 0; i--) {
+      removeProductDetail(i);
+    }
+
     
     const settingsToUse = directImageSettings || payloadImageSettings;
     const locationId = getLocationId(productData);
@@ -2205,8 +2907,9 @@ const populateFormWithDesignData = (
         console.log('🎯 POPULATE DEBUG: Set title:', data.productInfo.title);
       }
       
-      if (data.productInfo.description) {
-        form.setValue('description', data.productInfo.description);
+     if (data.productInfo.description) {
+        const convertedDescription = convertLexicalToHtml(data.productInfo.description);
+        form.setValue('description', convertedDescription);
       }
       
       if (data.productInfo.brand) {
@@ -2241,11 +2944,14 @@ const populateFormWithDesignData = (
     }
     
     // STEP 3: Basic settings
-    form.setValue('status', 'draft');
+    form.setValue('status', 'proposed');
     form.setValue('discountable', true);
     
     // STEP 4: Process colors ONLY from colorDetails (selected colors)
-    // NO cleanup loops, NO appendOption calls - just update existing option
+    // STEP 4: Process ALL options from designData (colors AND sizes)
+    let optionIndex = 0;
+
+    // Handle Color Options
     if (data.colorDetails && Array.isArray(data.colorDetails) && data.colorDetails.length > 0) {
       console.log('🎯 POPULATE DEBUG: Processing selected colors:', data.colorDetails.length);
       
@@ -2258,16 +2964,52 @@ const populateFormWithDesignData = (
       
       const selectedColorNames = data.colorDetails.map(color => color.name);
       
-      // Update existing first option with color data (no cleanup needed)
-      form.setValue('options.0.id', generateUUID());
-      form.setValue('options.0.title', 'Color');
-      form.setValue('options.0.optionValues', selectedColorNames);
-      form.setValue('options.0.imageAssociation', settingsToUse.color_Images);
-      form.setValue('options.0.colorHexValues', colorHexValues);
+      // Update first option with color data
+      form.setValue(`options.${optionIndex}.id`, generateUUID());
+      form.setValue(`options.${optionIndex}.title`, 'Color');
+      form.setValue(`options.${optionIndex}.optionValues`, selectedColorNames);
+      form.setValue(`options.${optionIndex}.imageAssociation`, settingsToUse.color_Images);
+      form.setValue(`options.${optionIndex}.colorHexValues`, colorHexValues);
       
       console.log('🎯 POPULATE DEBUG: Set color option with values:', selectedColorNames);
+      optionIndex++;
     }
-    
+
+    // ✅ FIXED: Handle Size Options from designData.options
+    // Handle Size Options from designData.option
+    // Handle Size Options - Clear and rebuild approach
+    if (data.options && Array.isArray(data.options)) {
+      const sizeOption = data.options.find(opt => 
+        opt.title && opt.title.toLowerCase().includes('size')
+      );
+      
+      if (sizeOption && sizeOption.optionValues && sizeOption.optionValues.length > 0) {
+        console.log('🎯 POPULATE DEBUG: Processing size option:', sizeOption.optionValues.length, 'sizes');
+        
+        const currentOptions = form.getValues('options');
+        
+        // ✅ SIMPLE FIX: Filter out any existing size options first
+        const nonSizeOptions = currentOptions.filter(opt => 
+          !opt.title || !opt.title.toLowerCase().includes('size')
+        );
+        
+        const newSizeOption = {
+          id: generateUUID(),
+          title: 'Size',
+          optionValues: [...sizeOption.optionValues],
+          imageAssociation: settingsToUse.size_Images,
+          colorHexValues: {}
+        };
+        
+        // Add the single size option
+        const updatedOptions = [...nonSizeOptions, newSizeOption];
+        
+        form.setValue('options', updatedOptions, { shouldValidate: false, shouldTouch: false });
+        
+        console.log('🎯 POPULATE DEBUG: Rebuilt options with single size option');
+        console.log('🎯 POPULATE DEBUG: Total options:', updatedOptions.length);
+      }
+    }
     setHasVariants(true);
     
     // STEP 5: Generate variants with delay to ensure options are set
@@ -2749,29 +3491,42 @@ const processSharedImagesByColor = async (
     return () => subscription.unsubscribe();
   }, [form, payloadImageSettings]);
 
-  useEffect(() => {
-    const currentOptions = form.getValues('options');
+  // ✅ ADD: Temporary debug effect to track option changes
+useEffect(() => {
+  const currentOptions = form.getValues('options');
+  console.log('👀 WATCH: Options changed, current count:', currentOptions.length);
+  currentOptions.forEach((opt, index) => {
+    console.log(`👀 WATCH: Option ${index}:`, {
+      title: opt.title,
+      valueCount: opt.optionValues?.length || 0,
+      values: opt.optionValues
+    });
+  });
+}, [form.watch('options')]);
+
+  // useEffect(() => {
+  //   const currentOptions = form.getValues('options');
     
-    const validOptions = currentOptions.filter(opt => 
-      opt.title && opt.title.trim() !== '' && 
-      opt.optionValues && 
-      Array.isArray(opt.optionValues) && 
-      opt.optionValues.length > 0
-    );
+  //   const validOptions = currentOptions.filter(opt => 
+  //     opt.title && opt.title.trim() !== '' && 
+  //     opt.optionValues && 
+  //     Array.isArray(opt.optionValues) && 
+  //     opt.optionValues.length > 0
+  //   );
     
-    if (currentOptions.length > validOptions.length + 1) {
+  //   if (currentOptions.length > validOptions.length + 1) {
       
-      for (let i = currentOptions.length - 1; i > validOptions.length; i--) {
-        removeOption(i);
-      }
-    }
+  //     for (let i = currentOptions.length - 1; i > validOptions.length; i--) {
+  //       removeOption(i);
+  //     }
+  //   }
     
-    if (currentOptions.length > 3) {
-      for (let i = currentOptions.length - 1; i >= 3; i--) {
-        removeOption(i);
-      }
-    }
-  }, [form.watch('options')]);
+  //   if (currentOptions.length > 3) {
+  //     for (let i = currentOptions.length - 1; i >= 3; i--) {
+  //       removeOption(i);
+  //     }
+  //   }
+  // }, [form.watch('options')]);
 
   // ===== ADDITIONAL HELPER FUNCTIONS =====
   const handleAddOptionValue = (optionIndex: number) => {
@@ -3076,91 +3831,206 @@ useEffect(() => {
 
 // Update your useEffect to process both formats
 // Replace your existing useEffect with this corrected version
+// useEffect(() => {
+//   // GUARD: Prevent multiple processing
+//   if (hasProcessedInitialData) {
+//     console.log('🚫 Initial data already processed, skipping...');
+//     return;
+//   }
+  
+//   const processLocationState = async () => {
+//     if (location.state) {
+//       console.log('🎯 CREATE DEBUG: Starting location state processing');
+//       setHasProcessedInitialData(true); // Set flag immediately to prevent re-processing
+      
+//       const locationState = location.state as LocationState;
+      
+//       try {
+//         // STEP 1: Extract pre-generated images first
+//         const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
+        
+//         // STEP 2: Process canvas images
+//         if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
+//           console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
+//           setImportedCanvasImages(locationState.canvasImages);
+//         }
+        
+//         // STEP 3: Process design images ONLY if they exist
+//         if (locationState.designImages && Array.isArray(locationState.designImages) && locationState.designImages.length > 0) {
+//           console.log('🎯 CREATE DEBUG: Processing', locationState.designImages.length, 'design images');
+//           await processDesignImagesArray(locationState.designImages);
+//         }
+        
+//         // STEP 4: Set design data without triggering form population yet
+//         if (locationState.designData) {
+//           console.log('🎯 CREATE DEBUG: Setting design data');
+//           setDesignData(locationState.designData);
+//           setEnhancedProductData(locationState.enhancedProductData);
+          
+//           const imageSettings = {
+//             color_Images: locationState.enhancedProductData?.color_Images || false,
+//             size_Images: locationState.enhancedProductData?.size_Images || false,
+//             material_Images: locationState.enhancedProductData?.material_Images || false,
+//             style_Images: locationState.enhancedProductData?.style_Images || false
+//           };
+          
+//           setPayloadImageSettings(imageSettings);
+          
+//           // STEP 5: Populate form with a longer delay to ensure all processing is complete
+//           setTimeout(() => {
+//             console.log('🎯 CREATE DEBUG: Starting form population');
+//             try {
+//               if (locationState.enhancedProductData && Object.keys(locationState.enhancedProductData).length > 10) {
+//                 console.log('🎯 CREATE DEBUG: Using PayloadCMS data');
+//                 const payloadProduct = locationState.enhancedProductData as PayloadCMSProduct;
+//                 populateFormWithPayloadCMSData(payloadProduct);
+//               } else {
+//                 console.log('🎯 CREATE DEBUG: Using design data');
+//                 populateFormWithDesignData(locationState.designData, locationState.enhancedProductData, imageSettings);
+//               }
+              
+//               // Process mockup images AFTER form is populated
+//               if (hasPreGeneratedImages || Object.keys(locationState.mockupImages || {}).length > 0) {
+//                 console.log('🎯 CREATE DEBUG: Processing mockup images');
+//                 handleMockupImagesEnhanced(locationState, imageSettings);
+//               }
+              
+//               setShowImportNotification(true);
+//               console.log('🎯 CREATE DEBUG: Form population completed');
+              
+//             } catch (populationError) {
+//               console.error('🎯 CREATE ERROR: Form population failed:', populationError);
+//               setError('Failed to populate form with imported data');
+//             }
+//           }, 2000); // Increased delay to prevent race conditions
+//         }
+        
+//       } catch (error) {
+//         console.error('🎯 CREATE ERROR: Location state processing failed:', error);
+//         setError('Failed to process imported design data');
+//         setHasProcessedInitialData(false); // Reset flag on error
+//       }
+//     }
+//   };
+  
+//   // Execute processing
+//   processLocationState();
+// }, [location.state]);
+
+
 useEffect(() => {
-  // GUARD: Prevent multiple processing
-  if (hasProcessedInitialData) {
-    console.log('🚫 Initial data already processed, skipping...');
+  // Early return if there's no location state to process
+  if (!location.state) return;
+
+  // If we've already populated once this mount, skip (extra safety in addition to hasProcessedInitialData)
+  if (didPopulateRef.current) {
+    console.log('🚫 Skipping population — already processed for this mount');
     return;
   }
-  
+
+  // Timer handle so we can clear it if component unmounts or deps change
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
   const processLocationState = async () => {
-    if (location.state) {
-      console.log('🎯 CREATE DEBUG: Starting location state processing');
-      setHasProcessedInitialData(true); // Set flag immediately to prevent re-processing
-      
+    console.log('🎯 CREATE DEBUG: Starting location state processing (effect)');
+
+    // We'll only mark hasProcessedInitialData = true after successful full processing
+    try {
       const locationState = location.state as LocationState;
-      
-      try {
-        // STEP 1: Extract pre-generated images first
-        const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
-        
-        // STEP 2: Process canvas images
-        if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
-          console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
-          setImportedCanvasImages(locationState.canvasImages);
-        }
-        
-        // STEP 3: Process design images ONLY if they exist
-        if (locationState.designImages && Array.isArray(locationState.designImages) && locationState.designImages.length > 0) {
-          console.log('🎯 CREATE DEBUG: Processing', locationState.designImages.length, 'design images');
-          await processDesignImagesArray(locationState.designImages);
-        }
-        
-        // STEP 4: Set design data without triggering form population yet
-        if (locationState.designData) {
-          console.log('🎯 CREATE DEBUG: Setting design data');
-          setDesignData(locationState.designData);
-          setEnhancedProductData(locationState.enhancedProductData);
-          
-          const imageSettings = {
-            color_Images: locationState.enhancedProductData?.color_Images || false,
-            size_Images: locationState.enhancedProductData?.size_Images || false,
-            material_Images: locationState.enhancedProductData?.material_Images || false,
-            style_Images: locationState.enhancedProductData?.style_Images || false
-          };
-          
-          setPayloadImageSettings(imageSettings);
-          
-          // STEP 5: Populate form with a longer delay to ensure all processing is complete
-          setTimeout(() => {
-            console.log('🎯 CREATE DEBUG: Starting form population');
-            try {
-              if (locationState.enhancedProductData && Object.keys(locationState.enhancedProductData).length > 10) {
-                console.log('🎯 CREATE DEBUG: Using PayloadCMS data');
-                const payloadProduct = locationState.enhancedProductData as PayloadCMSProduct;
-                populateFormWithPayloadCMSData(payloadProduct);
-              } else {
-                console.log('🎯 CREATE DEBUG: Using design data');
-                populateFormWithDesignData(locationState.designData, locationState.enhancedProductData, imageSettings);
-              }
-              
-              // Process mockup images AFTER form is populated
-              if (hasPreGeneratedImages || Object.keys(locationState.mockupImages || {}).length > 0) {
-                console.log('🎯 CREATE DEBUG: Processing mockup images');
-                handleMockupImagesEnhanced(locationState, imageSettings);
-              }
-              
-              setShowImportNotification(true);
-              console.log('🎯 CREATE DEBUG: Form population completed');
-              
-            } catch (populationError) {
-              console.error('🎯 CREATE ERROR: Form population failed:', populationError);
-              setError('Failed to populate form with imported data');
-            }
-          }, 2000); // Increased delay to prevent race conditions
-        }
-        
-      } catch (error) {
-        console.error('🎯 CREATE ERROR: Location state processing failed:', error);
-        setError('Failed to process imported design data');
-        setHasProcessedInitialData(false); // Reset flag on error
+
+      // STEP 1: Extract pre-generated images first
+      const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
+
+      // STEP 2: Process canvas images
+      if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
+        console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
+        setImportedCanvasImages(locationState.canvasImages);
       }
+
+      // STEP 3: Process design images ONLY if they exist
+      if (locationState.designImages && Array.isArray(locationState.designImages) && locationState.designImages.length > 0) {
+        console.log('🎯 CREATE DEBUG: Processing', locationState.designImages.length, 'design images');
+        await processDesignImagesArray(locationState.designImages);
+      }
+
+      // STEP 4: Set design data and enhanced product data (do not populate form yet)
+      if (locationState.designData) {
+        console.log('🎯 CREATE DEBUG: Setting design data');
+        setDesignData(locationState.designData);
+        setEnhancedProductData(locationState.enhancedProductData);
+
+        const imageSettings = {
+          color_Images: locationState.enhancedProductData?.color_Images || false,
+          size_Images: locationState.enhancedProductData?.size_Images || false,
+          material_Images: locationState.enhancedProductData?.material_Images || false,
+          style_Images: locationState.enhancedProductData?.style_Images || false
+        };
+
+        setPayloadImageSettings(imageSettings);
+
+        // STEP 5: Delay population slightly so prior async processing can complete
+        timer = setTimeout(() => {
+          // Prevent duplicate population if something else raced in
+          if (didPopulateRef.current) {
+            console.log('🎯 CREATE DEBUG: Skipping duplicate form population (timer)');
+            return;
+          }
+
+          console.log('🎯 CREATE DEBUG: Starting form population (timer)');
+          try {
+            if (locationState.enhancedProductData && Object.keys(locationState.enhancedProductData).length > 10) {
+              console.log('🎯 CREATE DEBUG: Using PayloadCMS data');
+              const payloadProduct = locationState.enhancedProductData as unknown as PayloadCMSProduct;
+              populateFormWithPayloadCMSData(payloadProduct);
+            } else {
+              console.log('🎯 CREATE DEBUG: Using design data');
+              populateFormWithDesignData(locationState.designData, locationState.enhancedProductData, imageSettings);
+            }
+
+            // Process mockup images AFTER form is populated
+            if (hasPreGeneratedImages || Object.keys(locationState.mockupImages || {}).length > 0) {
+              console.log('🎯 CREATE DEBUG: Processing mockup images');
+              handleMockupImagesEnhanced(locationState, imageSettings);
+            }
+
+            setShowImportNotification(true);
+            console.log('🎯 CREATE DEBUG: Form population completed');
+
+            // Mark success: prevents further runs for this mount
+            didPopulateRef.current = true;
+            setHasProcessedInitialData(true);
+          } catch (populationError) {
+            console.error('🎯 CREATE ERROR: Form population failed:', populationError);
+            setError('Failed to populate form with imported data');
+            // leave hasProcessedInitialData as false so it can retry if appropriate
+          }
+        }, 2000); // keep your existing delay
+      } else {
+        // if no designData present, still mark processed so we don't re-run endlessly
+        console.log('🎯 CREATE DEBUG: No designData present — marking processed');
+        didPopulateRef.current = true;
+        setHasProcessedInitialData(true);
+      }
+    } catch (error) {
+      console.error('🎯 CREATE ERROR: Location state processing failed:', error);
+      setError('Failed to process imported design data');
+      // don't set hasProcessedInitialData here so user can retry / effect can re-run
     }
   };
-  
-  // Execute processing
+
+  // Run the processor
   processLocationState();
+
+  // cleanup: clear timer when unmounting or deps change
+  return () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
+  // note: we depend on location.state here
 }, [location.state]);
+
 
 // Add this debug function before your onSubmit function
 const debugMediaItems = () => {
@@ -3865,11 +4735,19 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
        }
     
     // Add fulfillment information
-    if (formValues.handlingTime?.trim()) {
+    if (payloadFulfillmentData.hasData) {
       const fulfillmentData = {
         type: "Junooni-fulfilment",
-        handling_time: formValues.handlingTime.trim(),
-        shipping_time: formValues.shippingDays?.trim() || '7-10'
+        ...(payloadFulfillmentData.shippingTime && { 
+          shipping_time: payloadFulfillmentData.shippingTime 
+        }),
+        ...(payloadFulfillmentData.handlingTime && { 
+          handling_time: payloadFulfillmentData.handlingTime 
+        }),
+        ...(payloadFulfillmentData.rushAvailable && {
+          rush_available: true,
+          rush_time: payloadFulfillmentData.rushTime
+        })
       };
       productMetadata.fulfillment_type = JSON.stringify(fulfillmentData);
     }
@@ -3960,12 +4838,112 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
     
     // Log the final additional_data
 
+
+// --- ensure selected print technology name is included in metadata ---
+// === resolve print technology (id + name) from router state or enhancedProductData ===
+// === CORRECTED: Resolve print technology (id + name) from router state ===
+// === CORRECTED: Resolve print technology (id + name) from router state ===
+const state = (location?.state ?? {}) as any;
+
+let printTechId: string | null = null;
+let printTechName: string | null = null;
+
+console.log('🔍 TECH DEBUG: Starting print technology resolution');
+
+// 1) PRIORITY: Use filteredProductData (selected technology from Canvas) - EXIT EARLY IF FOUND
+if (state.filteredProductData && Array.isArray(state.filteredProductData.printT) && state.filteredProductData.printT.length > 0) {
+  const tech = state.filteredProductData.printT[0];
+  printTechId = tech?.id ? String(tech.id) : null;
+  printTechName = tech?.technologyName || tech?.technology || null;
+  
+  console.log('✅ TECH DEBUG: Found in filteredProductData:', { printTechId, printTechName });
+  
+  // ✅ CRITICAL: If we have both ID and name, use this and STOP checking other sources
+  if (printTechId && printTechName) {
+    console.log('🎯 TECH DEBUG: Using filteredProductData - STOPPING fallback checks');
+    
+    // Normalize values and set in metadata immediately
+    printTechName = String(printTechName).trim();
+    printTechId = String(printTechId).trim();
+    
+    productMetadata.print_technology_name = printTechName;
+    productMetadata.print_technology_id = printTechId;
+    
+    console.log('✅ TECH DEBUG: Final result from filteredProductData:', {
+      print_technology_name: productMetadata.print_technology_name,
+      print_technology_id: productMetadata.print_technology_id
+    });
+    
+    // Don't check any other sources - we have the definitive answer
+  } else {
+    console.log('⚠️ TECH DEBUG: filteredProductData incomplete, checking fallbacks');
+  }
+} else {
+  console.log('⚠️ TECH DEBUG: No filteredProductData found, checking fallbacks');
+}
+
+// 2) ONLY check fallbacks if we don't have complete data from filteredProductData
+if (!printTechId || !printTechName) {
+  console.log('🔄 TECH DEBUG: Checking fallback sources...');
+  
+  // Check designData.printingTechnology (but this might be hardcoded 'dtg')
+  if (!printTechName && state.designData?.printingTechnology) {
+    printTechName = state.designData.printingTechnology;
+    console.log('🔄 TECH DEBUG: Using designData.printingTechnology:', printTechName);
+  }
+
+  // Check enhancedProductData
+  if ((!printTechId || !printTechName) && enhancedProductData && Array.isArray(enhancedProductData.printT) && enhancedProductData.printT.length > 0) {
+    const tech = enhancedProductData.printT[0];
+    if (!printTechId) printTechId = tech?.id ? String(tech.id) : null;
+    if (!printTechName) printTechName = tech?.technologyName || tech?.technology || null;
+    console.log('🔄 TECH DEBUG: Using enhancedProductData tech:', { printTechId, printTechName });
+  }
+
+  // Check state.enhancedProductData
+  if ((!printTechId || !printTechName) && state.enhancedProductData && Array.isArray(state.enhancedProductData.printT) && state.enhancedProductData.printT.length > 0) {
+    const tech = state.enhancedProductData.printT[0];
+    if (!printTechId) printTechId = tech?.id ? String(tech.id) : null;
+    if (!printTechName) printTechName = tech?.technologyName || tech?.technology || null;
+    console.log('🔄 TECH DEBUG: Using state.enhancedProductData tech:', { printTechId, printTechName });
+  }
+
+  // Final fallback
+  if (!printTechName) {
+    printTechName = 'dtg';
+    console.log('🔄 TECH DEBUG: Using final fallback: dtg');
+  }
+
+  // Normalize and set metadata (only if not already set above)
+  if (printTechName) printTechName = String(printTechName).trim();
+  if (printTechId) printTechId = String(printTechId).trim();
+
+  if (!productMetadata.print_technology_name) {
+    productMetadata.print_technology_name = printTechName;
+  }
+  if (printTechId && !productMetadata.print_technology_id) {
+    productMetadata.print_technology_id = printTechId;
+  }
+
+  console.log('🔄 TECH DEBUG: Final result from fallbacks:', {
+    print_technology_name: productMetadata.print_technology_name,
+    print_technology_id: productMetadata.print_technology_id
+  });
+}
+
+console.log('🎯 TECH DEBUG: FINAL METADATA:', {
+  print_technology_name: productMetadata.print_technology_name,
+  print_technology_id: productMetadata.print_technology_id
+});
+
+
     // ✅ STEP 6: Create final product object WITH ADDITIONAL_DATA
     const product = {
       title: formValues.title.trim(),
+      subtitle: formValues.subtitle?.trim() || "", // ✅ ADD THIS LINE
       handle: handle,
       description: formValues.description?.trim() || "",
-      status: formValues.status || "draft",
+      status: formValues.status || "proposed",
       discountable: Boolean(formValues.discountable),
       
       // Add images if available
@@ -4965,7 +5943,7 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
                   render={({ field }) => (
                     <FormItem className="mb-5">
                       <FormLabel className="font-medium text-gray-700">Product Status</FormLabel>
-                      <Select onValueChange={field.onChange}  value={field.value || "draft"}  defaultValue="draft">
+                      <Select onValueChange={field.onChange}  value={field.value || "proposed"}  defaultValue="proposed">
                         <FormControl>
                           <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
                             <SelectValue placeholder="Select status" />
@@ -5073,6 +6051,8 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
               </section>
               
               {/* Shipping & Fulfillment Info Card */}
+              {/* ✅ REPLACE: Entire Shipping & Fulfillment section */}
+              {(payloadFulfillmentData.hasData || enhancedProductData) && (
               <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
                 <Separator className="mb-4" />
@@ -5083,81 +6063,68 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
                   </div>
                   <div>
                     <h3 className="font-medium text-gray-800">Junooni Fulfillment</h3>
-                    <p className="text-sm text-gray-600">You'll handle all order shipping</p>
+                    <p className="text-sm text-gray-600">Fulfillment managed by Junooni</p>
                   </div>
                 </div>
                 
-                {/* Shipping information */}
-                <div className="mt-6 space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="shippingDays"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center font-medium text-gray-700">
-                          <IconTruck size={18} className="mr-1.5 text-[#e65100]" />
-                          Shipping Time
-                        </FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                              <SelectValue placeholder="Select shipping time" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="3-5">3-5 business days</SelectItem>
-                            <SelectItem value="5-7">5-7 business days</SelectItem>
-                            <SelectItem value="7-10">7-10 business days</SelectItem>
-                            <SelectItem value="10-14">10-14 business days</SelectItem>
-                            <SelectItem value="14-21">2-3 weeks</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Estimated time for delivery after shipping
-                        </FormDescription>
-                      </FormItem>
+                {/* ✅ NEW: PayloadCMS-based fulfillment info display */}
+                {payloadFulfillmentData.hasData ? (
+                  <div className="mt-6 space-y-4">
+                    {payloadFulfillmentData.shippingTime && (
+                      <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                        <div className="flex items-center">
+                          <IconTruck size={18} className="mr-2 text-blue-600" />
+                          <div>
+                            <p className="font-medium text-blue-800">Shipping Time</p>
+                            <p className="text-sm text-blue-600">{payloadFulfillmentData.shippingTime}</p>
+                          </div>
+                        </div>
+                      </div>
                     )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="handlingTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center font-medium text-gray-700">
-                          <IconClock size={18} className="mr-1.5 text-[#e65100]" />
-                          Handling Time
-                        </FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                              <SelectValue placeholder="Select handling time" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="1">1 business day</SelectItem>
-                            <SelectItem value="1-2">1-2 business days</SelectItem>
-                            <SelectItem value="2-3">2-3 business days</SelectItem>
-                            <SelectItem value="3-5">3-5 business days</SelectItem>
-                            <SelectItem value="5-7">5-7 business days</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Time needed to prepare and package the order
-                        </FormDescription>
-                      </FormItem>
+                    
+                    {payloadFulfillmentData.handlingTime && (
+                      <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+                        <div className="flex items-center">
+                          <IconClock size={18} className="mr-2 text-green-600" />
+                          <div>
+                            <p className="font-medium text-green-800">Handling Time</p>
+                            <p className="text-sm text-green-600">{payloadFulfillmentData.handlingTime}</p>
+                          </div>
+                        </div>
+                      </div>
                     )}
-                  />
-                </div>
+                    
+                    {payloadFulfillmentData.rushAvailable && payloadFulfillmentData.rushTime && (
+                      <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
+                        <div className="flex items-center">
+                          <IconClock size={18} className="mr-2 text-orange-600" />
+                          <div>
+                            <p className="font-medium text-orange-800">Rush Processing Available</p>
+                            <p className="text-sm text-orange-600">Rush delivery: {payloadFulfillmentData.rushTime}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="p-3 mt-4 border border-gray-200 rounded-md bg-gray-50">
+                      <p className="text-sm text-gray-600">
+                        <strong>Note:</strong> Shipping and handling times are pre-configured in the product catalog and cannot be modified.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 mt-6 border border-gray-200 rounded-lg bg-gray-50">
+                    <div className="flex items-center">
+                      <IconInfoCircle size={18} className="mr-2 text-gray-500" />
+                      <p className="text-sm text-gray-600">
+                        No shipping information available for this product in the catalog.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 
-                {/* Stock Management Info */}
-                <div className="mt-6">
+                {/* Stock Management Info - Keep this part */}
+                {/* <div className="mt-6">
                   <h3 className="mb-2 font-medium text-gray-700">Stock Information</h3>
                   <p className="text-sm text-gray-600">
                     Stock levels you set for each variant will be tracked with each order.
@@ -5170,8 +6137,9 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
                       Inventory will be managed automatically based on the stock levels you set for each variant.
                     </AlertDescription>
                   </Alert>
-                </div>
+                </div> */}
               </section>
+              )}
               
               {/* Physical Details Card */}
               <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">

@@ -3670,13 +3670,19 @@ const handleApiError = (apiError: any) => {
                                 {item.file ? item.file.name.substring(0, 20) : `Image ${index + 1}`}
                                 {item.variantInfo && (
                                   <div className="mt-1">
-                                    <Badge className="bg-[#e65100] text-white text-xs">
+                                    {/* <Badge className="bg-[#e65100] text-white text-xs">
                                       {item.variantInfo.variantTitle || 
                                       item.variantInfo.optionName && item.variantInfo.optionValues?.[0] ? 
                                       `${item.variantInfo.optionName}: ${item.variantInfo.optionValues[0]}` : 
                                       'Variant'}
-                                    </Badge>
-                                  </div>
+                                    </Badge>  */}
+                                  <Badge className="bg-[#e65100] text-white text-xs">
+                                    {/* {item.colorValue || 
+                                    (item.variantInfo?.optionName?.toLowerCase() === "color" 
+                                        ? item.variantInfo.optionValues?.[0] 
+                                        : "")} */}
+                                  </Badge>
+                                </div>
                                 )}
                               </div>
                               <button
@@ -3702,8 +3708,8 @@ const handleApiError = (apiError: any) => {
                     )
                   )}
                 </section>
-       {/* Options & Variants Section with styling */}
-       <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                {/* Options & Variants Section with styling */}
+                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Options & Variants</h2>
                   <Separator className="mb-6" />
                   
@@ -4207,7 +4213,7 @@ const handleApiError = (apiError: any) => {
                     )}
                   />
                 </section>
-    {/* Shipping & Fulfillment Info Card */}
+                {/* Shipping & Fulfillment Info Card */}
                 <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
                   <Separator className="mb-4" />

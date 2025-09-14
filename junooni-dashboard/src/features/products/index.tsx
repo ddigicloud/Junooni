@@ -273,7 +273,7 @@ export default function Products() {
               <div className="flex items-center">
                 <div className="flex justify-center flex-1 max-w-2xl mx-4">
                 <div className="w-full max-w-md">
-                  <Search />
+                  {/* <Search /> */}
                 </div>
               </div>
               </div>
@@ -292,9 +292,9 @@ export default function Products() {
                     Dashboard
                   </Button>
                 </Link>
-                <Link to="/payouts">
-                  <Button variant="ghost" className="hidden md:flex">
-                    Payouts
+                <Link to="/products">
+                  <Button variant="ghost" className="hidden md:flex"  style={{ color: BRAND.primary }}>
+                    Products
                   </Button>
                 </Link>
                 <Link to="/orders">
@@ -302,7 +302,12 @@ export default function Products() {
                     Orders
                   </Button>
                 </Link>
-                <ThemeSwitch />
+                <Link to="/help-center">
+                  <Button variant="ghost" className="hidden md:flex">
+                    Help
+                  </Button>
+                </Link>
+                {/* <ThemeSwitch /> */}
                 <ProfileDropdown />
               </div>
             </div>

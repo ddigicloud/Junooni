@@ -95,7 +95,7 @@ export default function SignUp() {
         <div className="relative z-10 flex flex-col h-full">
           {/* Enhanced Branding */}
           <div className="flex items-center gap-4 p-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#e65100] shadow-xl">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e65100] text-[#e65100] shadow-xl">
              <img src={JunooniLogo} alt="Junooni Logo" className="w-12 h-8 lg:h-10 sm:h-8 lg:w-18" />
             </div>
             <h1 className="text-3xl font-black tracking-wide text-white drop-shadow-2xl">JUNOONI</h1>

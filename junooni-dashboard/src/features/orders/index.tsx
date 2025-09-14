@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import * as XLSX from 'xlsx';
 import DateFilter from '../orders/components/DateFilter/DateFilter'; // Adjust path to your DateFilter component
 import { CalendarDays } from "lucide-react";
+import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Separator } from '@/components/ui/separator'
 import { 
   Download, Search, MoreHorizontal, Filter, 
@@ -1139,12 +1140,13 @@ useEffect(() => {
               >
                <a href="/Orders">Orders</a>
               </Button>
-              {/* <Button 
+              <Button 
                 variant="ghost"
                 className="hidden md:flex"
               >
-                <a href="/Analytics">Analytics</a>
-              </Button> */}
+                <a href="/help-center">Help</a>
+              </Button>
+              <ProfileDropdown />
             </div>
           </div>
         </div>

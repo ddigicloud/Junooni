@@ -2370,7 +2370,7 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
         {/* Completed */}
         {!isGenerating && importData && (
           <div className="space-y-4">
-            <div className="p-3 border rounded bg-green-50 flex items-center gap-2">
+            <div className="flex items-center gap-2 p-3 border rounded bg-green-50">
               <span className="text-green-600">✅</span>
               <span className="text-sm text-green-700">
                 {importData.generation_summary.total_images_generated} images generated in{" "}
@@ -2378,14 +2378,14 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-center text-sm">
-              <div className="p-3 bg-gray-50 rounded">
+            <div className="grid grid-cols-2 gap-3 text-sm text-center">
+              <div className="p-3 rounded bg-gray-50">
                 <div className="text-xl font-bold" style={{ color: brandColor }}>
                   {importData.mockup_variants.length}
                 </div>
                 <div className="text-gray-600">Variants</div>
               </div>
-              <div className="p-3 bg-gray-50 rounded">
+              <div className="p-3 rounded bg-gray-50">
                 <div className="text-xl font-bold" style={{ color: brandColor }}>
                   {importData.generation_summary.total_images_generated}
                 </div>
@@ -2402,13 +2402,13 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
               </button>
               <button
                 onClick={downloadImportData}
-                className="px-4 py-2 text-sm font-medium text-white rounded bg-blue-600 hover:bg-blue-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
               >
                 Download
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-white rounded bg-gray-600 hover:bg-gray-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded hover:bg-gray-700"
               >
                 Close
               </button>
@@ -2418,7 +2418,7 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
 
         {/* Empty */}
         {!isGenerating && !importData && (
-          <div className="py-6 text-center text-sm text-gray-600">
+          <div className="py-6 text-sm text-center text-gray-600">
             <div className="mb-2 text-3xl">🎪</div>
             No import data yet. <br />
             <span className="text-gray-500">Generate & import to see results.</span>
@@ -3439,16 +3439,16 @@ const exportAllCanvasImages = useCallback(() => {
   // ENHANCED STORE IMPORT FUNCTION
   // =====================================
   
-  const transformStoreDataForCreate = useCallback((storeData: StoreImportData) => {
+  const transformStoreDataForCreate = useCallback((storeData: StoreImportData, filteredProductData?: PayloadProductData) => {
   
   // Extract mockup images based on PayloadCMS flags
   const mockupImages: Record<string, string> = {};
   const colorSpecificImages: Record<string, Array<{ mockupTitle: string; imageData: string }>> = {};
   
   // 🔥 CORRECTED: Extract PayloadCMS flags from the original product data to determine image sharing behavior
-  const productDataFlags = {
-    color_Images: productData.color_Images,
-    size_Images: productData.size_Images
+ const productDataFlags = {
+    color_Images: filteredProductData?.color_Images || productData.color_Images,
+    size_Images: filteredProductData?.size_Images || productData.size_Images
   };
   
   // Process mockup variants based on the size_Images flag
@@ -3675,7 +3675,8 @@ const exportAllCanvasImages = useCallback(() => {
     colorSpecificImages,
     designImages: storeData.design_images || [],
     canvasImages, // 🔥 THIS WAS MISSING!
-    enhancedProductData
+    enhancedProductData,
+    filteredProductData 
   };
 
   console.log('🎯 TRANSFORM DEBUG: Final result canvasImages:', result.canvasImages?.length || 0);
@@ -3765,6 +3766,7 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
       mockupImages: transformedData.mockupImages,
       colorSpecificImages: transformedData.colorSpecificImages,
       enhancedProductData: transformedData.enhancedProductData,
+      filteredProductData: transformedData.filteredProductData, 
       designImages: transformedData.designImages, // ✅ DESIGN IMAGES INCLUDED
       canvasImages: transformedData.canvasImages,
       uploadedFiles: [] // Can be empty since we have base64 data
@@ -3795,6 +3797,17 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
     setStoreGenerationProgress(null);
     setShowStoreImportModal(true);
 
+     const filteredProductData: PayloadProductData = {
+      ...productData,
+      printT: Array.isArray(productData?.printT)
+        ? productData.printT.filter((t: any) => t.id === activeTechnology || t.technologyName === activeTechnology)
+        : []
+    };
+
+    console.log("🔥 CANVAS: Created filteredProductData:", filteredProductData);
+    console.log("🔥 CANVAS: Active technology:", activeTechnology);
+    console.log("🔥 CANVAS: Filtered printT:", filteredProductData.printT);
+
     // 🔥 EXTRACT DESIGN IMAGES FIRST
     const designImages = extractDesignImages();
     // Add these lines before mockupGenerator.generateForStoreImport
@@ -3810,8 +3823,9 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
       });
     });
 
+
     const importData = await mockupGenerator.generateForStoreImport(
-      productData,
+      filteredProductData,
       selectedColors,
       selectedSizes,
       getVisibleDesignElements(designElements),
@@ -3829,8 +3843,9 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
 
     setStoreImportData(importData);
 
-    const transformedData = transformStoreDataForCreate(importData);
+    const transformedData = transformStoreDataForCreate(importData, filteredProductData);
     navigateToCreatePage(transformedData);
+
 
   } catch (error) {
     alert(`❌ Store import generation failed: ${error.message}`);
@@ -3843,6 +3858,7 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
   selectedSizes,
   mockupCalculation,
   productData,
+  activeTechnology,
   designElements,
   getAllCanvasConfigs,
   getAllPrintableAreas,
@@ -5108,6 +5124,26 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
   useEffect(() => {
     designElementsRef.current = designElements;
   }, [designElements]);
+
+  // --- add AFTER the activeTechnology state declaration ---
+useEffect(() => {
+  try {
+    // read technology param from URL
+    const params = new URLSearchParams(window.location.search);
+    const techParam = params.get('technology');
+
+    if (techParam && productData?.printT && Array.isArray(productData.printT)) {
+      const found = productData.printT.find((t: any) => t.id === techParam || t.technologyName === techParam);
+      if (found) {
+        setActiveTechnology(found.id);
+      }
+    }
+  } catch (err) {
+    // non-fatal — ignore if window or URLSearchParams unavailable in some envs
+    console.warn('Unable to parse technology from URL', err);
+  }
+}, [productData]);
+
 
   // ✅ ADD THIS: Periodic state validator
   useEffect(() => {
