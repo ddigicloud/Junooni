@@ -32,6 +32,31 @@ const BRAND = {
   textLight: "#999999"
 };
 
+// Simple token validation
+const validateToken = (): boolean => {
+  const token = localStorage.getItem("vendorToken");
+  const tokenTimestamp = localStorage.getItem("vendorTokenTimestamp");
+  
+  if (!token || !tokenTimestamp) {
+    localStorage.removeItem("vendorToken");
+    localStorage.removeItem("vendorTokenTimestamp");
+    return false;
+  }
+  
+  const now = Date.now();
+  const tokenAge = now - parseInt(tokenTimestamp);
+  const ONE_HOUR = 60 * 60 * 1000; // 1 hour in milliseconds
+  
+  // If token is older than 1 hour, clear it
+  if (tokenAge > ONE_HOUR) {
+    localStorage.removeItem("vendorToken");
+    localStorage.removeItem("vendorTokenTimestamp");
+    return false;
+  }
+  
+  return true;
+};
+
 // Pagination Component Props Interface
 interface PaginationProps {
   currentPage: number;
