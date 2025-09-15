@@ -49,6 +49,7 @@ import { Link } from '@tanstack/react-router'
 import { SignUpForm } from './components/sign-up-form'
 import CreatorJunooni from '../../../assets/junooni-creators.png'
 import JunooniLogo from "@/assets/junooni-favicon.png";
+import Junoonibrandlogo from "@/assets/junooni_logo_brand_color.png";
 
 export default function SignUp() {
   return (
@@ -57,7 +58,7 @@ export default function SignUp() {
       <div className="relative hidden h-full lg:flex flex-col overflow-hidden bg-gradient-to-br from-[#e65100] to-[#d84315]">
         {/* Main background image with enhanced overlay */}
         <div 
-          className="absolute inset-0 bg-center bg-no-repeat bg-cover" 
+          className="absolute inset-0 bg-top bg-no-repeat bg-cover" 
           style={{ 
             backgroundImage: `url(${CreatorJunooni})`,
             filter: 'brightness(0.85) contrast(1.1)' 
@@ -96,14 +97,14 @@ export default function SignUp() {
           {/* Enhanced Branding */}
           <div className="flex items-center gap-4 p-8">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e65100] text-[#e65100] shadow-xl">
-             <img src={JunooniLogo} alt="Junooni Logo" className="w-12 h-8 lg:h-10 sm:h-8 lg:w-18" />
+              <img src={JunooniLogo} alt="Junooni Logo" className="w-12 h-12 lg:h-11 sm:h-8 lg:w-11" />
             </div>
             <h1 className="text-3xl font-black tracking-wide text-white drop-shadow-2xl">JUNOONI</h1>
           </div>
           
           {/* Centered Content with enhanced design */}
           <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
-            <div className="p-8 mb-12 border shadow-2xl rounded-3xl bg-white/10 backdrop-blur-lg border-white/20">
+            {/* <div className="p-8 mb-12 border shadow-2xl rounded-3xl bg-white/10 backdrop-blur-lg border-white/20">
               <svg 
                 width="120" 
                 height="120" 
@@ -120,9 +121,9 @@ export default function SignUp() {
                 <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
-            </div>
+            </div> */}
             
-            <div className="max-w-lg p-8 border shadow-2xl bg-black/30 backdrop-blur-lg rounded-2xl border-white/10">
+            {/* <div className="max-w-lg p-8 border shadow-2xl bg-black/30 backdrop-blur-lg rounded-2xl border-white/10">
               <h2 className="mb-6 text-4xl font-black text-white drop-shadow-2xl">Join Our Community</h2>
               <p className="max-w-md text-xl font-medium leading-relaxed text-white/95 drop-shadow-lg">
                 Start your creator journey today. Build your brand, connect with fans, and monetize your passion.
@@ -142,11 +143,11 @@ export default function SignUp() {
                   <div className="mt-1 text-sm font-medium text-white/90">Earning potential</div>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
           
           {/* Enhanced Footer Quote */}
-          <div className="p-8">
+          {/* <div className="p-8">
             <blockquote className="p-6 border border-l-4 shadow-xl bg-black/20 backdrop-blur-lg rounded-2xl border-white/10 border-l-white">
               <p className="text-lg italic font-medium leading-relaxed text-white">
                 "Every creator's journey begins with a single step. Take yours today with Junooni."
@@ -155,34 +156,45 @@ export default function SignUp() {
                 — Junooni Team
               </footer>
             </blockquote>
-          </div>
+          </div> */}
         </div>
       </div>
       
       {/* Right Panel - Enhanced Sign Up Form */}
-      <div className="flex flex-col items-center justify-center h-screen px-6 pt-8 bg-gradient-to-br from-gray-50 to-white">
+      <div className="flex flex-col items-center justify-center h-screen px-6 lg:pt-8 pt-4 bg-gradient-to-br from-gray-50 to-white">
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo - Enhanced */}
           <div className="flex items-center justify-center gap-3 mb-10 lg:hidden">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e65100] text-white shadow-lg">
-              <span className="text-2xl font-black">J</span>
-            </div>
-            <h1 className="text-3xl font-black text-[#e65100]">JUNOONI</h1>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e65100] text-white shadow-lg">
+            <img 
+              src={JunooniLogo} 
+              alt="Junooni Logo" 
+              className="w-10 h-8 object-contain" 
+            />
           </div>
-          
+          <img 
+            src={Junoonibrandlogo} 
+            alt="Junooni Brand Logo" 
+            className="w-24 h-12 object-contain" 
+          />
+        </div>
+       
           {/* Enhanced Header */}
-          <div className="mb-8 text-center">
-            <h1 className="mb-2 text-3xl font-bold text-gray-900">Create Your Account</h1>
-            <p className="text-base leading-relaxed text-gray-600">
-              Join thousands of creators building their brands on Junooni
+          <div className="-mt-8 text-center">
+            <h1 className="lg:mb-2 mb-0 text-2xl sm:text-3xl font-extrabold text-gray-900">
+              Create Your Account
+            </h1>
+            <p className="text-sm sm:text-base leading-relaxed text-gray-600">
+              Join thousands of creators on Junooni
             </p>
+
           </div>
           
           <SignUpForm />
           
           {/* Enhanced Footer Links */}
-          <div className="mt-8 space-y-4 text-center">
-            <p className="text-base text-gray-600">
+          <div className="mt-2 space-y-1 text-center">
+            <p className="text-sm text-gray-600">
               Already have an account?{" "}
               <Link to="/sign-in" className="font-semibold text-[#e65100] hover:text-[#d84315] transition-colors duration-200 hover:underline">
                 Sign In

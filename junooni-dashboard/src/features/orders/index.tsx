@@ -15,7 +15,7 @@ import {
   ChevronRight, CircleCheck, Info
 } from "lucide-react"
 import { Link } from "@tanstack/react-router"
-
+import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -1103,10 +1103,11 @@ useEffect(() => {
     >
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90">
-        <div className="container px-4 py-2 mx-auto">
+        <div className="container px-4 py-3 mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <SidebarTrigger variant='outline' className='mr-2 scale-125 sm:scale-100' />
+              <Separator orientation='vertical' className='h-6 ml-2' />
               {/* <span className="hidden text-gray-500 md:inline">|</span> */}
               {/* <div 
                 className="ml-2 mr-2 text-2xl font-bold" 
@@ -1119,7 +1120,15 @@ useEffect(() => {
                 Seller Order Page
               </h1> */}
             </div>
-            
+            <div className="absolute left-1/2 -translate-x-1/2 md:hidden">
+              <Link to="/dashboard" className="flex items-center">
+                <img 
+                  src={Junoonilogo} 
+                  alt="Junooni Logo" 
+                  className="h-8 sm:h-10" 
+                />
+              </Link>
+            </div>
             <div className="flex items-center gap-4">
               <Button 
                 variant="ghost"

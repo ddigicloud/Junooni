@@ -82,14 +82,22 @@ import { NavGroup } from '@/components/layout/nav-group'
 import { NavUser } from '@/components/layout/nav-user'
 import { sidebarData } from './data/sidebar-data'
 import { cn } from '@/lib/utils'
+import { X } from 'lucide-react'
+
 // Import your Junooni favicon
 import JunooniFavicon from '../../assets/favicon-3.png' // Adjust path as needed
 import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 // import CreatorJunooni from '../../../assets/junooni-creators.png'
 
 function SidebarHeader() {
-  const { state } = useSidebar()
+  const { state , isMobile , setOpenMobile } = useSidebar()
   const isCollapsed = state === 'collapsed'
+
+   const handleClose = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
 
   return (
     <div className={`flex items-center h-16 border-b border-border/40 ${isCollapsed ? 'px-0' : 'px-4'}`}>
@@ -116,12 +124,20 @@ function SidebarHeader() {
               />
             </div> */}
             <div className="flex items-center flex-1 min-w-0">
-              <img src={Junoonilogo}  alt="Junooni Logo" className="h-6 -ml-4 -mr-4 sm:h-8 w-33" />
-              <Separator orientation='vertical' className='h-6 ml-1 mr-3 w-[2px] bg-border' />
+              <img src={Junoonilogo}  alt="Junooni Logo" className="h-6 ml-1 -mr-0 sm:h-8 w-26" />
+              <Separator orientation='vertical' className='h-6 ml-3 mr-3 w-[2px] bg-border' />
               <div className="flex flex-col items-start text-xs font-medium leading-tight text-muted-foreground">
                 <span className="text-xs">Creator</span>
                 <span className="text-xs">Studio</span>
               </div>
+              {/* Close button - only visible on mobile */}
+              <button
+                onClick={handleClose}
+                className="ml-auto p-2 rounded-md hover:bg-gray-100 transition-colors md:hidden"
+                aria-label="Close sidebar"
+              >
+                <X className="h-5 w-5 text-muted-foreground" />
+              </button>
             </div>
           </>
         )}

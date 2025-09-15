@@ -8,6 +8,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useToast } from "@/hooks/use-toast";
 import ChatwootWidget from '@/components/ChatwootWidget'
 import { ProfileDropdown } from '@/components/profile-dropdown'
+import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 import { 
   CircleUser, 
   Package, 
@@ -77,7 +78,7 @@ const validateToken = (): boolean => {
   
   const now = Date.now();
   const tokenAge = now - parseInt(tokenTimestamp);
-  const ONE_HOUR = 60 * 60 * 1000; // 1 hour in milliseconds
+  const ONE_HOUR = 3 * 60 * 60 * 1000; // 1 hour in milliseconds
   
   // If token is older than 1 hour, clear it
   if (tokenAge > ONE_HOUR) {
@@ -1319,32 +1320,23 @@ const DashboardPage = () => {
       {/* Header */}
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90">
-        <div className="container px-4 py-3 mx-auto">
+        <div className="container px-4 py-3 mx-auto relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <SidebarTrigger variant='outline' className='mr-2 scale-125 sm:scale-100' />
               <Separator orientation='vertical' className='h-6 ml-2' />
-              
-              {/* Brand Name - Always visible */}
-              <div className="ml-2 md:hidden">
-                <Link to="/dashboard" className="flex items-center">
-                  {/* <span 
-                    className="text-lg font-bold md:text-xl" 
-                    style={{ color: BRAND.primary }}
-                  >
-                    JUNOONI
-                  </span> */}
-                   <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-6 sm:h-8" />
-                   
-                </Link>
-              </div>
-              
-              {/* <span className="hidden ml-2 text-gray-500 md:inline md:hidden">|</span>
-              <h1 className="hidden ml-2 text-lg font-semibold md:block" style={{ color: BRAND.secondary }}>
-                Seller Dashboard
-              </h1> */}
             </div>
-            
+
+            {/* Brand Logo - Centered on mobile */}
+            <div className="absolute left-1/2 -translate-x-1/2 md:hidden">
+              <Link to="/dashboard" className="flex items-center">
+                <img 
+                  src={Junoonilogo} 
+                  alt="Junooni Logo" 
+                  className="h-8 sm:h-10" 
+                />
+              </Link>
+            </div>
             <div className="flex items-center gap-4">
               <Button 
                 variant="ghost"
@@ -1353,33 +1345,22 @@ const DashboardPage = () => {
               >
                 Dashboard
               </Button>
-              <Button 
-                variant="ghost"
-                className="hidden md:flex"
-                asChild
-              >
+              <Button variant="ghost" className="hidden md:flex" asChild>
                 <Link to="/products">Products</Link>
               </Button>
-              <Button 
-                variant="ghost"
-                className="hidden md:flex"
-                asChild
-              >
+              <Button variant="ghost" className="hidden md:flex" asChild>
                 <Link to="/orders">Orders</Link>
               </Button>
-              <Button 
-                variant="ghost"
-                className="hidden md:flex"
-                asChild
-              >
+              <Button variant="ghost" className="hidden md:flex" asChild>
                 <Link to="/help-center">Help</Link>
               </Button>
-              
+
               <ProfileDropdown />
             </div>
           </div>
         </div>
       </div>
+
 
       <div className="container px-4 pt-6 mx-auto">
         {/* Onboarding Progress Banner */}

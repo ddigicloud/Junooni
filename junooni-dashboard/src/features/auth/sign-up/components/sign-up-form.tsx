@@ -307,7 +307,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
   }
 
   return (
-    <div className={cn('grid gap-6 mt-6', className)} {...props}>
+    <div className={cn('grid gap-6 mt-3 lg:mt-6', className)} {...props}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
           <div className='grid gap-5'>
@@ -326,7 +326,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               control={form.control}
               name='email'
               render={({ field }) => (
-                <FormItem className='space-y-2'>
+                <FormItem className='space-y-1'>
                   <FormLabel className="text-sm font-semibold text-gray-700">
                     Email Address
                   </FormLabel>
@@ -346,7 +346,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               control={form.control}
               name='password'
               render={({ field }) => (
-                <FormItem className='space-y-2'>
+                <FormItem className='space-y-1'>
                   <FormLabel className="text-sm font-semibold text-gray-700">
                     Password
                   </FormLabel>
@@ -366,7 +366,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               control={form.control}
               name='confirmPassword'
               render={({ field }) => (
-                <FormItem className='space-y-2'>
+                <FormItem className='space-y-1'>
                   <FormLabel className="text-sm font-semibold text-gray-700">
                     Confirm Password
                   </FormLabel>
@@ -383,7 +383,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             />
             
             <Button 
-              className='mt-6 h-12 bg-gradient-to-r from-[#e65100] to-[#ff8a50] hover:from-[#d84315] hover:to-[#e65100] text-white font-semibold text-base rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-lg' 
+              className='mt-0 h-12 bg-gradient-to-r from-[#e65100] to-[#ff8a50] hover:from-[#d84315] hover:to-[#e65100] text-white font-semibold text-base rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-lg' 
               disabled={isLoading}
               type="submit"
             >

@@ -15,8 +15,11 @@ import {
   Building2, Receipt, ChartPie
 } from "lucide-react"
 import { Link } from '@tanstack/react-router'
+import { ProfileDropdown } from '@/components/profile-dropdown'
+import { SidebarTrigger } from '@/components/ui/sidebar'
+import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 import { ProductsPrimaryButtons, ProductsPrimaryButtonsHandle } from '../products/components/ProductsPrimaryButtons'
-
+import { Separator } from '@/components/ui/separator'
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -1049,12 +1052,23 @@ export default function PayoutPage() {
     >
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90">
-        <div className="container px-4 py-2 mx-auto">
+        <div className="container px-4 py-3 mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               {/* <h1 className="ml-2 text-base font-semibold" style={{ color: BRAND.secondary }}>
                 Junooni Creator Dashboard
               </h1> */}
+              <SidebarTrigger variant='outline' className='mr-2 scale-125 sm:scale-100' />
+              {/* <Separator orientation='vertical' className='h-6 ml-2' /> */}
+            </div>
+            <div className="absolute left-1/2 -translate-x-1/2 md:hidden">
+              <Link to="/dashboard" className="flex items-center">
+                <img 
+                  src={Junoonilogo} 
+                  alt="Junooni Logo" 
+                  className="h-8 sm:h-10" 
+                />
+              </Link>
             </div>
             
             <div className="flex items-center gap-4">
@@ -1068,12 +1082,17 @@ export default function PayoutPage() {
                   Products
                 </Button>
               </Link>
+              <Link to="/payouts">
+                <Button variant="ghost" className="hidden md:flex" style={{ color: BRAND.primary }}>
+                  Payouts
+                </Button>
+              </Link>
               <Link to="/orders">
                 <Button variant="ghost" className="hidden md:flex">
                   Orders
                 </Button>
               </Link>
-
+              <ProfileDropdown />
               {/* <Button variant="ghost" className="hidden md:flex">Analytics</Button> */}
             </div>
           </div>

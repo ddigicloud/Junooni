@@ -57,6 +57,8 @@ import {
   IconSettings
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { ProfileDropdown } from '@/components/profile-dropdown'
+import Junoonilogo from '../../../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 
 
 interface AdminData {
@@ -1187,13 +1189,14 @@ const openChatwoot = () => {
                 style={{ color: BRAND.primary }}
               >
                 <Link to="/dashboard">
-                  <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-8" />
+                  <img src={Junoonilogo} alt="Junooni Logo" className="h-8" />
                 </Link>
               </div>
-              <span className="hidden text-gray-500 md:inline">|</span>
-              <h1 className="hidden ml-2 text-lg font-semibold md:block" style={{ color: BRAND.secondary }}>
-                Creator Dashboard
-              </h1>
+              <Separator orientation='vertical' className='h-6 ml-2' />
+              <div className="flex flex-col items-start text-xs font-medium leading-tight text-muted-foreground ml-4">
+                <span className="text-xs">Creator</span>
+                <span className="text-xs">Studio</span>
+              </div>
             </div>
            
             <div className="flex items-center gap-4">
@@ -1218,14 +1221,16 @@ const openChatwoot = () => {
               >
                 Orders
               </Button>
-              {/* <Button
+              <Button
                 variant="ghost"
                 className="hidden md:flex"
+                onClick={() => window.location.href = '/help-center'}
               >
-                Analytics
-              </Button> */}
+                Help
+              </Button>
+               <ProfileDropdown />
              
-              <div className="flex items-center">
+              {/* <div className="flex items-center">
                 <div className="w-8 h-8 mr-2 overflow-hidden rounded-full">
                   {vendorData.vendor.logo ? (
                     <img src={vendorData.vendor.logo} alt="Logo" className="object-cover w-full h-full" />
@@ -1236,7 +1241,7 @@ const openChatwoot = () => {
                   )}
                 </div>
                 <span className="text-sm font-medium">{vendorData.vendor.name}</span>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

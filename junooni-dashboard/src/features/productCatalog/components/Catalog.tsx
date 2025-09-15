@@ -1,149 +1,3 @@
-// import { useEffect, useState } from "react";
-// import ProductCard, { ProductCardSkeleton } from "./ProductCard"; // Import the new component
-
-// const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
-
-// // Define interfaces - ideally these would be in a separate types file
-// interface Image {
-//   id: number;
-//   alt: string;
-//   url: string;
-//   width: number;
-//   height: number;
-// }
-
-// interface DisplayImage {
-//   id: string;
-//   title: string | null;
-//   image: Image;
-//   caption: string | null;
-// }
-
-// interface ColorOption {
-//   id: string;
-//   colorName: string;
-//   colorHex: string;
-// }
-
-// interface SizeOption {
-//   id: string;
-//   sizeName: string;
-//   sizeDescription: string | null;
-// }
-
-// interface PrintingTechnology {
-//   id: string;
-//   technologyName: string;
-//   customizationAreas: any[];
-//   mockupPhotos: any[];
-// }
-
-// interface Product {
-//   id: number;
-//   name: string;
-//   cost: number;
-//   sku: string;
-//   brand: string;
-//   displayImages: DisplayImage[];
-//   colorOptions: ColorOption[];
-//   sizeOptions: SizeOption[];
-//   printingTechnologies: PrintingTechnology[];
-// }
-
-// interface ProductMetadata {
-//   isBestSeller: boolean;
-//   isStaffPick: boolean;
-//   rating: number;
-//   reviewCount: number;
-// }
-
-// // Define the state types
-// type ProductMetadataMap = Record<number, ProductMetadata>;
-
-// const Catalog = () => {
-//   const [products, setProducts] = useState<Product[]>([]);
-//   const [loading, setLoading] = useState<boolean>(true);
-//   const [productMetadata, setProductMetadata] = useState<ProductMetadataMap>({});
-//   // const router = useRouter();
-
-//   useEffect(() => {
-//     const fetchProducts = async () => {
-//       try {
-//         const response = await fetch(`${vite_payload}/api/blank-products`, {
-//           credentials: 'include',
-//           headers: {
-//             'Content-Type': 'application/json',
-//           },
-//         });
-//         const data = await response.json();
-//         const fetchedProducts: Product[] = data.docs || data;
-//         setProducts(fetchedProducts);
-        
-//         // Generate metadata that would normally come from the API
-//         const metadata: ProductMetadataMap = {};
-        
-//         fetchedProducts.forEach((product: Product) => {
-//           metadata[product.id] = {
-//             isBestSeller: Math.random() > 0.3,
-//             isStaffPick: Math.random() > 0.6,
-//             rating: 3.5 + Math.random() * 1.5,
-//             reviewCount: Math.floor(10 + Math.random() * 140)
-//           };
-//         });
-        
-//         setProductMetadata(metadata);
-//       } catch (error) {
-//         console.error("Error fetching products:", error);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     fetchProducts();
-//   }, []);
-
-//   return (
-//     <div className="w-[100%] max-w-[95%] mx-auto mt-24">
-//       <h1 className="mb-10 text-2xl font-semibold text-gray-900 dark:text-white">
-//         What would you like to create?
-//       </h1>
-//       {loading ? (
-//         <div className="grid grid-cols-1 gap-x-4 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-//           {[...Array(5)].map((_, i) => (
-//             <ProductCardSkeleton key={i} />
-//           ))}
-//         </div>
-//       ) : (
-//         <div className="grid grid-cols-1 gap-x-3 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-//           {products.length > 0 ? (
-//             products.map((product) => {
-//               const metadata = productMetadata[product.id] || {
-//                 isBestSeller: false,
-//                 isStaffPick: false,
-//                 rating: 4.0,
-//                 reviewCount: 0
-//               };
-              
-//               return (
-//                 <ProductCard 
-//                   key={product.id} 
-//                   product={product} 
-//                   metadata={metadata} 
-//                 />
-//               );
-//             })
-//           ) : (
-//             <div className="py-8 text-center col-span-full">
-//               <p className="text-gray-500">No products found</p>
-//             </div>
-//           )}
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default Catalog;
-
 import { useEffect, useState } from "react";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 
@@ -184,16 +38,38 @@ interface PrintingTechnology {
   mockupPhotos: any[];
 }
 
+interface Category {
+  id: number;
+  title: string;
+  slug: string;
+  description?: string;
+  breadcrumbs?: any[];
+  createdAt?: string;
+  updatedAt?: string;
+  parent?: number;
+  products?: any[];
+  slugLock?: boolean;
+}
+
+interface CategoryOption {
+  slug: string;
+  title: string;
+}
+
 interface Product {
   id: number;
   name: string;
   cost: number;
   sku: string;
   brand: string;
+  categories: Category[]; // Array of category objects
   displayImages: DisplayImage[];
   colorOptions: ColorOption[];
   sizeOptions: SizeOption[];
   printingTechnologies: PrintingTechnology[];
+  status: string;
+  slug: string;
+  productType: string;
 }
 
 interface ProductMetadata {
@@ -211,19 +87,68 @@ const Catalog = () => {
   const [productMetadata, setProductMetadata] = useState<ProductMetadataMap>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [categories, setCategories] = useState<CategoryOption[]>([{ slug: "all", title: "All" }]);
+  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`${vite_payload}/api/blank-products`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        const data = await response.json();
-        const fetchedProducts: Product[] = data.docs || data;
+        // Fetch categories and products in parallel
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          fetch(`${vite_payload}/api/blank-products`, {
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }),
+          fetch(`${vite_payload}/api/categories`, {
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          })
+        ]);
+
+        // Handle products
+        const productsData = await productsResponse.json();
+        const fetchedProducts: Product[] = productsData.docs || productsData;
+        
+        console.log("Sample product data:", fetchedProducts[0]);
+        console.log("Product fields:", Object.keys(fetchedProducts[0] || {}));
+        
         setProducts(fetchedProducts);
+
+        // Handle categories
+        if (categoriesResponse.ok) {
+          const categoriesData = await categoriesResponse.json();
+          console.log("Categories response:", categoriesData);
+          
+          const fetchedCategories: Category[] = categoriesData.docs || categoriesData;
+          console.log("Processed categories:", fetchedCategories);
+          
+          // Store both slug and title
+          const categoryOptions = [
+            { slug: "all", title: "All" },
+            ...fetchedCategories.map((cat: Category) => ({
+              slug: cat.slug,
+              title: cat.title
+            }))
+          ];
+          
+          console.log("Final category options:", categoryOptions);
+          setCategories(categoryOptions);
+        } else {
+          // Fallback to hardcoded categories if API fails
+          console.warn("Failed to fetch categories, using fallback");
+          setCategories([
+            { slug: "all", title: "All" },
+            { slug: "women-tee", title: "Women Tee" },
+            { slug: "apparel", title: "Apparel" },
+            { slug: "accessories", title: "Accessories" },
+            { slug: "home", title: "Home" },
+            { slug: "promotional", title: "Promotional" }
+          ]);
+        }
         
         // Generate metadata that would normally come from the API
         const metadata: ProductMetadataMap = {};
@@ -239,19 +164,42 @@ const Catalog = () => {
         
         setProductMetadata(metadata);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        console.error("Error fetching data:", error);
+        // Fallback categories on error
+        setCategories([
+          { slug: "all", title: "All" },
+          { slug: "women-tee", title: "Women Tee" },
+          { slug: "apparel", title: "Apparel" },
+          { slug: "accessories", title: "Accessories" },
+          { slug: "home", title: "Home" },
+          { slug: "promotional", title: "Promotional" }
+        ]);
       } finally {
         setLoading(false);
+        setCategoriesLoading(false);
       }
     };
-    fetchProducts();
+
+    fetchData();
   }, []);
 
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const categories = ["all", "apparel", "accessories", "home", "promotional"];
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // If "all" is selected, don't filter by category
+    if (selectedCategory === "all") {
+      return matchesSearch;
+    }
+    
+    // Check if product has categories and if any category slug matches the selected category
+    const matchesCategory = product.categories && product.categories.some(category => 
+      category.slug === selectedCategory
+    );
+    
+    console.log(`Product: ${product.name}, Categories: ${product.categories?.map(c => c.slug).join(', ')}, Selected: ${selectedCategory}, Matches: ${matchesCategory}`);
+    
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -299,13 +247,18 @@ const Catalog = () => {
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e65100] focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+                    disabled={categoriesLoading}
+                    className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e65100] focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition-colors disabled:opacity-50"
                   >
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
-                      </option>
-                    ))}
+                    {categoriesLoading ? (
+                      <option>Loading categories...</option>
+                    ) : (
+                      categories.map((category) => (
+                        <option key={category.slug} value={category.slug}>
+                          {category.title}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
               </div>

@@ -96,7 +96,7 @@ export default function ForgotPassword() {
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-500">
             Need help? Contact our{' '}
-            <a href="#" className="text-[#e65100] hover:text-[#d84315] underline">
+            <a href="/help-center" className="text-[#e65100] hover:text-[#d84315] underline">
               support team
             </a>
           </p>
