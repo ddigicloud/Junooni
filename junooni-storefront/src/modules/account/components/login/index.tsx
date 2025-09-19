@@ -165,7 +165,7 @@ const EnhancedInput = ({
     </label>
     <div className="relative group">
       {Icon && (
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+        <div className="absolute inset-y-0 left-0 z-10 flex items-center pl-3 pointer-events-none">
           <Icon size={16} className="text-gray-400 group-focus-within:text-[#e65100] transition-colors duration-200" />
         </div>
       )}
@@ -188,7 +188,7 @@ const EnhancedInput = ({
         `}
       />
       {rightElement && (
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
           {rightElement}
         </div>
       )}
@@ -231,7 +231,7 @@ const EnhancedButton = ({
     >
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin"></div>
         </div>
       )}
       <span className={loading ? "opacity-0" : ""}>{children}</span>
@@ -306,21 +306,21 @@ const Login = ({ setCurrentView }: Props) => {
   // Show forgot password form
   if (forgotPasswordView) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="flex items-center justify-center min-h-screen px-0 py-6 bg-white sm:p-4">
         <div className="w-full max-w-lg">
           {/* Header */}
-          <div className="text-center mb-6">
+          <div className="mb-6 text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-[#e65100] to-[#f57c00] rounded-xl mb-3 shadow-lg">
               <Shield size={24} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Reset Password</h1>
-            <p className="text-gray-600 text-sm leading-relaxed">
+            <h1 className="mb-2 text-2xl font-bold text-gray-900">Reset Password</h1>
+            <p className="text-sm leading-relaxed text-gray-600">
               Enter your email address and we'll send you a secure link to reset your password
             </p>
           </div>
 
           {/* Form */}
-          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+          <div className="p-6 bg-white border border-gray-200 shadow-lg rounded-xl">
             <form onSubmit={handleResetPassword} className="space-y-4">
               <EnhancedInput
                 id="reset-email"
@@ -351,7 +351,7 @@ const Login = ({ setCurrentView }: Props) => {
                 </div>
               )}
               
-              <div className="space-y-3 pt-2">
+              <div className="pt-2 space-y-3">
                 <EnhancedButton type="submit" loading={isSubmitting}>
                   {isSubmitting ? "Sending Reset Link..." : "Send Reset Link"}
                 </EnhancedButton>
@@ -376,25 +376,25 @@ const Login = ({ setCurrentView }: Props) => {
 
   // Main login view
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+    <div className="flex items-center justify-center min-h-screen px-0 py-6 bg-white sm:p-4">
       <div className="w-full max-w-lg">
         {/* Header */}
-        <div className="text-center mb-6">
+        <div className="mb-6 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-[#e65100] to-[#f57c00] rounded-xl mb-4 shadow-lg">
             <Image
               src={BrandLogo}
               alt="Brand Logo"
-              className="w-8 h-8 object-cover rounded-full"
+              className="object-cover w-8 h-8 rounded-full"
             />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600 text-sm leading-relaxed">
+          <h1 className="mb-2 text-2xl font-bold text-gray-900">Welcome Back</h1>
+          <p className="text-sm leading-relaxed text-gray-600">
             Sign in to your account to continue your shopping journey with exclusive deals and personalized recommendations
           </p>
         </div>
 
         {/* Login Form */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-4">
+        <div className="px-3 py-6 mb-4 bg-white border border-gray-200 shadow-lg rounded-xl sm:p-6">
           <form action={handleLoginSubmit} className="space-y-4">
             <EnhancedInput
               id="email"
@@ -439,7 +439,7 @@ const Login = ({ setCurrentView }: Props) => {
                   name="remember"
                   className="w-4 h-4 text-[#e65100] border-2 border-gray-300 rounded focus:ring-[#e65100] focus:ring-2 transition-colors"
                 />
-                <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">
+                <span className="text-sm text-gray-600 transition-colors group-hover:text-gray-900">
                   Remember me
                 </span>
               </label>
@@ -455,7 +455,7 @@ const Login = ({ setCurrentView }: Props) => {
             
             {/* Error Message */}
             {message && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="p-3 border border-red-200 rounded-lg bg-red-50">
                 <ErrorMessage error={message} data-testid="login-error-message" />
               </div>
             )}
@@ -477,8 +477,8 @@ const Login = ({ setCurrentView }: Props) => {
         </div>
 
         {/* Sign Up Prompt */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 text-center">
-          <p className="text-gray-600 text-sm mb-3">
+        <div className="p-4 text-center bg-white border border-gray-200 shadow-lg rounded-xl">
+          <p className="mb-3 text-sm text-gray-600">
             New to our store? Join thousands of satisfied customers
           </p>
           <EnhancedButton 

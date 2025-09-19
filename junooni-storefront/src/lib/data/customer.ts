@@ -264,7 +264,7 @@
 //   async () => {
 //     const cookies = await nextCookies()
 //     const token = cookies.get("_medusa_jwt")?.value
-//     console.log(token)
+//     //console.log(token)
 
 //     return await sdk.client
 //       .fetch(`/store/customers/me/follow`, {
@@ -281,10 +281,10 @@
 
 //   export const Addfollower =
 //   async (vendor_id) => {
-//     console.log(`In api req vendor_id : ${vendor_id}` )
+//     //console.log(`In api req vendor_id : ${vendor_id}` )
 //     const cookies = await nextCookies()
 //     const token = cookies.get("_medusa_jwt")?.value
-//     console.log(token)
+//     //console.log(token)
 
 //     return await sdk.client
 //       .fetch(`/store/customers/me/follow/lists`, {
@@ -307,7 +307,7 @@
 //   export const deletefollower = async (vendor_id) => {
 //     const cookies = await nextCookies()
 //     const token = cookies.get("_medusa_jwt")?.value
-//     console.log("Deleting follower for vendor:", vendor_id)
+//     //console.log("Deleting follower for vendor:", vendor_id)
   
 //     try {
 //       // First, fetch the current follow list to find the correct creator id
@@ -341,15 +341,15 @@
 //             }
 //           )
 //         } else {
-//           console.error("Creator with vendor_id", vendor_id, "not found in follow list")
+//           //console.error("Creator with vendor_id", vendor_id, "not found in follow list")
 //           return null
 //         }
 //       } else {
-//         console.error("Follow list not found or has no creators")
+//         //console.error("Follow list not found or has no creators")
 //         return null
 //       }
 //     } catch (error) {
-//       console.error("Error in deletefollower:", error)
+//       //console.error("Error in deletefollower:", error)
 //       return null
 //     }
 //   }
@@ -407,7 +407,7 @@
 //   const token = cookies.get("_medusa_jwt")?.value
   
 //   if (!token) {
-//     console.log("please login")
+//     //console.log("please login")
 //     return "please login"
 //   }
   
@@ -436,7 +436,7 @@
 //   const token = cookies.get("_medusa_jwt")?.value
   
 //   if (!token) {
-//     console.log("please login")
+//     //console.log("please login")
 //     return "please login"
 //   }
   
@@ -463,7 +463,7 @@
 //   const token = cookies.get("_medusa_jwt")?.value
   
 //   if (!token) {
-//     console.log("please login")
+//     //console.log("please login")
 //     return "please login"
 //   }
   
@@ -487,7 +487,7 @@
 //   const token = cookies.get("_medusa_jwt")?.value
   
 //   if (!token) {
-//     console.log("please login")
+//     //console.log("please login")
 //     return "please login"
 //   }
   
@@ -812,7 +812,7 @@ export const followerCreate =
   async () => {
     const cookies = await nextCookies()
     const token = cookies.get("_medusa_jwt")?.value
-    console.log(token)
+    //console.log(token)
 
     return await sdk.client
       .fetch(`/store/customers/me/follow`, {
@@ -829,10 +829,10 @@ export const followerCreate =
 
   export const Addfollower =
   async (vendor_id) => {
-    console.log(`In api req vendor_id : ${vendor_id}` )
+    //console.log(`In api req vendor_id : ${vendor_id}` )
     const cookies = await nextCookies()
     const token = cookies.get("_medusa_jwt")?.value
-    console.log(token)
+    //console.log(token)
 
     return await sdk.client
       .fetch(`/store/customers/me/follow/lists`, {
@@ -855,7 +855,7 @@ export const followerCreate =
   export const deletefollower = async (vendor_id) => {
     const cookies = await nextCookies()
     const token = cookies.get("_medusa_jwt")?.value
-    console.log("Deleting follower for vendor:", vendor_id)
+    //console.log("Deleting follower for vendor:", vendor_id)
   
     try {
       // First, fetch the current follow list to find the correct creator id
@@ -889,15 +889,15 @@ export const followerCreate =
             }
           )
         } else {
-          console.error("Creator with vendor_id", vendor_id, "not found in follow list")
+          //console.error("Creator with vendor_id", vendor_id, "not found in follow list")
           return null
         }
       } else {
-        console.error("Follow list not found or has no creators")
+        //console.error("Follow list not found or has no creators")
         return null
       }
     } catch (error) {
-      console.error("Error in deletefollower:", error)
+      //console.error("Error in deletefollower:", error)
       return null
     }
   }
@@ -955,7 +955,7 @@ export const wishlistAddItem = async (variant_id: string): Promise<any> => {
   const token = cookies.get("_medusa_jwt")?.value
   
   if (!token) {
-    console.log("please login")
+    //console.log("please login")
     return "please login"
   }
   
@@ -984,7 +984,7 @@ export const wishlistItems = async (): Promise<any> => {
   const token = cookies.get("_medusa_jwt")?.value
   
   if (!token) {
-    console.log("please login")
+    //console.log("please login")
     return "please login"
   }
   
@@ -1011,7 +1011,7 @@ export const ItemDelete = async (itemId: string): Promise<any> => {
   const token = cookies.get("_medusa_jwt")?.value
   
   if (!token) {
-    console.log("please login")
+    //console.log("please login")
     return "please login"
   }
   
@@ -1035,13 +1035,16 @@ export const matchItemWithVariant = async (productId: string): Promise<any> => {
   const token = cookies.get("_medusa_jwt")?.value
   
   if (!token) {
-    console.log("please login")
+    //console.log("please login")
     return "please login"
   }
   
   return await sdk.client
     .fetch(`/store/products/${productId}`, {
       method: "GET",
+      query: {
+        fields: "*variants.calculated_price,+metadata,+tags,*vendor" // Add this line
+      },
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -1102,7 +1105,7 @@ export const loyaltyPoints = async () => {
 // Replace your loyaltyPointsHistory function in customer.ts with this enhanced version:
 
 export const loyaltyPointsHistory = async (limit?: number, offset?: number) => {
-  console.log('🔍 loyaltyPointsHistory called with:', { limit, offset })
+  //console.log('🔍 loyaltyPointsHistory called with:', { limit, offset })
   
   try {
     const cookies = await nextCookies()
@@ -1110,19 +1113,19 @@ export const loyaltyPointsHistory = async (limit?: number, offset?: number) => {
 
     // Check if token exists
     if (!token) {
-      console.error('❌ No JWT token found in cookies')
-      console.log('🔍 Available cookies:', Object.keys(cookies.getAll()))
+      //console.error('❌ No JWT token found in cookies')
+      //console.log('🔍 Available cookies:', Object.keys(cookies.getAll()))
       return null
     }
-    console.log('✅ JWT token found:', token.substring(0, 20) + '...')
+    //console.log('✅ JWT token found:', token.substring(0, 20) + '...')
 
     // Check environment variable
     const publishableKey = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
     if (!publishableKey) {
-      console.error('❌ NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY is not defined')
+      //console.error('❌ NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY is not defined')
       return null
     }
-    console.log('✅ Publishable key found:', publishableKey.substring(0, 20) + '...')
+    //console.log('✅ Publishable key found:', publishableKey.substring(0, 20) + '...')
 
     // Build query parameters
     const queryParams = new URLSearchParams()
@@ -1132,7 +1135,7 @@ export const loyaltyPointsHistory = async (limit?: number, offset?: number) => {
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : ''
     const fullUrl = `/store/customers/me/loyalty-points/history${queryString}`
     
-    console.log('🌐 Making request to:', fullUrl)
+    //console.log('🌐 Making request to:', fullUrl)
 
     const response = await sdk.client.fetch(fullUrl, {
       method: "GET",
@@ -1143,45 +1146,45 @@ export const loyaltyPointsHistory = async (limit?: number, offset?: number) => {
       },
     })
 
-    console.log('✅ API Response received:', response)
+    //console.log('✅ API Response received:', response)
     
     // Validate response structure
     if (response && typeof response === 'object') {
       if (response.transactions && Array.isArray(response.transactions)) {
-        console.log(`✅ Valid response structure: ${response.transactions.length} transactions`)
-        console.log('💰 Current balance from API:', response.current_balance)
+        //console.log(`✅ Valid response structure: ${response.transactions.length} transactions`)
+        //console.log('💰 Current balance from API:', response.current_balance)
         
         if (response.transactions.length > 0) {
-          console.log('📊 Sample transaction:', response.transactions[0])
+          //console.log('📊 Sample transaction:', response.transactions[0])
         }
         
         return response
       } else {
-        console.warn('⚠️ Response missing transactions array:', response)
+        //console.warn('⚠️ Response missing transactions array:', response)
         return response // Return anyway, might be valid but empty
       }
     } else {
-      console.error('❌ Invalid response structure:', typeof response, response)
+      //console.error('❌ Invalid response structure:', typeof response, response)
       return null
     }
 
   } catch (error) {
-    console.error('❌ Error in loyaltyPointsHistory:', error)
+    //console.error('❌ Error in loyaltyPointsHistory:', error)
     
     // Log detailed error information
     if (error.response) {
-      console.error('📊 Error Response Status:', error.response.status)
-      console.error('📊 Error Response Headers:', error.response.headers)
+      //console.error('📊 Error Response Status:', error.response.status)
+      //console.error('📊 Error Response Headers:', error.response.headers)
       try {
         const errorBody = await error.response.text()
-        console.error('📊 Error Response Body:', errorBody)
+        //console.error('📊 Error Response Body:', errorBody)
       } catch (bodyError) {
-        console.error('❌ Could not read error response body:', bodyError)
+        //console.error('❌ Could not read error response body:', bodyError)
       }
     } else if (error.request) {
-      console.error('📊 Request made but no response received:', error.request)
+      //console.error('📊 Request made but no response received:', error.request)
     } else {
-      console.error('📊 Error setting up request:', error.message)
+      //console.error('📊 Error setting up request:', error.message)
     }
     
     return null
@@ -1203,7 +1206,7 @@ export const fetchOrderInvoice = async (orderId: string) => {
   const token = cookies.get("_medusa_jwt")?.value
   
   if (!token) {
-    console.log("Please login to generate invoice")
+    //console.log("Please login to generate invoice")
     return { success: false, error: "Please login to generate invoice" }
   }
 
@@ -1251,7 +1254,7 @@ export const fetchOrderInvoice = async (orderId: string) => {
     }
 
   } catch (error) {
-    console.error("Invoice fetch error:", error)
+    //console.error("Invoice fetch error:", error)
     return { 
       success: false, 
       error: error instanceof Error ? error.message : "Unknown error occurred" 
@@ -1260,14 +1263,14 @@ export const fetchOrderInvoice = async (orderId: string) => {
 }
 // Also add this debug function to test the API directly:
 export const debugLoyaltyHistoryAPI = async () => {
-  console.log('🧪 Debug: Testing loyalty history API directly...')
+  //console.log('🧪 Debug: Testing loyalty history API directly...')
   
   try {
     const cookies = await nextCookies()
     const token = cookies.get("_medusa_jwt")?.value
     
-    console.log('🔍 Token check:', token ? 'Found' : 'Missing')
-    console.log('🔍 Publishable key check:', process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ? 'Found' : 'Missing')
+    //console.log('🔍 Token check:', token ? 'Found' : 'Missing')
+    //console.log('🔍 Publishable key check:', process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ? 'Found' : 'Missing')
     
     if (!token) {
       return { error: 'No authentication token found' }
@@ -1275,7 +1278,7 @@ export const debugLoyaltyHistoryAPI = async () => {
 
     // Test with explicit URL
     const testUrl = '/store/customers/me/loyalty-points/historylimit=10'
-    console.log('🌐 Testing URL:', testUrl)
+    //console.log('🌐 Testing URL:', testUrl)
 
     const response = await sdk.client.fetch(testUrl, {
       method: "GET",
@@ -1286,11 +1289,11 @@ export const debugLoyaltyHistoryAPI = async () => {
       },
     })
 
-    console.log('✅ Debug API test successful:', response)
+    //console.log('✅ Debug API test successful:', response)
     return { success: true, data: response }
 
   } catch (error) {
-    console.error('❌ Debug API test failed:', error)
+    //console.error('❌ Debug API test failed:', error)
     return { error: error.message, details: error }
   }
 }

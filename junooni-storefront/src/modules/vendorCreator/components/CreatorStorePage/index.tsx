@@ -135,10 +135,10 @@ const getColorHexFromName = (colorName: string): string => {
 
 // Extract color information from product metadata (handles both regular and JSON colors)
 const extractProductColors = (metadata: any): Array<{name: string, hex: string, key: string}> => {
-  console.log("🎨 Extracting colors from metadata:", metadata)
+  //console.log("🎨 Extracting colors from metadata:", metadata)
   
   if (!metadata || typeof metadata !== 'object') {
-    console.log("🎨 No metadata or invalid metadata")
+    //console.log("🎨 No metadata or invalid metadata")
     return []
   }
 
@@ -148,17 +148,17 @@ const extractProductColors = (metadata: any): Array<{name: string, hex: string, 
     const lowerKey = key.toLowerCase()
     
     if (lowerKey.includes('color') || lowerKey.includes('colour')) {
-      console.log(`🎨 Found color key: ${key} = "${value}"`)
+      //console.log(`🎨 Found color key: ${key} = "${value}"`)
       
       // Case 1: Value contains JSON array of colors
       if (typeof value === 'string' && value.trim().startsWith('[') && value.trim().endsWith(']')) {
-        console.log(`🎨 Found JSON color array: ${value}`)
+        //console.log(`🎨 Found JSON color array: ${value}`)
         try {
           const colorArray = JSON.parse(value)
           if (Array.isArray(colorArray)) {
             colorArray.forEach((colorItem, index) => {
               if (colorItem && typeof colorItem === 'object' && colorItem.name && colorItem.hex) {
-                console.log(`🎨 Parsed color from JSON: ${colorItem.name} = ${colorItem.hex}`)
+                //console.log(`🎨 Parsed color from JSON: ${colorItem.name} = ${colorItem.hex}`)
                 colors.push({
                   name: colorItem.name,
                   hex: colorItem.hex,
@@ -169,13 +169,13 @@ const extractProductColors = (metadata: any): Array<{name: string, hex: string, 
             return // Skip other processing for this key
           }
         } catch (error) {
-          console.log(`🎨 Failed to parse JSON colors: ${error}`)
+          //console.log(`🎨 Failed to parse JSON colors: ${error}`)
         }
       }
       
       // Case 2: Value contains single hex code
       else if (typeof value === 'string' && value.match(/^#[0-9A-Fa-f]{6}$/)) {
-        console.log(`🎨 Found hex value: ${value}`)
+        //console.log(`🎨 Found hex value: ${value}`)
         colors.push({
           name: key.replace(/^Color_/i, '').replace(/^colour_/i, ''),
           hex: value,
@@ -185,7 +185,7 @@ const extractProductColors = (metadata: any): Array<{name: string, hex: string, 
       
       // Case 3: Value contains color name
       else if (typeof value === 'string' && value.trim() && value !== '' && !value.includes('{') && !value.includes('[')) {
-        console.log(`🎨 Found color name in value: ${value}`)
+        //console.log(`🎨 Found color name in value: ${value}`)
         colors.push({
           name: value,
           hex: getColorHexFromName(value),
@@ -195,7 +195,7 @@ const extractProductColors = (metadata: any): Array<{name: string, hex: string, 
       
       // Case 4: Color name is in the key, value is empty
       else if (!value || value === '') {
-        console.log(`🎨 Extracting color from key: ${key}`)
+        //console.log(`🎨 Extracting color from key: ${key}`)
         const colorName = key.replace(/^Color_/i, '').replace(/^colour_/i, '')
         colors.push({
           name: colorName,
@@ -206,12 +206,12 @@ const extractProductColors = (metadata: any): Array<{name: string, hex: string, 
       
       // Case 5: Skip complex values that don't fit other patterns
       else {
-        console.log(`🎨 Skipping complex color value: ${key} = ${value}`)
+        //console.log(`🎨 Skipping complex color value: ${key} = ${value}`)
       }
     }
   })
   
-  console.log("🎨 Extracted colors:", colors)
+  //console.log("🎨 Extracted colors:", colors)
   return colors
 }
 
@@ -226,7 +226,7 @@ const extractJSONColors = (metadata: any): Array<{name: string, hex: string, key
   Object.entries(metadata).forEach(([key, value]) => {
     // Look for JSON color arrays in any field
     if (typeof value === 'string' && value.trim().startsWith('[')) {
-      console.log(`🎨 Checking for JSON colors in ${key}: ${value}`)
+      //console.log(`🎨 Checking for JSON colors in ${key}: ${value}`)
       try {
         const parsed = JSON.parse(value)
         if (Array.isArray(parsed)) {
@@ -269,7 +269,7 @@ const extractJSONColors = (metadata: any): Array<{name: string, hex: string, key
           })
         }
       } catch (error) {
-        console.log(`🎨 Failed to parse JSON in ${key}:`, error)
+        //console.log(`🎨 Failed to parse JSON in ${key}:`, error)
       }
     }
   })
@@ -279,7 +279,7 @@ const extractJSONColors = (metadata: any): Array<{name: string, hex: string, key
 
 // Check product options for colors
 const extractColorsFromOptions = (product: any): Array<{name: string, hex: string}> => {
-  console.log("🎨 Checking product options for colors:", product?.options)
+  //console.log("🎨 Checking product options for colors:", product?.options)
   
   if (!product?.options || !Array.isArray(product.options)) {
     return []
@@ -293,7 +293,7 @@ const extractColorsFromOptions = (product: any): Array<{name: string, hex: strin
   )
   
   if (colorOption && colorOption.values) {
-    console.log("🎨 Found color option:", colorOption)
+    //console.log("🎨 Found color option:", colorOption)
     
     colorOption.values.forEach((colorValue: any) => {
       const colorName = colorValue.value || colorValue.title || colorValue
@@ -311,23 +311,23 @@ const extractColorsFromOptions = (product: any): Array<{name: string, hex: strin
 
 // Enhanced color extraction that combines all sources
 const getProductColorsEnhanced = (product: any): Array<{name: string, hex: string, key?: string}> => {
-  console.log(`🎨 Getting enhanced colors for product: ${product?.title}`)
+  //console.log(`🎨 Getting enhanced colors for product: ${product?.title}`)
   
   const allColors: Array<{name: string, hex: string, key?: string}> = []
   
   // Method 1: Extract JSON colors first
   const jsonColors = extractJSONColors(product?.metadata)
-  console.log(`🎨 Found ${jsonColors.length} JSON colors:`, jsonColors)
+  //console.log(`🎨 Found ${jsonColors.length} JSON colors:`, jsonColors)
   allColors.push(...jsonColors)
   
   // Method 2: Extract regular metadata colors
   const metadataColors = extractProductColors(product?.metadata)
-  console.log(`🎨 Found ${metadataColors.length} metadata colors:`, metadataColors)
+  //console.log(`🎨 Found ${metadataColors.length} metadata colors:`, metadataColors)
   allColors.push(...metadataColors)
   
   // Method 3: Extract from options
   const optionColors = extractColorsFromOptions(product)
-  console.log(`🎨 Found ${optionColors.length} option colors:`, optionColors)
+  //console.log(`🎨 Found ${optionColors.length} option colors:`, optionColors)
   allColors.push(...optionColors)
   
   // Remove duplicates based on hex code
@@ -335,7 +335,7 @@ const getProductColorsEnhanced = (product: any): Array<{name: string, hex: strin
     index === self.findIndex(c => c.hex.toLowerCase() === color.hex.toLowerCase())
   )
   
-  console.log(`🎨 Final unique colors for ${product?.title}:`, uniqueColors)
+  //console.log(`🎨 Final unique colors for ${product?.title}:`, uniqueColors)
   return uniqueColors
 }
 
@@ -363,25 +363,25 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
   useEffect(() => {
     const fetchFollowers = async () => {
       try {
-        console.log("🔍 Fetching followers for vendor ID:", vendor.id)
+        //console.log("🔍 Fetching followers for vendor ID:", vendor.id)
         
         const vendorFollowers = await retriveVendorsFollowers(vendor.id)
-        console.log("📊 Followers response:", vendorFollowers)
+        //console.log("📊 Followers response:", vendorFollowers)
         
         if (vendorFollowers && vendorFollowers.follow && Array.isArray(vendorFollowers.follow)) {
           const validFollowers = vendorFollowers.follow.filter(f => 
             f && f.follow && f.follow.customer
           )
           
-          console.log(`✅ Found ${validFollowers.length} valid followers`)
+          //console.log(`✅ Found ${validFollowers.length} valid followers`)
           setFollowers(validFollowers)
         } else {
-          console.log("📭 No followers in response")
+          //console.log("📭 No followers in response")
           setFollowers([])
         }
         
       } catch (error) {
-        console.error("❌ Error fetching followers:", error)
+        //console.error("❌ Error fetching followers:", error)
         setFollowers([])
       }
     }
@@ -397,10 +397,10 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
       setIsLoadingAuth(true)
       try {
         const customer = await retrieveCustomer()
-        console.log("Retrieved customer:", customer)
+        //console.log("Retrieved customer:", customer)
         setCurrentCustomer(customer)
       } catch (error) {
-        console.error("Error retrieving customer:", error)
+        //console.error("Error retrieving customer:", error)
       } finally {
         setIsLoadingAuth(false)
       }
@@ -413,12 +413,12 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
 
   // Check following status when both customer and followers are available
   useEffect(() => {
-    console.log(followers)
+    //console.log(followers)
     if (currentCustomer && followers.length > 0) {
       const isAlreadyFollowing = followers.some(
         (item) => item.follow?.customer_id === currentCustomer.id
       )
-      console.log("Following status checked:", isAlreadyFollowing)
+      //console.log("Following status checked:", isAlreadyFollowing)
       setIsFollowing(isAlreadyFollowing)
     }
   }, [currentCustomer, followers])
@@ -426,17 +426,17 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
   // Updated follow/unfollow handler
   const handleFollowToggle = async () => {
     if (!currentCustomer) {
-      console.warn("User must be logged in to follow/unfollow.")
+      //console.warn("User must be logged in to follow/unfollow.")
       return toast.warning("Please log in to follow/unfollow.")
     }
 
     try {
       if (isFollowing) {
-        console.log("Unfollowing vendor:", vendor.id)
+        //console.log("Unfollowing vendor:", vendor.id)
         await deletefollower(vendor.id)
         setIsFollowing(false)
       } else {
-        console.log("Following vendor:", vendor.id)
+        //console.log("Following vendor:", vendor.id)
         await Addfollower(vendor.id)
         setIsFollowing(true)
       }
@@ -449,9 +449,56 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
         }
       }, 1000)
     } catch (error) {
-      console.error("Error toggling follow status:", error)
+      //console.error("Error toggling follow status:", error)
     }
   }
+
+  // Share functionality
+  const handleShare = async (type: string) => {
+    const url = window.location.href
+    const text = `Check out ${creator.name}'s store on Junooni!`
+
+    switch (type) {
+      case 'copy':
+        try {
+          await navigator.clipboard.writeText(url)
+          toast.success('Link copied to clipboard!')
+        } catch (error) {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea')
+          textArea.value = url
+          document.body.appendChild(textArea)
+          textArea.select()
+          document.execCommand('copy')
+          document.body.removeChild(textArea)
+          toast.success('Link copied to clipboard!')
+        }
+        break
+      case 'twitter':
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank')
+        break
+      case 'facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank')
+        break
+      case 'email':
+        window.open(`mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(url)}`)
+        break
+    }
+    setShowShareOptions(false)
+  }
+
+  // Close share dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (showShareOptions && !target.closest('.share-dropdown')) {
+        setShowShareOptions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showShareOptions])
 
   // Helper function to generate avatar colors based on user ID
   const generateAvatarColor = (userId: string): string => {
@@ -473,7 +520,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
       setIsLoading(true)
       try {
         if (vendor && !Array.isArray(vendor) && region) {
-          console.log("🔍 Fetching all products to filter by vendor:", vendor.id)
+          //console.log("🔍 Fetching all products to filter by vendor:", vendor.id)
           
           const {
             response: { products: pricedProducts },
@@ -485,33 +532,33 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
             },
           })
           
-          console.log("📦 Total products fetched:", pricedProducts?.length || 0)
+          //console.log("📦 Total products fetched:", pricedProducts?.length || 0)
           
           if (pricedProducts && Array.isArray(pricedProducts)) {
-            console.log("📦 Sample product structure:", pricedProducts[0])
+            //console.log("📦 Sample product structure:", pricedProducts[0])
             
             // 🎨 DEBUG: Log metadata structure for color debugging
-            console.log("🎨 DEBUGGING PRODUCT METADATA:")
+            //console.log("🎨 DEBUGGING PRODUCT METADATA:")
             pricedProducts.forEach((product, index) => {
               if (product.metadata && Object.keys(product.metadata).length > 0) {
-                console.log(`Product ${index} "${product.title}" metadata:`, product.metadata)
+                //console.log(`Product ${index} "${product.title}" metadata:`, product.metadata)
                 
                 // Check for color-related keys
                 const colorKeys = Object.keys(product.metadata).filter(key => 
                   key.toLowerCase().includes('color') || 
                   key.toLowerCase().includes('colour')
                 )
-                console.log(`Color-related keys:`, colorKeys)
+                //console.log(`Color-related keys:`, colorKeys)
               }
             })
             
             // Filter products that belong to this vendor
             const vendorProducts = pricedProducts.filter(product => {
-              console.log(`🔍 Product "${product.title}":`, {
-                vendor: product.vendor,
-                vendor_id: product.vendor_id,
-                metadata: product.metadata
-              })
+              // console.log(`🔍 Product "${product.title}":`, {
+              //   vendor: product.vendor,
+              //   vendor_id: product.vendor_id,
+              //   metadata: product.metadata
+              // })
               
               return (
                 product.vendor?.id === vendor.id ||
@@ -523,19 +570,19 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
               )
             })
             
-            console.log("✅ Vendor products found:", vendorProducts.length)
+            //console.log("✅ Vendor products found:", vendorProducts.length)
             if (vendorProducts.length > 0) {
-              console.log("📦 Sample vendor product:", vendorProducts[0])
+              //console.log("📦 Sample vendor product:", vendorProducts[0])
             }
             
             setVendorProducts(vendorProducts)
           } else {
-            console.log("❌ No products in response")
+            //console.log("❌ No products in response")
             setVendorProducts([])
           }
         }
       } catch (error) {
-        console.error("❌ Error fetching products:", error)
+        //console.error("❌ Error fetching products:", error)
         setVendorProducts([])
       } finally {
         setIsLoading(false)
@@ -810,7 +857,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
       initial="hidden"
       animate="visible"
       variants={fadeIn}
-      className="min-h-screen mt-16 bg-gray-50"
+      className="min-h-screen pt-16 overflow-x-hidden bg-gray-50 md:pt-20"
     >
       {/* Cover Photo */}
       <motion.div
@@ -825,27 +872,18 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
 
         {/* Dark gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
-
-        {/* Creator name on mobile */}
-        <motion.div
-          variants={slideIn}
-          className="relative left-0 z-50 w-full pt-4 pl-28 md:p-4 md:bottom-0 md:hidden bottom-4 top-22"
-        >
-          <h1 className="font-bold text-black ext-3xl ">{creator.name}</h1>
-          <p className="text-black-200">@ {creator.handle}</p>
-        </motion.div>
       </motion.div>
       
-      <div className="w-full px-0 mx-auto md:px-4 md:container">
-        {/* Creator Profile Section */}
-        <motion.div variants={slideIn} className="relative w-full mb-8 -mt-34 md:-mt-20 ">
+      <div className="w-full px-0 mx-auto max-w-7xl sm:px-4 sm:px-6 lg:px-8">
+        {/* creator profile section */}
+         <motion.div variants={slideIn} className="relative w-full mb-8 -mt-12 md:-mt-16">
           <div className="bg-white rounded-lg shadow-lg">
             <div className="p-4 md:p-6 md:pb-0">
               <div className="flex flex-col gap-6 md:flex-row">
                 {/* Profile Picture with proper styling */}
-                <motion.div
+               <motion.div
                   variants={fadeIn}
-                  className="relative w-32 h-32 -mt-16 md:w-40 md:h-40 md:-mt-24"
+                  className="relative flex-shrink-0 w-32 h-32 -mt-8 md:w-40 md:h-40 md:-mt-16"
                 >
                   <div className="w-full h-full overflow-hidden border-4 border-white rounded-full shadow-lg">
                     <div className="relative w-full h-full">
@@ -904,7 +942,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                           )}
                         </motion.button>
 
-                        <div className="relative">
+                        <div className="relative share-dropdown">
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -922,46 +960,63 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: 10 }}
-                              className="absolute right-0 z-10 w-48 mt-2 bg-white rounded-md shadow-lg"
+                              className="absolute right-0 z-10 w-48 mt-2 bg-white border border-gray-200 rounded-md shadow-lg"
                             >
                               <div className="py-1">
-                                <a
-                                  href="#"
-                                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                <button
+                                  onClick={() => handleShare('copy')}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 >
                                   <MessageCircleMore
                                     size={16}
                                     className="mr-2"
                                   />
                                   Copy Link
-                                </a>
-                                <a
-                                  href="#"
-                                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                </button>
+                                <button
+                                  onClick={() => handleShare('twitter')}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 >
                                   <Twitter size={16} className="mr-2" />
                                   Share on Twitter
-                                </a>
-                                <a
-                                  href="#"
-                                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                </button>
+                                <button
+                                  onClick={() => handleShare('facebook')}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 >
                                   <ExternalLink size={16} className="mr-2" />
                                   Share on Facebook
-                                </a>
-                                <a
-                                  href="#"
-                                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                </button>
+                                <button
+                                  onClick={() => handleShare('email')}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 >
                                   <Mail size={16} className="mr-2" />
                                   Email
-                                </a>
+                                </button>
                               </div>
                             </motion.div>
                           )}
                         </div>
                       </motion.div>
                     </div>
+                  </div>
+
+                  {/* Mobile Creator Name & Info */}
+                  <div className="md:hidden">
+                    <motion.div variants={slideIn} className="mb-4">
+                      <h1 className="text-2xl font-bold">{creator.name}</h1>
+                      <div className="flex items-center mt-1">
+                        <p className="px-3 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
+                          @ {creator.handle}
+                        </p>
+                        {creator.verified && (
+                          <span className="ml-2 bg-[#e65100] text-white text-xs px-2 py-0.5 rounded-full">
+                            Verified
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
                   </div>
 
                   {/* Creator Role & Stats */}
@@ -1002,18 +1057,18 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
               {/* Mobile Action Buttons */}
               <motion.div
                 variants={slideIn}
-                className="flex justify-between gap-2 mt-4 md:hidden"
+                className="flex gap-3 mt-4 md:hidden"
               >
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleFollowToggle}
                   disabled={isLoadingAuth}
-                  className={`flex-1 flex items-center justify-center px-4 py-2 rounded-full text-sm font-medium transition ${
+                  className={`flex-1 flex items-center justify-center px-4 py-3 rounded-full text-sm font-medium transition ${
                     isLoadingAuth
                       ? "bg-gray-300 text-gray-700 cursor-not-allowed"
                       : isFollowing
-                      ? "bg-white text-[#e65100] border border-[#e65100] hover:bg-gray-300"
+                      ? "bg-white text-[#e65100] border border-[#e65100] hover:bg-gray-50"
                       : "bg-[#e65100] text-white hover:bg-[#d84315]"
                   }`}
                 >
@@ -1022,61 +1077,64 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                     : isFollowing
                     ? "Following"
                     : "Follow"}
+                  {!isFollowing && !isLoadingAuth && (
+                    <Bell size={16} className="ml-2" />
+                  )}
                 </motion.button>
 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowShareOptions(!showShareOptions)}
-                  className="flex items-center justify-center flex-1 px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-full hover:bg-gray-50"
-                >
-                  Share
-                </motion.button>
-              </motion.div>
-
-              {/* Upcoming Drops */}
-              {creator.upcomingDrops && creator.upcomingDrops.length > 0 && (
-                <motion.div
-                  variants={slideIn}
-                  className="p-4 mt-6 border-t bg-gray-50 md:p-6"
-                >
-                  <h3 className="flex items-center mb-3 font-semibold">
-                    <Calendar size={18} className="mr-2 text-[#e65100]" />
-                    Upcoming Drops
-                  </h3>
-                  <motion.div
-                    variants={staggerContainer}
-                    className="flex flex-col gap-2"
+                <div className="relative share-dropdown">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowShareOptions(!showShareOptions)}
+                    className="flex items-center justify-center px-6 py-3 text-sm font-medium bg-white border border-gray-300 rounded-full hover:bg-gray-50"
                   >
-                    {creator.upcomingDrops.map((drop, index) => (
-                      <motion.div
-                        key={index}
-                        variants={slideIn}
-                        whileHover={{
-                          scale: 1.01,
-                          transition: { duration: 0.2 },
-                        }}
-                        className="flex items-center justify-between p-3 transition bg-white border rounded-md hover:shadow-md"
-                      >
-                        <div className="flex items-center">
-                          <div className="bg-[#e65100] text-white text-xs font-bold px-2 py-1 rounded mr-3">
-                            {drop.date}
-                          </div>
-                          <span className="font-medium">{drop.title}</span>
-                        </div>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="text-[#e65100] text-sm font-medium hover:underline flex items-center"
+                    <Share2 size={16} className="mr-2" />
+                    Share
+                  </motion.button>
+
+                  {/* Mobile Share Dropdown */}
+                  {showShareOptions && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 z-20 w-48 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg"
+                    >
+                      <div className="py-2">
+                        <button
+                          onClick={() => handleShare('copy')}
+                          className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          Remind me
-                          <Bell size={14} className="ml-1" />
-                        </motion.button>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                </motion.div>
-              )}
+                          <MessageCircleMore size={16} className="mr-3" />
+                          Copy Link
+                        </button>
+                        <button
+                          onClick={() => handleShare('twitter')}
+                          className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <Twitter size={16} className="mr-3" />
+                          Share on Twitter
+                        </button>
+                        <button
+                          onClick={() => handleShare('facebook')}
+                          className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <ExternalLink size={16} className="mr-3" />
+                          Share on Facebook
+                        </button>
+                        <button
+                          onClick={() => handleShare('email')}
+                          className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <Mail size={16} className="mr-3" />
+                          Email
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              </motion.div>
 
               {/* Fans Section */}
               <motion.div
@@ -1086,119 +1144,109 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                 <div className="flex flex-col items-center justify-between px-6 py-8 text-white md:flex-row">
                   <div className="mb-4 md:mb-0">
                     <h2 className="mb-2 text-xl font-bold">From the Fans</h2>
-                    <p>
-                      Join{" "}
-                      {followers.length > 0 ? followers.length : "thousands of"}{" "}
-                      fans who love {creator.name}'s exclusive merchandise
-                    </p>
-
-                    {followers.length > 3 && (
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="mt-3 px-4 py-1.5 bg-white text-[#e65100] rounded-full text-sm font-medium flex items-center"
-                      >
-                        View All Fans <ArrowRight size={14} className="ml-1" />
-                      </motion.button>
+                    
+                    {followers.length > 0 ? (
+                      <>
+                        <p>
+                          Join {followers.length} fans who love {creator.name}'s exclusive merchandise
+                        </p>
+                        {followers.length > 3 && (
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="mt-3 px-4 py-1.5 bg-white text-[#e65100] rounded-full text-sm font-medium flex items-center"
+                          >
+                            View All Fans <ArrowRight size={14} className="ml-1" />
+                          </motion.button>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-lg">
+                        Be the first one to follow {creator.name} and show your support!
+                      </p>
                     )}
                   </div>
 
                   <div className="flex -space-x-4">
-                    {(() => {
-                      try {
-                        if (
-                          followers &&
-                          Array.isArray(followers) &&
-                          followers.length > 0
-                        ) {
-                          return followers
-                            .slice(0, 5)
-                            .map((followerData, i) => {
-                              try {
-                                const follower = followerData?.follow?.customer
+                    {followers.length > 0 ? (
+                      <>
+                        {followers
+                          .slice(0, 5)
+                          .map((followerData, i) => {
+                            try {
+                              const follower = followerData?.follow?.customer
 
-                                if (!follower || !follower.id) {
-                                  return null
-                                }
-
-                                const firstName = follower.first_name || ""
-                                const lastName = follower.last_name || ""
-                                const initials =
-                                  (
-                                    firstName.charAt(0) + lastName.charAt(0)
-                                  ).toUpperCase() || "?"
-
-                                const avatarColor = generateAvatarColor(
-                                  follower.id
-                                )
-
-                                return (
-                                  <motion.div
-                                    key={`follower-${follower.id}-${i}`}
-                                    whileHover={{ y: -5, zIndex: 10 }}
-                                    className="relative w-10 h-10 overflow-hidden transition-all border-2 border-white rounded-full cursor-pointer"
-                                    title={`${firstName} ${lastName}`}
-                                  >
-                                    <div
-                                      className="flex items-center justify-center w-full h-full text-xs font-bold text-white"
-                                      style={{ backgroundColor: avatarColor }}
-                                    >
-                                      {initials}
-                                    </div>
-
-                                    <div className="absolute z-20 w-32 p-2 text-xs text-gray-800 transition-opacity transform -translate-x-1/2 bg-white rounded shadow-md opacity-0 pointer-events-none hover:opacity-100 -bottom-16 left-1/2">
-                                      <p className="font-semibold text-center">
-                                        {firstName || "Fan"} {lastName || ""}
-                                      </p>
-                                      <p className="text-center text-gray-500 truncate">
-                                        {follower.email || "No email available"}
-                                      </p>
-                                    </div>
-                                  </motion.div>
-                                )
-                              } catch (error) {
-                                console.error(
-                                  "Error rendering follower:",
-                                  error
-                                )
+                              if (!follower || !follower.id) {
                                 return null
                               }
-                            })
-                            .filter(Boolean)
-                        }
 
-                        return [1, 2, 3].map((i) => (
+                              const firstName = follower.first_name || ""
+                              const lastName = follower.last_name || ""
+                              const initials =
+                                (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() || "?"
+
+                              const avatarColor = generateAvatarColor(follower.id)
+
+                              return (
+                                <motion.div
+                                  key={`follower-${follower.id}-${i}`}
+                                  whileHover={{ y: -5, zIndex: 10 }}
+                                  className="relative w-10 h-10 overflow-hidden transition-all border-2 border-white rounded-full cursor-pointer"
+                                  title={`${firstName} ${lastName}`}
+                                >
+                                  <div
+                                    className="flex items-center justify-center w-full h-full text-xs font-bold text-white"
+                                    style={{ backgroundColor: avatarColor }}
+                                  >
+                                    {initials}
+                                  </div>
+
+                                  <div className="absolute z-20 w-32 p-2 text-xs text-gray-800 transition-opacity transform -translate-x-1/2 bg-white rounded shadow-md opacity-0 pointer-events-none hover:opacity-100 -bottom-16 left-1/2">
+                                    <p className="font-semibold text-center">
+                                      {firstName || "Fan"} {lastName || ""}
+                                    </p>
+                                    <p className="text-center text-gray-500 truncate">
+                                      {follower.email || "No email available"}
+                                    </p>
+                                  </div>
+                                </motion.div>
+                              )
+                            } catch (error) {
+                              //console.error("Error rendering follower:", error)
+                              return null
+                            }
+                          })
+                          .filter(Boolean)}
+
+                        <motion.div
+                          whileHover={{ scale: 1.1 }}
+                          className="w-10 h-10 rounded-full bg-white text-[#e65100] font-bold flex items-center justify-center text-sm border-2 border-white"
+                        >
+                          {followers.length > 5 ? `+${followers.length - 5}` : "+"}
+                        </motion.div>
+                      </>
+                    ) : (
+                      // Show placeholder avatars when no followers
+                      <div className="flex -space-x-4">
+                        {[1, 2, 3].map((i) => (
                           <motion.div
-                            key={`default-avatar-${i}`}
-                            className="w-10 h-10 overflow-hidden border-2 border-white rounded-full"
+                            key={`placeholder-avatar-${i}`}
+                            className="w-10 h-10 overflow-hidden border-2 border-white rounded-full opacity-50"
                             whileHover={{ y: -3 }}
                           >
-                            <div className="flex items-center justify-center w-full h-full font-bold text-white bg-gray-600">
+                            <div className="flex items-center justify-center w-full h-full font-bold text-white bg-white/20 backdrop-blur-sm">
                               ?
                             </div>
                           </motion.div>
-                        ))
-                      } catch (error) {
-                        console.error(
-                          "Error rendering followers section:",
-                          error
-                        )
-                        return (
-                          <div className="text-sm text-white">
-                            <span>Fan avatars unavailable</span>
-                          </div>
-                        )
-                      }
-                    })()}
-
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      className="w-10 h-10 rounded-full bg-white text-[#e65100] font-bold flex items-center justify-center text-sm border-2 border-white"
-                    >
-                      {followers && followers.length > 5
-                        ? `+${followers.length - 5}`
-                        : "+"}
-                    </motion.div>
+                        ))}
+                        <motion.div
+                          whileHover={{ scale: 1.1 }}
+                          className="flex items-center justify-center w-10 h-10 text-sm font-bold text-white border-2 border-white rounded-full opacity-50 bg-white/20 backdrop-blur-sm"
+                        >
+                          +
+                        </motion.div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -1224,12 +1272,16 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                     <select 
                       value={sortOption}
                       onChange={handleSortChange}
-                      className="md:w-full w-1/2 border rounded-md p-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#e65100] sm:w-auto"
+                      className="md:w-full w-1/2 border rounded-md p-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#e65100] sm:w-auto bg-white hover:bg-gray-50"
+                      style={{
+                        backgroundColor: '#e65100',
+                        color: 'white'
+                      }}
                     >
-                      <option value="featured">Sort: Featured</option>
-                      <option value="newest">Newest</option>
-                      <option value="price_low_high">Price: Low to High</option>
-                      <option value="price_high_low">Price: High to Low</option>
+                      <option value="featured" style={{backgroundColor: 'white', color: 'black'}}>Sort: Featured</option>
+                      <option value="newest" style={{backgroundColor: 'white', color: 'black'}}>Newest</option>
+                      <option value="price_low_high" style={{backgroundColor: 'white', color: 'black'}}>Price: Low to High</option>
+                      <option value="price_high_low" style={{backgroundColor: 'white', color: 'black'}}>Price: High to Low</option>
                     </select>
                   </div>
                 </div>
@@ -1247,7 +1299,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                   <>
                     <motion.div
                       variants={staggerContainer}
-                      className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 md:gap-6"
+                      className="grid grid-cols-2 gap-0 -mx-4 md:grid-cols-3 sm:-mx-6 lg:grid-cols-4 md:gap-6"
                     >
                       {currentProducts.map((product: Product) => (
                         <DynamicProductCard
@@ -1400,7 +1452,8 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
   region,
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false)
-  
+  const [selectedColor, setSelectedColor] = useState<string | null>(null)
+  const [hoveredColor, setHoveredColor] = useState<string | null>(null) // Add this line
   // Review state
   const [averageRating, setAverageRating] = useState(0)
   const [reviewCount, setReviewCount] = useState(0)
@@ -1425,7 +1478,7 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
         setReviewCount(actualCount)
       })
       .catch((error) => {
-        console.error("Error fetching product reviews in card:", error)
+        //console.error("Error fetching product reviews in card:", error)
         setAverageRating(0)
         setReviewCount(0)
       })
@@ -1434,9 +1487,107 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
       })
   }, [product.id])
 
+  // ADD STEP 3 FUNCTION HERE:
+// Function to get the appropriate image based on selected color
+// Function to get the appropriate image based on selected color
+const getVariantImage = () => {
+  // Use hovered color if available, otherwise use selected color
+  const activeColor = hoveredColor || selectedColor
+  
+  if (!activeColor) {
+    return productImage
+  }
+
+  // Find the color name that matches the active hex
+  const activeColorName = productColors.find(c => c.hex === activeColor)?.name
+
+  if (!activeColorName) {
+    return productImage
+  }
+
+  //console.log('🖼️ Looking for images for color:', activeColorName)
+
+  // Strategy 1: Check variant metadata for color-specific images
+  if (product?.variants && Array.isArray(product.variants)) {
+    for (const variant of product.variants) {
+      const variantMetadata = (variant as any)?.metadata
+
+      if (variantMetadata) {
+        // Check color_images field
+        if (variantMetadata.color_images) {
+          try {
+            const colorImages = JSON.parse(variantMetadata.color_images)
+            
+            if (Array.isArray(colorImages)) {
+              const matchingColorImage = colorImages.find((img: any) => 
+                img.color?.toLowerCase() === activeColorName.toLowerCase()
+              )
+              
+              if (matchingColorImage && matchingColorImage.url) {
+                //console.log('🖼️ Found matching color image:', matchingColorImage.url)
+                return matchingColorImage.url
+              }
+            }
+          } catch (error) {
+            //console.log('🖼️ Error parsing color_images:', error)
+          }
+        }
+
+        // Check variant_images field
+        if (variantMetadata.variant_images) {
+          try {
+            const variantImages = JSON.parse(variantMetadata.variant_images)
+            
+            if (Array.isArray(variantImages) && variantImages.length > 0) {
+              const variantColors = extractProductColors(variantMetadata)
+              const hasMatchingColor = variantColors.some(color => 
+                color.hex.toLowerCase() === activeColor.toLowerCase()
+              )
+              
+              if (hasMatchingColor && variantImages[0]) {
+                //console.log('🖼️ Found matching variant image:', variantImages[0])
+                return variantImages[0]
+              }
+            }
+          } catch (error) {
+            //console.log('🖼️ Error parsing variant_images:', error)
+          }
+        }
+      }
+    }
+  }
+
+  // Strategy 2: Search product images for color-specific filenames
+  if (product?.images && Array.isArray(product.images) && product.images.length > 1) {
+    const colorVariations = [
+      activeColorName.toLowerCase(),
+      activeColorName.toLowerCase().replace(/\s+/g, ''),
+      activeColorName.toLowerCase().replace(/\s+/g, '-'),
+      activeColorName.toLowerCase().replace(/\s+/g, '_'),
+    ]
+    
+    const colorImage = product.images.find((img: any) => {
+      const imageUrl = img.url || ''
+      return colorVariations.some(variation => 
+        imageUrl.toLowerCase().includes(variation)
+      )
+    })
+    
+    if (colorImage) {
+      //console.log('🖼️ Found filename-based color image:', colorImage.url)
+      return colorImage.url
+    }
+  }
+
+  //console.log('🖼️ No matching image found, returning default')
+  return productImage
+}
+  // ADD STEP 5 USEEFFECT HERE:
+  // Initialize with first available color
+
   // Updated to only show colors from color_hex_values field
   const getProductColors = () => {
-    console.log(`🎨 Getting colors for product: ${productName}`)
+    //console.log(`🎨 Getting colors for product: ${productName}`)
     
     // Get all colors using the enhanced extraction
     const allColors = getProductColorsEnhanced(product)
@@ -1446,9 +1597,9 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
       color.key && color.key.includes('color_hex_values')
     )
     
-    console.log(`🎨 All colors found: ${allColors.length}`)
-    console.log(`🎨 Filtered colors (color_hex_values only): ${filteredColors.length}`)
-    console.log(`🎨 Final colors:`, filteredColors)
+    //console.log(`🎨 All colors found: ${allColors.length}`)
+    //console.log(`🎨 Filtered colors (color_hex_values only): ${filteredColors.length}`)
+    //console.log(`🎨 Final colors:`, filteredColors)
     
     return filteredColors
   }
@@ -1457,19 +1608,19 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
 
   // Enhanced getPriceData function with comprehensive debugging
   const getPriceData = () => {
-    console.log("💰 Getting price data for product:", product?.title)
-    console.log("💰 Product variants:", product?.variants)
-    console.log("💰 Region currency:", region?.currency_code)
+    //console.log("💰 Getting price data for product:", product?.title)
+    //console.log("💰 Product variants:", product?.variants)
+    //console.log("💰 Region currency:", region?.currency_code)
 
     if (product?.variants?.length > 0) {
       const variant = product.variants[0]
-      console.log("💰 First variant:", variant)
+      //console.log("💰 First variant:", variant)
       
       const currencyCode = region?.currency_code || "usd"
       
       // Method 1: Try calculated_price first
       if (variant?.calculated_price) {
-        console.log("💰 Using calculated_price:", variant.calculated_price)
+        //console.log("💰 Using calculated_price:", variant.calculated_price)
         
         if (typeof variant.calculated_price === 'object') {
           const possiblePrices = [
@@ -1483,7 +1634,7 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
           
           for (const priceValue of possiblePrices) {
             if (priceValue && typeof priceValue === 'number') {
-              console.log("💰 Found calculated price:", priceValue)
+              //console.log("💰 Found calculated price:", priceValue)
               return {
                 amount: priceValue,
                 currencyCode: currencyCode,
@@ -1491,7 +1642,7 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
             }
           }
         } else if (typeof variant.calculated_price === 'number') {
-          console.log("💰 Using direct calculated price:", variant.calculated_price)
+          //console.log("💰 Using direct calculated price:", variant.calculated_price)
           return {
             amount: variant.calculated_price,
             currencyCode: currencyCode,
@@ -1501,7 +1652,7 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
       
       // Method 2: Try standard prices array
       if (variant?.prices?.length > 0) {
-        console.log("💰 Using prices array:", variant.prices)
+        //console.log("💰 Using prices array:", variant.prices)
         
         const matchingPrice = variant.prices.find(
           (p) => p.currency_code?.toLowerCase() === currencyCode.toLowerCase()
@@ -1510,7 +1661,7 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
         const price = matchingPrice || variant.prices[0]
         
         if (price && typeof price.amount === "number") {
-          console.log("💰 Found price:", price)
+          //console.log("💰 Found price:", price)
           return {
             amount: price.amount,
             currencyCode: price.currency_code || currencyCode,
@@ -1522,7 +1673,7 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
       const priceFields = ['price', 'unit_price', 'list_price', 'original_price', 'amount']
       for (const field of priceFields) {
         if (variant?.[field] && typeof variant[field] === 'number') {
-          console.log(`💰 Using ${field}:`, variant[field])
+          //console.log(`💰 Using ${field}:`, variant[field])
           return {
             amount: variant[field],
             currencyCode: currencyCode,
@@ -1530,19 +1681,26 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
         }
       }
       
-      console.log("❌ No price found in variant:", Object.keys(variant))
+      //console.log("❌ No price found in variant:", Object.keys(variant))
     }
     
-    console.log("❌ Returning default price 0")
+    //console.log("❌ Returning default price 0")
     return { amount: 0, currencyCode: region?.currency_code || "usd" }
   }
 
   const priceData = getPriceData()
-  console.log("💰 Final price data:", priceData)
+  //console.log("💰 Final price data:", priceData)
+
+    useEffect(() => {
+    if (productColors.length > 0 && !selectedColor) {
+      setSelectedColor(productColors[0].hex)
+    }
+  }, [productColors])
+
 
   // Enhanced PreviewPrice component with debugging
   const PreviewPrice = ({ price }) => {
-    console.log("💰 PreviewPrice received:", price)
+    //console.log("💰 PreviewPrice received:", price)
     
     const { amount, currencyCode } = price
     const symbol = getCurrencySymbol(currencyCode)
@@ -1564,12 +1722,12 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
       ? Math.round(displayAmount).toString()
       : displayAmount.toFixed(2)
     
-    console.log("💰 Displaying price:", {
-      original: amount,
-      converted: displayAmount,
-      formatted: formattedPrice,
-      symbol
-    })
+    // console.log("💰 Displaying price:", {
+    //   original: amount,
+    //   converted: displayAmount,
+    //   formatted: formattedPrice,
+    //   symbol
+    // })
     
     return (
       <span>
@@ -1580,44 +1738,58 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
   }
 
   // Enhanced Color Display Component
-  const ColorOptions = ({ colors }: { colors: Array<{name: string, hex: string, key?: string}> }) => {
-    if (!colors || colors.length === 0) {
-      console.log(`🎨 No colors to display for ${productName}`)
-      return null
-    }
-
-    console.log(`🎨 Displaying ${colors.length} colors for ${productName}:`, colors)
-
-    return (
-      <div className="pt-1 mt-auto">
-        {/* <div className="mb-2 text-xs text-gray-500">
-          Available Colors ({colors.length}):
-        </div> */}
-        <ul className="flex items-center gap-x-1.5 flex-wrap">
-          {colors.map((color, index) => (
-            <li key={color.key || `color-${index}`}>
-              <div
-                className="w-5 h-5 transition-all border border-gray-300 rounded-full shadow-sm cursor-pointer hover:scale-125 hover:border-gray-500 hover:shadow-md"
-                style={{ backgroundColor: color.hex }}
-                title={`${color.name} (${color.hex})`}
-                onClick={() => console.log(`Selected color: ${color.name} (${color.hex})`)}
-              >
-                {/* Special handling for white and very light colors */}
-                {(color.hex === '#FFFFFF' || color.hex === '#FFFFF0' || color.hex.toLowerCase() === '#ffe5ec') && (
-                  <div className="w-full h-full border border-gray-400 rounded-full"></div>
-                )}
-                
-                {/* Add a small dot for very dark colors to show interactivity */}
-                {(color.hex === '#000000' || color.hex === '#780000') && (
-                  <div className="absolute w-1 h-1 transition-opacity transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-full opacity-0 hover:opacity-100 top-1/2 left-1/2"></div>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    )
+  // Enhanced Color Display Component
+const ColorOptions = ({ colors }: { colors: Array<{name: string, hex: string, key?: string}> }) => {
+  if (!colors || colors.length === 0) {
+    return null
   }
+
+  const handleColorHover = (colorHex: string) => {
+    setHoveredColor(colorHex)
+  }
+
+  const handleColorLeave = () => {
+    setHoveredColor(null)
+  }
+
+  return (
+    <div className="pt-1 mt-auto">
+      <ul className="flex items-center gap-x-1.5 flex-wrap">
+        {colors.map((color, index) => (
+          <li key={color.key || `color-${index}`}>
+            <div
+              className={`w-5 h-5 sm:w-6 sm:h-6 transition-all border-2 rounded-full shadow-sm cursor-pointer hover:scale-125 hover:shadow-md ${
+                selectedColor === color.hex 
+                  ? 'border-gray-600 ' 
+                  : hoveredColor === color.hex
+                    ? 'border-white-500 '
+                    : 'border-white-300 hover:border-white-500'
+              }`}
+              style={{ backgroundColor: color.hex }}
+              title={`${color.name} (${color.hex})`}
+              onClick={() => {
+                setSelectedColor(color.hex)
+                //console.log(`Selected color: ${color.name} (${color.hex})`)
+              }}
+              onMouseEnter={() => handleColorHover(color.hex)} // Add this
+              onMouseLeave={handleColorLeave} // Add this
+            >
+              {/* Special handling for white and very light colors */}
+              {(color.hex === '#FFFFFF' || color.hex === '#FFFFF0' || color.hex.toLowerCase() === '#ffe5ec') && (
+                <div className="w-full h-full border border-gray-400 rounded-full"></div>
+              )}
+              
+              {/* Selected indicator for dark colors */}
+              {(selectedColor === color.hex || hoveredColor === color.hex) && (color.hex === '#000000' || color.hex === '#780000') && (
+                <div className="absolute w-2 h-2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-full top-1/2 left-1/2"></div>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
   // UI Components
   const Wishlistbutton: React.FC<{ variantId: string | undefined }> = ({
@@ -1628,28 +1800,28 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
       whileTap={{ scale: 0.9 }}
       className="absolute z-20 p-2 bg-white rounded-full shadow-md right-3 top-3"
     >
-    {/* <div className="absolute top-0 right-0 z-20">
-      <div className="pointer-events-auto">
-        <WishlistButton variantId={matchedVariant?.id || product.variants?.[0]?.id}/>
-      </div>
-    </div> */}
-      {/* <Heart size={18} className="text-gray-700 hover:text-red-500" /> */}
     </motion.button>
   )
 
-  const Thumbnail: React.FC<{
-    thumbnail: string | null
-    images: any[]
-    size: string
-    isFeatured: boolean
-  }> = ({ thumbnail }) => (
+ const Thumbnail: React.FC<{
+  thumbnail: string | null
+  images: any[]
+  size: string
+  isFeatured: boolean
+}> = ({ thumbnail }) => {
+  const imageUrl = getVariantImage()
+  
+  return (
     <img
-      src={thumbnail}
+      src={imageUrl}
       alt={productName}
-      className="object-cover w-full h-full"
+      className={`object-cover w-full h-full transition-all duration-300 ${
+        hoveredColor ? 'brightness-110' : ''
+      }`}
+      key={`${selectedColor}-${hoveredColor}`} // Force re-render when colors change
     />
   )
-
+}
   const Text: React.FC<{
     className: string
     children: React.ReactNode
@@ -1676,33 +1848,14 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       data-testid="product-wrapper"
-      className="relative flex flex-col h-full p-3 border border-gray-100 rounded-lg shadow-sm group hover:shadow-md"
+      className="relative flex flex-col h-full p-1 border border-gray-100 shadow-sm sm:p-3 group hover:shadow-md"
     >
       {/* Product image container */}
       <div className="relative overflow-hidden rounded-lg bg-gray-50 aspect-[4/5] mb-4">
-        <WishlistButton variantId={product.variants?.[0]?.id} />
+        {/* <WishlistButton variantId={product.variants?.[0]?.id} /> */}
 
         {/* Product tags */}
-        <div className="absolute z-10 flex flex-wrap gap-2 left-3 top-3 max-w-[85%]">
-          {productTags.map((tag) => (
-            <span
-              key={tag.id}
-              className="px-2 py-1 text-xs font-medium text-white rounded bg-[#e65100] whitespace-nowrap"
-            >
-              {tag.value}
-            </span>
-          ))}
-          {hasProductBadge(product, "isNew") && (
-            <span className="px-2 py-1 text-xs font-medium text-white bg-black rounded whitespace-nowrap">
-              New
-            </span>
-          )}
-          {hasProductBadge(product, "isLimited") && (
-            <span className="px-2 py-1 text-xs font-medium text-white rounded bg-[#e65100] whitespace-nowrap">
-              Limited
-            </span>
-          )}
-        </div>
+        
 
         {/* Image with hover effect */}
         <div className="w-full h-full transition-transform duration-500 group-hover:scale-105">
@@ -1713,6 +1866,7 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
             isFeatured={false}
           />
         </div>
+         <WishlistButton alwaysVisible={true} variantId={product.variants?.[0]?.id} />
 
         {/* Quick view overlay */}
         <motion.div
@@ -1731,8 +1885,9 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
       </div>
 
       {/* Product info section */}
-      <div className="flex-grow">
-        <div className="flex items-center mb-1 text-sm text-gray-600">
+      <div className="flex flex-col pl-1 space-y-2 sm:pl-0">
+        {/* Vendor name row */}
+        <div className="flex items-center text-xs text-gray-600 sm:text-sm">
           <span className="mr-1">{vendorName}</span>
           {product.vendor?.verified === "Yes" && (
             <span className="text-[#e65100]">
@@ -1741,22 +1896,27 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
           )}
         </div>
 
-        <div className="flex items-start justify-between mb-2">
-          <LocalizedClientLink href={`/products/${productHandle}`}>
-            <Text
-              className="pr-2 text-base font-medium leading-tight line-clamp-2"
-              data-testid="product-title"
-            >
-              {productName}
-            </Text>
-          </LocalizedClientLink>
-          <div className="font-semibold text-gray-900 whitespace-nowrap">
-            <PreviewPrice price={priceData} />
-          </div>
+        {/* Product title row */}
+        <LocalizedClientLink href={`/products/${productHandle}`}>
+          <Text
+            className="text-sm font-medium leading-tight truncate sm:text-base"
+            data-testid="product-title"
+            title={productName}
+          >
+            {productName}
+          </Text>
+        </LocalizedClientLink>
+
+        {/* Color options row */}
+        <ColorOptions colors={productColors} />
+
+        {/* Price row */}
+        <div className="text-sm font-bold text-gray-900 sm:text-base">
+          <PreviewPrice price={priceData} />
         </div>
 
-        {/* Ratings Section */}
-        <div className="flex items-center mb-2">
+        {/* Reviews section row */}
+        <div className="flex items-center">
           {isLoadingReviews ? (
             <div className="flex items-center">
               <div className="flex mr-1">
@@ -1789,21 +1949,18 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
                   <Star
                     key={i}
                     fill="none"
-                    size={14}
+                    size={12}
                     className="text-gray-300"
                   />
                 ))}
               </div>
-              {/* <span className="text-xs text-gray-500">
-                No reviews yet
-              </span> */}
+              <span className="text-xs text-gray-500">No reviews</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Color options using the filtered extraction method */}
-      <ColorOptions colors={productColors} />
+     
     </motion.div>
   )
 }

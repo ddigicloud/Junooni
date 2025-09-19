@@ -238,7 +238,7 @@ const getHamburgerColor = () => {
               className="fixed inset-y-0 left-0 z-[1002] w-full max-w-full bg-white shadow-xl flex flex-col h-full"
             >
               {/* Menu Header */}
-              <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center justify-between px-2 py-4 sm:p-4  border-b">
                 <LocalizedClientLink
                   href="/"
                   className="text-xl font-semibold text-black uppercase transition-colors duration-200 hover:text-gray-700"

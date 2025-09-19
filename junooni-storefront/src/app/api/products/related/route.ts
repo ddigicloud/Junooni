@@ -14,14 +14,14 @@ export async function POST(request: NextRequest) {
       excludeProductIds = []
     } = body
 
-    console.log('API /api/products/related - Request:', { 
-      orderId, 
-      countryCode, 
-      limit,
-      collectionIds,
-      tagIds,
-      excludeProductIds 
-    })
+    // console.log('API /api/products/related - Request:', { 
+    //   orderId, 
+    //   countryCode, 
+    //   limit,
+    //   collectionIds,
+    //   tagIds,
+    //   excludeProductIds 
+    // })
 
     // Get region
     let region
@@ -34,11 +34,11 @@ export async function POST(request: NextRequest) {
         try {
           region = await getRegion(country)
           if (region) {
-            console.log('API - Using fallback region:', country, region.id)
+            //console.log('API - Using fallback region:', country, region.id)
             break
           }
         } catch (err) {
-          console.log('API - Fallback failed for:', country)
+          //console.log('API - Fallback failed for:', country)
         }
       }
     }
@@ -50,13 +50,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('API - Using region:', region.id)
+    //console.log('API - Using region:', region.id)
 
     // Try to get products from same collections first
     let products: any[] = []
     
     if (collectionIds.length > 0) {
-      console.log('API - Trying products from same collections:', collectionIds)
+      //console.log('API - Trying products from same collections:', collectionIds)
       
       try {
         const collectionResult = await listProducts({
@@ -70,15 +70,15 @@ export async function POST(request: NextRequest) {
         })
         
         products = collectionResult?.response?.products || []
-        console.log('API - Products from collections:', products.length)
+        //console.log('API - Products from collections:', products.length)
       } catch (error) {
-        console.log('API - Collection query failed:', error)
+        //console.log('API - Collection query failed:', error)
       }
     }
 
     // If not enough products from collections, try with tags
     if (products.length < limit && tagIds.length > 0) {
-      console.log('API - Trying products with same tags:', tagIds)
+      //console.log('API - Trying products with same tags:', tagIds)
       
       try {
         const tagResult = await listProducts({
@@ -92,20 +92,20 @@ export async function POST(request: NextRequest) {
         })
         
         const tagProducts = tagResult?.response?.products || []
-        console.log('API - Products from tags:', tagProducts.length)
+        //console.log('API - Products from tags:', tagProducts.length)
         
         // Merge with collection products, avoiding duplicates
         const existingIds = new Set(products.map(p => p.id))
         const newTagProducts = tagProducts.filter(p => !existingIds.has(p.id))
         products = [...products, ...newTagProducts]
       } catch (error) {
-        console.log('API - Tag query failed:', error)
+        //console.log('API - Tag query failed:', error)
       }
     }
 
     // If still not enough products, get general recommendations
     if (products.length < limit) {
-      console.log('API - Getting general recommendations')
+      //console.log('API - Getting general recommendations')
       
       try {
         const generalResult = await listProducts({
@@ -118,14 +118,14 @@ export async function POST(request: NextRequest) {
         })
         
         const generalProducts = generalResult?.response?.products || []
-        console.log('API - General products found:', generalProducts.length)
+        //console.log('API - General products found:', generalProducts.length)
         
         // Merge, avoiding duplicates
         const existingIds = new Set(products.map(p => p.id))
         const newGeneralProducts = generalProducts.filter(p => !existingIds.has(p.id))
         products = [...products, ...newGeneralProducts]
       } catch (error) {
-        console.log('API - General query failed:', error)
+        //console.log('API - General query failed:', error)
       }
     }
 
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       !excludeProductIds.includes(product.id)
     )
 
-    console.log('API - Filtered products (excluding ordered):', filteredProducts.length)
+    //console.log('API - Filtered products (excluding ordered):', filteredProducts.length)
 
     // Return the top products
     const finalProducts = filteredProducts.slice(0, parseInt(limit))
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('API /api/products/related - Error:', error)
+    //console.error('API /api/products/related - Error:', error)
     return NextResponse.json(
       { 
         error: 'Failed to fetch products', 

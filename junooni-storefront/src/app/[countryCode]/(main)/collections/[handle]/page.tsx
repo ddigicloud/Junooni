@@ -50,7 +50,7 @@ export async function generateStaticParams() {
       .flat()
     return staticParams
   } catch (error) {
-    console.error("Error generating static params:", error)
+    //console.error("Error generating static params:", error)
     return []
   }
 }
@@ -114,7 +114,7 @@ export default async function CollectionPage({ searchParams, params }: Props) {
       />
     )
   } catch (error) {
-    console.error("Error loading collection page:", error)
+    //console.error("Error loading collection page:", error)
     notFound()
   }
 }

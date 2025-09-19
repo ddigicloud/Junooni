@@ -45,7 +45,7 @@ export const useBatchReviews = (
     let isCancelled = false;
     
     const fetchBatchReviews = async (): Promise<void> => {
-      console.log(`🔄 Starting batch review fetch for ${products.length} products`);
+      //console.log(`🔄 Starting batch review fetch for ${products.length} products`);
       setLoading(true);
       setError(null);
 
@@ -57,7 +57,7 @@ export const useBatchReviews = (
           batches.push(products.slice(i, i + batchSize));
         }
 
-        console.log(`📦 Created ${batches.length} batches`);
+        //console.log(`📦 Created ${batches.length} batches`);
 
         const allReviewsData: ReviewsDataMap = {};
 
@@ -65,12 +65,12 @@ export const useBatchReviews = (
         for (const [batchIndex, batch] of batches.entries()) {
           if (isCancelled) break;
 
-          console.log(`⚡ Processing batch ${batchIndex + 1}/${batches.length}`);
+          //console.log(`⚡ Processing batch ${batchIndex + 1}/${batches.length}`);
 
           // Fetch reviews for current batch in parallel
           const batchPromises = batch.map(async (product): Promise<ReviewData & { productId: string }> => {
             try {
-              console.log(`🔍 Fetching reviews for: ${product.title || product.id}`);
+              //console.log(`🔍 Fetching reviews for: ${product.title || product.id}`);
               
               // Get more reviews to ensure we see the actual count
               const result = await getProductReviews({
@@ -80,15 +80,15 @@ export const useBatchReviews = (
               });
               
               // 🚨 DEBUG: Log the complete API response
-              console.log(`📊 API Response for ${product.title}:`, {
-                productId: product.id,
-                average_rating: result.average_rating,
-                count: result.count,
-                reviews_length: result.reviews?.length,
-                limit: result.limit,
-                offset: result.offset,
-                fullResult: result
-              });
+              // console.log(`📊 API Response for ${product.title}:`, {
+              //   productId: product.id,
+              //   average_rating: result.average_rating,
+              //   count: result.count,
+              //   reviews_length: result.reviews?.length,
+              //   limit: result.limit,
+              //   offset: result.offset,
+              //   fullResult: result
+              // });
               
               // FIX: Use reviews.length as fallback since count seems unreliable
               let reviewCount = result.count || 0;
@@ -96,12 +96,12 @@ export const useBatchReviews = (
               // If count is 0 but we have reviews array, use the array length
               if (reviewCount === 0 && result.reviews && Array.isArray(result.reviews)) {
                 reviewCount = result.reviews.length;
-                console.log(`🔧 Fixed count for ${product.title}: using reviews.length = ${reviewCount}`);
+                //console.log(`🔧 Fixed count for ${product.title}: using reviews.length = ${reviewCount}`);
               }
               
               // If count is still 0 but we have an average_rating > 0, there might be reviews
               if (reviewCount === 0 && result.average_rating > 0) {
-                console.log(`⚠️ Suspicious: ${product.title} has rating ${result.average_rating} but count is 0`);
+                //console.log(`⚠️ Suspicious: ${product.title} has rating ${result.average_rating} but count is 0`);
                 // You might want to use a default count like 1 or estimate from rating
                 reviewCount = 1; // Assuming at least 1 review if there's a rating
               }
@@ -112,11 +112,11 @@ export const useBatchReviews = (
                 reviewCount: reviewCount
               };
               
-              console.log(`✅ Final data for ${product.title}:`, finalData);
+              //console.log(`✅ Final data for ${product.title}:`, finalData);
               
               return finalData;
             } catch (err) {
-              console.error(`❌ Error fetching reviews for product ${product.title}:`, err);
+              //console.error(`❌ Error fetching reviews for product ${product.title}:`, err);
               return {
                 productId: product.id,
                 averageRating: 0,
@@ -127,7 +127,7 @@ export const useBatchReviews = (
 
           const batchResults = await Promise.all(batchPromises);
           
-          console.log(`📊 Batch ${batchIndex + 1} results:`, batchResults);
+          //console.log(`📊 Batch ${batchIndex + 1} results:`, batchResults);
           
           // Add batch results to main data object
           batchResults.forEach(result => {
@@ -141,31 +141,31 @@ export const useBatchReviews = (
 
           // Update state incrementally for better UX
           if (!isCancelled) {
-            console.log(`💾 Updating state with batch ${batchIndex + 1} results`);
+            //console.log(`💾 Updating state with batch ${batchIndex + 1} results`);
             setReviewsData(prev => {
               const updated = { ...prev, ...allReviewsData };
-              console.log(`📈 Updated reviews data:`, updated);
+              //console.log(`📈 Updated reviews data:`, updated);
               return updated;
             });
           }
 
           // Small delay between batches to be API-friendly
           if (batchIndex < batches.length - 1) {
-            console.log(`⏱️ Waiting ${batchDelay}ms before next batch`);
+            //console.log(`⏱️ Waiting ${batchDelay}ms before next batch`);
             await new Promise(resolve => setTimeout(resolve, batchDelay));
           }
         }
 
-        console.log(`🎉 Finished fetching all reviews. Final data:`, allReviewsData);
+        //console.log(`🎉 Finished fetching all reviews. Final data:`, allReviewsData);
 
       } catch (err) {
         if (!isCancelled) {
-          console.error('❌ Error fetching batch reviews:', err);
+          //console.error('❌ Error fetching batch reviews:', err);
           setError(err instanceof Error ? err.message : 'Failed to fetch reviews');
         }
       } finally {
         if (!isCancelled) {
-          console.log('🏁 Setting loading to false');
+          //console.log('🏁 Setting loading to false');
           setLoading(false);
         }
       }
@@ -174,17 +174,17 @@ export const useBatchReviews = (
     fetchBatchReviews();
 
     return () => {
-      console.log('🧹 Cleanup: cancelling batch reviews fetch');
+      //console.log('🧹 Cleanup: cancelling batch reviews fetch');
       isCancelled = true;
     };
   }, [products, enabled, batchSize, batchDelay]);
 
-  console.log(`📤 useBatchReviews returning:`, {
-    reviewsDataKeys: Object.keys(reviewsData),
-    reviewsData,
-    loading,
-    error
-  });
+  // console.log(`📤 useBatchReviews returning:`, {
+  //   reviewsDataKeys: Object.keys(reviewsData),
+  //   reviewsData,
+  //   loading,
+  //   error
+  // });
 
   return { reviewsData, loading, error };
 };
@@ -253,7 +253,7 @@ export const useSimpleBatchReviews = (
         }
 
       } catch (err) {
-        console.error('Error fetching reviews:', err);
+        //console.error('Error fetching reviews:', err);
       } finally {
         if (!isCancelled) {
           setLoading(false);

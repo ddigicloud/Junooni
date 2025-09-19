@@ -186,7 +186,7 @@ const Register = ({ setCurrentView }: Props) => {
   const [showPassword, setShowPassword] = useState(false)
 
   return (
-    <div className="min-h-screen  flex items-center justify-center p-4">
+    <div className="min-h-screen  flex items-center justify-center px-0 py-6 sm:p-4">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-6">
@@ -202,7 +202,7 @@ const Register = ({ setCurrentView }: Props) => {
         </div>
 
         {/* Registration Form Container */}
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 mb-4 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 px-3 py-6 sm:p-6 mb-4 backdrop-blur-sm">
           <div className="w-full space-y-4" role="form">
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">

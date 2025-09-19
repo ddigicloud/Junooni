@@ -161,23 +161,23 @@ export default function SignUp() {
       </div>
       
       {/* Right Panel - Enhanced Sign Up Form */}
-      <div className="flex flex-col items-center justify-center h-screen px-6 lg:pt-8 pt-4 bg-gradient-to-br from-gray-50 to-white">
+      <div className="flex flex-col items-center justify-center h-screen px-6 lg:pt-8 pt-2 bg-gradient-to-br from-gray-50 to-white">
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo - Enhanced */}
-          <div className="flex items-center justify-center gap-3 mb-10 lg:hidden">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e65100] text-white shadow-lg">
+          <div className="flex items-center justify-center gap-3 mb-12 lg:hidden">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e65100] text-white shadow-lg">
+              <img 
+                src={JunooniLogo} 
+                alt="Junooni Logo" 
+                className="w-10 h-8 object-contain" 
+              />
+            </div>
             <img 
-              src={JunooniLogo} 
-              alt="Junooni Logo" 
-              className="w-10 h-8 object-contain" 
-            />
+              src={Junoonibrandlogo} 
+              alt="Junooni Brand Logo" 
+              className="w-26 h-10 object-fill" 
+            />  
           </div>
-          <img 
-            src={Junoonibrandlogo} 
-            alt="Junooni Brand Logo" 
-            className="w-24 h-12 object-contain" 
-          />
-        </div>
        
           {/* Enhanced Header */}
           <div className="-mt-8 text-center">

@@ -2063,7 +2063,7 @@ useEffect(() => {
       <div className="min-h-screen bg-gradient-to-br from-orange-50/30 via-white to-amber-50/30">
         <div className="container px-4 py-8 mx-auto mt-12">
           {/* Dynamic Hero Section */}
-          <div className="mt-12 mb-4 animate-fadeIn">
+          <div className="sm:mt-12 mb-4 animate-fadeIn">
             {(() => {
               console.log("🎯 Hero section - currentCategory:", currentCategory);
               console.log("🎯 Hero section - has description:", !!currentCategory?.description);

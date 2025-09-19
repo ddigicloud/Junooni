@@ -332,7 +332,7 @@ const DashboardTab = ({
       )}
 
       {/* Upcoming Events/Drops */}
-      <div className="p-4 mb-4 bg-white rounded-lg shadow-sm sm:p-6 sm:mb-6">
+      {/* <div className="p-4 mb-4 bg-white rounded-lg shadow-sm sm:p-6 sm:mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold sm:text-lg">
             Upcoming from Creators You Follow
@@ -402,7 +402,7 @@ const DashboardTab = ({
             </Link>
           </div>
         )}
-      </div>
+      </div> */}
       
       {/* Wishlist Preview */}
       <div className="p-6 bg-white rounded-lg shadow-sm">

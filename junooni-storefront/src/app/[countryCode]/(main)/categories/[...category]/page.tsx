@@ -47,7 +47,7 @@ export async function generateStaticParams() {
       .flat()
     return staticParams
   } catch (error) {
-    console.error("Error generating static params:", error)
+    //console.error("Error generating static params:", error)
     return []
   }
 }
@@ -89,10 +89,10 @@ export default async function CategoryPage({ searchParams, params }: Props) {
   } = searchParams
 
   // ✅ ADD: Debug logging to verify collections extraction
-  console.log('🔍 CategoryPage Debug:')
-  console.log('- searchParams:', searchParams)
-  console.log('- collections from searchParams:', collections)
-  console.log('- typeof collections:', typeof collections)
+  //console.log('🔍 CategoryPage Debug:')
+  //console.log('- searchParams:', searchParams)
+  //console.log('- collections from searchParams:', collections)
+  //console.log('- typeof collections:', typeof collections)
 
   try {
     const productCategory = await getCategoryByHandle(params.category)
@@ -100,7 +100,7 @@ export default async function CategoryPage({ searchParams, params }: Props) {
       notFound()
     }
 
-    console.log('🚀 CategoryPage about to render CategoryTemplate with collections:', collections)
+    //console.log('🚀 CategoryPage about to render CategoryTemplate with collections:', collections)
 
     return (
       <CategoryTemplate
@@ -115,7 +115,7 @@ export default async function CategoryPage({ searchParams, params }: Props) {
       />
     )
   } catch (error) {
-    console.error("Error loading category page:", error)
+    //console.error("Error loading category page:", error)
     notFound()
   }
 }

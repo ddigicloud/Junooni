@@ -625,7 +625,7 @@ const ProductPage = () => {
     <>
       <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="w-full p-4 pt-24 mx-auto max-w-7xl">
+        <div className="w-full p-4 pt-16 sm:pt-20 mx-auto max-w-7xl">
           {/* Enhanced Breadcrumbs */}
           <nav className="flex flex-wrap items-center p-4 mt-4 mb-6 bg-white border border-gray-100 shadow-sm rounded-xl">
             {breadcrumbs.map((crumb, index) => (
@@ -742,12 +742,12 @@ const ProductPage = () => {
                   
                   {/* SKU and Brand */}
                   <CardDescription className="flex items-center gap-3 px-3 py-2 text-sm bg-white border rounded-lg">
-                    <div className="flex items-center gap-1">
+                    {/* <div className="flex items-center gap-1">
                       <Shield className="w-4 h-4 text-[#e65100]" />
                       <span className="font-medium">Brand:</span> 
                       <span className="text-[#e65100] font-semibold">{product.brand}</span>
-                    </div>
-                    <span>•</span>
+                    </div> */}
+                    {/* <span>•</span> */}
                     <span><span className="font-medium">SKU:</span> {product.sku}</span>
                   </CardDescription>
 
@@ -801,7 +801,7 @@ const ProductPage = () => {
                             </TooltipProvider>
                           ))}
                         </div>
-                        {selectedColor && (
+                        {/* {selectedColor && (
                           <div className="flex items-center gap-2 p-3 bg-[#e65100]/5 rounded-lg border border-[#e65100]/20">
                             <div 
                               className="w-4 h-4 border border-gray-300 rounded-full"
@@ -811,7 +811,7 @@ const ProductPage = () => {
                               Selected: {selectedColor.colorName}
                             </span>
                           </div>
-                        )}
+                        )} */}
                       </div>
                     )}
                     

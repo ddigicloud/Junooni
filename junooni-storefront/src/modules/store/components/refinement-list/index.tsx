@@ -584,8 +584,10 @@ type RefinementListProps = {
   selectedColors?: string | string[]
   isCollectionPage?: boolean
   initialVendorLimit?: number
+  dynamicPriceRange?: { minPrice: number, maxPrice: number } 
   availableColors?: Color[] // ✅ NEW: Accept availableColors prop from StoreTemplate
 }
+
 
 const RefinementList = ({ 
   sortBy,
@@ -599,12 +601,18 @@ const RefinementList = ({
   selectedColors = [],
   isCollectionPage = false,
   initialVendorLimit = 10,
+  dynamicPriceRange = { minPrice: 0, maxPrice: 1000 },
   availableColors, // ✅ NEW: Accept availableColors prop
   'data-testid': dataTestId 
 }: RefinementListProps) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  
+   
+  // ADD THIS DEBUG - Right at the beginning of the function
+  // console.log('🎯 RefinementList received dynamicPriceRange:', dynamicPriceRange)
+  // console.log('🎯 Should show min:', dynamicPriceRange.minPrice, 'max:', dynamicPriceRange.maxPrice)
   
   // ✅ ROBUST: Normalize props to arrays
   const normalizeToArray = (value: string | string[] | undefined): string[] => {
@@ -887,12 +895,12 @@ const RefinementList = ({
     ? propSelectedColors 
     : (colorsParam ? colorsParam.split(",") : [])
   
-  const [minPrice, maxPrice] = priceParam 
-    ? priceParam.split("-").map(p => parseInt(p, 10)) 
-    : [0, 1000]
+ const [minPrice, maxPrice] = priceParam 
+  ? priceParam.split("-").map(p => parseInt(p, 10)) 
+  : [dynamicPriceRange.minPrice, dynamicPriceRange.maxPrice]  // Use dynamic range!
   
-  const PRICE_MIN = 0
-  const PRICE_MAX = 1000
+ const PRICE_MIN = dynamicPriceRange.minPrice
+const PRICE_MAX = dynamicPriceRange.maxPrice
 
   //console.log('🚀 RefinementList final values:')
   //console.log('- finalSelectedCollections:', finalSelectedCollections)
@@ -1127,10 +1135,10 @@ const RefinementList = ({
         
         {expandedSections.price && (
           <PriceFilter
-            min={PRICE_MIN}
-            max={PRICE_MAX}
-            currentMin={minPrice || PRICE_MIN}
-            currentMax={maxPrice || PRICE_MAX}
+            min={dynamicPriceRange.minPrice}  // Use dynamic min instead of hardcoded
+            max={dynamicPriceRange.maxPrice}
+            currentMin={minPrice || dynamicPriceRange.minPrice}
+            currentMax={maxPrice || dynamicPriceRange.maxPrice}
             setQueryParams={setQueryParams}
             data-testid={`${dataTestId}-price`}
           />

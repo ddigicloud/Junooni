@@ -5521,6 +5521,84 @@ useEffect(() => {
             </div>
           </div>
 
+          {/* Mobile Area Thumbnails - Horizontal Scrollable */}
+        {activeView === 'design' && isMobile && availableAreas.length > 1 && (
+          <div className="w-full bg-gray-100 border-b border-gray-200">
+            <div className="px-4 pt-2 pb-0">
+              {/* <h4 className="mb-2 text-sm font-medium text-gray-700">Design Areas</h4> */}
+              <div className="flex space-x-3 overflow-x-auto pb-0 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                {availableAreas.map(area => {
+                  const areaData = getAreaDisplayData(area);
+                  const elementCount = designElements[area]?.length || 0;
+                  const canvasImage = canvasImages[`${area}_${activeColor}`] || canvasImages[area];
+                  
+                  return (
+                    <div key={area} className="flex-shrink-0">
+                      <button
+                        onClick={() => setActiveArea(area)}
+                        className={`flex flex-col items-center p-2 border rounded-lg transition-all touch-manipulation min-w-[80px] ${
+                          activeArea === area
+                            ? 'border-orange-500 border-2 bg-orange-50'
+                            : ' hover:border-gray-400 hover:shadow-sm bg-gray-100'
+                        }`}
+                      >
+                        <div className="relative mb-0 overflow-hidden bg-gray-100 rounded w-16 h-16">
+                          {canvasImage ? (
+                            <div className="relative w-full h-full">
+                              {/* Color overlay with mask */}
+                              <div 
+                                className="absolute inset-0 w-full h-full"
+                                style={{ 
+                                  backgroundColor: activeColor,
+                                  WebkitMask: `url(${canvasImage.src}) center/cover no-repeat`,
+                                  mask: `url(${canvasImage.src}) center/cover no-repeat`,
+                                  WebkitMaskComposite: 'source-in',
+                                  maskComposite: 'intersect'
+                                }}
+                              />
+                              
+                              {/* Subtle texture overlay */}
+                              <img
+                                src={canvasImage.src}
+                                alt={areaData.displayName}
+                                className="absolute inset-0 object-cover w-full h-full opacity-5"
+                                style={{ mixBlendMode: 'multiply' }}
+                              />
+                              
+                              {/* Element count badge */}
+                              {elementCount > 0 && (
+                                <div className="absolute top-1 right-1">
+                                  <div className="flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-orange-500 rounded-full">
+                                    {elementCount}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center w-full h-full text-gray-400">
+                              <span className="text-xs">Loading...</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <p className="text-xs font-medium text-center text-gray-700 leading-tight">
+                          {areaData.displayName}
+                        </p>
+                        
+                        {/* Active indicator */}
+                        {/* {activeArea === area && (
+                          <div className="w-6 h-1 mt-1 bg-orange-500 rounded-full"></div>
+                        )} */}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+
         {/* Main Content Container */}
         <div className="flex flex-1 overflow-hidden">
           {/* Collapsible Toggle Button - Desktop Only */}
@@ -5716,9 +5794,9 @@ useEffect(() => {
               </div>
             )}
             
-            <div className="flex-1 p-2 overflow-hidden">
+            <div className="flex-1 px-2 pt-0 pb-2 sm:p-2 overflow-hidden">
               {activeView === 'design' ? (
-                <div className="flex items-center justify-center h-full p-2 overflow-y-auto sm:p-4">
+                <div className="flex items-center justify-center h-full px-2 pt-0 pb-10 overflow-y-auto sm:p-4">
                   {renderCanvas()}
                 </div>
               ) : (

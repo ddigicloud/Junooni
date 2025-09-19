@@ -1,8 +1,9 @@
-"use client"
+ "use client"
 
 import React, { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import UnderlineLink from "@modules/common/components/interactive-link"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { HttpTypes } from "@medusajs/types"
 import AccountSidebar from "../components/account-sidebar"
 import { listOrders } from "@lib/data/orders"
@@ -15,6 +16,7 @@ import {
 } from "@lib/data/customer"
 import { retriveVendorsFollowers } from "@lib/data/vendors"
 import { assets } from "@assets/assets"
+import { User, Package, Heart, Star, LogOut, MapPin, Settings, ChevronRight } from "lucide-react"
 
 // Import tier calculation functions
 import {
@@ -38,6 +40,7 @@ const AccountLayout = ({ customer, children, creatorList }) => {
   const [followersCount, setFollowersCount] = useState({})
   const [upcomingEventsData, setUpcomingEventsData] = useState([])
   const [loyalPoint, setLoyalPoint] = useState(0)
+  const [showMoreOptions, setShowMoreOptions] = useState(false)
 
   // Used for order details view
   const [activeOrder, setActiveOrder] = useState(null)
@@ -70,7 +73,7 @@ const AccountLayout = ({ customer, children, creatorList }) => {
           setLoyalPoint(points)
         }
       } catch (error) {
-        console.error("Error fetching loyalty points:", error)
+        //console.error("Error fetching loyalty points:", error)
       }
     }
 
@@ -88,7 +91,7 @@ const AccountLayout = ({ customer, children, creatorList }) => {
           setWishlistData(data)
         }
       } catch (error) {
-        console.error("Error fetching wishlist:", error)
+        //console.error("Error fetching wishlist:", error)
       }
     }
 
@@ -107,7 +110,7 @@ const AccountLayout = ({ customer, children, creatorList }) => {
             setOrdersData(orders)
           }
         } catch (error) {
-          console.error("Error fetching orders:", error)
+          //console.error("Error fetching orders:", error)
         }
       }
     }
@@ -152,7 +155,7 @@ const AccountLayout = ({ customer, children, creatorList }) => {
           setFollowersCount(counts)
         }
       } catch (error) {
-        console.error("Error fetching followed creators:", error)
+        //console.error("Error fetching followed creators:", error)
       }
     }
 
@@ -231,7 +234,7 @@ const AccountLayout = ({ customer, children, creatorList }) => {
       await signout("en") // Using 'en' as the default country code
       // The page should automatically redirect after successful logout
     } catch (error) {
-      console.error("Error signing out:", error)
+      //console.error("Error signing out:", error)
       setIsSigningOut(false)
     }
   }
@@ -318,7 +321,172 @@ const AccountLayout = ({ customer, children, creatorList }) => {
 
   return (
     <div className="flex-1 small:py-12" data-testid="account-page">
-      <div className="flex flex-col flex-1 h-full mx-auto bg-white content-container">
+      {/* Mobile Layout */}
+      <div className="md:hidden">
+        {customer && (
+          <>
+            {/* Mobile Header and Quick Actions Only */}
+            <div className="w-full min-h-screen pb-0 bg-gray-50">
+              {/* Header */}
+              <div className="sticky top-0 z-10 px-4 mt-16 rounde-sm pg-white">
+                <div className="flex items-center justify-between px-2 py-2 bg-white border border-gray-200 rounded-sm">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#4c5cbf] rounded-full">
+                      <span className="text-lg font-semibold text-white">
+                        {customer?.first_name?.charAt(0) || 'U'}{customer?.last_name?.charAt(0) || ''}
+                      </span>
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-gray-900">
+                        {user?.name ||
+                          `${customer?.first_name || ""} ${customer?.last_name || ""}`.trim() ||
+                          "Customer"}
+                      </h2>
+                      {user?.membershipTier && (
+                        <p className="flex items-center text-sm text-orange-600">
+                          <Star className="w-3 h-3 mr-1" />
+                          {user.membershipTier}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions Grid */}
+              <div className="p-4">
+                {/* <h3 className="mb-3 font-semibold text-gray-900">Quick Actions</h3> */}
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  {/* Dashboard */}
+                  <LocalizedClientLink href="/account" className="block p-4 text-left transition-transform bg-white border border-gray-200 shadow-sm rounded-xl active:scale-95">
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="flex items-center justify-center w-10 h-10 bg-blue-500 rounded-lg">
+                        <User className="w-5 h-5 text-white" />
+                      </div>
+                    </div>
+                    <p className="text-sm font-medium text-center text-gray-900">Dashboard</p>
+                  </LocalizedClientLink>
+
+                  {/* My Orders */}
+                  <LocalizedClientLink
+                    href="/account/orders"
+                    className="block p-4 text-left transition-transform bg-white border border-gray-200 shadow-sm rounded-xl active:scale-95"
+                  >
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="relative flex items-center justify-center w-10 h-10 bg-orange-500 rounded-lg">
+                        <Package className="w-5 h-5 text-white" />
+                        {orders?.length > 0 && (
+                          <span className="absolute -top-3 -right-3 px-1 py-1 text-[10px] font-bold text-white bg-orange-500 rounded-full leading-none">
+                            {orders.length}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm font-medium text-center text-gray-900">My Orders</p>
+                  </LocalizedClientLink>
+
+                  {/* Wishlist */}
+                  <LocalizedClientLink href="/account/wishlist" className="block p-4 text-left transition-transform bg-white border border-gray-200 shadow-sm rounded-xl active:scale-95">
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="flex items-center justify-center w-10 h-10 bg-red-500 rounded-lg">
+                         <Heart className="w-5 h-5 text-white" />
+                      </div>
+                      {wishlistData?.length > 0 && (
+                        <span className="absolute -top-3 -right-3 px-1 py-1 text-[10px] font-bold text-white bg-orange-500 rounded-full leading-none">
+                            {wishlistData.length}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-center text-gray-900">Wishlist</p>
+                  </LocalizedClientLink>
+
+                  {/* Fan Membership */}
+                  <LocalizedClientLink href="/account/membership" className="block p-4 text-left transition-transform bg-white border border-gray-200 shadow-sm rounded-xl active:scale-95">
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="flex items-center justify-center w-10 h-10 bg-purple-500 rounded-lg">
+                       <Star className="w-5 h-5 text-white" />
+                      </div>
+                      {/* <div className="w-2 h-2 bg-orange-500 rounded-full"></div> */}
+                    </div>
+                    <p className="text-sm font-medium text-center text-gray-900">Fan Membership</p>
+                  </LocalizedClientLink>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="px-0 py-0 bg-white border border-gray-200 shadow-sm sm:p-4 smb-4 rounded-xl">
+                  {React.isValidElement(children) &&
+                    React.cloneElement(children, commonProps)}
+                  {!React.isValidElement(children) && children}
+                  <Help/>
+                </div>
+
+                {/* More Options Section - Now at bottom */}
+                <div className="mt-8 mb-0 bg-white border border-gray-200 shadow-sm rounded-xl">
+                  <div className="p-4 border-b border-gray-200">
+                    <button 
+                      onClick={() => setShowMoreOptions(!showMoreOptions)}
+                      className="flex items-center justify-between w-full"
+                    >
+                      <h3 className="font-semibold text-gray-900">More Options</h3>
+                     <ChevronRight
+                        className={`w-5 h-5 text-gray-400 transition-transform ${
+                          showMoreOptions ? "rotate-90" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  
+                  {showMoreOptions && (
+                    <div className="border-b border-gray-200">
+                      {/* Addresses */}
+                      <LocalizedClientLink href="/account/addresses" className="block w-full p-4 transition-colors border-b border-gray-200 active:bg-gray-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg">
+                               <MapPin className="w-4 h-4 text-gray-600" />
+                            </div>
+                            <span className="font-medium text-gray-900">Addresses</span>
+                          </div>
+                           <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </div>
+                      </LocalizedClientLink>
+
+                      {/* Account Settings */}
+                      <LocalizedClientLink href="/account/profile" className="block w-full p-4 transition-colors active:bg-gray-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg">
+                              <Settings className="w-4 h-4 text-gray-600" />
+                            </div>
+                            <span className="font-medium text-gray-900">Account Settings</span>
+                          </div>
+                           <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </div>
+                      </LocalizedClientLink>
+                    </div>
+                  )}
+                  
+                  <div className="p-4">
+                    <button 
+                      className="flex items-center w-full p-2 -m-2 space-x-3 text-orange-600 transition-colors rounded-lg active:bg-orange-50"
+                      onClick={handleSignOut}
+                      disabled={isSigningOut}
+                    >
+                       <LogOut className="w-5 h-5" />
+                      <span className="font-medium">
+                        {isSigningOut ? "Signing out..." : "Sign Out"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Desktop Layout */}
+      <div className="flex-col flex-1 hidden h-full pt-4 mx-auto bg-white md:flex content-container">
         <div className="grid grid-cols-1 small:grid-cols-[240px_1fr] py-12">
           <div>
             {customer && (
@@ -327,6 +495,8 @@ const AccountLayout = ({ customer, children, creatorList }) => {
                 user={user}
                 handleSignOut={handleSignOut}
                 isSigningOut={isSigningOut}
+                ordersCount={orders?.length}
+                wishlistCount={wishlistData?.length}
               />
             )}
           </div>
@@ -338,25 +508,6 @@ const AccountLayout = ({ customer, children, creatorList }) => {
             <Help/>
           </div>
         </div>
-        {/* <Help /> */}
-
-        {/* <div className="flex flex-col items-end justify-between gap-8 px-4 py-12 border-gray-200 small:flex-row small:border-t">
-          <div>
-            <h3 className="mb-4 text-xl-semi">Got questions?</h3>
-            <span className="txt-medium">
-              You can find frequently asked questions and answers on our
-              customer service page.
-            </span>
-          </div>
-          
-          <div>
-            
-          <UnderlineLink href="/customer-service" className="text-[#e65100]">
-            Customer Service
-          </UnderlineLink>
-
-          </div>
-        </div> */}
       </div>
     </div>
   )

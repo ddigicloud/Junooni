@@ -406,10 +406,10 @@ export default function JunooniLogin() {
         </div>
         
         {/* Right Panel - Enhanced Login Form */}
-        <div className="flex flex-col items-center justify-center h-screen px-6 pt-12 sm:pt-20 bg-gradient-to-br from-gray-50 to-white pb-4 sm:pb-28">
+        <div className="flex flex-col items-center justify-center h-screen px-6 pt-8 sm:pt-20 bg-gradient-to-br from-gray-50 to-white pb-4 sm:pb-28">
           <div className="w-full max-w-md mx-auto">
             {/* Mobile Logo - Enhanced */}
-            <div className="flex items-center justify-center gap-3 mt-4 mb-5 lg:hidden">
+            <div className="flex items-center justify-center gap-3 mt-0 mb-5 lg:hidden">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-[#e65100] text-white shadow-xl mr-2 sm:mr-3">
                 <img 
                   src={JunooniFavicon} 
@@ -417,7 +417,7 @@ export default function JunooniLogin() {
                   className="h-8 w-10 sm:h-8 sm:w-8 object-contain"
                 />
               </div>
-              <img src={Junoonilogo}  alt="Junooni Logo" className="h-8 w-32 sm:h-10 sm:w-36"/>
+              <img src={Junoonilogo}  alt="Junooni Logo" className="h-10 w-36 sm:h-10 sm:w-36"/>
             </div>
             
             {/* Enhanced Header */}

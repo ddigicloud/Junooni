@@ -281,11 +281,11 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
     return (
       <div className="w-full">
         {/* Controls Section */}
-        <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           {/* View Mode Toggle */}
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">View:</span>
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex p-1 bg-gray-100 rounded-lg">
               <button
                 onClick={() => setViewMode('pagination')}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
@@ -337,60 +337,104 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
 
         {/* Pagination Controls */}
         {viewMode === 'pagination' && totalPages > 1 && (
-          <div className="flex flex-col items-center justify-between mt-8 space-y-4 sm:flex-row sm:space-y-0">
-            {/* Page Info */}
-            <div className="text-sm text-gray-600">
-              Showing {startIndex + 1} to {Math.min(endIndex, orders.length)} of {orders.length} orders
-            </div>
-
-            {/* Pagination Buttons */}
-            <div className="flex items-center space-x-1">
-              {/* Previous Button */}
-              <button
-                onClick={goToPrevious}
-                disabled={currentPage === 1}
-                className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                <ChevronLeft size={16} className="mr-1" />
-                Previous
-              </button>
-
-              {/* Page Numbers */}
-              <div className="flex items-center space-x-1">
-                {generatePageNumbers().map((page, index) => (
-                  <div key={index}>
-                    {page === 'ellipsis' ? (
-                      <span className="px-3 py-2 text-gray-400">
-                        <MoreHorizontal size={16} />
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => goToPage(page as number)}
-                        className={`px-3 py-2 text-sm border rounded-md transition-colors ${
-                          currentPage === page
-                            ? 'bg-orange-600 text-white border-orange-600'
-                            : 'border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    )}
-                  </div>
-                ))}
+          <div className="w-full mt-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              {/* Page Info (left on desktop, top on mobile) */}
+              <div className="text-sm text-gray-600">
+                <span className="hidden sm:inline">
+                  Showing {startIndex + 1} to {Math.min(endIndex, orders.length)} of {orders.length} orders
+                </span>
+                <span className="sm:hidden">
+                  {startIndex + 1}-{Math.min(endIndex, orders.length)} of {orders.length}
+                </span>
               </div>
 
-              {/* Next Button */}
-              <button
-                onClick={goToNext}
-                disabled={currentPage === totalPages}
-                className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              {/* Desktop & Tablet pagination controls */}
+              <div className="flex items-center justify-center space-x-2">
+                {/* Previous */}
+                <button
+                  onClick={goToPrevious}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                  className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  <ChevronLeft size={16} className="mr-1" />
+                  <span className="hidden xs:inline">Previous</span>
+                </button>
+
+                {/* Page numbers (scrollable on small screens) */}
+                <div className="max-w-[52vw] sm:max-w-none">
+                  <div className="flex items-center px-1 space-x-1 overflow-x-auto no-scrollbar">
+                    {generatePageNumbers().map((page, index) => (
+                      <div key={index} className="flex-shrink-0">
+                        {page === 'ellipsis' ? (
+                          <span className="flex items-center justify-center px-3 py-2 text-gray-400">
+                            <MoreHorizontal size={16} />
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => goToPage(page as number)}
+                            aria-current={currentPage === page ? 'page' : undefined}
+                            className={`px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-center min-w-[38px] ${
+                              currentPage === page
+                                ? 'bg-orange-600 text-white border-orange-600'
+                                : 'border border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Next */}
+                <button
+                  onClick={goToNext}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                  className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  <span className="hidden xs:inline">Next</span>
+                  <ChevronRight size={16} className="ml-1" />
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile quick-jump (visible only on xs screens) */}
+           {/* Mobile quick-jump (visible only on xs screens) */}
+            <div className="mt-3 sm:hidden">
+              <label htmlFor="mobile-page-jump" className="sr-only">Go to page</label>
+              <select
+                id="mobile-page-jump"
+                value={currentPage}
+                onChange={(e) => goToPage(parseInt(e.target.value, 10))}
+                className="w-full p-2 text-sm border rounded-md 
+                          border-gray-300 
+                          text-gray-700
+                          focus:outline-none 
+                          focus:ring-2 focus:ring-[#e65100] focus:border-[#e65100]
+                          hover:border-[#e65100] 
+                          cursor-pointer"
+                style={{
+                  accentColor: '#e65100', // helps in some browsers
+                }}
               >
-                Next
-                <ChevronRight size={16} className="ml-1" />
-              </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                   <option
+                      key={p}
+                      value={p}
+                      className="bg-white text-gray-700 checked:bg-[#e65100] checked:text-white"
+                    >
+                    Page {p}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         )}
+
 
         {/* Load More Controls */}
         {viewMode === 'loadMore' && (

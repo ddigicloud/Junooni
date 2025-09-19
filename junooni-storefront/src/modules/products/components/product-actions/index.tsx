@@ -220,8 +220,6 @@
 //     </>
 //   )
 // }
-
-
 "use client"
 
 import { addToCart } from "@lib/data/cart"
@@ -289,13 +287,30 @@ export default function ProductActions({
   const countryCode = useParams().countryCode as string
   const [addedVariantIds, setAddedVariantIds] = useState<string[]>([])
   
+  // Find Color option ID for easier reference - MOVED UP
+  const colorOptionId = useMemo(() => {
+    return product.options?.find(opt => opt.title === "Color")?.id
+  }, [product.options])
+  
   useEffect(() => {
     // Ensure product.variants is not null or undefined before accessing it
     if (product.variants && product.variants.length > 0) {
       const firstVariantOptions = optionsAsKeymap(product.variants[0].options)
       setOptions(firstVariantOptions ?? {})
+      
+      // Dispatch initial color event for image filtering
+      if (colorOptionId && firstVariantOptions && firstVariantOptions[colorOptionId]) {
+        try {
+          const event = new CustomEvent('colorOptionChanged', {
+            detail: { color: firstVariantOptions[colorOptionId] }
+          });
+          window.dispatchEvent(event);
+        } catch (error) {
+          console.warn('Failed to dispatch initial color event:', error);
+        }
+      }
     }
-  }, [product.variants])
+  }, [product.variants, colorOptionId])
 
   const selectedVariant = useMemo(() => {
     if (!product.variants || product.variants.length === 0) {
@@ -306,11 +321,6 @@ export default function ProductActions({
       return isEqual(variantOptions, options)
     })
   }, [product.variants, options])
-
-  // Find Color option ID for easier reference
-  const colorOptionId = useMemo(() => {
-    return product.options?.find(opt => opt.title === "Color")?.id
-  }, [product.options])
 
   const setOptionValue = (optionId: string, value: string, metadata?: Record<string, any>) => {
     setOptions((prev) => ({
@@ -324,6 +334,14 @@ export default function ProductActions({
         ...prev,
         [optionId]: metadata
       }))
+    }
+
+    // Dispatch custom event for color changes to update product images
+    if (optionId === colorOptionId) {
+      const event = new CustomEvent('colorOptionChanged', {
+        detail: { color: value, metadata }
+      });
+      window.dispatchEvent(event);
     }
   }
 

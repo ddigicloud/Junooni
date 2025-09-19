@@ -34,6 +34,7 @@ type FilterHandlersWrapperProps = {
   colors?: string[]
   collections?: string[]
   categories?: string[]
+  dynamicPriceRange?: { minPrice: number, maxPrice: number }
   minPrice?: number
   maxPrice?: number
   products?: any[]
@@ -56,6 +57,7 @@ export default function FilterHandlersWrapper({
   colors: initialColors = [],
   collections: initialCollections = [],
   categories: initialCategories = [],
+  dynamicPriceRange = { minPrice: 0, maxPrice: 1000 },
   minPrice: initialMinPrice,
   maxPrice: initialMaxPrice,
   products = [],
@@ -103,6 +105,7 @@ export default function FilterHandlersWrapper({
     }
   }, [searchParams])
 
+  
   //console.log('🔧 FilterHandlersWrapper received:')
   //console.log('- products length:', products?.length || 0)
   //console.log('- totalCount:', totalCount)
@@ -340,6 +343,12 @@ export default function FilterHandlersWrapper({
   // ✅ Set query params helper with page reset
   const setQueryParamsWithPageReset = useCallback((name: string, value: string, resetPage = true) => {
     const query = createQueryStringWithPageReset(name, value, resetPage)
+    router.push(`${pathname}?${query}`, { scroll: false })
+  }, [createQueryStringWithPageReset, router, pathname])
+
+  
+    const setQueryParamsForPrice = useCallback((name: string, value: string) => {
+    const query = createQueryStringWithPageReset(name, value, true) // Reset page on price change
     router.push(`${pathname}?${query}`, { scroll: false })
   }, [createQueryStringWithPageReset, router, pathname])
 

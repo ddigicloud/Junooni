@@ -74,17 +74,17 @@ export default async function StorePage(props: Params) {
   const params = await props.params;
   const searchParams = await props.searchParams;
   
-  console.log('\n🏪 STORE PAGE - URL PARAMETER PARSING:')
-  console.log('==========================================')
-  console.log('- Raw searchParams:', searchParams)
-  console.log('- Country code:', params.countryCode)
+  //console.log('\n🏪 STORE PAGE - URL PARAMETER PARSING:')
+  //console.log('==========================================')
+  //console.log('- Raw searchParams:', searchParams)
+  //console.log('- Country code:', params.countryCode)
   
   // ✅ CRITICAL FIX: Parse price string into minPrice/maxPrice numbers
   let minPrice: number | undefined
   let maxPrice: number | undefined
   
   if (searchParams.price) {
-    console.log('🎯 Parsing price parameter:', searchParams.price)
+    //console.log('🎯 Parsing price parameter:', searchParams.price)
     const priceRange = searchParams.price.split('-')
     
     if (priceRange.length === 2) {
@@ -94,15 +94,15 @@ export default async function StorePage(props: Params) {
       if (!isNaN(min) && !isNaN(max)) {
         minPrice = min
         maxPrice = max
-        console.log('✅ Price parsed successfully:', { minPrice, maxPrice })
+        //console.log('✅ Price parsed successfully:', { minPrice, maxPrice })
       } else {
-        console.log('❌ Failed to parse price numbers:', { priceRange, min, max })
+        //console.log('❌ Failed to parse price numbers:', { priceRange, min, max })
       }
     } else {
-      console.log('❌ Price not in expected format (min-max):', searchParams.price)
+      //console.log('❌ Price not in expected format (min-max):', searchParams.price)
     }
   } else {
-    console.log('❌ No price parameter found')
+    //console.log('❌ No price parameter found')
   }
   
   // ✅ CRITICAL FIX: Parse comma-separated strings into arrays
@@ -129,33 +129,33 @@ export default async function StorePage(props: Params) {
   // ✅ Parse specific product IDs
   const productsIds = searchParams.id?.split(',')
   
-  console.log('\n🎯 PARSED VALUES FOR STORETEMPLATE:')
-  console.log('- vendorsArray:', vendorsArray)
-  console.log('- colorsArray:', colorsArray)
-  console.log('- collectionsArray:', collectionsArray)
-  console.log('- categoriesArray:', categoriesArray) // ✅ NEW: Log categories
-  console.log('- minPrice:', minPrice, typeof minPrice)
-  console.log('- maxPrice:', maxPrice, typeof maxPrice)
-  console.log('- pageNumber:', pageNumber)
-  console.log('- sortBy:', searchParams.sortBy)
-  console.log('- category:', searchParams.category)
+  //console.log('\n🎯 PARSED VALUES FOR STORETEMPLATE:')
+  //console.log('- vendorsArray:', vendorsArray)
+  //console.log('- colorsArray:', colorsArray)
+  //console.log('- collectionsArray:', collectionsArray)
+  //console.log('- categoriesArray:', categoriesArray) // ✅ NEW: Log categories
+  //console.log('- minPrice:', minPrice, typeof minPrice)
+  //console.log('- maxPrice:', maxPrice, typeof maxPrice)
+  //console.log('- pageNumber:', pageNumber)
+  //console.log('- sortBy:', searchParams.sortBy)
+  //console.log('- category:', searchParams.category)
   
   if (minPrice !== undefined || maxPrice !== undefined) {
-    console.log('🎉 PRICE FILTERING ENABLED!')
-    console.log(`   Range: ${minPrice || 0} - ${maxPrice || '∞'}`)
+    //console.log('🎉 PRICE FILTERING ENABLED!')
+    //console.log(`   Range: ${minPrice || 0} - ${maxPrice || '∞'}`)
   } else {
-    console.log('⚠️ No price filtering (price parameter missing or invalid)')
+    //console.log('⚠️ No price filtering (price parameter missing or invalid)')
   }
 
   // ✅ NEW: Log category filtering status
   if (categoriesArray && categoriesArray.length > 0) {
-    console.log('🎉 CATEGORY FILTERING ENABLED!')
-    console.log(`   Categories: ${categoriesArray.join(', ')}`)
+    //console.log('🎉 CATEGORY FILTERING ENABLED!')
+    //console.log(`   Categories: ${categoriesArray.join(', ')}`)
   } else {
-    console.log('⚠️ No category filtering (categories parameter missing or empty)')
+    //console.log('⚠️ No category filtering (categories parameter missing or empty)')
   }
   
-  console.log('==========================================')
+  //console.log('==========================================')
 
   return (
     <StoreTemplate

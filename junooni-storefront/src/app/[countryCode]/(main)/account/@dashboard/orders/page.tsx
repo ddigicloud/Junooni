@@ -23,7 +23,7 @@ export default async function Orders() {
     <div className="w-full mx-auto" data-testid="orders-page-wrapper">
       {/* Page Header Section */}
       <div className="mb-8 overflow-hidden bg-white rounded-lg shadow">
-        <div className="p-6">
+        <div className="px-2 py-4 sm:p-6">
           <div className="flex items-center mb-4">
             <div className="flex-shrink-0">
               <div className="flex items-center justify-center w-12 h-12 text-indigo-600 bg-indigo-100 rounded-full">
@@ -89,7 +89,7 @@ export default async function Orders() {
 
       {/* Orders Overview Section */}
       <div className="mb-8 overflow-hidden bg-white rounded-lg shadow">
-        <div className="p-6">
+        <div className="px-2 py-4 sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-800">
               Order History

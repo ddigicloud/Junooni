@@ -223,11 +223,12 @@ interface WishlistResponse {
 
 export interface WishlistButtonProps {
   variantId: string | undefined;
+  alwaysVisible?: boolean; // Add this prop
   isWishlistPage?: boolean; // Prop to determine if we're on the wishlist page
   onRemove?: (variantId: string) => void; // Callback for when an item is removed
 }
 
-const WishlistButton: React.FC<WishlistButtonProps> = ({ variantId, isWishlistPage = false, onRemove }) => {
+const WishlistButton: React.FC<WishlistButtonProps> = ({ variantId, isWishlistPage = false,  alwaysVisible = false, onRemove }) => {
   const [isInWishlist, setIsInWishlist] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [wishlistItemId, setWishlistItemId] = useState<string | null>(null)
@@ -375,10 +376,16 @@ const WishlistButton: React.FC<WishlistButtonProps> = ({ variantId, isWishlistPa
   }, [wishlistItemId, isLoading, router, onRemove, variantId]);
 
   // Determine which button styling to use based on context
-  const getButtonClassNames = () => {
+   const getButtonClassNames = () => {
     if (isWishlistPage) {
       return "absolute z-10 p-2 transition-all duration-300 bg-[#f8f8fa] rounded-full shadow-md right-3 top-3 hover:bg-gray-50";
     }
+    
+    // Check if always visible
+    if (alwaysVisible) {
+      return "absolute z-10 p-2 transition-all duration-300 bg-white rounded-full shadow-md opacity-100 right-3 top-3 hover:bg-gray-50";
+    }
+    
     return "absolute z-10 p-2 transition-all duration-300 bg-white rounded-full shadow-md opacity-0 right-3 top-3 group-hover:opacity-100 hover:bg-gray-50";
   };
 

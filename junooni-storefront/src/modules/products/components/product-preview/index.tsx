@@ -1,4 +1,4 @@
-// ProductPreview.tsx - Optimized version with props-based reviews
+// ProductPreview.tsx - Mobile-optimized Nykaa style with real tags
 "use client"
 
 import Image from "next/image"
@@ -30,6 +30,14 @@ interface ProductImage {
   [key: string]: any;
 }
 
+interface ProductTag {
+  id: string;
+  value: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: any;
+}
+
 interface Product {
   id: string;
   title: string;
@@ -38,6 +46,7 @@ interface Product {
   created_at?: string;
   variants?: ProductVariant[];
   images?: ProductImage[];
+  tags?: ProductTag[];
   vendor?: {
     id: string;
     name: string;
@@ -63,7 +72,7 @@ type ProductPreviewProps = {
   product: Product;
   region: Region;
   selectedColors?: string[];
-  reviewData?: ReviewData; // New prop for review data
+  reviewData?: ReviewData;
   isFeatured?: boolean;
 }
 
@@ -71,7 +80,7 @@ const ProductPreview = ({
   product, 
   region, 
   selectedColors = [],
-  reviewData = { averageRating: 0, reviewCount: 0, isLoading: true }, // Default values
+  reviewData = { averageRating: 0, reviewCount: 0, isLoading: true },
   isFeatured = false
 }: ProductPreviewProps) => {
   
@@ -332,13 +341,25 @@ const ProductPreview = ({
   // Get vendor info - memoized
   const vendorName = useMemo(() => product.vendor?.name || "Unknown Vendor", [product.vendor]);
 
-  // Check if new - memoized
-  const isNew = useMemo(() => {
-    if (!product.created_at) return false;
-    const createdAt = new Date(product.created_at);
-    const now = new Date();
-    return (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24) < 14;
-  }, [product.created_at]);
+  // Extract and process product tags - memoized
+  const productTags = useMemo(() => {
+    if (!product.tags || !Array.isArray(product.tags)) return [];
+    
+    // Filter and process tags for display
+    const processedTags = product.tags
+      .filter(tag => tag.value && tag.value.trim() !== '')
+      .map(tag => ({
+        id: tag.id,
+        value: tag.value.trim(),
+        displayValue: tag.value.trim().toUpperCase()
+      }));
+    
+    // For mobile: show max 3 tags, for desktop: show max 5 tags
+    return {
+      mobile: processedTags.slice(0, 3),
+      desktop: processedTags.slice(0, 5)
+    };
+  }, [product.tags]);
 
   // URL helper - memoized
   const isRelativeUrl = useMemo(() => (url: string): boolean => {
@@ -355,10 +376,16 @@ const ProductPreview = ({
     setHoveredColor(null);
   };
 
+  // Truncate product title for mobile
+  const truncateTitle = (title: string, maxLength: number = 40): string => {
+    if (title.length <= maxLength) return title;
+    return title.substring(0, maxLength).trim() + '...';
+  };
+
   return (
-    <div className="flex flex-col h-full group">
-      {/* Product Image */}
-      <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden rounded-lg mb-4">
+    <div className="flex flex-col h-full group bg-white">
+      {/* Product Image - Mobile First */}
+      <div className="aspect-[3/4] sm:aspect-[4/5] bg-gray-50 relative overflow-hidden mb-3">
         <LocalizedClientLink href={`/products/${product.handle}`}>
           {displayImage ? (
             <div className="relative w-full h-full">
@@ -367,7 +394,7 @@ const ProductPreview = ({
                   src={displayImage}
                   alt={`${product.title}${selectedColors.length > 0 ? ` in ${selectedColors.join(', ')}` : ''}`}
                   fill
-                  sizes="(max-width: 576px) 100vw, (max-width: 768px) 50vw, 33vw"
+                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
                   className={`object-cover transition-all duration-300 group-hover:scale-105 ${
                     hoveredColor ? 'brightness-110' : ''
                   }`}
@@ -386,121 +413,78 @@ const ProductPreview = ({
             </div>
           ) : (
             <div className="flex items-center justify-center w-full h-full bg-gray-200">
-              <p className="text-gray-400">No image</p>
+              <p className="text-gray-400 text-sm">No image</p>
             </div>
           )}
-          
-          {/* Badges */}
-          <div className="absolute flex flex-col gap-2 left-3 top-3">
-            {isNew && (
-              <span className="px-2 py-1 text-xs text-white bg-black rounded">
-                New
-              </span>
-            )}
-            {hasDiscount && (
-              <span className="bg-[#e65100] text-white text-xs px-2 py-1 rounded">
-                {discountPercentage}% Off
-              </span>
-            )}
-          </div>
-          
-          {/* Quick actions */}
-          <div className="absolute top-0 right-0 z-20">
-            <div className="pointer-events-auto">
-              <WishlistButton variantId={matchedVariant?.id || product.variants?.[0]?.id}/>
-            </div>
-          </div>
-          
-          {/* Add to cart */}
-          <div className="absolute inset-x-0 bottom-0 p-4 transition-opacity opacity-0 bg-gradient-to-t from-black to-transparent group-hover:opacity-100">
-            <button className="w-full py-2 font-medium text-black transition bg-white rounded-md hover:bg-gray-100">
-              Add to Cart
-            </button>
-          </div>
         </LocalizedClientLink>
+        
+        {/* Wishlist Button - Always Visible */}
+        <div className="absolute top-0.5 right-0.5 z-10">
+          <div className="bg-white rounded-full shadow-md">
+            <WishlistButton alwaysVisible={true} variantId={matchedVariant?.id || product.variants?.[0]?.id}/>
+          </div>
+        </div>
       </div>
       
-      {/* Product Info */}
-      <div className="flex-grow p-2">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="font-medium mb-1 hover:text-[#e65100] transition">
-              <LocalizedClientLink href={`/products/${product.handle}`}>
-                {product.title}
-              </LocalizedClientLink>
-            </h3>
-            <div className="flex items-center mb-1 text-sm text-gray-600">
-              <span className="mr-1">{vendorName}</span>
-              {product.vendor?.verified === "Yes" && (
-                <span className="text-[#e65100]">
-                  <Check size={14} />
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="font-semibold">{formattedPrice}</div>
-            {hasDiscount && originalPrice && (
-              <div className="text-sm">
-                <span className="text-gray-500 line-through">
-                  {originalPrice}
-                </span>
-                <span className="ml-1 text-red-600">-{discountPercentage}%</span>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Product Info - Nykaa Order */}
+      <div className="flex-grow px-1">
         
-        {/* Review Data (now passed as props) with Loading States */}
-        <div className="flex items-center mt-2">
-          {isLoadingReviews ? (
-            <div className="flex items-center">
-              <div className="flex mr-1">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="w-3 h-3 mr-0.5 bg-gray-200 rounded-full animate-pulse" />
-                ))}
-              </div>
-              <div className="w-8 h-3 bg-gray-200 rounded animate-pulse" />
+        {/* 1. Product Tags - Real Tags Only */}
+        {(productTags.mobile.length > 0 || productTags.desktop.length > 0) && (
+          <div className="mb-2">
+            {/* Mobile View - Max 3 tags */}
+            <div className="flex gap-1 mb-2 sm:hidden flex-wrap">
+              {productTags.mobile.map((tag, index) => (
+                <span 
+                  key={`mobile-${tag.id || index}`} 
+                  className="px-2 py-1 text-[10px] font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded"
+                >
+                  {tag.displayValue}
+                </span>
+              ))}
             </div>
-          ) : reviewCount > 0 ? (
-            <>
-              <div className="flex mr-1 text-yellow-400">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    fill={i < Math.floor(averageRating) ? "currentColor" : "none"}
-                    size={14}
-                    className={i < Math.floor(averageRating) ? "text-yellow-400" : "text-gray-300"}
-                  />
-                ))}
-              </div>
-              <span className="text-xs text-gray-600">
-                ({reviewCount})
-              </span>
-            </>
-          ) : (
-            <div className="flex items-center">
-              <div className="flex mr-1 text-gray-300">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    fill="none"
-                    size={14}
-                    className="text-gray-300"
-                  />
-                ))}
-              </div>
-              <span className="text-xs text-gray-500">
-                No reviews
-              </span>
+            
+            {/* Desktop View - Max 5 tags */}
+            <div className="hidden sm:flex gap-2 mb-2 flex-wrap">
+              {productTags.desktop.map((tag, index) => (
+                <span 
+                  key={`desktop-${tag.id || index}`} 
+                  className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded"
+                >
+                  {tag.displayValue}
+                </span>
+              ))}
             </div>
+          </div>
+        )}
+        
+        {/* 2. Vendor Name - Truncated */}
+        <div className="flex items-center mb-2 px-2">
+          <span className="text-xs text-gray-600 mr-1">{vendorName}</span>
+          {product.vendor?.verified === "Yes" && (
+            <Check size={12} className="text-orange-500" />
           )}
         </div>
         
-        {/* Color swatches with hover functionality */}
+        {/* 3. Product Name */}
+        <h3 className="text-sm sm:text-base font-medium mb-1.5 leading-tight px-2">
+          <LocalizedClientLink 
+            href={`/products/${product.handle}`}
+            className="hover:text-orange-600 transition-colors"
+          >
+            <span className="block sm:hidden">
+              {truncateTitle(product.title, 15)}
+            </span>
+            <span className="hidden sm:block">
+              {truncateTitle(product.title, 50)}
+            </span>
+          </LocalizedClientLink>
+        </h3>
+        
+        {/* 4. Color Options */}
         {allProductColors.length > 0 && (
-          <div className="flex gap-1 mt-2">
-            {allProductColors.slice(0, 4).map((color, index) => {
+          <div className="flex items-center gap-1 mb-3 px-2">
+            {allProductColors.slice(0, 5).map((color, index) => {
               const isSelected = selectedColors.some(selected => 
                 normalizeColorName(selected).toLowerCase().trim() === color.normalizedName.toLowerCase().trim()
               );
@@ -509,27 +493,94 @@ const ProductPreview = ({
               return (
                 <div
                   key={`${product.id}-color-${index}`}
-                  className={`w-4 h-4 border-2 rounded-full transition-all cursor-pointer ${
+                  className={`w-5 h-5 sm:w-5 sm:h-5 lg:w-6 lg:h-6 border-2 rounded-full transition-all cursor-pointer ${
                     isSelected 
-                      ? 'border-[#e65100] shadow-md scale-110 ring-2 ring-orange-200' 
+                      ? 'border-orange-500 shadow-sm scale-110' 
                       : isHovered
-                        ? 'border-blue-500 shadow-md scale-110 ring-2 ring-blue-200'
-                        : 'border-gray-100 hover:border-gray-300'
+                        ? 'border-blue-500 shadow-sm scale-110'
+                        : 'border-gray-200 hover:border-gray-300'
                   }`}
                   style={{ backgroundColor: color.hex }}
-                  title={`${color.normalizedName}${isSelected ? ' (current)' : ''}`}
+                  title={color.normalizedName}
                   onMouseEnter={() => handleColorHover(color.normalizedName)}
                   onMouseLeave={handleColorLeave}
-                ></div>
+                />
               );
             })}
-            {allProductColors.length > 4 && (
-              <span className="ml-1 text-xs text-gray-500">
-                +{allProductColors.length - 4} more
+            {allProductColors.length > 5 && (
+              <span className="text-[10px] sm:text-xs text-gray-500 ml-1">
+                +{allProductColors.length - 5}
               </span>
             )}
           </div>
         )}
+        
+        {/* 5. Price */}
+        <div className="mb-2 px-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm sm:text-base font-bold text-gray-900">
+              {formattedPrice}
+            </span>
+            {hasDiscount && originalPrice && (
+              <>
+                <span className="text-xs sm:text-sm text-gray-500 line-through">
+                  {originalPrice}
+                </span>
+                <span className="text-xs sm:text-sm text-red-600 font-medium">
+                  {discountPercentage}% off
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        
+        {/* 6. Reviews - Last */}
+        <div className="flex items-center pb-2 px-2">
+          {isLoadingReviews ? (
+            <div className="flex items-center">
+              <div className="flex mr-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 bg-gray-200 rounded-full animate-pulse" />
+                ))}
+              </div>
+              <div className="w-8 h-2.5 sm:h-3 bg-gray-200 rounded animate-pulse" />
+            </div>
+          ) : reviewCount > 0 ? (
+            <div className="flex items-center">
+              <div className="flex mr-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    fill={i < Math.floor(averageRating) ? "currentColor" : "none"}
+                    size={12}
+                    className={`${
+                      i < Math.floor(averageRating) ? "text-yellow-400" : "text-gray-300"
+                    } sm:w-3 sm:h-3`}
+                  />
+                ))}
+              </div>
+              <span className="text-[10px] sm:text-xs text-gray-600">
+                ({reviewCount})
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <div className="flex mr-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    fill="none"
+                    size={12}
+                    className="text-gray-300 sm:w-3 sm:h-3"
+                  />
+                ))}
+              </div>
+              <span className="text-[10px] sm:text-xs text-gray-500">
+                No reviews
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -813,15 +813,15 @@ const CustomerAccount = ({ customer, creatorList, Orders }) => {
   // Loading state component
   const LoadingState = () => (
     <div className="animate-pulse">
-      <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-      <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
-      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      <div className="w-1/4 h-4 mb-2 bg-gray-200 rounded"></div>
+      <div className="w-1/3 h-4 mb-2 bg-gray-200 rounded"></div>
+      <div className="w-1/2 h-4 bg-gray-200 rounded"></div>
     </div>
   )
 
   // Empty state component
   const EmptyState = ({ message = "No data available" }) => (
-    <div className="text-center py-8 text-gray-500">
+    <div className="py-8 text-center text-gray-500">
       <p>{message}</p>
     </div>
   )
@@ -862,7 +862,7 @@ const CustomerAccount = ({ customer, creatorList, Orders }) => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="px-4 py-8">
+      <div className="px-2 py-8 sm:px-4">
         <div className="">
           {/* Sidebar Navigation */}
 
