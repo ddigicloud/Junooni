@@ -49,6 +49,7 @@ import {
   IconBrandX,
   IconBrandFacebook,
   IconLogout,
+  IconMenu2,
   IconPhone,
   IconMail,
   IconMapPin,
@@ -183,6 +184,7 @@ const PasswordChangeModal: React.FC<PasswordChangeModalProps> = React.memo(({
   const [currentPasswordError, setCurrentPasswordError] = useState('');
   const [newPasswordError, setNewPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
+
   
   // Input refs
   const currentPasswordRef = useRef<HTMLInputElement>(null);
@@ -373,6 +375,7 @@ const PasswordChangeModal: React.FC<PasswordChangeModalProps> = React.memo(({
 export default function CreatorProfile() {
   const [vendorData, setVendorData] = useState<VendorData | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editMode, setEditMode] = useState<{ [key: string]: boolean }>({
     profile: false,
@@ -625,56 +628,6 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
 
     fetchVendorData();
   }, []);
-
-  // Save vendor data
-  // const saveVendorData = async (section: string) => {
-  //   if (!vendorData) return;
-    
-  //   setIsSaving(true);
-    
-  //   try {
-  //     const token = localStorage.getItem('vendorToken');
-      
-  //     // Create a copy of the vendor data without the admins array
-  //     const { admins, ...vendorDataWithoutAdmins } = vendorData.vendor;
-      
-  //     console.log('Sending to API:', vendorDataWithoutAdmins);
-      
-  //     const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
-  //       method: 'PUT',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': `Bearer ${token}`
-  //       },
-  //       body: JSON.stringify(vendorDataWithoutAdmins)
-  //     });
-      
-  //     if (!response.ok) {
-  //       const errorData = await response.json();
-  //       throw new Error(`API error: ${response.status} - ${JSON.stringify(errorData)}`);
-  //     }
-      
-  //     // Turn off edit mode for the section
-  //     setEditMode({
-  //       ...editMode,
-  //       [section]: false
-  //     });
-      
-  //     toast({
-  //       title: "Changes Saved",
-  //       description: `Your ${section} information has been updated successfully.`,
-  //     });
-  //   } catch (error) {
-  //     console.error('Error saving vendor data:', error);
-  //     toast({
-  //       title: "Error",
-  //       description: `Failed to save changes to your ${section} information. Please try again.`,
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setIsSaving(false);
-  //   }
-  // };
 
   // Fixed saveVendorData function
 // ULTIMATE FIX - Replace your saveVendorData function with this
@@ -1183,75 +1136,226 @@ const openChatwoot = () => {
       <div className="sticky top-0 z-30 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90">
         <div className="container px-4 py-3 mx-auto">
           <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div
-                className="mr-2 text-2xl font-bold"
-                style={{ color: BRAND.primary }}
+            {/* Mobile Layout */}
+            <div className="flex items-center justify-between w-full lg:hidden">
+              {/* Hamburger Menu Button - Left */}
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="p-2 rounded-lg hover:bg-gray-100"
               >
+                <IconMenu2 className="w-6 h-6" style={{ color: BRAND.primary }} />
+              </button>
+
+              {/* Logo - Center */}
+              <div className="flex-1 flex justify-center">
                 <Link to="/dashboard">
                   <img src={Junoonilogo} alt="Junooni Logo" className="h-8" />
                 </Link>
               </div>
-              <Separator orientation='vertical' className='h-6 ml-2' />
-              <div className="flex flex-col items-start text-xs font-medium leading-tight text-muted-foreground ml-4">
-                <span className="text-xs">Creator</span>
-                <span className="text-xs">Studio</span>
-              </div>
+
+              {/* Profile Dropdown - Right */}
+              <ProfileDropdown />
             </div>
-           
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                className="hidden md:flex"
-                onClick={() => window.location.href = '/dashboard'}
-              >
-                Dashboard
-              </Button>
-              <Button
-                variant="ghost"
-                className="hidden md:flex"
-                onClick={() => window.location.href = '/products'}
-              >
-                Products
-              </Button>
-              <Button
-                variant="ghost"
-                className="hidden md:flex"
-                onClick={() => window.location.href = '/orders'}
-              >
-                Orders
-              </Button>
-              <Button
-                variant="ghost"
-                className="hidden md:flex"
-                onClick={() => window.location.href = '/help-center'}
-              >
-                Help
-              </Button>
-               <ProfileDropdown />
-             
-              {/* <div className="flex items-center">
-                <div className="w-8 h-8 mr-2 overflow-hidden rounded-full">
-                  {vendorData.vendor.logo ? (
-                    <img src={vendorData.vendor.logo} alt="Logo" className="object-cover w-full h-full" />
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full bg-gray-100">
-                      <IconUser className="w-4 h-4 text-gray-400" />
-                    </div>
-                  )}
+
+            {/* Desktop Layout */}
+            <div className="hidden lg:flex lg:items-center lg:w-full lg:justify-between">
+              <div className="flex items-center">
+                <div
+                  className="mr-2 text-2xl font-bold"
+                  style={{ color: BRAND.primary }}
+                >
+                  <Link to="/dashboard">
+                    <img src={Junoonilogo} alt="Junooni Logo" className="h-8" />
+                  </Link>
                 </div>
-                <span className="text-sm font-medium">{vendorData.vendor.name}</span>
-              </div> */}
+                <Separator orientation='vertical' className='h-6 ml-2' />
+                <div className="flex flex-col items-start text-xs font-medium leading-tight text-muted-foreground ml-4">
+                  <span className="text-xs">Creator</span>
+                  <span className="text-xs">Studio</span>
+                </div>
+              </div>
+            
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  className="hidden md:flex"
+                  onClick={() => window.location.href = '/dashboard'}
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="hidden md:flex"
+                  onClick={() => window.location.href = '/products'}
+                >
+                  Products
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="hidden md:flex"
+                  onClick={() => window.location.href = '/orders'}
+                >
+                  Orders
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="hidden md:flex"
+                  onClick={() => window.location.href = '/help-center'}
+                >
+                  Help
+                </Button>
+                <ProfileDropdown />
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          {/* Sidebar */}
+          <div className="fixed top-0 left-0 w-80 max-w-[85vw] h-full bg-white shadow-xl transform transition-transform duration-300 ease-in-out overflow-y-auto">
+            <div className="flex flex-col h-full">
+              {/* Header with close button */}
+              <div className="flex items-center justify-between p-6 bg-gradient-to-r from-orange-600 to-red-800 flex-shrink-0">
+                <div>
+                  <h2 className="text-lg font-bold text-white">Account Settings</h2>
+                  <p className="text-sm text-white/80">Manage your creator profile</p>
+                </div>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 rounded-full hover:bg-white/20 transition-colors"
+                >
+                  <IconX className="w-6 h-6 text-white" />
+                </button>
+              </div>
+            
+              {/* Navigation */}
+              <div className="flex-1 px-6 py-8">
+                <div className="space-y-3">
+                  {/* Profile Information */}
+                  <button
+                    onClick={() => {
+                      setActiveTab("profile");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center px-4 py-4 rounded-lg text-left transition-all duration-200 hover:bg-gray-50",
+                      activeTab === "profile" 
+                        ? "bg-orange-50 text-orange-800 border-l-4 border-orange-600" 
+                        : "text-gray-700 hover:text-orange-700"
+                    )}
+                  >
+                    <IconUser className="w-5 h-5 mr-4 flex-shrink-0" />
+                    <span className="font-medium">Profile Information</span>
+                  </button>
+                  
+                  {/* Business Details */}
+                  <button
+                    onClick={() => {
+                      setActiveTab("business");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center px-4 py-4 rounded-lg text-left transition-all duration-200 hover:bg-gray-50",
+                      activeTab === "business" 
+                        ? "bg-orange-50 text-orange-800 border-l-4 border-orange-600" 
+                        : "text-gray-700 hover:text-orange-700"
+                    )}
+                  >
+                    <IconBuilding className="w-5 h-5 mr-4 flex-shrink-0" />
+                    <span className="font-medium">Business Details</span>
+                  </button>
+                  
+                  {/* Banking Details */}
+                  <button
+                    onClick={() => {
+                      setActiveTab("banking");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center px-4 py-4 rounded-lg text-left transition-all duration-200 hover:bg-gray-50",
+                      activeTab === "banking" 
+                        ? "bg-orange-50 text-orange-800 border-l-4 border-orange-600" 
+                        : "text-gray-700 hover:text-orange-700"
+                    )}
+                  >
+                    <IconCreditCard className="w-5 h-5 mr-4 flex-shrink-0" />
+                    <span className="font-medium">Banking Details</span>
+                  </button>
+                  
+                  {/* Account Settings */}
+                  <button
+                    onClick={() => {
+                      setActiveTab("settings");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center px-4 py-4 rounded-lg text-left transition-all duration-200 hover:bg-gray-50",
+                      activeTab === "settings" 
+                        ? "bg-orange-50 text-orange-800 border-l-4 border-orange-600" 
+                        : "text-gray-700 hover:text-orange-700"
+                    )}
+                  >
+                    <IconSettings className="w-5 h-5 mr-4 flex-shrink-0" />
+                    <span className="font-medium">Account Settings</span>
+                  </button>
+
+                  {/* Separator */}
+                  <div className="my-6 border-t border-gray-200"></div>
+                    
+                  {/* Logout Button */}
+                  <button
+                    onClick={() => {
+                      // Clear authentication tokens
+                      localStorage.removeItem('vendorToken');
+                      localStorage.removeItem('vendorEmail');
+                      
+                      // Redirect to sign-in page
+                      window.location.href = '/sign-in';
+                    }}
+                    className="w-full flex items-center px-4 py-4 rounded-lg text-left transition-all duration-200 text-red-600 hover:bg-red-50"
+                  >
+                    <IconLogout className="w-5 h-5 mr-4 flex-shrink-0" />
+                    <span className="font-medium">Log Out</span>
+                  </button>
+                </div>
+              </div>
+            
+              {/* Support Section */}
+              <div className="p-6 border-t border-gray-200 flex-shrink-0 bg-gray-50">
+                <div className="p-4 border border-orange-200 rounded-xl bg-orange-50">
+                  <p className="text-sm font-medium text-orange-800 mb-2">
+                    Need help updating your profile?
+                  </p>
+                  <button
+                    onClick={() => {
+                      openChatwoot();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors underline"
+                  >
+                    Contact Support
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
      
       {/* Main content */}
       <div className="container px-4 py-8 mx-auto">
         <div className="flex flex-col gap-8 lg:flex-row">
           {/* Left sidebar with navigation */}
-          <div className="w-full lg:w-64 shrink-0">
+          <div className="hidden lg:block w-full lg:w-64 shrink-0">
             <div className="overflow-hidden bg-white border border-gray-100 shadow-lg lg:sticky lg:top-24 rounded-xl min-h-[455px]">
               <div className="p-4 bg-gradient-to-r from-orange-600 to-red-800">
                 <h2 className="text-lg font-bold text-white">Account Settings</h2>
@@ -1381,7 +1485,7 @@ const openChatwoot = () => {
               <TabsContent value="profile" className="mt-0">
                 <Card className="overflow-hidden border-0 shadow-xl">
                   <CardHeader
-                    className="pb-2 border-b"
+                    className="pb-2 border-b px-2 py-3 md:px-6 md:py-4"
                     style={{ borderColor: `${BRAND.primary}11` }}
                   >
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1466,7 +1570,7 @@ const openChatwoot = () => {
                   </CardHeader>
 
                  
-                  <CardContent className="pt-6 pb-8">
+                  <CardContent className="pt-6 pb-8 px-2 py-3 md:px-6 md:py-4">
                     {/* Brand display with cover photo and logo */}
                     <div className="mb-8">
                       <div className="relative h-64 bg-gray-100 rounded-xl">
@@ -2573,30 +2677,12 @@ const openChatwoot = () => {
                                 )}
                               </div>
                             </div>
-                          
-                          {/* <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
-                            <div>
-                              <h3 className="font-medium">Email Address</h3>
-                              <p className="text-sm text-gray-500">your.email@example.com</p>
-                            </div>
-                            <Button variant="outline" className="h-8">Change</Button>
-                          </div> */}
 
                           <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
                             <div>
                               <h3 className="font-medium">Email Address</h3>
                               <p className="text-sm text-gray-500">{getVendorEmail(vendorData)}</p>
                             </div>
-                            {/* <Button 
-                              variant="outline" 
-                              className="h-8"
-                              onClick={() => {
-                                toast({
-                                  title: "Feature Not Available",
-                                  description: "Your Email cannot be changed once you sign-up.",
-                                });
-                              }}
-                            >Change</Button> */}
                           </div>
                          
                           <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
@@ -2606,57 +2692,10 @@ const openChatwoot = () => {
                             </div>
                             <Button variant="outline" className="h-8"  onClick={sendPasswordResetLink} >{isSendingResetLink ? "Sending..." : "Change"}</Button>
                           </div>
-                         
-                          {/* <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
-                            <div>
-                              <h3 className="font-medium">Two-Factor Authentication</h3>
-                              <p className="text-sm text-gray-500">Not enabled</p>
-                            </div>
-                            <Button variant="outline" className="h-8">Enable</Button>
-                          </div> */}
                         </div>
                       </div>
                      
                       <Separator className="my-6" />
-                     
-                      {/* <div className="mb-6">
-                        <h2 className="mb-4 text-lg font-semibold">Notifications</h2>
-                       
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="font-medium">Email Notifications</h3>
-                              <p className="text-sm text-gray-500">Receive updates about orders and account activity</p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" className="sr-only peer" defaultChecked />
-                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
-                            </label>
-                          </div>
-                         
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="font-medium">SMS Notifications</h3>
-                              <p className="text-sm text-gray-500">Receive text messages for important updates</p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" className="sr-only peer" />
-                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
-                            </label>
-                          </div>
-                         
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="font-medium">Marketing Communications</h3>
-                              <p className="text-sm text-gray-500">Receive product tips and promotional offers</p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" className="sr-only peer" defaultChecked />
-                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
-                            </label>
-                          </div>
-                        </div>
-                      </div> */}
                      
                       <Separator className="my-6" />
                      

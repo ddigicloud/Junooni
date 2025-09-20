@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { ProfileDropdown } from "../../../components/profile-dropdown"
 import { Link } from "@tanstack/react-router"
+import { IconMenu2 as MenuIcon } from "@tabler/icons-react"
 import { ChevronDown, Menu, X } from "lucide-react"
 import JunooniLogo from "@/assets/junooni_logo_brand_color.png"
 
@@ -23,6 +24,20 @@ interface Category {
   createdAt: string
   children?: Category[]
 }
+
+const BRAND = {
+  primary: "#e65100",
+  secondary: "#ac1900",
+  accent: "#581845",
+  light: "#FFC300",
+  background: "#FFEFD5",
+  success: "#2ECC71",
+  warning: "#F39C12",
+  error: "#E74C3C",
+  textPrimary: "#333333",
+  textSecondary: "#666666",
+  textLight: "#999999"
+};
 
 const Navbar = () => {
   const [organizedCategories, setOrganizedCategories] = useState<Category[]>([])
@@ -141,7 +156,7 @@ const Navbar = () => {
             className="sm:hidden p-1 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20"
             onClick={() => setMobileOpen(true)}
           >
-            <Menu size={20} />
+            <MenuIcon className="w-6 h-6" style={{ color: BRAND.primary }}/>
           </button>
 
           {/* Desktop Logo */}

@@ -306,7 +306,7 @@ const Login = ({ setCurrentView }: Props) => {
   // Show forgot password form
   if (forgotPasswordView) {
     return (
-      <div className="flex items-center justify-center min-h-screen px-0 py-6 bg-white sm:p-4">
+      <div className="flex items-start justify-center min-h-screen px-0 py-6 bg-white sm:p-4">
         <div className="w-full max-w-lg">
           {/* Header */}
           <div className="mb-6 text-center">

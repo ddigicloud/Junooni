@@ -1704,6 +1704,14 @@ const DashboardPage = () => {
             </div>
           </CardContent>
         </Card> */}
+        {/* Footer */}
+        <div className="py-6 mt-12 border-t border-gray-200">
+          <div className="container px-4 mx-auto text-center">
+            <p className="text-sm" style={{ color: BRAND.textLight }}>
+              &copy; {new Date().getFullYear()} Junooni. All rights reserved.
+            </p>
+          </div>
+        </div>
         <ChatwootWidget />
       </div>
     </div>

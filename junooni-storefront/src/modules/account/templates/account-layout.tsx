@@ -1,4 +1,4 @@
- "use client"
+"use client"
 
 import React, { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
@@ -31,6 +31,9 @@ import {
 const AccountLayout = ({ customer, children, creatorList }) => {
   // Get the current path for determining active tab
   const pathname = usePathname()
+
+  // Determine if this is an auth page (no customer) vs account page (has customer)
+  const isAuthPage = !customer
 
   // State for data that needs to be fetched and managed
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -228,16 +231,52 @@ const AccountLayout = ({ customer, children, creatorList }) => {
   }, [followedCreatorsData])
 
   // Handle sign out
-  const handleSignOut = async () => {
-    setIsSigningOut(true)
-    try {
-      await signout("en") // Using 'en' as the default country code
-      // The page should automatically redirect after successful logout
-    } catch (error) {
-      //console.error("Error signing out:", error)
-      setIsSigningOut(false)
+const handleSignOut = async () => {
+  setIsSigningOut(true)
+  try {
+    // Get country code dynamically with multiple fallbacks
+    const getCountryCode = () => {
+      // 1. Try customer's billing address country
+      if (customer?.billing_address?.country_code) {
+        return customer.billing_address.country_code.toLowerCase()
+      }
+      
+      // 2. Try customer's shipping address country  
+      if (customer?.shipping_address?.country_code) {
+        return customer.shipping_address.country_code.toLowerCase()
+      }
+      
+      // 3. Try customer's addresses array (first address)
+      if (customer?.addresses?.length > 0 && customer.addresses[0]?.country_code) {
+        return customer.addresses[0].country_code.toLowerCase()
+      }
+      
+      // 4. Try browser locale
+      if (typeof window !== 'undefined') {
+        const browserLocale = navigator.language || navigator.languages?.[0]
+        if (browserLocale && browserLocale.includes('-')) {
+          const countryFromLocale = browserLocale.split('-')[1]
+          if (countryFromLocale) return countryFromLocale.toLowerCase()
+        }
+      }
+      
+      // 5. Try environment variable
+      if (process.env.NEXT_PUBLIC_DEFAULT_COUNTRY) {
+        return process.env.NEXT_PUBLIC_DEFAULT_COUNTRY.toLowerCase()
+      }
+      
+      // 6. Default fallback
+      return 'en'
     }
+    
+    const countryCode = getCountryCode()
+    await signout(countryCode)
+    // The page should automatically redirect after successful logout
+  } catch (error) {
+    //console.error("Error signing out:", error)
+    setIsSigningOut(false)
   }
+}
 
   // Format date helper
   const formatDate = (dateString) => {
@@ -321,14 +360,14 @@ const AccountLayout = ({ customer, children, creatorList }) => {
 
   return (
     <div className="flex-1 small:py-12" data-testid="account-page">
-      {/* Mobile Layout */}
-      <div className="md:hidden">
+      {/* Mobile Layout - Only show for logged-in users (account pages) */}
+      <div className={isAuthPage ? "hidden" : "md:hidden"}>
         {customer && (
           <>
             {/* Mobile Header and Quick Actions Only */}
             <div className="w-full min-h-screen pb-0 bg-gray-50">
-              {/* Header */}
-              <div className="sticky top-0 z-10 px-4 mt-16 rounde-sm pg-white">
+              {/* Header - FIXED */}
+              <div className="sticky top-0 z-10 px-4 pt-16 pb-2 bg-white">
                 <div className="flex items-center justify-between px-2 py-2 bg-white border border-gray-200 rounded-sm">
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#4c5cbf] rounded-full">
@@ -353,9 +392,8 @@ const AccountLayout = ({ customer, children, creatorList }) => {
                 </div>
               </div>
 
-              {/* Quick Actions Grid */}
+              {/* Quick Actions Grid - FIXED */}
               <div className="p-4">
-                {/* <h3 className="mb-3 font-semibold text-gray-900">Quick Actions</h3> */}
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   {/* Dashboard */}
                   <LocalizedClientLink href="/account" className="block p-4 text-left transition-transform bg-white border border-gray-200 shadow-sm rounded-xl active:scale-95">
@@ -367,36 +405,39 @@ const AccountLayout = ({ customer, children, creatorList }) => {
                     <p className="text-sm font-medium text-center text-gray-900">Dashboard</p>
                   </LocalizedClientLink>
 
-                  {/* My Orders */}
+                  {/* My Orders - FIXED badge positioning */}
                   <LocalizedClientLink
                     href="/account/orders"
-                    className="block p-4 text-left transition-transform bg-white border border-gray-200 shadow-sm rounded-xl active:scale-95"
+                    className="relative block p-4 text-left transition-transform bg-white border border-gray-200 shadow-sm rounded-xl active:scale-95"
                   >
                     <div className="flex items-center justify-center mb-2">
-                      <div className="relative flex items-center justify-center w-10 h-10 bg-orange-500 rounded-lg">
+                      <div className="flex items-center justify-center w-10 h-10 bg-orange-500 rounded-lg">
                         <Package className="w-5 h-5 text-white" />
-                        {orders?.length > 0 && (
-                          <span className="absolute -top-3 -right-3 px-1 py-1 text-[10px] font-bold text-white bg-orange-500 rounded-full leading-none">
-                            {orders.length}
-                          </span>
-                        )}
                       </div>
                     </div>
+                    {orders?.length > 0 && (
+                      <span className="absolute top-2 right-2 px-1.5 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full min-w-[20px] text-center">
+                        {orders.length}
+                      </span>
+                    )}
                     <p className="text-sm font-medium text-center text-gray-900">My Orders</p>
                   </LocalizedClientLink>
 
-                  {/* Wishlist */}
-                  <LocalizedClientLink href="/account/wishlist" className="block p-4 text-left transition-transform bg-white border border-gray-200 shadow-sm rounded-xl active:scale-95">
+                  {/* Wishlist - FIXED badge positioning */}
+                  <LocalizedClientLink 
+                    href="/account/wishlist" 
+                    className="relative block p-4 text-left transition-transform bg-white border border-gray-200 shadow-sm rounded-xl active:scale-95"
+                  >
                     <div className="flex items-center justify-center mb-2">
                       <div className="flex items-center justify-center w-10 h-10 bg-red-500 rounded-lg">
-                         <Heart className="w-5 h-5 text-white" />
+                        <Heart className="w-5 h-5 text-white" />
                       </div>
-                      {wishlistData?.length > 0 && (
-                        <span className="absolute -top-3 -right-3 px-1 py-1 text-[10px] font-bold text-white bg-orange-500 rounded-full leading-none">
-                            {wishlistData.length}
-                        </span>
-                      )}
                     </div>
+                    {wishlistData?.length > 0 && (
+                      <span className="absolute top-2 right-2 px-1.5 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full min-w-[20px] text-center">
+                        {wishlistData.length}
+                      </span>
+                    )}
                     <p className="text-sm font-medium text-center text-gray-900">Wishlist</p>
                   </LocalizedClientLink>
 
@@ -404,31 +445,30 @@ const AccountLayout = ({ customer, children, creatorList }) => {
                   <LocalizedClientLink href="/account/membership" className="block p-4 text-left transition-transform bg-white border border-gray-200 shadow-sm rounded-xl active:scale-95">
                     <div className="flex items-center justify-center mb-2">
                       <div className="flex items-center justify-center w-10 h-10 bg-purple-500 rounded-lg">
-                       <Star className="w-5 h-5 text-white" />
+                        <Star className="w-5 h-5 text-white" />
                       </div>
-                      {/* <div className="w-2 h-2 bg-orange-500 rounded-full"></div> */}
                     </div>
                     <p className="text-sm font-medium text-center text-gray-900">Fan Membership</p>
                   </LocalizedClientLink>
                 </div>
 
-                {/* Main Content Area */}
-                <div className="px-0 py-0 bg-white border border-gray-200 shadow-sm sm:p-4 smb-4 rounded-xl">
+                {/* Main Content Area - FIXED */}
+                <div className="px-4 py-4 bg-white border border-gray-200 shadow-sm mb-4 rounded-xl">
                   {React.isValidElement(children) &&
                     React.cloneElement(children, commonProps)}
                   {!React.isValidElement(children) && children}
                   <Help/>
                 </div>
 
-                {/* More Options Section - Now at bottom */}
-                <div className="mt-8 mb-0 bg-white border border-gray-200 shadow-sm rounded-xl">
+                {/* More Options Section - FIXED */}
+                <div className="mb-4 bg-white border border-gray-200 shadow-sm rounded-xl">
                   <div className="p-4 border-b border-gray-200">
                     <button 
                       onClick={() => setShowMoreOptions(!showMoreOptions)}
                       className="flex items-center justify-between w-full"
                     >
                       <h3 className="font-semibold text-gray-900">More Options</h3>
-                     <ChevronRight
+                      <ChevronRight
                         className={`w-5 h-5 text-gray-400 transition-transform ${
                           showMoreOptions ? "rotate-90" : ""
                         }`}
@@ -443,11 +483,11 @@ const AccountLayout = ({ customer, children, creatorList }) => {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg">
-                               <MapPin className="w-4 h-4 text-gray-600" />
+                              <MapPin className="w-4 h-4 text-gray-600" />
                             </div>
                             <span className="font-medium text-gray-900">Addresses</span>
                           </div>
-                           <ChevronRight className="w-4 h-4 text-gray-400" />
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
                         </div>
                       </LocalizedClientLink>
 
@@ -460,19 +500,20 @@ const AccountLayout = ({ customer, children, creatorList }) => {
                             </div>
                             <span className="font-medium text-gray-900">Account Settings</span>
                           </div>
-                           <ChevronRight className="w-4 h-4 text-gray-400" />
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
                         </div>
                       </LocalizedClientLink>
                     </div>
                   )}
                   
+                  {/* Sign Out Button */}
                   <div className="p-4">
                     <button 
                       className="flex items-center w-full p-2 -m-2 space-x-3 text-orange-600 transition-colors rounded-lg active:bg-orange-50"
                       onClick={handleSignOut}
                       disabled={isSigningOut}
                     >
-                       <LogOut className="w-5 h-5" />
+                      <LogOut className="w-5 h-5" />
                       <span className="font-medium">
                         {isSigningOut ? "Signing out..." : "Sign Out"}
                       </span>
@@ -485,10 +526,13 @@ const AccountLayout = ({ customer, children, creatorList }) => {
         )}
       </div>
 
-      {/* Desktop Layout */}
-      <div className="flex-col flex-1 hidden h-full pt-4 mx-auto bg-white md:flex content-container">
+      {/* Desktop Layout - Show for ALL auth pages on mobile, normal behavior on desktop */}
+      <div className={`flex-col flex-1 h-full pt-4 mx-auto bg-white content-container ${
+        isAuthPage ? "flex" : "hidden md:flex"
+      }`}>
         <div className="grid grid-cols-1 small:grid-cols-[240px_1fr] py-12">
           <div>
+            {/* Only show sidebar for logged-in users */}
             {customer && (
               <AccountSidebar
                 customer={customer}
@@ -501,11 +545,13 @@ const AccountLayout = ({ customer, children, creatorList }) => {
             )}
           </div>
           <div className="flex-1 px-0 md:px-4">
-            {/* Pass important context to children if needed */}
+            {/* Render children (login, register, forgot-password, or account pages) */}
             {React.isValidElement(children) &&
               React.cloneElement(children, commonProps)}
             {!React.isValidElement(children) && children}
-            <Help/>
+            
+            {/* Only show Help for logged-in users */}
+            {customer && <Help/>}
           </div>
         </div>
       </div>

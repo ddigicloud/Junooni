@@ -888,7 +888,7 @@ const ProductPage = () => {
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-2">
                                       <h4 className="text-sm font-semibold text-gray-900 truncate">
-                                        {tech.technologyName}
+                                        {tech.technologyName.toUpperCase()}
                                       </h4>
                                       <Badge 
                                         className={`text-xs h-5 px-2 ${quality.color} border-0`}
@@ -943,7 +943,7 @@ const ProductPage = () => {
                             <div className="flex items-center gap-2 mb-2">
                               {getTechnologyIcon(selectedTechnology.technologyName)}
                               <span className="text-sm font-semibold text-[#e65100]">
-                                Selected: {selectedTechnology.technologyName}
+                                Selected: {selectedTechnology.technologyName.toUpperCase()}
                               </span>
                             </div>
                             
@@ -992,7 +992,7 @@ const ProductPage = () => {
                           onOpenChange={() => toggleSection('technology')}
                           className="overflow-hidden transition-all duration-300 border border-gray-200 rounded-xl"
                         >
-                          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 font-semibold transition-colors bg-gradient-to-r from-gray-50 to-white hover:from-[#e65100]/5 hover:to-[#e65100]/5">
+                          {/* <CollapsibleTrigger className="flex items-center justify-between w-full p-4 font-semibold transition-colors bg-gradient-to-r from-gray-50 to-white hover:from-[#e65100]/5 hover:to-[#e65100]/5">
                             <span className="flex items-center gap-2">
                               <Settings className="w-4 h-4 text-[#e65100]" />
                               Available Printing Technologies
@@ -1000,7 +1000,7 @@ const ProductPage = () => {
                             <span className="transition-transform duration-300">
                               {openSections.technology ? <ChevronUp className="w-5 h-5 text-[#e65100]" /> : <ChevronDown className="w-5 h-5 text-[#e65100]" />}
                             </span>
-                          </CollapsibleTrigger>
+                          </CollapsibleTrigger> */}
                           <CollapsibleContent className="p-4 bg-white">
                             <div className="space-y-4">
                               {product.printT.map((tech: PrintingTechnology) => {

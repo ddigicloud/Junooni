@@ -268,7 +268,7 @@ const Catalog = () => {
       </div>
 
       {/* Products Section */}
-      <div className="px-4 pb-20 mx-auto max-w-7xl sm:px-6 lg:px-8">
+      <div className="px-4 pb-8 sm:pb-20 mx-auto max-w-7xl sm:px-6 lg:px-8">
         {/* Stats Bar */}
         <div className="flex flex-col items-start justify-between p-6 mb-8 bg-white border border-gray-200 shadow-sm sm:flex-row sm:items-center dark:bg-gray-800 rounded-xl dark:border-gray-700">
           <div>

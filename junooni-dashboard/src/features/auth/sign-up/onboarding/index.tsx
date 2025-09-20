@@ -4,6 +4,7 @@ import VendorHandleInput from "./VendorHandleInput"; // Adjust the path as neede
 // import BrandSettings from "@/features/auth/sign-up/onboarding/components/BrandSettings"
 import { useNavigate } from "@tanstack/react-router";
 import ChatwootWidget from '@/components/ChatwootWidget'
+import JunooniLogo from '../../../../assets/junooni_logo_brand_color.png'
 import { Link } from "@tanstack/react-router";
 import { 
   Card, 
@@ -2512,7 +2513,7 @@ if (isLoading) {
                   style={{ color: BRAND.primary }}
                 >
                   <Link to="/dashboard">
-                    <img src="/src/assets/junooni_logo_brand_color.png" alt="Junooni Logo" className="h-8" />
+                    <img src={JunooniLogo} alt="Junooni Logo" className="h-8" />
                   </Link>
                 </div>
                 <span className="hidden text-gray-500 md:inline">|</span>

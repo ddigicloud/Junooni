@@ -43,8 +43,8 @@ const BackButton = () => {
   // Pages (logical routes) where back button should not show
   const noBackStarts = [
     '/',           // homepage (logical)
-    '/search',
-    '/categories',
+    // '/search',
+    // '/categories',
     // '/account',
     // '/cart',
     // '/wishlist',

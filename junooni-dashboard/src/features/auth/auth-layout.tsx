@@ -30,7 +30,7 @@ export default function AuthLayout({ children }: Props) {
           {/* Brand accent line - Responsive */}
           <div className="absolute -top-4 sm:-top-6 left-1/2 transform -translate-x-1/2 w-12 sm:w-16 h-0.5 sm:h-1 bg-gradient-to-r from-[#e65100] to-[#ff8a50] rounded-full shadow-lg"></div>
           
-          <div className='bg-white shadow-xl sm:shadow-2xl border-0 rounded-xl sm:rounded-2xl relative overflow-hidden p-6 sm:p-8'>
+          <div className='bg-white shadow-xl sm:shadow-2xl border-0 rounded-xl sm:rounded-2xl relative overflow-hidden px-0 sm:p-8'>
             {/* Subtle gradient overlay */}
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#e65100]/30 to-transparent"></div>
             

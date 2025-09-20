@@ -164,7 +164,7 @@ export default async function Home(props: {
           <CreatorInstagram vendorsList={vendorsList} />
           
           {/* 8. FanContent - Fast component, loads immediately */}
-          <FanContent />
+          {/* <FanContent /> */}
           
           {/* 9. NewsLetter - Fast component, loads immediately */}
           <NewsLetter />

@@ -37,8 +37,8 @@ const LogoDisplay = () => {
   // Pages where back button should NOT show
   const noBackButtonPages = [
     "/",
-    "/search",
-    "/categories",
+    // "/search",
+    // "/categories",
     // "/account",
     // "/cart",
     // "/wishlist",
