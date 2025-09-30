@@ -417,7 +417,7 @@ const sendPasswordResetLink = useCallback(async () => {
       throw new Error("Email address not found in your profile");
     }
     
-    console.log('Sending password reset link to:', adminEmail);
+    //console.log('Sending password reset link to:', adminEmail);
     
     // Send request to forgot password endpoint
     const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass/reset-password`, {
@@ -442,7 +442,7 @@ const sendPasswordResetLink = useCallback(async () => {
     });
     
   } catch (error) {
-    console.error('Error sending reset link:', error);
+    //console.error('Error sending reset link:', error);
     toast({
       title: "Error",
       description: error.message || "Failed to send password reset link. Please try again.",
@@ -460,7 +460,7 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
   try {
     const token = localStorage.getItem('vendorToken');
 
-    console.log("token", token);
+    //console.log("token", token);
     // Get admin email from vendor data
     const adminEmail = vendorData?.vendor?.admins?.[0]?.email;
     
@@ -474,7 +474,7 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
       password: newPassword
     };
     
-    console.log('Sending password update payload:', payload);
+    //console.log('Sending password update payload:', payload);
     
     // Use the new auth/vendor/emailpass/update endpoint
     const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass/update`, {
@@ -499,7 +499,7 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
       description: "Your password has been changed successfully.",
     });
   } catch (error) {
-    console.error('Error changing password:', error);
+    //console.error('Error changing password:', error);
     toast({
       title: "Error",
       description: error.message || "Failed to change your password. Please try again.",
@@ -555,33 +555,33 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
     });
     
     if (!response.ok) {
-      console.log("Vendor profile not found. Redirecting to onboarding page.");
+      //console.log("Vendor profile not found. Redirecting to onboarding page.");
       window.location.href = '/onboarding?step=basic-info';
       return;
     }
     
     const data = await response.json();
-    console.log('📥 Initial fetch response:', data);
+    //console.log('📥 Initial fetch response:', data);
     
     // Handle array response structure for initial fetch too
     if (data.vendor && Array.isArray(data.vendor) && data.vendor.length > 0) {
-      console.log('✅ Initial fetch: Converting array to object structure');
+      //console.log('✅ Initial fetch: Converting array to object structure');
       const correctedData = {
         vendor: data.vendor[0],
         message: data.message
       };
       setVendorData(correctedData);
     } else if (data.vendor && !Array.isArray(data.vendor)) {
-      console.log('✅ Initial fetch: Vendor already in object format');
+      //console.log('✅ Initial fetch: Vendor already in object format');
       setVendorData(data);
     } else {
-      console.log("Vendor data empty. Redirecting to onboarding page.");
+      //console.log("Vendor data empty. Redirecting to onboarding page.");
       window.location.href = '/onboarding?step=basic-info';
       return;
     }
     
   } catch (error) {
-    console.error('Error fetching vendor data:', error);
+    //console.error('Error fetching vendor data:', error);
       toast({
         title: "Error",
         description: "Failed to load your profile data. Please try again.",
@@ -633,7 +633,7 @@ const handlePasswordSave = useCallback(async (currentPassword: string, newPasswo
 // ULTIMATE FIX - Replace your saveVendorData function with this
 const saveVendorData = async (section) => {
   if (!vendorData) {
-    console.error('❌ No vendor data available');
+    //console.error('❌ No vendor data available');
     return;
   }
   
@@ -706,16 +706,16 @@ const saveVendorData = async (section) => {
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Backend error:', errorText);
+      //console.error('❌ Backend error:', errorText);
       throw new Error(`API error: ${response.status} - ${errorText}`);
     }
     
     const responseData = await response.json();
-    console.log('✅ Raw backend response:', responseData);
+    //console.log('✅ Raw backend response:', responseData);
     
     // CRITICAL FIX: Handle array response structure
     if (responseData.vendor && Array.isArray(responseData.vendor) && responseData.vendor.length > 0) {
-      console.log('✅ Backend returned vendor as array, extracting first element');
+      //console.log('✅ Backend returned vendor as array, extracting first element');
       
       // Convert array response to object structure that frontend expects
       const correctedResponse = {
@@ -723,25 +723,25 @@ const saveVendorData = async (section) => {
         message: responseData.message
       };
       
-      console.log('✅ Corrected response structure:', {
-        hasVendor: !!correctedResponse.vendor,
-        vendorIsArray: Array.isArray(correctedResponse.vendor),
-        name: correctedResponse.vendor.name,
-        creator_title: correctedResponse.vendor.creator_title,
-        logo: correctedResponse.vendor.logo ? 'SET' : 'MISSING',
-        coverphoto: correctedResponse.vendor.coverphoto ? 'SET' : 'MISSING'
-      });
+      // console.log('✅ Corrected response structure:', {
+      //   hasVendor: !!correctedResponse.vendor,
+      //   vendorIsArray: Array.isArray(correctedResponse.vendor),
+      //   name: correctedResponse.vendor.name,
+      //   creator_title: correctedResponse.vendor.creator_title,
+      //   logo: correctedResponse.vendor.logo ? 'SET' : 'MISSING',
+      //   coverphoto: correctedResponse.vendor.coverphoto ? 'SET' : 'MISSING'
+      // });
       
       // Update state with corrected structure
       setVendorData(correctedResponse);
       
     } else if (responseData.vendor && !Array.isArray(responseData.vendor)) {
       // Handle case where vendor is already an object (shouldn't happen based on your logs, but just in case)
-      console.log('✅ Backend returned vendor as object directly');
+      //console.log('✅ Backend returned vendor as object directly');
       setVendorData(responseData);
       
     } else {
-      console.error('❌ Unexpected response structure:', responseData);
+      //console.error('❌ Unexpected response structure:', responseData);
       throw new Error('Server response has unexpected structure');
     }
     
@@ -757,7 +757,7 @@ const saveVendorData = async (section) => {
     });
     
   } catch (error) {
-    console.error('❌ Save operation failed:', error);
+    //console.error('❌ Save operation failed:', error);
     toast({
       title: "Error",
       description: `Failed to save changes: ${error.message}`,
@@ -785,7 +785,7 @@ const saveVendorData = async (section) => {
         password: newPassword
       };
       
-      console.log('Sending admin update:', payload);
+      //console.log('Sending admin update:', payload);
       
       // Use the actual vendor ID in the URL
       const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${vendorId}/admins`, {
@@ -819,7 +819,7 @@ const saveVendorData = async (section) => {
         description: "Your personal information has been updated successfully.",
       });
     } catch (error) {
-      console.error('Error saving admin data:', error);
+      //console.error('Error saving admin data:', error);
       toast({
         title: "Error",
         description: "Failed to update your profile. Please try again.",
@@ -832,7 +832,7 @@ const saveVendorData = async (section) => {
   // Update vendor data
  // Update vendor data function for the nested vendor structure
 const updateVendorData = (field, value) => {
-  console.log(`🔄 Updating ${field} to:`, value);
+  //console.log(`🔄 Updating ${field} to:`, value);
   
   setVendorData(prevData => {
     if (!prevData) return prevData;
@@ -846,14 +846,14 @@ const updateVendorData = (field, value) => {
       updated_at: new Date().toISOString()
     };
     
-    console.log('📝 State updated. Current values:', {
-      name: newData.vendor.name || 'EMPTY',
-      creator_title: newData.vendor.creator_title || 'EMPTY', 
-      creator_bio: newData.vendor.creator_bio || 'EMPTY',
-      logo: newData.vendor.logo || 'EMPTY',
-      coverphoto: newData.vendor.coverphoto || 'EMPTY',
-      phonenumber: newData.vendor.phonenumber || 'EMPTY'
-    });
+    // console.log('📝 State updated. Current values:', {
+    //   name: newData.vendor.name || 'EMPTY',
+    //   creator_title: newData.vendor.creator_title || 'EMPTY', 
+    //   creator_bio: newData.vendor.creator_bio || 'EMPTY',
+    //   logo: newData.vendor.logo || 'EMPTY',
+    //   coverphoto: newData.vendor.coverphoto || 'EMPTY',
+    //   phonenumber: newData.vendor.phonenumber || 'EMPTY'
+    // });
     
     return newData;
   });
@@ -874,7 +874,7 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
       throw new Error('File size must be less than 10MB');
     }
 
-    console.log(`🔄 Uploading ${type}:`, file.name, `(${(file.size / 1024).toFixed(1)}KB)`);
+    //console.log(`🔄 Uploading ${type}:`, file.name, `(${(file.size / 1024).toFixed(1)}KB)`);
 
     const formData = new FormData();
     formData.append('files', file);
@@ -883,7 +883,7 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
       let response;
       let uploadUrl = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/uploads`;
       
-      console.log(`📡 Attempting upload to: ${uploadUrl}`);
+      //console.log(`📡 Attempting upload to: ${uploadUrl}`);
       
       response = await fetch(uploadUrl, {
         method: 'POST',
@@ -893,10 +893,10 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
         body: formData
       });
       
-      console.log('Upload response status:', response.status);
+      //console.log('Upload response status:', response.status);
       
       if (!response.ok) {
-        console.log(`❌ Primary upload failed (${response.status}), trying alternatives...`);
+        //console.log(`❌ Primary upload failed (${response.status}), trying alternatives...`);
         
         const alternativeEndpoints = [
           `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/upload`,
@@ -907,7 +907,7 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
         
         for (const altUrl of alternativeEndpoints) {
           try {
-            console.log(`🔄 Trying alternative endpoint: ${altUrl}`);
+            //console.log(`🔄 Trying alternative endpoint: ${altUrl}`);
             
             const altResponse = await fetch(altUrl, {
               method: 'POST',
@@ -918,21 +918,21 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
             });
             
             if (altResponse.ok) {
-              console.log(`✅ Alternative upload succeeded: ${altUrl}`);
+              //console.log(`✅ Alternative upload succeeded: ${altUrl}`);
               response = altResponse;
               uploadSucceeded = true;
               break;
             } else {
-              console.log(`❌ Alternative ${altUrl} failed:`, altResponse.status);
+              //console.log(`❌ Alternative ${altUrl} failed:`, altResponse.status);
             }
           } catch (altError) {
-            console.log(`❌ Alternative ${altUrl} error:`, altError.message);
+            //console.log(`❌ Alternative ${altUrl} error:`, altError.message);
           }
         }
         
         if (!uploadSucceeded) {
           const errorText = await response.text();
-          console.error('All upload endpoints failed:', errorText);
+          //console.error('All upload endpoints failed:', errorText);
           
           let errorMessage;
           try {
@@ -947,13 +947,13 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
       }
 
       const data = await response.json();
-      console.log('✅ Upload successful. Full response data:', JSON.stringify(data, null, 2));
+      //console.log('✅ Upload successful. Full response data:', JSON.stringify(data, null, 2));
       
       let fileUrl = null;
       
       if (data.files && Array.isArray(data.files) && data.files.length > 0) {
         const fileData = data.files[0];
-        console.log('📁 File data structure:', JSON.stringify(fileData, null, 2));
+        //console.log('📁 File data structure:', JSON.stringify(fileData, null, 2));
         
         fileUrl = fileData.url || fileData.file_url || fileData.path || fileData.location;
         
@@ -982,16 +982,16 @@ const uploadImageToServer = async (file: File, type: 'logo' | 'coverphoto'): Pro
       }
       
       if (fileUrl) {
-        console.log(`✅ Successfully extracted ${type} URL:`, fileUrl);
+        //console.log(`✅ Successfully extracted ${type} URL:`, fileUrl);
         return fileUrl;
       } else {
-        console.error('❌ Could not extract URL from response. Available keys:', Object.keys(data));
-        console.error('Full response:', data);
+        //console.error('❌ Could not extract URL from response. Available keys:', Object.keys(data));
+        //console.error('Full response:', data);
         throw new Error('Server response missing image URL');
       }
 
     } catch (error) {
-      console.error(`Error uploading ${type}:`, error);
+      //console.error(`Error uploading ${type}:`, error);
       throw error;
     }
   };
@@ -1026,16 +1026,16 @@ const handleImageUpload = async (e, field) => {
   setIsUploadingImage(true);
 
   try {
-    console.log(`🔄 Starting ${field} upload...`);
+    //console.log(`🔄 Starting ${field} upload...`);
     
     // Step 1: Upload file to server and get the URL
     const imageUrl = await uploadImageToServer(file, field);
-    console.log(`✅ Image uploaded successfully: ${imageUrl}`);
+    //console.log(`✅ Image uploaded successfully: ${imageUrl}`);
     
     // Step 2: ONLY update the image field in local state, don't save to backend yet
     updateVendorData(field, imageUrl);
     
-    console.log(`🔄 Updated local state for ${field}. Will save when user clicks "Save Changes"`);
+    //console.log(`🔄 Updated local state for ${field}. Will save when user clicks "Save Changes"`);
     
     toast({
       title: "Image Uploaded",
@@ -1043,7 +1043,7 @@ const handleImageUpload = async (e, field) => {
     });
     
   } catch (error) {
-    console.error(`Error uploading ${field}:`, error);
+    //console.error(`Error uploading ${field}:`, error);
     toast({
       title: "Upload Failed",
       description: error instanceof Error ? error.message : `Failed to upload your ${field === 'logo' ? 'logo' : 'cover photo'}. Please try again.`,
@@ -1059,12 +1059,12 @@ const handleImageUpload = async (e, field) => {
   }
 };
 
-    console.log('vendor data:', vendorData);
+    //console.log('vendor data:', vendorData);
 
 //     const updatedData = await response.json();
-// console.log('🔍 FULL RESPONSE DATA:', JSON.stringify(updatedData, null, 2));
-// console.log('🔍 COVERPHOTO IN RESPONSE:', updatedData.vendor?.coverphoto);
-// console.log('🔍 EXPECTED URL:', imageUrl);
+// //console.log('🔍 FULL RESPONSE DATA:', JSON.stringify(updatedData, null, 2));
+// //console.log('🔍 COVERPHOTO IN RESPONSE:', updatedData.vendor?.coverphoto);
+// //console.log('🔍 EXPECTED URL:', imageUrl);
     // Helper function to safely get the vendor email
 const getVendorEmail = (vendorData) => {
   // First check if the email is in the first admin's data
@@ -1087,7 +1087,7 @@ const openChatwoot = () => {
     // Use the confirmed working method
     window.$chatwoot.toggle();
   } else {
-    console.log('Chatwoot API not ready yet, waiting...');
+    //console.log('Chatwoot API not ready yet, waiting...');
     
     // Notify the user
     toast({
@@ -1100,7 +1100,7 @@ const openChatwoot = () => {
       if (window.$chatwoot && typeof window.$chatwoot.toggle === 'function') {
         window.$chatwoot.toggle();
       } else {
-        console.error('Chatwoot API still not available after delay');
+        //console.error('Chatwoot API still not available after delay');
         toast({
           title: "Support Chat Issue",
           description: "The support chat couldn't be opened. Please refresh the page and try again.",
@@ -1147,7 +1147,7 @@ const openChatwoot = () => {
               </button>
 
               {/* Logo - Center */}
-              <div className="flex-1 flex justify-center">
+              <div className="flex justify-center flex-1">
                 <Link to="/dashboard">
                   <img src={Junoonilogo} alt="Junooni Logo" className="h-8" />
                 </Link>
@@ -1169,7 +1169,7 @@ const openChatwoot = () => {
                   </Link>
                 </div>
                 <Separator orientation='vertical' className='h-6 ml-2' />
-                <div className="flex flex-col items-start text-xs font-medium leading-tight text-muted-foreground ml-4">
+                <div className="flex flex-col items-start ml-4 text-xs font-medium leading-tight text-muted-foreground">
                   <span className="text-xs">Creator</span>
                   <span className="text-xs">Studio</span>
                 </div>
@@ -1224,14 +1224,14 @@ const openChatwoot = () => {
           <div className="fixed top-0 left-0 w-80 max-w-[85vw] h-full bg-white shadow-xl transform transition-transform duration-300 ease-in-out overflow-y-auto">
             <div className="flex flex-col h-full">
               {/* Header with close button */}
-              <div className="flex items-center justify-between p-6 bg-gradient-to-r from-orange-600 to-red-800 flex-shrink-0">
+              <div className="flex items-center justify-between flex-shrink-0 p-6 bg-gradient-to-r from-orange-600 to-red-800">
                 <div>
                   <h2 className="text-lg font-bold text-white">Account Settings</h2>
                   <p className="text-sm text-white/80">Manage your creator profile</p>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 rounded-full hover:bg-white/20 transition-colors"
+                  className="p-2 transition-colors rounded-full hover:bg-white/20"
                 >
                   <IconX className="w-6 h-6 text-white" />
                 </button>
@@ -1253,7 +1253,7 @@ const openChatwoot = () => {
                         : "text-gray-700 hover:text-orange-700"
                     )}
                   >
-                    <IconUser className="w-5 h-5 mr-4 flex-shrink-0" />
+                    <IconUser className="flex-shrink-0 w-5 h-5 mr-4" />
                     <span className="font-medium">Profile Information</span>
                   </button>
                   
@@ -1270,7 +1270,7 @@ const openChatwoot = () => {
                         : "text-gray-700 hover:text-orange-700"
                     )}
                   >
-                    <IconBuilding className="w-5 h-5 mr-4 flex-shrink-0" />
+                    <IconBuilding className="flex-shrink-0 w-5 h-5 mr-4" />
                     <span className="font-medium">Business Details</span>
                   </button>
                   
@@ -1287,7 +1287,7 @@ const openChatwoot = () => {
                         : "text-gray-700 hover:text-orange-700"
                     )}
                   >
-                    <IconCreditCard className="w-5 h-5 mr-4 flex-shrink-0" />
+                    <IconCreditCard className="flex-shrink-0 w-5 h-5 mr-4" />
                     <span className="font-medium">Banking Details</span>
                   </button>
                   
@@ -1304,7 +1304,7 @@ const openChatwoot = () => {
                         : "text-gray-700 hover:text-orange-700"
                     )}
                   >
-                    <IconSettings className="w-5 h-5 mr-4 flex-shrink-0" />
+                    <IconSettings className="flex-shrink-0 w-5 h-5 mr-4" />
                     <span className="font-medium">Account Settings</span>
                   </button>
 
@@ -1321,18 +1321,18 @@ const openChatwoot = () => {
                       // Redirect to sign-in page
                       window.location.href = '/sign-in';
                     }}
-                    className="w-full flex items-center px-4 py-4 rounded-lg text-left transition-all duration-200 text-red-600 hover:bg-red-50"
+                    className="flex items-center w-full px-4 py-4 text-left text-red-600 transition-all duration-200 rounded-lg hover:bg-red-50"
                   >
-                    <IconLogout className="w-5 h-5 mr-4 flex-shrink-0" />
+                    <IconLogout className="flex-shrink-0 w-5 h-5 mr-4" />
                     <span className="font-medium">Log Out</span>
                   </button>
                 </div>
               </div>
             
               {/* Support Section */}
-              <div className="p-6 border-t border-gray-200 flex-shrink-0 bg-gray-50">
+              <div className="flex-shrink-0 p-6 border-t border-gray-200 bg-gray-50">
                 <div className="p-4 border border-orange-200 rounded-xl bg-orange-50">
-                  <p className="text-sm font-medium text-orange-800 mb-2">
+                  <p className="mb-2 text-sm font-medium text-orange-800">
                     Need help updating your profile?
                   </p>
                   <button
@@ -1340,7 +1340,7 @@ const openChatwoot = () => {
                       openChatwoot();
                       setIsMobileMenuOpen(false);
                     }}
-                    className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors underline"
+                    className="text-sm font-medium text-orange-600 underline transition-colors hover:text-orange-700"
                   >
                     Contact Support
                   </button>
@@ -1355,7 +1355,7 @@ const openChatwoot = () => {
       <div className="container px-4 py-8 mx-auto">
         <div className="flex flex-col gap-8 lg:flex-row">
           {/* Left sidebar with navigation */}
-          <div className="hidden lg:block w-full lg:w-64 shrink-0">
+          <div className="hidden w-full lg:block lg:w-64 shrink-0">
             <div className="overflow-hidden bg-white border border-gray-100 shadow-lg lg:sticky lg:top-24 rounded-xl min-h-[455px]">
               <div className="p-4 bg-gradient-to-r from-orange-600 to-red-800">
                 <h2 className="text-lg font-bold text-white">Account Settings</h2>
@@ -1485,7 +1485,7 @@ const openChatwoot = () => {
               <TabsContent value="profile" className="mt-0">
                 <Card className="overflow-hidden border-0 shadow-xl">
                   <CardHeader
-                    className="pb-2 border-b px-2 py-3 md:px-6 md:py-4"
+                    className="px-2 py-3 pb-2 border-b md:px-6 md:py-4"
                     style={{ borderColor: `${BRAND.primary}11` }}
                   >
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1570,7 +1570,7 @@ const openChatwoot = () => {
                   </CardHeader>
 
                  
-                  <CardContent className="pt-6 pb-8 px-2 py-3 md:px-6 md:py-4">
+                  <CardContent className="px-2 py-3 pt-6 pb-8 md:px-6 md:py-4">
                     {/* Brand display with cover photo and logo */}
                     <div className="mb-8">
                       <div className="relative h-64 bg-gray-100 rounded-xl">

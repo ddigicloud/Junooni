@@ -41,7 +41,7 @@ const decodeTokenAndCheckActorId = (token: string) => {
     const parts = token.split('.');
     
     if (parts.length !== 3) {
-      console.error('Invalid JWT token format');
+      //console.error('Invalid JWT token format');
       return { hasActorId: false, payload: null, isValid: false };
     }
 
@@ -62,17 +62,17 @@ const decodeTokenAndCheckActorId = (token: string) => {
 
     const payload = JSON.parse(jsonPayload);
     
-    console.log('🔍 Token payload:', payload);
+    //console.log('🔍 Token payload:', payload);
     
     // Check if actor_id exists in the token
     const hasActorId = !!(payload.actor_id || payload.actorId || payload.actor);
     
-    console.log('🎭 Actor ID check:', { 
-      hasActorId, 
-      actor_id: payload.actor_id,
-      actorId: payload.actorId,
-      actor: payload.actor 
-    });
+    // console.log('🎭 Actor ID check:', { 
+    //   hasActorId, 
+    //   actor_id: payload.actor_id,
+    //   actorId: payload.actorId,
+    //   actor: payload.actor 
+    // });
 
     // Check if token is expired
     const currentTime = Math.floor(Date.now() / 1000);
@@ -87,7 +87,7 @@ const decodeTokenAndCheckActorId = (token: string) => {
     };
 
   } catch (error) {
-    console.error('❌ Error decoding JWT token:', error);
+    //console.error('❌ Error decoding JWT token:', error);
     return { hasActorId: false, payload: null, isValid: false, isExpired: true };
   }
 };
@@ -132,14 +132,14 @@ export default function JunooniLogin() {
     setIsLoading(true);
     
     try {
-      console.log('🔐 Attempting vendor login...');
+      //console.log('🔐 Attempting vendor login...');
       
       const response = await axios.post(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass`, {
         email: data.email,
         password: data.password,
       });
 
-      console.log('✅ Login response:', response.data);
+      //console.log('✅ Login response:', response.data);
 
       const token = response.data.token;
       
@@ -154,10 +154,10 @@ export default function JunooniLogin() {
       localStorage.setItem("vendorTokenTimestamp", Date.now().toString());
       localStorage.setItem('vendorEmail', data.email);
       
-      console.log('💾 Token saved to localStorage');
+      //console.log('💾 Token saved to localStorage');
 
       // 🎭 CHECK FOR ACTOR ID IN TOKEN
-      console.log('🔍 Checking for actor_id in token...');
+      //console.log('🔍 Checking for actor_id in token...');
       const tokenCheck = decodeTokenAndCheckActorId(token);
       
       if (!tokenCheck.isValid) {
@@ -173,8 +173,8 @@ export default function JunooniLogin() {
 
       // 🚀 ROUTE BASED ON ACTOR ID PRESENCE
       if (tokenCheck.hasActorId) {
-        console.log('🏠 Actor ID found in token → Redirecting to Dashboard');
-        console.log('🎭 Actor ID:', tokenCheck.actorId);
+        //console.log('🏠 Actor ID found in token → Redirecting to Dashboard');
+        //console.log('🎭 Actor ID:', tokenCheck.actorId);
         
         showToast('success', 'Welcome back!', 'Redirecting to your dashboard...');
         // Delay navigation to show the toast
@@ -183,7 +183,7 @@ export default function JunooniLogin() {
         }, 1500);
         
       } else {
-        console.log('📝 No Actor ID found in token → Redirecting to Onboarding');
+        //console.log('📝 No Actor ID found in token → Redirecting to Onboarding');
         
         showToast('success', 'Welcome to Junooni!', 'Let\'s complete your profile setup...');
         // Delay navigation to show the toast
@@ -198,7 +198,7 @@ export default function JunooniLogin() {
       }
 
     } catch (error: any) {
-      console.error('❌ Login error:', error);
+      //console.error('❌ Login error:', error);
       
       // Clear any stored data on error
       localStorage.removeItem('vendorToken');
@@ -232,8 +232,7 @@ export default function JunooniLogin() {
       {/* Professional Toast Notification */}
       {toast.show && (
         <div 
-          className="fixed z-50 w-full max-w-md top-4 right-4 lg:right-4 lg:left-auto 
-                    left-1/2 -translate-x-1/2 lg:translate-x-0"
+          className="fixed z-50 w-full max-w-md -translate-x-1/2 top-4 right-4 lg:right-4 lg:left-auto left-1/2 lg:translate-x-0"
           style={{
             animation: 'slideInRight 0.3s ease-out'
           }}
@@ -406,15 +405,15 @@ export default function JunooniLogin() {
         </div>
         
         {/* Right Panel - Enhanced Login Form */}
-        <div className="flex flex-col items-center justify-center h-screen px-6 pt-8 sm:pt-20 bg-gradient-to-br from-gray-50 to-white pb-4 sm:pb-28">
+        <div className="flex flex-col items-center justify-start h-screen px-6 pt-12 pb-4 sm:justify-center sm:pt-20 bg-gradient-to-br from-gray-50 to-white sm:pb-28">
           <div className="w-full max-w-md mx-auto">
             {/* Mobile Logo - Enhanced */}
-            <div className="flex items-center justify-center gap-3 mt-0 mb-5 lg:hidden">
+            <div className="flex items-center justify-center gap-1 mt-0 mb-5 sm:gap-3 lg:hidden">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-[#e65100] text-white shadow-xl mr-2 sm:mr-3">
                 <img 
                   src={JunooniFavicon} 
                   alt="Junooni favicon" 
-                  className="h-8 w-10 sm:h-8 sm:w-8 object-contain"
+                  className="object-contain w-10 h-8 sm:h-8 sm:w-8"
                 />
               </div>
               <img src={Junoonilogo}  alt="Junooni Logo" className="h-10 w-36 sm:h-10 sm:w-36"/>

@@ -128,6 +128,7 @@ const CreatorDiscoveryPage = () => {
     {}
   )
   const [allVendors, setAllVendors] = useState([])
+  const [recommendedCreators, setRecommendedCreators] = useState([])
 
   // State for follow/unfollow functionality
   const [currentCustomer, setCurrentCustomer] = useState(null)
@@ -155,6 +156,62 @@ const CreatorDiscoveryPage = () => {
 
     return matchesSearch && matchesCategory
   }
+
+  // Function to get related creators based on followed creators
+  const getRelatedCreators = (followedCreators: Creator[], allVendors: any[]) => {
+    if (!followedCreators || followedCreators.length === 0) {
+      // If not following anyone, return a diverse mix of creators
+      return allVendors.slice(0, 8)
+    }
+
+    // Extract categories from followed creators
+    const followedCategories = new Set<string>()
+    const followedCreatorIds = new Set<string>()
+
+    followedCreators.forEach((creator) => {
+      if (creator.vendor?.creator_title) {
+        followedCategories.add(creator.vendor.creator_title.toLowerCase())
+      }
+      if (creator.vendor?.id) {
+        followedCreatorIds.add(creator.vendor.id)
+      }
+    })
+
+    // Filter vendors to get related creators
+    const relatedCreators = allVendors.filter((vendor) => {
+      // Exclude already followed creators
+      if (followedCreatorIds.has(vendor.id)) {
+        return false
+      }
+
+      // Include creators from the same categories as followed creators
+      if (vendor.creator_title) {
+        return followedCategories.has(vendor.creator_title.toLowerCase())
+      }
+
+      return false
+    })
+
+    // If we have related creators, return them (limited to 8)
+    if (relatedCreators.length > 0) {
+      return relatedCreators.slice(0, 8)
+    }
+
+    // If no related creators found, return unfollowed creators from all categories
+    const unfollowedCreators = allVendors.filter((vendor) => 
+      !followedCreatorIds.has(vendor.id)
+    )
+    
+    return unfollowedCreators.slice(0, 8)
+  }
+
+  // Update recommended creators when followed creators or all vendors change
+  useEffect(() => {
+    if (allVendors.length > 0) {
+      const related = getRelatedCreators(customerVendors, allVendors)
+      setRecommendedCreators(related)
+    }
+  }, [customerVendors, allVendors])
 
   // Fetch customer data
   useEffect(() => {
@@ -765,6 +822,17 @@ const CreatorDiscoveryPage = () => {
     // Simulate follow behavior for demo purposes
   }
 
+  // Get followed categories for display
+  const getFollowedCategories = () => {
+    const categories = new Set<string>()
+    customerVendors.forEach((creator) => {
+      if (creator.vendor?.creator_title) {
+        categories.add(creator.vendor.creator_title)
+      }
+    })
+    return Array.from(categories)
+  }
+
   return (
     <div className="min-h-screen mt-16 bg-gray-50">
       {/* Header with search and filter */}
@@ -943,10 +1011,22 @@ const CreatorDiscoveryPage = () => {
           {/* Because You Follow */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="flex items-center text-lg font-semibold">
-                <Star size={18} className="text-[#e65100] mr-2" />
-                Because You Follow
-              </h3>
+              <div>
+                <h3 className="flex items-center text-lg font-semibold">
+                  <Star size={18} className="text-[#e65100] mr-2" />
+                  Because You Follow
+                  {customerVendors.length > 0 && (
+                    <span className="ml-2 text-sm font-normal text-gray-500">
+                      ({getFollowedCategories().join(", ")})
+                    </span>
+                  )}
+                </h3>
+                {customerVendors.length > 0 && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    More creators from the categories you follow
+                  </p>
+                )}
+              </div>
               <a
                 href="#"
                 className="text-sm text-[#e65100] hover:underline flex items-center"
@@ -957,201 +1037,35 @@ const CreatorDiscoveryPage = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {Array.isArray(allVendors) && allVendors.length > 0 ? (
-                allVendors
+              {recommendedCreators.length > 0 ? (
+                recommendedCreators
                   .slice(0, 4)
                   .map((vendor) => (
-                    <CreatorCard key={vendor.id} vendor={vendor} />
+                    <CreatorCard key={vendor.id} vendor={vendor} isRecommended={true} />
                   ))
+              ) : customerVendors.length === 0 ? (
+                <div className="col-span-4 p-6 text-center bg-white rounded-lg shadow-sm">
+                  <div className="mb-4 text-gray-400">
+                    <Star size={48} className="mx-auto" />
+                  </div>
+                  <h3 className="mb-2 text-lg font-medium">
+                    Start following creators to get recommendations
+                  </h3>
+                  <p className="text-gray-600">
+                    Follow some creators above to see personalized recommendations here
+                  </p>
+                </div>
               ) : (
                 <div className="col-span-4 p-4 text-center text-gray-500">
-                  No recommendations available
+                  <div className="mb-4 text-gray-400">
+                    <Search size={48} className="mx-auto" />
+                  </div>
+                  <p>No related creators found. Explore more creators to get better recommendations!</p>
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Rising Stars */}
-          {/* <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="flex items-center text-lg font-semibold">
-                <TrendingUp size={18} className="text-[#e65100] mr-2" />
-                Rising Stars
-              </h3>
-              <a
-                href="#"
-                className="text-sm text-[#e65100] hover:underline flex items-center"
-              >
-                View All
-                <ChevronRight size={16} className="ml-1" />
-              </a>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {risingCreators.map((creator) => (
-                <div
-                  key={creator.id}
-                  className="overflow-hidden transition bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
-                >
-                  <div className="relative h-32 bg-gray-200">
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={creator.bannerImage}
-                        alt={`${creator.name} banner`}
-                        className="object-cover"
-                        fill={true}
-                        sizes="(max-width: 768px) 100vw, 25vw"
-                      />
-                    </div>
-                    <div className="absolute px-2 py-1 text-xs text-white bg-green-500 rounded-full top-3 right-3">
-                      {creator.growth}
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <div className="flex items-center">
-                      <div className="relative w-12 h-12 mr-3 overflow-hidden rounded-full">
-                        <Image
-                          src={creator.avatar}
-                          alt={creator.name}
-                          className="object-cover"
-                          fill={true}
-                          sizes="48px"
-                        />
-                      </div>
-
-                      <div>
-                        <h3 className="font-semibold">{creator.name}</h3>
-                        <div className="flex items-center text-xs text-gray-500">
-                          <span>{creator.category}</span>
-                          <span className="mx-1">•</span>
-                          <span>{creator.followers} followers</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className="mt-3 mb-4 text-sm text-gray-600 line-clamp-2">
-                      {creator.description}
-                    </p>
-
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full py-2 bg-[#e65100] text-white rounded-md text-sm font-medium hover:bg-[#d84315] transition"
-                      onClick={() => handleSampleCreatorFollow(creator.id)}
-                    >
-                      Follow
-                    </motion.button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div> */}
-
-          {/* Exclusive to Junooni */}
-          {/* <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="flex items-center text-lg font-semibold">
-                <Award size={18} className="text-[#e65100] mr-2" />
-                Exclusive to Junooni
-              </h3>
-              <a
-                href="#"
-                className="text-sm text-[#e65100] hover:underline flex items-center"
-              >
-                View All
-                <ChevronRight size={16} className="ml-1" />
-              </a>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {exclusiveCreators.map((creator) => (
-                <div
-                  key={creator.id}
-                  className="overflow-hidden transition bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
-                >
-                  <div className="relative h-32 bg-gray-200">
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={creator.bannerImage}
-                        alt={`${creator.name} banner`}
-                        className="object-cover"
-                        fill={true}
-                        sizes="(max-width: 768px) 100vw, 25vw"
-                      />
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <div className="absolute bottom-3 left-3 bg-[#e65100] text-white text-xs px-2 py-1 rounded-full">
-                      Junooni Exclusive
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <div className="flex items-center">
-                      <div className="relative w-12 h-12 mr-3 overflow-hidden rounded-full">
-                        <Image
-                          src={creator.avatar}
-                          alt={creator.name}
-                          className="object-cover"
-                          fill={true}
-                          sizes="48px"
-                        />
-                      </div>
-
-                      <div>
-                        <h3 className="font-semibold">{creator.name}</h3>
-                        <div className="flex items-center text-xs text-gray-500">
-                          <span>{creator.category}</span>
-                          <span className="mx-1">•</span>
-                          <span>{creator.followers} followers</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className="mt-3 mb-4 text-sm text-gray-600 line-clamp-2">
-                      {creator.description}
-                    </p>
-
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full py-2 bg-[#e65100] text-white rounded-md text-sm font-medium hover:bg-[#d84315] transition"
-                      onClick={() => handleSampleCreatorFollow(creator.id)}
-                    >
-                      Follow
-                    </motion.button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div> */}
+          </div>        
         </section>
-
-        {/* Browse by Category - Dynamic based on creator titles */}
-        {/* <section>
-          <h2 className="mb-6 text-2xl font-bold">Browse by Creator Type</h2>
-
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {categories.slice(1).map((category) => (
-              <a
-                key={category.id}
-                href={`#${category.id}`}
-                className="flex flex-col items-center p-6 overflow-hidden text-center transition bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
-                onClick={(e) => {
-                  e.preventDefault()
-                  setActiveCategory(category.id)
-                  window.scrollTo({ top: 0, behavior: "smooth" })
-                }}
-              >
-                <div className="w-16 h-16 rounded-full bg-[#e65100]/10 flex items-center justify-center mb-4 text-[#e65100]">
-                  {category.icon}
-                </div>
-                <h3 className="font-medium">{category.name}</h3>
-                <p className="mt-1 text-sm text-gray-500">View creators</p>
-              </a>
-            ))}
-          </div>
-        </section> */}
       </main>
     </div>
   )

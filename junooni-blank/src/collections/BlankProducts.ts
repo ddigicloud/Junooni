@@ -183,7 +183,7 @@ export const BlankProducts: CollectionConfig = {
                 },
                 {
                   name: 'leadTimeDays',
-                  type: 'number',
+                  type: 'text',
                   dbName: 'lead_time_days',
                 },
                 {

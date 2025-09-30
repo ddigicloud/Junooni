@@ -558,7 +558,7 @@ const CreatorInstagram = () => {
   if (loading) {
     return (
       <section className="py-8 md:py-16 bg-orange-50">
-        <div className="container px-4 mx-auto">
+        <div className="container px-1 mx-auto">
           <div className="flex items-center justify-center">
             <div className="text-base text-gray-600 md:text-lg">Loading creator spotlight...</div>
           </div>
@@ -570,7 +570,7 @@ const CreatorInstagram = () => {
   if (error || !spotlightVendor) {
     return (
       <section className="py-8 md:py-16 bg-orange-50">
-        <div className="container px-4 mx-auto">
+        <div className="container px-1 mx-2 sm:mx-4 sm:px-4">
           <div className="text-center text-gray-600">
             <p className="text-sm md:text-base">{error || 'No creator spotlight available'}</p>
             {process.env.NODE_ENV === 'development' && (
@@ -589,7 +589,7 @@ const CreatorInstagram = () => {
 
   return (
     <section className="py-8 md:py-16 bg-orange-50">
-      <div className="container px-4 mx-auto">
+      <div className="container px-0 mx-auto sm:px-4">
         <h2 className="mb-6 text-2xl font-bold text-center md:mb-10 md:text-3xl">Creator Spotlight</h2>
         
         <div className="flex flex-col items-center overflow-hidden bg-white shadow-lg md:flex-row rounded-xl">
@@ -606,7 +606,7 @@ const CreatorInstagram = () => {
           </div>
           
           {/* Content Section */}
-          <div className="w-full p-4 md:p-6 lg:p-10 md:w-3/5">
+          <div className="w-full px-3 py-4 sm:p-4 md:p-6 lg:p-10 md:w-3/5">
             {/* Featured Creator Badge */}
             <div className="mb-4 md:mb-6">
               <span className="inline-block px-2 py-1 text-xs font-semibold bg-orange-100 rounded-full md:px-3 text-orange-primary">

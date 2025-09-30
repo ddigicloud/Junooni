@@ -113,18 +113,18 @@ const Catalog = () => {
         const productsData = await productsResponse.json();
         const fetchedProducts: Product[] = productsData.docs || productsData;
         
-        console.log("Sample product data:", fetchedProducts[0]);
-        console.log("Product fields:", Object.keys(fetchedProducts[0] || {}));
+        //console.log("Sample product data:", fetchedProducts[0]);
+        //console.log("Product fields:", Object.keys(fetchedProducts[0] || {}));
         
         setProducts(fetchedProducts);
 
         // Handle categories
         if (categoriesResponse.ok) {
           const categoriesData = await categoriesResponse.json();
-          console.log("Categories response:", categoriesData);
+          //console.log("Categories response:", categoriesData);
           
           const fetchedCategories: Category[] = categoriesData.docs || categoriesData;
-          console.log("Processed categories:", fetchedCategories);
+          //console.log("Processed categories:", fetchedCategories);
           
           // Store both slug and title
           const categoryOptions = [
@@ -135,11 +135,11 @@ const Catalog = () => {
             }))
           ];
           
-          console.log("Final category options:", categoryOptions);
+          //console.log("Final category options:", categoryOptions);
           setCategories(categoryOptions);
         } else {
           // Fallback to hardcoded categories if API fails
-          console.warn("Failed to fetch categories, using fallback");
+          //console.warn("Failed to fetch categories, using fallback");
           setCategories([
             { slug: "all", title: "All" },
             { slug: "women-tee", title: "Women Tee" },
@@ -164,7 +164,7 @@ const Catalog = () => {
         
         setProductMetadata(metadata);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        //console.error("Error fetching data:", error);
         // Fallback categories on error
         setCategories([
           { slug: "all", title: "All" },
@@ -196,7 +196,7 @@ const Catalog = () => {
       category.slug === selectedCategory
     );
     
-    console.log(`Product: ${product.name}, Categories: ${product.categories?.map(c => c.slug).join(', ')}, Selected: ${selectedCategory}, Matches: ${matchesCategory}`);
+    //console.log(`Product: ${product.name}, Categories: ${product.categories?.map(c => c.slug).join(', ')}, Selected: ${selectedCategory}, Matches: ${matchesCategory}`);
     
     return matchesSearch && matchesCategory;
   });
@@ -268,7 +268,7 @@ const Catalog = () => {
       </div>
 
       {/* Products Section */}
-      <div className="px-4 pb-8 sm:pb-20 mx-auto max-w-7xl sm:px-6 lg:px-8">
+      <div className="px-4 pb-8 mx-auto sm:pb-20 max-w-7xl sm:px-6 lg:px-8">
         {/* Stats Bar */}
         <div className="flex flex-col items-start justify-between p-6 mb-8 bg-white border border-gray-200 shadow-sm sm:flex-row sm:items-center dark:bg-gray-800 rounded-xl dark:border-gray-700">
           <div>

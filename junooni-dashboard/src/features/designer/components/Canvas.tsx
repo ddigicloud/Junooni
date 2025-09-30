@@ -13,7 +13,7 @@ import {
 } from 'react-konva';
 import EnhancedMockupEngine from '../engines/mockup/MockupEngine';
 import { useNavigate } from '@tanstack/react-router';
-import { Palette, Ruler, Upload, FolderOpen, Layers, Package, PenTool, Eye, Menu, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Palette, Ruler, Upload, FolderOpen, Layers, Package, PenTool, Eye, Menu, X, ChevronUp, ChevronDown , Calculator , IndianRupee} from 'lucide-react';
 // =====================================
 // TYPE DEFINITIONS
 // =====================================
@@ -45,6 +45,44 @@ interface DesignElement {
   layerName?: string;
   visible?: boolean;
   locked?: boolean;
+  realWorldDimensions?: {
+    widthInches: number;
+    heightInches: number;
+    xInches: number;
+    yInches: number;
+    areaSquareInches: number;
+  };
+}
+
+interface AreaPricingInfo {
+  areaId: string;
+  areaName: string;
+  minimumPrice: number;
+  pricePerSquareInch: number;
+  designAreaSquareInches: number;      // Total design area available
+  currentImageArea: number;            // Current area consumed by images
+  calculatedPrice: number;
+  finalPrice: number;
+  elements: Array<{
+    elementId: string;
+    elementName: string;
+    areaSquareInches: number;
+    elementPrice: number;
+    originalArea: number;              // Original image area
+    extraArea: number;                 // Extra area added by dragging
+  }>;
+}
+
+interface PricingCalculation {
+  subtotal: number;
+  setupFee: number;
+  technologyFee: number;
+  printingGSTAmount?: number;  // NEW
+  productGSTAmount?: number;   // NEW
+  shippingCharges?: number;     // NEW
+  totalBeforeMarkup: number;
+  markup: number;
+  finalTotal: number;
 }
 
 interface LayerInfo {
@@ -57,6 +95,26 @@ interface LayerInfo {
     heightInches: number;
     widthUnits: number;
     heightUnits: number;
+  };
+}
+
+
+interface TotalPricingBreakdown {
+  areas: Record<string, AreaPricingInfo>;
+  calculation: PricingCalculation;
+  technology: string;
+  totalElements: number;
+  totalDesignArea: number;
+ priceBreakdown: {
+    basePrintingCost: number;
+    blankProductCost: number;
+    printingGSTAmount?: number;  // NEW
+    productGSTAmount?: number;   // NEW
+    setupFees: number;
+    additionalCosts: number;
+    shippingCharges?: number;    // NEW
+    markup: number;
+    finalPrice: number;
   };
 }
 
@@ -118,6 +176,11 @@ interface DynamicMockupPhoto {
   mockupType: string;
   photoColor: string;
   priority: number;
+   // 🔥 NEW: Mockup dimensions from PayloadCMS
+  mocwidthpx?: number;      // Mockup width in pixels (for main preview)
+  mochigtpx?: number;       // Mockup height in pixels (for main preview)
+  tmbwidthpx?: number;      // Thumbnail width in pixels (for thumbnails)
+  tmbhigtpx?: number; 
   dispMaps?: Array<{
     id: string;
     dispImg: {
@@ -836,22 +899,35 @@ const extractAllMockupsFromPayload = (productData: PayloadProductData): DynamicM
  */
 const getMockupsForColor = (
   productData: PayloadProductData, 
-  colorHex: string
+  colorHex: string,
+  activeTechnology: string
 ): DynamicMockupPhoto[] => {
   const allMockups: DynamicMockupPhoto[] = [];
   
-  // Extract all mockups from all print techniques
-  productData.printT?.forEach(tech => {
-    tech.mockupPhotos?.forEach(mockup => {
-      allMockups.push(mockup);
+  // Filter by active technology first
+  const activeTech = productData.printT?.find(tech => 
+    tech.id === activeTechnology || tech.technologyName === activeTechnology
+  );
+  
+  if (!activeTech) {
+    //console.log('No active technology found:', activeTechnology);
+    return [];
+  }
+  
+  // Only get mockups from the active technology
+  if (activeTech.mockupPhotos && Array.isArray(activeTech.mockupPhotos)) {
+    activeTech.mockupPhotos.forEach(mockup => {
+      if (mockup?.photo?.url && mockup?.area?.length) {
+        allMockups.push(mockup);
+      }
     });
-  });
+  }
   
   if (!productData?.colorOptions) {
     return allMockups;
   }
 
-  // 🔥 FIXED: Use dynamic neutral detector instead of hardcoded colors
+  // Use dynamic neutral detector and color matcher
   const neutralDetector = createDynamicNeutralDetector(productData);
   const colorMatcher = createCanvasColorMatcher(productData);
   
@@ -864,13 +940,12 @@ const getMockupsForColor = (
 
   // Filter mockups for the specific color
   const colorMockups = allMockups.filter(mockup => {
-    
     // Direct color match using our matcher
     if (colorMatcher.areColorsSimilar(mockup.photoColor || '', colorHex)) {
       return true;
     }
     
-    // 🔥 FIXED: Use dynamic neutral detection instead of hardcoded array
+    // Use dynamic neutral detection
     const mockupColor = mockup.photoColor?.toLowerCase() || '';
     
     if (neutralDetector.isNeutral(mockupColor)) {
@@ -882,8 +957,9 @@ const getMockupsForColor = (
   
   // If no specific mockups found, return neutral mockups that can be overlaid
   if (colorMockups.length === 0) {
+    //console.log('No exact color matches, looking for neutral mockups for technology:', activeTechnology);
     
-    // 🔥 FIXED: Use dynamic neutral detection
+    // Use dynamic neutral detection
     const neutralMockups = allMockups.filter(mockup => {
       const mockupColor = mockup.photoColor?.toLowerCase() || '';
       return neutralDetector.isNeutral(mockupColor);
@@ -901,7 +977,8 @@ const getMockupsForColor = (
 const calculateTotalMockups = (
   productData: PayloadProductData,
   selectedColors: Array<{ name: string; value: string }>,
-  selectedSizes: string[]
+  selectedSizes: string[],
+  activeTechnology: string 
 ): MockupCalculationResult => {
   
   const { color_Images, size_Images } = productData;
@@ -924,7 +1001,7 @@ const calculateTotalMockups = (
   if (strategy === 'color_and_size_specific') {
     // Both colors and sizes get unique images
     selectedColors.forEach(color => {
-      const mockupsForColor = getMockupsForColor(productData, color.value);
+      const mockupsForColor = getMockupsForColor(productData, color.value , activeTechnology);
       const sizesCount = selectedSizes.length;
       const subtotal = mockupsForColor.length * sizesCount;
       
@@ -944,7 +1021,7 @@ const calculateTotalMockups = (
   } else if (strategy === 'color_specific') {
     // CORRECTED: Colors get unique images, but sizes share them
     selectedColors.forEach(color => {
-      const mockupsForColor = getMockupsForColor(productData, color.value);
+      const mockupsForColor = getMockupsForColor(productData, color.value , activeTechnology);
       const sizesCount = 1; // Sizes share the same images
       const subtotal = 1; // No multiplication for sizes
       
@@ -963,7 +1040,7 @@ const calculateTotalMockups = (
 
   } else if (strategy === 'size_specific') {
     // 🔥 NEW: Sizes get unique images, but colors share them
-    const baseColorMockups = getMockupsForColor(productData, selectedColors[0]?.value || '#ffffff');
+    const baseColorMockups = getMockupsForColor(productData, selectedColors[0]?.value || '#ffffff' , activeTechnology);
     const sizesCount = selectedSizes.length;
     const subtotal = baseColorMockups.length * sizesCount;
     
@@ -980,7 +1057,7 @@ const calculateTotalMockups = (
 
   } else {
     // Everything is shared
-    const allMockups = getMockupsForColor(productData, selectedColors[0]?.value || '#ffffff');
+    const allMockups = getMockupsForColor(productData, selectedColors[0]?.value || '#ffffff' , activeTechnology);
     totalMockups = allMockups.length;
     
     calculationBreakdown.push({
@@ -1008,7 +1085,8 @@ const calculateTotalMockups = (
  */
 const getColorSpecificMockupGroups = (
   productData: PayloadProductData,
-  selectedColors: Array<{ name: string; value: string }>
+  selectedColors: Array<{ name: string; value: string }>,
+  activeTechnology: string 
 ): ColorSpecificMockupGroup[] => {
   
   const groups: ColorSpecificMockupGroup[] = [];
@@ -1018,7 +1096,7 @@ const getColorSpecificMockupGroups = (
     // If color_Images is false, all colors share the same mockup
     
     const firstColor = selectedColors[0];
-    const sharedMockups = firstColor ? getMockupsForColor(productData, firstColor.value) : [];
+    const sharedMockups = firstColor ? getMockupsForColor(productData, firstColor.value , activeTechnology) : [];
     
     selectedColors.forEach(color => {
       groups.push({
@@ -1040,7 +1118,7 @@ const getColorSpecificMockupGroups = (
     if (!colorMatcher.isValidColor(color.value) && !colorMatcher.isValidColor(color.name)) {
     }
     
-    const colorMockups = getMockupsForColor(productData, color.value);
+    const colorMockups = getMockupsForColor(productData, color.value , activeTechnology);
     
     groups.push({
       colorName: color.name,
@@ -1848,7 +1926,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   productColor,
   isSelected,
   onSelect,
-  displayDimensions = { width: 160, height: 160 }, // 🔥 DEFAULT TO THUMBNAIL SIZE
+  displayDimensions = { width: 275, height: 275 }, // 🔥 DEFAULT TO THUMBNAIL SIZE
   isMainPreview = false, // 🔥 DEFAULT TO FALSE
   productData
 }) => {
@@ -1981,8 +2059,8 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
         onClick={onSelect}
         className={`w-full p-2 border rounded-lg transition-all relative touch-manipulation ${
           isSelected
-            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-            : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+            ? 'border-white-100 bg-white-50 ring-2 ring-white-200'
+            : 'border-white hover:border-white hover:shadow-sm'
         }`}
       >
         <div className="relative mb-2 overflow-hidden bg-gray-100 rounded aspect-square">
@@ -2004,10 +2082,10 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   return (
     <button
       onClick={onSelect}
-      className={`w-full p-2 border rounded-lg transition-all relative touch-manipulation ${
+      className={`w-full p-0 sm:p-2 border rounded-lg transition-all relative touch-manipulation ${
         isSelected
-          ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-          : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+          ? 'border-white bg-white ring-2 ring-white'
+          : 'border-white hover:border-white hover:shadow-sm'
       }`}
     >
       <div className="relative mb-2 overflow-hidden bg-gray-100 rounded aspect-square">
@@ -2034,6 +2112,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
     </button>
   );
 };
+
 
 // =====================================
 // LAYERS PANEL COMPONENT
@@ -2254,6 +2333,84 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
   );
 };
 
+
+// const TechnologyComparisonModal: React.FC<{
+//   isOpen: boolean;
+//   onClose: () => void;
+//   currentTech: string;
+//   newTech: string;
+// }> = ({ isOpen, onClose, currentTech, newTech }) => {
+//   const comparison = compareTechnologyPricing(currentTech, newTech);
+  
+//   if (!isOpen || !comparison) return null;
+  
+//   return (
+//     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+//       <div className="w-full max-w-md bg-white rounded-lg shadow-xl">
+//         <div className="flex items-center justify-between px-4 py-3 border-b">
+//           <h3 className="text-lg font-semibold text-gray-900">
+//             Technology Comparison
+//           </h3>
+//           <button
+//             onClick={onClose}
+//             className="p-1 text-gray-500 hover:text-gray-700"
+//           >
+//             <X size={20} />
+//           </button>
+//         </div>
+        
+//         <div className="p-4 space-y-4">
+//           <div className="grid grid-cols-2 gap-4">
+//             <div>
+//               <h4 className="mb-2 font-medium text-gray-900">
+//                 {comparison.tech1.name}
+//               </h4>
+//               {comparison.tech1.areas.map((area, index) => (
+//                 <div key={index} className="text-sm text-gray-600">
+//                   <div>{area.name}</div>
+//                   <div>Min: ${area.minimumPrice}</div>
+//                   <div>Rate: ${area.pricePerSquareInch}/sq"</div>
+//                 </div>
+//               ))}
+//             </div>
+            
+//             <div>
+//               <h4 className="mb-2 font-medium text-gray-900">
+//                 {comparison.tech2.name}
+//               </h4>
+//               {comparison.tech2.areas.map((area, index) => (
+//                 <div key={index} className="text-sm text-gray-600">
+//                   <div>{area.name}</div>
+//                   <div>Min: ${area.minimumPrice}</div>
+//                   <div>Rate: ${area.pricePerSquareInch}/sq"</div>
+//                 </div>
+//               ))}
+//             </div>
+//           </div>
+          
+//           <div className="flex gap-2">
+//             <button
+//               onClick={onClose}
+//               className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+//             >
+//               Cancel
+//             </button>
+//             <button
+//               onClick={() => {
+//                 handleTechnologyChange(newTech);
+//                 onClose();
+//               }}
+//               className="flex-1 px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded hover:bg-orange-700"
+//             >
+//               Switch Technology
+//             </button>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
 // =====================================
 // STORE IMPORT MODAL COMPONENT
 // =====================================
@@ -2276,6 +2433,32 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
   mockupCalculation
 }) => {
   const brandColor = '#ec5100';
+
+   // ADD THIS COMPONENT HERE:
+  const RotatingMessage = () => {
+    const messages = [
+      "✨ Magic is happening...",
+      "🎨 Creating masterpieces...",
+      "🚀 Generating awesomeness...",
+      "⚡ Working our magic...",
+      "🎪 Show time in progress...",
+      "🌟 Crafting something special...",
+      "🎯 Almost there...",
+      "💫 Making it perfect...",
+    ];
+
+    const [messageIndex, setMessageIndex] = React.useState(0);
+
+    React.useEffect(() => {
+      const interval = setInterval(() => {
+        setMessageIndex((prev) => (prev + 1) % messages.length);
+      }, 2000);
+
+      return () => clearInterval(interval);
+    }, []);
+
+    return <span>{messages[messageIndex]}</span>;
+  };
 
   const downloadImportData = useCallback(() => {
     if (!importData) return;
@@ -2329,8 +2512,8 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
     }}
   >
     <div
-      className="bg-white rounded-lg shadow-xl w-full max-w-lg sm:max-w-3xl max-h-[90vh] overflow-auto"
-      onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-lg shadow-xl w-full max-w-lg sm:max-w-3xl max-h-[90vh] overflow-auto"
+        onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
@@ -2342,28 +2525,21 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
       <div className="px-4 py-5 space-y-5">
         {/* Progress */}
         {isGenerating && generationProgress && (
-          <div className="p-3 border rounded bg-orange-50">
-            <div className="flex items-center justify-between mb-2 text-sm">
-              <span className="font-medium text-[#e65100]">Generating...</span>
-              <span className="text-gray-600">
-                {generationProgress.completed}/{generationProgress.total}
-              </span>
-            </div>
-            <div className="w-full h-2 mb-2 bg-gray-200 rounded">
-              <div
-                className="h-2 rounded bg-[#e65100] transition-all"
-                style={{
-                  width: `${
-                    (generationProgress.completed / generationProgress.total) * 100
-                  }%`,
-                }}
-              ></div>
-            </div>
-            {generationProgress.estimated_time_remaining_ms && (
-              <div className="text-xs text-gray-500">
-                ETA: {Math.round(generationProgress.estimated_time_remaining_ms / 1000)}s
+          <div className="p-6 border rounded bg-orange-50">
+            <div className="flex flex-col items-center gap-4">
+              {/* Spinning Loader */}
+              <div className="w-12 h-12 border-t-2 border-b-2 border-[#e65100] rounded-full animate-spin"></div>
+              
+              {/* Rotating Message */}
+              <div className="text-center">
+                <div className="font-medium text-[#e65100] mb-1">
+                  <RotatingMessage />
+                </div>
+                <div className="text-sm text-gray-600">
+                  {generationProgress.completed}/{generationProgress.total} images
+                </div>
               </div>
-            )}
+            </div>
           </div>
         )}
 
@@ -2442,6 +2618,7 @@ interface MobileBottomTabBarProps {
   selectedSizes: string[];
   uploadedFiles: UploadedFile[];
   layersCount: number;
+  totalPrice: number; // Add this
 }
 
 const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
@@ -2450,6 +2627,7 @@ const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
   selectedColors,
   selectedSizes,
   uploadedFiles,
+  totalPrice,
   layersCount
 }) => {
   const tabs = [
@@ -2457,11 +2635,21 @@ const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
     { id: 'colors', icon: Palette, label: 'Colors', count: selectedColors.length },
     { id: 'sizes', icon: Ruler, label: 'Sizes', count: selectedSizes.length },
     { id: 'upload', icon: Upload, label: 'Upload', count: uploadedFiles.length },
-    { id: 'layers', icon: Layers, label: 'Layers', count: layersCount }
+    { id: 'layers', icon: Layers, label: 'Layers', count: layersCount },
+    { id: 'pricing', icon: IndianRupee, label: 'Price', count: totalPrice > 0 ? 1 : 0 }
   ];
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 sm:hidden">
+       {/* 🔥 NEW: Price summary bar */}
+        {totalPrice > 0 && (
+          <div className="px-4 py-1 border-b border-green-200 bg-green-50">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-green-700">Current Unit Price:</span>
+              <span className="font-bold text-green-800">${totalPrice}</span>
+            </div>
+          </div>
+        )}
       <div className="flex">
         {tabs.map(tab => {
           const IconComponent = tab.icon;
@@ -2592,10 +2780,20 @@ const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ product
   // =====================================
   
   const [activeView, setActiveView] = useState<'design' | 'preview'>('design');
-  const [activeTab, setActiveTab] = useState<'product' | 'colors' | 'sizes' | 'upload' | 'library' | 'layers'>('upload');
+  const [activeTab, setActiveTab] = useState<'product' | 'colors' | 'sizes' | 'upload' | 'library' | 'layers' | 'pricing'>('upload');
   const [debugMode, setDebugMode] = useState(false);
   const navigate = useNavigate();
   const designElementsRef = useRef<Record<string, DesignElement[]>>({});
+  const prevSelectedIdRef = useRef<string | null>(null);
+
+
+  // 2. STATE MANAGEMENT SECTION - Add these state variables after existing state declarations
+
+const [pricingData, setPricingData] = useState<Record<string, AreaPricingInfo>>({});
+const [totalPrice, setTotalPrice] = useState<number>(0);
+const [pricingBreakdown, setPricingBreakdown] = useState<TotalPricingBreakdown | null>(null);
+const [showPricingPanel, setShowPricingPanel] = useState(false);
+const [priceCalculationLoading, setPriceCalculationLoading] = useState(false);
   
   // Mobile specific state
   const [isMobile, setIsMobile] = useState(false);
@@ -2805,13 +3003,19 @@ const getAreaDisplayData = useCallback((areaId: string) => {
   
   const availableAreas = useMemo(() => getAvailableAreas(), [getAvailableAreas]);
   
-  const getCustomizationAreaByName = useCallback((targetArea: string) => {
-    const technology = getCurrentTechnology();
-    if (!technology) return null;
-    return technology.custAreas?.find((area: any) => 
-      area.areaName?.toLowerCase() === targetArea.toLowerCase()
-    );
-  }, [getCurrentTechnology]);
+ const getCustomizationAreaByName = useCallback((targetArea: string) => {
+  const technology = getCurrentTechnology();
+  
+  // Add null/undefined check for targetArea
+  if (!technology || !targetArea) return null;
+  
+  // Normalize the target area name once
+  const normalizedTarget = targetArea.toLowerCase().trim();
+  
+  return technology.custAreas?.find((area: any) => 
+    area.areaName?.toLowerCase()?.trim() === normalizedTarget
+  );
+}, [getCurrentTechnology]);
 
   const getCanvasConfig = useCallback((areaId: string, colorHex?: string) => {
     try {
@@ -2856,62 +3060,68 @@ const getAreaDisplayData = useCallback((areaId: string) => {
   }, [getCustomizationAreaByName]);
   
   const getPrintableAreaFromPhoto = useCallback((areaId: string, colorHex?: string) => {
-    try {
-      const area = getCustomizationAreaByName(areaId);
-      if (!area?.designCanvasPhotos?.length) {
-        const canvasConfig = getCanvasConfig(areaId);
-        return { 
-          x: canvasConfig.width * 0.1, 
-          y: canvasConfig.height * 0.1, 
-          width: canvasConfig.width * 0.8, 
-          height: canvasConfig.height * 0.8 
-        };
-      }
-      
-      const targetColor = colorHex || activeColor;
-      let canvasPhoto = area.designCanvasPhotos.find((p: any) => 
-        p?.photoColor?.toLowerCase() === targetColor?.toLowerCase()
-      );
-      
-      if (!canvasPhoto) {
-        canvasPhoto = area.designCanvasPhotos.find((p: any) => 
-          p?.photoColor?.toLowerCase() === '#ffffff'
-        );
-      }
-      
-      if (!canvasPhoto) {
-        canvasPhoto = area.designCanvasPhotos[0];
-      }
-      
-      if (!canvasPhoto?.printAreaCoord) {
-        const canvasConfig = getCanvasConfig(areaId);
-        return { 
-          x: canvasConfig.width * 0.1, 
-          y: canvasConfig.height * 0.1, 
-          width: canvasConfig.width * 0.8, 
-          height: canvasConfig.height * 0.8 
-        };
-      }
-
-      const canvasConfig = getCanvasConfig(areaId, colorHex);
-      const printArea = {
-        x: canvasPhoto.printAreaCoord.x * canvasConfig.width,
-        y: canvasPhoto.printAreaCoord.y * canvasConfig.height, 
-        width: canvasPhoto.printAreaCoord.width * canvasConfig.width,
-        height: canvasPhoto.printAreaCoord.height * canvasConfig.height,
-      };
-      
-      return printArea;
-    } catch (error) {
+  try {
+    const area = getCustomizationAreaByName(areaId);
+    if (!area?.designCanvasPhotos?.length) {
       const canvasConfig = getCanvasConfig(areaId);
+      // ✅ CORRECT: Use entire design area when no printAreaCoord is defined
       return { 
-        x: canvasConfig.width * 0.1, 
-        y: canvasConfig.height * 0.1, 
-        width: canvasConfig.width * 0.8, 
-        height: canvasConfig.height * 0.8 
+        x: 0,                      // Start from origin
+        y: 0,                      // Start from origin  
+        width: canvasConfig.width, // Full canvas width (represents full design area)
+        height: canvasConfig.height // Full canvas height (represents full design area)
       };
     }
-  }, [getCustomizationAreaByName, activeColor, getCanvasConfig]);
+    
+    // When printAreaCoord exists, use it
+    const targetColor = colorHex || activeColor;
+    let canvasPhoto = area.designCanvasPhotos.find((p: any) => 
+      p?.photoColor?.toLowerCase() === targetColor?.toLowerCase()
+    );
+    
+    if (!canvasPhoto) {
+      canvasPhoto = area.designCanvasPhotos.find((p: any) => 
+        p?.photoColor?.toLowerCase() === '#ffffff'
+      );
+    }
+    
+    if (!canvasPhoto) {
+      canvasPhoto = area.designCanvasPhotos[0];
+    }
+    
+    if (!canvasPhoto?.printAreaCoord) {
+      // ✅ FIXED: Even when photo exists but no printAreaCoord, use full area
+      const canvasConfig = getCanvasConfig(areaId);
+      return { 
+        x: 0, 
+        y: 0, 
+        width: canvasConfig.width, 
+        height: canvasConfig.height 
+      };
+    }
+
+    // Use the defined printAreaCoord
+  const canvasConfig = getCanvasConfig(areaId, colorHex);
+    const printArea = {
+      x: canvasPhoto.printAreaCoord.x * canvasConfig.width,
+      y: canvasPhoto.printAreaCoord.y * canvasConfig.height, 
+      width: canvasPhoto.printAreaCoord.width * canvasConfig.width,
+      height: canvasPhoto.printAreaCoord.height * canvasConfig.height,
+    };
+    
+    return printArea;
+  } catch (error) {
+    const canvasConfig = getCanvasConfig(areaId);
+    // ✅ FIXED: Fallback also uses full design area
+    return { 
+      x: 0, 
+      y: 0, 
+      width: canvasConfig.width, 
+      height: canvasConfig.height 
+    };
+  }
+}, [getCustomizationAreaByName, activeColor, getCanvasConfig]);
+
 
   // Filter out hidden design elements for mockup rendering
 const getVisibleDesignElements = useCallback((elements: Record<string, DesignElement[]>) => {
@@ -3080,6 +3290,307 @@ Generated: ${new Date().toISOString()}`;
   return designImages;
 }, [designElements, getCanvasConfig, calculateDPI]);
 
+
+// 3. HELPER FUNCTIONS SECTION - Add these pricing calculation functions
+
+const getPricingInfoForArea = useCallback((areaId: string): { minimumPrice: number; pricePerSquareInch: number; isFixedPrice: boolean } => {
+  try {
+    const technology = getCurrentTechnology();
+    
+    // Try to get area-specific pricing from PayloadCMS
+    if (technology?.custAreas) {
+      const area = technology.custAreas.find((a: any) => 
+        a.areaName.toLowerCase() === areaId.toLowerCase()
+      );
+
+      if (area) {
+        const minimumPrice = parseFloat(area['Minimum printing price'] || '0');
+        const pricePerSquareInch = parseFloat(area['Per sq inch printing price'] || '0');
+        
+        // console.log('🔧 AREA PRICING DATA:', {
+        //   areaId,
+        //   minimumPrice,
+        //   pricePerSquareInch,
+        //   hasMinimum: !!area['Minimum printing price'],
+        //   hasRate: !!area['Per sq inch printing price']
+        //  });
+
+        // Case 1: Has both minimum and rate per sq inch
+        if (area['Minimum printing price'] && area['Per sq inch printing price']) {
+          return { 
+            minimumPrice, 
+            pricePerSquareInch, 
+            isFixedPrice: false 
+          };
+        }
+        
+        // Case 2: Has minimum price but no rate (fixed price model)
+        if (area['Minimum printing price'] && !area['Per sq inch printing price']) {
+          return { 
+            minimumPrice, 
+            pricePerSquareInch: 0, 
+            isFixedPrice: true 
+          };
+        }
+        
+        // Case 3: Has rate but no minimum
+        if (!area['Minimum printing price'] && area['Per sq inch printing price']) {
+          return { 
+            minimumPrice: 0, 
+            pricePerSquareInch, 
+            isFixedPrice: false 
+          };
+        }
+      }
+    }
+    
+    // Case 4: No area-specific pricing, fallback to product cost
+    const productCost = productData?.cost || 0;
+    // console.log('🔧 FALLBACK TO PRODUCT COST:', {
+    //   areaId,
+    //   productCost,
+    //   reason: 'No area-specific pricing found'
+    // });
+    
+    return { 
+      minimumPrice: productCost, 
+      pricePerSquareInch: 0, 
+      isFixedPrice: true 
+    };
+
+  } catch (error) {
+    //console.error('Error getting pricing info for area:', areaId, error);
+    
+    // Final fallback to product cost
+    const productCost = productData?.cost || 100;
+    return { 
+      minimumPrice: productCost, 
+      pricePerSquareInch: 0, 
+      isFixedPrice: true 
+    };
+  }
+}, [getCurrentTechnology, productData]);
+
+const calculateElementRealWorldDimensions = useCallback((element: DesignElement, areaId: string) => {
+  const canvasConfig = getCanvasConfig(areaId);
+  const printableArea = getPrintableAreaFromPhoto(areaId); // Design area bounds
+  
+  // 🔧 FIXED: Calculate only the area within design boundaries
+  const elementLeft = element.x;
+  const elementTop = element.y;
+  const elementRight = element.x + element.width;
+  const elementBottom = element.y + element.height;
+  
+  const designLeft = printableArea.x;
+  const designTop = printableArea.y;
+  const designRight = printableArea.x + printableArea.width;
+  const designBottom = printableArea.y + printableArea.height;
+  
+  // Calculate intersection (only the part within design area)
+  const intersectionLeft = Math.max(elementLeft, designLeft);
+  const intersectionTop = Math.max(elementTop, designTop);
+  const intersectionRight = Math.min(elementRight, designRight);
+  const intersectionBottom = Math.min(elementBottom, designBottom);
+  
+  // If no intersection, area is 0
+  if (intersectionLeft >= intersectionRight || intersectionTop >= intersectionBottom) {
+    return {
+      widthInches: 0,
+      heightInches: 0,
+      xInches: 0,
+      yInches: 0,
+      areaSquareInches: 0
+    };
+  }
+  
+  // Calculate dimensions of intersection area only
+  const intersectionWidth = intersectionRight - intersectionLeft;
+  const intersectionHeight = intersectionBottom - intersectionTop;
+  
+  const widthInches = (intersectionWidth / printableArea.width) * canvasConfig.realWorldWidth;
+  const heightInches = (intersectionHeight / printableArea.height) * canvasConfig.realWorldHeight;
+  const xInches = ((intersectionLeft - printableArea.x) / printableArea.width) * canvasConfig.realWorldWidth;
+  const yInches = ((intersectionTop - printableArea.y) / printableArea.height) * canvasConfig.realWorldHeight;
+  const areaSquareInches = widthInches * heightInches;
+
+  // console.log('🔧 INTERSECTION CALCULATION:', {
+  //   elementBounds: `${elementLeft},${elementTop} to ${elementRight},${elementBottom}`,
+  //   designBounds: `${designLeft},${designTop} to ${designRight},${designBottom}`,
+  //   intersectionBounds: `${intersectionLeft},${intersectionTop} to ${intersectionRight},${intersectionBottom}`,
+  //   intersectionSize: `${intersectionWidth}x${intersectionHeight}`,
+  //   areaSquareInches,
+  //   maxPossible: 320
+  // });
+
+  return {
+    widthInches: Number(widthInches.toFixed(3)),
+    heightInches: Number(heightInches.toFixed(3)),
+    xInches: Number(xInches.toFixed(3)),
+    yInches: Number(yInches.toFixed(3)),
+    areaSquareInches: Number(areaSquareInches.toFixed(3))
+  };
+}, [getCanvasConfig, getPrintableAreaFromPhoto]);
+
+const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
+  const elements = designElements[areaId] || [];
+  const visibleElements = elements.filter(element => element.visible !== false);
+  const { minimumPrice, pricePerSquareInch, isFixedPrice } = getPricingInfoForArea(areaId);
+  
+  const canvasConfig = getCanvasConfig(areaId);
+  const totalDesignAreaAvailable = canvasConfig.realWorldWidth * canvasConfig.realWorldHeight;
+
+  let totalCurrentImageArea = 0;
+  const elementPricing: AreaPricingInfo['elements'] = [];
+
+  // console.log('🔧 PRICING CALCULATION START:', {
+  //   areaId,
+  //   minimumPrice,
+  //   pricePerSquareInch,
+  //   isFixedPrice,
+  //   visibleElementsCount: visibleElements.length
+  // });
+
+  visibleElements.forEach((element, index) => {
+    const currentRealWorldDims = calculateElementRealWorldDimensions(element, areaId);
+    const currentAreaSquareInches = currentRealWorldDims.areaSquareInches;
+    
+    totalCurrentImageArea += currentAreaSquareInches;
+
+    let elementPrice: number;
+
+    if (isFixedPrice) {
+      // Fixed price model - use minimum price regardless of area
+      elementPrice = minimumPrice;
+      //console.log(`🔧 FIXED PRICE: ${elementPrice} for ${element.id}`);
+    } else {
+      // Area-based pricing model
+      const calculatedPrice = currentAreaSquareInches * pricePerSquareInch;
+      elementPrice = Math.max(minimumPrice, calculatedPrice);
+      //console.log(`🔧 AREA-BASED PRICE: max(${minimumPrice}, ${calculatedPrice}) = ${elementPrice}`);
+    }
+
+    // Calculate original area for reference
+    let originalAreaSquareInches = 0;
+    if (element.type === 'image') {
+      const printableArea = getPrintableAreaFromPhoto(areaId);
+      const originalImageWidthInInches = ((element.originalImageWidth || element.width) / printableArea.width) * canvasConfig.realWorldWidth;
+      const originalImageHeightInInches = ((element.originalImageHeight || element.height) / printableArea.height) * canvasConfig.realWorldHeight;
+      originalAreaSquareInches = originalImageWidthInInches * originalImageHeightInInches;
+    } else {
+      originalAreaSquareInches = currentAreaSquareInches;
+    }
+
+    elementPricing.push({
+      elementId: element.id,
+      elementName: element.imageName || element.text || `Element ${element.id.slice(-4)}`,
+      areaSquareInches: currentAreaSquareInches,
+      elementPrice: Number(elementPrice.toFixed(2)),
+      originalArea: Number(originalAreaSquareInches.toFixed(3)),
+      extraArea: Number(Math.max(0, currentAreaSquareInches - originalAreaSquareInches).toFixed(3))
+    });
+
+    element.realWorldDimensions = currentRealWorldDims;
+  });
+
+  // Calculate total cost
+  const totalCost = elementPricing.reduce((sum, el) => sum + el.elementPrice, 0);
+
+  return {
+    areaId,
+    areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
+    minimumPrice,
+    pricePerSquareInch,
+    designAreaSquareInches: Number(totalDesignAreaAvailable.toFixed(3)),
+    currentImageArea: Number(totalCurrentImageArea.toFixed(3)),
+    calculatedPrice: Number(totalCost.toFixed(2)),
+    finalPrice: Number(totalCost.toFixed(2)),
+    elements: elementPricing
+  };
+}, [designElements, getPricingInfoForArea, calculateElementRealWorldDimensions, getCanvasConfig, getPrintableAreaFromPhoto]);
+
+const calculateTotalPricing = useCallback((): TotalPricingBreakdown => {
+  setPriceCalculationLoading(true);
+  
+  const areas: Record<string, AreaPricingInfo> = {};
+  let totalDesignArea = 0;
+  let totalElements = 0;
+  let basePrintingCost = 0;
+
+  // Calculate pricing for each area with visible elements
+  Object.keys(designElements).forEach(areaId => {
+    const elements = designElements[areaId] || [];
+    const visibleElements = elements.filter(element => element.visible !== false);
+    
+    if (visibleElements.length > 0) {
+      const areaPricing = calculateAreaPricing(areaId);
+      areas[areaId] = areaPricing;
+      totalDesignArea += areaPricing.designAreaSquareInches;
+      totalElements += visibleElements.length;
+      basePrintingCost += areaPricing.finalPrice;
+    }
+  });
+
+  // Get product cost and additional fees
+  const blankProductCost = productData?.cost || 0;
+  const additionalCosts = productData?.additionalCosts || {};
+  const setupFee = parseFloat(additionalCosts.setupFee || '0');
+  const technologyFee = parseFloat(additionalCosts.rushSurcharge || '0');
+  
+  // NEW: Get GST percentages and shipping charges
+  const printingGSTPercent = parseFloat(additionalCosts.printingGST || '0');
+  const productGSTPercent = parseFloat(productData?.['GST Cost'] || '0');
+  const shippingCharges = parseFloat(productData?.shippingInfo?.shippingCharges || '0');
+  
+  // NEW: Calculate GST amounts
+  const printingGSTAmount = printingGSTPercent > 0 ? (basePrintingCost * printingGSTPercent / 100) : 0;
+  const productGSTAmount = productGSTPercent > 0 ? (blankProductCost * productGSTPercent / 100) : 0;
+
+  // Calculate final price including GST and shipping
+  const finalPrice = basePrintingCost + printingGSTAmount + blankProductCost + productGSTAmount + setupFee + technologyFee + shippingCharges;
+
+  const calculation: PricingCalculation = {
+    subtotal: basePrintingCost,
+    setupFee,
+    technologyFee,
+    printingGSTAmount: Number(printingGSTAmount.toFixed(2)),
+    productGSTAmount: Number(productGSTAmount.toFixed(2)),
+    shippingCharges: Number(shippingCharges.toFixed(2)),
+    totalBeforeMarkup: basePrintingCost + printingGSTAmount + blankProductCost + productGSTAmount + setupFee + technologyFee + shippingCharges,
+    markup: 0,
+    finalTotal: Number(finalPrice.toFixed(2))
+  };
+
+  const breakdown: TotalPricingBreakdown = {
+    areas,
+    calculation,
+    technology: activeTechnology,
+    totalElements,
+    totalDesignArea: Number(totalDesignArea.toFixed(3)),
+    priceBreakdown: {
+      basePrintingCost: Number(basePrintingCost.toFixed(2)),
+      blankProductCost: Number(blankProductCost.toFixed(2)),
+      printingGSTAmount: Number(printingGSTAmount.toFixed(2)),
+      productGSTAmount: Number(productGSTAmount.toFixed(2)),
+      setupFees: setupFee,
+      additionalCosts: technologyFee,
+      shippingCharges: Number(shippingCharges.toFixed(2)),
+      markup: 0,
+      finalPrice: Number(finalPrice.toFixed(2))
+    }
+  };
+
+  setPriceCalculationLoading(false);
+  return breakdown;
+}, [designElements, calculateAreaPricing, productData, activeTechnology]);
+
+const updatePricingData = useCallback(() => {
+  const breakdown = calculateTotalPricing();
+  setPricingBreakdown(breakdown);
+  setPricingData(breakdown.areas);
+  setTotalPrice(breakdown.calculation.finalTotal);
+}, [calculateTotalPricing]);
+
+
 // Canvas Image Capture Functions
 const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<string | null> => {
   try {
@@ -3096,12 +3607,12 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     // Get the canvas background image (t-shirt template)
     const canvasImage = canvasImages[`${areaId}_${activeColor}`] || canvasImages[areaId];
     
-    console.log(`🎯 CANVAS CAPTURE: Starting capture for ${areaId}`, {
-      canvasConfig,
-      hasCanvasImage: !!canvasImage,
-      visibleElements: visibleElements.length,
-      printableArea
-    });
+    // console.log(`🎯 CANVAS CAPTURE: Starting capture for ${areaId}`, {
+    //   canvasConfig,
+    //   hasCanvasImage: !!canvasImage,
+    //   visibleElements: visibleElements.length,
+    //   printableArea
+    // });
     
     // Create temporary stage with higher resolution for quality
     const tempStage = new Konva.Stage({
@@ -3127,7 +3638,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     
     // STEP 2: Add the t-shirt template with color applied only to the t-shirt shape
     if (canvasImage) {
-      console.log(`🎯 CANVAS CAPTURE: Adding t-shirt template with color ${activeColor}`);
+      //console.log(`🎯 CANVAS CAPTURE: Adding t-shirt template with color ${activeColor}`);
       
       // First, add a colored rectangle for the t-shirt
       const tshirtColorRect = new Konva.Rect({
@@ -3179,7 +3690,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     // STEP 4: Add all visible design elements INSIDE the clipping group
     for (const element of visibleElements) {
       if (element.type === 'image' && element.image) {
-        console.log(`🎯 CANVAS CAPTURE: Adding clipped image element ${element.id}`);
+        //console.log(`🎯 CANVAS CAPTURE: Adding clipped image element ${element.id}`);
         
         const imageNode = new Konva.Image({
           image: element.image,
@@ -3196,7 +3707,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
         clippingGroup.add(imageNode); // Add to clipping group instead of layer
         
       } else if (element.type === 'text') {
-        console.log(`🎯 CANVAS CAPTURE: Adding clipped text element ${element.id}`);
+        //console.log(`🎯 CANVAS CAPTURE: Adding clipped text element ${element.id}`);
         
         const textNode = new Konva.Text({
           text: element.text || 'Text',
@@ -3242,11 +3753,11 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
       pixelRatio: 2
     });
     
-    console.log(`🎯 CANVAS CAPTURE: Successfully captured ${areaId}`, {
-      dataUrlLength: dataURL.length,
-      hasBackground: !!canvasImage,
-      clippedElements: visibleElements.length
-    });
+    // console.log(`🎯 CANVAS CAPTURE: Successfully captured ${areaId}`, {
+    //   dataUrlLength: dataURL.length,
+    //   hasBackground: !!canvasImage,
+    //   clippedElements: visibleElements.length
+    // });
     
     // Cleanup
     tempStage.destroy();
@@ -3254,10 +3765,248 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     return dataURL;
     
   } catch (error) {
-    console.error(`🎯 CANVAS CAPTURE: Error capturing area ${areaId}:`, error);
+    //console.error(`🎯 CANVAS CAPTURE: Error capturing area ${areaId}:`, error);
     return null;
   }
 }, [getCanvasConfig, getPrintableAreaFromPhoto, designElements, activeColor, canvasImages]);
+
+
+const generateDetailedAreaAnalysis = useCallback(() => {
+  const detailedAnalysis = {
+    total_design_area_available: 0,
+    current_image_area_used: 0,
+    area_utilization_percentage: 0,
+    all_available_areas: availableAreas,
+    areas_with_elements: [],
+    areas_without_elements: [],
+    detailed_areas_breakdown: {},
+    element_details: {},
+    area_summary: {}
+  };
+
+  // Process each available area
+  availableAreas.forEach(areaId => {
+    const elements = designElements[areaId] || [];
+    const visibleElements = elements.filter(element => element.visible !== false);
+    const canvasConfig = getCanvasConfig(areaId);
+    const printableArea = getPrintableAreaFromPhoto(areaId);
+    
+    // Calculate area-level metrics
+    const areaDesignAvailable = canvasConfig.realWorldWidth * canvasConfig.realWorldHeight;
+    let areaCurrentImageUsed = 0;
+    const elementDetails = [];
+
+    // Process each element in this area
+    visibleElements.forEach((element, index) => {
+      const realWorldDims = calculateElementRealWorldDimensions(element, areaId);
+      areaCurrentImageUsed += realWorldDims.areaSquareInches;
+
+      // Calculate element-specific details
+      const elementDetail = {
+        element_id: element.id,
+        element_name: element.imageName || element.text || `Element ${index + 1}`,
+        element_type: element.type,
+        
+        // 🔥 NEW: Physical dimensions in inches
+        physical_dimensions: {
+          width_inches: Number(realWorldDims.widthInches.toFixed(3)),
+          height_inches: Number(realWorldDims.heightInches.toFixed(3)),
+          area_square_inches: Number(realWorldDims.areaSquareInches.toFixed(3)),
+          position_x_inches: Number(realWorldDims.xInches.toFixed(3)),
+          position_y_inches: Number(realWorldDims.yInches.toFixed(3))
+        },
+        
+        // 🔥 NEW: Pixel dimensions
+        pixel_dimensions: {
+          width_pixels: Math.round(element.width),
+          height_pixels: Math.round(element.height),
+          position_x_pixels: Math.round(element.x),
+          position_y_pixels: Math.round(element.y)
+        },
+        
+        // 🔥 NEW: Original image information
+        original_image_info: {
+          original_width_pixels: element.originalImageWidth || element.width,
+          original_height_pixels: element.originalImageHeight || element.height,
+          original_area_pixels: (element.originalImageWidth || element.width) * (element.originalImageHeight || element.height),
+          original_aspect_ratio: Number(((element.originalImageWidth || element.width) / (element.originalImageHeight || element.height)).toFixed(3))
+        },
+        
+        // 🔥 NEW: Transformation details (including rotation)
+        transformations: {
+          rotation_degrees: Number((element.rotation || 0).toFixed(2)),
+          scale_x: Number((element.scaleX || 1).toFixed(3)),
+          scale_y: Number((element.scaleY || 1).toFixed(3)),
+          opacity: Number((element.opacity || 1).toFixed(2)),
+          is_rotated: Math.abs(element.rotation || 0) > 0.1,
+          is_scaled: Math.abs((element.scaleX || 1) - 1) > 0.01 || Math.abs((element.scaleY || 1) - 1) > 0.01
+        },
+        
+        // 🔥 NEW: Quality and DPI information
+        print_quality: (() => {
+          const dpiInfo = calculateDPI(element);
+          return {
+            dpi: dpiInfo.dpi,
+            quality_rating: dpiInfo.quality,
+            quality_color: dpiInfo.color,
+            is_print_ready: dpiInfo.quality !== 'Poor'
+          };
+        })(),
+        
+        // 🔥 NEW: Area utilization for this element
+        area_utilization: {
+          design_area_consumed_percentage: Number(((realWorldDims.areaSquareInches / areaDesignAvailable) * 100).toFixed(2)),
+          printable_area_consumed_percentage: Number(((realWorldDims.areaSquareInches / (printableArea.width * printableArea.height / (canvasConfig.width * canvasConfig.height) * areaDesignAvailable)) * 100).toFixed(2))
+        },
+        
+        // 🔥 NEW: Positioning information
+        positioning: {
+          is_centered_horizontally: Math.abs((element.x + element.width/2) - (printableArea.x + printableArea.width/2)) < 5,
+          is_centered_vertically: Math.abs((element.y + element.height/2) - (printableArea.y + printableArea.height/2)) < 5,
+          distance_from_edges: {
+            top: Math.round(element.y - printableArea.y),
+            bottom: Math.round((printableArea.y + printableArea.height) - (element.y + element.height)),
+            left: Math.round(element.x - printableArea.x),
+            right: Math.round((printableArea.x + printableArea.width) - (element.x + element.width))
+          }
+        },
+        
+        // 🔥 NEW: State information
+        state: {
+          visible: element.visible !== false,
+          locked: element.locked || false,
+          selected: element.selected || false,
+          z_index: element.zIndex || 0,
+          has_base64: !!element.imageBase64
+        }
+      };
+      
+      elementDetails.push(elementDetail);
+    });
+
+    // Calculate area utilization
+    const areaUtilization = areaDesignAvailable > 0 ? (areaCurrentImageUsed / areaDesignAvailable) * 100 : 0;
+    
+    // Determine if area has elements
+    if (visibleElements.length > 0) {
+      detailedAnalysis.areas_with_elements.push(areaId);
+    } else {
+      detailedAnalysis.areas_without_elements.push(areaId);
+    }
+    
+    // Store detailed breakdown for this area
+    detailedAnalysis.detailed_areas_breakdown[areaId] = {
+      area_id: areaId,
+      area_name: areaId.charAt(0).toUpperCase() + areaId.slice(1),
+      has_elements: visibleElements.length > 0,
+      
+      // 🔥 NEW: Area capacity information
+      capacity: {
+        design_area_available_sq_inches: Number(areaDesignAvailable.toFixed(3)),
+        current_image_area_used_sq_inches: Number(areaCurrentImageUsed.toFixed(3)),
+        remaining_area_sq_inches: Number((areaDesignAvailable - areaCurrentImageUsed).toFixed(3)),
+        utilization_percentage: Number(areaUtilization.toFixed(2))
+      },
+      
+      // 🔥 NEW: Canvas and printable area info
+      area_specifications: {
+        canvas_width_pixels: canvasConfig.width,
+        canvas_height_pixels: canvasConfig.height,
+        canvas_width_inches: canvasConfig.realWorldWidth,
+        canvas_height_inches: canvasConfig.realWorldHeight,
+        printable_area: {
+          x_pixels: printableArea.x,
+          y_pixels: printableArea.y,
+          width_pixels: printableArea.width,
+          height_pixels: printableArea.height,
+          x_inches: Number(((printableArea.x / canvasConfig.width) * canvasConfig.realWorldWidth).toFixed(3)),
+          y_inches: Number(((printableArea.y / canvasConfig.height) * canvasConfig.realWorldHeight).toFixed(3)),
+          width_inches: Number(((printableArea.width / canvasConfig.width) * canvasConfig.realWorldWidth).toFixed(3)),
+          height_inches: Number(((printableArea.height / canvasConfig.height) * canvasConfig.realWorldHeight).toFixed(3))
+        }
+      },
+      
+      // 🔥 NEW: Element statistics
+      element_statistics: {
+        total_elements: elements.length,
+        visible_elements: visibleElements.length,
+        hidden_elements: elements.length - visibleElements.length,
+        image_elements: visibleElements.filter(el => el.type === 'image').length,
+        text_elements: visibleElements.filter(el => el.type === 'text').length,
+        rotated_elements: visibleElements.filter(el => Math.abs(el.rotation || 0) > 0.1).length,
+        scaled_elements: visibleElements.filter(el => Math.abs((el.scaleX || 1) - 1) > 0.01 || Math.abs((el.scaleY || 1) - 1) > 0.01).length
+      },
+      
+      // 🔥 NEW: Individual elements in this area
+      elements: elementDetails
+    };
+    
+    // Store element details
+    detailedAnalysis.element_details[areaId] = elementDetails;
+    
+    // Add to totals
+    detailedAnalysis.total_design_area_available += areaDesignAvailable;
+    detailedAnalysis.current_image_area_used += areaCurrentImageUsed;
+  });
+
+  // Calculate overall utilization
+  detailedAnalysis.area_utilization_percentage = detailedAnalysis.total_design_area_available > 0 
+    ? Number(((detailedAnalysis.current_image_area_used / detailedAnalysis.total_design_area_available) * 100).toFixed(2))
+    : 0;
+
+  // Create area summary
+  detailedAnalysis.area_summary = {
+    total_areas: availableAreas.length,
+    areas_with_content: detailedAnalysis.areas_with_elements.length,
+    areas_empty: detailedAnalysis.areas_without_elements.length,
+    total_elements_across_all_areas: Object.values(designElements).flat().length,
+    total_visible_elements: Object.values(designElements).flat().filter(el => el.visible !== false).length,
+    most_utilized_area: (() => {
+      let maxUtilization = 0;
+      let mostUtilizedArea = null;
+      
+      Object.values(detailedAnalysis.detailed_areas_breakdown).forEach(area => {
+        if (area.capacity.utilization_percentage > maxUtilization) {
+          maxUtilization = area.capacity.utilization_percentage;
+          mostUtilizedArea = area.area_id;
+        }
+      });
+      
+      return mostUtilizedArea;
+    })(),
+    design_complexity_score: (() => {
+      // Calculate complexity based on number of elements, transformations, etc.
+      const totalElements = Object.values(detailedAnalysis.element_details).flat().length;
+      const rotatedElements = Object.values(detailedAnalysis.element_details).flat().filter(el => el.transformations.is_rotated).length;
+      const scaledElements = Object.values(detailedAnalysis.element_details).flat().filter(el => el.transformations.is_scaled).length;
+      
+      return {
+        total_elements: totalElements,
+        complexity_factors: {
+          has_rotations: rotatedElements > 0,
+          has_scaling: scaledElements > 0,
+          multi_area_design: detailedAnalysis.areas_with_elements.length > 1,
+          high_utilization: detailedAnalysis.area_utilization_percentage > 70
+        },
+        complexity_rating: (() => {
+          let score = 0;
+          if (totalElements > 5) score += 1;
+          if (rotatedElements > 0) score += 1;
+          if (scaledElements > 0) score += 1;
+          if (detailedAnalysis.areas_with_elements.length > 1) score += 1;
+          if (detailedAnalysis.area_utilization_percentage > 70) score += 1;
+          
+          if (score >= 4) return 'Complex';
+          if (score >= 2) return 'Moderate';
+          return 'Simple';
+        })()
+      };
+    })()
+  };
+
+  //console.log('🔧 Generated detailed area analysis:', detailedAnalysis);
+  return detailedAnalysis;
+}, [availableAreas, designElements, getCanvasConfig, getPrintableAreaFromPhoto, calculateElementRealWorldDimensions, calculateDPI]);
 
 
 const generateCanvasMetadata = useCallback((areaId: string): CanvasImageMetadata => {
@@ -3426,7 +4175,7 @@ const exportAllCanvasImages = useCallback(() => {
           });
         }
       } catch (error) {
-        console.error(`Error exporting canvas image for area ${areaId}:`, error);
+        //console.error(`Error exporting canvas image for area ${areaId}:`, error);
       }
     }
   });
@@ -3434,36 +4183,431 @@ const exportAllCanvasImages = useCallback(() => {
   return canvasImages;
 }, [designElements, captureCanvasImageForArea, generateCanvasMetadata, generateDetailedDescription]);
 
+const renderTechnologySelector = () => {
+  const currentTech = getCurrentTechnology();
+  const hasElements = Object.values(designElements).some(elements => 
+    elements.some(element => element.visible !== false)
+  );
+  
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">
+          Current Technology
+        </label>
+        <span className="px-2 py-1 text-xs font-medium text-white rounded" style={{ backgroundColor: brandColor }}>
+          Active
+        </span>
+      </div>
+      
+      <div className="space-y-2">
+        <select
+          value={activeTechnology}
+          onChange={(e) => handleTechnologyChange(e.target.value)}
+          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 touch-manipulation"
+          disabled={priceCalculationLoading}
+        >
+          {productData?.printT?.map((tech: any) => (
+            <option key={tech.id} value={tech.id}>
+              {tech.technologyName.toUpperCase()}
+            </option>
+          ))}
+        </select>
+        
+        {priceCalculationLoading && (
+          <div className="flex items-center gap-2 text-xs text-orange-600">
+            <div className="w-3 h-3 border-b-2 border-orange-500 rounded-full animate-spin"></div>
+            <span>Updating pricing...</span>
+          </div>
+        )}
+      </div>
+      
+      {/* Technology Pricing Info */}
+      {/* {currentTech && (
+        <div className="p-2 text-xs rounded bg-gray-50">
+          <div className="mb-1 font-medium text-gray-700">
+            {currentTech.technologyName} - Pricing Info
+          </div>
+          
+          {currentTech.custAreas?.map((area: any) => (
+            <div key={area.id} className="flex justify-between py-1">
+              <span className="text-gray-600">{area.areaName}:</span>
+              <span className="text-gray-800">
+                ₹{area['Minimum printing price'] || 'N/A'} min, 
+                ₹{area['Per sq inch printing price'] || 'N/A'}/sq"
+              </span>
+            </div>
+          ))}
+          
+          {hasElements && pricingBreakdown && (
+            <div className="pt-2 mt-2 border-t border-gray-200">
+              <div className="flex justify-between font-medium">
+                <span>Current Design Cost:</span>
+                <span className="text-green-600">₹{totalPrice}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )} */}
+      
+      {/* Technology Change Warning */}
+      {hasElements && (
+        <div className="p-2 text-xs border rounded bg-amber-50 border-amber-200">
+          <div className="flex items-start gap-2">
+            <div className="w-3 h-3 bg-amber-400 rounded-full flex-shrink-0 mt-0.5"></div>
+            <div>
+              <div className="font-medium text-amber-800">Note:</div>
+              <div className="text-amber-700">
+                Changing technology will recalculate all pricing based on new rates and minimums.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
+// Remove the standalone PricingPanel component entirely and add this inside EnhancedCanvas:
+
+const renderPricingPanel = () => {
+  if (!pricingBreakdown) {
+    return (
+      <div className="space-y-4">
+        <h3 className="font-medium">Pricing Calculator</h3>
+        <div className="p-4 text-center text-gray-500 rounded-lg bg-gray-50">
+          <Calculator className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+          <p className="text-sm">Add design elements to calculate pricing</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { areas, calculation, priceBreakdown } = pricingBreakdown;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium">Pricing Calculator</h3>
+        {priceCalculationLoading && (
+          <div className="w-4 h-4 border-b-2 border-orange-500 rounded-full animate-spin"></div>
+        )}
+      </div>
+
+      {/* Technology Info */}
+      <div className="p-3 rounded-lg bg-orange-50">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium tracking-wide text-orange-700 uppercase">
+            Technology: {getCurrentTechnology()?.technologyName || activeTechnology}
+          </span>
+          <span className="text-xs text-orange-600">
+            {pricingBreakdown.totalElements} elements
+          </span>
+        </div>
+        <div className="text-xs text-orange-600">
+          Total Design Area: {pricingBreakdown.totalDesignArea}" sq
+        </div>
+      </div>
+
+      {/* Areas Breakdown */}
+      <div className="space-y-2">
+        <h4 className="text-sm font-medium text-gray-700">Areas Breakdown</h4>
+        {Object.values(areas).map(area => (
+          <div key={area.areaId} className="p-2 border rounded bg-gray-50">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium">{area.areaName}</span>
+              <span className="text-sm font-bold text-green-600">
+                ₹{area.finalPrice}
+              </span>
+            </div>
+            
+            <div className="space-y-1 text-xs text-gray-600">
+              <div className="flex justify-between">
+                <span>Design Area Available:</span>
+                <span>{area.designAreaSquareInches}" sq</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Current Image Area:</span>
+                <span>{area.currentImageArea}" sq</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Rate:</span>
+                <span>₹{area.pricePerSquareInch}/sq"</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Calculated (Area × Rate):</span>
+                <span>₹{(area.currentImageArea * area.pricePerSquareInch).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Minimum Price:</span>
+                <span>₹{area.minimumPrice}</span>
+              </div>
+              <div className="flex justify-between font-medium text-gray-800">
+                <span>Final Price:</span>
+                <span>₹{area.finalPrice} = max(₹{area.minimumPrice}, ₹{(area.currentImageArea * area.pricePerSquareInch).toFixed(2)})</span>
+              </div>
+            </div>
+
+            {/* Element Details */}
+            {area.elements.length > 0 && (
+              <div className="pt-2 mt-2 border-t">
+                <div className="mb-1 text-xs text-gray-500">Elements:</div>
+                {area.elements.map(element => (
+                  <div key={element.elementId} className="mb-2 space-y-1 text-xs">
+                    <div className="flex justify-between font-medium">
+                      <span className="truncate max-w-32">{element.elementName}</span>
+                      <span className="text-green-600">₹{element.elementPrice}</span>
+                    </div>
+                    <div className="pl-2 space-y-0.5 text-gray-500">
+                      <div className="flex justify-between">
+                        <span>Original area:</span>
+                        <span>{element.originalArea}" sq</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Current area:</span>
+                        <span>{element.areaSquareInches}" sq</span>
+                      </div>
+                      {element.extraArea > 0 && (
+                        <div className="flex justify-between text-orange-600">
+                          <span>Expanded by:</span>
+                          <span>+{element.extraArea}" sq</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span>Calculation:</span>
+                        <span>max(₹100, {element.areaSquareInches}" × ₹0.75)</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Price Calculation */}
+      <div className="p-3 border-2 border-green-200 rounded-lg bg-green-50">
+        <h4 className="mb-2 text-sm font-medium text-green-800">Price Calculation</h4>
+        
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span>Base Printing:</span>
+            <span>₹{priceBreakdown.basePrintingCost}</span>
+          </div>
+
+          {priceBreakdown.printingGSTAmount > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <span className="pl-4">+ GST ({productData?.additionalCosts?.printingGST}%)</span>
+              <span>₹{priceBreakdown.printingGSTAmount.toFixed(2)}</span>
+            </div>
+          )}
+          
+          {priceBreakdown.setupFees > 0 && (
+            <div className="flex justify-between">
+              <span>Setup Fees:</span>
+              <span>₹{priceBreakdown.setupFees}</span>
+            </div>
+          )}
+          
+          {priceBreakdown.additionalCosts > 0 && (
+            <div className="flex justify-between">
+              <span>Additional Costs:</span>
+              <span>₹{priceBreakdown.additionalCosts}</span>
+            </div>
+          )}
+          
+          <div className="flex justify-between">
+            <span>Blank product cost:</span>
+            <span>₹{priceBreakdown.blankProductCost}</span>
+          </div>
+
+           {priceBreakdown.productGSTAmount > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <span className="pl-4">+ GST ({productData?.['GST Cost']}%)</span>
+              <span>₹{priceBreakdown.productGSTAmount.toFixed(2)}</span>
+            </div>
+          )}
+          
+           {priceBreakdown.shippingCharges > 0 && (
+              <div className="flex justify-between">
+                <span>Shipping:</span>
+                <span>₹{priceBreakdown.shippingCharges}</span>
+              </div>
+            )}
+          
+          <div className="flex justify-between pt-2 font-bold text-green-800 border-t border-green-300">
+            <span>Final Price per Unit:</span>
+            <span>₹{priceBreakdown.finalPrice}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Quantity Pricing Preview */}
+      {/* <div className="p-2 rounded bg-gray-50">
+        <div className="mb-1 text-xs text-gray-600">Estimated Total for Selected Options:</div>
+        <div className="text-sm font-medium">
+          {selectedColors.length} colors × {selectedSizes.length} sizes = {selectedColors.length * selectedSizes.length} units
+        </div>
+        <div className="text-lg font-bold text-orange-600">
+          ₹{(priceBreakdown.finalPrice * selectedColors.length * selectedSizes.length).toFixed(2)}
+        </div>
+      </div> */}
+
+      <div className="text-xs italic text-center text-gray-500">
+        Pricing updates automatically when you modify designs
+      </div>
+    </div>
+  );
+};
+
+// 🔥 NEW: Enhanced technology change handler
+const handleTechnologyChange = useCallback((newTechnologyId: string) => {
+  //console.log('Technology changing from:', activeTechnology, 'to:', newTechnologyId);
+  
+  // Store current pricing data before change
+  const previousPricingData = pricingBreakdown;
+  
+  // Set loading state
+  setPriceCalculationLoading(true);
+  
+  // Clear current pricing data
+  setPricingData({});
+  setTotalPrice(0);
+  setPricingBreakdown(null);
+  
+  // Update active technology
+  setActiveTechnology(newTechnologyId);
+  
+  // Get new technology info for validation
+  const newTechnology = productData?.printT?.find((tech: any) => 
+    tech.id === newTechnologyId || tech.technologyName === newTechnologyId
+  );
+  
+  if (!newTechnology) {
+    //console.error('Technology not found:', newTechnologyId);
+    setPriceCalculationLoading(false);
+    return;
+  }
+  
+  //console.log('New technology loaded:', newTechnology.technologyName);
+  
+  // Update available areas for new technology
+  const newAreas = getAvailableAreas();
+  
+  // Check if current active area exists in new technology
+  if (!newAreas.includes(activeArea) && newAreas.length > 0) {
+    //console.log('Active area not available in new technology, switching to:', newAreas[0]);
+    setActiveArea(newAreas[0]);
+  }
+  
+  // Show pricing comparison if there were previous calculations
+  if (previousPricingData && previousPricingData.totalElements > 0) {
+    //console.log('Previous pricing data exists - will show comparison after recalculation');
+  }
+  
+  // Recalculate pricing after technology data is loaded
+  setTimeout(() => {
+    const hasElements = Object.values(designElements).some(elements => 
+      elements.some(element => element.visible !== false)
+    );
+    
+    if (hasElements) {
+      //console.log('Recalculating pricing for new technology...');
+      
+      try {
+        updatePricingData();
+        
+        // Show notification about technology change
+        if (isMobile) {
+          // For mobile, you might want to show a toast notification
+          //console.log('Technology changed to:', newTechnology.technologyName);
+        }
+        
+      } catch (error) {
+        //console.error('Error recalculating pricing after technology change:', error);
+        setPriceCalculationLoading(false);
+      }
+    } else {
+      setPriceCalculationLoading(false);
+    }
+  }, 800); // Longer delay to ensure all technology data is loaded
+  
+}, [activeTechnology, productData, getAvailableAreas, activeArea, pricingBreakdown, designElements, updatePricingData, isMobile]);
+
+// 🔥 NEW: Technology comparison helper
+const compareTechnologyPricing = useCallback((tech1Id: string, tech2Id: string) => {
+  const tech1 = productData?.printT?.find((tech: any) => tech.id === tech1Id);
+  const tech2 = productData?.printT?.find((tech: any) => tech.id === tech2Id);
+  
+  if (!tech1 || !tech2) {
+    return null;
+  }
+  
+  const comparison = {
+    tech1: {
+      id: tech1.id,
+      name: tech1.technologyName,
+      areas: tech1.custAreas?.map((area: any) => ({
+        name: area.areaName,
+        minimumPrice: parseFloat(area['Minimum printing price'] || '0'),
+        pricePerSquareInch: parseFloat(area['Per sq inch printing price'] || '0')
+      })) || []
+    },
+    tech2: {
+      id: tech2.id,
+      name: tech2.technologyName,
+      areas: tech2.custAreas?.map((area: any) => ({
+        name: area.areaName,
+        minimumPrice: parseFloat(area['Minimum printing price'] || '0'),
+        pricePerSquareInch: parseFloat(area['Per sq inch printing price'] || '0')
+      })) || []
+    }
+  };
+  
+  return comparison;
+}, [productData]);
   // =====================================
   // ENHANCED STORE IMPORT FUNCTION
-  // =====================================
+  // =============================
+  //========
   
-  const transformStoreDataForCreate = useCallback((storeData: StoreImportData, filteredProductData?: PayloadProductData) => {
-  
+    const calculatePriceFromCost = (cost: number): number => {
+    const markup = cost * 0.5;
+    const baseProfit = 100;
+    return Math.round(cost + markup + baseProfit);
+  };
+
+  const transformStoreDataForCreate = useCallback((storeData, filteredProductData) => {
+  // console.log('🔧 Transform started with comprehensive data:', {
+  //   hasDetailedAreaAnalysis: !!storeData.detailed_area_analysis,
+  //   hasImageAreaAnalysis: !!storeData.image_area_analysis,
+  //   canvasImages: storeData.canvas_images?.length || 0,
+  //   designImages: storeData.design_images?.length || 0,
+  //   hasPricingData: !!storeData.pricing_data,
+  //   hasAvailableMockups: !!storeData.available_mockups
+  // });
+
   // Extract mockup images based on PayloadCMS flags
-  const mockupImages: Record<string, string> = {};
-  const colorSpecificImages: Record<string, Array<{ mockupTitle: string; imageData: string }>> = {};
+  const mockupImages = {};
+  const colorSpecificImages = {};
   
-  // 🔥 CORRECTED: Extract PayloadCMS flags from the original product data to determine image sharing behavior
- const productDataFlags = {
+  // Extract PayloadCMS flags from the original product data
+  const productDataFlags = {
     color_Images: filteredProductData?.color_Images || productData.color_Images,
     size_Images: filteredProductData?.size_Images || productData.size_Images
   };
   
   // Process mockup variants based on the size_Images flag
   storeData.mockup_variants.forEach(mockupVariant => {
-    
     mockupVariant.color_combinations.forEach(colorCombo => {
-      
       // Initialize color group if not exists
       if (!colorSpecificImages[colorCombo.color_hex]) {
         colorSpecificImages[colorCombo.color_hex] = [];
       }
       
-      // 🔥 CORRECTED: Handle transformation based on size_Images flag
+      // Handle transformation based on size_Images flag
       if (!productDataFlags.size_Images) {
-        
         const firstSizeVariant = colorCombo.size_variants[0];
         
         if (firstSizeVariant?.generated_images?.length > 0) {
@@ -3486,15 +4630,10 @@ const exportAllCanvasImages = useCallback(() => {
             const sizeSpecificKey = `${mockupVariant.mockup_title}_${colorCombo.color_name}_${sizeVariant.size_name}`.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
             mockupImages[sizeSpecificKey] = generatedImage.image_data;
           });
-          
-        } else {
         }
-        
       } else {
-        
         colorCombo.size_variants.forEach(sizeVariant => {
-          
-          sizeVariant.generated_images.forEach((generatedImage, imgIndex) => {
+          sizeVariant.generated_images.forEach((generatedImage) => {
             if (generatedImage.image_data) {
               const key = `${mockupVariant.mockup_title}_${colorCombo.color_name}_${sizeVariant.size_name}`;
               const cleanKey = key.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
@@ -3505,46 +4644,16 @@ const exportAllCanvasImages = useCallback(() => {
                 mockupTitle: `${mockupVariant.mockup_title} (${sizeVariant.size_name})`,
                 imageData: generatedImage.image_data
               });
-            } else {
             }
           });
         });
       }
     });
   });
-  
-  Object.keys(colorSpecificImages).forEach(colorHex => {
-  });
-  
-  // 🔥 CORRECTED: Validation based on size_Images flag
-  const expectedUniqueCount = storeData.generation_summary.mockup_calculation.totalMockups;
-  const actualUniqueCount = Object.keys(mockupImages).length;
-  const designImages = storeData.design_images || []; // Use images from store data
-  
-  if (designImages.length === 0) {
-  } else {
-    designImages.forEach((img, index) => {
-    });
-  }
-  
-  if (!productDataFlags.size_Images) {
-    // For size_Images=false, we should have mockup-color combinations with size aliases
-    const uniqueMockupColorCombos = Object.keys(colorSpecificImages).reduce((total, colorHex) => {
-      const uniqueTitles = new Set(colorSpecificImages[colorHex].map(item => 
-        item.mockupTitle.replace(/ \([^)]+\)$/, '') // Remove size suffix if present
-      ));
-      return total + uniqueTitles.size;
-    }, 0);
-  } else {
-    // For size_Images=true, we should have mockup-color-size combinations
-    const totalVariants = Object.keys(colorSpecificImages).reduce((total, colorHex) => 
-      total + colorSpecificImages[colorHex].length, 0);
-  }
 
-   const canvasImages = storeData.canvas_images || [];
-  console.log('🎯 TRANSFORM DEBUG: Extracted canvas images:', canvasImages.length);
-  console.log('🎯 TRANSFORM DEBUG: Canvas images data:', canvasImages);
-  
+  const designImages = storeData.design_images || [];
+  const canvasImages = storeData.canvas_images || [];
+
   // Extract color details from the calculation breakdown
   const colorDetails = storeData.generation_summary.mockup_calculation.calculationBreakdown.map(breakdown => ({
     name: breakdown.color,
@@ -3572,8 +4681,8 @@ const exportAllCanvasImages = useCallback(() => {
     pricing: productData.pricing || { suggestedRetailPrice: 300 }
   };
   
-  // ✨ ENHANCED: Clean design elements with base64 data
-  const cleanDesignElements: Record<string, any[]> = {};
+  // Clean design elements with base64 data
+  const cleanDesignElements = {};
   let totalBase64Images = 0;
   let base64DataSize = 0;
   
@@ -3594,7 +4703,7 @@ const exportAllCanvasImages = useCallback(() => {
         zIndex: element.zIndex,
         imageName: element.imageName,
         imageUrl: element.imageUrl,
-        imageBase64: element.imageBase64, // ✨ Include base64 in export
+        imageBase64: element.imageBase64,
         originalImageWidth: element.originalImageWidth,
         originalImageHeight: element.originalImageHeight,
         text: element.text,
@@ -3618,17 +4727,17 @@ const exportAllCanvasImages = useCallback(() => {
   });
   
   // Create color-specific mockup groups
-  const colorSpecificMockups: ColorSpecificMockupGroup[] = Object.keys(colorSpecificImages).map(colorHex => {
+  const colorSpecificMockups = Object.keys(colorSpecificImages).map(colorHex => {
     const colorName = colorDetails.find(c => c.value === colorHex)?.name || 'Unknown';
     return {
       colorName,
       colorHex,
-      mockups: [], // This will be populated by the Create page
+      mockups: [],
       imageCount: colorSpecificImages[colorHex].length
     };
   });
   
-  const designData: DesignData = {
+  const designData = {
     productInfo: {
       title: storeData.product_name || 'Custom Design Product',
       description: `Custom designed ${storeData.product_type} with ${storeData.design_configuration.design_metadata.total_elements} design elements`,
@@ -3659,7 +4768,7 @@ const exportAllCanvasImages = useCallback(() => {
       mockupPreview: Object.values(mockupImages)[0] || null,
       mockupPreviews: mockupImages,
       colorSpecificMockups: colorSpecificMockups,
-      designImages: designImages // 🔥 USE DESIGN IMAGES FROM STORE DATA
+      designImages: designImages
     },
     selectedProduct: {
       color: selectedColors[0]?.value || '#ffffff',
@@ -3669,20 +4778,124 @@ const exportAllCanvasImages = useCallback(() => {
     }
   };
 
- const result = {
+  const result = {
     designData,
     mockupImages,
     colorSpecificImages,
     designImages: storeData.design_images || [],
-    canvasImages, // 🔥 THIS WAS MISSING!
+    canvasImages,
     enhancedProductData,
-    filteredProductData 
+    filteredProductData,
+    
+    // Include calculated data in transformed result
+    pricingData: storeData.pricing_data || null,
+    availableMockups: storeData.available_mockups || null,
+    imageAreaAnalysis: storeData.image_area_analysis || null,
+    
+    // Enhanced area analysis data
+    detailedAreaAnalysis: storeData.detailed_area_analysis,
+    enhancedImageAreaAnalysis: storeData.image_area_analysis,
+    
+    // Quick access design metrics for Create component
+    designMetrics: {
+      totalDesignAreaAvailable: storeData.detailed_area_analysis?.total_design_area_available || 0,
+      currentImageAreaUsed: storeData.detailed_area_analysis?.current_image_area_used || 0,
+      utilizationPercentage: storeData.detailed_area_analysis?.area_utilization_percentage || 0,
+      complexityRating: storeData.detailed_area_analysis?.area_summary?.design_complexity_score?.complexity_rating || 'Simple',
+      areasWithElements: storeData.detailed_area_analysis?.areas_with_elements || [],
+      areasWithoutElements: storeData.detailed_area_analysis?.areas_without_elements || [],
+      totalElements: storeData.detailed_area_analysis?.area_summary?.total_elements_across_all_areas || 0,
+      
+      // Per-area breakdown for Create component
+      areaBreakdown: Object.fromEntries(
+        Object.entries(storeData.detailed_area_analysis?.detailed_areas_breakdown || {}).map(([areaId, breakdown]) => [
+          areaId,
+          {
+            areaName: breakdown.area_name,
+            hasElements: breakdown.has_elements,
+            designAreaAvailable: breakdown.capacity.design_area_available_sq_inches,
+            currentImageAreaUsed: breakdown.capacity.current_image_area_used_sq_inches,
+            utilizationPercentage: breakdown.capacity.utilization_percentage,
+            elementCount: breakdown.element_statistics.visible_elements,
+            rotatedElements: breakdown.element_statistics.rotated_elements,
+            scaledElements: breakdown.element_statistics.scaled_elements
+          }
+        ])
+      ),
+      
+      // Individual element details for Create component
+      elementDetails: Object.fromEntries(
+        Object.entries(storeData.detailed_area_analysis?.element_details || {}).map(([areaId, elements]) => [
+          areaId,
+          elements.map(element => ({
+            id: element.element_id,
+            name: element.element_name,
+            type: element.element_type,
+            
+            // Dimensions in both inches and pixels
+            widthInches: element.physical_dimensions.width_inches,
+            heightInches: element.physical_dimensions.height_inches,
+            areaSquareInches: element.physical_dimensions.area_square_inches,
+            widthPixels: element.pixel_dimensions.width_pixels,
+            heightPixels: element.pixel_dimensions.height_pixels,
+            
+            // Rotation and transformation info
+            rotationDegrees: element.transformations.rotation_degrees,
+            isRotated: element.transformations.is_rotated,
+            isScaled: element.transformations.is_scaled,
+            scaleX: element.transformations.scale_x,
+            scaleY: element.transformations.scale_y,
+            
+            // Quality information
+            printQuality: element.print_quality.quality_rating,
+            dpi: element.print_quality.dpi,
+            isPrintReady: element.print_quality.is_print_ready,
+            
+            // Original image info
+            originalWidth: element.original_image_info.original_width_pixels,
+            originalHeight: element.original_image_info.original_height_pixels,
+            originalAspectRatio: element.original_image_info.original_aspect_ratio,
+            
+            // Positioning
+            isCenteredHorizontally: element.positioning.is_centered_horizontally,
+            isCenteredVertically: element.positioning.is_centered_vertically,
+            distanceFromEdges: element.positioning.distance_from_edges,
+            
+            // State
+            visible: element.state.visible,
+            locked: element.state.locked,
+            zIndex: element.state.z_index,
+            hasBase64: element.state.has_base64
+          }))
+        ])
+      )
+    },
+    
+    // Additional Store Metadata
+    storeMetadata: {
+      generation_summary: storeData.generation_summary || null,
+      mockup_variants: storeData.mockup_variants || [],
+      design_configuration: storeData.design_configuration || {},
+      total_images_generated: storeData.generation_summary?.total_images_generated || 0,
+      total_time_ms: storeData.generation_summary?.total_time_ms || 0,
+      engine_usage: storeData.generation_summary?.engine_usage || {},
+      errors: storeData.generation_summary?.errors || []
+    }
   };
 
-  console.log('🎯 TRANSFORM DEBUG: Final result canvasImages:', result.canvasImages?.length || 0);
+  // console.log('🔧 Transform completed with enhanced metrics:', {
+  //   totalElements: result.designMetrics.totalElements,
+  //   areasWithContent: result.designMetrics.areasWithElements.length,
+  //   complexityRating: result.designMetrics.complexityRating,
+  //   utilizationPercentage: result.designMetrics.utilizationPercentage,
+  //   hasDetailedAreaAnalysis: !!result.detailedAreaAnalysis,
+  //   hasDesignMetrics: !!result.designMetrics,
+  //   elementDetailsKeys: Object.keys(result.designMetrics?.elementDetails || {}),
+  //   areaBreakdownKeys: Object.keys(result.designMetrics?.areaBreakdown || {})
+  // });
+
   return result;
-  
-}, [selectedColors, selectedSizes, allMockups, productData]);
+}, [selectedColors, selectedSizes, allMockups, productData, calculatePriceFromCost]);
 
 
 const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<string, any[]>) => {
@@ -3727,55 +4940,424 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
 }, []);
 
 
-  const calculatePriceFromCost = (cost: number): number => {
-    const markup = cost * 0.5;
-    const baseProfit = 100;
-    return Math.round(cost + markup + baseProfit);
-  };
 
-  const navigateToCreatePage = useCallback((transformedData: any) => {
-  
-  // ✅ VERIFY DESIGN IMAGES BEFORE NAVIGATION
-  const designImagesCheck = {
-    hasDesignImages: !!transformedData.designImages,
-    designImagesCount: transformedData.designImages?.length || 0,
-    designImagesArray: transformedData.designImages || []
-  };
+const navigateToCreatePage = useCallback((transformedData) => {
+  // console.log('🔧 NAVIGATION DEBUG - Enhanced data being sent to Create:', {
+  //   hasDetailedAreaAnalysis: !!transformedData.detailedAreaAnalysis,
+  //   hasDesignMetrics: !!transformedData.designMetrics,
+  //   totalElements: transformedData.designMetrics?.totalElements,
+  //   areasWithElements: transformedData.designMetrics?.areasWithElements,
+  //   areasWithoutElements: transformedData.designMetrics?.areasWithoutElements,
+  //   utilizationPercentage: transformedData.designMetrics?.utilizationPercentage,
+  //   complexityRating: transformedData.designMetrics?.complexityRating,
+  //   elementDetailsKeys: Object.keys(transformedData.designMetrics?.elementDetails || {}),
+  //   areaBreakdownKeys: Object.keys(transformedData.designMetrics?.areaBreakdown || {}),
+  //   mockupImagesCount: Object.keys(transformedData.mockupImages || {}).length,
+  //   canvasImagesCount: transformedData.canvasImages?.length || 0,
+  //   designImagesCount: transformedData.designImages?.length || 0
+  // });
 
-  // 🔥 ADD CANVAS IMAGES VERIFICATION
-  const canvasImagesCheck = {
-    hasCanvasImages: !!transformedData.canvasImages,
-    canvasImagesCount: transformedData.canvasImages?.length || 0,
-    canvasImagesArray: transformedData.canvasImages || []
-  };
-  
-  console.log('🎯 NAVIGATE DEBUG: Canvas images check:', canvasImagesCheck);
-  
-  if (designImagesCheck.designImagesCount === 0) {
-  } else {
-    transformedData.designImages.forEach((img: any, index: number) => {
+  // Log detailed element information for each area
+  if (transformedData.designMetrics?.elementDetails) {
+    Object.entries(transformedData.designMetrics.elementDetails).forEach(([areaId, elements]) => {
+      // console.log(`🔧 ${areaId.toUpperCase()} ELEMENTS (${elements.length}):`, elements.map(el => ({
+      //   name: el.name,
+      //   dimensions: `${el.widthInches.toFixed(2)}" × ${el.heightInches.toFixed(2)}" = ${el.areaSquareInches.toFixed(2)} sq"`,
+      //   pixels: `${el.widthPixels} × ${el.heightPixels}`,
+      //   rotation: el.rotationDegrees + '°',
+      //   quality: `${el.printQuality} (${el.dpi} DPI)`,
+      //   isRotated: el.isRotated,
+      //   isScaled: el.isScaled,
+      //   originalSize: `${el.originalWidth} × ${el.originalHeight}`
+      // })));
     });
   }
-  
+
+  // Log area breakdown information
+  if (transformedData.designMetrics?.areaBreakdown) {
+    Object.entries(transformedData.designMetrics.areaBreakdown).forEach(([areaId, breakdown]) => {
+      // console.log(`🔧 ${areaId.toUpperCase()} BREAKDOWN:`, {
+      //   hasElements: breakdown.hasElements,
+      //   designAreaAvailable: breakdown.designAreaAvailable.toFixed(2) + ' sq"',
+      //   currentImageAreaUsed: breakdown.currentImageAreaUsed.toFixed(2) + ' sq"',
+      //   utilization: breakdown.utilizationPercentage.toFixed(1) + '%',
+      //   elementCount: breakdown.elementCount,
+      //   rotatedElements: breakdown.rotatedElements,
+      //   scaledElements: breakdown.scaledElements
+      // });
+    });
+  }
+
+  // Log mockup images by area
+  const mockupsByArea = {};
+  Object.keys(transformedData.mockupImages || {}).forEach(key => {
+    const [area] = key.split('_');
+    if (!mockupsByArea[area]) mockupsByArea[area] = 0;
+    mockupsByArea[area]++;
+  });
+  //console.log('🔧 MOCKUP IMAGES BY AREA:', mockupsByArea);
+
+  // Verify design images
+  if (transformedData.designImages?.length > 0) {
+    // console.log('🔧 DESIGN IMAGES:', transformedData.designImages.map(img => ({
+    //   name: img.name,
+    //   area: img.area,
+    //   dimensions: `${img.originalWidth} × ${img.originalHeight}`,
+    //   hasBase64: !!img.base64Data,
+    //   position: `${img.position?.x}, ${img.position?.y}`,
+    //   size: `${img.dimensions?.width} × ${img.dimensions?.height}`,
+    //   rotation: img.rotation || 0
+    // })));
+  }
+
+  // Verify canvas images
+  if (transformedData.canvasImages?.length > 0) {
+    // console.log('🔧 CANVAS IMAGES:', transformedData.canvasImages.map(img => ({
+    //   area: img.area_id,
+    //   hasImageData: !!img.image_data,
+    //   elementsCount: img.metadata?.design_elements?.length || 0
+    // })));
+  }
+
   setShowStoreImportModal(false);
   
   navigate({
     to: '/designer/create',
     state: {
+      // Core Design Data
       designData: transformedData.designData,
       mockupImages: transformedData.mockupImages,
       colorSpecificImages: transformedData.colorSpecificImages,
       enhancedProductData: transformedData.enhancedProductData,
-      filteredProductData: transformedData.filteredProductData, 
-      designImages: transformedData.designImages, // ✅ DESIGN IMAGES INCLUDED
+      filteredProductData: transformedData.filteredProductData,
+      
+      // Image Data
+      designImages: transformedData.designImages,
       canvasImages: transformedData.canvasImages,
-      uploadedFiles: [] // Can be empty since we have base64 data
+      uploadedFiles: [],
+      
+      // Complete Calculated Data
+      pricingData: transformedData.pricingData,
+      availableMockups: transformedData.availableMockups,
+      imageAreaAnalysis: transformedData.imageAreaAnalysis,
+      
+      // Enhanced Area Analysis
+      detailedAreaAnalysis: transformedData.detailedAreaAnalysis,
+      enhancedImageAreaAnalysis: transformedData.enhancedImageAreaAnalysis,
+      designMetrics: transformedData.designMetrics,
+      
+      // Additional Store Metadata
+      storeMetadata: transformedData.storeMetadata,
+      
+      // Navigation Context
+      navigationContext: {
+        sourceComponent: 'EnhancedCanvas',
+        importTimestamp: new Date().toISOString(),
+        totalDataSize: JSON.stringify(transformedData).length,
+        hasCompleteData: {
+          designImages: !!transformedData.designImages?.length,
+          canvasImages: !!transformedData.canvasImages?.length,
+          pricingData: !!transformedData.pricingData,
+          availableMockups: !!transformedData.availableMockups,
+          detailedAreaAnalysis: !!transformedData.detailedAreaAnalysis,
+          designMetrics: !!transformedData.designMetrics,
+          elementDetails: !!transformedData.designMetrics?.elementDetails,
+          areaBreakdown: !!transformedData.designMetrics?.areaBreakdown
+        },
+        dataVerification: {
+          totalMockupImages: Object.keys(transformedData.mockupImages || {}).length,
+          areasWithElements: transformedData.designMetrics?.areasWithElements || [],
+          areasWithoutElements: transformedData.designMetrics?.areasWithoutElements || [],
+          totalElements: transformedData.designMetrics?.totalElements || 0,
+          utilizationPercentage: transformedData.designMetrics?.utilizationPercentage || 0,
+          complexityRating: transformedData.designMetrics?.complexityRating || 'Simple'
+        }
+      }
     }
   });
   
+  //console.log('🔧 Navigation complete: Enhanced data sent to Create page with detailed area analysis');
+  // console.log('🔧 Final data summary:', {
+  //   totalAreasWithData: transformedData.designMetrics?.areasWithElements?.length || 0,
+  //   totalEmptyAreas: transformedData.designMetrics?.areasWithoutElements?.length || 0,
+  //   totalMockupImages: Object.keys(transformedData.mockupImages || {}).length,
+  //   totalDesignImages: transformedData.designImages?.length || 0,
+  //   totalCanvasImages: transformedData.canvasImages?.length || 0,
+  //   overallUtilization: transformedData.designMetrics?.utilizationPercentage || 0,
+  //   complexityRating: transformedData.designMetrics?.complexityRating || 'Simple'
+  // });
+  
 }, [navigate]);
 
-  const handleImportToStore = useCallback(async () => {
+
+
+const generateComprehensiveMockups = async (
+  productData: PayloadProductData,
+  selectedColors: Array<{ name: string; value: string }>,
+  selectedSizes: string[],
+  areasWithElements: string[],
+  areasWithoutElements: string[],
+  designElements: Record<string, DesignElement[]>,
+  canvasConfigs: Record<string, any>,
+  printableAreas: Record<string, any>,
+  allMockups: any[],
+  onProgress?: (progress: ImageGenerationProgress) => void
+): Promise<StoreImportData> => {
+  const generationStartTime = performance.now();
+  const generationStarted = new Date().toISOString();
+  
+  let totalCombinations = 0;
+  let completedCombinations = 0;
+  const errors: string[] = [];
+  const engineUsage = { canvas_professional: 0, pixi_dynamic: 0 };
+  const mockupVariants: StoreImportData['mockup_variants'] = [];
+
+  // Calculate total combinations for ALL areas
+  totalCombinations = allMockups.length * (productData.size_Images ? selectedSizes.length : 1);
+
+  //console.log(`Processing ${totalCombinations} total combinations for all areas`);
+
+  try {
+    for (const mockup of allMockups) {
+      const colorCombinations: any[] = [{
+        color_name: mockup.target_color_name,
+        color_hex: mockup.target_color,
+        size_variants: []
+      }];
+
+      // Check if this mockup has areas with design elements
+      const mockupAreas = mockup.area?.map(area => area.areaName?.toLowerCase()) || [];
+      const hasDesignElements = mockupAreas.some(areaName => 
+        areasWithElements.some(elementArea => elementArea.toLowerCase() === areaName)
+      );
+
+      if (!productData.size_Images) {
+        // Sizes share the same image
+        const combinationId = `${mockup.title}-${mockup.target_color_name}-${hasDesignElements ? 'custom' : 'base'}`;
+        
+        onProgress?.({
+          total: totalCombinations,
+          completed: completedCombinations,
+          current_combination: combinationId,
+          current_mockup: mockup.title,
+          current_engine: 'canvas_professional',
+          errors: [...errors]
+        });
+
+        try {
+          let result;
+          
+          if (hasDesignElements) {
+            // Generate mockup WITH design elements
+            result = await mockupGenerator.generateSingleMockup(
+              mockup,
+              designElements,
+              canvasConfigs,
+              printableAreas,
+              mockup.target_color,
+              productData,
+              1000
+            );
+          } else {
+            // Generate base mockup WITHOUT design elements (empty design elements)
+            const emptyDesignElements: Record<string, DesignElement[]> = {};
+            mockupAreas.forEach(area => {
+              emptyDesignElements[area] = [];
+            });
+            
+            result = await mockupGenerator.generateSingleMockup(
+              mockup,
+              emptyDesignElements,
+              canvasConfigs,
+              printableAreas,
+              mockup.target_color,
+              productData,
+              1000
+            );
+          }
+
+          engineUsage[result.engine]++;
+
+          selectedSizes.forEach(size => {
+            colorCombinations[0].size_variants.push({
+              size_name: size,
+              generated_images: [{
+                engine_used: result.engine,
+                image_data: result.imageData,
+                resolution: 1000,
+                generation_timestamp: new Date().toISOString(),
+                quality_metrics: result.metrics,
+                mockup_type: hasDesignElements ? 'custom_design' : 'base_template'
+              }]
+            });
+          });
+
+          completedCombinations++;
+
+        } catch (error) {
+          const errorMsg = `Failed: ${combinationId} - ${error.message}`;
+          errors.push(errorMsg);
+          //console.error(errorMsg);
+          
+          selectedSizes.forEach(size => {
+            colorCombinations[0].size_variants.push({
+              size_name: size,
+              generated_images: []
+            });
+          });
+        }
+
+      } else {
+        // Generate separate images for each size
+        for (const size of selectedSizes) {
+          const combinationId = `${mockup.title}-${mockup.target_color_name}-${size}-${hasDesignElements ? 'custom' : 'base'}`;
+          
+          onProgress?.({
+            total: totalCombinations,
+            completed: completedCombinations,
+            current_combination: combinationId,
+            current_mockup: mockup.title,
+            current_engine: 'canvas_professional',
+            errors: [...errors]
+          });
+
+          try {
+            let result;
+            
+            if (hasDesignElements) {
+              // Generate mockup WITH design elements
+              result = await mockupGenerator.generateSingleMockup(
+                mockup,
+                designElements,
+                canvasConfigs,
+                printableAreas,
+                mockup.target_color,
+                productData,
+                1000
+              );
+            } else {
+              // Generate base mockup WITHOUT design elements
+              const emptyDesignElements: Record<string, DesignElement[]> = {};
+              mockupAreas.forEach(area => {
+                emptyDesignElements[area] = [];
+              });
+              
+              result = await mockupGenerator.generateSingleMockup(
+                mockup,
+                emptyDesignElements,
+                canvasConfigs,
+                printableAreas,
+                mockup.target_color,
+                productData,
+                1000
+              );
+            }
+
+            engineUsage[result.engine]++;
+
+            colorCombinations[0].size_variants.push({
+              size_name: size,
+              generated_images: [{
+                engine_used: result.engine,
+                image_data: result.imageData,
+                resolution: 1000,
+                generation_timestamp: new Date().toISOString(),
+                quality_metrics: result.metrics,
+                mockup_type: hasDesignElements ? 'custom_design' : 'base_template'
+              }]
+            });
+
+          } catch (error) {
+            const errorMsg = `Failed: ${combinationId} - ${error.message}`;
+            errors.push(errorMsg);
+            //console.error(errorMsg);
+            
+            colorCombinations[0].size_variants.push({
+              size_name: size,
+              generated_images: []
+            });
+          }
+
+          completedCombinations++;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      mockupVariants.push({
+        mockup_id: mockup.id,
+        mockup_title: mockup.title,
+        view_angle: mockup.viewAngle || 'front',
+        mockup_color: mockup.photoColor,
+        has_design_elements: hasDesignElements,
+        mockup_areas: mockupAreas,
+        color_combinations: colorCombinations
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+  } catch (criticalError) {
+    errors.push(`Critical error: ${criticalError.message}`);
+  }
+
+  const generationEndTime = performance.now();
+  const totalTimeMs = generationEndTime - generationStartTime;
+  const generationCompleted = new Date().toISOString();
+
+  const totalImagesGenerated = mockupVariants.reduce((total, mockup) => 
+    total + mockup.color_combinations.reduce((colorTotal, color) => 
+      colorTotal + color.size_variants.reduce((sizeTotal, size) => 
+        sizeTotal + size.generated_images.length, 0), 0), 0);
+
+  const mockupCalculationResult: MockupCalculationResult = {
+    totalMockups: totalImagesGenerated,
+    calculationBreakdown: selectedColors.map(color => ({
+      color: color.name,
+      colorHex: color.value,
+      mockupsForColor: allMockups.filter(m => m.target_color === color.value).length,
+      sizesCount: selectedSizes.length,
+      subtotal: allMockups.filter(m => m.target_color === color.value).length * (productData.size_Images ? selectedSizes.length : 1),
+      mockups: allMockups.filter(m => m.target_color === color.value)
+    })),
+    strategy: productData.color_Images && productData.size_Images ? 'color_and_size_specific' : 
+             productData.color_Images ? 'color_specific' : 'shared_across_all'
+  };
+
+  return {
+    product_id: productData.id || `product-${Date.now()}`,
+    product_name: productData.name || 'Custom Product',
+    product_type: productData.productType || 'custom',
+    design_elements: designElements,
+    design_configuration: {
+      canvas_configs: canvasConfigs,
+      printable_areas: printableAreas,
+      design_metadata: {
+        total_elements: Object.values(designElements).flat().length,
+        areas_used: areasWithElements,
+        areas_available: [...areasWithElements, ...areasWithoutElements],
+        creation_timestamp: new Date().toISOString(),
+        last_modified: new Date().toISOString()
+      }
+    },
+    mockup_variants: mockupVariants,
+    generation_summary: {
+      total_combinations: totalCombinations,
+      total_images_generated: totalImagesGenerated,
+      generation_started: generationStarted,
+      generation_completed: generationCompleted,
+      total_time_ms: Math.round(totalTimeMs),
+      engine_usage: engineUsage,
+      mockup_calculation: mockupCalculationResult,
+      errors: errors,
+      areas_with_elements: areasWithElements,
+      areas_without_elements: areasWithoutElements,
+      custom_mockups: mockupVariants.filter(m => m.has_design_elements).length,
+      base_mockups: mockupVariants.filter(m => !m.has_design_elements).length
+    }
+  };
+}
+
+const handleImportToStore = useCallback(async () => {
   if (!hasDesignElements) {
     alert('⚠️ Please add design elements before importing to store.');
     return;
@@ -3791,81 +5373,418 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
     return;
   }
 
+  //console.log('🔧 IMPORT DEBUG - Starting import process...');
+  //console.log('🔧 Current designElements:', designElements);
+  //console.log('🔧 Available areas:', availableAreas);
+
+  // Generate detailed area analysis BEFORE import
+  //console.log('🔧 Generating detailed area analysis...');
+  const detailedAreaAnalysis = generateDetailedAreaAnalysis();
+  
+  //console.log('🔧 DETAILED AREA ANALYSIS:', detailedAreaAnalysis);
+  //console.log('🔧 Area Summary:', detailedAreaAnalysis.area_summary);
+
+  // Enhanced area identification with normalization
+  const normalizeAreaName = (areaName) => {
+    return areaName.toLowerCase().trim().replace(/\s+/g, '_');
+  };
+
+  // Get all areas that actually have design elements (with normalization)
+  const areasWithElements = [];
+  Object.keys(designElements).forEach(areaId => {
+    const elements = designElements[areaId] || [];
+    const visibleElements = elements.filter(element => element.visible !== false);
+    
+    //console.log(`🔧 Checking area "${areaId}": ${visibleElements.length} visible elements`);
+    
+    if (visibleElements.length > 0) {
+      const normalizedAreaId = normalizeAreaName(areaId);
+      areasWithElements.push(normalizedAreaId);
+      //console.log(`🔧 Added area with elements: ${normalizedAreaId} (original: ${areaId})`);
+    }
+  });
+
+  // Get ALL mockups and areas from technology
+  const allMockupsForTech = [];
+  const allAvailableAreas = new Set();
+  
+  // Process each selected color
+  selectedColors.forEach(color => {
+    const mockupsForColor = getMockupsForColor(productData, color.value, activeTechnology);
+    
+    //console.log(`🔧 Found ${mockupsForColor.length} mockups for color ${color.name} (${color.value})`);
+    
+    mockupsForColor.forEach(mockup => {
+      // Add this mockup to the processing list
+      allMockupsForTech.push({
+        ...mockup,
+        target_color: color.value,
+        target_color_name: color.name
+      });
+      
+      // Collect all area names from this mockup
+      if (mockup.area && Array.isArray(mockup.area)) {
+        mockup.area.forEach(area => {
+          if (area.areaName) {
+            const normalizedAreaName = normalizeAreaName(area.areaName);
+            allAvailableAreas.add(normalizedAreaName);
+            //console.log(`🔧 Found mockup area: ${normalizedAreaName} (original: ${area.areaName})`);
+          }
+        });
+      }
+    });
+  });
+
+  const allAreasList = Array.from(allAvailableAreas);
+  const areasWithoutElements = allAreasList.filter(area => !areasWithElements.includes(area));
+
+  //console.log('🔧 FINAL AREA ANALYSIS:');
+  //console.log('  - All available areas:', allAreasList);
+  //console.log('  - Areas with elements:', areasWithElements);
+  //console.log('  - Areas without elements:', areasWithoutElements);
+  //console.log('  - Total mockups to process:', allMockupsForTech.length);
+
+  // Validation
+  if (allMockupsForTech.length === 0) {
+    alert(`❌ No mockups found for technology: ${activeTechnology}. Please check your technology selection.`);
+    return;
+  }
+
+  if (allAreasList.length === 0) {
+    alert(`❌ No areas found in mockup data. Please check your product configuration.`);
+    return;
+  }
+
+  // Show detailed analysis to user before proceeding
+//   const analysisMessage = `
+// 📊 DESIGN ANALYSIS:
+// • Total Design Area: ${detailedAreaAnalysis.total_design_area_available.toFixed(1)}" sq
+// • Current Usage: ${detailedAreaAnalysis.current_image_area_used.toFixed(1)}" sq (${detailedAreaAnalysis.area_utilization_percentage}%)
+// • Areas with Content: ${detailedAreaAnalysis.areas_with_elements.join(', ')}
+// • Total Elements: ${detailedAreaAnalysis.area_summary.total_elements_across_all_areas}
+// • Complexity: ${detailedAreaAnalysis.area_summary.design_complexity_score.complexity_rating}
+
+// ELEMENT DETAILS:
+// ${detailedAreaAnalysis.areas_with_elements.map(areaId => {
+//   const areaBreakdown = detailedAreaAnalysis.detailed_areas_breakdown[areaId];
+//   const elements = detailedAreaAnalysis.element_details[areaId] || [];
+//   return `• ${areaId.toUpperCase()}: ${areaBreakdown.element_statistics.visible_elements} elements (${areaBreakdown.capacity.utilization_percentage}% used)
+//   ${elements.map(el => `  - ${el.element_name}: ${el.physical_dimensions.width_inches}" × ${el.physical_dimensions.height_inches}" ${el.transformations.rotation_degrees !== 0 ? `(rotated ${el.transformations.rotation_degrees}°)` : ''}`).join('\n  ')}`;
+// }).join('\n')}
+
+// MOCKUP GENERATION:
+// • Areas with custom designs: ${areasWithElements.join(', ') || 'None'}
+// • Areas with base mockups: ${areasWithoutElements.join(', ') || 'None'}
+// • Total mockups to generate: ${allMockupsForTech.length}
+// • Colors: ${selectedColors.map(c => c.name).join(', ')}
+// • Sizes: ${selectedSizes.join(', ')}
+
+// Continue with store import?`;
+
+  // if (!confirm(analysisMessage)) {
+  //   return;
+  // }
+
+  // Calculate pricing and continue with generation
+  const finalPricingBreakdown = calculateTotalPricing();
+  setPricingBreakdown(finalPricingBreakdown);
+
   try {
     setIsGeneratingForStore(true);
     setStoreImportData(null);
-    setStoreGenerationProgress(null);
+    
+    // Calculate total mockups for progress tracking
+    const customMockupsNeeded = allMockupsForTech.length * (productData.size_Images ? selectedSizes.length : 1);
+    
+    setStoreGenerationProgress({
+      total: customMockupsNeeded,
+      completed: 0,
+      current_combination: 'Initializing comprehensive store import...',
+      current_mockup: `Processing ${areasWithElements.length} areas with custom designs + ${areasWithoutElements.length} base areas`,
+      current_engine: 'canvas_professional',
+      errors: []
+    });
+    
     setShowStoreImportModal(true);
+    await new Promise(resolve => setTimeout(resolve, 200));
 
-     const filteredProductData: PayloadProductData = {
+    // Filter product data to active technology
+    const filteredProductData = {
       ...productData,
       printT: Array.isArray(productData?.printT)
-        ? productData.printT.filter((t: any) => t.id === activeTechnology || t.technologyName === activeTechnology)
+        ? productData.printT.filter((t) => t.id === activeTechnology || t.technologyName === activeTechnology)
         : []
     };
 
-    console.log("🔥 CANVAS: Created filteredProductData:", filteredProductData);
-    console.log("🔥 CANVAS: Active technology:", activeTechnology);
-    console.log("🔥 CANVAS: Filtered printT:", filteredProductData.printT);
+    if (filteredProductData.printT.length === 0) {
+      throw new Error(`No matching technology found for: ${activeTechnology}`);
+    }
 
-    // 🔥 EXTRACT DESIGN IMAGES FIRST
-    const designImages = extractDesignImages();
-    // Add these lines before mockupGenerator.generateForStoreImport
-    const canvasImages = exportAllCanvasImages();
-    console.log(`🎯 CANVAS DEBUG: Captured ${canvasImages.length} canvas images`);
-    console.log('🎯 CANVAS DEBUG: Canvas images data:', canvasImages);
-    canvasImages.forEach((img, index) => {
-      console.log(`🎯 CANVAS DEBUG: Image ${index + 1}:`, {
-        area_id: img.area_id,
-        has_image_data: !!img.image_data,
-        image_data_length: img.image_data?.length || 0,
-        metadata_areas: img.metadata?.area_name
-      });
-    });
+    // Set product data for mockup generator
+    mockupGenerator.setProductData(filteredProductData);
 
+    // Enhanced progress callback
+    const progressCallback = (progress) => {
+      //console.log(`🔧 Generation Progress: ${progress.completed}/${progress.total} - ${progress.current_combination}`);
+      setStoreGenerationProgress({ ...progress });
+      
+      if (progress.errors && progress.errors.length > 0) {
+        //console.error('🔧 Generation errors:', progress.errors);
+      }
+    };
 
-    const importData = await mockupGenerator.generateForStoreImport(
+    //console.log('🔧 Starting comprehensive mockup generation for ALL areas...');
+    
+    // Generate comprehensive mockups
+    const comprehensiveImportData = await generateComprehensiveMockups(
       filteredProductData,
       selectedColors,
       selectedSizes,
+      areasWithElements,
+      areasWithoutElements,
       getVisibleDesignElements(designElements),
       getAllCanvasConfigs,
       getAllPrintableAreas,
-      mockupCalculation,
-      setStoreGenerationProgress
+      allMockupsForTech,
+      progressCallback
     );
 
-    importData.canvas_images = canvasImages;
-    console.log('🎯 CANVAS DEBUG: Added canvas images to importData');
-    console.log('🎯 CANVAS DEBUG: importData.canvas_images length:', importData.canvas_images?.length || 0);
-    // 🔥 ADD DESIGN IMAGES TO IMPORT DATA
-    importData.design_images = designImages; // Add design images to the import data
+    // console.log('🔧 Comprehensive generation completed:', {
+    //   totalImages: comprehensiveImportData.generation_summary.total_images_generated,
+    //   timeMs: comprehensiveImportData.generation_summary.total_time_ms,
+    //   errors: comprehensiveImportData.generation_summary.errors.length,
+    //   areasWithElements: areasWithElements,
+    //   areasWithoutElements: areasWithoutElements
+    // });
 
-    setStoreImportData(importData);
+    if (comprehensiveImportData.generation_summary.total_images_generated === 0) {
+      throw new Error(`No mockup images were generated. Check mockup configuration for technology: ${activeTechnology}`);
+    }
 
-    const transformedData = transformStoreDataForCreate(importData, filteredProductData);
-    navigateToCreatePage(transformedData);
+    // Add detailed area analysis to import data
+    comprehensiveImportData.detailed_area_analysis = detailedAreaAnalysis;
+    
+    // Enhance existing imageAreaAnalysis with detailed element info
+    comprehensiveImportData.image_area_analysis = {
+      ...comprehensiveImportData.image_area_analysis,
+      detailed_element_breakdown: detailedAreaAnalysis.element_details,
+      area_specifications: Object.fromEntries(
+        Object.entries(detailedAreaAnalysis.detailed_areas_breakdown).map(([areaId, breakdown]) => [
+          areaId, 
+          breakdown.area_specifications
+        ])
+      ),
+      design_complexity: detailedAreaAnalysis.area_summary.design_complexity_score,
+      
+      // Quick access element summary for Create component
+      elements_summary: Object.fromEntries(
+        Object.entries(detailedAreaAnalysis.element_details).map(([areaId, elements]) => [
+          areaId,
+          elements.map(element => ({
+            id: element.element_id,
+            name: element.element_name,
+            type: element.element_type,
+            dimensions: {
+              width_inches: element.physical_dimensions.width_inches,
+              height_inches: element.physical_dimensions.height_inches,
+              area_square_inches: element.physical_dimensions.area_square_inches,
+              width_pixels: element.pixel_dimensions.width_pixels,
+              height_pixels: element.pixel_dimensions.height_pixels
+            },
+            transformations: {
+              rotation_degrees: element.transformations.rotation_degrees,
+              is_rotated: element.transformations.is_rotated,
+              is_scaled: element.transformations.is_scaled,
+              scale_x: element.transformations.scale_x,
+              scale_y: element.transformations.scale_y
+            },
+            quality: {
+              dpi: element.print_quality.dpi,
+              rating: element.print_quality.quality_rating,
+              is_print_ready: element.print_quality.is_print_ready
+            },
+            positioning: element.positioning
+          }))
+        ])
+      )
+    };
 
+    // Add additional comprehensive store data
+    const designImages = extractDesignImages();
+    const canvasImages = exportAllCanvasImages();
+    
+    comprehensiveImportData.canvas_images = canvasImages;
+    comprehensiveImportData.design_images = designImages;
+    
+    // Add available mockups data
+    const availableMockupsForStore = [];
+    allMockupsForTech.forEach(mockup => {
+      const mockupAreas = mockup.area?.map(area => area.areaName?.toLowerCase()) || [];
+      const hasDesignElements = mockupAreas.some(areaName => 
+        areasWithElements.some(elementArea => elementArea.toLowerCase() === areaName)
+      );
+
+      availableMockupsForStore.push({
+        mockup_id: mockup.id,
+        mockup_title: mockup.title,
+        mockup_photo_url: resolveImageUrl(mockup.photo?.url || ''),
+        view_angle: mockup.viewAngle || 'front',
+        mockup_type: mockup.mockupType || 'product',
+        photo_color: mockup.photoColor || '#ffffff',
+        priority: mockup.priority || 0,
+        target_color: mockup.target_color,
+        target_color_name: mockup.target_color_name,
+        technology: activeTechnology,
+        technology_name: getCurrentTechnology()?.technologyName || activeTechnology,
+        has_design_elements: hasDesignElements,
+        areas: mockup.area?.map(area => ({
+          area_id: area.id,
+          area_name: area.areaName,
+          has_elements: areasWithElements.some(elementArea => elementArea.toLowerCase() === area.areaName?.toLowerCase()),
+          visibility: area.visibility || 'full',
+          design_coordinates: {
+            x: area.design?.coordinateX || 0,
+            y: area.design?.coordinateY || 0,
+            width: area.design?.coordinateWidth || 1,
+            height: area.design?.coordinateHeight || 1,
+            rotation: area.design?.rotation || 0,
+            scale_x: area.design?.scaleX || 1,
+            scale_y: area.design?.scaleY || 1,
+            opacity: area.design?.opacity || 1,
+            blend_mode: area.design?.blend || 'normal'
+          }
+        })) || []
+      });
+    });
+
+    comprehensiveImportData.available_mockups = {
+      technology_id: activeTechnology,
+      technology_name: getCurrentTechnology()?.technologyName || activeTechnology,
+      selected_colors: selectedColors,
+      all_available_areas: allAreasList,
+      areas_with_elements: areasWithElements,
+      areas_without_elements: areasWithoutElements,
+      total_available_mockups: availableMockupsForStore.length,
+      mockups_by_color: selectedColors.map(color => ({
+        color_name: color.name,
+        color_hex: color.value,
+        mockup_count: availableMockupsForStore.filter(m => m.target_color === color.value).length,
+        mockups_with_elements: availableMockupsForStore.filter(m => m.target_color === color.value && m.has_design_elements).length,
+        mockups_base_only: availableMockupsForStore.filter(m => m.target_color === color.value && !m.has_design_elements).length,
+        mockups: availableMockupsForStore.filter(m => m.target_color === color.value)
+      })),
+      all_mockups: availableMockupsForStore
+    };
+
+    let totalCurrentImageArea = 0;
+    Object.values(finalPricingBreakdown.areas).forEach(area => {
+      totalCurrentImageArea += area.currentImageArea;
+    });
+
+    comprehensiveImportData.pricing_data = {
+      final_price_per_unit: Number(finalPricingBreakdown.priceBreakdown.finalPrice.toFixed(2)),
+      currency: 'INR',
+      technology: activeTechnology,
+      technology_name: getCurrentTechnology()?.technologyName || activeTechnology,
+      pricing_breakdown: finalPricingBreakdown,
+      areas_pricing: finalPricingBreakdown.areas,
+      areas_with_elements: areasWithElements,
+      areas_without_elements: areasWithoutElements,
+      total_design_area: finalPricingBreakdown.totalDesignArea,
+      base_printing_cost: finalPricingBreakdown.priceBreakdown.basePrintingCost,
+      blank_product_cost: finalPricingBreakdown.priceBreakdown.blankProductCost,
+      setup_fees: finalPricingBreakdown.priceBreakdown.setupFees,
+      additional_costs: finalPricingBreakdown.priceBreakdown.additionalCosts,
+      markup: finalPricingBreakdown.priceBreakdown.markup,
+      price_calculation_details: {
+        minimum_prices: Object.values(finalPricingBreakdown.areas).map(area => ({
+          area: area.areaId,
+          has_elements: areasWithElements.includes(area.areaId),
+          minimum_price: area.minimumPrice,
+          price_per_sq_inch: area.pricePerSquareInch
+        })),
+        element_dimensions: Object.values(finalPricingBreakdown.areas)
+          .filter(area => areasWithElements.includes(area.areaId))
+          .flatMap(area => 
+            area.elements.map(element => ({
+              element_id: element.elementId,
+              element_name: element.elementName,
+              area: area.areaId,
+              area_square_inches: element.areaSquareInches,
+              element_price: element.elementPrice,
+              original_area: element.originalArea,
+              extra_area: element.extraArea
+            }))
+          )
+      },
+      quantity_pricing: {
+        selected_colors_count: selectedColors.length,
+        selected_sizes_count: selectedSizes.length,
+        total_variants: selectedColors.length * selectedSizes.length,
+        estimated_total_cost: Number((finalPricingBreakdown.priceBreakdown.finalPrice * selectedColors.length * selectedSizes.length).toFixed(2))
+      }
+    };
+
+    // console.log('🔧 Enhanced import data created with detailed analysis:', {
+    //   totalElements: detailedAreaAnalysis.area_summary.total_elements_across_all_areas,
+    //   complexityRating: detailedAreaAnalysis.area_summary.design_complexity_score.complexity_rating,
+    //   utilizationPercentage: detailedAreaAnalysis.area_utilization_percentage,
+    //   areasWithContent: detailedAreaAnalysis.areas_with_elements.length
+    // });
+
+    setStoreImportData(comprehensiveImportData);
+
+    setStoreGenerationProgress(prev => ({
+      ...prev,
+      current_combination: 'Generation Complete!',
+      current_mockup: `Generated ${comprehensiveImportData.generation_summary.total_images_generated} mockups for all areas: ${allAreasList.join(', ')}`,
+      completed: prev?.total || customMockupsNeeded
+    }));
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // console.log('🔧 Transforming comprehensive data and navigating...');
+    const transformedData = transformStoreDataForCreate(comprehensiveImportData, filteredProductData);
+     navigateToCreatePage(transformedData);
 
   } catch (error) {
-    alert(`❌ Store import generation failed: ${error.message}`);
+    //console.error('🔧 Enhanced store import failed:', error);
+    
+    setStoreGenerationProgress(prev => ({
+      ...prev,
+      current_combination: 'Error occurred',
+      current_mockup: error.message,
+      errors: [...(prev?.errors || []), error.message]
+    }));
+    
+    alert(`Store import failed: ${error.message}`);
   } finally {
-    setIsGeneratingForStore(false);
+    setTimeout(() => {
+      setIsGeneratingForStore(false);
+    }, 2000);
   }
 }, [
   hasDesignElements,
   selectedColors,
   selectedSizes,
   mockupCalculation,
+  generateDetailedAreaAnalysis,
   productData,
   activeTechnology,
   designElements,
   getAllCanvasConfigs,
   getAllPrintableAreas,
   mockupGenerator,
-  extractDesignImages, // Add this dependency
+  extractDesignImages,
+  exportAllCanvasImages,
+  calculateTotalPricing,
+  getCurrentTechnology,
+  getMockupsForColor,
+  resolveImageUrl,
   transformStoreDataForCreate,
-  navigateToCreatePage
+  navigateToCreatePage,
+  getVisibleDesignElements,
+  generateComprehensiveMockups
 ]);
 
 const renderUploadPanel = () => {
@@ -4143,26 +6062,20 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
 
 
 
-  const handleFileUpload = useCallback(async (files) => {
+const handleFileUpload = useCallback(async (files) => {
   if (!files) return;
   
   for (const file of Array.from(files)) {
     try {
-      
-      // ✅ GUARANTEED base64 conversion
       const base64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target.result;
-          resolve(result);
-        };
+        reader.onload = (e) => resolve(e.target.result);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
       
       const blobUrl = URL.createObjectURL(file);
       
-      // Store uploaded file
       setUploadedFiles(prev => [...prev, {
         id: `file-${Date.now()}`,
         file, url: blobUrl, base64Data,
@@ -4170,23 +6083,20 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
         uploadProgress: 100, isUploading: false, targetArea: activeArea
       }]);
       
-      // ✅ CRITICAL: Add to canvas with state protection
       const success = await addImageToCanvasWithStateProtection(blobUrl, file.name, activeArea, base64Data);
       
       if (success) {
-        
-        // ✅ IMMEDIATE STATE VERIFICATION
+        // 🔥 NEW: Trigger pricing calculation after successful upload
         setTimeout(() => {
-          const currentImages = Object.values(designElements).flat().filter(el => el.type === 'image');
-          if (currentImages.length === 0) {
-          }
-        }, 100);
+          updatePricingData();
+        }, 500); // Small delay to ensure state is updated
       }
       
     } catch (error) {
+      //console.error('Error uploading file:', error);
     }
   }
-}, [activeArea, designElements]);
+}, [activeArea, addImageToCanvasWithStateProtection, updatePricingData]);
 
 
   
@@ -4412,308 +6322,589 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
   // PREVIEW RENDERING
   // =====================================
   
-  const renderPreview = useCallback(() => {
-    
-    const surfaceConfig = getSurfaceConfiguration();
-    
-    if (allMockups.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center text-gray-500">
-            <div className="mb-4 text-4xl">🖼️</div>
-            <p className="font-medium">No mockups available</p>
-          </div>
-        </div>
-      );
-    }
-    
-    const canvasConfigs = getAllCanvasConfigs;
-    const printableAreas = getAllPrintableAreas;
-    
+const renderPreview = useCallback(() => {
+  const surfaceConfig = getSurfaceConfiguration();
+  
+  // Early return if no selections made
+  if (selectedColors.length === 0 || selectedSizes.length === 0) {
     return (
-      <div className="flex h-full">
-        {/* Enhanced Mockup Thumbnails - Hidden on Mobile */}
-        <div className="hidden w-64 p-4 bg-white border-r border-gray-200 sm:block">
-          
-          <div className="space-y-2 max-h-[calc(100vh-120px)] overflow-y-auto">
-            {colorSpecificMockupGroups.length > 0 ? (
-              colorSpecificMockupGroups.flatMap(group => 
-              group.mockups.map((mockup, index) => {
-               
-                const thumbnailProductColor = group.colorHex;
-                
-                return (
-                  <ThumbnailPreview
-                    key={`${group.colorHex}-${mockup.id}`}
-                    mockup={mockup}
-                   designElements={getVisibleDesignElements(designElements)} 
-                    canvasConfigs={canvasConfigs}
-                    canvasPrintableAreas={printableAreas}
-                    productColor={thumbnailProductColor} // ✅ This will now be the correct group color
-                    isSelected={selectedHeroMockup?.id === mockup.id || (!selectedHeroMockup && index === 0)}
-                    onSelect={() => {
-                      console.log('Manual mockup selection:', mockup.title, mockup.photoColor);
-                      setSelectedHeroMockup(mockup); // Allow manual selection
-                    }}
-                    productData={productData}
-                  />
-                );
-              })
-            )
-            ) : (
-              allMockups.slice(0, 5).map((mockup, index) => {
-                const mockupProductColor = activeColor;
-                
-                return (
-                  <ThumbnailPreview
-                    key={mockup.id}
-                    mockup={mockup}
-                   designElements={getVisibleDesignElements(designElements)} 
-                    canvasConfigs={canvasConfigs}
-                    canvasPrintableAreas={printableAreas}
-                    productColor={mockupProductColor}
-                    isSelected={selectedHeroMockup?.id === mockup.id || (!selectedHeroMockup && index === 0)}
-                    onSelect={() => setSelectedHeroMockup(mockup)}
-                    productData={productData}
-                  />
-                );
-              })
-            )}
-            
-            {allMockups.length === 0 && (
-              <div className="py-8 text-center text-gray-500">
-                <div className="mb-2 text-2xl">🎨</div>
-                <p className="text-sm">No mockups available</p>
-              </div>
-            )}
-          </div>
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center text-gray-500">
+          <div className="mb-4 text-4xl">🎨</div>
+          <p className="font-medium">Select colors and sizes to see preview</p>
+          <p className="mt-2 text-sm">Choose options from the design panel</p>
         </div>
-        
-        {/* Main Preview */}
-        <div className="flex flex-col flex-1 p-2 overflow-y-auto sm:p-4">
+      </div>
+    );
+  }
+  
+  if (allMockups.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center text-gray-500">
+          <div className="mb-4 text-4xl">🖼️</div>
+          <p className="font-medium">No mockups available</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const canvasConfigs = getAllCanvasConfigs;
+  const printableAreas = getAllPrintableAreas;
+
+   const getMockupDimensions = (mockup: DynamicMockupPhoto, type: 'thumbnail' | 'mockup') => {
+    if (type === 'thumbnail') {
+      return {
+        width: mockup.tmbwidthpx || 220,
+        height: mockup.tmbhigtpx || 220
+      };
+    } else {
+      return {
+        width: mockup.mocwidthpx || 500,
+        height: mockup.mochigtpx || 500
+      };
+    }
+  };
+  
+  return (
+    <div className="flex h-full">
+      {/* Enhanced Mockup Thumbnails - Hidden on Mobile */}
+      <div className="hidden w-56 p-4 bg-white border-r border-gray-200 sm:block">
+        <div className="space-y-6 max-h-[calc(100vh-120px)] overflow-y-auto">
           
-          {/* Main Preview Content */}
-          <div className="flex items-center justify-center flex-1">
-          <div className="relative">
-            <div className="w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] relative bg-gray-50 rounded-lg overflow-hidden shadow-lg">
-              {(() => {
-                const heroMockup = selectedHeroMockup || allMockups[0];
-
-                // For the main preview, use the active color if mockup is neutral, otherwise use mockup's color
-                const heroProductColor = (() => {
-                  if (!heroMockup) return activeColor;
-                  
-                  const mockupColor = heroMockup.photoColor?.toLowerCase() || '';
-                  const neutralColors = ['#ffffff', '#f5f5f5', '#fafafa', 'white'];
-                  
-                  // If mockup is neutral, use active color
-                  if (neutralColors.includes(mockupColor)) {
-                    return activeColor;
-                  }
-                  
-                  // If mockup has specific color, use that
-                  return heroMockup.photoColor || activeColor;
-                })();
-
-              console.log("mockup selected color:",heroMockup);
+          {/* Color Thumbnails Section */}
+          {/* <div>
+            <h4 className="flex items-center mb-3 text-sm font-medium text-gray-700">
+              <div className="w-3 h-3 mr-2 bg-blue-500 rounded-full"></div>
+              Selected Colors
+              <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                {selectedColors.length}
+              </span>
+            </h4>
+            
+            <div className="space-y-2">
+              {selectedColors.map(selectedColor => {
+                const colorMockups = getMockupsForColor(productData, selectedColor.value, activeTechnology);
+                const areaSpecificMockups = colorMockups.filter(mockup => {
+                  return mockup.area?.some(area => 
+                    area.areaName?.toLowerCase() === activeArea.toLowerCase()
+                  );
+                });
                 
-                if (!heroMockup) {
-                  return (
-                    <div className="flex items-center justify-center w-full h-full text-gray-400">
-                      <div className="text-center">
-                        <div className="mb-4 text-4xl">🎨</div>
-                        <p className="font-medium">Select colors to see preview</p>
-                        <p className="mt-2 text-sm">Choose colors from the design panel</p>
+                const mockupToShow = areaSpecificMockups[0] || colorMockups[0];
+                
+                if (!mockupToShow) return null;
+                
+                const isActiveColor = activeColor === selectedColor.value;
+                
+                return (
+                  <div key={`color-${selectedColor.value}`}>
+                    <button
+                      onClick={() => setActiveColor(selectedColor.value)}
+                      className={`w-full p-2 border rounded-lg transition-all touch-manipulation ${
+                        isActiveColor
+                          ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                          : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="relative mb-2 overflow-hidden bg-gray-100 rounded aspect-square">
+                        <ThumbnailPreview
+                          mockup={mockupToShow}
+                          designElements={getVisibleDesignElements(designElements)} 
+                          canvasConfigs={canvasConfigs}
+                          canvasPrintableAreas={printableAreas}
+                          productColor={selectedColor.value}
+                          displayDimensions={{ width: 250, height: 250 }}
+                          isSelected={isActiveColor}
+                          onSelect={() => setActiveColor(selectedColor.value)}
+                          productData={productData}
+                        />
+                        
+                        {isActiveColor && (
+                          <div className="absolute top-2 right-2">
+                            <div className="flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
+                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
                       </div>
+                      
+                      <div className="text-center">
+                        <p className="text-xs font-medium">{selectedColor.name}</p>
+                        <div className="flex items-center justify-center mt-1">
+                          <div 
+                            className="w-4 h-4 mr-1 border rounded"
+                            style={{ backgroundColor: selectedColor.value }}
+                          />
+                          <span className="text-xs text-gray-500">{activeArea}</span>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div> */}
+          
+          {/* Available Mockups Section */}
+          <div>
+            {/* <h4 className="flex items-center mb-3 text-sm font-medium text-gray-700">
+              <div className="w-3 h-3 mr-2 bg-orange-500 rounded-full"></div>
+              Available Mockups
+              <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
+                {(() => {
+                  const mockups = getMockupsForColor(productData, activeColor, activeTechnology);
+                  return mockups.length;
+                })()}
+              </span>
+            </h4> */}
+            
+            {/* <div className="mb-2 text-xs text-gray-500">
+              For: {selectedColors.find(c => c.value === activeColor)?.name || 'Active Color'}
+            </div> */}
+            
+            <div className="space-y-2">
+              {(() => {
+                const colorMockups = getMockupsForColor(productData, activeColor, activeTechnology);
+                
+                if (colorMockups.length === 0) {
+                  return (
+                    <div className="p-4 text-center text-gray-500 rounded-lg bg-gray-50">
+                      <div className="text-sm">No mockups available</div>
+                      <div className="mt-1 text-xs">for selected color</div>
                     </div>
                   );
                 }
                 
-        return (
-                <div className="w-full h-full">
-                  {/* ✅ CUSTOM MAIN PREVIEW - Using ThumbnailPreview logic but styled for main preview */}
-                  <div 
-                    className="w-full h-full p-0 transition-all cursor-default"
-                  >
-                    <div className="relative w-full h-full overflow-hidden rounded">
+                return colorMockups.map((mockup, index) => {
+                  const isSelectedMockup = selectedHeroMockup?.id === mockup.id || 
+                                           (!selectedHeroMockup && index === 0);
+                  
+                  const mockupAreaName = mockup.area?.[0]?.areaName || mockup.viewAngle || mockup.title || `View ${index + 1}`;
+
+                   // 🔥 Get thumbnail dimensions from PayloadCMS
+                  const thumbnailDims = getMockupDimensions(mockup, 'thumbnail');
+                  //console.log('Thumbnail dimensions:', thumbnailDims);
+                  
+                  return (
+                    <div key={`mockup-${mockup.id}`}>
+                      <button
+                        onClick={() => setSelectedHeroMockup(mockup)}
+                        className={`w-full p-2 border rounded-lg transition-all touch-manipulation ${
+                          isSelectedMockup
+                            ? 'border-orange-500 ring-2 ring-orange-200'
+                            : 'border-white-200 hover:border-white-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="relative mb-2 overflow-hidden rounded bg-white-100 aspect-square">
+                          <ThumbnailPreview
+                            mockup={mockup}
+                            designElements={getVisibleDesignElements(designElements)} 
+                            canvasConfigs={canvasConfigs}
+                            canvasPrintableAreas={printableAreas}
+                            productColor={activeColor}
+                            displayDimensions={thumbnailDims}
+                            isSelected={isSelectedMockup}
+                            onSelect={() => setSelectedHeroMockup(mockup)}
+                            productData={productData}
+                          />
+                                         
+                          
+                        </div>
+                      </button>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Main Preview */}
+      <div className="flex flex-col flex-1 p-2 overflow-y-auto sm:px-4 sm:py-2">
+        <div className="flex items-center justify-center flex-1">
+          {/* Main Container - Preview + Color Circles */}
+          <div className="flex flex-col items-center gap-4">
+            
+            {/* 🔥 MOBILE: Color Circles ABOVE Preview */}
+            {isMobile && (
+              <div className="w-[300px]">
+                <div className="flex flex-wrap justify-center gap-3 py-2">
+                  {selectedColors.map((color) => {
+                    const isActive = activeColor === color.value;
+                    
+                    return (
+                      <button
+                        key={color.value}
+                        onClick={() => setActiveColor(color.value)}
+                        className="flex flex-col items-center group"
+                        title={`${color.name} - Click to activate`}
+                      >
+                        <div className="relative">
+                          <div
+                            className={`w-10 h-10 rounded-full border-3 transition-all transform hover:scale-110 shadow-md ${
+                              isActive
+                                ? 'scale-110'
+                                : 'border-gray-300 group-hover:border-gray-400 group-hover:shadow-lg'
+                            }`}
+                            style={{ 
+                              backgroundColor: color.value,
+                              borderColor: isActive ? '#e65100' : undefined,
+                              boxShadow: isActive ? '0 0 0 4px rgba(230, 81, 0, 0.3)' : undefined
+                            }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Main Preview */}
+            <div className="relative">
+              <div className="w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] relative bg-gray-50 rounded-lg overflow-hidden shadow-lg">
+                {(() => {
+                  const getHeroMockupForActiveColorAndArea = () => {
+                    if (selectedHeroMockup) {
+                      return selectedHeroMockup;
+                    }
+                    
+                    const colorMockups = getMockupsForColor(productData, activeColor, activeTechnology);
+                    const areaSpecificMockups = colorMockups.filter(mockup => {
+                      return mockup.area?.some(area => 
+                        area.areaName?.toLowerCase() === activeArea.toLowerCase()
+                      );
+                    });
+                    
+                    return areaSpecificMockups[0] || colorMockups[0] || null;
+                  };
+                  
+                  const heroMockup = getHeroMockupForActiveColorAndArea();
+                  
+                  if (!heroMockup) {
+                    const activeColorName = selectedColors.find(c => c.value === activeColor)?.name || 'selected color';
+                    return (
+                      <div className="flex items-center justify-center w-full h-full text-gray-400">
+                        <div className="text-center">
+                          <div className="mb-4 text-4xl">🎨</div>
+                          <p className="font-medium">No preview available</p>
+                          <p className="mt-2 text-sm">for <strong>{activeArea}</strong> area</p>
+                          <p className="text-sm">in <strong>{activeColorName}</strong></p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  const mockupDims = getMockupDimensions(heroMockup, 'mockup');            
+              
+                  return (
+                    <div className="w-full h-full">
                       <ThumbnailPreview
                         mockup={heroMockup}
                         designElements={getVisibleDesignElements(designElements)}  
                         canvasConfigs={canvasConfigs}
                         canvasPrintableAreas={printableAreas}
-                        productColor={heroProductColor}
-                        displayDimensions={{ width: 400, height: 400 }} // 🔥 HIGH RESOLUTION
+                        productColor={activeColor}
+                        displayDimensions={mockupDims}
                         isMainPreview={true}
-                        isSelected={true} // Always selected for main preview
-                        onSelect={() => {}} // No action needed for main preview
+                        isSelected={true}
+                        onSelect={() => {}}
                         productData={productData}
                       />
                     </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-              
+                  );
+                })()}
+              </div>
             </div>
+            
+            {/* 🔥 MOBILE: Mockup Thumbnails - Horizontal Scrollable BELOW Preview */}
+            {isMobile && (
+              <div className="w-[300px]">
+                <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  {(() => {
+                    const colorMockups = getMockupsForColor(productData, activeColor, activeTechnology);
+                    
+                    if (colorMockups.length === 0) {
+                      return (
+                        <div className="flex items-center justify-center w-full p-4 text-center text-gray-500 rounded-lg bg-gray-50">
+                          <div className="text-sm">No mockups available</div>
+                        </div>
+                      );
+                    }
+                    
+                    return colorMockups.map((mockup, index) => {
+                      const isSelectedMockup = selectedHeroMockup?.id === mockup.id || 
+                                              (!selectedHeroMockup && index === 0);
+                      
+                      const thumbnailDims = getMockupDimensions(mockup, 'thumbnail');
+                      
+                      return (
+                        <div key={`mobile-mockup-${mockup.id}`} className="flex-shrink-0">
+                          <button
+                            onClick={() => setSelectedHeroMockup(mockup)}
+                            className={`w-20 h-20 p-1 border rounded-lg transition-all touch-manipulation ${
+                              isSelectedMockup
+                                ? 'border-orange-500 ring-2 ring-orange-200'
+                                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                            }`}
+                          >
+                            <div className="relative w-full h-full overflow-hidden bg-gray-100 rounded">
+                              <ThumbnailPreview
+                                mockup={mockup}
+                                designElements={getVisibleDesignElements(designElements)} 
+                                canvasConfigs={canvasConfigs}
+                                canvasPrintableAreas={printableAreas}
+                                productColor={activeColor}
+                                displayDimensions={thumbnailDims}
+                                isSelected={isSelectedMockup}
+                                onSelect={() => setSelectedHeroMockup(mockup)}
+                                productData={productData}
+                              />
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
+            
+            {/* 🔥 DESKTOP: Color Circles BELOW Preview (unchanged) */}
+            {!isMobile && (
+              <div className="w-[400px]">
+                <div className="flex flex-wrap justify-center gap-3 py-0">
+                  {selectedColors.map((color) => {
+                    const isActive = activeColor === color.value;
+                    
+                    return (
+                      <button
+                        key={color.value}
+                        onClick={() => setActiveColor(color.value)}
+                        className="flex flex-col items-center group"
+                        title={`${color.name} - Click to activate`}
+                      >
+                        <div className="relative">
+                          <div
+                            className={`w-10 h-10 rounded-full border-3 transition-all transform hover:scale-110 shadow-md ${
+                              isActive
+                                ? 'scale-110'
+                                : 'border-gray-300 group-hover:border-gray-400 group-hover:shadow-lg'
+                            }`}
+                            style={{ 
+                              backgroundColor: color.value,
+                              borderColor: isActive ? '#e65100' : undefined,
+                              boxShadow: isActive ? '0 0 0 4px #e65100' : undefined
+                            }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    );
-  }, [
-    allMockups,
-    selectedColors,
-    selectedHeroMockup,
-    designElements, 
-    getAllCanvasConfigs, 
-    getAllPrintableAreas, 
-    productData,
-    getSurfaceConfiguration,
-    brandColor,
-    selectedSizes.length,
-    handleImportToStore,
-    hasDesignElements,
-    isGeneratingForStore,
-    mockupCalculation,
-    colorSpecificMockupGroups,
-    activeColor,
-    getProductColorForMockup
-  ]);
+      
+    </div>
+  );
+}, [
+  allMockups,
+  selectedColors,
+  selectedSizes,
+  selectedHeroMockup,
+  designElements, 
+  getAllCanvasConfigs, 
+  getAllPrintableAreas, 
+  productData,
+  getSurfaceConfiguration,
+  activeArea,
+  activeColor,
+  activeTechnology,
+  availableAreas,
+  getVisibleDesignElements
+]);
   
   // =====================================
   // CANVAS RENDERING
   // =====================================
   
   const renderDesignElements = useCallback((areaId: string) => {
-    const elements = designElements[areaId] || [];
-    
-    return elements
-      .filter(element => element.visible !== false)
-      .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
-      .map(element => {
-        const isSelected = selectedId === element.id;
-        const isLocked = element.locked || false;
-        
-        if (element.type === 'image' && element.image) {
-          return (
-            <KonvaImage
-              key={element.id}
-              id={element.id}
-              image={element.image}
-              x={element.x}
-              y={element.y}
-              width={element.width}
-              height={element.height}
-              rotation={element.rotation}
-              scaleX={element.scaleX}
-              scaleY={element.scaleY}
-              draggable={element.draggable && !isLocked}
-              opacity={element.opacity || 1}
-              listening={!isLocked}
-              onClick={() => !isLocked && setSelectedId(element.id)}
-              onDragEnd={(e) => {
-                if (isLocked) return;
-                setDesignElements(prev => {
-                  const updated = { ...prev };
-                  if (updated[areaId]) {
-                    updated[areaId] = updated[areaId].map(el =>
-                      el.id === element.id ? { ...el, x: e.target.x(), y: e.target.y() } : el
-                    );
-                  }
-                  return updated;
-                });
-              }}
-              onTransformEnd={(e) => {
-                if (isLocked) return;
-                const node = e.target;
-                
-                const scaleX = node.scaleX();
-                const scaleY = node.scaleY();
-                
-                setDesignElements(prev => {
-                  const updated = { ...prev };
-                  if (updated[areaId]) {
-                    updated[areaId] = updated[areaId].map(el =>
-                      el.id === element.id ? {
-                        ...el,
-                        x: node.x(),
-                        y: node.y(),
-                        rotation: node.rotation(),
-                        width: Math.max(10, node.width() * scaleX),
-                        height: Math.max(10, node.height() * scaleY),
-                        scaleX: 1,
-                        scaleY: 1,
-                      } : el
-                    );
-                  }
-                  return updated;
-                });
-                
-                node.scaleX(1);
-                node.scaleY(1);
-              }}
-            />
-          );
-        }
-        
-        if (element.type === 'text') {
-          return (
-            <KonvaText
-              key={element.id}
-              id={element.id}
-              text={element.text || 'Text'}
-              x={element.x}
-              y={element.y}
-              width={element.width}
-              fontSize={element.fontSize || 20}
-              fontFamily={element.fontFamily || 'Arial'}
-              fill={element.fill || '#000000'}
-              rotation={element.rotation}
-              scaleX={element.scaleX}
-              scaleY={element.scaleY}
-              draggable={element.draggable && !isLocked}
-              opacity={element.opacity || 1}
-              listening={!isLocked}
-              onClick={() => !isLocked && setSelectedId(element.id)}
-              onDragEnd={(e) => {
-                if (isLocked) return;
-                setDesignElements(prev => {
-                  const updated = { ...prev };
-                  if (updated[areaId]) {
-                    updated[areaId] = updated[areaId].map(el =>
-                      el.id === element.id ? { ...el, x: e.target.x(), y: e.target.y() } : el
-                    );
-                  }
-                  return updated;
-                });
-              }}
-              onTransformEnd={(e) => {
-                if (isLocked) return;
-                const node = e.target;
-                setDesignElements(prev => {
-                  const updated = { ...prev };
-                  if (updated[areaId]) {
-                    updated[areaId] = updated[areaId].map(el =>
-                      el.id === element.id ? {
-                        ...el,
-                        x: node.x(),
-                        y: node.y(),
-                        rotation: node.rotation(),
-                        scaleX: node.scaleX(),
-                        scaleY: node.scaleY(),
-                      } : el
-                    );
-                  }
-                  return updated;
-                });
-              }}
-            />
-          );
-        }
-        
-        return null;
-      });
-  }, [designElements, selectedId]);
+  const elements = designElements[areaId] || [];
+  
+  return elements
+    .filter(element => element.visible !== false)
+    .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
+    .map(element => {
+      const isSelected = selectedId === element.id;
+      const isLocked = element.locked || false;
+      
+      if (element.type === 'image' && element.image) {
+        return (
+          <KonvaImage
+            key={element.id}
+            id={element.id}
+            image={element.image}
+            x={element.x}
+            y={element.y}
+            width={element.width}
+            height={element.height}
+            rotation={element.rotation}
+            scaleX={element.scaleX}
+            scaleY={element.scaleY}
+            draggable={element.draggable && !isLocked}
+            opacity={element.opacity || 1}
+            listening={!isLocked}
+            onClick={() => !isLocked && setSelectedId(element.id)}
+            onTap={() => !isLocked && setSelectedId(element.id)}
+            onTouchStart={() => !isLocked && setSelectedId(element.id)}
+            onDragEnd={(e) => {
+              if (isLocked) return;
+              
+              setDesignElements(prev => {
+                const updated = { ...prev };
+                if (updated[areaId]) {
+                  updated[areaId] = updated[areaId].map(el =>
+                    el.id === element.id ? { ...el, x: e.target.x(), y: e.target.y() } : el
+                  );
+                }
+                return updated;
+              });
+              
+              // Recalculate pricing after drag
+              setTimeout(() => updatePricingData(), 100);
+            }}
+
+            onTransformEnd={(e) => {
+            if (isLocked) return;
+            const node = e.target;
+            
+            const scaleX = node.scaleX();
+            const scaleY = node.scaleY();
+            
+            // Calculate new dimensions from the actual node size after scaling
+            const newWidth = Math.max(10, node.width() * scaleX);
+            const newHeight = Math.max(10, node.height() * scaleY);
+            
+            // console.log('🔧 TRANSFORM UPDATE:', {
+            //   elementId: element.id,
+            //   beforeWidth: element.width,
+            //   beforeHeight: element.height,
+            //   afterWidth: newWidth,
+            //   afterHeight: newHeight,
+            //   scaleX,
+            //   scaleY,
+            //   nodeWidth: node.width(),
+            //   nodeHeight: node.height()
+            // });
+            
+            setDesignElements(prev => {
+              const updated = { ...prev };
+              if (updated[areaId]) {
+                updated[areaId] = updated[areaId].map(el =>
+                  el.id === element.id ? {
+                    ...el,
+                    x: node.x(),
+                    y: node.y(),
+                    rotation: node.rotation(),
+                    width: newWidth,      // Update with scaled width
+                    height: newHeight,    // Update with scaled height  
+                    scaleX: 1,           // Reset scale to 1
+                    scaleY: 1,           // Reset scale to 1
+                  } : el
+                );
+              }
+              return updated;
+            });
+            
+            // Reset the node scales after updating state
+            node.scaleX(1);
+            node.scaleY(1);
+            
+            // Recalculate pricing after transform
+            setTimeout(() => updatePricingData(), 150);
+          }}
+          />
+        );
+      }
+      
+      if (element.type === 'text') {
+        return (
+          <KonvaText
+            key={element.id}
+            id={element.id}
+            text={element.text || 'Text'}
+            x={element.x}
+            y={element.y}
+            width={element.width}
+            fontSize={element.fontSize || 20}
+            fontFamily={element.fontFamily || 'Arial'}
+            fill={element.fill || '#000000'}
+            rotation={element.rotation}
+            scaleX={element.scaleX}
+            scaleY={element.scaleY}
+            draggable={element.draggable && !isLocked}
+            opacity={element.opacity || 1}
+            listening={!isLocked}
+            onClick={() => !isLocked && setSelectedId(element.id)}
+           onDragEnd={(e) => {
+              if (isLocked) return;
+              
+              // console.log('🔧 DRAG UPDATE:', {
+              //   elementId: element.id,
+              //   newX: e.target.x(),
+              //   newY: e.target.y()
+              // });
+              
+              setDesignElements(prev => {
+                const updated = { ...prev };
+                if (updated[areaId]) {
+                  updated[areaId] = updated[areaId].map(el =>
+                    el.id === element.id ? { ...el, x: e.target.x(), y: e.target.y() } : el
+                  );
+                }
+                return updated;
+              });
+              
+              // Recalculate pricing after drag
+              setTimeout(() => updatePricingData(), 100);
+            }}
+            onTransformEnd={(e) => {
+              if (isLocked) return;
+              const node = e.target;
+              setDesignElements(prev => {
+                const updated = { ...prev };
+                if (updated[areaId]) {
+                  updated[areaId] = updated[areaId].map(el =>
+                    el.id === element.id ? {
+                      ...el,
+                      x: node.x(),
+                      y: node.y(),
+                      rotation: node.rotation(),
+                      scaleX: node.scaleX(),
+                      scaleY: node.scaleY(),
+                    } : el
+                  );
+                }
+                return updated;
+              });
+              
+              // 🔥 NEW: Recalculate pricing after transform
+              setTimeout(() => updatePricingData(), 100);
+            }}
+          />
+        );
+      }
+      
+      return null;
+    });
+}, [designElements, selectedId, updatePricingData]);
   
   const renderCanvas = useCallback(() => {
     const canvasConfig = getCanvasConfig(activeArea, activeColor);
@@ -4740,6 +6931,12 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           scaleX={scale}
           scaleY={scale}
           onClick={handleStageClick}
+          onTap={handleStageClick} // ADD THIS for mobile
+          onTouchStart={(e) => {  // ADD THIS for better mobile handling
+            if (e.target === e.target.getStage()) {
+              setSelectedId(null);
+            }
+          }}
           className="bg-white border border-gray-300 rounded-lg shadow-sm touch-manipulation"
         >
           <Layer ref={layerRef}>
@@ -4840,10 +7037,20 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
             />
           </Layer>
         </Stage>
+        {/* Mobile selection indicator */}
+        {isMobile && selectedId && (
+          <div className="absolute z-50 p-2 text-xs text-white bg-orange-500 rounded-lg -top-1 left-2 right-2">
+            Element selected - Use controls below to align
+          </div>
+        )}
         
         {/* Mobile-friendly element controls */}
         {selectedId && (
-          <div className={`absolute ${isMobile ? 'bottom-4 left-4 right-4' : 'top-4 right-4'} p-3 bg-white border border-gray-200 shadow-lg rounded-xl`}>
+           <div className={`absolute ${
+              isMobile 
+                ? '-bottom-6 left-4 right-4' // Changed from bottom-4 to bottom-20 to account for tab bar
+                : 'top-4 right-4'
+            } p-3 bg-white border border-gray-200 shadow-lg rounded-xl z-50`}>
             <div className="space-y-3">
               <div>
                 <div className="mb-2 text-xs font-medium text-gray-700">Alignment</div>
@@ -4947,12 +7154,22 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                   <label className="text-xs font-medium tracking-wider text-black uppercase">Brand</label>
                   <p className="mt-1 text-sm text-black">{productData?.brand || 'Junooni'}</p>
                 </div>
+
+                 {/* 🔥 NEW: Current pricing summary */}
+                {totalPrice > 0 && (
+                  <div className="p-2 border border-green-200 rounded bg-green-50">
+                    <label className="text-xs font-medium tracking-wider text-green-700 uppercase">Current Price</label>
+                    <p className="mt-1 text-lg font-bold text-green-800">₹{totalPrice}</p>
+                    <p className="text-xs text-green-600">per unit</p>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Technology Information */}
             <div className="p-2 rounded-lg ">
-              <div className="space-y-3">
+                {renderTechnologySelector()}
+              {/* <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium tracking-wider text-gray-500 uppercase">Current Technology</label>
                   <span className="px-2 py-1 text-xs font-medium text-white rounded" style={{ backgroundColor: brandColor }}>
@@ -4973,9 +7190,22 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
                         </option>
                       ))}
                     </select>
-                  </div>       
+                  </div>
+                  {activeArea && (
+                    <div className="mt-1 text-xs text-gray-600">
+                      {(() => {
+                        const { minimumPrice, pricePerSquareInch } = getPricingInfoForArea(activeArea);
+                        return (
+                          <div className="flex justify-between">
+                            <span>Min: ${minimumPrice}</span>
+                            <span>Rate: ${pricePerSquareInch}/sq"</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}       
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         );
@@ -5113,6 +7343,9 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
             />
           );
 
+           case 'pricing':
+           return renderPricingPanel();
+
         default:
           return null;
       }
@@ -5140,7 +7373,7 @@ useEffect(() => {
     }
   } catch (err) {
     // non-fatal — ignore if window or URLSearchParams unavailable in some envs
-    console.warn('Unable to parse technology from URL', err);
+    //console.warn('Unable to parse technology from URL', err);
   }
 }, [productData]);
 
@@ -5188,7 +7421,7 @@ useEffect(() => {
       
       // Auto-select the best mockup for active color
       if (bestMockup) {
-        console.log('Auto-selecting mockup for active color:', activeColor, '-> mockup:', bestMockup.photoColor);
+        //console.log('Auto-selecting mockup for active color:', activeColor, '-> mockup:', bestMockup.photoColor);
         setSelectedHeroMockup(bestMockup);
       }
     }
@@ -5229,7 +7462,7 @@ useEffect(() => {
         try {
           const custArea = getCustomizationAreaByName(area);
           if (!custArea?.designCanvasPhotos?.length) {
-            console.log(`No designCanvasPhotos for area: ${area}`);
+            //console.log(`No designCanvasPhotos for area: ${area}`);
             continue;
           }
           
@@ -5263,19 +7496,19 @@ useEffect(() => {
                 [key]: img, 
                 [area]: img
               }));
-              console.log(`Preloaded image for area: ${area}`);
+              //console.log(`Preloaded image for area: ${area}`);
               resolve();
             };
             
             img.onerror = (error) => {
-              console.error(`Failed to preload image for area: ${area}`, error);
+              //console.error(`Failed to preload image for area: ${area}`, error);
               reject(error);
             };
             
             img.src = resolvedUrl;
           });
         } catch (error) {
-          console.error(`Error preloading image for area: ${area}:`, error);
+          //console.error(`Error preloading image for area: ${area}:`, error);
         }
       }
     };
@@ -5292,7 +7525,7 @@ useEffect(() => {
       // Check if image is already loaded
       const existingImage = canvasImages[`${activeArea}_${activeColor}`] || canvasImages[activeArea];
       if (existingImage) {
-        console.log(`Image already loaded for active area: ${activeArea}`);
+        //console.log(`Image already loaded for active area: ${activeArea}`);
         return;
       }
       
@@ -5325,16 +7558,16 @@ useEffect(() => {
             [key]: img, 
             [activeArea]: img
           }));
-          console.log(`Loaded image for active area: ${activeArea}`);
+          //console.log(`Loaded image for active area: ${activeArea}`);
         };
         
         img.onerror = (error) => {
-          console.error(`Failed to load image for active area: ${activeArea}`, error);
+          //console.error(`Failed to load image for active area: ${activeArea}`, error);
         };
         
         img.src = resolvedUrl;
       } catch (error) {
-        console.error(`Error loading active area image: ${activeArea}:`, error);
+        //console.error(`Error loading active area image: ${activeArea}:`, error);
       }
     };
     
@@ -5390,7 +7623,7 @@ useEffect(() => {
     
   // 🔥 ADD: Initialize canvas images on component mount
   useEffect(() => {
-    console.log('Component mounted, initializing canvas images...');
+    //console.log('Component mounted, initializing canvas images...');
     
     // Trigger initial load of all area images
     setForceUpdate(prev => prev + 1);
@@ -5414,6 +7647,159 @@ useEffect(() => {
       };
     }, []);
     
+
+// 7. EFFECTS SECTION - Add these useEffect hooks for pricing recalculation
+
+// 🔥 NEW: Main pricing recalculation effect
+useEffect(() => {
+  // Recalculate pricing whenever design elements change or technology changes
+  if (Object.keys(designElements).length > 0) {
+    const hasVisibleElements = Object.values(designElements).some(elements => 
+      elements.some(element => element.visible !== false)
+    );
+    
+    if (hasVisibleElements) {
+      // Debounce pricing calculation to avoid excessive recalculations
+      const timeoutId = setTimeout(() => {
+        updatePricingData();
+      }, 300);
+      
+      return () => clearTimeout(timeoutId);
+    } else {
+      // Clear pricing data when no visible elements
+      setPricingData({});
+      setTotalPrice(0);
+      setPricingBreakdown(null);
+    }
+  }
+}, [designElements, activeTechnology, updatePricingData]);
+
+// 🔥 NEW: Technology change pricing recalculation
+useEffect(() => {
+  // When technology changes, recalculate all pricing
+  if (activeTechnology) {
+    const hasElements = Object.values(designElements).some(elements => 
+      elements.length > 0
+    );
+    
+    if (hasElements) {
+      //console.log('Technology changed to:', activeTechnology, '- Recalculating pricing...');
+      
+      // Reset pricing data first
+      setPricingData({});
+      setTotalPrice(0);
+      setPricingBreakdown(null);
+      
+      // Recalculate after a short delay to ensure technology data is loaded
+      const timeoutId = setTimeout(() => {
+        updatePricingData();
+      }, 500);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }
+}, [activeTechnology, designElements, updatePricingData]);
+
+// 🔥 NEW: Active area change effect
+useEffect(() => {
+  // When active area changes, update pricing display if needed
+  if (activeArea && pricingBreakdown) {
+    // This can be used to highlight current area in pricing panel
+    // or perform area-specific pricing updates
+    //console.log('Active area changed to:', activeArea);
+  }
+}, [activeArea, pricingBreakdown]);
+
+// 🔥 NEW: Color/Size selection pricing impact
+useEffect(() => {
+  // Recalculate total pricing when color or size selections change
+  // This affects the final quantity-based pricing calculations
+  if (selectedColors.length > 0 && selectedSizes.length > 0 && pricingBreakdown) {
+    const updatedBreakdown = { ...pricingBreakdown };
+    // You can add logic here to adjust pricing based on quantity discounts
+    // or bulk pricing rules if needed
+    
+    //console.log('Selection changed - Colors:', selectedColors.length, 'Sizes:', selectedSizes.length);
+  }
+}, [selectedColors, selectedSizes, pricingBreakdown]);
+
+// 🔥 NEW: Element deletion effect
+useEffect(() => {
+  // When selectedId is null and we previously had a selection,
+  // it might indicate element deletion, so recalculate pricing
+  if (prevSelectedIdRef.current && !selectedId) {
+    // Element might have been deleted
+    setTimeout(() => {
+      const hasElements = Object.values(designElements).some(elements => 
+        elements.length > 0
+      );
+      
+      if (hasElements) {
+        updatePricingData();
+      } else {
+        // All elements deleted, clear pricing
+        setPricingData({});
+        setTotalPrice(0);
+        setPricingBreakdown(null);
+      }
+    }, 100);
+  }
+  
+  // Update the ref for next time
+  prevSelectedIdRef.current = selectedId;
+}, [selectedId, designElements, updatePricingData]);
+
+// 🔥 NEW: Canvas image loading effect with pricing
+useEffect(() => {
+  // When canvas images load, we might need to recalculate pricing
+  // if it affects the printable area calculations
+  const loadedImages = Object.keys(canvasImages).length;
+  const expectedImages = availableAreas.length;
+  
+  if (loadedImages > 0 && loadedImages <= expectedImages) {
+    // Canvas images are loading/loaded - might affect printable areas
+    const hasElements = Object.values(designElements).some(elements => 
+      elements.length > 0
+    );
+    
+    if (hasElements && pricingBreakdown) {
+      // Recalculate pricing as printable areas might have changed
+      setTimeout(() => {
+        updatePricingData();
+      }, 200);
+    }
+  }
+}, [canvasImages, availableAreas.length, designElements, pricingBreakdown, updatePricingData]);
+
+// 🔥 NEW: Product data change effect
+useEffect(() => {
+  // When product data changes (e.g., from API updates), recalculate pricing
+  if (productData && Object.keys(designElements).length > 0) {
+    //console.log('Product data updated - Recalculating pricing...');
+    
+    setTimeout(() => {
+      updatePricingData();
+    }, 300);
+  }
+}, [productData, designElements, updatePricingData]);
+
+// 🔥 NEW: Error handling for pricing calculations
+useEffect(() => {
+  // Monitor for pricing calculation errors and provide user feedback
+  if (priceCalculationLoading) {
+    const timeoutId = setTimeout(() => {
+      if (priceCalculationLoading) {
+        //console.warn('Pricing calculation taking longer than expected');
+        setPriceCalculationLoading(false);
+      }
+    }, 5000); // 5 second timeout
+    
+    return () => clearTimeout(timeoutId);
+  }
+}, [priceCalculationLoading]);
+
+
+
     // Mobile bottom sheet handlers
     const handleMobileTabChange = useCallback((tab: string) => {
       setActiveTab(tab as any);
@@ -5438,20 +7824,20 @@ useEffect(() => {
     return (
       <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
         {/* Enhanced Top Header */}
-          <div className="px-1 py-2 bg-white border-b border-gray-200 shadow-sm sm:px-4">
+          <div className="px-1 py-4 bg-white border-b border-gray-200 shadow-sm sm:px-4">
             <div className="flex items-center justify-between">
               {/* Left: Logo */}
-              <div className="flex items-center">
-                <img src={JunooniLogo} alt="Junooni Logo" className="h-6 sm:h-8" />
+              <div className="flex items-center ml-2">
+                <img src={JunooniLogo} alt="Junooni Logo" className="h-8 sm:h-8" />
               </div>
               
               {/* Center: Design/Preview Toggle Buttons */}
-              <div className="flex p-0.5 mr-2 sm:p-1 bg-gray-100 border border-gray-200 rounded-lg">
+              <div className="flex p-0.5 mr-0 sm:p-1 bg-gray-100 border border-gray-200 rounded-lg">
                 <button
                   onClick={() => setActiveView('design')}
                   className={`flex items-center gap-0.5 sm:gap-2 
                     px-1.5 sm:px-4 py-1 sm:py-2 
-                    text-[10px] sm:text-sm font-medium 
+                    text-[12px] sm:text-sm font-medium 
                     rounded-md transition-all touch-manipulation ${
                       activeView === 'design'
                         ? 'text-white shadow-sm'
@@ -5469,7 +7855,7 @@ useEffect(() => {
                   onClick={() => setActiveView('preview')}
                   className={`flex items-center gap-0.5 sm:gap-2 
                     px-1.5 sm:px-4 py-1 sm:py-2 
-                    text-[10px] sm:text-sm font-medium 
+                    text-[12px] sm:text-sm font-medium 
                     rounded-md transition-all touch-manipulation ${
                       activeView === 'preview'
                         ? 'text-white shadow-sm'
@@ -5500,7 +7886,7 @@ useEffect(() => {
                     </>
                   ) : (
                     <>
-                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
                       <span className="hidden sm:inline">Import to Store</span>
@@ -5509,11 +7895,11 @@ useEffect(() => {
                 </button>
                 
                 <button
-          onClick={() => window.history.back()}
+                  onClick={() => window.history.back()}
                   className="p-2 text-gray-500 transition-colors rounded-lg hover:text-gray-700 hover:bg-gray-100 touch-manipulation"
                   title="Close Designer"
                 >
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -5526,7 +7912,7 @@ useEffect(() => {
           <div className="w-full bg-gray-100 border-b border-gray-200">
             <div className="px-4 pt-2 pb-0">
               {/* <h4 className="mb-2 text-sm font-medium text-gray-700">Design Areas</h4> */}
-              <div className="flex space-x-3 overflow-x-auto pb-0 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <div className="flex pb-0 space-x-3 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                 {availableAreas.map(area => {
                   const areaData = getAreaDisplayData(area);
                   const elementCount = designElements[area]?.length || 0;
@@ -5542,7 +7928,7 @@ useEffect(() => {
                             : ' hover:border-gray-400 hover:shadow-sm bg-gray-100'
                         }`}
                       >
-                        <div className="relative mb-0 overflow-hidden bg-gray-100 rounded w-16 h-16">
+                        <div className="relative w-16 h-16 mb-0 overflow-hidden bg-gray-100 rounded">
                           {canvasImage ? (
                             <div className="relative w-full h-full">
                               {/* Color overlay with mask */}
@@ -5581,7 +7967,7 @@ useEffect(() => {
                           )}
                         </div>
                         
-                        <p className="text-xs font-medium text-center text-gray-700 leading-tight">
+                        <p className="text-xs font-medium leading-tight text-center text-gray-700">
                           {areaData.displayName}
                         </p>
                         
@@ -5634,7 +8020,8 @@ useEffect(() => {
                     { id: 'sizes', icon: Ruler, label: 'Sizes', count: selectedSizes.length },
                     { id: 'upload', icon: Upload, label: 'Upload', count: uploadedFiles.length },
                     { id: 'library', icon: FolderOpen, label: 'Library', count: 0 },
-                    { id: 'layers', icon: Layers, label: 'Layers', count: getLayersInfo().length }
+                    { id: 'layers', icon: Layers, label: 'Layers', count: getLayersInfo().length },
+                    { id: 'pricing', icon: IndianRupee, label: 'Pricing', count: totalPrice > 0 ? 1 : 0 }
                   ] as const).map(tab => {
                     const IconComponent = tab.icon;
                     return (
@@ -5769,7 +8156,7 @@ useEffect(() => {
           }`}>
             {/* Add Area Thumbnails for Design Mode - Desktop Only */}
             {activeView === 'design' && !isMobile && availableAreas.length > 1 && (
-              <div className="w-40 p-3 bg-[#F3F4F6] ">
+              <div className="w-40 p-3 bg-[#F3F4F6] overflow-y-auto">
                 
                 <div className="space-y-2">
                   {availableAreas.map(area => {
@@ -5794,14 +8181,18 @@ useEffect(() => {
               </div>
             )}
             
-            <div className="flex-1 px-2 pt-0 pb-2 sm:p-2 overflow-hidden">
-              {activeView === 'design' ? (
-                <div className="flex items-center justify-center h-full px-2 pt-0 pb-10 overflow-y-auto sm:p-4">
+            <div className="flex-1 px-2 pt-0 pb-2 overflow-hidden sm:p-2">
+             {activeView === 'design' ? (
+              <div className={`flex items-center justify-center h-full overflow-y-auto ${
+                isMobile ? 'px-2 pt-0 pb-28' : 'px-2 pt-0 pb-2 sm:p-4' // More bottom padding for mobile
+              }`}>
+                <div className="relative"> {/* Add wrapper div */}
                   {renderCanvas()}
                 </div>
-              ) : (
-                renderPreview()
-              )}
+              </div>
+            ) : (
+              renderPreview()
+            )}
             </div>
           </div>
         </div>
@@ -5815,6 +8206,7 @@ useEffect(() => {
             selectedSizes={selectedSizes}
             uploadedFiles={uploadedFiles}
             layersCount={getLayersInfo().length}
+            totalPrice={totalPrice}
           />
         )}
 

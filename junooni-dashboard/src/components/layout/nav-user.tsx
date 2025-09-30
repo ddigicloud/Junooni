@@ -42,7 +42,7 @@ const checkTokenForActorId = () => {
 
     // Decode JWT token (assuming it's base64 encoded)
     const payload = JSON.parse(atob(token.split('.')[1]));
-    console.log('Token payload:', payload);
+    //console.log('Token payload:', payload);
     
     const actorId = payload.actor_id || payload.sub || payload.id;
     return { 
@@ -50,7 +50,7 @@ const checkTokenForActorId = () => {
       actorId: actorId 
     };
   } catch (error) {
-    console.error('Error decoding token:', error);
+    //console.error('Error decoding token:', error);
     return { hasActorId: false, actorId: null };
   }
 };
@@ -81,7 +81,7 @@ export function NavUser({
         const token = localStorage.getItem("vendorToken")
         
         if (!token) {
-          console.error("No vendor token found")
+          //console.error("No vendor token found")
           navigate({ to: '/sign-in' })
           return
         }
@@ -90,12 +90,12 @@ export function NavUser({
         const { hasActorId, actorId } = checkTokenForActorId()
         
         if (!hasActorId) {
-          console.log("No actor_id in token. Redirecting to onboarding.")
+          //console.log("No actor_id in token. Redirecting to onboarding.")
           window.location.href = '/onboarding?step=basic-info'
           return
         }
         
-        console.log("Valid vendor token found with actor_id:", actorId)
+        //console.log("Valid vendor token found with actor_id:", actorId)
         
         // Only fetch vendor data if token is valid (has actor_id)
         // This call is now just for getting display data, not for validation
@@ -122,7 +122,7 @@ export function NavUser({
             }
           } else {
             // API failed but token is valid, set fallback
-            console.warn("Failed to fetch vendor profile, but token is valid")
+            //console.warn("Failed to fetch vendor profile, but token is valid")
             setVendor({
               name: 'Vendor Profile',
               handle: 'loading...',
@@ -130,7 +130,7 @@ export function NavUser({
             })
           }
         } catch (apiError) {
-          console.error("API error:", apiError)
+          //console.error("API error:", apiError)
           // Even if API fails, we know user is valid from token
           setVendor({
             name: 'Vendor Profile',
@@ -140,7 +140,7 @@ export function NavUser({
         }
         
       } catch (err) {
-        console.error("Token validation error:", err)
+        //console.error("Token validation error:", err)
         // If token validation fails, redirect to sign-in
         navigate({ to: '/sign-in' })
       } finally {

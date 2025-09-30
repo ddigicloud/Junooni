@@ -668,6 +668,8 @@ const isNewVariant = (variant) => {
         }
         // Transform variants to match component format
         const transformedVariants: Variant[] = [];
+
+        
         
         if (product.variants && product.variants.length > 0) {
           // Create a mapping of option IDs to their titles for easier reference
@@ -685,6 +687,12 @@ const isNewVariant = (variant) => {
             // Extract price from the calculated_price in the variant
             let price = 0;
             let prices: any[] = [];
+
+            // Add this right after processing each variant to see the metadata structure
+            console.log(`Variant ${variant.id} metadata:`, variant.metadata);
+            if (variant.metadata && variant.metadata.cost_price) {
+              console.log(`Found cost_price in metadata: ${variant.metadata.cost_price}`);
+            }
             
             // Check for calculated_price structure first
             if (variant.calculated_price && variant.calculated_price.calculated_amount) {
@@ -776,6 +784,13 @@ const isNewVariant = (variant) => {
               }
             }
             
+            let cost_Price = 0;
+            if (variant.metadata && variant.metadata.cost_price) {
+              cost_Price = typeof variant.metadata.cost_price === 'string' 
+                ? parseFloat(variant.metadata.cost_price) || 0 
+                : variant.metadata.cost_price || 0;
+            }
+            
             transformedVariants.push({
               id: variant.id,
               title: variant.title,
@@ -787,6 +802,7 @@ const isNewVariant = (variant) => {
               manageInventory: variant.manage_inventory !== false,
               optionValues,
               inventoryItemId,
+               cost_price: cost_Price,
               metadata: variant.metadata || {} // Store original metadata
             });
           }
@@ -3986,7 +4002,9 @@ const handleApiError = (apiError: any) => {
                               )}
                               <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Variant</th>
                               <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">SKU</th>
+                              <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Cost Price</th>
                               <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Price</th>
+                              <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Profit</th>
                               <th className="p-3 font-medium text-center text-gray-700">Actions</th>
                             </tr>
                           </thead>
@@ -4034,25 +4052,63 @@ const handleApiError = (apiError: any) => {
                                   />
                                 </td>
                                 <td className="p-3 border-r border-gray-200">
-                                <div className="relative">
-                                  <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    // Replace the current value and onChange with these:
-                                    defaultValue={form.getValues(`variants.${index}.price`) || ''}
-                                    onBlur={(e) => {
-                                      const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                                      handleVariantFieldChange(index, 'price', value);
-                                    }}
-                                    className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                                  />
-                                </div>
-                              </td>
+                                  <div className="relative">
+                                    <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      readOnly={true} // Make cost price read-only
+                                      disabled={true} // Disable input to prevent editing
+                                      // Replace the current value and onChange with these:
+                                      defaultValue={form.getValues(`variants.${index}.cost_price`) || ''}
+                                      onBlur={(e) => {
+                                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                        handleVariantFieldChange(index, 'cost_price', value);
+                                      }}
+                                      className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+                                    />
+                                  </div>
+                                </td>
+                                <td className="p-3 border-r border-gray-200">
+                                  <div className="relative">
+                                    <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      // Replace the current value and onChange with these:
+                                      defaultValue={form.getValues(`variants.${index}.price`) || ''}
+                                      onBlur={(e) => {
+                                        const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                        handleVariantFieldChange(index, 'price', value);
+                                      }}
+                                      className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+                                    />
+                                  </div>
+                                </td>
+                                <td className="p-3 border-r border-gray-200">
+                                  {(() => {
+                                    const price = form.watch(`variants.${index}.price`) || 0;
+                                    const cost_Price = form.watch(`variants.${index}.cost_price`) || 0;
+                                    const profit = price - cost_Price;
+                                    return (
+                                      <div className="text-center">
+                                        <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                          ₹{profit.toFixed(2)}
+                                        </span>
+                                        {/* {profit > 0 && (
+                                          <div className="text-xs text-gray-500">
+                                            {cost_Price > 0 ? `${((profit/cost_Price) * 100).toFixed(1)}%` : '∞%'}
+                                          </div>
+                                        )} */}
+                                      </div>
+                                    );
+                                  })()}
+                                </td>
                                 <td className="p-3 text-center">
                                   <div className="flex justify-center space-x-2">
-                                    <Button 
+                                    {/* <Button 
                                       type="button"
                                       variant="ghost" 
                                       size="sm"
@@ -4061,7 +4117,7 @@ const handleApiError = (apiError: any) => {
                                       title="Duplicate variant"
                                     >
                                       <IconCopy size={16} />
-                                    </Button>
+                                    </Button> */}
                                     
                                     <Button 
                                       type="button"

@@ -65,7 +65,7 @@ export default function SearchBar({ categories }: { categories: any[] }) {
       setIsLoading(true)
       
       try {
-        const res = await fetch(`${process.env.MEDUSA_BACKEND_URL}/store/products/search`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/products/search`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

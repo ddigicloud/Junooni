@@ -1144,7 +1144,7 @@ const DashboardPage = () => {
             setProducts([]);
           } else {
             const productData = await productResponse.json();
-            console.log("product response data:", productData);
+            //console.log("product response data:", productData);
             
             // Transform products
             const transformedProducts = (productData.products || []).map((product: any): Product => {
@@ -1164,7 +1164,7 @@ const DashboardPage = () => {
                 variants: product.variants || []
               };
             });
-            console.log("Transformed product with price:", transformedProducts);
+            //console.log("Transformed product with price:", transformedProducts);
             
             setProducts(transformedProducts);
           }
@@ -1320,7 +1320,7 @@ const DashboardPage = () => {
       {/* Header */}
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90">
-        <div className="container px-4 py-3 mx-auto relative">
+        <div className="container relative px-4 py-3 mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <SidebarTrigger variant='outline' className='mr-2 scale-125 sm:scale-100' />
@@ -1328,7 +1328,7 @@ const DashboardPage = () => {
             </div>
 
             {/* Brand Logo - Centered on mobile */}
-            <div className="absolute left-1/2 -translate-x-1/2 md:hidden">
+            <div className="absolute -translate-x-1/2 left-1/2 md:hidden">
               <Link to="/dashboard" className="flex items-center">
                 <img 
                   src={Junoonilogo} 

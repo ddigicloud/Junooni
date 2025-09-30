@@ -187,6 +187,7 @@ interface Pricing {
 interface AdditionalCosts {
   printingCostPerArea: number;
   setupFee: number;
+  printingGST: number;
   rushSurcharge: number | null;
 }
 
@@ -625,7 +626,7 @@ const ProductPage = () => {
     <>
       <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="w-full p-4 pt-16 sm:pt-20 mx-auto max-w-7xl">
+        <div className="w-full p-4 pt-16 mx-auto sm:pt-20 max-w-7xl">
           {/* Enhanced Breadcrumbs */}
           <nav className="flex flex-wrap items-center p-4 mt-4 mb-6 bg-white border border-gray-100 shadow-sm rounded-xl">
             {breadcrumbs.map((crumb, index) => (
@@ -742,12 +743,6 @@ const ProductPage = () => {
                   
                   {/* SKU and Brand */}
                   <CardDescription className="flex items-center gap-3 px-3 py-2 text-sm bg-white border rounded-lg">
-                    {/* <div className="flex items-center gap-1">
-                      <Shield className="w-4 h-4 text-[#e65100]" />
-                      <span className="font-medium">Brand:</span> 
-                      <span className="text-[#e65100] font-semibold">{product.brand}</span>
-                    </div> */}
-                    {/* <span>•</span> */}
                     <span><span className="font-medium">SKU:</span> {product.sku}</span>
                   </CardDescription>
 
@@ -755,13 +750,11 @@ const ProductPage = () => {
                   <div className="mt-4 p-4 bg-gradient-to-r from-[#e65100]/5 to-[#ff7043]/5 rounded-xl border border-[#e65100]/20">
                     <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-bold text-[#e65100]">
-                        {formatCurrency(product.cost)}
-                      </span>
-                      <span className="px-2 py-1 text-sm font-semibold text-green-600 rounded-full bg-green-50">
-                        ✓ Best Price
-                      </span>
+                      {product?.additionalCosts?.printingGST > 0 
+                        ? `From ${formatCurrency(product.cost)}` 
+                        : formatCurrency(product.cost)}
+                    </span>
                     </div>
-                    <p className="mt-1 text-sm text-gray-600">No minimum order • Free design consultation</p>
                   </div>
                 </CardHeader>
                 
@@ -801,17 +794,6 @@ const ProductPage = () => {
                             </TooltipProvider>
                           ))}
                         </div>
-                        {/* {selectedColor && (
-                          <div className="flex items-center gap-2 p-3 bg-[#e65100]/5 rounded-lg border border-[#e65100]/20">
-                            <div 
-                              className="w-4 h-4 border border-gray-300 rounded-full"
-                              style={{ backgroundColor: selectedColor.colorHex }}
-                            />
-                            <span className="text-sm font-medium text-[#e65100]">
-                              Selected: {selectedColor.colorName}
-                            </span>
-                          </div>
-                        )} */}
                       </div>
                     )}
                     
@@ -874,7 +856,7 @@ const ProductPage = () => {
                                 key={tech.id}
                                 onClick={() => setSelectedTechnology(tech)}
                                 className={`
-                                  p-4 border-2 rounded-xl cursor-pointer transition-all duration-200
+                                  p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 w-fit
                                   ${isSelected 
                                     ? 'border-[#e65100] bg-[#e65100]/5 shadow-md scale-102' 
                                     : 'border-gray-200 hover:border-[#e65100]/50 hover:bg-[#e65100]/5'}
@@ -890,11 +872,6 @@ const ProductPage = () => {
                                       <h4 className="text-sm font-semibold text-gray-900 truncate">
                                         {tech.technologyName.toUpperCase()}
                                       </h4>
-                                      <Badge 
-                                        className={`text-xs h-5 px-2 ${quality.color} border-0`}
-                                      >
-                                        {quality.quality}
-                                      </Badge>
                                     </div>
                                     
                                     {/* Technology tags */}
@@ -912,56 +889,12 @@ const ProductPage = () => {
                                       </div>
                                     )}
                                     
-                                    {/* Customization areas count */}
-                                    {tech.custAreas && tech.custAreas.length > 0 && (
-                                      <p className="text-xs text-gray-600">
-                                        ✨ {tech.custAreas.length} customization area{tech.custAreas.length !== 1 ? 's' : ''} available
-                                      </p>
-                                    )}
-                                  </div>
-                                  
-                                  {/* Selection indicator */}
-                                  <div className={`
-                                    w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1
-                                    ${isSelected 
-                                      ? 'border-[#e65100] bg-[#e65100]' 
-                                      : 'border-gray-300'}
-                                  `}>
-                                    {isSelected && (
-                                      <div className="w-2 h-2 bg-white rounded-full" />
-                                    )}
                                   </div>
                                 </div>
                               </div>
                             );
                           })}
                         </div>
-
-                        {/* Selected Technology Details */}
-                        {selectedTechnology && (
-                          <div className="p-4 bg-gradient-to-r from-[#e65100]/5 to-[#ff7043]/5 rounded-xl border border-[#e65100]/20">
-                            <div className="flex items-center gap-2 mb-2">
-                              {getTechnologyIcon(selectedTechnology.technologyName)}
-                              <span className="text-sm font-semibold text-[#e65100]">
-                                Selected: {selectedTechnology.technologyName.toUpperCase()}
-                              </span>
-                            </div>
-                            
-                            {selectedTechnology.custAreas && selectedTechnology.custAreas.length > 0 && (
-                              <div className="text-xs text-gray-600">
-                                <p className="mb-1">Available customization areas:</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {selectedTechnology.custAreas.map((area, index) => (
-                                    <span key={area.id} className="px-2 py-1 bg-white rounded-md">
-                                      {area.areaName}
-                                      {index < selectedTechnology.custAreas.length - 1 ? ',' : ''}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                     )}
 
@@ -992,15 +925,6 @@ const ProductPage = () => {
                           onOpenChange={() => toggleSection('technology')}
                           className="overflow-hidden transition-all duration-300 border border-gray-200 rounded-xl"
                         >
-                          {/* <CollapsibleTrigger className="flex items-center justify-between w-full p-4 font-semibold transition-colors bg-gradient-to-r from-gray-50 to-white hover:from-[#e65100]/5 hover:to-[#e65100]/5">
-                            <span className="flex items-center gap-2">
-                              <Settings className="w-4 h-4 text-[#e65100]" />
-                              Available Printing Technologies
-                            </span>
-                            <span className="transition-transform duration-300">
-                              {openSections.technology ? <ChevronUp className="w-5 h-5 text-[#e65100]" /> : <ChevronDown className="w-5 h-5 text-[#e65100]" />}
-                            </span>
-                          </CollapsibleTrigger> */}
                           <CollapsibleContent className="p-4 bg-white">
                             <div className="space-y-4">
                               {product.printT.map((tech: PrintingTechnology) => {

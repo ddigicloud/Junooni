@@ -579,6 +579,45 @@ interface LoadingError {
 }
 
 // =====================================
+// PRODUCTION UI COMPONENTS
+// =====================================
+
+const LoadingSpinner: React.FC = () => (
+  <div className="relative">
+    {/* Primary spinner */}
+    <div className="w-20 h-20 border-4 border-gray-200 rounded-full animate-spin border-t-[#e65100]"></div>
+    
+    {/* Secondary pulse effect */}
+    <div className="absolute inset-0 w-20 h-20 border-4 border-transparent rounded-full animate-pulse border-r-[#e65100] opacity-50"></div>
+    
+    {/* Inner glow */}
+    <div className="absolute inset-2 w-16 h-16 border-2 border-gray-100 rounded-full animate-spin border-t-[#ff8a50]"></div>
+  </div>
+);
+
+const ProgressBar: React.FC<{ progress: number }> = ({ progress }) => (
+  <div className="w-full max-w-md mx-auto mt-6">
+    <div className="flex items-center justify-between mb-2 text-sm text-gray-600">
+      <span>Loading product data...</span>
+      <span>{progress}%</span>
+    </div>
+    <div className="w-full bg-gray-200 rounded-full h-2">
+      <div 
+        className="h-2 bg-gradient-to-r from-[#e65100] to-[#ff8a50] rounded-full transition-all duration-300 ease-out"
+        style={{ width: `${progress}%` }}
+      ></div>
+    </div>
+  </div>
+);
+
+const StatusIndicator: React.FC<{ status: string }> = ({ status }) => (
+  <div className="flex items-center gap-2 mt-4 text-gray-600">
+    <div className="w-2 h-2 bg-[#e65100] rounded-full animate-pulse"></div>
+    <span className="text-sm font-medium">{status}</span>
+  </div>
+);
+
+// =====================================
 // ENHANCED DATA LOADER COMPONENT
 // =====================================
 
@@ -591,15 +630,19 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<LoadingError | null>(null);
   const [retryCount, setRetryCount] = useState<number>(0);
+  const [loadingProgress, setLoadingProgress] = useState<number>(0);
+  const [loadingStatus, setLoadingStatus] = useState<string>('Initializing...');
+  const [showSuccessNotification, setShowSuccessNotification] = useState<boolean>(false);
   
   // =====================================
   // ENHANCED IMAGE URL PROCESSING
   // =====================================
   
   const processImageUrls = (data: any): DynamicProductData => {
-    const config = getDynamicAPIConfig();
+    setLoadingProgress(60);
+    setLoadingStatus('Processing image URLs...');
     
-    //console.log('🖼️ Processing enhanced image URLs with base:', config.baseUrl);
+    const config = getDynamicAPIConfig();
     
     const processUrl = (obj: any) => {
       if (!obj) return obj;
@@ -680,7 +723,9 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
       });
     }
     
-    //console.log('✅ Enhanced image URL processing complete');
+    setLoadingProgress(80);
+    setLoadingStatus('Finalizing data processing...');
+    
     return processedData as DynamicProductData;
   };
 
@@ -691,7 +736,8 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   const fetchWithRetry = async (url: string, attempt: number = 1): Promise<Response> => {
     const config = getDynamicAPIConfig();
     
-    //console.log(`📡 Fetching enhanced data (attempt ${attempt}/${config.retryAttempts}):`, url);
+    setLoadingStatus(attempt === 1 ? 'Connecting to server...' : `Retrying connection (${attempt}/${config.retryAttempts})...`);
+    setLoadingProgress(Math.min(20 + (attempt * 10), 40));
     
     try {
       const controller = new AbortController();
@@ -711,14 +757,15 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
+      setLoadingProgress(50);
+      setLoadingStatus('Receiving data...');
+      
       return response;
       
     } catch (fetchError: any) {
-      //console.error(`❌ Enhanced fetch attempt ${attempt} failed:`, fetchError);
-      
       if (attempt < config.retryAttempts) {
         const delay = Math.pow(2, attempt) * 1000;
-        //console.log(`⏱️ Retrying in ${delay}ms...`);
+        setLoadingStatus(`Retry in ${delay / 1000}s...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return fetchWithRetry(url, attempt + 1);
       }
@@ -735,7 +782,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     if (error.name === 'AbortError') {
       return {
         type: 'timeout',
-        message: 'Request timed out. The server might be slow or unavailable.',
+        message: 'Connection timeout - The server is taking too long to respond.',
         retryable: true
       };
     }
@@ -743,7 +790,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     if (error.message.includes('404')) {
       return {
         type: 'not_found',
-        message: `Product with ID "${productId}" was not found. Please check the product ID.`,
+        message: `Product "${productId}" could not be found in the system.`,
         retryable: false
       };
     }
@@ -751,7 +798,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     if (error.message.includes('500') || error.message.includes('502') || error.message.includes('503')) {
       return {
         type: 'server_error',
-        message: 'Server error occurred. The PayloadCMS backend might be down.',
+        message: 'Server is currently unavailable. Please try again in a moment.',
         retryable: true
       };
     }
@@ -759,14 +806,14 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       return {
         type: 'network',
-        message: 'Network connection failed. Please check your internet connection.',
+        message: 'Unable to connect. Please check your internet connection.',
         retryable: true
       };
     }
     
     return {
       type: 'invalid_data',
-      message: error.message || 'An unexpected error occurred while loading the product.',
+      message: 'An unexpected error occurred while processing the product data.',
       details: error,
       retryable: true
     };
@@ -777,58 +824,21 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   // =====================================
   
   const validateProductData = (data: any): boolean => {
-    //console.log('🔍 Validating enhanced product data...');
+    setLoadingProgress(90);
+    setLoadingStatus('Validating product data...');
     
-    if (!data) {
-      //console.error('❌ No data received');
-      return false;
-    }
+    if (!data) return false;
+    if (!data.name || !data.id) return false;
+    if (!data.printT || !Array.isArray(data.printT) || data.printT.length === 0) return false;
+    if (!data.colorOptions || !Array.isArray(data.colorOptions) || data.colorOptions.length === 0) return false;
+    if (!data.sizeOptions || !Array.isArray(data.sizeOptions) || data.sizeOptions.length === 0) return false;
     
-    if (!data.name || !data.id) {
-      //console.error('❌ Missing required fields: name or id');
-      return false;
-    }
-    
-    // Check for main printing technologies (note field name change)
-    if (!data.printT || !Array.isArray(data.printT) || data.printT.length === 0) {
-      //console.error('❌ No printing technologies configured (printT)');
-      return false;
-    }
-    
-    if (!data.colorOptions || !Array.isArray(data.colorOptions) || data.colorOptions.length === 0) {
-      //console.error('❌ No color options configured');
-      return false;
-    }
-    
-    if (!data.sizeOptions || !Array.isArray(data.sizeOptions) || data.sizeOptions.length === 0) {
-      //console.error('❌ No size options configured');
-      return false;
-    }
-    
-    // Validate at least one technology has customization areas (custAreas)
     const hasValidTech = data.printT.some((tech: any) => 
       tech.custAreas && Array.isArray(tech.custAreas) && tech.custAreas.length > 0
     );
     
-    if (!hasValidTech) {
-      //console.error('❌ No valid printing technology with customization areas (custAreas)');
-      return false;
-    }
+    if (!hasValidTech) return false;
     
-    // Log enhanced features detection
-    // console.log('🤖 Enhanced features detected:', {
-    //   hasSmartprintT: !!data.smartprintT?.length,
-    //   hasProductIntelligence: !!data.prodInt,
-    //   hasAdvancedSurfaceMapping: !!data.advanSurfMap,
-    //   hasLightingConfiguration: !!data.lightingConfiguration,
-    //   hasMaskingFeatures: data.printT.some((tech: any) => 
-    //     tech.mockupPhotos?.some((photo: any) => 
-    //       photo.visibleAreas?.some((area: any) => area.maskingConfiguration?.enableMasking)
-    //     )
-    //   )
-    // });
-    
-    //console.log('✅ Enhanced product data validation passed');
     return true;
   };
   
@@ -840,51 +850,49 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     try {
       setLoading(true);
       setError(null);
+      setLoadingProgress(0);
+      setLoadingStatus('Initializing connection...');
       
       const config = getDynamicAPIConfig();
       const url = `${config.baseUrl}${config.endpoints.products}/${productId}`;
       
-      //console.log('🚀 Starting enhanced product data fetch for ID:', productId);
-      //console.log('🌐 API URL:', url);
+      // Simulate initial progress
+      setTimeout(() => setLoadingProgress(10), 100);
       
       const response = await fetchWithRetry(url);
       const data = await response.json();
       
-      // console.log('📦 Enhanced raw product data received:', {
-      //   name: data.name,
-      //   id: data.id,
-      //   productType: data.productType,
-      //   mainTechnologiesCount: data.printT?.length || 0,
-      //   smartTechnologiesCount: data.smartprintT?.length || 0,
-      //   colorsCount: data.colorOptions?.length || 0,
-      //   sizesCount: data.sizeOptions?.length || 0,
-      //   hasProductIntelligence: !!data.prodInt,
-      //   hasAdvancedSurfaceMapping: !!data.advanSurfMap
-      // });
-      
       // Validate the enhanced data
       if (!validateProductData(data)) {
-        throw new Error('Invalid enhanced product data structure received from PayloadCMS');
+        throw new Error('Product data structure validation failed');
       }
       
       // Process image URLs with enhanced support
       const processedData = processImageUrls(data);
       
-      //console.log('✅ Enhanced product data successfully processed and validated');
-      setProductData(processedData);
-      setLoading(false);
-      setRetryCount(0);
+      setLoadingProgress(100);
+      setLoadingStatus('Complete!');
+      
+      // Brief delay to show completion
+      setTimeout(() => {
+        setProductData(processedData);
+        setLoading(false);
+        setRetryCount(0);
+        setShowSuccessNotification(true);
+        
+        // Auto-hide success notification after 3 seconds
+        setTimeout(() => {
+          setShowSuccessNotification(false);
+        }, 3000);
+      }, 300);
       
     } catch (err: any) {
-      //console.error('💥 Error fetching enhanced product data:', err);
-      
       const classifiedError = classifyError(err);
       setError(classifiedError);
       setLoading(false);
       
       // Auto-retry for retryable errors
       if (classifiedError.retryable && retryCount < 2) {
-        //console.log('🔄 Auto-retrying enhanced data fetch due to retryable error...');
         setTimeout(() => {
           setRetryCount(prev => prev + 1);
           fetchProductData();
@@ -926,33 +934,46 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="max-w-md p-8 mx-auto text-center">
-          {/* Spinner */}
-          <div className="relative">
-            <div className="w-16 h-16 mx-auto border-4 border-orange-200 border-t-[#e65100] rounded-full animate-spin"></div>
-            <div className="absolute inset-0 w-16 h-16 mx-auto border-4 border-transparent border-r-[#e65100] rounded-full animate-ping"></div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md w-full border border-gray-100">
+          {/* Loading Spinner */}
+          <div className="flex justify-center mb-8">
+            <LoadingSpinner />
           </div>
 
-          {/* Title */}
-          <h2 className="mt-6 text-xl font-semibold text-gray-800">Loading...</h2>
-          <p className="mt-2 text-gray-600">Please wait a moment</p>
+          {/* Title and Description */}
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              Loading Product
+            </h2>
+            <p className="text-gray-600">
+              Please wait while we prepare your design environment
+            </p>
+          </div>
 
-          {/* Dots animation */}
-          <div className="flex items-center justify-center mt-4 space-x-2">
-            <div className="w-2 h-2 bg-[#e65100] rounded-full animate-bounce"></div>
-            <div
-              className="w-2 h-2 bg-[#e65100] rounded-full animate-bounce"
-              style={{ animationDelay: "0.1s" }}
-            ></div>
-            <div
-              className="w-2 h-2 bg-[#e65100] rounded-full animate-bounce"
-              style={{ animationDelay: "0.2s" }}
-            ></div>
+          {/* Progress Bar */}
+          <ProgressBar progress={loadingProgress} />
+
+          {/* Status Indicator */}
+          <div className="text-center">
+            <StatusIndicator status={loadingStatus} />
+          </div>
+
+          {/* Additional Loading Details */}
+          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>Product ID:</span>
+              <span className="font-mono text-[#e65100]">{productId}</span>
+            </div>
+            {retryCount > 0 && (
+              <div className="flex items-center justify-between text-sm text-gray-600 mt-2">
+                <span>Retry Attempt:</span>
+                <span className="text-amber-600 font-medium">{retryCount}/3</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
     );
   }
   
@@ -961,87 +982,143 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   // =====================================
   
   if (error) {
-    const getErrorIcon = (type: string) => {
+    const getErrorConfig = (type: string) => {
       switch (type) {
         case 'network':
-          return '🌐';
+          return {
+            icon: '🌐',
+            color: 'border-red-200 bg-red-50',
+            iconBg: 'bg-red-100',
+            title: 'Connection Error',
+            titleColor: 'text-red-800',
+            textColor: 'text-red-700'
+          };
         case 'not_found':
-          return '🔍';
+          return {
+            icon: '🔍',
+            color: 'border-amber-200 bg-amber-50',
+            iconBg: 'bg-amber-100',
+            title: 'Product Not Found',
+            titleColor: 'text-amber-800',
+            textColor: 'text-amber-700'
+          };
         case 'timeout':
-          return '⏱️';
+          return {
+            icon: '⏱️',
+            color: 'border-orange-200 bg-orange-50',
+            iconBg: 'bg-orange-100',
+            title: 'Request Timeout',
+            titleColor: 'text-orange-800',
+            textColor: 'text-orange-700'
+          };
         case 'server_error':
-          return '🔧';
+          return {
+            icon: '🔧',
+            color: 'border-red-200 bg-red-50',
+            iconBg: 'bg-red-100',
+            title: 'Server Error',
+            titleColor: 'text-red-800',
+            textColor: 'text-red-700'
+          };
         default:
-          return '⚠️';
+          return {
+            icon: '⚠️',
+            color: 'border-gray-200 bg-gray-50',
+            iconBg: 'bg-gray-100',
+            title: 'Loading Error',
+            titleColor: 'text-gray-800',
+            textColor: 'text-gray-700'
+          };
       }
     };
     
-    const getErrorColor = (type: string) => {
-      switch (type) {
-        case 'network':
-          return 'border-orange-200 bg-orange-50 text-orange-800';
-        case 'not_found':
-          return 'border-purple-200 bg-purple-50 text-purple-800';
-        case 'timeout':
-          return 'border-yellow-200 bg-yellow-50 text-yellow-800';
-        case 'server_error':
-          return 'border-red-200 bg-red-50 text-red-800';
-        default:
-          return 'border-gray-200 bg-gray-50 text-gray-800';
-      }
-    };
+    const config = getErrorConfig(error.type);
     
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className={`max-w-lg p-8 text-center rounded-xl border-2 ${getErrorColor(error.type)} shadow-lg`}>
-          <div className="mb-4 text-4xl">{getErrorIcon(error.type)}</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center p-4">
+        <div className={`max-w-lg w-full rounded-2xl shadow-xl border-2 ${config.color} overflow-hidden`}>
           
-          <h2 className="mb-4 text-2xl font-bold">
-            {error.type === 'not_found' ? 'Enhanced Product Not Found' :
-             error.type === 'network' ? 'Connection Error' :
-             error.type === 'timeout' ? 'Request Timeout' :
-             error.type === 'server_error' ? 'Server Error' :
-             'Error Loading Enhanced Product'}
-          </h2>
-          
-          <p className="mb-6 leading-relaxed">{error.message}</p>
-          
-          {error.details && (
-            <details className="mb-6 text-left">
-              <summary className="mb-2 font-medium cursor-pointer">Technical Details</summary>
-              <pre className="p-3 overflow-auto text-xs bg-white border rounded">
-                {JSON.stringify(error.details, null, 2)}
-              </pre>
-            </details>
-          )}
-          
-          <div className="flex justify-center gap-3">
-            {error.retryable && (
-              <button 
-                className="px-6 py-3 font-medium text-white transition-colors bg-orange-600 rounded-lg hover:bg-orange-700"
-                onClick={handleRetry}
-              >
-                🔄 Try Again
-              </button>
-            )}
+          {/* Header */}
+          <div className="p-8 text-center">
+            <div className={`inline-flex items-center justify-center w-16 h-16 ${config.iconBg} rounded-full mb-4`}>
+              <span className="text-2xl">{config.icon}</span>
+            </div>
             
-            <button 
-              className="px-6 py-3 font-medium text-white transition-colors bg-gray-600 rounded-lg hover:bg-gray-700"
-              onClick={() => window.location.href = '/'}
-            >
-              ← Go Back
-            </button>
+            <h2 className={`text-2xl font-bold ${config.titleColor} mb-3`}>
+              {config.title}
+            </h2>
+            
+            <p className={`${config.textColor} leading-relaxed text-lg`}>
+              {error.message}
+            </p>
           </div>
           
-          <div className="p-4 mt-6 bg-white bg-opacity-50 rounded-lg">
-            <p className="mb-2 text-sm font-medium">Enhanced Features Troubleshooting:</p>
-            <ul className="space-y-1 text-sm">
-              <li>• Verify PayloadCMS is running with enhanced schema</li>
-              <li>• Check if masking features are properly configured</li>
-              <li>• Ensure AI processing services are available</li>
-              <li>• Validate printT field naming in PayloadCMS</li>
-              <li>• Check CORS configuration for enhanced endpoints</li>
-            </ul>
+          {/* Error Details */}
+          {error.details && (
+            <div className="px-8 pb-4">
+              <details className="group">
+                <summary className={`${config.textColor} cursor-pointer font-medium hover:underline flex items-center gap-2`}>
+                  <span className="group-open:rotate-90 transition-transform">▶</span>
+                  Technical Details
+                </summary>
+                <div className="mt-3 p-4 bg-white border border-gray-200 rounded-lg">
+                  <pre className="text-xs text-gray-600 overflow-auto max-h-40">
+                    {JSON.stringify(error.details, null, 2)}
+                  </pre>
+                </div>
+              </details>
+            </div>
+          )}
+          
+          {/* Action Buttons */}
+          <div className="p-8 bg-white bg-opacity-50 border-t border-gray-200">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              {error.retryable && (
+                <button 
+                  className="inline-flex items-center justify-center px-6 py-3 bg-[#e65100] text-white font-semibold rounded-lg hover:bg-[#d84315] transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  onClick={handleRetry}
+                >
+                  <span className="mr-2">🔄</span>
+                  Try Again
+                </button>
+              )}
+              
+              <button 
+                className="inline-flex items-center justify-center px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                onClick={() => window.location.href = '/'}
+              >
+                <span className="mr-2">←</span>
+                Go Back
+              </button>
+            </div>
+          </div>
+          
+          {/* Troubleshooting Info */}
+          <div className="p-6 bg-white border-t border-gray-200">
+            <div className="text-center">
+              <h4 className="font-semibold text-gray-800 mb-3 flex items-center justify-center gap-2">
+                <span>🛠️</span>
+                Troubleshooting Tips
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-[#e65100] rounded-full flex-shrink-0"></span>
+                  <span>Check internet connection</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-[#e65100] rounded-full flex-shrink-0"></span>
+                  <span>Verify PayloadCMS status</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-[#e65100] rounded-full flex-shrink-0"></span>
+                  <span>Validate product ID</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-[#e65100] rounded-full flex-shrink-0"></span>
+                  <span>Check CORS settings</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1054,17 +1131,34 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   
   if (!productData) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="max-w-lg p-8 text-center text-yellow-600 border-2 border-yellow-200 shadow-lg rounded-xl bg-yellow-50">
-          <div className="mb-4 text-4xl">🤔</div>
-          <h2 className="mb-4 text-xl font-bold">No Enhanced Product Data</h2>
-          <p className="mb-6">Enhanced product data was successfully fetched but appears to be empty.</p>
-          <button 
-            className="px-6 py-3 font-medium text-white transition-colors bg-yellow-600 rounded-lg hover:bg-yellow-700"
-            onClick={handleRetry}
-          >
-            🔄 Retry
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center p-4">
+        <div className="max-w-lg w-full bg-amber-50 border-2 border-amber-200 rounded-2xl shadow-xl overflow-hidden">
+          
+          {/* Header */}
+          <div className="p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4">
+              <span className="text-2xl">🤔</span>
+            </div>
+            
+            <h2 className="text-2xl font-bold text-amber-800 mb-3">
+              No Product Data
+            </h2>
+            
+            <p className="text-amber-700 leading-relaxed">
+              The product was found but contains no usable data. This might be a configuration issue.
+            </p>
+          </div>
+          
+          {/* Action Button */}
+          <div className="p-8 bg-white bg-opacity-50 border-t border-amber-200">
+            <button 
+              className="w-full inline-flex items-center justify-center px-6 py-3 bg-[#e65100] text-white font-semibold rounded-lg hover:bg-[#d84315] transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              onClick={handleRetry}
+            >
+              <span className="mr-2">🔄</span>
+              Reload Product
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1076,8 +1170,32 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   
   return (
     <div className="relative">
-      {/* Enhanced success indicator */}
-      
+      {/* Success notification - briefly shown */}
+      {showSuccessNotification && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right duration-500">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg shadow-lg p-4 max-w-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                  <span className="text-orange-600 text-sm">✓</span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-orange-800">Product Loaded</h4>
+                <p className="text-xs text-orange-700 mt-1">
+                  {productData.name} is ready for customization
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSuccessNotification(false)}
+                className="text-orange-400 hover:text-orange-600 text-lg leading-none"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Main enhanced designer */}
       <EnhancedCanvasDesigner productData={productData} />
@@ -1086,4 +1204,3 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
 };
 
 export default EnhancedDataLoader;
-

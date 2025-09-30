@@ -167,7 +167,7 @@ export default async function Home(props: {
           {/* <FanContent /> */}
           
           {/* 9. NewsLetter - Fast component, loads immediately */}
-          <NewsLetter />
+          {/* <NewsLetter /> */}
         </main>
       </div>
     </>

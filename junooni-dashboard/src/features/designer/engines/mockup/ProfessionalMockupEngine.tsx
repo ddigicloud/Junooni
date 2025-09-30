@@ -371,7 +371,7 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
   const [renderProgress, setRenderProgress] = useState(0);
 
   const log = useCallback((message: string, data?: any) => {
-    console.log(`🎯 Professional Mockup: ${message}`, data || '');
+    //console.log(`🎯 Professional Mockup: ${message}`, data || '');
   }, []);
 
   // Enhanced validation utilities
@@ -716,6 +716,18 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
   }
 }, [mockup, isSmartMockup]);
 
+// console.log('🔍 ProfessionalMockupEngine Debug:', {
+//   hasMockup: !!mockup,
+//   mockupPhotoUrl: mockup?.photo?.url,
+//   mockupAreas: mockup?.area?.map(a => a.areaName),
+//   hasCanvasConfigs: !!canvasConfigs,
+//   canvasConfigsType: typeof canvasConfigs,
+//   canvasConfigsKeys: canvasConfigs ? Object.keys(canvasConfigs) : 'NO CONFIGS',
+//   canvasConfigsIsArray: Array.isArray(canvasConfigs),
+//   firstArea: mockup?.area?.[0]?.areaName,
+//   configForFirstArea: canvasConfigs?.[mockup?.area?.[0]?.areaName?.toLowerCase()]
+// })
+
   useEffect(() => {
   if (!canvasRef.current || !mockup?.photo?.url) {
     log('Missing canvas or mockup photo URL');
@@ -785,21 +797,21 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
       if (visibleAreas && visibleAreas.length > 0) {
         log(`Processing ${visibleAreas.length} visible areas (${isSmartMockup() ? 'Smart AI' : 'Standard'})`);
         
-        console.log(`👁️ Visible areas:`, visibleAreas.map(visibleArea => ({
-          areaName: visibleArea.areaName,
-          visibility: visibleArea.visibility,
-          hasDesignPlacement: !!visibleArea.designPlacement,
-          wrapEnabled: visibleArea.surfaceWrapSettings?.enableWrap || false,
-          wrapAngle: visibleArea.surfaceWrapSettings?.wrapAngle,
-          wrapIntensity: visibleArea.surfaceWrapSettings?.wrapIntensity,
-          maskingEnabled: visibleArea.maskingConfiguration?.enableMasking || false
-        })));
+        // console.log(`👁️ Visible areas:`, visibleAreas.map(visibleArea => ({
+        //   areaName: visibleArea.areaName,
+        //   visibility: visibleArea.visibility,
+        //   hasDesignPlacement: !!visibleArea.designPlacement,
+        //   wrapEnabled: visibleArea.surfaceWrapSettings?.enableWrap || false,
+        //   wrapAngle: visibleArea.surfaceWrapSettings?.wrapAngle,
+        //   wrapIntensity: visibleArea.surfaceWrapSettings?.wrapIntensity,
+        //   maskingEnabled: visibleArea.maskingConfiguration?.enableMasking || false
+        // })));
         
-        console.log(`🎨 Available design element areas:`, Object.entries(designElements).map(([areaName, elems]) => ({
-          area: areaName,
-          count: elems.length,
-          elementIds: elems.map(el => el.id)
-        })));
+        // console.log(`🎨 Available design element areas:`, Object.entries(designElements).map(([areaName, elems]) => ({
+        //   area: areaName,
+        //   count: elems.length,
+        //   elementIds: elems.map(el => el.id)
+        // })));
         
         for (let i = 0; i < visibleAreas.length; i++) {
           const currentArea = visibleAreas[i]; // FIXED: Use currentArea instead of area
@@ -825,7 +837,7 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
           setRenderProgress(40 + ((i + 1) / visibleAreas.length) * 50);
         }
       } else {
-        console.warn(`⚠️ No visible areas found in mockup data`);
+        //console.warn(`⚠️ No visible areas found in mockup data`);
       }
 
       await applyFinalEnhancements(ctx, displayDimensions, mockup, surfaceProps, lightingProps);
@@ -835,7 +847,7 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
       setIsLoading(false);
 
     } catch (error) {
-      console.error('Professional mockup render error:', error);
+      //console.error('Professional mockup render error:', error);
       setRenderError(`Render failed: ${error.message}`);
       setIsLoading(false);
     }
@@ -963,10 +975,10 @@ async function renderDynamicProfessionalArea(
   const originalAreaName = visibleArea.areaName;
   const areaName = originalAreaName.toLowerCase();
   
-  console.log(`🎨 Processing visible area: "${originalAreaName}" (normalized: "${areaName}")`);
-  console.log(`🔧 Surface Props:`, surfaceProps);
-  console.log(`🧵 Fabric Props:`, fabricProps);
-  console.log(`💡 Lighting Props:`, lightingProps);
+  //console.log(`🎨 Processing visible area: "${originalAreaName}" (normalized: "${areaName}")`);
+  //console.log(`🔧 Surface Props:`, surfaceProps);
+  //console.log(`🧵 Fabric Props:`, fabricProps);
+  //console.log(`💡 Lighting Props:`, lightingProps);
   
   // Try multiple area name variations to find elements
   let elements: DesignElement[] = [];
@@ -990,20 +1002,20 @@ async function renderDynamicProfessionalArea(
     if (designElements[variation] && designElements[variation].length > 0) {
       elements = designElements[variation];
       foundAreaKey = variation;
-      console.log(`✅ Found elements using area key: "${variation}"`);
+      //console.log(`✅ Found elements using area key: "${variation}"`);
       break;
     }
   }
   
-  console.log(`🔍 Found ${elements.length} elements for area "${originalAreaName}" using key "${foundAreaKey}"`);
+  //console.log(`🔍 Found ${elements.length} elements for area "${originalAreaName}" using key "${foundAreaKey}"`);
   
   if (elements.length === 0) {
-    console.log(`⚪ No elements found for area: ${originalAreaName}`);
+    //console.log(`⚪ No elements found for area: ${originalAreaName}`);
     return;
   }
 
   elements.forEach((el, idx) => {
-    console.log(`   Element ${idx + 1}: ${el.id} (${el.width}x${el.height}) at (${el.x}, ${el.y}) - hasImage: ${!!el.image}`);
+    //console.log(`   Element ${idx + 1}: ${el.id} (${el.width}x${el.height}) at (${el.x}, ${el.y}) - hasImage: ${!!el.image}`);
   });
 
   // Find canvas config with flexible matching
@@ -1013,13 +1025,13 @@ async function renderDynamicProfessionalArea(
   if (!canvasConfig && Object.keys(canvasConfigs).length > 0) {
     const firstConfigKey = Object.keys(canvasConfigs)[0];
     canvasConfig = canvasConfigs[firstConfigKey];
-    console.log(`🔄 Using fallback canvas config from "${firstConfigKey}" for area "${originalAreaName}"`);
+    //console.log(`🔄 Using fallback canvas config from "${firstConfigKey}" for area "${originalAreaName}"`);
   }
   
   if (!printableArea && Object.keys(canvasPrintableAreas).length > 0) {
     const firstAreaKey = Object.keys(canvasPrintableAreas)[0];
     printableArea = canvasPrintableAreas[firstAreaKey];
-    console.log(`🔄 Using fallback printable area from "${firstAreaKey}" for area "${originalAreaName}"`);
+    //console.log(`🔄 Using fallback printable area from "${firstAreaKey}" for area "${originalAreaName}"`);
   }
   
   // Create default config if still missing
@@ -1052,15 +1064,15 @@ async function renderDynamicProfessionalArea(
 
   try {
     // STEP 1: Create design composite
-    console.log(`🎯 Step 1: Creating design composite for ${elements.length} elements`);
+    //console.log(`🎯 Step 1: Creating design composite for ${elements.length} elements`);
     const designComposite = await createCleanDesignComposite(elements, canvasConfig, safeCreateCanvas);
     if (!designComposite) {
-      console.error(`❌ Failed to create design composite for area: ${originalAreaName}`);
+      //console.error(`❌ Failed to create design composite for area: ${originalAreaName}`);
       return;
     }
 
     // STEP 2: Transform to print area coordinates
-    console.log(`🎯 Step 2: Transforming to print area`);
+    //console.log(`🎯 Step 2: Transforming to print area`);
     const printAreaCanvas = await transformToPrintAreaSafe(
       designComposite,
       canvasConfig,
@@ -1070,7 +1082,7 @@ async function renderDynamicProfessionalArea(
     );
 
     // STEP 3: Apply dynamic surface effects from PayloadCMS
-    console.log(`🎯 Step 3: Applying dynamic surface effects`);
+    //console.log(`🎯 Step 3: Applying dynamic surface effects`);
     const wrappedCanvas = await applyDynamicSurfaceEffects(
       printAreaCanvas,
       visibleArea,
@@ -1083,7 +1095,7 @@ async function renderDynamicProfessionalArea(
     );
 
     // STEP 4: Apply final placement with PayloadCMS coordinates
-    console.log(`🎯 Step 4: Applying final placement (PayloadCMS coordinates)`);
+    //console.log(`🎯 Step 4: Applying final placement (PayloadCMS coordinates)`);
     await applyDynamicPlacement(
       ctx,
       wrappedCanvas,
@@ -1094,10 +1106,10 @@ async function renderDynamicProfessionalArea(
       validateCanvas
     );
 
-    console.log(`✅ Final placement completed for area: ${originalAreaName}`);
+    //console.log(`✅ Final placement completed for area: ${originalAreaName}`);
 
   } catch (error) {
-    console.error(`❌ Error rendering area ${originalAreaName}:`, error);
+    //console.error(`❌ Error rendering area ${originalAreaName}:`, error);
   }
 }
 
@@ -1113,7 +1125,7 @@ async function createCleanDesignComposite(
     return null;
   }
 
-  console.log(`🎨 Creating clean composite with ${elements.length} elements`);
+  //console.log(`🎨 Creating clean composite with ${elements.length} elements`);
 
   try {
     const { canvas, ctx } = safeCreateCanvas(
@@ -1177,13 +1189,13 @@ async function createCleanDesignComposite(
         ctx.restore();
 
       } catch (elementError) {
-        console.error(`❌ Error drawing element ${element.id}:`, elementError);
+        //console.error(`❌ Error drawing element ${element.id}:`, elementError);
         ctx.restore();
         continue;
       }
     }
 
-    console.log(`✅ Clean composite completed: ${successfulDraws}/${sortedElements.length} elements drawn`);
+    //console.log(`✅ Clean composite completed: ${successfulDraws}/${sortedElements.length} elements drawn`);
     
     if (successfulDraws === 0) {
       return null;
@@ -1192,7 +1204,7 @@ async function createCleanDesignComposite(
     return canvas;
 
   } catch (error) {
-    console.error('❌ Error creating design composite:', error);
+    //console.error('❌ Error creating design composite:', error);
     return null;
   }
 }
@@ -1259,7 +1271,7 @@ async function transformToPrintAreaSafe(
         );
       }
     } catch (error) {
-      console.error('❌ Error in print area transform:', error);
+      //console.error('❌ Error in print area transform:', error);
       ctx.fillStyle = '#f0f0f0';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
@@ -1305,13 +1317,13 @@ async function applyDynamicSurfaceEffects(
                       surfaceProps.renderType === 'sleeve_wrap';
     
     if (shouldWrap) {
-      console.log(`🌯 Applying dynamic surface wrapping for ${visibleArea.areaName}`);
-      console.log(`🔧 Wrap settings:`, visibleArea.surfaceWrapSettings);
-      console.log(`🔧 Surface props:`, surfaceProps);
+      //console.log(`🌯 Applying dynamic surface wrapping for ${visibleArea.areaName}`);
+      //console.log(`🔧 Wrap settings:`, visibleArea.surfaceWrapSettings);
+      //console.log(`🔧 Surface props:`, surfaceProps);
       
       await applyDynamicWrapping(ctx, canvas, visibleArea, surfaceProps, fabricProps);
     } else {
-      console.log(`⚪ No wrapping enabled for ${visibleArea.areaName}`);
+      //console.log(`⚪ No wrapping enabled for ${visibleArea.areaName}`);
     }
 
     // STEP 3: Apply fabric integration based on PayloadCMS
@@ -1319,24 +1331,24 @@ async function applyDynamicSurfaceEffects(
                              (visibleArea.fabricIntegration?.enableFabricBlend !== false);
     
     if (shouldApplyFabric) {
-      console.log(`🧵 Applying fabric integration for ${visibleArea.areaName}`);
+      //console.log(`🧵 Applying fabric integration for ${visibleArea.areaName}`);
       await applyDynamicFabricIntegration(ctx, visibleArea.fabricIntegration, fabricProps, resultCanvas, fabricSettings);
     }
 
     // STEP 4: Apply advanced masking based on PayloadCMS
     if (visibleArea.visibility !== 'full' || visibleArea.maskingConfiguration?.enableMasking) {
-      console.log(`🎭 Applying advanced masking for ${visibleArea.areaName}: ${visibleArea.visibility}`);
+      //console.log(`🎭 Applying advanced masking for ${visibleArea.areaName}: ${visibleArea.visibility}`);
       await applyAdvancedMasking(ctx, visibleArea, resultCanvas, fabricProps);
     }
 
     // STEP 5: Apply lighting effects based on PayloadCMS
     if (lightingProps.lightIntensity > 0.5) {
-      console.log(`💡 Applying lighting effects for ${visibleArea.areaName}`);
+      //console.log(`💡 Applying lighting effects for ${visibleArea.areaName}`);
       await applyDynamicLighting(ctx, lightingProps, resultCanvas);
     }
 
   } catch (error) {
-    console.error('❌ Error applying surface effects:', error);
+    //console.error('❌ Error applying surface effects:', error);
     const fallbackCtx = resultCanvas.getContext('2d')!;
     fallbackCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
     fallbackCtx.drawImage(canvas, 0, 0);
@@ -1359,7 +1371,7 @@ async function applyDynamicWrapping(
   const enableWrap = wrapSettings.enableWrap || surfaceProps.renderType === 'cylindrical';
   
   if (!enableWrap) {
-    console.log(`⚪ Wrapping disabled for ${visibleArea.areaName}`);
+    //console.log(`⚪ Wrapping disabled for ${visibleArea.areaName}`);
     ctx.drawImage(source, 0, 0);
     return;
   }
@@ -1376,14 +1388,14 @@ async function applyDynamicWrapping(
   const dynamicWrap = wrapSettings.dynamicWrap || false;
   const wrapFalloff = wrapSettings.wrapFalloff || 0.8;
   
-  console.log(`🌯 Applying dynamic wrapping to ${visibleArea.areaName}`, {
-    renderType: surfaceProps.renderType,
-    wrapAngle: wrapSettings.wrapAngle || surfaceProps.wrapAngle,
-    wrapIntensity: wrapSettings.wrapIntensity || surfaceProps.curveIntensity,
-    dynamicWrap,
-    wrapFalloff,
-    fabricType: fabricProps.fabricType
-  });
+  // console.log(`🌯 Applying dynamic wrapping to ${visibleArea.areaName}`, {
+  //   renderType: surfaceProps.renderType,
+  //   wrapAngle: wrapSettings.wrapAngle || surfaceProps.wrapAngle,
+  //   wrapIntensity: wrapSettings.wrapIntensity || surfaceProps.curveIntensity,
+  //   dynamicWrap,
+  //   wrapFalloff,
+  //   fabricType: fabricProps.fabricType
+  // });
 
   try {
     // Apply wrapping based on surface type
@@ -1401,13 +1413,13 @@ async function applyDynamicWrapping(
         await applyEnhancedConicalWrap(ctx, source, wrapAngle, wrapIntensity, fabricProps);
         break;
       default:
-        console.log(`⚪ No specific wrapping for ${surfaceProps.renderType}, using flat rendering`);
+        //console.log(`⚪ No specific wrapping for ${surfaceProps.renderType}, using flat rendering`);
         ctx.drawImage(source, 0, 0);
     }
     
-    console.log(`🔄 Applied ${surfaceProps.renderType} wrap for ${visibleArea.areaName}`);
+    //console.log(`🔄 Applied ${surfaceProps.renderType} wrap for ${visibleArea.areaName}`);
   } catch (error) {
-    console.error('Error in dynamic wrapping:', error);
+    //console.error('Error in dynamic wrapping:', error);
     ctx.drawImage(source, 0, 0);
   }
 }
@@ -1428,7 +1440,7 @@ async function applyEnhancedCylindricalWrap(
   const height = source.height;
   
   try {
-    console.log(`🌯 Applying enhanced cylindrical wrap: angle=${wrapAngle}, intensity=${intensity}, falloff=${falloff}`);
+    //console.log(`🌯 Applying enhanced cylindrical wrap: angle=${wrapAngle}, intensity=${intensity}, falloff=${falloff}`);
     
     // Enhanced sampling rate based on fabric type
     let sampleRate = Math.max(1, Math.min(8, Math.floor(width / 80)));
@@ -1440,7 +1452,7 @@ async function applyEnhancedCylindricalWrap(
     const visibilityPercentage = visibleArea.visibilityPercentage || 100;
     const visibilityFactor = visibilityPercentage / 100;
     
-    console.log(`🔍 Cylindrical visibility: ${visibilityPercentage}% (factor: ${visibilityFactor})`);
+    //console.log(`🔍 Cylindrical visibility: ${visibilityPercentage}% (factor: ${visibilityFactor})`);
     
     for (let x = 0; x < width; x += sampleRate) {
       const relativeX = Math.max(-1, Math.min(1, (x - width / 2) / (width / 2)));
@@ -1530,9 +1542,9 @@ async function applyEnhancedApparelWrap(
     ctx.drawImage(source, 0, 0);
     
     ctx.restore();
-    console.log(`✅ Enhanced apparel wrap applied for ${fabricProps.fabricType}`);
+    //console.log(`✅ Enhanced apparel wrap applied for ${fabricProps.fabricType}`);
   } catch (error) {
-    console.error('Error in enhanced apparel wrap:', error);
+    //console.error('Error in enhanced apparel wrap:', error);
     ctx.drawImage(source, 0, 0);
   }
 }
@@ -1552,7 +1564,7 @@ async function applyEnhancedSleeveWrap(
   const height = source.height;
   
   try {
-    console.log(`👕 Applying enhanced sleeve wrap: angle=${wrapAngle}, intensity=${intensity}`);
+    //console.log(`👕 Applying enhanced sleeve wrap: angle=${wrapAngle}, intensity=${intensity}`);
     
     const sampleRate = Math.max(2, Math.floor(width / 50)); // Finer sampling for sleeves
     
@@ -1580,9 +1592,9 @@ async function applyEnhancedSleeveWrap(
       ctx.restore();
     }
     
-    console.log(`✅ Enhanced sleeve wrap applied successfully`);
+    //console.log(`✅ Enhanced sleeve wrap applied successfully`);
   } catch (error) {
-    console.error('Error in enhanced sleeve wrap:', error);
+    //console.error('Error in enhanced sleeve wrap:', error);
     ctx.drawImage(source, 0, 0);
   }
 }
@@ -1601,7 +1613,7 @@ async function applyEnhancedConicalWrap(
   const height = source.height;
   
   try {
-    console.log(`🔺 Applying enhanced conical wrap`);
+    //console.log(`🔺 Applying enhanced conical wrap`);
     
     const sampleRate = Math.max(1, Math.floor(width / 80));
     
@@ -1630,9 +1642,9 @@ async function applyEnhancedConicalWrap(
       }
     }
     
-    console.log(`✅ Enhanced conical wrap applied successfully`);
+    //console.log(`✅ Enhanced conical wrap applied successfully`);
   } catch (error) {
-    console.error('Error in enhanced conical wrap:', error);
+    //console.error('Error in enhanced conical wrap:', error);
     ctx.drawImage(source, 0, 0);
   }
 }
@@ -1653,7 +1665,7 @@ async function applyDynamicFabricIntegration(
   ));
   const fabricColor = fabricIntegration?.fabricColor || '#ffffff';
   
-  console.log(`🧵 Applying dynamic fabric integration: ${fabricType}, intensity: ${textureIntensity}`);
+  //console.log(`🧵 Applying dynamic fabric integration: ${fabricType}, intensity: ${textureIntensity}`);
   
   try {
     ctx.save();
@@ -1742,10 +1754,10 @@ async function applyDynamicFabricIntegration(
     
     ctx.restore();
     
-    console.log(`✅ Dynamic fabric integration applied for ${fabricType}`);
+    //console.log(`✅ Dynamic fabric integration applied for ${fabricType}`);
     
   } catch (error) {
-    console.error('❌ Error applying dynamic fabric integration:', error);
+    //console.error('❌ Error applying dynamic fabric integration:', error);
     ctx.restore();
   }
 }
@@ -1829,7 +1841,7 @@ function createDynamicFabricTexture(
     
     ctx.putImageData(imageData, 0, 0);
   } catch (error) {
-    console.error('Error creating dynamic fabric texture:', error);
+    //console.error('Error creating dynamic fabric texture:', error);
     ctx.fillStyle = fabricColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
@@ -1898,7 +1910,7 @@ function createDynamicWrinklePattern(
     }
     
   } catch (error) {
-    console.error('Error creating dynamic wrinkle pattern:', error);
+    //console.error('Error creating dynamic wrinkle pattern:', error);
   }
   
   return canvas;
@@ -1917,7 +1929,7 @@ async function applyAdvancedMasking(
     return;
   }
   
-  console.log(`🎭 Applying advanced ${visibleArea.visibility} masking`);
+  //console.log(`🎭 Applying advanced ${visibleArea.visibility} masking`);
   
   try {
     ctx.save();
@@ -1954,9 +1966,9 @@ async function applyAdvancedMasking(
     }
     
     ctx.restore();
-    console.log(`✅ Advanced masking applied: ${visibleArea.visibility} (${maskType})`);
+    //console.log(`✅ Advanced masking applied: ${visibleArea.visibility} (${maskType})`);
   } catch (error) {
-    console.error('Error applying advanced masking:', error);
+    //console.error('Error applying advanced masking:', error);
     ctx.restore();
   }
 }
@@ -2123,9 +2135,9 @@ async function applyDynamicLighting(
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     ctx.restore();
-    console.log(`✅ Dynamic lighting applied`);
+    //console.log(`✅ Dynamic lighting applied`);
   } catch (error) {
-    console.error('Error applying dynamic lighting:', error);
+    //console.error('Error applying dynamic lighting:', error);
     ctx.restore();
   }
 }
@@ -2144,12 +2156,12 @@ async function applyDynamicPlacement(
 ) {
   const placement = visibleArea.designPlacement;
   if (!placement) {
-    console.error('❌ No design placement data found in visible area:', visibleArea);
+    //console.error('❌ No design placement data found in visible area:', visibleArea);
     return;
   }
 
-  console.log(`📍 Dynamic placement for ${visibleArea.areaName}:`, placement);
-  console.log(`🔧 Surface props for placement:`, surfaceProps);
+  //console.log(`📍 Dynamic placement for ${visibleArea.areaName}:`, placement);
+  //console.log(`🔧 Surface props for placement:`, surfaceProps);
 
   try {
     validateCanvas(wrappedCanvas, 'wrapped canvas for placement');
@@ -2175,7 +2187,7 @@ async function applyDynamicPlacement(
     placementArea.width = Math.max(10, Math.min(placementArea.width, displayDimensions.width - placementArea.x));
     placementArea.height = Math.max(10, Math.min(placementArea.height, displayDimensions.height - placementArea.y));
 
-    console.log(`📐 Final dynamic placement area:`, placementArea);
+    //console.log(`📐 Final dynamic placement area:`, placementArea);
 
     ctx.save();
 
@@ -2227,12 +2239,12 @@ async function applyDynamicPlacement(
       drawHeight
     );
 
-    console.log(`✅ Dynamic placement completed for ${visibleArea.areaName}`);
+    //console.log(`✅ Dynamic placement completed for ${visibleArea.areaName}`);
 
     ctx.restore();
 
   } catch (error) {
-    console.error('❌ Error in dynamic placement:', error);
+    //console.error('❌ Error in dynamic placement:', error);
     ctx.restore();
   }
 }
@@ -2247,7 +2259,7 @@ async function applyFinalEnhancements(
   surfaceProps: any,
   lightingProps: any
 ) {
-  console.log(`✨ Applying final enhancements with PayloadCMS lighting`);
+  //console.log(`✨ Applying final enhancements with PayloadCMS lighting`);
 
   try {
     // Apply surface-specific final effects
@@ -2295,9 +2307,9 @@ async function applyFinalEnhancements(
       ctx.restore();
     }
     
-    console.log(`✅ Final enhancements applied for ${surfaceProps.renderType} surface`);
+    //console.log(`✅ Final enhancements applied for ${surfaceProps.renderType} surface`);
   } catch (error) {
-    console.error('Error applying final enhancements:', error);
+    //console.error('Error applying final enhancements:', error);
   }
 }
 
@@ -2339,7 +2351,7 @@ function loadImageWithProgress(
     };
     
     img.onerror = (error) => {
-      console.error(`❌ Failed to load image: ${url}`, error);
+      //console.error(`❌ Failed to load image: ${url}`, error);
       reject(new Error(`Failed to load image: ${url}`));
     };
     

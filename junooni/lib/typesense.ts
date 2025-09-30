@@ -128,7 +128,7 @@ class TypesenseService {
       return {
         min_price_amount: 0,
         max_price_amount: 0,
-        currency_code: region?.currency_code || 'USD',
+        currency_code: region?.currency_code || 'INR',
       }
     }
 
@@ -147,14 +147,14 @@ class TypesenseService {
       return {
         min_price_amount: 0,
         max_price_amount: 0,
-        currency_code: region?.currency_code || 'USD',
+        currency_code: region?.currency_code || 'INR',
       }
     }
 
     return {
       min_price_amount: Math.min(...prices),
       max_price_amount: Math.max(...prices),
-      currency_code: region?.currency_code || 'USD',
+      currency_code: region?.currency_code || 'INR',
     }
   }
 
@@ -767,6 +767,6 @@ async function fetchProductsWithCompleteVariantImageData() {
   
   return {
     products: [],
-    region: { currency_code: 'USD' }
+    region: { currency_code: 'INR' }
   }
 }

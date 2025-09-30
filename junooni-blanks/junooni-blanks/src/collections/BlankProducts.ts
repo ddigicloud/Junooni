@@ -183,7 +183,12 @@ export const BlankProducts: CollectionConfig = {
                 },
                 {
                   name: 'leadTimeDays',
-                  type: 'number',
+                  type: 'text',
+                  //dbName: 'lead_time_days',
+                },
+                {
+                  name: 'shipTimeDays',
+                  type: 'text',
                   //dbName: 'lead_time_days',
                 },
                 {
@@ -214,6 +219,11 @@ export const BlankProducts: CollectionConfig = {
               name: 'cost', 
               type: 'number', 
               required: true, 
+              min: 0,
+            },
+             { 
+              name: 'GST Cost', 
+              type: 'number', 
               min: 0,
             },
             {
@@ -284,6 +294,11 @@ export const BlankProducts: CollectionConfig = {
                   //dbName: 'printing_cost_area',
                 },
                 {
+                  name: 'printingGST',
+                  type: 'number',
+                  //dbName: 'printing_cost_area',
+                },
+                {
                   name: 'setupFee',
                   type: 'number',
                   //dbName: 'setup_fee',
@@ -312,6 +327,11 @@ export const BlankProducts: CollectionConfig = {
               name: 'features',
               type: 'richText',
               editor: lexicalEditor(),
+            },
+            {
+              name: 'HSNCode',
+              type: 'text',
+              //dbName: 'mat_wght',
             },
             {
               name: 'materials',
@@ -515,6 +535,11 @@ export const BlankProducts: CollectionConfig = {
                 },
                 { 
                   name: 'shippingDimensions', 
+                  type: 'text',
+                  //dbName: 'shipping_dimensions',
+                },
+                { 
+                  name: 'shippingCharges', 
                   type: 'text',
                   //dbName: 'shipping_dimensions',
                 },
@@ -1173,6 +1198,34 @@ export const BlankProducts: CollectionConfig = {
                       label: 'Mockup Photo',
                       required: true,
                     },
+                    {
+                          name: 'mocwidthpx',
+                          type: 'number',
+                          //dbName: 'canvas_wid_inc',
+                          label:'Mockup Width (pixels)'
+                          
+                        },
+                        {
+                          name: 'mochigtpx',
+                          type: 'number',
+                          //dbName: 'canvas_ht_inch',
+                          label: 'Mockup Height (pixels)',
+                          
+                        },
+                        {
+                          name: 'tmbwidthpx',
+                          type: 'number',
+                          //dbName: 'canvas_wid_inc',
+                          label:'Mockup Thumbnail Width (pixels)'
+                          
+                        },
+                        {
+                          name: 'tmbhigtpx',
+                          type: 'number',
+                          //dbName: 'canvas_ht_inch',
+                          label: 'Mockup Thumbnail Height (pixels)',
+                          
+                        },
                     {
                       name: 'viewAngle',
                       type: 'select',
@@ -2154,6 +2207,14 @@ export const BlankProducts: CollectionConfig = {
                         { label: 'Pocket', value: 'pocket' },
                       ],
                       defaultValue: 'primary',
+                    },
+                    {
+                      name: 'Minimum printing price',
+                      type: 'text',
+                    },
+                    {
+                      name: 'Per sq inch printing price',
+                      type: 'text',
                     },
                     {
                       name: 'canvasDim',

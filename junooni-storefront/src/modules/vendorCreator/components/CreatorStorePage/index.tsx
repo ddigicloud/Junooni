@@ -857,7 +857,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
       initial="hidden"
       animate="visible"
       variants={fadeIn}
-      className="min-h-screen pt-16 overflow-x-hidden bg-gray-50 md:pt-20"
+      className="min-h-screen pt-16 overflow-x-hidden bg-gray-50 md:pt-18"
     >
       {/* Cover Photo */}
       <motion.div

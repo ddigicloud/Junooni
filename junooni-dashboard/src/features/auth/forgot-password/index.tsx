@@ -12,12 +12,11 @@ export default function ForgotPassword() {
       <div className="relative hidden h-full lg:flex flex-col overflow-hidden bg-gradient-to-br from-[#e65100] to-[#d84315]">
         {/* Main background image with enhanced overlay */}
         <div
-          className="absolute inset-0 bg-no-repeat bg-cover h-[100%]"
+          className="absolute inset-0 bg-no-repeat bg-cover"
           style={{
             backgroundImage: `url(${CreatorJunooni})`,
             filter: 'brightness(0.85) contrast(1.1)',
-            backgroundPosition: 'center -35px' ,
-             backgroundSize: '80%'// move upward by 50px
+            
           }}
         />
                 

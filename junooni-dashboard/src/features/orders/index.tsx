@@ -1215,83 +1215,144 @@ useEffect(() => {
             </CardContent>
           </Card>
         )}
-        
         {/* ✅ Updated Summary cards using vendor data */}
         {!loading && !error && <SummaryCards data={filteredOrders} />}
         
         {/* Status tab filters */}
+        {/* Status tab filters - Horizontal Scroll for Mobile */}
         {!loading && (
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <Button 
-              variant={currentTab === "all" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("all")}
-              className={currentTab === "all" ? "bg-gray-200 hover:bg-gray-300 text-gray-800" : ""}
-            >
-              All Orders
-              <Badge variant="secondary" className="ml-2 text-gray-800 bg-gray-100">
-                {orders.length}
-              </Badge>
-            </Button>
-            
-            <Button 
-              variant={currentTab === "pending" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("pending")}
-              className={currentTab === "pending" ? "bg-orange-100 hover:bg-orange-200 text-[#e65100] border-orange-200" : ""}
-            >
-              <Clock className="w-4 h-4 mr-2" />
-              Pending
-              <Badge variant="secondary" className="ml-2 bg-orange-50 text-[#e65100]">
-                {pendingCount}
-              </Badge>
-            </Button>
-            
-            <Button 
-              variant={currentTab === "processing" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("processing")}
-              className={currentTab === "processing" ? "bg-orange-100 hover:bg-orange-200 text-[#e65100] border-orange-200" : ""}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Creator Fulfillment
-              <Badge variant="secondary" className="ml-2 text-[#e65100] bg-orange-50">
-                {processingCount}
-              </Badge>
-            </Button>
-            
-            <Button 
-              variant={currentTab === "shipped" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("shipped")}
-              className={currentTab === "shipped" ? "bg-orange-100 hover:bg-orange-200 text-[#e65100] border-orange-200" : ""}
-            >
-              <Truck className="w-4 h-4 mr-2" />
-              Shipped
-              <Badge variant="secondary" className="ml-2 text-[#e65100] bg-orange-50">
-                {shippedCount}
-              </Badge>
-            </Button>
-            
-            <Button 
-              variant={currentTab === "completed" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("completed")}
-              className={currentTab === "completed" ? "bg-green-100 hover:bg-green-200 text-green-800 border-green-200" : ""}
-            >
-              <CircleCheck className="w-4 h-4 mr-2" />
-              Completed
-              <Badge variant="secondary" className="ml-2 text-green-800 bg-green-50">
-                {completedCount}
-              </Badge>
-            </Button>
-            
-            <Button 
-              variant={currentTab === "cancelled" ? "default" : "outline"} 
-              onClick={() => setCurrentTab("cancelled")}
-              className={currentTab === "cancelled" ? "bg-red-100 hover:bg-red-200 text-red-800 border-red-200" : ""}
-            >
-              <AlertTriangle className="w-4 h-4 mr-2" />
-              Cancelled
-              <Badge variant="secondary" className="ml-2 text-red-800 bg-red-50">
-                {cancelledCount}
-              </Badge>
-            </Button>
+          <div className="mb-4">
+            {/* Mobile View - Horizontal Scroll */}
+            <div className="sm:hidden overflow-x-auto pb-2 -mx-4 px-4">
+              <div className="flex gap-2 min-w-max">
+                <Button 
+                  variant={currentTab === "all" ? "default" : "outline"} 
+                  onClick={() => setCurrentTab("all")}
+                  className={`text-xs px-3 py-1.5 whitespace-nowrap ${currentTab === "all" ? "bg-gray-200 hover:bg-gray-300 text-gray-800" : ""}`}
+                >
+                  All ({orders.length})
+                </Button>
+                
+                <Button 
+                  variant={currentTab === "pending" ? "default" : "outline"} 
+                  onClick={() => setCurrentTab("pending")}
+                  className={`text-xs px-3 py-1.5 whitespace-nowrap ${currentTab === "pending" ? "bg-orange-100 hover:bg-orange-200 text-[#e65100] border-orange-200" : ""}`}
+                >
+                  <Clock className="w-3 h-3 mr-1" />
+                  Pending ({pendingCount})
+                </Button>
+                
+                <Button 
+                  variant={currentTab === "processing" ? "default" : "outline"} 
+                  onClick={() => setCurrentTab("processing")}
+                  className={`text-xs px-3 py-1.5 whitespace-nowrap ${currentTab === "processing" ? "bg-orange-100 hover:bg-orange-200 text-[#e65100] border-orange-200" : ""}`}
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Creator ({processingCount})
+                </Button>
+                
+                <Button 
+                  variant={currentTab === "shipped" ? "default" : "outline"} 
+                  onClick={() => setCurrentTab("shipped")}
+                  className={`text-xs px-3 py-1.5 whitespace-nowrap ${currentTab === "shipped" ? "bg-orange-100 hover:bg-orange-200 text-[#e65100] border-orange-200" : ""}`}
+                >
+                  <Truck className="w-3 h-3 mr-1" />
+                  Shipped ({shippedCount})
+                </Button>
+                
+                <Button 
+                  variant={currentTab === "completed" ? "default" : "outline"} 
+                  onClick={() => setCurrentTab("completed")}
+                  className={`text-xs px-3 py-1.5 whitespace-nowrap ${currentTab === "completed" ? "bg-green-100 hover:bg-green-200 text-green-800 border-green-200" : ""}`}
+                >
+                  <CircleCheck className="w-3 h-3 mr-1" />
+                  Done ({completedCount})
+                </Button>
+                
+                <Button 
+                  variant={currentTab === "cancelled" ? "default" : "outline"} 
+                  onClick={() => setCurrentTab("cancelled")}
+                  className={`text-xs px-3 py-1.5 whitespace-nowrap ${currentTab === "cancelled" ? "bg-red-100 hover:bg-red-200 text-red-800 border-red-200" : ""}`}
+                >
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                  Cancelled ({cancelledCount})
+                </Button>
+              </div>
+            </div>
+
+            {/* Desktop View - Original Layout */}
+            <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+              <Button 
+                variant={currentTab === "all" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("all")}
+                className={currentTab === "all" ? "bg-gray-200 hover:bg-gray-300 text-gray-800" : ""}
+              >
+                All Orders
+                <Badge variant="secondary" className="ml-2 text-gray-800 bg-gray-100">
+                  {orders.length}
+                </Badge>
+              </Button>
+              
+              <Button 
+                variant={currentTab === "pending" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("pending")}
+                className={currentTab === "pending" ? "bg-orange-100 hover:bg-orange-200 text-[#e65100] border-orange-200" : ""}
+              >
+                <Clock className="w-4 h-4 mr-2" />
+                Pending
+                <Badge variant="secondary" className="ml-2 bg-orange-50 text-[#e65100]">
+                  {pendingCount}
+                </Badge>
+              </Button>
+              
+              <Button 
+                variant={currentTab === "processing" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("processing")}
+                className={currentTab === "processing" ? "bg-orange-100 hover:bg-orange-200 text-[#e65100] border-orange-200" : ""}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Creator Fulfillment
+                <Badge variant="secondary" className="ml-2 text-[#e65100] bg-orange-50">
+                  {processingCount}
+                </Badge>
+              </Button>
+              
+              <Button 
+                variant={currentTab === "shipped" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("shipped")}
+                className={currentTab === "shipped" ? "bg-orange-100 hover:bg-orange-200 text-[#e65100] border-orange-200" : ""}
+              >
+                <Truck className="w-4 h-4 mr-2" />
+                Shipped
+                <Badge variant="secondary" className="ml-2 text-[#e65100] bg-orange-50">
+                  {shippedCount}
+                </Badge>
+              </Button>
+              
+              <Button 
+                variant={currentTab === "completed" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("completed")}
+                className={currentTab === "completed" ? "bg-green-100 hover:bg-green-200 text-green-800 border-green-200" : ""}
+              >
+                <CircleCheck className="w-4 h-4 mr-2" />
+                Completed
+                <Badge variant="secondary" className="ml-2 text-green-800 bg-green-50">
+                  {completedCount}
+                </Badge>
+              </Button>
+              
+              <Button 
+                variant={currentTab === "cancelled" ? "default" : "outline"} 
+                onClick={() => setCurrentTab("cancelled")}
+                className={currentTab === "cancelled" ? "bg-red-100 hover:bg-red-200 text-red-800 border-red-200" : ""}
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                Cancelled
+                <Badge variant="secondary" className="ml-2 text-red-800 bg-red-50">
+                  {cancelledCount}
+                </Badge>
+              </Button>
+            </div>
           </div>
         )}
         

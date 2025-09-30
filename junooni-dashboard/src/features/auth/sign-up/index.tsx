@@ -105,7 +105,7 @@ export default function SignUp() {
       </div>
       
       {/* Right Panel - Enhanced Sign Up Form */}
-      <div className="flex flex-col items-center justify-center h-screen px-6 lg:pt-8 pt-2 bg-gradient-to-br from-gray-50 to-white">
+      <div className="flex flex-col items-center justify-start sm:justify-center h-screen px-6 lg:pt-8 pt-12 bg-gradient-to-br from-gray-50 to-white">
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo - Enhanced */}
           <div className="flex items-center justify-center gap-3 mb-12 lg:hidden">

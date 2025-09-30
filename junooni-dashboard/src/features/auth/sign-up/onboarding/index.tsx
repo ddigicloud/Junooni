@@ -212,7 +212,7 @@ const checkTokenForActorId = () => {
 
     // Decode JWT token (assuming it's base64 encoded)
     const payload = JSON.parse(atob(token.split('.')[1]));
-    console.log('Token payload:', payload);
+    //console.log('Token payload:', payload);
     
     const actorId = payload.actor_id || payload.sub || payload.id;
     return { 
@@ -220,7 +220,7 @@ const checkTokenForActorId = () => {
       actorId: actorId 
     };
   } catch (error) {
-    console.error('Error decoding token:', error);
+    //console.error('Error decoding token:', error);
     return { hasActorId: false, actorId: null };
   }
 };
@@ -903,7 +903,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         );
         
       case "banking-info":
-        console.log('Rendering banking-info with vendorData:', vendorData);
+        //console.log('Rendering banking-info with vendorData:', vendorData);
   
         if (vendorData === null) {
           return <div>Loading...</div>;
@@ -927,7 +927,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         }
         
         if (!vendorData.vendor.admins || !Array.isArray(vendorData.vendor.admins) || vendorData.vendor.admins.length === 0) {
-          console.log('admins data missing, initializing...');
+          //console.log('admins data missing, initializing...');
           const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
           
           vendorData.vendor.admins = [{
@@ -1115,7 +1115,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         );
         
       case "creator-profile":
-        console.log('Rendering creator-profile with vendorData:', vendorData);
+        //console.log('Rendering creator-profile with vendorData:', vendorData);
   
         if (vendorData === null) {
           return <div>Loading...</div>;
@@ -1137,7 +1137,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         }
         
         if (!vendorData.vendor.admins || !Array.isArray(vendorData.vendor.admins) || vendorData.vendor.admins.length === 0) {
-          console.log('admins data missing, initializing...');
+          //console.log('admins data missing, initializing...');
           const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
           
           vendorData.vendor.admins = [{
@@ -1264,7 +1264,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         );
         
       case "final-review":
-        console.log('Rendering final-review with vendorData:', vendorData);
+        //console.log('Rendering final-review with vendorData:', vendorData);
   
         if (vendorData === null) {
           return <div>Loading...</div>;
@@ -1302,7 +1302,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         }
         
         if (!vendorData.vendor.admins || !Array.isArray(vendorData.vendor.admins) || vendorData.vendor.admins.length === 0) {
-          console.log('admins data missing, initializing...');
+          //console.log('admins data missing, initializing...');
           const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
           
           vendorData.vendor.admins = [{
@@ -1485,7 +1485,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                 style={{ accentColor: brandColors.primary, cursor: 'pointer' }}
                 checked={termsAgreed}
                 onChange={() => {
-                  console.log("Checkbox clicked - current value:", !termsAgreed);
+                  //console.log("Checkbox clicked - current value:", !termsAgreed);
                   setTermsAgreed(!termsAgreed);
                 }}
               />
@@ -1667,14 +1667,14 @@ useEffect(() => {
       const token = localStorage.getItem('vendorToken');
       
       if (!token) {
-        console.log('No token found, setting up as new vendor');
+        //console.log('No token found, setting up as new vendor');
         setupInitialState();
         return;
       }
       
       // Check if token has actor_id
       const { hasActorId } = checkTokenForActorId();
-      console.log('Token has actor_id:', hasActorId);
+      //console.log('Token has actor_id:', hasActorId);
       
       if (hasActorId) {
         // Try to fetch existing vendor data
@@ -1689,7 +1689,7 @@ useEffect(() => {
           
           if (response.ok) {
             const data = await response.json();
-            console.log('Successfully fetched existing vendor data:', data);
+            //console.log('Successfully fetched existing vendor data:', data);
             
             if (isActive) {
               setVendorData(data);
@@ -1708,16 +1708,16 @@ useEffect(() => {
               calculateProgress(completion);
             }
           } else {
-            console.log('Failed to fetch vendor data, setting up as new vendor');
+            //console.log('Failed to fetch vendor data, setting up as new vendor');
             setupInitialState();
           }
         } catch (fetchError) {
-          console.error('Error fetching vendor data:', fetchError);
+          //console.error('Error fetching vendor data:', fetchError);
           setupInitialState();
         }
       } else {
         // No actor_id, set up as new vendor
-        console.log('No actor_id in token, setting up as new vendor');
+        //console.log('No actor_id in token, setting up as new vendor');
         setupInitialState();
       }
       
@@ -1726,7 +1726,7 @@ useEffect(() => {
       }
       
     } catch (error) {
-      console.error('Error initializing onboarding:', error);
+      //console.error('Error initializing onboarding:', error);
       if (isActive) {
         setupInitialState();
       }
@@ -1743,7 +1743,7 @@ useEffect(() => {
 // Add this useEffect after your main initialization useEffect
 useEffect(() => {
   if (vendorData && vendorData.vendor && (!vendorData.vendor.admins || !Array.isArray(vendorData.vendor.admins))) {
-    console.log('Normalizing admins data structure...');
+    //console.log('Normalizing admins data structure...');
     const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
     
     setVendorData(prevData => ({
@@ -1921,10 +1921,10 @@ const handleLocalSave = () => {
         updated_at: new Date().toISOString()
       };
       setLocalPayload(payload);
-      console.log('Data saved to local payload:', payload);
+      //console.log('Data saved to local payload:', payload);
     }
   } catch (error) {
-    console.error('Error saving to local payload:', error);
+    //console.error('Error saving to local payload:', error);
   }
 };
 
@@ -1938,7 +1938,7 @@ const handleServerUpdate = async () => {
     
     // Upload pending files first
     const uploadedUrls = await uploadPendingFiles();
-    console.log('📁 Uploaded file URLs for update:', uploadedUrls);
+    //console.log('📁 Uploaded file URLs for update:', uploadedUrls);
     
     // Prepare update payload
     const updatePayload = {};
@@ -1995,12 +1995,12 @@ const handleServerUpdate = async () => {
           }
         }));
       }
-      console.log('Successfully updated vendor data on server');
+      //console.log('Successfully updated vendor data on server');
     } else {
-      console.error('Failed to update vendor data on server');
+      //console.error('Failed to update vendor data on server');
     }
   } catch (error) {
-    console.error('Error updating vendor data on server:', error);
+    //console.error('Error updating vendor data on server:', error);
   }
 };
 
@@ -2078,7 +2078,7 @@ const handleFormChange = () => {
       }
     }
   } catch (error) {
-    console.error('Error during continue:', error);
+    //console.error('Error during continue:', error);
     toast({
       title: "Error",
       description: "Something went wrong. Please try again.",
@@ -2145,7 +2145,7 @@ const handleSaveAndExit = async () => {
     }
     
   } catch (error) {
-    console.error('Error during save and exit:', error);
+    //console.error('Error during save and exit:', error);
     toast({
       title: "Error Saving Profile",
       description: error.message || "Failed to save your profile. Please try again.",
@@ -2167,7 +2167,7 @@ const handleCreateNewVendor = async () => {
     
     // Upload pending files first and get URLs
     const uploadedUrls = await uploadPendingFiles();
-    console.log('📁 Uploaded file URLs:', uploadedUrls);
+    //console.log('📁 Uploaded file URLs:', uploadedUrls);
     
     // Combine local payload with current vendorData
     const finalData = localPayload || vendorData.vendor;
@@ -2209,7 +2209,7 @@ const handleCreateNewVendor = async () => {
     // Check payload size
     // checkPayloadSize(createPayload, 'Vendor Creation');
     
-    console.log('Creating new vendor with payload:', createPayload);
+    //console.log('Creating new vendor with payload:', createPayload);
     
     const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors`, {
       method: 'POST',
@@ -2226,7 +2226,7 @@ const handleCreateNewVendor = async () => {
     }
     
     const responseData = await response.json();
-    console.log('Vendor created successfully:', responseData);
+    //console.log('Vendor created successfully:', responseData);
     
     // Update local state with created vendor
     if (responseData.vendor) {
@@ -2241,7 +2241,7 @@ const handleCreateNewVendor = async () => {
     }
     
   } catch (error) {
-    console.error('Error creating vendor:', error);
+    //console.error('Error creating vendor:', error);
     throw error;
   }
 };
@@ -2283,7 +2283,7 @@ const handleFinalSubmission = async () => {
     }
     
   } catch (error) {
-    console.error('Error completing onboarding:', error);
+    //console.error('Error completing onboarding:', error);
     toast({
       title: "Error",
       description: error.message || "Failed to complete onboarding. Please try again.",
@@ -2308,7 +2308,7 @@ const handleFileUpload = async (file: File, fileType: 'logo' | 'coverphoto' | 'c
       throw new Error('File size must be less than 10MB');
     }
     
-    console.log(`Storing ${fileType} file for later upload:`, file.name, file.size, file.type);
+    //console.log(`Storing ${fileType} file for later upload:`, file.name, file.size, file.type);
     
     // Store the actual File object for later upload
     setPendingFiles(prev => ({
@@ -2325,7 +2325,7 @@ const handleFileUpload = async (file: File, fileType: 'logo' | 'coverphoto' | 'c
       // Update vendor data with preview URL for display
       updateVendorData(fileType, previewUrl);
       
-      console.log(`${fileType} preview set, file stored for upload on save`);
+      //console.log(`${fileType} preview set, file stored for upload on save`);
       
       toast({
         title: "File Selected",
@@ -2341,7 +2341,7 @@ const handleFileUpload = async (file: File, fileType: 'logo' | 'coverphoto' | 'c
     reader.readAsDataURL(file);
     
   } catch (error) {
-    console.error(`Error processing ${fileType}:`, error);
+    //console.error(`Error processing ${fileType}:`, error);
     
     toast({
       title: "File Error",
@@ -2363,19 +2363,19 @@ const uploadPendingFiles = async () => {
   // Check if we have any files to upload
   const filesToUpload = Object.entries(pendingFiles).filter(([key, file]) => file instanceof File);
   
-  console.log('🔍 Pending files to upload:', filesToUpload.map(([key, file]) => `${key}: ${file.name}`));
+  //console.log('🔍 Pending files to upload:', filesToUpload.map(([key, file]) => `${key}: ${file.name}`));
   
   if (filesToUpload.length === 0) {
-    console.log('No pending files to upload');
+    //console.log('No pending files to upload');
     return uploadedUrls;
   }
   
-  console.log(`📁 Uploading ${filesToUpload.length} pending files...`);
+  //console.log(`📁 Uploading ${filesToUpload.length} pending files...`);
   
   // Upload each pending file
   for (const [fileType, file] of filesToUpload) {
     try {
-      console.log(`🔄 Uploading ${fileType}:`, file.name, `(${(file.size / 1024).toFixed(1)}KB)`);
+      //console.log(`🔄 Uploading ${fileType}:`, file.name, `(${(file.size / 1024).toFixed(1)}KB)`);
       
       const formData = new FormData();
       formData.append('files', file);
@@ -2391,13 +2391,13 @@ const uploadPendingFiles = async () => {
       });
       
       if (!response.ok) {
-        console.error(`❌ Upload failed for ${fileType}:`, response.status, await response.text());
+        //console.error(`❌ Upload failed for ${fileType}:`, response.status, await response.text());
         continue;
       }
       
       // Parse the response
       const data = await response.json();
-      console.log(`📄 Upload response data for ${fileType}:`, data);
+      //console.log(`📄 Upload response data for ${fileType}:`, data);
       
       // FIXED: Extract URL from the correct response structure
       let fileUrl = null;
@@ -2418,19 +2418,19 @@ const uploadPendingFiles = async () => {
       
       if (fileUrl) {
         uploadedUrls[fileType] = fileUrl;
-        console.log(`✅ ${fileType} uploaded successfully:`, fileUrl);
+        //console.log(`✅ ${fileType} uploaded successfully:`, fileUrl);
         
         toast({
           title: "File Uploaded",
           description: `${fileType.charAt(0).toUpperCase() + fileType.slice(1)} uploaded successfully!`,
         });
       } else {
-        console.error(`❌ Could not extract URL from response for ${fileType}:`, data);
-        console.error(`Response structure: files array exists: ${!!data.files}, is array: ${Array.isArray(data.files)}, length: ${data.files?.length}`);
+        //console.error(`❌ Could not extract URL from response for ${fileType}:`, data);
+        //console.error(`Response structure: files array exists: ${!!data.files}, is array: ${Array.isArray(data.files)}, length: ${data.files?.length}`);
       }
       
     } catch (error) {
-      console.error(`❌ Error uploading ${fileType}:`, error);
+      //console.error(`❌ Error uploading ${fileType}:`, error);
       toast({
         title: "Upload Failed",
         description: `Failed to upload ${fileType}: ${error.message}`,
@@ -2440,7 +2440,7 @@ const uploadPendingFiles = async () => {
     }
   }
   
-  console.log(`📁 Upload completed. Successfully uploaded URLs:`, uploadedUrls);
+  //console.log(`📁 Upload completed. Successfully uploaded URLs:`, uploadedUrls);
   return uploadedUrls;
 };
 

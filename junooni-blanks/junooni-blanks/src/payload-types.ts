@@ -441,11 +441,13 @@ export interface BlankProduct {
   };
   sourcing?: {
     minOrderQty?: number | null;
-    leadTimeDays?: number | null;
+    leadTimeDays?: string | null;
+    shipTimeDays?: string | null;
     rushAvailable?: boolean | null;
     rushLeadTimeDays?: number | null;
   };
   cost: number;
+  'GST Cost'?: number | null;
   pricing?: {
     markupType?: ('percentage' | 'fixed' | 'tiered') | null;
     markupValue?: number | null;
@@ -461,6 +463,7 @@ export interface BlankProduct {
     | null;
   additionalCosts?: {
     printingCostPerArea?: number | null;
+    printingGST?: number | null;
     setupFee?: number | null;
     rushSurcharge?: number | null;
   };
@@ -480,6 +483,7 @@ export interface BlankProduct {
     };
     [k: string]: unknown;
   } | null;
+  HSNCode?: string | null;
   materials?: {
     primary?: string | null;
     weight?: string | null;
@@ -554,6 +558,7 @@ export interface BlankProduct {
   shippingInfo: {
     weight: number;
     shippingDimensions?: string | null;
+    shippingCharges?: string | null;
     shippingLocationID?: string | null;
     packageType?: ('poly_mailer' | 'box' | 'envelope' | 'tube' | 'custom') | null;
   };
@@ -677,6 +682,10 @@ export interface BlankProduct {
           | {
               title?: string | null;
               photo: number | Media;
+              mocwidthpx?: number | null;
+              mochigtpx?: number | null;
+              tmbwidthpx?: number | null;
+              tmbhigtpx?: number | null;
               viewAngle?:
                 | (
                     | 'front'
@@ -907,6 +916,8 @@ export interface BlankProduct {
               areaId?: string | null;
               areaName: string;
               areaType?: ('primary' | 'secondary' | 'accent' | 'sleeve' | 'back' | 'pocket') | null;
+              'Minimum printing price'?: string | null;
+              'Per sq inch printing price'?: string | null;
               canvasDim: {
                 widthInch: number;
                 heightInch: number;
@@ -2222,10 +2233,12 @@ export interface BlankProductsSelect<T extends boolean = true> {
     | {
         minOrderQty?: T;
         leadTimeDays?: T;
+        shipTimeDays?: T;
         rushAvailable?: T;
         rushLeadTimeDays?: T;
       };
   cost?: T;
+  'GST Cost'?: T;
   pricing?:
     | T
     | {
@@ -2245,11 +2258,13 @@ export interface BlankProductsSelect<T extends boolean = true> {
     | T
     | {
         printingCostPerArea?: T;
+        printingGST?: T;
         setupFee?: T;
         rushSurcharge?: T;
       };
   description?: T;
   features?: T;
+  HSNCode?: T;
   materials?:
     | T
     | {
@@ -2285,6 +2300,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
     | {
         weight?: T;
         shippingDimensions?: T;
+        shippingCharges?: T;
         shippingLocationID?: T;
         packageType?: T;
       };
@@ -2420,6 +2436,10 @@ export interface BlankProductsSelect<T extends boolean = true> {
           | {
               title?: T;
               photo?: T;
+              mocwidthpx?: T;
+              mochigtpx?: T;
+              tmbwidthpx?: T;
+              tmbhigtpx?: T;
               viewAngle?: T;
               mockupType?: T;
               photoColor?: T;
@@ -2575,6 +2595,8 @@ export interface BlankProductsSelect<T extends boolean = true> {
               areaId?: T;
               areaName?: T;
               areaType?: T;
+              'Minimum printing price'?: T;
+              'Per sq inch printing price'?: T;
               canvasDim?:
                 | T
                 | {

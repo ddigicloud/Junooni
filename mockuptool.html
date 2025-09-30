@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POD Mockup Tool - Simple Coordinates</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .main-content {
+            display: flex;
+            min-height: 600px;
+        }
+        
+        .workspace {
+            flex: 1;
+            padding: 30px;
+            background: #fafbfc;
+            position: relative;
+        }
+        
+        .controls {
+            width: 400px;
+            padding: 30px;
+            background: white;
+            border-left: 1px solid #e1e5e9;
+            overflow-y: auto;
+        }
+        
+        .upload-zone {
+            border: 3px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            margin-bottom: 20px;
+        }
+        
+        .upload-zone.compact {
+            padding: 15px;
+            border: 2px dashed #cbd5e0;
+        }
+        
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: #4299e1;
+            background: #f7fafc;
+            transform: translateY(-2px);
+        }
+        
+        .upload-zone h3 {
+            margin-bottom: 10px;
+            color: #2d3748;
+            font-size: 20px;
+        }
+        
+        .upload-zone.compact h3 {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        
+        .upload-zone p {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .upload-zone.compact p {
+            font-size: 12px;
+        }
+        
+        .image-container {
+            position: relative;
+            display: none;
+            text-align: center;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            overflow: visible;
+        }
+        
+        .mockup-img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            user-select: none;
+            display: block;
+            margin: 0 auto;
+            cursor: crosshair;
+        }
+        
+        /* Simple overlay approach */
+        .selection-overlay {
+            position: absolute;
+            border: 3px solid #f59e0b;
+            background: rgba(245, 158, 11, 0.2);
+            display: none;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .selection-overlay::after {
+            content: 'PRODUCT AREA';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+        .print-overlay {
+            position: absolute;
+            border: 3px solid #4299e1;
+            background: rgba(66, 153, 225, 0.3);
+            display: none;
+            pointer-events: auto;
+            z-index: 15;
+            cursor: move;
+        }
+        
+        .print-overlay:hover {
+            background: rgba(66, 153, 225, 0.4);
+            border-color: #2b77c9;
+        }
+        
+        .print-overlay::after {
+            content: 'PRINT AREA - DRAG TO ADJUST';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(66, 153, 225, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .control-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 6px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus {
+            border-color: #4299e1;
+            outline: none;
+        }
+        
+        .form-group input.updating {
+            background: #ccffcc !important;
+            transition: background 0.3s;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: #4299e1;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #3182ce;
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+        
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #38a169;
+        }
+        
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .coordinates-box {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .coordinates-box h4 {
+            margin-bottom: 15px;
+            color: #2d3748;
+            font-size: 16px;
+        }
+        
+        .coord-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .coord-item {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .coord-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        .coord-value {
+            font-family: 'Courier New', monospace;
+            color: #2d3748;
+        }
+        
+        .alignment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 15px 0;
+        }
+        
+        .align-btn {
+            padding: 8px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .align-btn:hover {
+            border-color: #4299e1;
+        }
+        
+        .align-btn.active {
+            background: #4299e1;
+            color: white;
+            border-color: #4299e1;
+        }
+        
+        .export-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .export-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .export-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .info-box {
+            background: #e6fffa;
+            border: 1px solid #81e6d9;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #234e52;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .warning-box {
+            background: #fffaf0;
+            border: 1px solid #fbb6ce;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #744210;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .success-box {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #22543d;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .error-box {
+            background: #fed7d7;
+            border: 1px solid #fc8181;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #742a2a;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .step-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #e6fffa;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .step-status.completed {
+            background: #f0fff4;
+            color: #22543d;
+        }
+        
+        .step-status.active {
+            background: #fff7ed;
+            color: #7c2d12;
+        }
+
+        .drag-helper {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #856404;
+        }
+
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .calculation-debug {
+            background: #e8f4fd;
+            border: 1px solid #b8e0ff;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 12px;
+            color: #0066cc;
+            font-family: monospace;
+        }
+
+        .value-highlight {
+            background: #ffeb3b;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>POD Mockup Tool - Simple Coordinates</h1>
+            <p>Click and drag directly on the image to select your product area</p>
+        </div>
+
+        <div class="main-content">
+            <div class="workspace">
+                <div class="upload-zone" id="uploadZone">
+                    <h3>Upload Product Image</h3>
+                    <p>Drag & drop your product mockup image here or click to select</p>
+                    <input type="file" id="fileInput" accept="image/*">
+                </div>
+
+                <div class="image-container" id="imageContainer">
+                    <img id="mockupImg" class="mockup-img" alt="Product Mockup">
+                    <div class="selection-overlay" id="selectionOverlay"></div>
+                    <div class="print-overlay" id="printOverlay"></div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="step-status active" id="stepStatus">
+                    <strong>Step 1:</strong> Upload your image to get started
+                </div>
+
+                <div class="control-section" id="step1Controls" style="display: none;">
+                    <div class="section-title">Step 1: Mark Product Area</div>
+                    <div class="drag-helper">
+                        🎯 <strong>SIMPLE METHOD:</strong> Click and drag directly on the image to select the product area. Watch the values update in real-time!
+                    </div>
+                    <div class="info-box">
+                        Click and drag on the image to create an orange rectangle around your product. The coordinates will update automatically as you drag.
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Product Area (pixels) - <span class="value-highlight">Live Updates</span></label>
+                        <div class="form-row">
+                            <div>
+                                <label>X Position</label>
+                                <input type="number" id="productX" value="0" readonly>
+                            </div>
+                            <div>
+                                <label>Y Position</label>
+                                <input type="number" id="productY" value="0" readonly>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div>
+                                <label>Width (px)</label>
+                                <input type="number" id="productWidth" value="0" readonly>
+                            </div>
+                            <div>
+                                <label>Height (px)</label>
+                                <input type="number" id="productHeight" value="0" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="debug-info" id="debugInfo">
+                        Simple coordinate debug info will appear here...
+                    </div>
+
+                    <div class="button-row">
+                        <button class="btn btn-secondary" onclick="clearSelection()">Clear Selection</button>
+                        <button class="btn btn-primary" onclick="goToStep2()">Next: Set Dimensions</button>
+                    </div>
+                </div>
+
+                <div class="control-section" id="step2Controls" style="display: none;">
+                    <div class="section-title">Step 2: Product & Print Dimensions</div>
+                    
+                    <div class="form-group">
+                        <label>Real Product Size (inches)</label>
+                        <div class="form-row">
+                            <div>
+                                <label>Width</label>
+                                <input type="number" id="realProductWidth" step="0.1" value="20" placeholder="20.0">
+                            </div>
+                            <div>
+                                <label>Height</label>
+                                <input type="number" id="realProductHeight" step="0.1" value="27" placeholder="27.0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Desired Print Area (inches)</label>
+                        <div class="form-row">
+                            <div>
+                                <label>Width</label>
+                                <input type="number" id="printWidth" step="0.1" value="16" placeholder="16.0">
+                            </div>
+                            <div>
+                                <label>Height</label>
+                                <input type="number" id="printHeight" step="0.1" value="20" placeholder="20.0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="calculation-debug" id="liveCalculation" style="display: none;">
+                        <strong>LIVE CALCULATION:</strong><br>
+                        <span id="calcSteps"></span>
+                    </div>
+
+                    <div class="alignment-grid">
+                        <div class="align-btn" data-align="top-left">↖ TL</div>
+                        <div class="align-btn" data-align="top-center">↑ TC</div>
+                        <div class="align-btn" data-align="top-right">↗ TR</div>
+                        <div class="align-btn" data-align="middle-left">← ML</div>
+                        <div class="align-btn active" data-align="middle-center">⊙ Center</div>
+                        <div class="align-btn" data-align="middle-right">→ MR</div>
+                        <div class="align-btn" data-align="bottom-left">↙ BL</div>
+                        <div class="align-btn" data-align="bottom-center">↓ BC</div>
+                        <div class="align-btn" data-align="bottom-right">↘ BR</div>
+                    </div>
+
+                    <div class="button-row">
+                        <button class="btn btn-secondary" onclick="goToStep1()">Back</button>
+                        <button class="btn btn-secondary" onclick="debugCalculation()">Debug Math</button>
+                        <button class="btn btn-success" onclick="calculatePrintArea()">Apply Calculation</button>
+                    </div>
+                </div>
+
+                <div class="control-section" id="step3Controls" style="display: none;">
+                    <div class="section-title">Step 3: Results & Export</div>
+                    
+                    <div class="success-box" id="validationResult">
+                        Print area calculation complete!
+                    </div>
+                    
+                    <div class="coordinates-box">
+                        <h4>Print Area Coordinates</h4>
+                        <div class="coord-grid">
+                            <div class="coord-item">
+                                <div class="coord-label">X (pixels):</div>
+                                <div class="coord-value" id="finalX">--</div>
+                            </div>
+                            <div class="coord-item">
+                                <div class="coord-label">Y (pixels):</div>
+                                <div class="coord-value" id="finalY">--</div>
+                            </div>
+                            <div class="coord-item">
+                                <div class="coord-label">Width (pixels):</div>
+                                <div class="coord-value" id="finalWidth">--</div>
+                            </div>
+                            <div class="coord-item">
+                                <div class="coord-label">Height (pixels):</div>
+                                <div class="coord-value" id="finalHeight">--</div>
+                            </div>
+                        </div>
+                        
+                        <h4 style="margin-top: 20px;">Normalized Coordinates (0-1) - For Designer</h4>
+                        <div class="coord-grid">
+                            <div class="coord-item">
+                                <div class="coord-label">X (0-1):</div>
+                                <div class="coord-value" id="normX">--</div>
+                            </div>
+                            <div class="coord-item">
+                                <div class="coord-label">Y (0-1):</div>
+                                <div class="coord-value" id="normY">--</div>
+                            </div>
+                            <div class="coord-item">
+                                <div class="coord-label">Width (0-1):</div>
+                                <div class="coord-value" id="normWidth">--</div>
+                            </div>
+                            <div class="coord-item">
+                                <div class="coord-label">Height (0-1):</div>
+                                <div class="coord-value" id="normHeight">--</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="export-section">
+                        <h4>Export Options</h4>
+                        <p>Copy your coordinates for use in your POD system</p>
+                        <div class="export-buttons">
+                            <button class="export-btn" onclick="exportJSON()">Export JSON</button>
+                            <button class="export-btn" onclick="copyCoords()">Copy Coords</button>
+                        </div>
+                    </div>
+
+                    <div class="button-row">
+                        <button class="btn btn-secondary" onclick="goToStep2()">Back</button>
+                        <button class="btn btn-primary" onclick="startOver()">Start Over</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple coordinate tracking
+        let coords = {
+            startX: 0,
+            startY: 0,
+            endX: 0,
+            endY: 0,
+            isSelecting: false,
+            imageOffsetX: 0,
+            imageOffsetY: 0,
+            imageWidth: 0,
+            imageHeight: 0
+        };
+
+        let printArea = { x: 0, y: 0, width: 0, height: 0 };
+        let alignment = 'middle-center';
+        let currentStep = 0;
+        let isPrintAreaDragging = false;
+        let printDragOffset = { x: 0, y: 0 };
+
+        // Elements
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const imageContainer = document.getElementById('imageContainer');
+        const mockupImg = document.getElementById('mockupImg');
+        const selectionOverlay = document.getElementById('selectionOverlay');
+        const printOverlay = document.getElementById('printOverlay');
+        const debugInfo = document.getElementById('debugInfo');
+
+        function debug(message) {
+            console.log('[SIMPLE] ' + message);
+            if (debugInfo) {
+                const timestamp = new Date().toLocaleTimeString();
+                debugInfo.innerHTML += `<span style="color: #007acc;">${timestamp}:</span> ${message}<br>`;
+                debugInfo.scrollTop = debugInfo.scrollHeight;
+            }
+        }
+
+        function init() {
+            setupEventListeners();
+            debug('POD Mockup Tool initialized - SIMPLE COORDINATE APPROACH');
+        }
+
+        function setupEventListeners() {
+            uploadZone.addEventListener('click', () => fileInput.click());
+            uploadZone.addEventListener('dragover', handleDragOver);
+            uploadZone.addEventListener('dragleave', handleDragLeave);
+            uploadZone.addEventListener('drop', handleDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // Image selection events
+            mockupImg.addEventListener('mousedown', startSelection);
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+
+            // Print area dragging events
+            printOverlay.addEventListener('mousedown', startPrintAreaDrag);
+
+            // Alignment buttons
+            document.querySelectorAll('.align-btn').forEach(btn => {
+                btn.addEventListener('click', () => setAlignment(btn.dataset.align));
+            });
+
+            // Live calculation updates
+            ['realProductWidth', 'realProductHeight', 'printWidth', 'printHeight'].forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.addEventListener('input', liveCalculationUpdate);
+                    input.addEventListener('change', liveCalculationUpdate);
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                setTimeout(calculateImageOffsets, 100);
+            });
+        }
+
+        function calculateImageOffsets() {
+            const containerRect = imageContainer.getBoundingClientRect();
+            const imgRect = mockupImg.getBoundingClientRect();
+            
+            coords.imageOffsetX = imgRect.left - containerRect.left;
+            coords.imageOffsetY = imgRect.top - containerRect.top;
+            coords.imageWidth = imgRect.width;
+            coords.imageHeight = imgRect.height;
+
+            debug(`Image offsets: X=${coords.imageOffsetX.toFixed(1)}, Y=${coords.imageOffsetY.toFixed(1)}, W=${coords.imageWidth.toFixed(1)}, H=${coords.imageHeight.toFixed(1)}`);
+        }
+
+        function startSelection(e) {
+            e.preventDefault();
+            coords.isSelecting = true;
+            
+            const containerRect = imageContainer.getBoundingClientRect();
+            coords.startX = e.clientX - containerRect.left - coords.imageOffsetX;
+            coords.startY = e.clientY - containerRect.top - coords.imageOffsetY;
+            
+            // Ensure coordinates are within image bounds
+            coords.startX = Math.max(0, Math.min(coords.startX, coords.imageWidth));
+            coords.startY = Math.max(0, Math.min(coords.startY, coords.imageHeight));
+            
+            debug(`Selection started at: (${coords.startX.toFixed(1)}, ${coords.startY.toFixed(1)})`);
+        }
+
+        function updateSelection(e) {
+            if (!coords.isSelecting) return;
+            
+            e.preventDefault();
+            
+            const containerRect = imageContainer.getBoundingClientRect();
+            coords.endX = e.clientX - containerRect.left - coords.imageOffsetX;
+            coords.endY = e.clientY - containerRect.top - coords.imageOffsetY;
+            
+            // Ensure coordinates are within image bounds
+            coords.endX = Math.max(0, Math.min(coords.endX, coords.imageWidth));
+            coords.endY = Math.max(0, Math.min(coords.endY, coords.imageHeight));
+            
+            drawSelection();
+            updateInputFields();
+        }
+
+        function endSelection(e) {
+            if (!coords.isSelecting) return;
+            
+            coords.isSelecting = false;
+            debug(`Selection ended at: (${coords.endX.toFixed(1)}, ${coords.endY.toFixed(1)})`);
+            debug(`Final selection: X=${Math.min(coords.startX, coords.endX).toFixed(1)}, Y=${Math.min(coords.startY, coords.endY).toFixed(1)}, W=${Math.abs(coords.endX - coords.startX).toFixed(1)}, H=${Math.abs(coords.endY - coords.startY).toFixed(1)}`);
+        }
+
+        function handleMouseMove(e) {
+            if (coords.isSelecting) {
+                updateSelection(e);
+            } else if (isPrintAreaDragging) {
+                updatePrintAreaDrag(e);
+            }
+        }
+
+        function handleMouseUp(e) {
+            if (coords.isSelecting) {
+                endSelection(e);
+            } else if (isPrintAreaDragging) {
+                endPrintAreaDrag(e);
+            }
+        }
+
+        function startPrintAreaDrag(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            isPrintAreaDragging = true;
+            
+            const containerRect = imageContainer.getBoundingClientRect();
+            const mouseX = e.clientX - containerRect.left;
+            const mouseY = e.clientY - containerRect.top;
+            
+            // Calculate offset from mouse to print area origin
+            printDragOffset.x = mouseX - (coords.imageOffsetX + printArea.x);
+            printDragOffset.y = mouseY - (coords.imageOffsetY + printArea.y);
+            
+            debug('Started dragging print area');
+            document.body.style.cursor = 'grabbing';
+        }
+
+        function updatePrintAreaDrag(e) {
+            e.preventDefault();
+            
+            const containerRect = imageContainer.getBoundingClientRect();
+            const mouseX = e.clientX - containerRect.left;
+            const mouseY = e.clientY - containerRect.top;
+            
+            // Calculate new print area position
+            let newX = mouseX - coords.imageOffsetX - printDragOffset.x;
+            let newY = mouseY - coords.imageOffsetY - printDragOffset.y;
+            
+            // Get current product selection bounds
+            const selection = getCurrentSelection();
+            
+            // Constrain to product boundaries
+            newX = Math.max(selection.x, Math.min(newX, selection.x + selection.width - printArea.width));
+            newY = Math.max(selection.y, Math.min(newY, selection.y + selection.height - printArea.height));
+            
+            // Update print area position
+            printArea.x = newX;
+            printArea.y = newY;
+            
+            // Update visual position
+            printOverlay.style.left = (coords.imageOffsetX + printArea.x) + 'px';
+            printOverlay.style.top = (coords.imageOffsetY + printArea.y) + 'px';
+            
+            // Update coordinate displays
+            updateCoordinateDisplays();
+        }
+
+        function endPrintAreaDrag(e) {
+            isPrintAreaDragging = false;
+            document.body.style.cursor = '';
+            debug('Ended dragging print area - new position: (' + printArea.x.toFixed(1) + ', ' + printArea.y.toFixed(1) + ')');
+        }
+
+        function updateCoordinateDisplays() {
+            // Update pixel coordinates
+            document.getElementById('finalX').textContent = Math.round(printArea.x);
+            document.getElementById('finalY').textContent = Math.round(printArea.y);
+            document.getElementById('finalWidth').textContent = Math.round(printArea.width);
+            document.getElementById('finalHeight').textContent = Math.round(printArea.height);
+            
+            // Update normalized coordinates
+            if (coords.imageWidth > 0 && coords.imageHeight > 0) {
+                const normX = (printArea.x / coords.imageWidth).toFixed(4);
+                const normY = (printArea.y / coords.imageHeight).toFixed(4);
+                const normWidth = (printArea.width / coords.imageWidth).toFixed(4);
+                const normHeight = (printArea.height / coords.imageHeight).toFixed(4);
+                
+                document.getElementById('normX').textContent = normX;
+                document.getElementById('normY').textContent = normY;
+                document.getElementById('normWidth').textContent = normWidth;
+                document.getElementById('normHeight').textContent = normHeight;
+                
+                // Visual feedback for position changes
+                const coordElements = [
+                    document.getElementById('finalX'),
+                    document.getElementById('finalY'),
+                    document.getElementById('normX'),
+                    document.getElementById('normY')
+                ];
+                
+                coordElements.forEach(elem => {
+                    elem.style.background = '#ccffcc';
+                    setTimeout(() => elem.style.background = '', 300);
+                });
+                
+                debug(`Updated coordinates: X=${normX}, Y=${normY}, W=${normWidth}, H=${normHeight}`);
+            }
+        }
+
+        function drawSelection() {
+            const x = Math.min(coords.startX, coords.endX);
+            const y = Math.min(coords.startY, coords.endY);
+            const width = Math.abs(coords.endX - coords.startX);
+            const height = Math.abs(coords.endY - coords.startY);
+            
+            selectionOverlay.style.left = (coords.imageOffsetX + x) + 'px';
+            selectionOverlay.style.top = (coords.imageOffsetY + y) + 'px';
+            selectionOverlay.style.width = width + 'px';
+            selectionOverlay.style.height = height + 'px';
+            selectionOverlay.style.display = 'block';
+        }
+
+        function updateInputFields() {
+            const x = Math.min(coords.startX, coords.endX);
+            const y = Math.min(coords.startY, coords.endY);
+            const width = Math.abs(coords.endX - coords.startX);
+            const height = Math.abs(coords.endY - coords.startY);
+            
+            const xInput = document.getElementById('productX');
+            const yInput = document.getElementById('productY');
+            const wInput = document.getElementById('productWidth');
+            const hInput = document.getElementById('productHeight');
+            
+            xInput.value = Math.round(x);
+            yInput.value = Math.round(y);
+            wInput.value = Math.round(width);
+            hInput.value = Math.round(height);
+            
+            // Visual feedback
+            [xInput, yInput, wInput, hInput].forEach(input => {
+                input.classList.add('updating');
+                setTimeout(() => input.classList.remove('updating'), 300);
+            });
+        }
+
+        function getCurrentSelection() {
+            const x = Math.min(coords.startX, coords.endX);
+            const y = Math.min(coords.startY, coords.endY);
+            const width = Math.abs(coords.endX - coords.startX);
+            const height = Math.abs(coords.endY - coords.startY);
+            
+            return { x, y, width, height };
+        }
+
+        // File handling
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        }
+
+        function handleDragLeave() {
+            uploadZone.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                loadImage(e.dataTransfer.files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                loadImage(e.target.files[0]);
+            }
+        }
+
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                mockupImg.src = e.target.result;
+                mockupImg.onload = () => {
+                    debug(`Image loaded: Natural=${mockupImg.naturalWidth}x${mockupImg.naturalHeight}`);
+                    
+                    setTimeout(() => {
+                        calculateImageOffsets();
+
+                        uploadZone.classList.add('compact');
+                        uploadZone.querySelector('h3').textContent = 'Change Image';
+                        uploadZone.querySelector('p').textContent = 'Click to upload a different image';
+                        
+                        imageContainer.style.display = 'block';
+                        goToStep1();
+                    }, 300);
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Step management
+        function goToStep1() {
+            currentStep = 1;
+            updateStepDisplay();
+            updateStatus('Step 1: Click and drag on the image to select your product area');
+        }
+
+        function goToStep2() {
+            const selection = getCurrentSelection();
+            if (selection.width < 10 || selection.height < 10) {
+                alert('Please select a product area first by dragging on the image!');
+                return;
+            }
+            
+            currentStep = 2;
+            updateStepDisplay();
+            updateStatus('Step 2: Enter your product dimensions and desired print area size');
+            liveCalculationUpdate();
+        }
+
+        function goToStep3() {
+            currentStep = 3;
+            updateStepDisplay();
+            updateStatus('Step 3: Your coordinates are ready! Export or copy them.');
+        }
+
+        function updateStepDisplay() {
+            document.querySelectorAll('[id^="step"][id$="Controls"]').forEach(el => {
+                el.style.display = 'none';
+            });
+
+            if (currentStep > 0) {
+                document.getElementById(`step${currentStep}Controls`).style.display = 'block';
+            }
+        }
+
+        function updateStatus(message) {
+            const status = document.getElementById('stepStatus');
+            status.innerHTML = `<strong>Current:</strong> ${message}`;
+            status.className = 'step-status active';
+        }
+
+        function clearSelection() {
+            selectionOverlay.style.display = 'none';
+            coords.startX = coords.startY = coords.endX = coords.endY = 0;
+            updateInputFields();
+        }
+
+        function setAlignment(align) {
+            alignment = align;
+            document.querySelectorAll('.align-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.align === align);
+            });
+            liveCalculationUpdate();
+        }
+
+        function liveCalculationUpdate() {
+            const realProductWidth = parseFloat(document.getElementById('realProductWidth').value) || 0;
+            const realProductHeight = parseFloat(document.getElementById('realProductHeight').value) || 0;
+            const printW = parseFloat(document.getElementById('printWidth').value) || 0;
+            const printH = parseFloat(document.getElementById('printHeight').value) || 0;
+            const selection = getCurrentSelection();
+
+            const liveCalcDiv = document.getElementById('liveCalculation');
+            const calcStepsDiv = document.getElementById('calcSteps');
+
+            if (!realProductWidth || !realProductHeight || !printW || !printH || !selection.width) {
+                liveCalcDiv.style.display = 'none';
+                return;
+            }
+
+            let steps = '';
+            steps += `USING CURRENT SELECTION:<br>`;
+            steps += `Product bounds: ${selection.width.toFixed(1)} × ${selection.height.toFixed(1)} pixels<br><br>`;
+            
+            const widthRatio = printW / realProductWidth;
+            const heightRatio = printH / realProductHeight;
+            
+            steps += `RATIOS:<br>`;
+            steps += `Width: ${printW}/${realProductWidth} = ${widthRatio.toFixed(4)} (${(widthRatio*100).toFixed(1)}%)<br>`;
+            steps += `Height: ${printH}/${realProductHeight} = ${heightRatio.toFixed(4)} (${(heightRatio*100).toFixed(1)}%)<br><br>`;
+
+            const printPixelWidth = selection.width * widthRatio;
+            const printPixelHeight = selection.height * heightRatio;
+
+            steps += `RESULT:<br>`;
+            steps += `Print width: ${selection.width.toFixed(1)} × ${widthRatio.toFixed(4)} = ${printPixelWidth.toFixed(1)}px<br>`;
+            steps += `Print height: ${selection.height.toFixed(1)} × ${heightRatio.toFixed(4)} = ${printPixelHeight.toFixed(1)}px<br><br>`;
+
+            if (printPixelWidth > selection.width || printPixelHeight > selection.height) {
+                steps += `<span style="color: red;">❌ Print area larger than product!</span><br>`;
+            } else {
+                steps += `<span style="color: green;">✅ Print area fits within bounds</span><br>`;
+            }
+
+            calcStepsDiv.innerHTML = steps;
+            liveCalcDiv.style.display = 'block';
+        }
+
+        function debugCalculation() {
+            debug('=== SIMPLE CALCULATION DEBUG ===');
+            const selection = getCurrentSelection();
+            debug(`Current selection: ${selection.width} × ${selection.height} pixels`);
+            debug(`Real product: ${document.getElementById('realProductWidth').value}" × ${document.getElementById('realProductHeight').value}"`);
+            debug(`Desired print: ${document.getElementById('printWidth').value}" × ${document.getElementById('printHeight').value}"`);
+            debug('=== DEBUG COMPLETE ===');
+        }
+
+        function calculatePrintArea() {
+            debug('=== CALCULATING PRINT AREA ===');
+
+            const realProductWidth = parseFloat(document.getElementById('realProductWidth').value);
+            const realProductHeight = parseFloat(document.getElementById('realProductHeight').value);
+            const printW = parseFloat(document.getElementById('printWidth').value);
+            const printH = parseFloat(document.getElementById('printHeight').value);
+            const selection = getCurrentSelection();
+
+            if (!realProductWidth || !realProductHeight || !printW || !printH) {
+                alert('Please enter all dimensions!');
+                return;
+            }
+
+            if (selection.width < 10 || selection.height < 10) {
+                alert('Please select a product area first!');
+                return;
+            }
+
+            const widthRatio = printW / realProductWidth;
+            const heightRatio = printH / realProductHeight;
+
+            const printPixelWidth = selection.width * widthRatio;
+            const printPixelHeight = selection.height * heightRatio;
+
+            debug(`Print area size: ${printPixelWidth.toFixed(2)}px × ${printPixelHeight.toFixed(2)}px`);
+
+            if (printPixelWidth > selection.width || printPixelHeight > selection.height) {
+                alert(`Error: Print area (${printPixelWidth.toFixed(1)}×${printPixelHeight.toFixed(1)}px) is larger than product area (${selection.width}×${selection.height}px)`);
+                return;
+            }
+
+            // Calculate alignment
+            let alignX = 0, alignY = 0;
+            const [vAlign, hAlign] = alignment.split('-');
+
+            switch (hAlign) {
+                case 'left': alignX = selection.x; break;
+                case 'center': alignX = selection.x + (selection.width - printPixelWidth) / 2; break;
+                case 'right': alignX = selection.x + selection.width - printPixelWidth; break;
+            }
+
+            switch (vAlign) {
+                case 'top': alignY = selection.y; break;
+                case 'middle': alignY = selection.y + (selection.height - printPixelHeight) / 2; break;
+                case 'bottom': alignY = selection.y + selection.height - printPixelHeight; break;
+            }
+
+            printArea = {
+                x: alignX,
+                y: alignY,
+                width: printPixelWidth,
+                height: printPixelHeight
+            };
+
+            debug(`Final print area: (${alignX.toFixed(2)}, ${alignY.toFixed(2)}) ${printPixelWidth.toFixed(2)}×${printPixelHeight.toFixed(2)}`);
+
+            updatePrintAreaDisplay();
+            goToStep3();
+        }
+
+        function updatePrintAreaDisplay() {
+            printOverlay.style.left = (coords.imageOffsetX + printArea.x) + 'px';
+            printOverlay.style.top = (coords.imageOffsetY + printArea.y) + 'px';
+            printOverlay.style.width = printArea.width + 'px';
+            printOverlay.style.height = printArea.height + 'px';
+            printOverlay.style.display = 'block';
+
+            updateCoordinateDisplays();
+
+            const validationDiv = document.getElementById('validationResult');
+            validationDiv.className = 'success-box';
+            validationDiv.innerHTML = 'SUCCESS! Print area calculated with coordinates. <strong>💡 TIP: You can now drag the blue print area to adjust its position!</strong>';
+        }
+
+        function exportJSON() {
+            const data = {
+                pixels: {
+                    x: Math.round(printArea.x),
+                    y: Math.round(printArea.y),
+                    width: Math.round(printArea.width),
+                    height: Math.round(printArea.height)
+                },
+                normalized: {
+                    x: parseFloat((printArea.x / coords.imageWidth).toFixed(4)),
+                    y: parseFloat((printArea.y / coords.imageHeight).toFixed(4)),
+                    width: parseFloat((printArea.width / coords.imageWidth).toFixed(4)),
+                    height: parseFloat((printArea.height / coords.imageHeight).toFixed(4))
+                },
+                imageInfo: {
+                    displaySize: { 
+                        width: coords.imageWidth, 
+                        height: coords.imageHeight 
+                    },
+                    naturalSize: { 
+                        width: mockupImg.naturalWidth, 
+                        height: mockupImg.naturalHeight 
+                    }
+                },
+                productInfo: {
+                    realDimensions: {
+                        width: parseFloat(document.getElementById('realProductWidth').value),
+                        height: parseFloat(document.getElementById('realProductHeight').value)
+                    },
+                    printDimensions: {
+                        width: parseFloat(document.getElementById('printWidth').value),
+                        height: parseFloat(document.getElementById('printHeight').value)
+                    },
+                    alignment: alignment
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'pod-coordinates.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function copyCoords() {
+            const data = {
+                pixels: {
+                    x: Math.round(printArea.x),
+                    y: Math.round(printArea.y),
+                    width: Math.round(printArea.width),
+                    height: Math.round(printArea.height)
+                },
+                normalized: {
+                    x: parseFloat((printArea.x / coords.imageWidth).toFixed(4)),
+                    y: parseFloat((printArea.y / coords.imageHeight).toFixed(4)),
+                    width: parseFloat((printArea.width / coords.imageWidth).toFixed(4)),
+                    height: parseFloat((printArea.height / coords.imageHeight).toFixed(4))
+                }
+            };
+
+            navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+            alert('Coordinates copied to clipboard with both pixel and normalized (0-1) values!');
+        }
+
+        function startOver() {
+            location.reload();
+        }
+
+        init();
+    </script>
+</body>
+</html>

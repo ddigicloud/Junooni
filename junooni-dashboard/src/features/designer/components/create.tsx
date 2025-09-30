@@ -85,6 +85,7 @@ interface PayloadImageSettings {
 
 interface PayloadProductData {
   id?: string;
+  HSNCode?: string;
   cost?: number;
   dimensions?: {
     weight?: number;
@@ -127,6 +128,12 @@ interface PayloadProductData {
       subtotal: number;
     }>;
   };
+  // Care instructions from PayloadCMS
+  careInstructions?: Array<{
+    id: string;
+    instruction: string;
+    icon?: string;
+  }>;
 }
 
 interface ProcessedImage {
@@ -248,7 +255,8 @@ interface PayloadCMSProduct {
   // Sourcing information
   sourcing?: {
     minOrderQty?: number;
-    leadTimeDays?: number;
+    leadTimeDays?: string;      // Production/handling time
+    shipTimeDays?: string; 
     rushAvailable?: boolean;
     rushLeadTimeDays?: number;
   };
@@ -532,14 +540,35 @@ interface DesignData {
   selectedProduct?: SelectedProductInfo;
 }
 
+// Update the LocationState interface to match actual data structure
 interface LocationState {
   designData?: DesignData;
-  designImages?: DesignImageItem[]; // ✅ FIXED: Array of design images
+  designImages?: DesignImageItem[];
   mockupImages?: Record<string, string>;
-  canvasImages?: Array<{  // 🔥 ADD THIS
+  canvasImages?: Array<{
     area_id: string;
-    image_data: string;
-    metadata: any;
+    image_data: string | Promise<string>;
+    metadata: {
+      area_name: string;
+      canvas_dimensions: {
+        width_pixels: number;
+        height_pixels: number;
+        width_inches: number;
+        height_inches: number;
+      };
+      canvas_settings: {
+        active_color: string;
+        total_elements: number;
+        visible_elements: number;
+      };
+      design_elements: any[];
+      printable_area: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+    };
     description: string;
   }>;
   uniqueImages?: Record<string, {
@@ -552,6 +581,150 @@ interface LocationState {
   selectedProduct?: SelectedProductInfo;
   enhancedProductData?: PayloadProductData;
   skipMockupGeneration?: boolean;
+  availableMockups?: {
+    all_available_areas: string[];
+    all_mockups: Array<{
+      mockup_id: string;
+      mockup_title: string;
+      mockup_photo_url: string;
+      view_angle: string;
+      mockup_type: string;
+    }>;
+    areas_with_elements: string[];
+    areas_without_elements: string[];
+    mockups_by_color: any[];
+    selected_colors: any[];
+    technology_id: string;
+    technology_name: string;
+    total_available_mockups: number;
+  };
+  imageAreaAnalysis?: {
+    total_design_area_available: number;
+    current_image_area_used: number;
+    area_utilization_percentage: number;
+    all_available_areas: string[];
+    areas_with_elements: string[];
+    areas_without_elements: string[];
+    areas_breakdown?: any[];
+    upload_summary?: any;
+  };
+  pricingData?: any;
+  filteredProductData?: any;
+  colorSpecificImages?: Record<string, any[]>;
+  storeMetadata?: any;
+  navigationContext?: any;
+  enhancedImageAreaAnalysis?: {
+    area_specifications: Record<string, {
+      canvas_width_pixels: number;
+      canvas_height_pixels: number;
+      canvas_width_inches: number;
+      canvas_height_inches: number;
+      printable_area: {
+        x_pixels: number;
+        y_pixels: number;
+        width_pixels: number;
+        height_pixels: number;
+        x_inches: number;
+        y_inches: number;
+        width_inches: number;
+        height_inches: number;
+      };
+    }>;
+    design_complexity: {
+      complexity_rating: string;
+      total_elements: number;
+      complexity_factors: {
+        has_rotations: boolean;
+        has_scaling: boolean;
+        high_utilization: boolean;
+        multi_area_design: boolean;
+      };
+    };
+    detailed_element_breakdown: Record<string, Array<{
+      element_id: string;
+      element_name: string;
+      element_type: string;
+      area_utilization: {
+        design_area_consumed_percentage: number;
+        printable_area_consumed_percentage: number;
+      };
+      physical_dimensions: {
+        width_inches: number;
+        height_inches: number;
+        area_square_inches: number;
+        position_x_inches: number;
+        position_y_inches: number;
+      };
+      pixel_dimensions: {
+        width_pixels: number;
+        height_pixels: number;
+        position_x_pixels: number;
+        position_y_pixels: number;
+      };
+      print_quality: {
+        dpi: number;
+        quality_rating: string;
+        is_print_ready: boolean;
+      };
+      transformations: {
+        rotation_degrees: number;
+        scale_x: number;
+        scale_y: number;
+        is_rotated: boolean;
+        is_scaled: boolean;
+      };
+      positioning: {
+        is_centered_horizontally: boolean;
+        is_centered_vertically: boolean;
+        distance_from_edges: {
+          top: number;
+          bottom: number;
+          left: number;
+          right: number;
+        };
+      };
+      original_image_info?: {
+        original_width_pixels: number;
+        original_height_pixels: number;
+        original_area_pixels: number;
+        original_aspect_ratio: number;
+      };
+    }>>;
+    elements_summary: Record<string, Array<{
+      id: string;
+      name: string;
+      type: string;
+      dimensions: {
+        width_inches: number;
+        height_inches: number;
+        width_pixels: number;
+        height_pixels: number;
+        area_square_inches: number;
+      };
+      quality: {
+        dpi: number;
+        rating: string;
+        is_print_ready: boolean;
+      };
+      positioning: {
+        is_centered_horizontally: boolean;
+        is_centered_vertically: boolean;
+        distance_from_edges: {
+          top: number;
+          bottom: number;
+          left: number;
+          right: number;
+        };
+      };
+      transformations: {
+        rotation_degrees: number;
+        scale_x: number;
+        scale_y: number;
+        is_rotated: boolean;
+        is_scaled: boolean;
+      };
+    }>>;
+  };
 }
 
 // Add the missing interface
@@ -818,7 +991,174 @@ const convertLexicalToHtml = (content: RichTextContent | string): string => {
 // ===== ADD THIS NEW HELPER FUNCTION =====
 /**
  * Parse PayloadCMS rich text content to extract plain text
+ * 
+ * 
  */
+
+// Add this function to extract areas from location state
+// Replace the extractAvailableAreas function with this corrected version
+
+
+// ADD this helper function to create detailed file descriptions
+// CORRECTED createEnhancedFileDescription function
+const createEnhancedFileDescription = (
+  uploadedFile: any,
+  enhancedImageAreaAnalysis: any,
+  globalIndex: number
+): string => {
+  const area = uploadedFile.designArea;
+  const fileType = uploadedFile.fileType;
+  
+  if (fileType === 'canvas_layout') {
+    // For canvas layout files
+    const areaSpec = enhancedImageAreaAnalysis?.area_specifications?.[area];
+    const elementsInArea = enhancedImageAreaAnalysis?.detailed_element_breakdown?.[area] || [];
+    const complexity = enhancedImageAreaAnalysis?.design_complexity;
+    
+    return `MANUFACTURING LAYOUT - ${area.toUpperCase()} AREA
+
+CANVAS SPECIFICATIONS:
+- Canvas: ${areaSpec?.canvas_width_pixels || 0} x ${areaSpec?.canvas_height_pixels || 0} pixels (${areaSpec?.canvas_width_inches || 0}" x ${areaSpec?.canvas_height_inches || 0}")
+- Printable Area: ${areaSpec?.printable_area?.width_pixels || 0} x ${areaSpec?.printable_area?.height_pixels || 0} pixels (${areaSpec?.printable_area?.width_inches || 0}" x ${areaSpec?.printable_area?.height_inches || 0}")
+- Printable Position: (${areaSpec?.printable_area?.x_pixels || 0}, ${areaSpec?.printable_area?.y_pixels || 0}) pixels
+
+DESIGN ELEMENTS (${elementsInArea.length} total):
+${elementsInArea.map((element, idx) => `
+${idx + 1}. ${element.element_type.toUpperCase()} - ${element.element_name}
+   • ID: ${element.element_id}
+   • Dimensions: ${element.physical_dimensions?.width_inches?.toFixed(3) || 0}" x ${element.physical_dimensions?.height_inches?.toFixed(3) || 0}" (${element.physical_dimensions?.area_square_inches?.toFixed(2) || 0} sq in)
+   • Position: (${element.physical_dimensions?.position_x_inches?.toFixed(3) || 0}", ${element.physical_dimensions?.position_y_inches?.toFixed(3) || 0}")
+   • Print Quality: ${element.print_quality?.quality_rating || 'Unknown'} (${element.print_quality?.dpi || 0} DPI)
+   • Area Usage: ${element.area_utilization?.printable_area_consumed_percentage?.toFixed(1) || 0}% of printable area
+   • Transformations: ${element.transformations?.is_rotated ? `Rotated ${element.transformations.rotation_degrees?.toFixed(1) || 0}°` : 'No rotation'}${element.transformations?.is_scaled ? `, Scaled ${element.transformations.scale_x || 1}x` : ''}
+   • Positioning: ${element.positioning?.is_centered_horizontally ? 'H-Centered' : 'Left-aligned'}, ${element.positioning?.is_centered_vertically ? 'V-Centered' : 'Top-aligned'}
+`).join('')}
+
+COMPLEXITY ANALYSIS:
+- Overall Rating: ${complexity?.complexity_rating || 'Unknown'}
+- Total Elements: ${complexity?.total_elements || 0}
+- Has Rotations: ${complexity?.complexity_factors?.has_rotations ? 'Yes' : 'No'}
+- Has Scaling: ${complexity?.complexity_factors?.has_scaling ? 'Yes' : 'No'}
+- Multi-Area Design: ${complexity?.complexity_factors?.multi_area_design ? 'Yes' : 'No'}
+
+MANUFACTURING NOTES:
+- Layout ready for production setup
+- All measurements verified for print accuracy
+- Element positioning optimized for print area
+- Generated: ${new Date().toISOString()}`;
+  } else {
+    // For design element files
+    const elementDetails = enhancedImageAreaAnalysis?.detailed_element_breakdown?.[area]?.find(
+      el => el.element_name === uploadedFile.originalMetadata?.originalFileName ||
+           el.element_id === uploadedFile.originalMetadata?.elementId
+    );
+    
+    if (elementDetails) {
+      return `DESIGN ELEMENT - ${area.toUpperCase()} AREA
+
+ELEMENT DETAILS:
+- Name: ${elementDetails.element_name}
+- Type: ${elementDetails.element_type.toUpperCase()}
+- ID: ${elementDetails.element_id}
+
+PHYSICAL SPECIFICATIONS:
+- Dimensions: ${elementDetails.physical_dimensions?.width_inches?.toFixed(3) || 0}" x ${elementDetails.physical_dimensions?.height_inches?.toFixed(3) || 0}"
+- Area: ${elementDetails.physical_dimensions?.area_square_inches?.toFixed(2) || 0} square inches
+- Position: (${elementDetails.physical_dimensions?.position_x_inches?.toFixed(3) || 0}", ${elementDetails.physical_dimensions?.position_y_inches?.toFixed(3) || 0}")
+
+PIXEL SPECIFICATIONS:
+- Dimensions: ${elementDetails.pixel_dimensions?.width_pixels || 0} x ${elementDetails.pixel_dimensions?.height_pixels || 0} pixels
+- Position: (${elementDetails.pixel_dimensions?.position_x_pixels || 0}, ${elementDetails.pixel_dimensions?.position_y_pixels || 0}) pixels
+
+PRINT QUALITY:
+- Resolution: ${elementDetails.print_quality?.dpi || 0} DPI
+- Quality Rating: ${elementDetails.print_quality?.quality_rating || 'Unknown'}
+- Print Ready: ${elementDetails.print_quality?.is_print_ready ? 'Yes' : 'No'}
+
+TRANSFORMATIONS:
+- Rotation: ${elementDetails.transformations?.rotation_degrees?.toFixed(1) || 0}° ${elementDetails.transformations?.is_rotated ? '(Rotated)' : '(No rotation)'}
+- Scale: ${elementDetails.transformations?.scale_x || 1}x, ${elementDetails.transformations?.scale_y || 1}x ${elementDetails.transformations?.is_scaled ? '(Scaled)' : '(Original size)'}
+
+POSITIONING:
+- Horizontal: ${elementDetails.positioning?.is_centered_horizontally ? 'Centered' : 'Left-aligned'}
+- Vertical: ${elementDetails.positioning?.is_centered_vertically ? 'Centered' : 'Top-aligned'}
+- Edge Distances: Top ${elementDetails.positioning?.distance_from_edges?.top || 0}px, Right ${elementDetails.positioning?.distance_from_edges?.right || 0}px, Bottom ${elementDetails.positioning?.distance_from_edges?.bottom || 0}px, Left ${elementDetails.positioning?.distance_from_edges?.left || 0}px
+
+AREA UTILIZATION:
+- Printable Area Used: ${elementDetails.area_utilization?.printable_area_consumed_percentage?.toFixed(1) || 0}%
+- Design Area Used: ${elementDetails.area_utilization?.design_area_consumed_percentage?.toFixed(1) || 0}%
+
+ORIGINAL IMAGE INFO:${elementDetails.original_image_info ? `
+- Original Dimensions: ${elementDetails.original_image_info.original_width_pixels} x ${elementDetails.original_image_info.original_height_pixels} pixels
+- Original Area: ${elementDetails.original_image_info.original_area_pixels} pixels
+- Aspect Ratio: ${elementDetails.original_image_info.original_aspect_ratio?.toFixed(3) || 0}` : `
+- No original image data available`}
+
+Generated: ${new Date().toISOString()}`;
+    } else {
+      // Fallback for elements without detailed breakdown
+      return `${uploadedFile.designArea} design element ${uploadedFile.areaIndex + 1} - ${uploadedFile.originalMetadata?.originalFileName || 'Unknown file'}`;
+    }
+  }
+};
+
+
+const extractAvailableAreas = (locationState: LocationState): string[] => {
+  const areas = new Set<string>();
+  
+  // Method 1: Extract from availableMockups.all_available_areas (PRIMARY SOURCE)
+  if (locationState.availableMockups?.all_available_areas && Array.isArray(locationState.availableMockups.all_available_areas)) {
+    locationState.availableMockups.all_available_areas.forEach(area => areas.add(area.toLowerCase()));
+    //console.log('✅ Found areas from availableMockups.all_available_areas:', locationState.availableMockups.all_available_areas);
+  }
+  
+  // Method 2: Extract from enhancedImageAreaAnalysis.area_specifications (NEW)
+  if (locationState.enhancedImageAreaAnalysis?.area_specifications) {
+    Object.keys(locationState.enhancedImageAreaAnalysis.area_specifications).forEach(area => {
+      areas.add(area.toLowerCase());
+    });
+    //console.log('✅ Found areas from enhancedImageAreaAnalysis.area_specifications:', Object.keys(locationState.enhancedImageAreaAnalysis.area_specifications));
+  }
+  
+  // Method 3: Extract from imageAreaAnalysis.all_available_areas (fallback)
+  if (areas.size === 0 && locationState.imageAreaAnalysis?.all_available_areas && Array.isArray(locationState.imageAreaAnalysis.all_available_areas)) {
+    locationState.imageAreaAnalysis.all_available_areas.forEach(area => areas.add(area.toLowerCase()));
+    //console.log('✅ Found areas from imageAreaAnalysis.all_available_areas:', locationState.imageAreaAnalysis.all_available_areas);
+  }
+  
+  // Method 4: Extract from canvasImages area_id
+  if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
+    locationState.canvasImages.forEach(canvasImage => {
+      if (canvasImage.area_id) {
+        areas.add(canvasImage.area_id.toLowerCase());
+      }
+    });
+    //console.log('✅ Found areas from canvasImages area_id:', locationState.canvasImages.map(c => c.area_id));
+  }
+  
+  // Method 5: Extract from mockupImages keys as final fallback
+  if (areas.size === 0 && locationState.mockupImages) {
+    Object.keys(locationState.mockupImages).forEach(key => {
+      // Extract area from keys like "back_sky_blue", "front_sky_blue_l"
+      const parts = key.split('_');
+      if (parts.length >= 2) {
+        const potentialArea = parts[0].toLowerCase();
+        // Only add if it's not a size indicator or color
+        if (!['s', 'm', 'l', 'xl', 'xxl', 'xs', 'sky', 'blue', 'red', 'black', 'white'].includes(potentialArea)) {
+          areas.add(potentialArea);
+        }
+      }
+    });
+    //console.log('✅ Extracted areas from mockupImages keys:', Array.from(areas));
+  }
+  
+  const finalAreas = Array.from(areas);
+  //console.log('🎯 Final extracted areas:', finalAreas);
+  
+  return finalAreas.length > 0 ? finalAreas : ['front']; // fallback to 'front' if nothing found
+};
+
+
 const parsePayloadRichText = (richTextObject: any): string[] => {
   if (!richTextObject || typeof richTextObject !== 'object') {
     return [];
@@ -1154,29 +1494,41 @@ const extractFulfillmentTimesFromPayload = (payloadProduct: PayloadCMSProduct): 
   let rushAvailable = false;
   let rushTime: string | null = null;
 
-  // Extract from sourcing.leadTimeDays (this is shipping time)
+  // 🔍 DEBUG: Log the raw data
+  //console.log('🚀 PayloadCMS sourcing data:', payloadProduct.sourcing);
+
+  // ✅ Extract HANDLING time from leadTimeDays (production time)
   if (payloadProduct.sourcing?.leadTimeDays) {
-    const leadDays = payloadProduct.sourcing.leadTimeDays;
-    shippingTime = `${leadDays} business days`;
+    handlingTime = `${payloadProduct.sourcing.leadTimeDays} business days`;
+    //console.log('✅ Set handlingTime:', handlingTime);
+  } else {
+    //console.log('⚠️ No leadTimeDays found');
+  }
+
+  // ✅ Extract SHIPPING time from shipTimeDays (delivery time)
+  if (payloadProduct.sourcing?.shipTimeDays) {
+    shippingTime = `${payloadProduct.sourcing.shipTimeDays} business days`;
+    //console.log('✅ Set shippingTime:', shippingTime);
+  } else {
+    //console.log('⚠️ No shipTimeDays found');
   }
 
   // Extract rush shipping if available
   if (payloadProduct.sourcing?.rushAvailable && payloadProduct.sourcing?.rushLeadTimeDays) {
     rushAvailable = true;
     rushTime = `${payloadProduct.sourcing.rushLeadTimeDays} business days`;
+    //console.log('✅ Rush available:', rushTime);
   }
 
-  // For handling time, we might need to look at other fields or set based on product type
-  // Since it's not explicitly in the PayloadCMS data, we'll leave it null for now
-  // You can add specific logic here if you have handling time data elsewhere
+  // 🔍 DEBUG: Log final result
+  //console.log('🎯 Final fulfillment data:', { shippingTime, handlingTime, rushAvailable, rushTime });
 
   return { shippingTime, handlingTime, rushAvailable, rushTime };
 };
 
-
 // Move this near other utility functions (around line 400-500)
 const removeDuplicateDesignImages = (designImages: MediaItem[]): MediaItem[] => {
-  //console.log('🔍 Starting deduplication with', designImages.length, 'images');
+  ////console.log('🔍 Starting deduplication with', designImages.length, 'images');
   
   const uniqueImages = [];
   const seenHashes = new Set();
@@ -1198,16 +1550,16 @@ const removeDuplicateDesignImages = (designImages: MediaItem[]): MediaItem[] => 
     if (!seenHashes.has(hash)) {
       seenHashes.add(hash);
       uniqueImages.push(image);
-      //console.log('✅ UNIQUE - Keeping image:', image.file?.name || 'unnamed');
+      ////console.log('✅ UNIQUE - Keeping image:', image.file?.name || 'unnamed');
     } else {
-      //console.log('🚫 DUPLICATE - Removing image:', image.file?.name || 'unnamed');
+      ////console.log('🚫 DUPLICATE - Removing image:', image.file?.name || 'unnamed');
       if (image.url?.startsWith('blob:')) {
         URL.revokeObjectURL(image.url);
       }
     }
   }
   
-  //console.log('🎯 Deduplication result:', uniqueImages.length, 'unique images');
+  ////console.log('🎯 Deduplication result:', uniqueImages.length, 'unique images');
   return uniqueImages;
 };
 /**
@@ -1371,80 +1723,6 @@ const DesignImportSuccessNotification: React.FC<{
     <div className={`fixed top-4 right-4 max-w-md bg-white border border-green-200 rounded-lg shadow-lg z-50 transition-all duration-300 ${
       isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
     }`}>
-      {/* <div className="p-4">
-        <div className="flex items-start">
-          <div className="flex-shrink-0">
-            <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div className="flex-1 w-0 ml-3">
-            <p className="text-sm font-medium text-green-800">
-              Design Successfully Imported!
-            </p>
-            <div className="mt-2 space-y-1 text-sm text-green-700">
-              <div className="flex justify-between">
-                <span>Design Elements:</span>
-                <span className="font-medium">{elementsCount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Layers:</span>
-                <span className="font-medium">{layersCount}</span>
-              </div>
-              {avgDPI > 0 && (
-                <div className="flex justify-between">
-                  <span>Average DPI:</span>
-                  <span className={`font-medium ${hasGoodQuality ? 'text-green-600' : 'text-yellow-600'}`}>
-                    {avgDPI}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span>Print Quality:</span>
-                <span className={`font-medium ${hasGoodQuality ? 'text-green-600' : 'text-yellow-600'}`}>
-                  {hasGoodQuality ? 'Excellent' : 'Mixed'}
-                </span>
-              </div>
-              {enhancedProductData && (
-                <>
-                  <div className="pt-2 mt-2 border-t border-green-300">
-                    <div className="flex justify-between">
-                      <span>Enhanced Data:</span>
-                      <span className="font-medium text-blue-600">Available</span>
-                    </div>
-                    {enhancedProductData.cost && (
-                      <div className="flex justify-between">
-                        <span>Base Cost:</span>
-                        <span className="font-medium">₹{enhancedProductData.cost}</span>
-                      </div>
-                    )}
-                    {enhancedProductData.materials?.primary && (
-                      <div className="flex justify-between">
-                        <span>Material:</span>
-                        <span className="text-xs font-medium">{enhancedProductData.materials.primary}</span>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="flex-shrink-0 ml-4">
-            <button
-              onClick={() => {
-                setIsVisible(false);
-                setTimeout(onDismiss, 300);
-              }}
-              className="inline-flex text-gray-400 bg-white rounded-md hover:text-gray-500"
-            >
-              <span className="sr-only">Close</span>
-              <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div> */}
     </div>
   );
 };
@@ -1473,6 +1751,12 @@ const Create: React.FC = () => {
   const [dynamicLocationId, setDynamicLocationId] = useState<string>('');
   // near other hooks at component top
 const didPopulateRef = useRef(false);
+// Canvas pricing and mockup data
+  const [canvasPricingData, setCanvasPricingData] = useState<any>(null);
+  const [canvasMockupData, setCanvasMockupData] = useState<any>(null);
+  const [imageAreaAnalysis, setImageAreaAnalysis] = useState<any>(null);
+  // Add this state variable with your other state declarations
+const [availableAreas, setAvailableAreas] = useState<string[]>([]);
 
   // Add these with your other state declarations
 const [isProcessingDesignImages, setIsProcessingDesignImages] = useState<boolean>(false);
@@ -1758,7 +2042,7 @@ useEffect(() => {
         designImagesProcessed = true;
       }
        if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
-        console.log('📸 Found', locationState.canvasImages.length, 'canvas images');
+        //console.log('📸 Found', locationState.canvasImages.length, 'canvas images');
         setImportedCanvasImages(locationState.canvasImages);
       }
       // Option B: Process design elements (legacy format) - ONLY if new format not found
@@ -1781,19 +2065,39 @@ useEffect(() => {
         }
       }
       
-      // Continue with rest of your existing logic...
-      if (locationState.designData) {
-        setDesignData(locationState.designData);
-        setEnhancedProductData(locationState.enhancedProductData);
-        
-        const imageSettings = {
-          color_Images: locationState.enhancedProductData?.color_Images || false,
-          size_Images: locationState.enhancedProductData?.size_Images || false,
-          material_Images: locationState.enhancedProductData?.material_Images || false,
-          style_Images: locationState.enhancedProductData?.style_Images || false
-        };
-        
-        setPayloadImageSettings(imageSettings);
+     // STEP 4: Set design data and enhanced product data (do not populate form yet)
+        if (locationState.designData) {
+          ////console.log('🎯 CREATE DEBUG: Setting design data');
+           ////console.log('🔍 FULL LOCATION STATE:', locationState);
+          setDesignData(locationState.designData);
+          setEnhancedProductData(locationState.enhancedProductData);
+
+          // STEP 4.1: Extract canvas pricing data
+          if (locationState.pricingData) {
+            ////console.log('💰 CREATE DEBUG: Setting canvas pricing data');
+            setCanvasPricingData(locationState.pricingData);
+          }
+
+          // STEP 4.2: Extract canvas mockup data
+          if (locationState.availableMockups) {
+            ////console.log('🖼️ CREATE DEBUG: Setting canvas mockup data');
+            setCanvasMockupData(locationState.availableMockups);
+          }
+
+          // STEP 4.3: Extract image area analysis
+          if (locationState.imageAreaAnalysis) {
+            ////console.log('📏 CREATE DEBUG: Setting image area analysis');
+            setImageAreaAnalysis(locationState.imageAreaAnalysis);
+          }
+
+          const imageSettings = {
+            color_Images: locationState.enhancedProductData?.color_Images || false,
+            size_Images: locationState.enhancedProductData?.size_Images || false,
+            material_Images: locationState.enhancedProductData?.material_Images || false,
+            style_Images: locationState.enhancedProductData?.style_Images || false
+          };
+
+          setPayloadImageSettings(imageSettings);
         
         // Populate form - add delay to ensure processing completes
        // Populate form - add delay to ensure processing completes
@@ -1834,38 +2138,44 @@ useEffect(() => {
 
 
   // ===== ENHANCED MOCKUP IMAGE PROCESSING WITH REUSE =====
-  const handleMockupImagesEnhanced = async (
-    locationState: LocationState, 
-    directImageSettings?: ImageAssociationSettings
-  ) => {
-    try {
-      
-      const { mockupImages = {}, uniqueImages = {}, designData, enhancedProductData } = locationState;
-      const settingsToUse = directImageSettings || payloadImageSettings;
-      
+  // REPLACE your handleMockupImagesEnhanced function
+const handleMockupImagesEnhanced = async (
+  locationState: LocationState, 
+  directImageSettings?: ImageAssociationSettings
+) => {
+  try {
+    ////console.log('🚀 handleMockupImagesEnhanced called');
+    
+    const { mockupImages = {}, uniqueImages = {}, designData, enhancedProductData } = locationState;
+    const settingsToUse = directImageSettings || payloadImageSettings;
+    
+    // 🔥 EXTRACT AREAS DIRECTLY HERE (don't rely on state)
+    const extractedAreas = extractAvailableAreas(locationState);
+    ////console.log('🎯 Extracted areas for processing:', extractedAreas);
 
-      // STEP 1: Process raw design images FIRST
-      if (designData?.designElements) {
-        await processRawDesignImages(designData.designElements);
-      }
-
-      // STEP 2: Process mockup images with reuse logic
-      if (skipMockupGeneration && Object.keys(preGeneratedMockupImages).length > 0) {
-        await reusePreGeneratedMockupImages(designData!, settingsToUse);
-      } else {
-        if (Object.keys(uniqueImages).length > 0) {
-          await processUniqueImagesFromCanvas(uniqueImages, designData!, settingsToUse);
-        } else if (Object.keys(mockupImages).length > 0) {
-          await processMockupImagesDirectly(mockupImages, designData!, settingsToUse);
-        } else {
-          setError('No mockup images found from designer');
-        }
-      }
-      
-    } catch (error) {
-      setError('Failed to process images from designer');
+    // STEP 1: Process raw design images FIRST
+    if (designData?.designElements) {
+      await processRawDesignImages(designData.designElements);
     }
-  };
+
+    // STEP 2: Process mockup images with extracted areas
+    if (skipMockupGeneration && Object.keys(preGeneratedMockupImages).length > 0) {
+      await reusePreGeneratedMockupImages(designData!, settingsToUse);
+    } else {
+      if (Object.keys(uniqueImages).length > 0) {
+        await processUniqueImagesFromCanvas(uniqueImages, designData!, settingsToUse, extractedAreas);
+      } else if (Object.keys(mockupImages).length > 0) {
+        await processMockupImagesDirectly(mockupImages, designData!, settingsToUse, extractedAreas);
+      } else {
+        setError('No mockup images found from designer');
+      }
+    }
+    
+  } catch (error) {
+    ////console.error('❌ Error in handleMockupImagesEnhanced:', error);
+    setError('Failed to process images from designer');
+  }
+};
 
   // ===== NEW: REUSE PRE-GENERATED MOCKUP IMAGES =====
   const reusePreGeneratedMockupImages = async (
@@ -2129,169 +2439,174 @@ useEffect(() => {
   };
 
   // ===== EXISTING UNIQUE IMAGES PROCESSING =====
-  const processUniqueImagesFromCanvas = async (
-    uniqueImages: Record<string, any>,
-    designData: DesignData,
-    directImageSettings?: ImageAssociationSettings
-  ) => {
-    try {
-      const settingsToUse = directImageSettings || payloadImageSettings;
-      
-      const processedImages: MediaItem[] = [];
-      let currentRank = 0;
-      let skippedCount = 0;
-      let failedCount = 0;
-      
-      for (const [imageHash, imageInfo] of Object.entries(uniqueImages)) {
-        try {
-          
-          if (!imageInfo.imageData) {
+  // REPLACE the section where you create the mediaItem in processUniqueImagesFromCanvas
+const processUniqueImagesFromCanvas = async (
+  uniqueImages: Record<string, any>,
+  designData: DesignData,
+  directImageSettings?: ImageAssociationSettings,
+   extractedAreas?: string[] 
+) => {
+  try {
+     const areasToUse = extractedAreas || availableAreas;
+    const settingsToUse = directImageSettings || payloadImageSettings;
+    
+    const processedImages: MediaItem[] = [];
+    let currentRank = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+    
+    for (const [imageHash, imageInfo] of Object.entries(uniqueImages)) {
+      try {
+        
+        if (!imageInfo.imageData) {
+          skippedCount++;
+          continue;
+        }
+        
+        let base64Data = imageInfo.imageData;
+        if (!base64Data.startsWith('data:image/')) {
+          if (base64Data.length > 100 && !base64Data.includes('data:')) {
+            base64Data = `data:image/png;base64,${base64Data}`;
+          } else {
             skippedCount++;
             continue;
           }
-          
-          let base64Data = imageInfo.imageData;
-          if (!base64Data.startsWith('data:image/')) {
-            if (base64Data.length > 100 && !base64Data.includes('data:')) {
-              base64Data = `data:image/png;base64,${base64Data}`;
+        }
         
-            } else {
-              skippedCount++;
-              continue;
-            }
-          }
-          
-          let extractedInfo = {
-            colorName: imageInfo.colorName || 'Unknown',
-            sizeName: imageInfo.sizeName
-          };
-          
-          if (imageInfo.mockupTitle && (extractedInfo.colorName === 'Unknown' || !extractedInfo.sizeName)) {
-            const parsedFromTitle = parseVariantKeyEnhanced(imageInfo.mockupTitle, designData);
-            if (parsedFromTitle.colorName !== 'Unknown') {
-              extractedInfo.colorName = parsedFromTitle.colorName;
-            }
-            if (parsedFromTitle.sizeName && !extractedInfo.sizeName) {
-              extractedInfo.sizeName = parsedFromTitle.sizeName;
-            }
-          }
-          
-          if (extractedInfo.colorName === 'Unknown' && designData.colorDetails?.length > 0) {
-            extractedInfo.colorName = designData.colorDetails[0].name;
-          }
-          
-          const timestamp = Date.now();
-          const fileName = extractedInfo.sizeName 
-            ? `canvas-${extractedInfo.colorName.toLowerCase()}-${extractedInfo.sizeName.toLowerCase()}-${timestamp}.png`
-            : `canvas-${extractedInfo.colorName.toLowerCase()}-${timestamp}.png`;
-          
-          
-          const processedImage = await processBase64ToFile(
-            base64Data,
-            fileName,
-            extractedInfo.colorName
-          );
-          
-          if (!processedImage) {
-            failedCount++;
-            continue;
-          }
-          
-          if (processedImage.file.size < 1000) {
+        let extractedInfo = {
+          colorName: imageInfo.colorName || 'Unknown',
+          sizeName: imageInfo.sizeName,
+          areaName: undefined as string | undefined
+        };
         
-            failedCount++;
-            continue;
+        if (imageInfo.mockupTitle && (extractedInfo.colorName === 'Unknown' || !extractedInfo.sizeName || !extractedInfo.areaName)) {
+          // 🔥 PASS availableAreas to parsing function
+          const parsedFromTitle = parseVariantKeyEnhanced(imageInfo.mockupTitle, designData, availableAreas,areasToUse);
+          if (parsedFromTitle.colorName !== 'Unknown') {
+            extractedInfo.colorName = parsedFromTitle.colorName;
           }
-          
-          if (!processedImage.file.type.startsWith('image/')) {
-  
-            failedCount++;
-            continue;
+          if (parsedFromTitle.sizeName && !extractedInfo.sizeName) {
+            extractedInfo.sizeName = parsedFromTitle.sizeName;
           }
-          
-          const variantInfo = createVariantInfoStructure(extractedInfo, settingsToUse);
-          
-          const mediaItem: MediaItem = {
-            file: processedImage.file,
-            url: processedImage.url,
-            rank: currentRank,
-            isNew: true,
-            variantInfo: variantInfo,
-            colorValue: extractedInfo.colorName,
-            
-            metadata: {
-              isSharedImage: !settingsToUse.size_Images,
-              originalVariantKey: `${imageInfo.mockupTitle}-${extractedInfo.colorName}${extractedInfo.sizeName ? `-${extractedInfo.sizeName}` : ''}`,
-              sharingStrategy: determineSharingStrategy(settingsToUse),
-              imageHash: imageHash,
-              originalSize: processedImage.size,
-              quality: processedImage.quality,
-              validatedDimensions: processedImage.dimensions ? 
-                `${processedImage.dimensions.width}x${processedImage.dimensions.height}` : 'unknown',
-              extractedColorName: extractedInfo.colorName,
-              extractedSizeName: extractedInfo.sizeName,
-              payloadSettings: { ...settingsToUse },
-              
-              uploadValidation: {
-                hasFile: !!processedImage.file,
-                fileSize: processedImage.file.size,
-                fileType: processedImage.file.type,
-                fileName: processedImage.file.name,
-                validForUpload: true,
-                originalBase64Length: base64Data.length
-              },
-              
-              debugInfo: {
-                originalColorName: imageInfo.colorName,
-                originalSizeName: imageInfo.sizeName,
-                originalMockupTitle: imageInfo.mockupTitle,
-                extractionStrategy: 'enhanced_validated',
-                processed: true,
-                timestamp: new Date().toISOString()
-              }
-            }
-          };
-          
-          if (!mediaItem.file) {
-
-            failedCount++;
-            continue;
+          if (parsedFromTitle.areaName && !extractedInfo.areaName) {
+            extractedInfo.areaName = parsedFromTitle.areaName;
           }
-          
-          processedImages.push(mediaItem);
-          currentRank++;
+        }
         
-          
-        } catch (error) {
+        if (extractedInfo.colorName === 'Unknown' && designData.colorDetails?.length > 0) {
+          extractedInfo.colorName = designData.colorDetails[0].name;
+        }
+        
+        const timestamp = Date.now();
+        const fileName = extractedInfo.sizeName 
+          ? `canvas-${extractedInfo.areaName || 'unknown'}-${extractedInfo.colorName.toLowerCase()}-${extractedInfo.sizeName.toLowerCase()}-${timestamp}.png`
+          : `canvas-${extractedInfo.areaName || 'unknown'}-${extractedInfo.colorName.toLowerCase()}-${timestamp}.png`;
+        
+        
+        const processedImage = await processBase64ToFile(
+          base64Data,
+          fileName,
+          extractedInfo.colorName
+        );
+        
+        if (!processedImage) {
           failedCount++;
+          continue;
         }
-      }
-      
-      
-      if (processedImages.length === 0) {
-        setError('Enhanced processing: Failed to process any images. Check //console for details.');
-        return;
-      }
-      
-      const validImages = processedImages.filter(item => {
-        const isValid = item.file && item.file.size > 0 && item.url;
-        if (!isValid) {
+        
+        if (processedImage.file.size < 1000) {
+          failedCount++;
+          continue;
         }
-        return isValid;
-      });
+        
+        if (!processedImage.file.type.startsWith('image/')) {
+          failedCount++;
+          continue;
+        }
+        
+        const variantInfo = createVariantInfoStructure(extractedInfo, settingsToUse);
+        
+        const mediaItem: MediaItem = {
+          file: processedImage.file,
+          url: processedImage.url,
+          rank: currentRank,
+          isNew: true,
+          variantInfo: variantInfo,
+          colorValue: extractedInfo.colorName,
+          
+          metadata: {
+            isSharedImage: !settingsToUse.size_Images,
+            originalVariantKey: `${imageInfo.mockupTitle}-${extractedInfo.colorName}${extractedInfo.sizeName ? `-${extractedInfo.sizeName}` : ''}`,
+            sharingStrategy: determineSharingStrategy(settingsToUse),
+            imageHash: imageHash,
+            originalSize: processedImage.size,
+            quality: processedImage.quality,
+            validatedDimensions: processedImage.dimensions ? 
+              `${processedImage.dimensions.width}x${processedImage.dimensions.height}` : 'unknown',
+            extractedColorName: extractedInfo.colorName,
+            extractedSizeName: extractedInfo.sizeName,
+            extractedAreaName: extractedInfo.areaName,  // 🔥 ADD AREA TO METADATA
+            payloadSettings: { ...settingsToUse },
+            
+            uploadValidation: {
+              hasFile: !!processedImage.file,
+              fileSize: processedImage.file.size,
+              fileType: processedImage.file.type,
+              fileName: processedImage.file.name,
+              validForUpload: true,
+              originalBase64Length: base64Data.length
+            },
+            
+            debugInfo: {
+              originalColorName: imageInfo.colorName,
+              originalSizeName: imageInfo.sizeName,
+              originalMockupTitle: imageInfo.mockupTitle,
+              extractionStrategy: 'enhanced_validated',
+              processed: true,
+              timestamp: new Date().toISOString()
+            }
+          }
+        };
+        
+        if (!mediaItem.file) {
+          failedCount++;
+          continue;
+        }
+        
+        processedImages.push(mediaItem);
+        currentRank++;
       
-      // setMediaItems(validImages);
-      setMediaItems(prev => [...prev, ...validImages])   // ✅ merge
-
-      setTimeout(() => setActiveImageTab('upload'), 100);
-      
-      validImages.forEach((item, index) => {
-      });
-      
-    } catch (error) {
-      setError('Enhanced image processing failed. Check //console for details.');
+      } catch (error) {
+        failedCount++;
+      }
     }
-  };
+    
+    
+    if (processedImages.length === 0) {
+      setError('Enhanced processing: Failed to process any images. Check //console for details.');
+      return;
+    }
+    
+    const validImages = processedImages.filter(item => {
+      const isValid = item.file && item.file.size > 0 && item.url;
+      if (!isValid) {
+      }
+      return isValid;
+    });
+    
+    setMediaItems(prev => [...prev, ...validImages]);
+
+    setTimeout(() => setActiveImageTab('upload'), 100);
+    
+    ////console.log('✅ Processed images by area:');
+    validImages.forEach((item, index) => {
+      ////console.log(`  ${index + 1}. Area: ${item.metadata?.extractedAreaName || 'unknown'}, Color: ${item.colorValue}, Size: ${item.metadata?.extractedSizeName || 'shared'}`);
+    });
+    
+  } catch (error) {
+    setError('Enhanced image processing failed. Check //console for details.');
+  }
+};
 
   // ===== EXTRACT COLOR AND SIZE FROM IMAGE DATA =====
   const extractColorAndSizeFromImageData = (imageInfo: any, designData: DesignData) => {
@@ -2633,7 +2948,7 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
       
       const suggestedPrice = payloadProduct.pricing.suggestedRetail;
       form.setValue('defaultVariantPrice', suggestedPrice);
-      console.log("Mug/shirt Price", suggestedPrice);
+      ////console.log("Mug/shirt Price", suggestedPrice);
       
       // ===== 5. STATUS AND SETTINGS =====
       form.setValue('status', payloadProduct.status === 'active' ? 'published' : 'proposed');
@@ -2685,7 +3000,7 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
           
       //     appendOption(sizeOption);
       //   } else {
-      //     //console.log('Size option already exists, skipping duplicate');
+      //     ////console.log('Size option already exists, skipping duplicate');
       //   }
       // }
       
@@ -2701,11 +3016,11 @@ let existingProductDetails: string[] = [];
 
 // STEP 1: Try to extract from features field (rich text)
 if (payloadProduct.features) {
-  console.log('📝 Found features field, parsing rich text...');
+  ////console.log('📝 Found features field, parsing rich text...');
   const featuresText = parsePayloadRichText(payloadProduct.features);
   if (featuresText.length > 0) {
     existingProductDetails.push(...featuresText);
-    console.log('✅ Extracted from features:', featuresText);
+    ////console.log('✅ Extracted from features:', featuresText);
   }
 }
 
@@ -2715,7 +3030,7 @@ if (payloadProduct.materials?.primary &&
       detail.toLowerCase().includes(payloadProduct.materials.primary.toLowerCase())
     )) {
   existingProductDetails.push(payloadProduct.materials.primary);
-  console.log('✅ Added material as product detail:', payloadProduct.materials.primary);
+  ////console.log('✅ Added material as product detail:', payloadProduct.materials.primary);
 }
 
 // STEP 3: Add construction details if available
@@ -2724,7 +3039,7 @@ if (payloadProduct.materials?.construction &&
       detail.toLowerCase().includes(payloadProduct.materials.construction.toLowerCase())
     )) {
   existingProductDetails.push(payloadProduct.materials.construction);
-  console.log('✅ Added construction detail:', payloadProduct.materials.construction);
+  ////console.log('✅ Added construction detail:', payloadProduct.materials.construction);
 }
 
 // STEP 4: Try other field names as fallback
@@ -2751,7 +3066,7 @@ if (existingProductDetails.length === 0) {
 
 // STEP 5: Populate form with extracted details
 if (existingProductDetails.length > 0) {
-  console.log(`📝 Populating ${existingProductDetails.length} product details`);
+  ////console.log(`📝 Populating ${existingProductDetails.length} product details`);
 
   const uniqueDetails = [...new Set(existingProductDetails)]
     .map(detail => detail.trim())
@@ -2766,9 +3081,9 @@ if (existingProductDetails.length > 0) {
   // ✅ Replace the entire field at once (no duplicates possible)
   form.setValue("productDetails", replaced, { shouldDirty: true, shouldTouch: true });
 
-  console.log("✅ Product details populated successfully", replaced);
+  ////console.log("✅ Product details populated successfully", replaced);
 } else {
-  console.log("⚠️ No product details found in PayloadCMS data");
+  ////console.log("⚠️ No product details found in PayloadCMS data");
 }
 
 
@@ -2887,7 +3202,7 @@ const populateFormWithDesignData = (
   directImageSettings?: ImageAssociationSettings
 ) => {
   try {
-    console.log('🎯 POPULATE DEBUG: Starting form population with design data');
+    ////console.log('🎯 POPULATE DEBUG: Starting form population with design data');
     // Clear existing product details first to avoid duplicates when this fn is called multiple times
     const currentDetails = form.getValues('productDetails') || [];
     for (let i = currentDetails.length - 1; i >= 0; i--) {
@@ -2904,7 +3219,7 @@ const populateFormWithDesignData = (
     if (data.productInfo) {
       if (data.productInfo.title) {
         form.setValue('title', data.productInfo.title);
-        console.log('🎯 POPULATE DEBUG: Set title:', data.productInfo.title);
+        ////console.log('🎯 POPULATE DEBUG: Set title:', data.productInfo.title);
       }
       
      if (data.productInfo.description) {
@@ -2953,7 +3268,7 @@ const populateFormWithDesignData = (
 
     // Handle Color Options
     if (data.colorDetails && Array.isArray(data.colorDetails) && data.colorDetails.length > 0) {
-      console.log('🎯 POPULATE DEBUG: Processing selected colors:', data.colorDetails.length);
+      ////console.log('🎯 POPULATE DEBUG: Processing selected colors:', data.colorDetails.length);
       
       const colorHexValues: Record<string, string> = {};
       data.colorDetails.forEach(color => {
@@ -2971,7 +3286,7 @@ const populateFormWithDesignData = (
       form.setValue(`options.${optionIndex}.imageAssociation`, settingsToUse.color_Images);
       form.setValue(`options.${optionIndex}.colorHexValues`, colorHexValues);
       
-      console.log('🎯 POPULATE DEBUG: Set color option with values:', selectedColorNames);
+      ////console.log('🎯 POPULATE DEBUG: Set color option with values:', selectedColorNames);
       optionIndex++;
     }
 
@@ -2984,7 +3299,7 @@ const populateFormWithDesignData = (
       );
       
       if (sizeOption && sizeOption.optionValues && sizeOption.optionValues.length > 0) {
-        console.log('🎯 POPULATE DEBUG: Processing size option:', sizeOption.optionValues.length, 'sizes');
+        ////console.log('🎯 POPULATE DEBUG: Processing size option:', sizeOption.optionValues.length, 'sizes');
         
         const currentOptions = form.getValues('options');
         
@@ -3006,15 +3321,15 @@ const populateFormWithDesignData = (
         
         form.setValue('options', updatedOptions, { shouldValidate: false, shouldTouch: false });
         
-        console.log('🎯 POPULATE DEBUG: Rebuilt options with single size option');
-        console.log('🎯 POPULATE DEBUG: Total options:', updatedOptions.length);
+        ////console.log('🎯 POPULATE DEBUG: Rebuilt options with single size option');
+        ////console.log('🎯 POPULATE DEBUG: Total options:', updatedOptions.length);
       }
     }
     setHasVariants(true);
     
     // STEP 5: Generate variants with delay to ensure options are set
     setTimeout(() => {
-      console.log('🎯 POPULATE DEBUG: Generating variants');
+      ////console.log('🎯 POPULATE DEBUG: Generating variants');
       try {
         handleGenerateVariants();
         
@@ -3030,149 +3345,176 @@ const populateFormWithDesignData = (
               form.setValue(`variants.${index}.price`, priceToApply);
               form.setValue(`variants.${index}.stock`, 10);
             });
-            console.log('🎯 POPULATE DEBUG: Variant prices set');
+            ////console.log('🎯 POPULATE DEBUG: Variant prices set');
           }
         }, 1000);
       } catch (variantError) {
-        console.error('🎯 POPULATE ERROR: Variant generation failed:', variantError);
+        ////console.error('🎯 POPULATE ERROR: Variant generation failed:', variantError);
       }
     }, 1000);
     
-    console.log('🎯 POPULATE DEBUG: Form population completed successfully');
+    ////console.log('🎯 POPULATE DEBUG: Form population completed successfully');
     
   } catch (error) {
-    console.error('🎯 POPULATE ERROR: Form population failed:', error);
+    ////console.error('🎯 POPULATE ERROR: Form population failed:', error);
     setError(`Failed to populate form: ${error.message}`);
   }
 };
 
   // ===== FALLBACK: DIRECT MOCKUP PROCESSING =====
-  const processMockupImagesDirectly = async (
-    mockupImages: Record<string, string>,
-    designData: DesignData,
-    directImageSettings?: ImageAssociationSettings
-  ) => {
-    try {
-      const settingsToUse = directImageSettings || payloadImageSettings;
-      
-      const shouldDeduplicateByColor = settingsToUse.color_Images && !settingsToUse.size_Images;
-      
-      if (shouldDeduplicateByColor) {
-        return await processSharedImagesByColor(mockupImages, designData, settingsToUse);
-      } else {
-        return await processIndividualImages(mockupImages, designData, settingsToUse);
-      }
-      
-    } catch (error) {
-      setError('Failed to process mockup images from designer');
+  // REPLACE your processMockupImagesDirectly function with this version
+// UPDATE processMockupImagesDirectly signature
+const processMockupImagesDirectly = async (
+  mockupImages: Record<string, string>,
+  designData: DesignData,
+  directImageSettings?: ImageAssociationSettings,
+  extractedAreas?: string[] // 🔥 ADD THIS PARAMETER
+) => {
+  try {
+    const areasToUse = extractedAreas || availableAreas;
+    ////console.log('🔄 Processing mockup images directly with areas:', areasToUse);
+    ////console.log('🔄 Mockup keys to process:', Object.keys(mockupImages));
+    
+    const settingsToUse = directImageSettings || payloadImageSettings;
+    
+    const shouldDeduplicateByColor = settingsToUse.color_Images && !settingsToUse.size_Images;
+    
+    if (shouldDeduplicateByColor) {
+      return await processSharedImagesByColor(mockupImages, designData, settingsToUse, areasToUse);
+    } else {
+      return await processIndividualImages(mockupImages, designData, settingsToUse, areasToUse);
     }
-  };
+    
+  } catch (error) {
+    ////console.error('❌ Error in processMockupImagesDirectly:', error);
+    setError('Failed to process mockup images from designer');
+  }
+};
 
+// UPDATE processSharedImagesByColor to include area information
 const processSharedImagesByColor = async (
   mockupImages: Record<string, string>,
   designData: DesignData,
-  imageSettings: ImageAssociationSettings
+  imageSettings: ImageAssociationSettings,
+  extractedAreas?: string[] // 🔥 ADD THIS PARAMETER
 ) => {
-  // //console.log('🔥 processSharedImagesByColor called with:', Object.keys(mockupImages).length, 'images');
+  const areasToUse = extractedAreas || availableAreas;
+  ////console.log('🔥 processSharedImagesByColor called with:', Object.keys(mockupImages).length, 'images');
+  ////console.log('🏗️ Available areas for processing:', areasToUse);
   
-  const imagesByColor: Record<string, { key: string; data: string; allKeys: string[] }> = {};
+  const imagesByColorAndArea: Record<string, Record<string, { key: string; data: string; allKeys: string[] }>> = {};
   
-  // STEP 1: Group images by color and deduplicate
+  // STEP 1: Group images by BOTH color AND area, then deduplicate
   for (const [variantKey, imageData] of Object.entries(mockupImages)) {
     if (!imageData || !imageData.startsWith('data:')) continue;
     
-    const extractedColor = extractColorFromVariantKey(variantKey, designData);
-    ////console.log('🔥 Processing variant key:', variantKey, 'extracted color:', extractedColor);
+    // 🔥 PASS THE EXTRACTED AREAS
+    const parsedInfo = parseVariantKeyEnhanced(variantKey, designData, areasToUse);
+    const colorName = parsedInfo.colorName;
+    const areaName = parsedInfo.areaName || 'unknown';
     
-    if (!imagesByColor[extractedColor]) {
-      imagesByColor[extractedColor] = {
+    ////console.log(`🔥 Processing variant key: ${variantKey} -> Color: ${colorName}, Area: ${areaName}`);
+    
+    if (!imagesByColorAndArea[colorName]) {
+      imagesByColorAndArea[colorName] = {};
+    }
+    
+    if (!imagesByColorAndArea[colorName][areaName]) {
+      imagesByColorAndArea[colorName][areaName] = {
         key: variantKey,
         data: imageData,
         allKeys: [variantKey]
       };
     } else {
       // Just add to allKeys for metadata, but don't create duplicate image
-      imagesByColor[extractedColor].allKeys.push(variantKey);
-      ////console.log('🔥 Skipping duplicate for color:', extractedColor, 'total keys now:', imagesByColor[extractedColor].allKeys.length);
+      imagesByColorAndArea[colorName][areaName].allKeys.push(variantKey);
+      ////console.log(`🔥 Skipping duplicate for color: ${colorName}, area: ${areaName}`);
     }
   }
   
-  ////console.log('🔥 Final grouped colors:', Object.keys(imagesByColor));
+  // //console.log('🔥 Final grouped colors and areas:', 
+  //   Object.keys(imagesByColorAndArea).map(color => 
+  //     `${color}: [${Object.keys(imagesByColorAndArea[color]).join(', ')}]`
+  //   )
+  // );
   
   const processedImages: MediaItem[] = [];
   let currentRank = 1000; // Start after design images
   
-  // STEP 2: Create exactly ONE shared image per color
-  for (const [colorName, group] of Object.entries(imagesByColor)) {
-    try {
-      ////console.log('🔥 Creating shared image for color:', colorName, 'covering', group.allKeys.length, 'variants');
-      
-      const fileName = `mockup-${colorName.toLowerCase()}-shared.png`;
-      
-      const processedImage = await processBase64ToFile(
-        group.data,
-        fileName,
-        colorName
-      );
-      
-      if (!processedImage) {
-        ////console.log('🔥 Failed to process image for color:', colorName);
-        continue;
-      }
-      
-      // Get all size values that this shared image covers
-      const coversSizes = getSizesFromKeys(group.allKeys, designData);
-      
-      const variantInfo = {
-        optionName: 'Color',
-        optionValues: [colorName],
-        isSharedAcrossSizes: true,
-        coversSizes: coversSizes
-      };
-      
-      const mediaItem: MediaItem = {
-        file: processedImage.file,
-        url: processedImage.url,
-        rank: currentRank++,
-        isNew: true,
-        variantInfo: variantInfo,
-        colorValue: colorName,
-        metadata: {
-          isSharedImage: true, // CRITICAL: Mark as shared
-          originalVariantKey: group.key,
-          sharingStrategy: 'color_specific_size_shared',
-          imageHash: `shared_${colorName}`,
-          extractedColorName: colorName,
-          extractedSizeName: undefined, // No specific size
-          payloadSettings: { ...imageSettings },
-          allCoveredKeys: group.allKeys,
-          
-          // Add deduplication metadata
-          isDeduplicated: true,
-          originalVariantCount: group.allKeys.length,
-          
-          debugInfo: {
-            strategy: 'shared_by_color',
-            representativeKey: group.key,
-            totalVariantsCovered: group.allKeys.length,
-            coveredKeys: group.allKeys,
-            deduplicationApplied: true
-          }
+  // STEP 2: Create exactly ONE shared image per color-area combination
+  for (const [colorName, areaGroups] of Object.entries(imagesByColorAndArea)) {
+    for (const [areaName, group] of Object.entries(areaGroups)) {
+      try {
+        ////console.log(`🔥 Creating shared image for color: ${colorName}, area: ${areaName}, covering ${group.allKeys.length} variants`);
+        
+        const fileName = `mockup-${areaName}-${colorName.toLowerCase()}-shared.png`;
+        
+        const processedImage = await processBase64ToFile(
+          group.data,
+          fileName,
+          colorName
+        );
+        
+        if (!processedImage) {
+          ////console.log(`🔥 Failed to process image for color: ${colorName}, area: ${areaName}`);
+          continue;
         }
-      };
-      
-      processedImages.push(mediaItem);
-      ////console.log('🔥 Created media item for color:', colorName, 'with', group.allKeys.length, 'covered variants');
-      
-    } catch (error) {
-      ////console.error('🔥 Error processing color:', colorName, error);
+        
+        // Get all size values that this shared image covers
+        const coversSizes = getSizesFromKeys(group.allKeys, designData);
+        
+        const variantInfo = {
+          optionName: 'Color',
+          optionValues: [colorName],
+          isSharedAcrossSizes: true,
+          coversSizes: coversSizes
+        };
+        
+        const mediaItem: MediaItem = {
+          file: processedImage.file,
+          url: processedImage.url,
+          rank: currentRank++,
+          isNew: true,
+          variantInfo: variantInfo,
+          colorValue: colorName,
+          metadata: {
+            isSharedImage: true, // CRITICAL: Mark as shared
+            originalVariantKey: group.key,
+            sharingStrategy: 'color_specific_size_shared',
+            imageHash: `shared_${colorName}_${areaName}`,
+            extractedColorName: colorName,
+            extractedSizeName: undefined, // No specific size
+            extractedAreaName: areaName, // 🔥 STORE AREA NAME
+            payloadSettings: { ...imageSettings },
+            allCoveredKeys: group.allKeys,
+            
+            // Add deduplication metadata
+            isDeduplicated: true,
+            originalVariantCount: group.allKeys.length,
+            
+            debugInfo: {
+              strategy: 'shared_by_color_and_area',
+              representativeKey: group.key,
+              totalVariantsCovered: group.allKeys.length,
+              coveredKeys: group.allKeys,
+              deduplicationApplied: true,
+              area: areaName
+            }
+          }
+        };
+        
+        processedImages.push(mediaItem);
+        ////console.log(`🔥 Created media item for color: ${colorName}, area: ${areaName} with ${group.allKeys.length} covered variants`);
+        
+      } catch (error) {
+        //console.error(`🔥 Error processing color: ${colorName}, area: ${areaName}`, error);
+      }
     }
   }
   
-  ////console.log('🔥 Total processed images:', processedImages.length);
+  ////console.log(`🔥 Total processed images: ${processedImages.length}`);
   
   if (processedImages.length > 0) {
-    // 🔥 CRITICAL FIX: Use functional update with deduplication
     setMediaItems(prev => {
       // Filter out any existing shared images for the same colors to prevent duplicates
       const existingNonShared = prev.filter(item => !item.metadata?.isSharedImage);
@@ -3180,8 +3522,8 @@ const processSharedImagesByColor = async (
       // Add new shared images
       const combined = [...existingNonShared, ...processedImages];
       
-      ////console.log('🔥 Setting mediaItems with', combined.length, 'total items');
-      ////console.log('🔥 Shared images in result:', combined.filter(item => item.metadata?.isSharedImage).length);
+      ////console.log(`🔥 Setting mediaItems with ${combined.length} total items`);
+      ////console.log(`🔥 Shared images in result: ${combined.filter(item => item.metadata?.isSharedImage).length}`);
       
       return combined;
     });
@@ -3191,6 +3533,7 @@ const processSharedImagesByColor = async (
     processedImages.forEach((item, index) => {
       // //console.log(`🔥 Final shared image ${index + 1}:`, {
       //   colorName: item.colorValue,
+      //   areaName: item.metadata?.extractedAreaName,
       //   fileName: item.file?.name,
       //   coveredVariants: item.metadata?.allCoveredKeys?.length || 0
       // });
@@ -3230,125 +3573,167 @@ const processSharedImagesByColor = async (
     return Array.from(sizes);
   };
 
-  const processIndividualImages = async (
-    mockupImages: Record<string, string>,
-    designData: DesignData,
-    imageSettings: ImageAssociationSettings
-  ) => {
+  // UPDATE the processIndividualImages function 
+// REPLACE your processIndividualImages function
+const processIndividualImages = async (
+  mockupImages: Record<string, string>,
+  designData: DesignData,
+  imageSettings: ImageAssociationSettings,
+  extractedAreas?: string[]
+) => {
+  const areasToUse = extractedAreas || availableAreas;
+  ////console.log('🔄 Processing individual images:', Object.keys(mockupImages));
+  ////console.log('🏗️ Using available areas:', availableAreas);
+  
+  const processedImages: MediaItem[] = [];
+  let currentRank = 0;
+  
+  for (const [variantKey, imageDataUrl] of Object.entries(mockupImages)) {
+    if (!imageDataUrl || !imageDataUrl.startsWith('data:')) continue;
     
-    const processedImages: MediaItem[] = [];
-    let currentRank = 0;
-    
-    for (const [variantKey, imageDataUrl] of Object.entries(mockupImages)) {
-      if (!imageDataUrl || !imageDataUrl.startsWith('data:')) continue;
+   try {
+      // 🔥 PASS the extracted areas
+      const parsedInfo = parseVariantKeyEnhanced(variantKey, designData, areasToUse);
       
-      try {
-        const parsedInfo = parseVariantKeyEnhanced(variantKey, designData);
-        
-        const fileName = parsedInfo.sizeName 
-          ? `mockup-${parsedInfo.colorName.toLowerCase()}-${parsedInfo.sizeName.toLowerCase()}.png`
-          : `mockup-${parsedInfo.colorName.toLowerCase()}.png`;
-        
-        const processedImage = await processBase64ToFile(
-          imageDataUrl,
-          fileName,
-          parsedInfo.colorName
-        );
-        
-        if (!processedImage) continue;
-        
-        const variantInfo = createVariantInfoStructure(
-          { colorName: parsedInfo.colorName, sizeName: parsedInfo.sizeName },
-          imageSettings
-        );
-        
-        const mediaItem: MediaItem = {
-          file: processedImage.file,
-          url: processedImage.url,
-          rank: currentRank++,
-          isNew: true,
-          variantInfo: variantInfo,
-          colorValue: parsedInfo.colorName,
-          metadata: {
-            isSharedImage: false,
-            originalVariantKey: variantKey,
-            sharingStrategy: determineSharingStrategy(imageSettings),
-            imageHash: variantKey,
-            extractedColorName: parsedInfo.colorName,
-            extractedSizeName: parsedInfo.sizeName,
-            payloadSettings: { ...imageSettings }
-          }
-        };
-        
-        processedImages.push(mediaItem);
-        
-      } catch (error) {
+      ////console.log(`🔍 Processing ${variantKey}:`, parsedInfo);
+      
+      const fileName = parsedInfo.sizeName 
+        ? `mockup-${parsedInfo.areaName || 'unknown'}-${parsedInfo.colorName.toLowerCase()}-${parsedInfo.sizeName.toLowerCase()}.png`
+        : `mockup-${parsedInfo.areaName || 'unknown'}-${parsedInfo.colorName.toLowerCase()}.png`;
+      
+      const processedImage = await processBase64ToFile(
+        imageDataUrl,
+        fileName,
+        parsedInfo.colorName
+      );
+      
+      if (!processedImage) {
+        ////console.log(`❌ Failed to process image for ${variantKey}`);
+        continue;
       }
+      
+      const variantInfo = createVariantInfoStructure(
+        { colorName: parsedInfo.colorName, sizeName: parsedInfo.sizeName },
+        imageSettings
+      );
+      
+      const mediaItem: MediaItem = {
+        file: processedImage.file,
+        url: processedImage.url,
+        rank: currentRank++,
+        isNew: true,
+        variantInfo: variantInfo,
+        colorValue: parsedInfo.colorName,
+        metadata: {
+          isSharedImage: false,
+          originalVariantKey: variantKey,
+          sharingStrategy: determineSharingStrategy(imageSettings),
+          imageHash: variantKey,
+          extractedColorName: parsedInfo.colorName,
+          extractedSizeName: parsedInfo.sizeName,
+          extractedAreaName: parsedInfo.areaName, // 🔥 STORE AREA NAME
+          payloadSettings: { ...imageSettings }
+        }
+      };
+      
+      processedImages.push(mediaItem);
+      ////console.log(`✅ Processed: ${variantKey} -> Area: ${parsedInfo.areaName}, Color: ${parsedInfo.colorName}, Size: ${parsedInfo.sizeName || 'shared'}`);
+      
+    } catch (error) {
+      ////console.error(`❌ Error processing ${variantKey}:`, error);
     }
-    
-    
-    // setMediaItems(processedImages);
-    //setMediaItems(prev => [...prev, ...processedImages])
-    setMediaItems(prev => {
-      const combined = [...prev, ...validImages]
-      return combined
-    })
+  }
+  
+  ////console.log(`🎯 Total processed images: ${processedImages.length}`);
+  
+  // Log images by area for debugging
+  const imagesByArea = processedImages.reduce((acc, item) => {
+    const area = item.metadata?.extractedAreaName || 'unknown';
+    acc[area] = (acc[area] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  ////console.log('📊 Processed images by area:', imagesByArea);
+  
+  setMediaItems(prev => {
+    const combined = [...prev, ...processedImages];
+    ////console.log('🔄 Updated mediaItems, total count:', combined.length);
+    return combined;
+  });
 
-    setTimeout(() => setActiveImageTab('upload'), 100);
-  };
+  setTimeout(() => setActiveImageTab('upload'), 100);
+};
 
   // ===== ENHANCED VARIANT KEY PARSING =====
-  const parseVariantKeyEnhanced = (variantKey: string, designData: DesignData) => {
+  // REPLACE the existing parseVariantKeyEnhanced function with this enhanced version
+// REPLACE the parseVariantKeyEnhanced function with this dynamic version
+const parseVariantKeyEnhanced = (variantKey: string, designData: DesignData, dynamicAreas: string[] = []) => {
+  ////console.log('🔍 Parsing variant key:', variantKey, 'with available areas:', dynamicAreas);
+  
+  const parts = variantKey.split(/[-_]+/).filter(part => part.length > 0);  
+  let colorName = 'Unknown';
+  let sizeName: string | undefined = undefined;
+  let areaName: string | undefined = undefined;
+  
+  const colorMatcher = createColorMatcher(designData);
+  
+  const sizeOption = designData.options?.find(opt => 
+    opt.title.toLowerCase().includes('size')
+  );
+  
+  // 🔥 UPDATED: Use dynamic areas instead of hardcoded ones
+  const availableAreasLower = dynamicAreas.map(area => area.toLowerCase());
+  
+  for (const part of parts) {
+    const partLower = part.toLowerCase();
+    // Check if this part matches any of the available areas
+    if (availableAreasLower.includes(partLower)) {
+      areaName = partLower;
+      //console.log('✅ Found area:', areaName, 'from available areas:', dynamicAreas);
+      break;
+    }
+  }
+  
+  // Extract color and size (existing logic)
+  for (const part of parts) {
+    const partLower = part.toLowerCase();
     
-    const parts = variantKey.split(/[-_]+/).filter(part => part.length > 0);  
-    let colorName = 'Unknown';
-    let sizeName: string | undefined = undefined;
-    
-    const colorMatcher = createColorMatcher(designData);
-    
-    const sizeOption = designData.options?.find(opt => 
-      opt.title.toLowerCase().includes('size')
-    );
-    
-    for (const part of parts) {
-      const partLower = part.toLowerCase();
-      
-      const matchedColor = colorMatcher.matchColor(part);
-      if (matchedColor !== 'Unknown') {
-        colorName = matchedColor;
-      }
-      
-      if (sizeOption?.optionValues) {
-        const matchingSize = sizeOption.optionValues.find(size => 
-          size.toLowerCase() === partLower
-        );
-        if (matchingSize) {
-          sizeName = matchingSize;
-        }
-      }
+    const matchedColor = colorMatcher.matchColor(part);
+    if (matchedColor !== 'Unknown') {
+      colorName = matchedColor;
     }
     
-    if (colorName === 'Unknown') {
-      colorName = colorMatcher.matchColor(variantKey);
-    }
-    
-    if (!sizeName && sizeOption?.optionValues) {
-      for (const size of sizeOption.optionValues) {
-        const sizeLower = size.toLowerCase();
-        if (variantKey.toLowerCase().includes(`_${sizeLower}_`) || 
-            variantKey.toLowerCase().includes(`_${sizeLower}`) ||
-            variantKey.toLowerCase().endsWith(`_${sizeLower}`) ||
-            variantKey.toLowerCase().includes(`-${sizeLower}-`) ||
-            variantKey.toLowerCase().includes(`-${sizeLower}`) ||
-            variantKey.toLowerCase().endsWith(`-${sizeLower}`)) {
-          sizeName = size;
-          break;
-        }
+    if (sizeOption?.optionValues) {
+      const matchingSize = sizeOption.optionValues.find(size => 
+        size.toLowerCase() === partLower
+      );
+      if (matchingSize) {
+        sizeName = matchingSize;
       }
     }
-    
-    return { colorName, sizeName };
-  };
+  }
+  
+  if (colorName === 'Unknown') {
+    colorName = colorMatcher.matchColor(variantKey);
+  }
+  
+  if (!sizeName && sizeOption?.optionValues) {
+    for (const size of sizeOption.optionValues) {
+      const sizeLower = size.toLowerCase();
+      if (variantKey.toLowerCase().includes(`_${sizeLower}_`) || 
+          variantKey.toLowerCase().includes(`_${sizeLower}`) ||
+          variantKey.toLowerCase().endsWith(`_${sizeLower}`) ||
+          variantKey.toLowerCase().includes(`-${sizeLower}-`) ||
+          variantKey.toLowerCase().includes(`-${sizeLower}`) ||
+          variantKey.toLowerCase().endsWith(`-${sizeLower}`)) {
+        sizeName = size;
+        break;
+      }
+    }
+  }
+  
+  //console.log('🎯 Parsed result:', { colorName, sizeName, areaName });
+  return { colorName, sizeName, areaName };
+};
 
   // ===== VARIANT GENERATION =====
   const handleGenerateVariants = useCallback(() => {
@@ -3412,6 +3797,47 @@ const processSharedImagesByColor = async (
       replaceVariants([]);
     }
   }, [form, replaceVariants]);
+
+  // Add this debugging function to see what images you actually have
+const debugMediaItemsByArea = () => {
+  //console.log('🔍 DEBUGGING: Current mediaItems by area:');
+  
+  const mockupImages = mediaItems.filter(item => {
+    const isDesign = item.metadata?.isRawDesignImage === true || 
+                   item.variantInfo?.isRawDesignImage === true ||
+                   item.metadata?.debugInfo?.source === 'canvas_design_element';
+    return !isDesign;
+  });
+  
+  //console.log('Total mockup images:', mockupImages.length);
+  
+  const byArea = mockupImages.reduce((acc, item) => {
+    const area = item.metadata?.extractedAreaName || 'unknown';
+    if (!acc[area]) acc[area] = [];
+    acc[area].push({
+      originalKey: item.metadata?.originalVariantKey,
+      fileName: item.file?.name,
+      color: item.colorValue,
+      size: item.metadata?.extractedSizeName,
+      isShared: item.metadata?.isSharedImage
+    });
+    return acc;
+  }, {} as Record<string, any[]>);
+  
+  Object.entries(byArea).forEach(([area, images]) => {
+    //console.log(`📍 Area "${area}": ${images.length} images`);
+    images.forEach((img, i) => {
+      //console.log(`  ${i + 1}. ${img.fileName} (${img.originalKey})`);
+    });
+  });
+  
+  return byArea;
+};
+
+// Call this after your image processing to see what you actually have
+setTimeout(() => {
+  debugMediaItemsByArea();
+}, 2000);
 
   // ===== FILE HANDLING =====
   const handleFileChange = (
@@ -3494,13 +3920,13 @@ const processSharedImagesByColor = async (
   // ✅ ADD: Temporary debug effect to track option changes
 useEffect(() => {
   const currentOptions = form.getValues('options');
-  console.log('👀 WATCH: Options changed, current count:', currentOptions.length);
+  //console.log('👀 WATCH: Options changed, current count:', currentOptions.length);
   currentOptions.forEach((opt, index) => {
-    console.log(`👀 WATCH: Option ${index}:`, {
-      title: opt.title,
-      valueCount: opt.optionValues?.length || 0,
-      values: opt.optionValues
-    });
+    // //console.log(`👀 WATCH: Option ${index}:`, {
+    //   title: opt.title,
+    //   valueCount: opt.optionValues?.length || 0,
+    //   values: opt.optionValues
+    // });
   });
 }, [form.watch('options')]);
 
@@ -3529,6 +3955,37 @@ useEffect(() => {
   // }, [form.watch('options')]);
 
   // ===== ADDITIONAL HELPER FUNCTIONS =====
+
+  // ADD this new function to group images by area
+// UPDATE getImagesByArea to show all dynamic areas
+const getImagesByArea = (): Record<string, MediaItem[]> => {
+  const mockupImages = mediaItems.filter(item => {
+    const isDesign = item.metadata?.isRawDesignImage === true || 
+                   item.variantInfo?.isRawDesignImage === true ||
+                   item.metadata?.debugInfo?.source === 'canvas_design_element';
+    return !isDesign;
+  });
+
+  const imagesByArea: Record<string, MediaItem[]> = {};
+  
+  // Initialize with available areas to ensure all areas are represented
+  availableAreas.forEach(area => {
+    imagesByArea[area] = [];
+  });
+  
+  mockupImages.forEach(item => {
+    const area = item.metadata?.extractedAreaName || 'unknown';
+    if (!imagesByArea[area]) {
+      imagesByArea[area] = [];
+    }
+    imagesByArea[area].push(item);
+  });
+
+  //console.log('📊 Images by area:', Object.keys(imagesByArea).map(area => `${area}: ${imagesByArea[area].length}`));
+  
+  return imagesByArea;
+};
+
   const handleAddOptionValue = (optionIndex: number) => {
     const value = newOptionValues[optionIndex];
     if (!value || value.trim() === '') return;
@@ -3756,16 +4213,16 @@ useEffect(() => {
         type === 'change' &&
         !isSubmittingForm) { // Don't trigger during form submission
       
-      console.log('🎯 OPTIONS DEBUG: Option values changed:', name);
+      //console.log('🎯 OPTIONS DEBUG: Option values changed:', name);
       
       // Debounce variant generation to prevent excessive calls
       clearTimeout(window.variantGenerationTimeout);
       window.variantGenerationTimeout = setTimeout(() => {
         try {
-          console.log('🎯 OPTIONS DEBUG: Regenerating variants');
+          //console.log('🎯 OPTIONS DEBUG: Regenerating variants');
           handleGenerateVariants();
         } catch (error) {
-          console.error('🎯 OPTIONS ERROR: Variant generation failed:', error);
+          //console.error('🎯 OPTIONS ERROR: Variant generation failed:', error);
         }
       }, 500);
     }
@@ -3834,13 +4291,13 @@ useEffect(() => {
 // useEffect(() => {
 //   // GUARD: Prevent multiple processing
 //   if (hasProcessedInitialData) {
-//     console.log('🚫 Initial data already processed, skipping...');
+//     //console.log('🚫 Initial data already processed, skipping...');
 //     return;
 //   }
   
 //   const processLocationState = async () => {
 //     if (location.state) {
-//       console.log('🎯 CREATE DEBUG: Starting location state processing');
+//       //console.log('🎯 CREATE DEBUG: Starting location state processing');
 //       setHasProcessedInitialData(true); // Set flag immediately to prevent re-processing
       
 //       const locationState = location.state as LocationState;
@@ -3851,19 +4308,19 @@ useEffect(() => {
         
 //         // STEP 2: Process canvas images
 //         if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
-//           console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
+//           //console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
 //           setImportedCanvasImages(locationState.canvasImages);
 //         }
         
 //         // STEP 3: Process design images ONLY if they exist
 //         if (locationState.designImages && Array.isArray(locationState.designImages) && locationState.designImages.length > 0) {
-//           console.log('🎯 CREATE DEBUG: Processing', locationState.designImages.length, 'design images');
+//           //console.log('🎯 CREATE DEBUG: Processing', locationState.designImages.length, 'design images');
 //           await processDesignImagesArray(locationState.designImages);
 //         }
         
 //         // STEP 4: Set design data without triggering form population yet
 //         if (locationState.designData) {
-//           console.log('🎯 CREATE DEBUG: Setting design data');
+//           //console.log('🎯 CREATE DEBUG: Setting design data');
 //           setDesignData(locationState.designData);
 //           setEnhancedProductData(locationState.enhancedProductData);
           
@@ -3878,35 +4335,35 @@ useEffect(() => {
           
 //           // STEP 5: Populate form with a longer delay to ensure all processing is complete
 //           setTimeout(() => {
-//             console.log('🎯 CREATE DEBUG: Starting form population');
+//             //console.log('🎯 CREATE DEBUG: Starting form population');
 //             try {
 //               if (locationState.enhancedProductData && Object.keys(locationState.enhancedProductData).length > 10) {
-//                 console.log('🎯 CREATE DEBUG: Using PayloadCMS data');
+//                 //console.log('🎯 CREATE DEBUG: Using PayloadCMS data');
 //                 const payloadProduct = locationState.enhancedProductData as PayloadCMSProduct;
 //                 populateFormWithPayloadCMSData(payloadProduct);
 //               } else {
-//                 console.log('🎯 CREATE DEBUG: Using design data');
+//                 //console.log('🎯 CREATE DEBUG: Using design data');
 //                 populateFormWithDesignData(locationState.designData, locationState.enhancedProductData, imageSettings);
 //               }
               
 //               // Process mockup images AFTER form is populated
 //               if (hasPreGeneratedImages || Object.keys(locationState.mockupImages || {}).length > 0) {
-//                 console.log('🎯 CREATE DEBUG: Processing mockup images');
+//                 //console.log('🎯 CREATE DEBUG: Processing mockup images');
 //                 handleMockupImagesEnhanced(locationState, imageSettings);
 //               }
               
 //               setShowImportNotification(true);
-//               console.log('🎯 CREATE DEBUG: Form population completed');
+//               //console.log('🎯 CREATE DEBUG: Form population completed');
               
 //             } catch (populationError) {
-//               console.error('🎯 CREATE ERROR: Form population failed:', populationError);
+//               //console.error('🎯 CREATE ERROR: Form population failed:', populationError);
 //               setError('Failed to populate form with imported data');
 //             }
 //           }, 2000); // Increased delay to prevent race conditions
 //         }
         
 //       } catch (error) {
-//         console.error('🎯 CREATE ERROR: Location state processing failed:', error);
+//         //console.error('🎯 CREATE ERROR: Location state processing failed:', error);
 //         setError('Failed to process imported design data');
 //         setHasProcessedInitialData(false); // Reset flag on error
 //       }
@@ -3924,7 +4381,7 @@ useEffect(() => {
 
   // If we've already populated once this mount, skip (extra safety in addition to hasProcessedInitialData)
   if (didPopulateRef.current) {
-    console.log('🚫 Skipping population — already processed for this mount');
+    //console.log('🚫 Skipping population — already processed for this mount');
     return;
   }
 
@@ -3932,30 +4389,40 @@ useEffect(() => {
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   const processLocationState = async () => {
-    console.log('🎯 CREATE DEBUG: Starting location state processing (effect)');
+    //console.log('🎯 CREATE DEBUG: Starting location state processing (effect)');
 
     // We'll only mark hasProcessedInitialData = true after successful full processing
     try {
       const locationState = location.state as LocationState;
+      //console.log('🎯 CREATE DEBUG: Location state found:', locationState);
+       //console.log('🔍 Checking for areas in location state:');
+      //console.log('- availableMockups:', locationState.availableMockups?.all_available_areas);
+      //console.log('- imageAreaAnalysis:', locationState.imageAreaAnalysis?.all_available_areas);
+      //console.log('- designElements:', locationState.designData?.designElements ? Object.keys(locationState.designData.designElements) : 'not found');
+      //console.log('- canvasImages areas:', locationState.canvasImages?.map(c => c.area_id));
+      //console.log('- mockupImages sample keys:', locationState.mockupImages ? Object.keys(locationState.mockupImages).slice(0, 3) : 'not found');
+      
+      const extractedAreas = extractAvailableAreas(locationState);
+      setAvailableAreas(extractedAreas);
 
       // STEP 1: Extract pre-generated images first
       const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
 
       // STEP 2: Process canvas images
       if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
-        console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
+        //console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
         setImportedCanvasImages(locationState.canvasImages);
       }
 
       // STEP 3: Process design images ONLY if they exist
       if (locationState.designImages && Array.isArray(locationState.designImages) && locationState.designImages.length > 0) {
-        console.log('🎯 CREATE DEBUG: Processing', locationState.designImages.length, 'design images');
+        //console.log('🎯 CREATE DEBUG: Processing', locationState.designImages.length, 'design images');
         await processDesignImagesArray(locationState.designImages);
       }
 
       // STEP 4: Set design data and enhanced product data (do not populate form yet)
       if (locationState.designData) {
-        console.log('🎯 CREATE DEBUG: Setting design data');
+        //console.log('🎯 CREATE DEBUG: Setting design data');
         setDesignData(locationState.designData);
         setEnhancedProductData(locationState.enhancedProductData);
 
@@ -3972,47 +4439,47 @@ useEffect(() => {
         timer = setTimeout(() => {
           // Prevent duplicate population if something else raced in
           if (didPopulateRef.current) {
-            console.log('🎯 CREATE DEBUG: Skipping duplicate form population (timer)');
+            //console.log('🎯 CREATE DEBUG: Skipping duplicate form population (timer)');
             return;
           }
 
-          console.log('🎯 CREATE DEBUG: Starting form population (timer)');
+          //console.log('🎯 CREATE DEBUG: Starting form population (timer)');
           try {
             if (locationState.enhancedProductData && Object.keys(locationState.enhancedProductData).length > 10) {
-              console.log('🎯 CREATE DEBUG: Using PayloadCMS data');
+              //console.log('🎯 CREATE DEBUG: Using PayloadCMS data');
               const payloadProduct = locationState.enhancedProductData as unknown as PayloadCMSProduct;
               populateFormWithPayloadCMSData(payloadProduct);
             } else {
-              console.log('🎯 CREATE DEBUG: Using design data');
+              //console.log('🎯 CREATE DEBUG: Using design data');
               populateFormWithDesignData(locationState.designData, locationState.enhancedProductData, imageSettings);
             }
 
             // Process mockup images AFTER form is populated
             if (hasPreGeneratedImages || Object.keys(locationState.mockupImages || {}).length > 0) {
-              console.log('🎯 CREATE DEBUG: Processing mockup images');
+              //console.log('🎯 CREATE DEBUG: Processing mockup images');
               handleMockupImagesEnhanced(locationState, imageSettings);
             }
 
             setShowImportNotification(true);
-            console.log('🎯 CREATE DEBUG: Form population completed');
+            //console.log('🎯 CREATE DEBUG: Form population completed');
 
             // Mark success: prevents further runs for this mount
             didPopulateRef.current = true;
             setHasProcessedInitialData(true);
           } catch (populationError) {
-            console.error('🎯 CREATE ERROR: Form population failed:', populationError);
+            //console.error('🎯 CREATE ERROR: Form population failed:', populationError);
             setError('Failed to populate form with imported data');
             // leave hasProcessedInitialData as false so it can retry if appropriate
           }
         }, 2000); // keep your existing delay
       } else {
         // if no designData present, still mark processed so we don't re-run endlessly
-        console.log('🎯 CREATE DEBUG: No designData present — marking processed');
+        //console.log('🎯 CREATE DEBUG: No designData present — marking processed');
         didPopulateRef.current = true;
         setHasProcessedInitialData(true);
       }
     } catch (error) {
-      console.error('🎯 CREATE ERROR: Location state processing failed:', error);
+      //console.error('🎯 CREATE ERROR: Location state processing failed:', error);
       setError('Failed to process imported design data');
       // don't set hasProcessedInitialData here so user can retry / effect can re-run
     }
@@ -4064,11 +4531,11 @@ const debugMediaItems = () => {
 // Updated onSubmit function sections - replace the artwork creation and product creation parts
 
 const processDesignImagesArray = async (designImagesArray) => {
-  //console.log('🎨 processDesignImagesArray called with:', designImagesArray?.length || 0, 'images');
+  ////console.log('🎨 processDesignImagesArray called with:', designImagesArray?.length || 0, 'images');
   
   // GUARD: Prevent multiple simultaneous processing
   if (isProcessingDesignImages) {
-    //console.log('🚫 Already processing design images, skipping...');
+    ////console.log('🚫 Already processing design images, skipping...');
     return false;
   }
   
@@ -4158,7 +4625,7 @@ const processDesignImagesArray = async (designImagesArray) => {
         processedImages.push(designMediaItem);
     
       } catch (imageError) {
-        //console.error('Error processing design image:', imageError);
+        ////console.error('Error processing design image:', imageError);
       }
     }
     
@@ -4185,7 +4652,7 @@ const processDesignImagesArray = async (designImagesArray) => {
     return true;
     
   } catch (criticalError) {
-    //console.error('Critical error in processDesignImagesArray:', criticalError);
+    ////console.error('Critical error in processDesignImagesArray:', criticalError);
     return false;
   } finally {
     setIsProcessingDesignImages(false);
@@ -4203,7 +4670,7 @@ const processCanvasImagesForArtwork = async (canvasImages: Array<{
   areaId: string;
   description: string;
 }>> => {
-  console.log('🖼️ Processing', canvasImages.length, 'canvas images for artwork');
+  //console.log('🖼️ Processing', canvasImages.length, 'canvas images for artwork');
   
   const processedCanvasImages = [];
   
@@ -4215,17 +4682,17 @@ const processCanvasImagesForArtwork = async (canvasImages: Array<{
       let resolvedImageData: string;
       
       if (canvasImage.image_data instanceof Promise) {
-        console.log(`⏳ Awaiting Promise for canvas image area: ${canvasImage.area_id}`);
+        //console.log(`⏳ Awaiting Promise for canvas image area: ${canvasImage.area_id}`);
         resolvedImageData = await canvasImage.image_data;
       } else {
         resolvedImageData = canvasImage.image_data;
       }
       
-      console.log(`✅ Resolved image data for area: ${canvasImage.area_id}, length: ${resolvedImageData.length}`);
+      //console.log(`✅ Resolved image data for area: ${canvasImage.area_id}, length: ${resolvedImageData.length}`);
       
       // Additional validation
       if (!resolvedImageData || !resolvedImageData.startsWith('data:image/')) {
-        console.error(`❌ Invalid image data for area: ${canvasImage.area_id}`);
+        //console.error(`❌ Invalid image data for area: ${canvasImage.area_id}`);
         continue;
       }
       
@@ -4237,12 +4704,12 @@ const processCanvasImagesForArtwork = async (canvasImages: Array<{
       );
       
       if (!processedImage?.file) {
-        console.error(`❌ Failed to process canvas image for area: ${canvasImage.area_id}`);
+        //console.error(`❌ Failed to process canvas image for area: ${canvasImage.area_id}`);
         continue;
       }
       
       // Upload canvas image file
-      console.log(`⬆️ Uploading canvas image for area: ${canvasImage.area_id}`);
+      //console.log(`⬆️ Uploading canvas image for area: ${canvasImage.area_id}`);
       const uploadResult = await uploadArtworkFile(processedImage.file);
       
       processedCanvasImages.push({
@@ -4252,10 +4719,10 @@ const processCanvasImagesForArtwork = async (canvasImages: Array<{
         description: canvasImage.description
       });
       
-      console.log(`✅ Canvas image uploaded for area: ${canvasImage.area_id}`);
+      //console.log(`✅ Canvas image uploaded for area: ${canvasImage.area_id}`);
       
     } catch (error) {
-      console.error(`❌ Error processing canvas image for area ${canvasImage.area_id}:`, error);
+      //console.error(`❌ Error processing canvas image for area ${canvasImage.area_id}:`, error);
     }
   }
   
@@ -4267,7 +4734,7 @@ const onSubmit = async (values: ProductFormValues) => {
   
   // GUARD: Prevent multiple form submissions
   if (isSubmittingForm) {
-    //console.log('🚫 Form already submitting, ignoring duplicate submission');
+    ////console.log('🚫 Form already submitting, ignoring duplicate submission');
     return;
   }
   
@@ -4283,6 +4750,7 @@ const onSubmit = async (values: ProductFormValues) => {
   
   try {
     
+    const locationState = location.state as LocationState;
     const designArtworkPayloads: any[] = [];
     const productImages: Array<{id: string, url: string, alt?: string}> = [];
     let mainArtworkId: string | null = null;
@@ -4298,7 +4766,7 @@ const onSubmit = async (values: ProductFormValues) => {
     //   return isDesign;
     // });
 
-    // //console.log('🎨 Found', allDesignImages.length, 'design images before deduplication');
+    // ////console.log('🎨 Found', allDesignImages.length, 'design images before deduplication');
 
     // // Apply STRICT deduplication with improved logic
     // const designImages = removeDuplicateDesignImages(allDesignImages);
@@ -4324,31 +4792,31 @@ const onSubmit = async (values: ProductFormValues) => {
       return { designImages: designs, mockupImages: mockups };
     })();
 
-    //console.log('🎨 Found', allDesignImages.length, 'design images before deduplication');
-    //console.log('📸 Found', mockupImages.length, 'mockup images for upload');
+    ////console.log('🎨 Found', allDesignImages.length, 'design images before deduplication');
+    ////console.log('📸 Found', mockupImages.length, 'mockup images for upload');
 
     // Apply deduplication to design images only
     const designImages = removeDuplicateDesignImages(allDesignImages);
     
-    //console.log('🎯 After deduplication:', designImages.length, 'unique design images');
+    ////console.log('🎯 After deduplication:', designImages.length, 'unique design images');
 
     // Additional validation: ensure we have actual files
     const validDesignImages = designImages.filter(img => {
       const isValid = img.file && img.file.size > 0;
       if (!isValid) {
-        //console.log('❌ Invalid design image found:', img);
+        ////console.log('❌ Invalid design image found:', img);
       }
       return isValid;
     });
 
-    //console.log('✅ Valid design images for upload:', validDesignImages.length);
+    ////console.log('✅ Valid design images for upload:', validDesignImages.length);
 
     // STEP 1: Process design images with SINGLE ARTWORK PER AREA
    // STEP 1: Process design images AND canvas images with COMBINED ARTWORK
 if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
-  console.log('🚀 Starting artwork creation with:');
-  console.log('- Design images:', validDesignImages.length);
-  console.log('- Canvas images:', importedCanvasImages.length);
+  //console.log('🚀 Starting artwork creation with:');
+  //console.log('- Design images:', validDesignImages.length);
+  //console.log('- Canvas images:', importedCanvasImages.length);
   
   try {
     const allUploadedFiles = [];
@@ -4400,57 +4868,103 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
         totalImageCount++;
       });
       
-      console.log(`✅ Added ${processedCanvasImages.length} canvas images to artwork`);
+      //console.log(`✅ Added ${processedCanvasImages.length} canvas images to artwork`);
     }
     
     if (allUploadedFiles.length === 0) {
-      console.log(`⚠️ No files uploaded for artwork creation`);
+      //console.log(`⚠️ No files uploaded for artwork creation`);
     } else {
       // Create SINGLE artwork payload with ALL files (design + canvas)
-      const combinedArtworkPayload = {
-        name: `${form.getValues('title')} - Complete Design & Layout`,
-        description: `Complete design for ${form.getValues('title')} containing ${totalImageCount} elements including design elements and manufacturing layout references`,
-        medias: allUploadedFiles.map((uploadedFile, globalIndex) => ({
-          image_url: uploadedFile.url,
-          filename: uploadedFile.filename,
-          mime_type: uploadedFile.mime_type,
-          file_id: uploadedFile.id,
-          file_type: "image",
-          file_description: uploadedFile.fileType === 'canvas_layout' 
-            ? `${uploadedFile.designArea} complete canvas layout for manufacturing`
-            : `${uploadedFile.designArea} design element ${uploadedFile.areaIndex + 1}`,
-          design_area: uploadedFile.designArea.toLowerCase(),
-          file_category: uploadedFile.fileType, // 🔥 ADD CATEGORY
-          metadata: {
-            original_filename: uploadedFile.originalMetadata?.originalFileName,
-            canvas_position: uploadedFile.originalMetadata?.canvasPosition || {},
-            source: uploadedFile.fileType === 'canvas_layout' ? 'canvas_complete_layout' : 'canvas_design_element',
-            element_index: globalIndex,
-            area_name: uploadedFile.designArea,
-            area_element_index: uploadedFile.areaIndex,
-            total_elements: totalImageCount,
-            manufacturing_description: uploadedFile.manufacturingDescription || undefined,
-            // 🔥 ADD: Canvas-specific metadata
-            ...(uploadedFile.fileType === 'canvas_layout' && uploadedFile.originalMetadata ? {
-              canvas_dimensions: uploadedFile.originalMetadata.canvas_dimensions,
-              printable_area: uploadedFile.originalMetadata.printable_area,
-              design_elements_count: uploadedFile.originalMetadata.design_elements?.length || 0,
-              canvas_settings: uploadedFile.originalMetadata.canvas_settings
-            } : {})
-          }
-        }))
-      };
+      // Create SINGLE artwork payload with ALL files (design + canvas) and image area data
+      // Create SINGLE artwork payload with ALL files (design + canvas) 
+// UPDATE the combinedArtworkPayload creation in onSubmit
+const combinedArtworkPayload = {
+  name: `${form.getValues('title')} - Complete Design & Layout`,
+  description: `Complete design for ${form.getValues('title')} containing ${totalImageCount} elements including design elements and manufacturing layout references with enhanced analysis data`,
+  
+  medias: allUploadedFiles.map((uploadedFile, globalIndex) => ({
+    image_url: uploadedFile.url,
+    filename: uploadedFile.filename,
+    mime_type: uploadedFile.mime_type,
+    file_id: uploadedFile.id,
+    file_type: "image",
+    // 🔥 ENHANCED: Use the new detailed file description
+    file_description: createEnhancedFileDescription(
+      uploadedFile, 
+      locationState.enhancedImageAreaAnalysis, 
+      globalIndex
+    ),
+    design_area: uploadedFile.designArea.toLowerCase(),
+    file_category: uploadedFile.fileType,
+    metadata: {
+      original_filename: uploadedFile.originalMetadata?.originalFileName,
+      canvas_position: uploadedFile.originalMetadata?.canvasPosition || {},
+      source: uploadedFile.fileType === 'canvas_layout' ? 'canvas_complete_layout' : 'canvas_design_element',
+      element_index: globalIndex,
+      area_name: uploadedFile.designArea,
+      area_element_index: uploadedFile.areaIndex,
+      total_elements: totalImageCount,
+      manufacturing_description: uploadedFile.manufacturingDescription || undefined,
       
-      console.log(`🎨 Creating combined artwork with ${allUploadedFiles.length} files (design + canvas)`);
+      // 🔥 ENHANCED: Include detailed analysis data for the first file
+      ...(globalIndex === 0 ? {
+        // Enhanced image area analysis
+        enhanced_image_area_analysis: locationState.enhancedImageAreaAnalysis ? {
+          area_specifications: locationState.enhancedImageAreaAnalysis.area_specifications,
+          design_complexity: locationState.enhancedImageAreaAnalysis.design_complexity,
+          detailed_element_breakdown: locationState.enhancedImageAreaAnalysis.detailed_element_breakdown,
+          elements_summary: locationState.enhancedImageAreaAnalysis.elements_summary
+        } : null,
+        
+        // Include canvas pricing data in metadata
+        canvas_pricing_data: canvasPricingData ? {
+          final_price_per_unit: canvasPricingData.final_price_per_unit,
+          technology_name: canvasPricingData.technology_name,
+          total_design_area: canvasPricingData.total_design_area,
+          pricing_breakdown: canvasPricingData.pricing_breakdown,
+          quantity_pricing: canvasPricingData.quantity_pricing
+        } : null,
+        
+        // Include mockup data in metadata
+        canvas_mockup_data: canvasMockupData ? {
+          technology_name: canvasMockupData.technology_name,
+          total_available_mockups: canvasMockupData.total_available_mockups,
+          selected_colors: canvasMockupData.selected_colors,
+          mockups_by_color: canvasMockupData.mockups_by_color
+        } : null,
+      } : {}),
+      
+      // 🔥 ENHANCED: Add element-specific enhanced data
+      element_enhanced_data: uploadedFile.fileType === 'design_element' ? 
+        locationState.enhancedImageAreaAnalysis?.detailed_element_breakdown?.[uploadedFile.designArea]?.find(
+          el => el.element_name === uploadedFile.originalMetadata?.originalFileName ||
+               el.element_id === uploadedFile.originalMetadata?.elementId
+        ) : null,
+      
+      // 🔥 ENHANCED: Add area-specific specifications
+      area_specifications: locationState.enhancedImageAreaAnalysis?.area_specifications?.[uploadedFile.designArea],
+      
+      // Canvas-specific metadata (existing)
+      ...(uploadedFile.fileType === 'canvas_layout' && uploadedFile.originalMetadata ? {
+        canvas_dimensions: uploadedFile.originalMetadata.canvas_dimensions,
+        printable_area: uploadedFile.originalMetadata.printable_area,
+        design_elements_count: uploadedFile.originalMetadata.design_elements?.length || 0,
+        canvas_settings: uploadedFile.originalMetadata.canvas_settings
+      } : {})
+    }
+  }))
+};
+      
+      //console.log(`🎨 Creating combined artwork with ${allUploadedFiles.length} files (design + canvas)`);
       
       // Create artwork containing everything
       const combinedArtworkResult = await createArtworkPayload(combinedArtworkPayload);
-      console.log(`✅ Combined artwork created:`, combinedArtworkResult);
+      //console.log(`✅ Combined artwork created:`, combinedArtworkResult);
 
       // Extract artwork ID
       if (combinedArtworkResult?.vendor_artwork?.id) {
         mainArtworkId = combinedArtworkResult.vendor_artwork.id;
-        console.log(`🎯 Combined artwork ID: ${mainArtworkId}`);
+        //console.log(`🎯 Combined artwork ID: ${mainArtworkId}`);
       }
       
       // Store artwork data with enhanced info
@@ -4477,7 +4991,7 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
     }
     
   } catch (artworkError) {
-    console.error(`❌ Error creating combined artwork:`, artworkError);
+    //console.error(`❌ Error creating combined artwork:`, artworkError);
     throw new Error(`Failed to create combined artwork: ${artworkError.message}`);
   }
 }
@@ -4587,6 +5101,14 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
 
         // CREATE VARIANT METADATA WITH IMAGE ASSOCIATIONS
         const variantMetadata: Record<string, any> = {};
+        
+        const costPrice = canvasPricingData?.final_price_per_unit || 
+                   enhancedProductData?.cost || 
+                   0;
+  
+        if (costPrice > 0) {
+          variantMetadata.cost_price = costPrice;
+        }
 
         // Get ALL images associated with this variant
         const directVariantImages = mediaItems.filter(item => 
@@ -4726,6 +5248,7 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
       }];
     }
     
+    
     // ✅ STEP 5: Prepare main product metadata
     const productMetadata: Record<string, any> = {};
     
@@ -4750,6 +5273,21 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
         })
       };
       productMetadata.fulfillment_type = JSON.stringify(fulfillmentData);
+    }
+
+    //console.log('📦 Product metadata after fulfillment:', productMetadata);
+    //console.log('📦 Payload fulfillment data:', payloadFulfillmentData);
+    // 🔥 NEW: ADD CARE INSTRUCTIONS FROM PAYLOADCMS
+    if (enhancedProductData && Array.isArray(enhancedProductData.careInstructions) && enhancedProductData.careInstructions.length > 0) {
+      // Extract care instructions and format them for storage
+      const careInstructions = enhancedProductData.careInstructions.map(care => ({
+        id: care.id,
+        instruction: care.instruction,
+        icon: care.icon || null
+      }));
+      
+      productMetadata.care_instructions = JSON.stringify(careInstructions);
+      //console.log('✅ Added care instructions to product metadata:', careInstructions.length, 'instructions');
     }
 
     // 🔥 ADD THIS CANVAS IMAGE METADATA CODE HERE
@@ -4848,7 +5386,7 @@ const state = (location?.state ?? {}) as any;
 let printTechId: string | null = null;
 let printTechName: string | null = null;
 
-console.log('🔍 TECH DEBUG: Starting print technology resolution');
+//console.log('🔍 TECH DEBUG: Starting print technology resolution');
 
 // 1) PRIORITY: Use filteredProductData (selected technology from Canvas) - EXIT EARLY IF FOUND
 if (state.filteredProductData && Array.isArray(state.filteredProductData.printT) && state.filteredProductData.printT.length > 0) {
@@ -4856,11 +5394,11 @@ if (state.filteredProductData && Array.isArray(state.filteredProductData.printT)
   printTechId = tech?.id ? String(tech.id) : null;
   printTechName = tech?.technologyName || tech?.technology || null;
   
-  console.log('✅ TECH DEBUG: Found in filteredProductData:', { printTechId, printTechName });
+  //console.log('✅ TECH DEBUG: Found in filteredProductData:', { printTechId, printTechName });
   
   // ✅ CRITICAL: If we have both ID and name, use this and STOP checking other sources
   if (printTechId && printTechName) {
-    console.log('🎯 TECH DEBUG: Using filteredProductData - STOPPING fallback checks');
+    //console.log('🎯 TECH DEBUG: Using filteredProductData - STOPPING fallback checks');
     
     // Normalize values and set in metadata immediately
     printTechName = String(printTechName).trim();
@@ -4869,27 +5407,27 @@ if (state.filteredProductData && Array.isArray(state.filteredProductData.printT)
     productMetadata.print_technology_name = printTechName;
     productMetadata.print_technology_id = printTechId;
     
-    console.log('✅ TECH DEBUG: Final result from filteredProductData:', {
-      print_technology_name: productMetadata.print_technology_name,
-      print_technology_id: productMetadata.print_technology_id
-    });
+    // //console.log('✅ TECH DEBUG: Final result from filteredProductData:', {
+    //   print_technology_name: productMetadata.print_technology_name,
+    //   print_technology_id: productMetadata.print_technology_id
+    // });
     
     // Don't check any other sources - we have the definitive answer
   } else {
-    console.log('⚠️ TECH DEBUG: filteredProductData incomplete, checking fallbacks');
+    //console.log('⚠️ TECH DEBUG: filteredProductData incomplete, checking fallbacks');
   }
 } else {
-  console.log('⚠️ TECH DEBUG: No filteredProductData found, checking fallbacks');
+  //console.log('⚠️ TECH DEBUG: No filteredProductData found, checking fallbacks');
 }
 
 // 2) ONLY check fallbacks if we don't have complete data from filteredProductData
 if (!printTechId || !printTechName) {
-  console.log('🔄 TECH DEBUG: Checking fallback sources...');
+  //console.log('🔄 TECH DEBUG: Checking fallback sources...');
   
   // Check designData.printingTechnology (but this might be hardcoded 'dtg')
   if (!printTechName && state.designData?.printingTechnology) {
     printTechName = state.designData.printingTechnology;
-    console.log('🔄 TECH DEBUG: Using designData.printingTechnology:', printTechName);
+    //console.log('🔄 TECH DEBUG: Using designData.printingTechnology:', printTechName);
   }
 
   // Check enhancedProductData
@@ -4897,7 +5435,7 @@ if (!printTechId || !printTechName) {
     const tech = enhancedProductData.printT[0];
     if (!printTechId) printTechId = tech?.id ? String(tech.id) : null;
     if (!printTechName) printTechName = tech?.technologyName || tech?.technology || null;
-    console.log('🔄 TECH DEBUG: Using enhancedProductData tech:', { printTechId, printTechName });
+    //console.log('🔄 TECH DEBUG: Using enhancedProductData tech:', { printTechId, printTechName });
   }
 
   // Check state.enhancedProductData
@@ -4905,13 +5443,13 @@ if (!printTechId || !printTechName) {
     const tech = state.enhancedProductData.printT[0];
     if (!printTechId) printTechId = tech?.id ? String(tech.id) : null;
     if (!printTechName) printTechName = tech?.technologyName || tech?.technology || null;
-    console.log('🔄 TECH DEBUG: Using state.enhancedProductData tech:', { printTechId, printTechName });
+    //console.log('🔄 TECH DEBUG: Using state.enhancedProductData tech:', { printTechId, printTechName });
   }
 
   // Final fallback
   if (!printTechName) {
     printTechName = 'dtg';
-    console.log('🔄 TECH DEBUG: Using final fallback: dtg');
+    //console.log('🔄 TECH DEBUG: Using final fallback: dtg');
   }
 
   // Normalize and set metadata (only if not already set above)
@@ -4925,16 +5463,16 @@ if (!printTechId || !printTechName) {
     productMetadata.print_technology_id = printTechId;
   }
 
-  console.log('🔄 TECH DEBUG: Final result from fallbacks:', {
-    print_technology_name: productMetadata.print_technology_name,
-    print_technology_id: productMetadata.print_technology_id
-  });
+  // //console.log('🔄 TECH DEBUG: Final result from fallbacks:', {
+  //   print_technology_name: productMetadata.print_technology_name,
+  //   print_technology_id: productMetadata.print_technology_id
+  // });
 }
 
-console.log('🎯 TECH DEBUG: FINAL METADATA:', {
-  print_technology_name: productMetadata.print_technology_name,
-  print_technology_id: productMetadata.print_technology_id
-});
+// //console.log('🎯 TECH DEBUG: FINAL METADATA:', {
+//   print_technology_name: productMetadata.print_technology_name,
+//   print_technology_id: productMetadata.print_technology_id
+// });
 
 
     // ✅ STEP 6: Create final product object WITH ADDITIONAL_DATA
@@ -4966,6 +5504,8 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
       options: options,
       variants: variants,
       metadata: productMetadata,
+      // Add HSN Code from PayloadCMS data
+      ...(enhancedProductData?.HSNCode ? { hs_code: enhancedProductData.HSNCode } : {}),
       
       // 🔥 NEW: Add additional_data to product
       additional_data: additionalData
@@ -5048,7 +5588,7 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
   
   // Prevent multiple rapid clicks
   if (isSubmittingForm) {
-    //console.log('🚫 Already submitting, ignoring click');
+    ////console.log('🚫 Already submitting, ignoring click');
     return;
   }
   
@@ -5107,7 +5647,7 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
 
   // ===== MAIN RENDER =====
   return (
-    <div className="px-6 py-8 bg-gray-50">
+    <div className="px-3 py-8 sm:px-6 bg-gray-50">
       {/* Header Bar with Junooni branding */}
       <div className="flex flex-col justify-between gap-4 p-6 mb-6 bg-white border border-gray-100 rounded-lg shadow-sm md:flex-row md:items-center">
         <div>
@@ -5158,7 +5698,7 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
             {/* Left Column */}
             <div className="space-y-6 md:col-span-2">
               {/* Title & Description Section */}
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
                 <div className="mb-6">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Basic Information</h2>
                   <Separator className="mb-6" />
@@ -5228,8 +5768,74 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
                 </div>
               </section>
 
+              {/* Canvas Mockup Information Section */}
+              {/* {canvasMockupData && (
+                <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
+                  <h2 className="mb-4 text-xl font-semibold text-gray-800">Available Mockups from Canvas</h2>
+                  <Separator className="mb-6" />
+                  
+                  <div className="mb-6">
+                    <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
+                      <div className="p-3 text-center border border-blue-200 rounded-lg bg-blue-50">
+                        <p className="text-sm text-blue-600">Technology</p>
+                        <p className="font-bold text-blue-900">{canvasMockupData.technology_name}</p>
+                      </div>
+                      <div className="p-3 text-center border border-green-200 rounded-lg bg-green-50">
+                        <p className="text-sm text-green-600">Total Mockups</p>
+                        <p className="font-bold text-green-900">{canvasMockupData.total_available_mockups}</p>
+                      </div>
+                      <div className="p-3 text-center border border-purple-200 rounded-lg bg-purple-50">
+                        <p className="text-sm text-purple-600">Selected Colors</p>
+                        <p className="font-bold text-purple-900">{canvasMockupData.selected_colors?.length || 0}</p>
+                      </div>
+                    </div>
+
+                    
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium text-gray-800">Mockups by Color</h3>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {canvasMockupData.mockups_by_color?.map((colorGroup, index) => (
+                          <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                            <div className="flex items-center mb-3">
+                              <div 
+                                className="w-4 h-4 mr-2 border border-gray-300 rounded-full"
+                                style={{ backgroundColor: colorGroup.color_hex }}
+                              ></div>
+                              <span className="font-medium text-gray-800">{colorGroup.color_name}</span>
+                              <span className="ml-auto text-sm text-gray-600">{colorGroup.mockup_count} mockups</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {colorGroup.mockups?.slice(0, 4).map((mockup, mockupIndex) => (
+                                <div key={mockupIndex} className="relative">
+                                  <img
+                                    src={mockup.mockup_photo_url}
+                                    alt={mockup.mockup_title}
+                                    className="object-cover w-full h-16 border rounded"
+                                    onError={(e) => {
+                                      e.target.src = '/api/placeholder/64/64';
+                                    }}
+                                  />
+                                  <div className="absolute bottom-0 left-0 right-0 p-1 text-xs text-white truncate bg-black bg-opacity-60">
+                                    {mockup.view_angle}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            {colorGroup.mockup_count > 4 && (
+                              <p className="mt-2 text-xs text-center text-gray-500">
+                                +{colorGroup.mockup_count - 4} more mockups
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )} */}
+
               {/* Product Details Section (Bullet Points) */}
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
                 <h2 className="mb-4 text-xl font-semibold text-gray-800">Product Details</h2>
                 <Separator className="mb-6" />
                 
@@ -5277,7 +5883,7 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
               </section>
 
               {/* Story Behind Design Section */}
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
                 <h2 className="mb-4 text-xl font-semibold text-gray-800">Story Behind the Design</h2>
                 <Separator className="mb-6" />
                 
@@ -5308,7 +5914,7 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
               </section>
            
               {/* Media Section - IMPROVED VERSION with working variant-specific uploads */}
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
               <h2 className="mb-4 text-xl font-semibold text-gray-800">Product Images</h2>
               <Separator className="mb-6" />
               
@@ -5523,7 +6129,7 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
               </section>
 
               {/* Options & Variants Section with Junooni styling */}
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
                 <h2 className="mb-4 text-xl font-semibold text-gray-800">Options & Variants</h2>
                 <Separator className="mb-6" />
                 
@@ -5832,8 +6438,10 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
                             )}
                             <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Variant</th>
                             <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">SKU</th>
+                            <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Cost Price</th>
                             <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Price</th>
-                            <th className="p-3 font-medium text-center text-gray-700">Actions</th>
+                            <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Your Profit</th>
+                            <th className="px-2 py-3 font-medium text-center text-gray-700">Action</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -5880,6 +6488,18 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
                                 />
                               </td>
                               <td className="p-3 border-r border-gray-200">
+                                <div className="text-center">
+                                  <span className="font-medium text-orange-600">
+                                    ₹{canvasPricingData?.final_price_per_unit || '--'}
+                                  </span>
+                                  {/* {canvasPricingData?.final_price_per_unit && (
+                                    <div className="mt-1 text-xs text-gray-500">
+                                      Canvas Cost
+                                    </div>
+                                  )} */}
+                                </div>
+                              </td>
+                             <td className="p-3 border-r border-gray-200">
                                 <div className="relative">
                                   <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
                                   <Input
@@ -5895,9 +6515,24 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
                                   />
                                 </div>
                               </td>
-                              <td className="p-3 text-center">
-                                <div className="flex justify-center space-x-2">
-                                  <Button 
+                              <td className="p-3 border-r border-gray-200">
+                                <div className="text-center">
+                                  {(() => {
+                                    const price = form.watch(`variants.${index}.price`) || 0;
+                                    const costPrice = canvasPricingData?.final_price_per_unit || 0;
+                                    const profit = price - costPrice;
+                                    
+                                    return (
+                                      <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        ₹{profit.toFixed(2)}
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
+                              </td>
+                              <td className="px-0 py-3 text-center">
+                                <div className="flex justify-center space-x-0">
+                                  {/* <Button 
                                     type="button"
                                     variant="ghost" 
                                     size="sm"
@@ -5906,14 +6541,14 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
                                     title="Duplicate variant"
                                   >
                                     <IconCopy size={16} />
-                                  </Button>
+                                  </Button> */}
                                   
                                   <Button 
                                     type="button"
                                     variant="ghost" 
                                     size="sm" 
                                     onClick={() => removeVariant(index)}
-                                    className="text-red-500 hover:bg-red-50"
+                                    className="px-0 text-red-500 hover:bg-red-50"
                                     title="Remove variant"
                                   >
                                     <IconX size={16} />
@@ -5933,7 +6568,7 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
             {/* Right Column */}
             <div className="space-y-6">
               {/* Status Card */}
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Status & Visibility</h2>
                 <Separator className="mb-6" />
                 
@@ -6053,7 +6688,7 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
               {/* Shipping & Fulfillment Info Card */}
               {/* ✅ REPLACE: Entire Shipping & Fulfillment section */}
               {(payloadFulfillmentData.hasData || enhancedProductData) && (
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
                 <Separator className="mb-4" />
                 
@@ -6071,24 +6706,24 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
                 {payloadFulfillmentData.hasData ? (
                   <div className="mt-6 space-y-4">
                     {payloadFulfillmentData.shippingTime && (
-                      <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                      <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
                         <div className="flex items-center">
-                          <IconTruck size={18} className="mr-2 text-blue-600" />
+                          <IconTruck size={18} className="mr-2 text-orange-600" />
                           <div>
-                            <p className="font-medium text-blue-800">Shipping Time</p>
-                            <p className="text-sm text-blue-600">{payloadFulfillmentData.shippingTime}</p>
+                            <p className="font-medium text-orange-800">Shipping Time</p>
+                            <p className="text-sm text-orange-600">{payloadFulfillmentData.shippingTime}</p>
                           </div>
                         </div>
                       </div>
                     )}
                     
                     {payloadFulfillmentData.handlingTime && (
-                      <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+                      <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
                         <div className="flex items-center">
-                          <IconClock size={18} className="mr-2 text-green-600" />
+                          <IconClock size={18} className="mr-2 text-orange-600" />
                           <div>
-                            <p className="font-medium text-green-800">Handling Time</p>
-                            <p className="text-sm text-green-600">{payloadFulfillmentData.handlingTime}</p>
+                            <p className="font-medium text-orange-800">Handling Time</p>
+                            <p className="text-sm text-orange-600">{payloadFulfillmentData.handlingTime}</p>
                           </div>
                         </div>
                       </div>
@@ -6142,7 +6777,7 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
               )}
               
               {/* Physical Details Card */}
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Physical Details</h2>
                 <Separator className="mb-6" />
                 
@@ -6226,7 +6861,7 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
               </section>
               
               {/* Additional Info Card */}
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="p-4 pb-12 bg-white border border-gray-200 rounded-lg shadow-sm sm:mb-0 sm:p-6">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Additional Info</h2>
                 <Separator className="mb-6" />
                 
@@ -6284,8 +6919,8 @@ console.log('🎯 TECH DEBUG: FINAL METADATA:', {
           </div>
           
           {/* Bottom Action Bar - Fixed to bottom on mobile */}
-          <div className="fixed bottom-0 left-0 right-0 z-10 p-4 bg-white border-t border-gray-200 md:static md:bg-transparent md:border-0 md:p-0 md:mt-6">
-            <div className="flex justify-end mx-auto space-x-3 max-w-7xl">
+          <div className="fixed bottom-0 left-0 right-0 z-10 px-4 py-2 bg-white border-t border-gray-200 sm:p-4 md:static md:bg-transparent md:border-0 md:p-0 md:mt-6">
+            <div className="flex justify-center gap-4 space-x-3 mxfy-auto sm:justify-end max-w-7xl">
               <Button 
                 type="button"
                 variant="outline" 

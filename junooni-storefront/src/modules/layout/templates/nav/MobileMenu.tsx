@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect , useMemo } from "react";
 import { RxHamburgerMenu } from "react-icons/rx";
 import { IoMdClose } from "react-icons/io";
 import { IoChevronDown, IoChevronUp } from "react-icons/io5";
@@ -73,6 +73,9 @@ export default function MobileMenu({ categories = [] }: MobileMenuProps) {
   // Get the navigation context to coordinate with desktop navigation
   // Now include the isPast100vh and isHomePage values
   const { isAnyMenuHovered, isPast100vh, isHomePage } = useNavContext();
+  const [forceUpdate, setForceUpdate] = useState(0);
+  const [scrollY, setScrollY] = useState(0);
+
   
   // Menu state
   const [isOpen, setIsOpen] = useState(false);
@@ -123,6 +126,7 @@ export default function MobileMenu({ categories = [] }: MobileMenuProps) {
     }
     setIsOpen(!isOpen);
   };
+
   
   // Cleanup effect to ensure scroll is restored when component unmounts
   useEffect(() => {
@@ -189,22 +193,74 @@ export default function MobileMenu({ categories = [] }: MobileMenuProps) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
-  
-  // Determine the hamburger icon color based on page type and scroll position
-  // Replace your current getHamburgerColor function with this one
-const getHamburgerColor = () => {
+  // SOLUTION: Direct scroll detection with state management
+// Add these imports at the top if not already present
 
-  return isHomePage && !isPast100vh && !isAnyMenuHovered 
-    ? "text-white" 
-    : "text-black";
-};
+// Inside your MobileMenu component, add this state:
+// Add scroll listener effect:
+useEffect(() => {
+  const handleScroll = () => {
+    setScrollY(window.scrollY);
+  };
+
+  // Throttle scroll events for performance
+  let ticking = false;
+  const throttledScroll = () => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        handleScroll();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  };
+
+  window.addEventListener('scroll', throttledScroll);
   
+  // Set initial value
+  handleScroll();
+  
+  return () => {
+    window.removeEventListener('scroll', throttledScroll);
+  };
+}, []);
+  
+//   useEffect(() => {
+//   const handleScroll = () => {
+//     setForceUpdate(prev => prev + 1); // Force re-render
+//   };
+  
+//   window.addEventListener('scroll', handleScroll);
+//   return () => window.removeEventListener('scroll', handleScroll);
+// }, []);
+
+const hamburgerColor = useMemo(() => {
+  const currentPath = window?.location?.pathname;
+  const isHomeOrLocalized = isHomePage || currentPath === '/in';
+  const viewportHeight = window?.innerHeight || 800;
+  const isPastTenVH = scrollY > viewportHeight * 0.1;
+  const shouldBeWhite = isHomeOrLocalized && !isAnyMenuHovered && !isPastTenVH;
+  
+  console.log('🍔 Direct scroll detection:', {
+    isHomeOrLocalized,
+    isAnyMenuHovered,
+    scrollY,
+    viewportHeight,
+    tenPercentVH: viewportHeight * 0.1,
+    isPastTenVH,
+    shouldBeWhite,
+    result: shouldBeWhite ? 'WHITE' : 'BLACK'
+  });
+  
+  return shouldBeWhite ? "text-white" : "text-black";
+}, [isHomePage, isAnyMenuHovered, scrollY]); 
+
   return (
     <div>
       {/* Hamburger Menu Toggle Button - Color changes based on navigation context and scroll position */}
-      <button 
+     <button 
         onClick={toggleMenu} 
-        className={`p-1 focus:outline-none transition-colors duration-300 ${getHamburgerColor()}`}
+        className={`p-1 focus:outline-none transition-colors duration-300 ${hamburgerColor}`}
         aria-label={isOpen ? "Close menu" : "Open menu"}
       >
         <RxHamburgerMenu className="w-6 h-6" />

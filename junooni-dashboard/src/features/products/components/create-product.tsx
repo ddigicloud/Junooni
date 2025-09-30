@@ -1288,7 +1288,7 @@ if (result && result.id) {
   }
 
   return (
-    <div className="px-6 py-8 bg-gray-50">
+    <div className="px-3 py-8 sm:px-6 bg-gray-50">
       {/* Header Bar with Junooni branding */}
       <div className="flex flex-col justify-between gap-4 p-6 mb-6 bg-white border border-gray-100 rounded-lg shadow-sm md:flex-row md:items-center">
         <div>
@@ -2441,7 +2441,7 @@ if (result && result.id) {
               </section>
               
               {/* Additional Info Card */}
-              <section className="p-6 pb-16 bg-white border border-gray-200 rounded-lg shadow-sm md:pb-0">
+              <section className="p-6 pb-16 bg-white border border-gray-200 rounded-lg shadow-sm md:pb-6">
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Additional Info</h2>
                 <Separator className="mb-6" />
                 

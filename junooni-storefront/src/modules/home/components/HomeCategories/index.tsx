@@ -29,12 +29,12 @@ const HomeCategories = async () => {
 
   return (
     <section className="py-10 bg-gray-50">
-      <div className="container px-4 mx-auto">
+      <div className="container px-1 mx-auto sm:px-4">
         <h2 className="mb-12 text-3xl font-bold text-center">
           <span className="inline-block pb-2">Shop by Category</span>
         </h2>
         
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
+        <div className="grid grid-cols-2 gap-2 sm:gap-6 md:grid-cols-4 md:gap-8">
           {categoriesWithImages.map((category) => (
             <Link 
               href={`/categories/${category.handle}`} 

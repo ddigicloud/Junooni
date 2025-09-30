@@ -140,10 +140,10 @@ const Pagination = ({
       <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-4">
         
         {/* Items per page selector - Full width on mobile */}
-        <div className="flex items-center justify-center gap-2 text-xs sm:justify-start sm:text-sm">
+        {/* <div className="flex items-center justify-center gap-2 text-xs sm:justify-start sm:text-sm">
           <span className="text-gray-600 whitespace-nowrap">Show</span>
           <Select value={itemsPerPage.toString()} onValueChange={(value) => onItemsPerPageChange(parseInt(value))}>
-            <SelectTrigger className="w-16 h-7 text-xs sm:w-20 sm:h-8 sm:text-sm">
+            <SelectTrigger className="w-16 text-xs h-7 sm:w-20 sm:h-8 sm:text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -155,7 +155,7 @@ const Pagination = ({
             </SelectContent>
           </Select>
           <span className="text-gray-600 whitespace-nowrap">per page</span>
-        </div>
+        </div> */}
 
         {/* Page info - Center on mobile */}
         <div className="text-xs text-center text-gray-600 sm:text-sm">
@@ -174,16 +174,16 @@ const Pagination = ({
             size="sm"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="h-7 w-7 p-0 text-xs sm:h-8 sm:w-8 flex-shrink-0"
+            className="flex-shrink-0 p-0 text-xs h-7 w-7 sm:h-8 sm:w-8"
           >
-            <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+            <ChevronLeft className="w-3 h-3 sm:h-4 sm:w-4" />
           </Button>
 
           {/* Page numbers with mobile-optimized display */}
           <div className="flex items-center gap-1 max-w-[200px] overflow-hidden">
             {getPageNumbers().map((page, index) => (
               page === '...' ? (
-                <span key={`ellipsis-${index}`} className="px-1 py-1 text-xs text-gray-500 flex-shrink-0">
+                <span key={`ellipsis-${index}`} className="flex-shrink-0 px-1 py-1 text-xs text-gray-500">
                   ...
                 </span>
               ) : (
@@ -192,7 +192,7 @@ const Pagination = ({
                   variant={currentPage === page ? "default" : "outline"}
                   size="sm"
                   onClick={() => onPageChange(page as number)}
-                  className="h-7 w-7 p-0 text-xs sm:h-8 sm:w-8 flex-shrink-0"
+                  className="flex-shrink-0 p-0 text-xs h-7 w-7 sm:h-8 sm:w-8"
                   style={currentPage === page ? { backgroundColor: BRAND.primary } : {}}
                 >
                   {page}
@@ -206,9 +206,9 @@ const Pagination = ({
             size="sm"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="h-7 w-7 p-0 text-xs sm:h-8 sm:w-8 flex-shrink-0"
+            className="flex-shrink-0 p-0 text-xs h-7 w-7 sm:h-8 sm:w-8"
           >
-            <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+            <ChevronRight className="w-3 h-3 sm:h-4 sm:w-4" />
           </Button>
         </div>
       </div>
@@ -223,8 +223,8 @@ export default function Products() {
   const popupButtonsRef = useRef<ProductsPrimaryButtonsHandle>(null);
   
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+ const [currentPage, setCurrentPage] = useState(1)
+const [itemsPerPage, setItemsPerPage] = useState(10)
   
   const { toast } = useToast();
 
@@ -321,12 +321,12 @@ export default function Products() {
           {/* Fixed Header aligned with content, not full screen */}
 
           <Header
-            className="border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90 flex-shrink-0"
+            className="flex-shrink-0 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90"
           >
-            <div className="flex items-center justify-between w-full px-2 py-2 sm:px-4 min-w-0">
+            <div className="flex items-center justify-between w-full min-w-0 px-2 py-2 sm:px-4">
               {/* Left section - Empty for mobile, search for desktop */}
               <div className="flex items-center min-w-0">
-                <div className="hidden md:flex justify-center flex-1 max-w-2xl mx-4">
+                <div className="justify-center flex-1 hidden max-w-2xl mx-4 md:flex">
                   <div className="w-full max-w-md">
                     {/* <Search /> */}
                   </div>
@@ -334,31 +334,31 @@ export default function Products() {
               </div>
 
               {/* Center section - Mobile Logo */}
-              <div className="md:hidden mt-2 flex-shrink-0">
+              <div className="flex-shrink-0 mt-2 md:hidden">
                 <Link to="/dashboard" className="flex items-center">
                   <img src={Junoonilogo} alt="Junooni Logo" className="h-8 sm:h-10" />      
                 </Link>
               </div>
 
               {/* Right section - Navigation + Profile */}
-              <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+              <div className="flex items-center flex-shrink-0 space-x-1 sm:space-x-2">
                 <Link to="/dashboard">
-                  <Button variant="ghost" className="hidden md:flex text-sm">
+                  <Button variant="ghost" className="hidden text-sm md:flex">
                     Dashboard
                   </Button>
                 </Link>
                 <Link to="/products">
-                  <Button variant="ghost" className="hidden md:flex text-sm" style={{ color: BRAND.primary }}>
+                  <Button variant="ghost" className="hidden text-sm md:flex" style={{ color: BRAND.primary }}>
                     Products
                   </Button>
                 </Link>
                 <Link to="/orders">
-                  <Button variant="ghost" className="hidden md:flex text-sm">
+                  <Button variant="ghost" className="hidden text-sm md:flex">
                     Orders
                   </Button>
                 </Link>
                 <Link to="/help-center">
-                  <Button variant="ghost" className="hidden md:flex text-sm">
+                  <Button variant="ghost" className="hidden text-sm md:flex">
                     Help
                   </Button>
                 </Link>
@@ -368,14 +368,14 @@ export default function Products() {
           </Header>
 
           {/* Main Page Content */}
-          <Main className="flex-1 px-2 py-4 mx-auto sm:px-4 sm:py-6 w-full max-w-full overflow-x-hidden">
+          <Main className="flex-1 w-full max-w-full px-2 py-4 mx-auto overflow-x-hidden sm:px-4 sm:py-6">
             {/* Page Header with Enhanced Styling */}
             <div className="mt-2 mb-6 sm:mt-4 sm:mb-8">
               <div className="flex flex-col justify-between mb-4 space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:mb-6">
-                <div className="flex items-center space-x-3 min-w-0">
+                <div className="flex items-center min-w-0 space-x-3">
                   {/* Mobile brand indicator */}
                   <div
-                    className="p-2 rounded-lg sm:hidden sm:p-3 flex-shrink-0"
+                    className="flex-shrink-0 p-2 rounded-lg sm:hidden sm:p-3"
                     style={{
                       background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
                     }}
@@ -385,13 +385,13 @@ export default function Products() {
 
                   <div className="min-w-0">
                     <h2
-                      className="text-xl font-bold tracking-tight sm:text-2xl lg:text-3xl truncate"
+                      className="text-xl font-bold tracking-tight truncate sm:text-2xl lg:text-3xl"
                       style={{ color: BRAND.textPrimary }}
                     >
                       Your Products
                     </h2>
                     <p
-                      className="mt-1 text-sm sm:text-base lg:text-lg truncate"
+                      className="mt-1 text-sm truncate sm:text-base lg:text-lg"
                       style={{ color: BRAND.textSecondary }}
                     >
                       Manage your product inventory and listings
@@ -399,7 +399,7 @@ export default function Products() {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+                <div className="flex items-center flex-shrink-0 space-x-2 sm:space-x-3">
                   <ProductsPrimaryButtons />
                 </div>
               </div>
@@ -414,7 +414,7 @@ export default function Products() {
                     <CardContent className="p-2 sm:p-3 lg:p-4">
                       <div className="flex items-center justify-between">
                         <div className="min-w-0">
-                          <p className="text-xs text-gray-500 sm:text-sm truncate">Total Products</p>
+                          <p className="text-xs text-gray-500 truncate sm:text-sm">Total Products</p>
                           <h3
                             className="text-lg font-bold sm:text-xl lg:text-2xl"
                             style={{ color: BRAND.primary }}
@@ -423,7 +423,7 @@ export default function Products() {
                           </h3>
                         </div>
                         <div
-                          className="p-1 rounded-lg sm:p-2 lg:p-3 flex-shrink-0"
+                          className="flex-shrink-0 p-1 rounded-lg sm:p-2 lg:p-3"
                           style={{ backgroundColor: `${BRAND.primary}22` }}
                         >
                           <Package
@@ -439,12 +439,12 @@ export default function Products() {
                     <CardContent className="p-2 sm:p-3 lg:p-4">
                       <div className="flex items-center justify-between">
                         <div className="min-w-0">
-                          <p className="text-xs text-gray-500 sm:text-sm truncate">Published</p>
+                          <p className="text-xs text-gray-500 truncate sm:text-sm">Published</p>
                           <h3 className="text-lg font-bold text-green-600 sm:text-xl lg:text-2xl">
                             {products.filter((p) => p.status === "published").length}
                           </h3>
                         </div>
-                        <div className="p-1 bg-green-100 rounded-lg sm:p-2 lg:p-3 flex-shrink-0">
+                        <div className="flex-shrink-0 p-1 bg-green-100 rounded-lg sm:p-2 lg:p-3">
                           <Package className="w-4 h-4 text-green-600 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                         </div>
                       </div>
@@ -455,12 +455,12 @@ export default function Products() {
                     <CardContent className="p-2 sm:p-3 lg:p-4">
                       <div className="flex items-center justify-between">
                         <div className="min-w-0">
-                          <p className="text-xs text-gray-500 sm:text-sm truncate">Draft</p>
+                          <p className="text-xs text-gray-500 truncate sm:text-sm">Draft</p>
                           <h3 className="text-lg font-bold text-amber-600 sm:text-xl lg:text-2xl">
                             {products.filter((p) => p.status === "draft").length}
                           </h3>
                         </div>
-                        <div className="p-1 rounded-lg bg-amber-100 sm:p-2 lg:p-3 flex-shrink-0">
+                        <div className="flex-shrink-0 p-1 rounded-lg bg-amber-100 sm:p-2 lg:p-3">
                           <Package className="w-4 h-4 text-amber-600 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                         </div>
                       </div>
@@ -471,12 +471,12 @@ export default function Products() {
                     <CardContent className="p-2 sm:p-3 lg:p-4">
                       <div className="flex items-center justify-between">
                         <div className="min-w-0">
-                          <p className="text-xs text-gray-500 sm:text-sm truncate">Categories</p>
+                          <p className="text-xs text-gray-500 truncate sm:text-sm">Categories</p>
                           <h3 className="text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
                             {new Set(products.map((p) => p.category)).size || 0}
                           </h3>
                         </div>
-                        <div className="p-1 bg-blue-100 rounded-lg sm:p-2 lg:p-3 flex-shrink-0">
+                        <div className="flex-shrink-0 p-1 bg-blue-100 rounded-lg sm:p-2 lg:p-3">
                           <Package className="w-4 h-4 text-blue-600 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                         </div>
                       </div>
@@ -487,29 +487,29 @@ export default function Products() {
             </div>
 
             {/* Main Content Area */}
-            <Card className="shadow-xl w-full overflow-hidden" data-table-container>
+            <Card className="w-full overflow-hidden shadow-xl" data-table-container>
               <CardHeader
                 className="border-b"
                 style={{ borderColor: `${BRAND.primary}11` }}
               >
                 <div className="flex items-center justify-between min-w-0">
-                  <div className="flex items-center space-x-2 min-w-0 flex-1">
+                  <div className="flex items-center flex-1 min-w-0 space-x-2">
                     <div
-                      className="p-2 rounded-lg flex-shrink-0"
+                      className="flex-shrink-0 p-2 rounded-lg"
                       style={{
                         background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
                       }}
                     >
                       <Package className="w-4 h-4 text-white sm:w-5 sm:h-5" />
                     </div>
-                    <div className="min-w-0 flex-1">
+                    <div className="flex-1 min-w-0">
                       <CardTitle
-                        className="text-sm font-bold sm:text-base lg:text-lg truncate"
+                        className="text-sm font-bold truncate sm:text-base lg:text-lg"
                         style={{ color: BRAND.secondary }}
                       >
                         Product Management
                       </CardTitle>
-                      <CardDescription className="text-xs sm:text-sm truncate" style={{ color: BRAND.textSecondary }}>
+                      <CardDescription className="text-xs truncate sm:text-sm" style={{ color: BRAND.textSecondary }}>
                         {loading
                           ? "Loading..."
                           : products.length > 0
@@ -521,7 +521,7 @@ export default function Products() {
                   </div>
 
                   {!loading && !error && products.length > 0 && (
-                    <div className="text-xs text-gray-500 sm:text-sm flex-shrink-0 ml-2">
+                    <div className="flex-shrink-0 ml-2 text-xs text-gray-500 sm:text-sm">
                       {currentPage}/{totalPages}
                     </div>
                   )}
@@ -555,7 +555,7 @@ export default function Products() {
                     </Button>
                   </div>
                 ) : products.length === 0 ? (
-                  <div className="py-16 text-center px-4">
+                  <div className="px-4 py-16 text-center">
                     <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                     <h3 className="mb-2 text-lg font-medium text-gray-600">
                       No Products Yet
@@ -579,7 +579,7 @@ export default function Products() {
                   </div>
                 ) : (
                   <div className="w-full">
-                    <div className="p-2 sm:p-3 lg:p-6 overflow-x-auto">
+                    <div className="p-2 overflow-x-auto sm:p-3 lg:p-6">
                       <div className="min-w-[600px]">
                         <DataTable data={paginatedProducts} columns={columns} />
                       </div>

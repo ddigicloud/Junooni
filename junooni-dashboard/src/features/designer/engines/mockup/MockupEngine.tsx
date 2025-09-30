@@ -243,7 +243,7 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
 
     // Check browser compatibility first
     if (!isPixiSupported) {
-      console.log('🔄 Pixi.js not supported, using Canvas engine');
+      //console.log('🔄 Pixi.js not supported, using Canvas engine');
       return 'canvas';
     }
 
@@ -270,12 +270,12 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
 
     // Use Pixi.js if advanced features are needed and supported
     if (enablePixiFeatures && (needsPixiFeatures || hasPixiAssets || isComplexSurface || hasAdvancedLighting)) {
-      console.log('🚀 Using Pixi.js engine for advanced features');
+      //console.log('🚀 Using Pixi.js engine for advanced features');
       return 'pixi';
     }
 
     // Fallback to Canvas for simpler mockups or if Pixi.js isn't needed
-    console.log('🎨 Using Canvas engine for basic rendering');
+    //console.log('🎨 Using Canvas engine for basic rendering');
     return 'canvas';
   }, [mockup, surfaceConfiguration, renderEngine, enablePixiFeatures, isPixiSupported]);
 
@@ -287,7 +287,7 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
 
   // Handle Pixi.js errors and fallback with enhanced error reporting
   const handlePixiError = useCallback((error: any) => {
-    console.error('❌ Pixi.js rendering error, falling back to Canvas:', error);
+    //console.error('❌ Pixi.js rendering error, falling back to Canvas:', error);
     
     // Determine error type for better user feedback
     let errorType = 'Unknown error';
@@ -304,17 +304,17 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
     setSelectedEngine('canvas');
     
     // Clear any existing render progress
-    console.log('🔄 Switching to Canvas engine for fallback rendering');
+    //console.log('🔄 Switching to Canvas engine for fallback rendering');
   }, []);
 
   // Render progress handler
   const handleProgress = useCallback((progress: number) => {
-    console.log(`Rendering progress: ${progress}%`);
+    //console.log(`Rendering progress: ${progress}%`);
   }, []);
 
   // Enhanced render complete handler
   const handleRenderComplete = useCallback((imageData: string) => {
-    console.log(`✅ Mockup rendered successfully with ${selectedEngine} engine`);
+    //console.log(`✅ Mockup rendered successfully with ${selectedEngine} engine`);
     onRenderComplete?.(imageData);
   }, [selectedEngine, onRenderComplete]);
 
@@ -430,7 +430,7 @@ export function checkPixiSupport(): boolean {
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     
     if (!gl) {
-      console.warn('WebGL not supported, Pixi.js features limited');
+      //console.warn('WebGL not supported, Pixi.js features limited');
       return false;
     }
 
@@ -442,14 +442,14 @@ export function checkPixiSupport(): boolean {
 
     for (const ext of requiredExtensions) {
       if (!gl.getExtension(ext)) {
-        console.warn(`WebGL extension ${ext} not supported`);
+        //console.warn(`WebGL extension ${ext} not supported`);
         return false;
       }
     }
 
     return true;
   } catch (error) {
-    console.error('Error checking Pixi.js support:', error);
+    //console.error('Error checking Pixi.js support:', error);
     return false;
   }
 }

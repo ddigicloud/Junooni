@@ -60,7 +60,8 @@ export default async function RelatedProducts({
       <ul className="grid grid-cols-2 small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-8">
         {products.map((product) => (
           <li key={product.id}>
-            <Product region={region} product={product} />
+            <Product region={region} 
+            product={product} reviewData={{ averageRating: 0, reviewCount: 0, isLoading: false }}/>
           </li>
         ))}
       </ul>
