@@ -689,9 +689,9 @@ const isNewVariant = (variant) => {
             let prices: any[] = [];
 
             // Add this right after processing each variant to see the metadata structure
-            console.log(`Variant ${variant.id} metadata:`, variant.metadata);
+            //console.log(`Variant ${variant.id} metadata:`, variant.metadata);
             if (variant.metadata && variant.metadata.cost_price) {
-              console.log(`Found cost_price in metadata: ${variant.metadata.cost_price}`);
+              //console.log(`Found cost_price in metadata: ${variant.metadata.cost_price}`);
             }
             
             // Check for calculated_price structure first
@@ -970,7 +970,7 @@ const isNewVariant = (variant) => {
                     });
                   }
                 } catch (e) {
-                  console.error("Failed to parse color images:", e);
+                  //console.error("Failed to parse color images:", e);
                 }
               }
 
@@ -2519,7 +2519,7 @@ const onSubmit = async (values: ProductFormValues) => {
               shipping_time: values.shippingDays || '7-10'
             };
             metadata.fulfillment_type = JSON.stringify(fulfillmentInfo);
-            console.log("product fulfillment type:", fulfillmentInfo);
+            //console.log("product fulfillment type:", fulfillmentInfo);
 
             // --- STEP 5: Process Colors and Image Associations (wrapped with try/catch) ---
             try {

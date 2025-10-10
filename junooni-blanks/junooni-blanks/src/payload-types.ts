@@ -703,6 +703,7 @@ export interface BlankProduct {
                 | null;
               mockupType?: ('studio' | 'lifestyle' | 'model' | 'flat_lay') | null;
               photoColor: string;
+              photoSize?: string | null;
               /**
                * Displacement maps for curved surfaces (mugs, bottles, curved products)
                */
@@ -875,6 +876,24 @@ export interface BlankProduct {
                       blend?: ('normal' | 'multiply' | 'screen' | 'overlay' | 'soft_light') | null;
                       opacity?: number | null;
                       preserveColors?: boolean | null;
+                    };
+                    uvMap?: {
+                      srfc?: ('planar' | 'cylinder' | 'frustum' | 'sphere' | 'mesh') | null;
+                      uStart?: number | null;
+                      vStart?: number | null;
+                      uSpan?: number | null;
+                      vSpan?: number | null;
+                      uRepeat?: number | null;
+                      vRepeat?: number | null;
+                      rotationDeg?: number | null;
+                      orn?: {
+                        type?: ('feature' | 'angle' | 'pixel') | null;
+                        featureName?: string | null;
+                        angleDeg?: number | null;
+                        pixelX?: number | null;
+                      };
+                      wrpmdU?: ('clamp' | 'repeat' | 'mirror') | null;
+                      wpmdV?: ('clamp' | 'repeat' | 'mirror') | null;
                     };
                     surfaceWrapSettings?: {
                       enableWrap?: boolean | null;
@@ -2443,6 +2462,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
               viewAngle?: T;
               mockupType?: T;
               photoColor?: T;
+              photoSize?: T;
               dispMaps?:
                 | T
                 | {
@@ -2552,6 +2572,28 @@ export interface BlankProductsSelect<T extends boolean = true> {
                           blend?: T;
                           opacity?: T;
                           preserveColors?: T;
+                        };
+                    uvMap?:
+                      | T
+                      | {
+                          srfc?: T;
+                          uStart?: T;
+                          vStart?: T;
+                          uSpan?: T;
+                          vSpan?: T;
+                          uRepeat?: T;
+                          vRepeat?: T;
+                          rotationDeg?: T;
+                          orn?:
+                            | T
+                            | {
+                                type?: T;
+                                featureName?: T;
+                                angleDeg?: T;
+                                pixelX?: T;
+                              };
+                          wrpmdU?: T;
+                          wpmdV?: T;
                         };
                     surfaceWrapSettings?:
                       | T

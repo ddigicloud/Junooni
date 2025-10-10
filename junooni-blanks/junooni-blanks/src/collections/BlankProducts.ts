@@ -1264,6 +1264,12 @@ export const BlankProducts: CollectionConfig = {
                       label: 'Product Color (Hex)',
                       required: true,
                     },
+                     {
+                      name: 'photoSize',
+                      type: 'text',
+                      //dbName: 'photo_color',
+                      label: 'Product Size'
+                    },
                     {
       name: 'dispMaps',
       type: 'array',
@@ -2004,6 +2010,51 @@ export const BlankProducts: CollectionConfig = {
                             },
                           ],
                         },
+                          {
+                            name: 'uvMap',
+                              type: 'group',
+                              fields: [
+                                {
+                            name: 'srfc',
+                            type: 'select',
+                            options: ['planar', 'cylinder', 'frustum', 'sphere', 'mesh'],
+                            label: 'Surface Type',
+                          },
+                          { name: 'uStart', type: 'number', defaultValue: 0 },
+                          { name: 'vStart', type: 'number', defaultValue: 0 },
+                          { name: 'uSpan', type: 'number', defaultValue: 1 },
+                          { name: 'vSpan', type: 'number', defaultValue: 1 },
+                          { name: 'uRepeat', type: 'number' },
+                          { name: 'vRepeat', type: 'number' },
+                          { name: 'rotationDeg', type: 'number' },
+                          {
+                            name: 'orn',
+                            type: 'group',
+                            label: 'Orientation Reference',
+                            fields: [
+                              {
+                                name: 'type',
+                                type: 'select',
+                                options: ['feature', 'angle', 'pixel']
+                              
+                              },
+                              { name: 'featureName', type: 'text' },
+                              { name: 'angleDeg', type: 'number' },
+                              { name: 'pixelX', type: 'number' }
+                            ]
+                          },
+                          {
+                            name: 'wrpmdU',
+                            type: 'select',
+                            options: ['clamp', 'repeat', 'mirror']
+                          },
+                          {
+                            name: 'wpmdV',
+                            type: 'select',
+                            options: ['clamp', 'repeat', 'mirror']
+                          }
+                        ]
+                      },
                         // SURFACE WRAP SETTINGS (FLATTENED)
                         {
                           name: 'surfaceWrapSettings',

@@ -1106,58 +1106,66 @@ Generated: ${new Date().toISOString()}`;
 const extractAvailableAreas = (locationState: LocationState): string[] => {
   const areas = new Set<string>();
   
-  // Method 1: Extract from availableMockups.all_available_areas (PRIMARY SOURCE)
-  if (locationState.availableMockups?.all_available_areas && Array.isArray(locationState.availableMockups.all_available_areas)) {
-    locationState.availableMockups.all_available_areas.forEach(area => areas.add(area.toLowerCase()));
-    //console.log('✅ Found areas from availableMockups.all_available_areas:', locationState.availableMockups.all_available_areas);
+  // Method 1: PRIORITY - Extract ONLY from areas that have design elements
+  if (locationState.designData?.designElements) {
+    Object.keys(locationState.designData.designElements).forEach(area => {
+      const elements = locationState.designData.designElements[area];
+      // Only add if the area actually has elements
+      if (Array.isArray(elements) && elements.length > 0) {
+        areas.add(area.toLowerCase());
+      }
+    });
+    
+    if (areas.size > 0) {
+      console.log('✅ Found areas WITH design elements:', Array.from(areas));
+      return Array.from(areas);
+    }
   }
   
-  // Method 2: Extract from enhancedImageAreaAnalysis.area_specifications (NEW)
-  if (locationState.enhancedImageAreaAnalysis?.area_specifications) {
-    Object.keys(locationState.enhancedImageAreaAnalysis.area_specifications).forEach(area => {
+  // Method 2: Extract from enhancedImageAreaAnalysis ONLY for areas with elements
+  if (locationState.enhancedImageAreaAnalysis?.areas_with_elements) {
+    locationState.enhancedImageAreaAnalysis.areas_with_elements.forEach(area => {
       areas.add(area.toLowerCase());
     });
-    //console.log('✅ Found areas from enhancedImageAreaAnalysis.area_specifications:', Object.keys(locationState.enhancedImageAreaAnalysis.area_specifications));
+    
+    if (areas.size > 0) {
+      console.log('✅ Found areas from enhancedImageAreaAnalysis.areas_with_elements:', Array.from(areas));
+      return Array.from(areas);
+    }
   }
   
-  // Method 3: Extract from imageAreaAnalysis.all_available_areas (fallback)
-  if (areas.size === 0 && locationState.imageAreaAnalysis?.all_available_areas && Array.isArray(locationState.imageAreaAnalysis.all_available_areas)) {
-    locationState.imageAreaAnalysis.all_available_areas.forEach(area => areas.add(area.toLowerCase()));
-    //console.log('✅ Found areas from imageAreaAnalysis.all_available_areas:', locationState.imageAreaAnalysis.all_available_areas);
-  }
-  
-  // Method 4: Extract from canvasImages area_id
+  // Method 3: Extract from canvasImages area_id (these have actual design data)
   if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
     locationState.canvasImages.forEach(canvasImage => {
       if (canvasImage.area_id) {
         areas.add(canvasImage.area_id.toLowerCase());
       }
     });
-    //console.log('✅ Found areas from canvasImages area_id:', locationState.canvasImages.map(c => c.area_id));
+    
+    if (areas.size > 0) {
+      console.log('✅ Found areas from canvasImages:', Array.from(areas));
+      return Array.from(areas);
+    }
   }
   
-  // Method 5: Extract from mockupImages keys as final fallback
-  if (areas.size === 0 && locationState.mockupImages) {
-    Object.keys(locationState.mockupImages).forEach(key => {
-      // Extract area from keys like "back_sky_blue", "front_sky_blue_l"
-      const parts = key.split('_');
-      if (parts.length >= 2) {
-        const potentialArea = parts[0].toLowerCase();
-        // Only add if it's not a size indicator or color
-        if (!['s', 'm', 'l', 'xl', 'xxl', 'xs', 'sky', 'blue', 'red', 'black', 'white'].includes(potentialArea)) {
-          areas.add(potentialArea);
-        }
-      }
+  // Method 4: Extract from imageAreaAnalysis.areas_with_elements (fallback)
+  if (locationState.imageAreaAnalysis?.areas_with_elements && 
+      Array.isArray(locationState.imageAreaAnalysis.areas_with_elements)) {
+    locationState.imageAreaAnalysis.areas_with_elements.forEach(area => {
+      areas.add(area.toLowerCase());
     });
-    //console.log('✅ Extracted areas from mockupImages keys:', Array.from(areas));
+    
+    if (areas.size > 0) {
+      console.log('✅ Found areas from imageAreaAnalysis.areas_with_elements:', Array.from(areas));
+      return Array.from(areas);
+    }
   }
   
   const finalAreas = Array.from(areas);
-  //console.log('🎯 Final extracted areas:', finalAreas);
+  console.log('🎯 Final extracted areas WITH elements:', finalAreas);
   
-  return finalAreas.length > 0 ? finalAreas : ['front']; // fallback to 'front' if nothing found
+  return finalAreas.length > 0 ? finalAreas : ['front']; // fallback only if nothing found
 };
-
 
 const parsePayloadRichText = (richTextObject: any): string[] => {
   if (!richTextObject || typeof richTextObject !== 'object') {
@@ -1196,7 +1204,6 @@ const parsePayloadRichText = (richTextObject: any): string[] => {
 };
 
 const createColorMatcher = (designData: DesignData) => {
-  // Extract all available colors from design data
   const availableColors = new Map<string, { name: string; hex?: string }>();
   
   // Get colors from colorDetails (primary source)
@@ -1230,68 +1237,56 @@ const createColorMatcher = (designData: DesignData) => {
   return {
     availableColors,
     
-    /**
-     * Match color from variant key using multiple strategies
-     */
     matchColor: (variantKey: string): string => {
-      
-      const keyLower = variantKey.toLowerCase();
-      const keyParts = variantKey.split(/[-_\s]+/).filter(p => p.length > 0);
-      
-      // Strategy 1: Exact match in parts
-      for (const part of keyParts) {
-        const partLower = part.toLowerCase();
-        if (availableColors.has(partLower)) {
-          const matched = availableColors.get(partLower)!;
-          return matched.name;
-        }
-      }
-      
-      // Strategy 2: Substring match in full key
-      for (const [colorKey, colorData] of availableColors) {
-        if (keyLower.includes(colorKey)) {
-          return colorData.name;
-        }
-      }
-      
-      // Strategy 3: Partial word matching (for compound color names)
-      for (const [colorKey, colorData] of availableColors) {
-        const colorWords = colorKey.split(/\s+/);
-        const hasAllWords = colorWords.every(word => 
-          word.length > 2 && keyLower.includes(word)
-        );
-        if (hasAllWords) {
-          return colorData.name;
-        }
-      }
-      
-      // Strategy 4: Common color pattern matching (dynamic)
-      const commonColorPatterns = createCommonColorPatterns(availableColors);
-      for (const [pattern, colorName] of commonColorPatterns) {
-        if (keyLower.includes(pattern)) {
-          return colorName;
-        }
-      }
-      
-      // Fallback: Return first available color
-      const firstColor = Array.from(availableColors.values())[0];
-      if (firstColor) {
-        return firstColor.name;
-      }
-      
-      return 'Unknown';
-    },
+  const keyLower = variantKey.toLowerCase();
+  const keyParts = variantKey.split(/[-_\s]+/).filter(p => p.length > 0);
+  
+  // Strategy 1: Exact match in full key
+  if (availableColors.has(keyLower)) {
+    const matched = availableColors.get(keyLower)!;
+    return matched.name;
+  }
+  
+  // Strategy 2: Match multi-word colors (e.g., "Sky Blue")
+  for (const [colorKey, colorData] of availableColors) {
+    if (keyLower.includes(colorKey.replace(/\s+/g, ''))) {
+      return colorData.name;
+    }
     
-    /**
-     * Get all color names
-     */
+    const colorWords = colorKey.split(/\s+/);
+    const allWordsPresent = colorWords.every(word => 
+      keyParts.some(part => part.toLowerCase() === word)
+    );
+    
+    if (allWordsPresent && colorWords.length > 1) {
+      return colorData.name;
+    }
+  }
+  
+  // Strategy 3: Exact match in parts
+  for (const part of keyParts) {
+    const partLower = part.toLowerCase();
+    if (availableColors.has(partLower)) {
+      const matched = availableColors.get(partLower)!;
+      return matched.name;
+    }
+  }
+  
+  // Strategy 4: Substring match
+  for (const [colorKey, colorData] of availableColors) {
+    if (keyLower.includes(colorKey)) {
+      return colorData.name;
+    }
+  }
+  
+  // ✅ FIX: Return 'Unknown' instead of first color
+  return 'Unknown';
+},
+    
     getAllColorNames: (): string[] => {
       return Array.from(availableColors.values()).map(c => c.name);
     },
     
-    /**
-     * Get hex value for a color name
-     */
     getHexForColor: (colorName: string): string | undefined => {
       const colorKey = colorName.toLowerCase();
       return availableColors.get(colorKey)?.hex;
@@ -2023,6 +2018,7 @@ useEffect(() => {
     if (location.state) {
       isProcessing = true; // Add this line
       const locationState = location.state as LocationState;
+      //console.log("Location state", locationState);
       
       // STEP 1: Extract and store pre-generated images FIRST
       const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
@@ -2751,54 +2747,206 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
   };
 
   // Replace your existing getImagesForOptionValue function with this:
-  const getImagesForOptionValue = (optionName: string, optionValue: string): MediaItem[] => {
+  // REPLACE your existing getImagesForOptionValue function with this enhanced version
+// REPLACE your getImagesForOptionValue function with this version
+// REPLACE the entire getImagesForOptionValue function
+// REPLACE the entire getImagesForOptionValue function
+const getImagesForOptionValue = (optionName: string, optionValue: string): MediaItem[] => {
+  //console.log('🔍 FILTER: Getting images for', optionName, ':', optionValue);
+  
+  const filteredImages = mediaItems.filter(item => {
+    // Skip design images
+    const isDesign = item.metadata?.isRawDesignImage === true || 
+                   item.variantInfo?.isRawDesignImage === true ||
+                   item.metadata?.debugInfo?.source === 'canvas_design_element';
+    if (isDesign) return false;
     
-    const filteredImages = mediaItems.filter(item => {
-      // For shared images, check if the color matches
-      if (item.metadata?.isSharedImage && optionName.toLowerCase() === 'color') {
-        const matches = item.colorValue?.toLowerCase() === optionValue.toLowerCase() ||
-                       item.metadata?.extractedColorName?.toLowerCase() === optionValue.toLowerCase();
-        
-        if (matches) {
-          return true;
-        }
-      }
-      
-      // ✅ CRITICAL FIX: For size options with shared images, return empty array
-      // Shared images should NEVER appear in size option sections when size_Images = false
-      if (item.metadata?.isSharedImage && optionName.toLowerCase() === 'size') {
+    const isColorOption = optionName.toLowerCase() === 'color';
+    const isSizeOption = optionName.toLowerCase() === 'size';
+    
+    const optionValueLower = optionValue.toLowerCase();
+    const normalizedOptionValue = optionValueLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+    
+    // console.log('🔍 FILTER: Checking image:', {
+    //   fileName: item.file?.name,
+    //   colorValue: item.colorValue,
+    //   extractedColor: item.metadata?.extractedColorName,
+    //   isShared: item.metadata?.isSharedImage,
+    //   primaryOption: item.variantInfo?.optionName,
+    //   primaryValues: item.variantInfo?.optionValues
+    // });
+    
+    // CASE 1: color_Images is TRUE and size_Images is FALSE
+    if (payloadImageSettings.color_Images && !payloadImageSettings.size_Images) {
+      if (!isColorOption) {
+        //console.log('❌ FILTER: Not a color option, skipping');
         return false;
       }
       
-      // Regular variant-specific matching (for non-shared images only)
-      if (item.variantInfo && !item.metadata?.isSharedImage) {
-        const primaryMatch = 
-          item.variantInfo.optionName?.toLowerCase() === optionName.toLowerCase() &&
-          item.variantInfo.optionValues?.some(val => val.toLowerCase() === optionValue.toLowerCase());
-          
-        const secondaryMatch = 
-          item.variantInfo.secondaryOptionName?.toLowerCase() === optionName.toLowerCase() &&
-          item.variantInfo.secondaryOptionValues?.some(val => val.toLowerCase() === optionValue.toLowerCase());
-          
-        if (primaryMatch || secondaryMatch) {
+      // Helper function for flexible color matching
+      const matchesColor = (colorToCheck: string | undefined): boolean => {
+        if (!colorToCheck) return false;
+        
+        const colorLower = colorToCheck.toLowerCase();
+        const normalizedColor = colorLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+        
+        // Exact match (case-insensitive)
+        if (colorLower === optionValueLower) return true;
+        
+        // Normalized match (no spaces/hyphens/underscores)
+        if (normalizedColor === normalizedOptionValue) return true;
+        
+        // Partial match (for compound names like "sky blue" vs "skyblue")
+        if (colorLower.includes(optionValueLower) || optionValueLower.includes(colorLower)) return true;
+        
+        return false;
+      };
+      
+      // Check all possible color fields
+      if (matchesColor(item.variantInfo?.optionValues?.[0])) {
+        //console.log('✅ FILTER: Matched via primary optionValues');
+        return true;
+      }
+      
+      if (matchesColor(item.variantInfo?.secondaryOptionValues?.[0])) {
+        //console.log('✅ FILTER: Matched via secondary optionValues');
+        return true;
+      }
+      
+      if (matchesColor(item.metadata?.extractedColorName)) {
+        //console.log('✅ FILTER: Matched via extractedColorName');
+        return true;
+      }
+      
+      if (matchesColor(item.colorValue)) {
+        //console.log('✅ FILTER: Matched via colorValue');
+        return true;
+      }
+      
+      // **CRITICAL: For shared images, check if they match ANY of the above**
+      if (item.metadata?.isSharedImage) {
+        const sharedImageColor = item.colorValue || item.metadata?.extractedColorName;
+        if (matchesColor(sharedImageColor)) {
+          //console.log('✅ FILTER: Matched shared image for color:', sharedImageColor);
+          return true;
+        } else {
+          //console.log('❌ FILTER: Shared image but wrong color:', sharedImageColor, 'vs', optionValue);
+          return false;
+        }
+      }
+      
+      //console.log('❌ FILTER: No color match found');
+      return false;
+    }
+    
+    // CASE 2: color_Images is FALSE and size_Images is TRUE
+    if (!payloadImageSettings.color_Images && payloadImageSettings.size_Images) {
+      if (!isSizeOption) return false;
+      
+      const optionValueLower = optionValue.toLowerCase();
+      
+      if (item.variantInfo?.optionName?.toLowerCase() === 'size' &&
+          item.variantInfo?.optionValues?.some(val => val.toLowerCase() === optionValueLower)) {
+        return true;
+      }
+      
+      if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'size' &&
+          item.variantInfo?.secondaryOptionValues?.some(val => val.toLowerCase() === optionValueLower)) {
+        return true;
+      }
+      
+      if (item.metadata?.extractedSizeName?.toLowerCase() === optionValueLower) {
+        return true;
+      }
+      
+      return false;
+    }
+    
+    // CASE 3: BOTH color_Images and size_Images are TRUE
+    if (payloadImageSettings.color_Images && payloadImageSettings.size_Images) {
+      const optionValueLower = optionValue.toLowerCase();
+      
+      if (isColorOption) {
+        if (item.variantInfo?.optionName?.toLowerCase() === 'color' &&
+            item.variantInfo?.optionValues?.some(val => val.toLowerCase() === optionValueLower)) {
+          return true;
+        }
+        
+        if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'color' &&
+            item.variantInfo?.secondaryOptionValues?.some(val => val.toLowerCase() === optionValueLower)) {
+          return true;
+        }
+        
+        if (item.metadata?.extractedColorName?.toLowerCase() === optionValueLower ||
+            item.colorValue?.toLowerCase() === optionValueLower) {
           return true;
         }
       }
       
-      return false;
-    });
+      if (isSizeOption) {
+        if (item.variantInfo?.optionName?.toLowerCase() === 'size' &&
+            item.variantInfo?.optionValues?.some(val => val.toLowerCase() === optionValueLower)) {
+          return true;
+        }
+        
+        if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'size' &&
+            item.variantInfo?.secondaryOptionValues?.some(val => val.toLowerCase() === optionValueLower)) {
+          return true;
+        }
+        
+        if (item.metadata?.extractedSizeName?.toLowerCase() === optionValueLower) {
+          return true;
+        }
+      }
+    }
     
-    // ✅ DEDUPLICATION: Remove duplicates based on URL and metadata
-    const uniqueImages = filteredImages.filter((item, index, self) => {
-      return self.findIndex(img => 
-        img.url === item.url && 
-        img.file?.name === item.file?.name &&
-        img.metadata?.originalVariantKey === item.metadata?.originalVariantKey
-      ) === index;
-    });
-    
-    return uniqueImages;
-  };
+    return false;
+  });
+  
+  // Deduplicate
+  const uniqueImages = filteredImages.filter((item, index, self) => {
+    return self.findIndex(img => img.url === item.url) === index;
+  });
+  
+  //console.log('🎯 FILTER: Found', uniqueImages.length, 'images for', optionName, ':', optionValue);
+  
+  return uniqueImages;
+};
+
+// ADD THIS DEBUG FUNCTION
+const debugImageTagging = () => {
+  //console.log('🔍 DEBUG: All mediaItems:', mediaItems.length);
+  
+  const mockups = mediaItems.filter(item => {
+    const isDesign = item.metadata?.isRawDesignImage === true || 
+                   item.variantInfo?.isRawDesignImage === true ||
+                   item.metadata?.debugInfo?.source === 'canvas_design_element';
+    return !isDesign;
+  });
+  
+  //console.log('🔍 DEBUG: Mockup images:', mockups.length);
+  
+  // mockups.forEach((item, idx) => {
+  //   console.log(`Image ${idx + 1}:`, {
+  //     fileName: item.file?.name,
+  //     primaryOption: item.variantInfo?.optionName,
+  //     primaryValues: item.variantInfo?.optionValues,
+  //     secondaryOption: item.variantInfo?.secondaryOptionName,
+  //     secondaryValues: item.variantInfo?.secondaryOptionValues,
+  //     extractedColor: item.metadata?.extractedColorName,
+  //     extractedSize: item.metadata?.extractedSizeName,
+  //     colorValue: item.colorValue
+  //   });
+  // });
+  
+  //console.log('🔍 Settings:', payloadImageSettings);
+};
+
+// Call it when Size tab is selected
+useEffect(() => {
+  debugImageTagging();
+}, [mediaItems, payloadImageSettings]);
+
   // ===== ENHANCED: GET IMAGES FOR COLOR-SIZE COMBINATION =====
   const getImagesForColorSizeCombination = (colorValue: string, sizeValue: string): MediaItem[] => {
     
@@ -3398,6 +3546,9 @@ const processSharedImagesByColor = async (
   imageSettings: ImageAssociationSettings,
   extractedAreas?: string[] // 🔥 ADD THIS PARAMETER
 ) => {
+
+  //console.log('🔥 INCOMING mockupImages keys:', Object.keys(mockupImages));
+  //console.log('🔥 Total mockupImages:', Object.keys(mockupImages).length);
   const areasToUse = extractedAreas || availableAreas;
   ////console.log('🔥 processSharedImagesByColor called with:', Object.keys(mockupImages).length, 'images');
   ////console.log('🏗️ Available areas for processing:', areasToUse);
@@ -3412,6 +3563,18 @@ const processSharedImagesByColor = async (
     const parsedInfo = parseVariantKeyEnhanced(variantKey, designData, areasToUse);
     const colorName = parsedInfo.colorName;
     const areaName = parsedInfo.areaName || 'unknown';
+    
+    // 🔥 ADD THIS: Skip if area is not in extractedAreas
+    if (!areasToUse.includes(areaName.toLowerCase())) {
+      console.log(`⏭️ Skipping image for area "${areaName}" - no design elements`);
+      continue;
+    }
+
+    // ADD THIS DEBUG:
+    // console.log(`🔍 Parsing "${variantKey}":`, {
+    //   extracted: parsedInfo,
+    //   availableSizes: designData.options?.find(o => o.title.toLowerCase().includes('size'))?.optionValues
+    // });
     
     ////console.log(`🔥 Processing variant key: ${variantKey} -> Color: ${colorName}, Area: ${areaName}`);
     
@@ -3542,6 +3705,9 @@ const processSharedImagesByColor = async (
     setError('Failed to create any shared images. Check //console for details.');
   }
 };
+setTimeout(() => {
+  debugImagesByColor();
+}, 3000);
 
 
 
@@ -3594,6 +3760,11 @@ const processIndividualImages = async (
    try {
       // 🔥 PASS the extracted areas
       const parsedInfo = parseVariantKeyEnhanced(variantKey, designData, areasToUse);
+  //   console.log('🔍 Parsing result for', variantKey, ':', {
+  //   extracted: parsedInfo,
+  //   availableSizes: isSizeOption?.optionValues,
+  //   keyParts: variantKey.split(/[-_]+/)
+  // });
       
       ////console.log(`🔍 Processing ${variantKey}:`, parsedInfo);
       
@@ -3612,10 +3783,40 @@ const processIndividualImages = async (
         continue;
       }
       
-      const variantInfo = createVariantInfoStructure(
-        { colorName: parsedInfo.colorName, sizeName: parsedInfo.sizeName },
-        imageSettings
-      );
+      // const variantInfo = createVariantInfoStructure(
+      //   { colorName: parsedInfo.colorName, sizeName: parsedInfo.sizeName },
+      //   imageSettings
+      // );
+
+      const variantInfo = (() => {
+        // Determine primary tag based on settings AND what data we have
+        if (imageSettings.size_Images && parsedInfo.sizeName) {
+          // Size images enabled and we have size data - make Size primary
+          return {
+            optionName: 'Size',
+            optionValues: [parsedInfo.sizeName],
+            secondaryOptionName: 'Color',
+            secondaryOptionValues: [parsedInfo.colorName]
+          };
+        } else if (imageSettings.color_Images && parsedInfo.colorName) {
+           //console.warn(`⚠️ Missing size for image: ${fileName}, falling back to Color primary`);
+          // Color images enabled and we have color data - make Color primary
+          return {
+            optionName: 'Color',
+            optionValues: [parsedInfo.colorName],
+            ...(parsedInfo.sizeName ? {
+              secondaryOptionName: 'Size',
+              secondaryOptionValues: [parsedInfo.sizeName]
+            } : {})
+          };
+        } else {
+          // Fallback to existing logic
+          return createVariantInfoStructure(
+            { colorName: parsedInfo.colorName, sizeName: parsedInfo.sizeName },
+            imageSettings
+          );
+        }
+      })();
       
       const mediaItem: MediaItem = {
         file: processedImage.file,
@@ -3666,10 +3867,14 @@ const processIndividualImages = async (
   // ===== ENHANCED VARIANT KEY PARSING =====
   // REPLACE the existing parseVariantKeyEnhanced function with this enhanced version
 // REPLACE the parseVariantKeyEnhanced function with this dynamic version
+// REPLACE the parseVariantKeyEnhanced function with this improved version:
 const parseVariantKeyEnhanced = (variantKey: string, designData: DesignData, dynamicAreas: string[] = []) => {
-  ////console.log('🔍 Parsing variant key:', variantKey, 'with available areas:', dynamicAreas);
+  //console.log('🔍 Parsing variant key:', variantKey);
   
+  // Split by both underscores AND hyphens
   const parts = variantKey.split(/[-_]+/).filter(part => part.length > 0);  
+  //console.log('🔍 Key parts:', parts);
+  
   let colorName = 'Unknown';
   let sizeName: string | undefined = undefined;
   let areaName: string | undefined = undefined;
@@ -3680,58 +3885,68 @@ const parseVariantKeyEnhanced = (variantKey: string, designData: DesignData, dyn
     opt.title.toLowerCase().includes('size')
   );
   
-  // 🔥 UPDATED: Use dynamic areas instead of hardcoded ones
+  // console.log('🔍 Available sizes:', sizeOption?.optionValues);
+  // console.log('🔍 Available colors:', colorMatcher.getAllColorNames());
+  // console.log('🔍 Available areas:', dynamicAreas);
+  
   const availableAreasLower = dynamicAreas.map(area => area.toLowerCase());
   
+  // Extract area
   for (const part of parts) {
     const partLower = part.toLowerCase();
-    // Check if this part matches any of the available areas
     if (availableAreasLower.includes(partLower)) {
       areaName = partLower;
-      //console.log('✅ Found area:', areaName, 'from available areas:', dynamicAreas);
+      //console.log('✅ Found area:', areaName);
       break;
     }
   }
   
-  // Extract color and size (existing logic)
+  // Extract color
   for (const part of parts) {
-    const partLower = part.toLowerCase();
-    
     const matchedColor = colorMatcher.matchColor(part);
     if (matchedColor !== 'Unknown') {
       colorName = matchedColor;
+      //console.log('✅ Found color:', colorName);
+      break;
     }
-    
-    if (sizeOption?.optionValues) {
+  }
+  
+  // Extract size with flexible matching
+  if (sizeOption?.optionValues) {
+    // Try exact match first
+    for (const part of parts) {
       const matchingSize = sizeOption.optionValues.find(size => 
-        size.toLowerCase() === partLower
+        size.toLowerCase() === part.toLowerCase()
       );
       if (matchingSize) {
         sizeName = matchingSize;
-      }
-    }
-  }
-  
-  if (colorName === 'Unknown') {
-    colorName = colorMatcher.matchColor(variantKey);
-  }
-  
-  if (!sizeName && sizeOption?.optionValues) {
-    for (const size of sizeOption.optionValues) {
-      const sizeLower = size.toLowerCase();
-      if (variantKey.toLowerCase().includes(`_${sizeLower}_`) || 
-          variantKey.toLowerCase().includes(`_${sizeLower}`) ||
-          variantKey.toLowerCase().endsWith(`_${sizeLower}`) ||
-          variantKey.toLowerCase().includes(`-${sizeLower}-`) ||
-          variantKey.toLowerCase().includes(`-${sizeLower}`) ||
-          variantKey.toLowerCase().endsWith(`-${sizeLower}`)) {
-        sizeName = size;
+        //console.log('✅ Found size (exact):', sizeName);
         break;
       }
     }
+    
+    // If no exact match, try partial matching for compound names like "galaxy_5" -> "Galaxy 5"
+    if (!sizeName) {
+      for (const sizeValue of sizeOption.optionValues) {
+        // Normalize both: remove spaces/underscores, lowercase
+        const normalizedSize = sizeValue.toLowerCase().replace(/[\s_-]+/g, '');
+        
+        // Check if any combination of consecutive parts matches
+        for (let i = 0; i < parts.length - 1; i++) {
+          const combined = (parts[i] + parts[i + 1]).toLowerCase();
+          if (combined === normalizedSize) {
+            sizeName = sizeValue;
+            //console.log('✅ Found size (combined):', sizeName, 'from parts:', parts[i], parts[i + 1]);
+            break;
+          }
+        }
+        
+        if (sizeName) break;
+      }
+    }
   }
   
-  //console.log('🎯 Parsed result:', { colorName, sizeName, areaName });
+  //console.log('🎯 Final parsed result:', { colorName, sizeName, areaName });
   return { colorName, sizeName, areaName };
 };
 
@@ -3891,6 +4106,40 @@ setTimeout(() => {
   };
 
   // ===== HELPER FUNCTIONS FOR IMAGE MANAGEMENT =====
+
+  const debugImagesByColor = () => {
+  const mockupImages = mediaItems.filter(item => {
+    const isDesign = item.metadata?.isRawDesignImage === true || 
+                   item.variantInfo?.isRawDesignImage === true;
+    return !isDesign;
+  });
+  
+  // console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  // console.log('📊 DEBUG: All Mockup Images by Color');
+  // console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  
+  const byColor = mockupImages.reduce((acc, item) => {
+    const color = item.colorValue || item.metadata?.extractedColorName || 'Unknown';
+    if (!acc[color]) acc[color] = [];
+    acc[color].push({
+      fileName: item.file?.name,
+      area: item.metadata?.extractedAreaName,
+      isShared: item.metadata?.isSharedImage,
+      url: item.url.substring(0, 50)
+    });
+    return acc;
+  }, {} as Record<string, any[]>);
+  
+  Object.entries(byColor).forEach(([color, images]) => {
+    //console.log(`\n🎨 Color: ${color} (${images.length} images)`);
+    images.forEach((img, i) => {
+      //console.log(`  ${i + 1}. ${img.fileName} [${img.area}] ${img.isShared ? '(SHARED)' : ''}`);
+    });
+  });
+  
+  //console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+};
+
   const getImageAssociatedOptions = () => {
     const currentOptions = form.getValues('options');
     return currentOptions.filter(opt => 
@@ -3968,20 +4217,35 @@ const getImagesByArea = (): Record<string, MediaItem[]> => {
 
   const imagesByArea: Record<string, MediaItem[]> = {};
   
-  // Initialize with available areas to ensure all areas are represented
-  availableAreas.forEach(area => {
+  // 🔥 NEW: Only initialize areas that we extracted (which have elements)
+  const areasWithElements = availableAreas; // This now only contains areas WITH elements
+  
+  areasWithElements.forEach(area => {
     imagesByArea[area] = [];
   });
   
   mockupImages.forEach(item => {
     const area = item.metadata?.extractedAreaName || 'unknown';
-    if (!imagesByArea[area]) {
-      imagesByArea[area] = [];
+    
+    // 🔥 NEW: Only add to imagesByArea if area is in our filtered list
+    if (areasWithElements.includes(area)) {
+      if (!imagesByArea[area]) {
+        imagesByArea[area] = [];
+      }
+      imagesByArea[area].push(item);
     }
-    imagesByArea[area].push(item);
   });
 
-  //console.log('📊 Images by area:', Object.keys(imagesByArea).map(area => `${area}: ${imagesByArea[area].length}`));
+  console.log('📊 Images by area (filtered):', 
+    Object.keys(imagesByArea).map(area => `${area}: ${imagesByArea[area].length}`)
+  );
+  
+  // 🔥 NEW: Remove any areas that ended up with 0 images
+  Object.keys(imagesByArea).forEach(area => {
+    if (imagesByArea[area].length === 0) {
+      delete imagesByArea[area];
+    }
+  });
   
   return imagesByArea;
 };
@@ -5980,7 +6244,7 @@ if (!printTechId || !printTechName) {
                         </p>
                       </div>
                     )}
-                    <input
+                    <Input
                       type="file"
                       multiple
                       accept="image/*"

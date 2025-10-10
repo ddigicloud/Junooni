@@ -725,7 +725,7 @@ export const ProfessionalMockupEngine: React.FC<ProfessionalMockupEngineProps> =
 //   canvasConfigsKeys: canvasConfigs ? Object.keys(canvasConfigs) : 'NO CONFIGS',
 //   canvasConfigsIsArray: Array.isArray(canvasConfigs),
 //   firstArea: mockup?.area?.[0]?.areaName,
-//   configForFirstArea: canvasConfigs?.[mockup?.area?.[0]?.areaName?.toLowerCase()]
+//   // configForFirstArea: canvasConfigs?.[mockup?.area?.[0]?.areaName?.toLowerCase()]
 // })
 
   useEffect(() => {

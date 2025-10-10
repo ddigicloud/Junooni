@@ -108,6 +108,25 @@ interface EnhancedVisibleArea {
   areaName: string;
   visibility: 'full' | 'partial' | 'edge' | 'sleeve';
   visibilityPercentage: number;
+  // ✅ ADD THIS FIELD:
+  uvMap?: {
+    srfc: 'cylinder' | 'plane' | 'sphere' | 'cone';
+    uStart: number;
+    vStart: number;
+    uSpan: number;
+    vSpan: number;
+    uRepeat: number;
+    vRepeat: number;
+    rotationDeg: number | null;
+    orn: {
+      type: string;
+      featureName: string | null;
+      angleDeg: number | null;
+      pixelX: number | null;
+    };
+    wrpmdU: 'clamp' | 'repeat' | 'mirror';
+    wpmdV: 'clamp' | 'repeat' | 'mirror';
+  };
   Config: {                         // Changed from 'maskingConfiguration'
     enableMasking: boolean;
     mask: string;                   // Changed from 'maskType'
@@ -601,7 +620,7 @@ const ProgressBar: React.FC<{ progress: number }> = ({ progress }) => (
       <span>Loading product data...</span>
       <span>{progress}%</span>
     </div>
-    <div className="w-full bg-gray-200 rounded-full h-2">
+    <div className="w-full h-2 bg-gray-200 rounded-full">
       <div 
         className="h-2 bg-gradient-to-r from-[#e65100] to-[#ff8a50] rounded-full transition-all duration-300 ease-out"
         style={{ width: `${progress}%` }}
@@ -934,44 +953,43 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-12 max-w-md w-full border border-gray-100">
-          {/* Loading Spinner */}
-          <div className="flex justify-center mb-8">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="w-full max-w-md p-8 bg-white shadow-2xl rounded-3xl">
+          {/* Loading Spinner with subtle animation background */}
+          <div className="relative flex justify-center mb-6">
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-100 to-orange-50 rounded-full blur-2xl opacity-40" />
             <LoadingSpinner />
           </div>
 
-          {/* Title and Description */}
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">
-              Loading Product
-            </h2>
-            <p className="text-gray-600">
-              Please wait while we prepare your design environment
-            </p>
-          </div>
-
-          {/* Progress Bar */}
-          <ProgressBar progress={loadingProgress} />
-
-          {/* Status Indicator */}
-          <div className="text-center">
+          {/* Title */}
+          <h2 className="mb-2 text-xl font-semibold text-center text-gray-900">
+            Loading Product
+          </h2>
+          
+          {/* Status with dot indicator */}
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
             <StatusIndicator status={loadingStatus} />
           </div>
 
-          {/* Additional Loading Details */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Product ID:</span>
-              <span className="font-mono text-[#e65100]">{productId}</span>
+          {/* Sleek Progress Bar */}
+          <ProgressBar progress={loadingProgress} />
+
+          {/* Compact Info Footer */}
+          {(productId || retryCount > 0) && (
+            <div className="flex items-center justify-between pt-6 mt-6 text-sm border-t border-gray-100">
+              {/* {productId && (
+                <span className="text-gray-500">
+                  ID: <span className="font-mono text-gray-900">{productId}</span>
+                </span>
+              )} */}
+              {retryCount > 0 && (
+                <span className="px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 rounded-full">
+                  Retry {retryCount}/3
+                </span>
+              )}
             </div>
-            {retryCount > 0 && (
-              <div className="flex items-center justify-between text-sm text-gray-600 mt-2">
-                <span>Retry Attempt:</span>
-                <span className="text-amber-600 font-medium">{retryCount}/3</span>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     );
@@ -1035,7 +1053,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     const config = getErrorConfig(error.type);
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center p-4">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 via-white to-gray-100">
         <div className={`max-w-lg w-full rounded-2xl shadow-xl border-2 ${config.color} overflow-hidden`}>
           
           {/* Header */}
@@ -1058,11 +1076,11 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
             <div className="px-8 pb-4">
               <details className="group">
                 <summary className={`${config.textColor} cursor-pointer font-medium hover:underline flex items-center gap-2`}>
-                  <span className="group-open:rotate-90 transition-transform">▶</span>
+                  <span className="transition-transform group-open:rotate-90">▶</span>
                   Technical Details
                 </summary>
-                <div className="mt-3 p-4 bg-white border border-gray-200 rounded-lg">
-                  <pre className="text-xs text-gray-600 overflow-auto max-h-40">
+                <div className="p-4 mt-3 bg-white border border-gray-200 rounded-lg">
+                  <pre className="overflow-auto text-xs text-gray-600 max-h-40">
                     {JSON.stringify(error.details, null, 2)}
                   </pre>
                 </div>
@@ -1072,7 +1090,7 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
           
           {/* Action Buttons */}
           <div className="p-8 bg-white bg-opacity-50 border-t border-gray-200">
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col justify-center gap-3 sm:flex-row">
               {error.retryable && (
                 <button 
                   className="inline-flex items-center justify-center px-6 py-3 bg-[#e65100] text-white font-semibold rounded-lg hover:bg-[#d84315] transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -1096,11 +1114,11 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
           {/* Troubleshooting Info */}
           <div className="p-6 bg-white border-t border-gray-200">
             <div className="text-center">
-              <h4 className="font-semibold text-gray-800 mb-3 flex items-center justify-center gap-2">
+              <h4 className="flex items-center justify-center gap-2 mb-3 font-semibold text-gray-800">
                 <span>🛠️</span>
                 Troubleshooting Tips
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+              <div className="grid grid-cols-1 gap-2 text-sm text-gray-600 sm:grid-cols-2">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-[#e65100] rounded-full flex-shrink-0"></span>
                   <span>Check internet connection</span>
@@ -1131,20 +1149,20 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   
   if (!productData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center p-4">
-        <div className="max-w-lg w-full bg-amber-50 border-2 border-amber-200 rounded-2xl shadow-xl overflow-hidden">
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 via-white to-gray-100">
+        <div className="w-full max-w-lg overflow-hidden border-2 shadow-xl bg-amber-50 border-amber-200 rounded-2xl">
           
           {/* Header */}
           <div className="p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-amber-100">
               <span className="text-2xl">🤔</span>
             </div>
             
-            <h2 className="text-2xl font-bold text-amber-800 mb-3">
+            <h2 className="mb-3 text-2xl font-bold text-amber-800">
               No Product Data
             </h2>
             
-            <p className="text-amber-700 leading-relaxed">
+            <p className="leading-relaxed text-amber-700">
               The product was found but contains no usable data. This might be a configuration issue.
             </p>
           </div>
@@ -1172,23 +1190,23 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
     <div className="relative">
       {/* Success notification - briefly shown */}
       {showSuccessNotification && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right duration-500">
-          <div className="bg-orange-50 border border-orange-200 rounded-lg shadow-lg p-4 max-w-sm">
+        <div className="fixed z-50 duration-500 top-4 right-4 animate-in slide-in-from-right">
+          <div className="max-w-sm p-4 border border-orange-200 rounded-lg shadow-lg bg-orange-50">
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                  <span className="text-orange-600 text-sm">✓</span>
+                <div className="flex items-center justify-center w-8 h-8 bg-orange-100 rounded-full">
+                  <span className="text-sm text-orange-600">✓</span>
                 </div>
               </div>
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-orange-800">Product Loaded</h4>
-                <p className="text-xs text-orange-700 mt-1">
+                <p className="mt-1 text-xs text-orange-700">
                   {productData.name} is ready for customization
                 </p>
               </div>
               <button
                 onClick={() => setShowSuccessNotification(false)}
-                className="text-orange-400 hover:text-orange-600 text-lg leading-none"
+                className="text-lg leading-none text-orange-400 hover:text-orange-600"
               >
                 ×
               </button>

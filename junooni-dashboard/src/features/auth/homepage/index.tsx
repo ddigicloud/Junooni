@@ -9,13 +9,13 @@ import {
 
 // Images: place files into /src/assets/ as described above
 import heroVisual from '/src/assets/hero-visual.png';
-import step1Img from '/src/assets/step-1.jpg';
+import step1Img from '/src/assets/step-1.png';
 import step2Img from '/src/assets/step-2.png';
 import step3Img from '/src/assets/step-3.png';
 import gallery1 from '/src/assets/gallery-1.png';
 import gallery2 from '/src/assets/gallery-2.png';
-import gallery3 from '/src/assets/gallery-3.jpg';
-import gallery4 from '/src/assets/gallery-4.jpg';
+import gallery3 from '/src/assets/gallery-3.png';
+import gallery4 from '/src/assets/gallery-4.png';
 
 const JunooniLandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -289,7 +289,7 @@ const JunooniLandingPage = () => {
                       <img 
                         src={s.image} 
                         alt={s.title} 
-                        className="object-cover w-full h-[400px] transform group-hover:scale-105 transition-transform duration-500" 
+                        className="object-cover w-full h-[550px] transform group-hover:scale-105 transition-transform duration-500" 
                       />
                     </div>
                   </div>
@@ -377,7 +377,7 @@ const JunooniLandingPage = () => {
                   <img 
                     src={gallery4} 
                     alt="Crafted for creators" 
-                    className="relative object-cover w-full shadow-2xl rounded-2xl h-80" 
+                    className="relative object-cover w-full shadow-2xl rounded-2xl h-84" 
                   />
                 </div>
               </div>
@@ -414,7 +414,7 @@ const JunooniLandingPage = () => {
                   <img 
                     src={gallery1} 
                     alt="Premium Quality Products" 
-                    className="object-cover w-full h-[400px] transition-transform duration-500 group-hover:scale-105" 
+                    className="object-fill w-full h-[550px] transition-transform duration-500 group-hover:scale-105" 
                   />
                 </div>
               </div>
@@ -434,7 +434,7 @@ const JunooniLandingPage = () => {
                   <img 
                     src={gallery2} 
                     alt="Creator-First Support" 
-                    className="object-cover w-full h-[400px] transition-transform duration-500 group-hover:scale-105" 
+                    className="object-cover w-full h-[550px] transition-transform duration-500 group-hover:scale-105" 
                   />
                 </div>
               </div>
@@ -454,7 +454,7 @@ const JunooniLandingPage = () => {
                   <img 
                     src={gallery3} 
                     alt="Build Your Community" 
-                    className="object-cover w-full h-[400px] transition-transform duration-500 group-hover:scale-105" 
+                    className="object-cover w-full h-[550px] transition-transform duration-500 group-hover:scale-105" 
                   />
                 </div>
               </div>
