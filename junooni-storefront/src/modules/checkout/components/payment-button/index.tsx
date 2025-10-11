@@ -454,13 +454,13 @@ const authorizePayment = async (razorpayResponse: any) => {
    
 
     // Use the correct API endpoint
-    const authUrl = `${process.env.MEDUSA_BACKEND_URL}/store/razorpay/authorize`;
+    const authUrl = `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/razorpay/authorize`;
 
 
     const response = await fetch(authUrl, {
       method: 'POST',
       headers: {
-        'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY,
+        'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || '',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

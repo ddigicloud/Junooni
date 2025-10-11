@@ -270,6 +270,7 @@ export default defineMiddlewares({
         /^\/vendors\/[^/]+\/followers$/, // Regex to match /vendors/[id]/followers
         /^\/vendors\/check-handle$/,      // /vendors/check-handle
         /^\/vendors\/uploads$/,  
+        /^\/vendors\/payout$/,
          /^\/vendors\/me$/,         // /vendors/uploads
       ];
 
@@ -366,6 +367,13 @@ export default defineMiddlewares({
     {
       matcher: "/store/customers/me/follow",
       method: "POST",
+      middlewares: [
+       
+      ],
+    },
+    {
+      matcher: "/vendors/payout",
+      method: "GET",
       middlewares: [
        
       ],
