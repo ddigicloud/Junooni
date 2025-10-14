@@ -2071,6 +2071,37 @@ public generateForStoreImport = async (
   mockupCalculation: MockupCalculationResult,
   onProgress?: (progress: ImageGenerationProgress) => void
 ): Promise<StoreImportData> => {
+
+  // ✅ ADD THIS CHECK
+  if (productData?.surfConf?.No_Mockup_Compatible === true) {
+    return {
+      product_id: productData.id || `product-${Date.now()}`,
+      product_name: productData.name || 'Unnamed Product',
+      product_type: productData.productType || 'custom',
+      design_elements: designElements,
+      design_configuration: {
+        canvas_configs: canvasConfigs,
+        printable_areas: printableAreas,
+        design_metadata: {
+          total_elements: Object.values(designElements).flat().length,
+          creation_timestamp: new Date().toISOString(),
+        }
+      },
+      mockup_variants: [],
+      generation_summary: {
+        total_combinations: 0,
+        total_images_generated: 0,
+        generation_started: new Date().toISOString(),
+        generation_completed: new Date().toISOString(),
+        total_time_ms: 0,
+        engine_usage: { canvas_professional: 0, pixi_dynamic: 0 },
+        mockup_calculation: mockupCalculation,
+        errors: [],
+        message: 'Mockup generation skipped - product not compatible'
+      }
+    };
+  }
+  
   
   if (this.isGenerating) {
     throw new Error('Generation already in progress');
@@ -3249,14 +3280,6 @@ const [activeSize, setActiveSize] = useState<string>(() => {
   // =====================================
   // MOBILE DETECTION
   // =====================================
-  
-// 🔥 ADD: Reset hero mockup when size changes
-// useEffect(() => {
-//   if (productData?.size_Images && activeSize) {
-//     setSelectedHeroMockup(null); // Force re-selection
-//   }
-// }, [activeSize, productData?.size_Images]);
-
 
   useEffect(() => {
     const checkIsMobile = () => {
@@ -3332,6 +3355,12 @@ const [activeSize, setActiveSize] = useState<string>(() => {
   // =====================================
 
   // Create a helper function to determine engine - around line 3900 or wherever makes sense:
+
+  const isProductMockupCompatible = useCallback((): boolean => {
+    return !productData?.surfConf?.No_Mockup_Compatible;
+  }, [productData]);
+
+
 const handlePanelMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
   if (isMobile) return;
   
@@ -4812,7 +4841,7 @@ const renderPricingPanel = () => {
       </div>
 
       {/* Final Price Card - Prominent */}
-      <div className="relative p-5 overflow-hidden border-2 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 border-green-300">
+      <div className="relative p-5 overflow-hidden border-2 border-green-300 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50">
         <div className="absolute top-0 right-0 w-32 h-32 transform translate-x-8 -translate-y-8 bg-green-200 rounded-full opacity-20"></div>
         <div className="relative">
           <div className="flex items-center justify-between mb-2">
@@ -4835,7 +4864,7 @@ const renderPricingPanel = () => {
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 rounded-lg bg-orange-50">
           <div className="flex items-center gap-2 mb-1">
-            <div className="flex items-center justify-center w-6 h-6 rounded bg-orange-100">
+            <div className="flex items-center justify-center w-6 h-6 bg-orange-100 rounded">
               <Layers size={14} className="text-orange-600" />
             </div>
             <span className="text-xs font-medium text-orange-700">Elements</span>
@@ -4845,7 +4874,7 @@ const renderPricingPanel = () => {
         
         <div className="p-3 rounded-lg bg-orange-50">
           <div className="flex items-center gap-2 mb-1">
-            <div className="flex items-center justify-center w-6 h-6 rounded bg-orange-100">
+            <div className="flex items-center justify-center w-6 h-6 bg-orange-100 rounded">
               <Ruler size={14} className="text-orange-600" />
             </div>
             <span className="text-xs font-medium text-orange-700">Design Area</span>
@@ -4857,7 +4886,7 @@ const renderPricingPanel = () => {
       {/* Areas Breakdown - Collapsible */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-5 h-5 rounded bg-gray-100">
+          <div className="flex items-center justify-center w-5 h-5 bg-gray-100 rounded">
             <Package size={12} className="text-gray-600" />
           </div>
           <h4 className="text-sm font-semibold text-gray-800">Design Areas</h4>
@@ -4865,10 +4894,10 @@ const renderPricingPanel = () => {
         </div>
         
         {Object.values(areas).map(area => (
-          <details key={area.areaId} className="overflow-hidden border rounded-lg group bg-gray-50 border-gray-200">
+          <details key={area.areaId} className="overflow-hidden border border-gray-200 rounded-lg group bg-gray-50">
             <summary className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100">
               <div className="flex items-center gap-2">
-                <ChevronDown size={16} className="transition-transform text-gray-400 group-open:rotate-180" />
+                <ChevronDown size={16} className="text-gray-400 transition-transform group-open:rotate-180" />
                 <span className="font-medium text-gray-900">{area.areaName}</span>
                 <span className="px-2 py-0.5 text-xs font-medium text-gray-600 bg-gray-200 rounded-full">
                   {area.elements.length} element{area.elements.length !== 1 ? 's' : ''}
@@ -4879,7 +4908,7 @@ const renderPricingPanel = () => {
               </span>
             </summary>
             
-            <div className="p-3 space-y-3 border-t bg-white">
+            <div className="p-3 space-y-3 bg-white border-t">
               {/* Area Statistics */}
               <div className="grid grid-cols-2 gap-2 p-2 rounded bg-gray-50">
                 <div>
@@ -4901,9 +4930,9 @@ const renderPricingPanel = () => {
               </div>
 
               {/* Price Calculation Formula */}
-              <div className="p-2 border-l-2 rounded bg-orange-50 border-orange-400">
+              <div className="p-2 border-l-2 border-orange-400 rounded bg-orange-50">
                 <div className="mb-1 text-xs font-medium text-orange-700">Calculation</div>
-                <div className="text-xs font-mono text-orange-900">
+                <div className="font-mono text-xs text-orange-900">
                   max(₹{area.minimumPrice}, {area.currentImageArea}&quot; × ₹{area.pricePerSquareInch})
                 </div>
                 <div className="mt-1 text-xs text-orange-600">
@@ -4916,10 +4945,10 @@ const renderPricingPanel = () => {
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-gray-700">Elements:</div>
                   {area.elements.map(element => (
-                    <div key={element.elementId} className="p-2 border rounded bg-white">
+                    <div key={element.elementId} className="p-2 bg-white border rounded">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate text-gray-900">{element.elementName}</div>
+                          <div className="text-sm font-medium text-gray-900 truncate">{element.elementName}</div>
                           <div className="text-xs text-gray-500">Area: {element.areaSquareInches}&quot; sq</div>
                         </div>
                         <div className="text-sm font-bold text-green-600 whitespace-nowrap">
@@ -4928,7 +4957,7 @@ const renderPricingPanel = () => {
                       </div>
                       
                       {element.extraArea > 0 && (
-                        <div className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-orange-50 text-orange-700">
+                        <div className="flex items-center gap-1 px-2 py-1 text-xs text-orange-700 rounded bg-orange-50">
                           <Info size={12} />
                           Expanded by +{element.extraArea}&quot; sq from original
                         </div>
@@ -4943,7 +4972,7 @@ const renderPricingPanel = () => {
       </div>
 
       {/* Cost Breakdown */}
-      <div className="p-4 space-y-3 border-2 rounded-xl bg-white border-gray-200">
+      <div className="p-4 space-y-3 bg-white border-2 border-gray-200 rounded-xl">
         <div className="flex items-center gap-2 pb-2 border-b">
           <IndianRupee size={16} className="text-gray-700" />
           <h4 className="text-sm font-semibold text-gray-800">Cost Breakdown</h4>
@@ -5003,7 +5032,7 @@ const renderPricingPanel = () => {
           )}
 
           {/* Total */}
-          <div className="flex justify-between pt-3 text-base font-bold border-t-2 text-green-800 border-green-300">
+          <div className="flex justify-between pt-3 text-base font-bold text-green-800 border-t-2 border-green-300">
             <span>Total per Unit</span>
             <span>₹{priceBreakdown.finalPrice}</span>
           </div>
@@ -5011,7 +5040,7 @@ const renderPricingPanel = () => {
       </div>
 
       {/* Info Footer */}
-      <div className="flex items-start gap-2 p-3 border rounded-lg bg-orange-50 border-orange-200">
+      <div className="flex items-start gap-2 p-3 border border-orange-200 rounded-lg bg-orange-50">
         <Info size={14} className="flex-shrink-0 mt-0.5 text-orange-600" />
         <p className="text-xs text-orange-700">
           Pricing updates automatically when you modify designs. Final price includes all taxes and fees.
@@ -5139,14 +5168,6 @@ const compareTechnologyPricing = useCallback((tech1Id: string, tech2Id: string) 
   };
 
   const transformStoreDataForCreate = useCallback((storeData, filteredProductData) => {
-  // //console.log('🔧 Transform started with comprehensive data:', {
-  //   hasDetailedAreaAnalysis: !!storeData.detailed_area_analysis,
-  //   hasImageAreaAnalysis: !!storeData.image_area_analysis,
-  //   canvasImages: storeData.canvas_images?.length || 0,
-  //   designImages: storeData.design_images?.length || 0,
-  //   hasPricingData: !!storeData.pricing_data,
-  //   hasAvailableMockups: !!storeData.available_mockups
-  // });
 
   // Extract mockup images based on PayloadCMS flags
  // Extract mockup images based on PayloadCMS flags
@@ -5268,11 +5289,15 @@ if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
   const canvasImages = storeData.canvas_images || [];
 
   // Extract color details from the calculation breakdown
-  const colorDetails = storeData.generation_summary.mockup_calculation.calculationBreakdown.map(breakdown => ({
-    name: breakdown.color,
-    value: breakdown.colorHex
-  }));
-  
+ // ✅ SAFE: Extract color details from the calculation breakdown with fallback
+const colorDetails = storeData.generation_summary?.mockup_calculation?.calculationBreakdown?.map(breakdown => ({
+  name: breakdown.color,
+  value: breakdown.colorHex
+})) || selectedColors.map(color => ({
+  name: color.name,
+  value: color.value
+})) || [];
+
   // Extract size options
   // const sizeOptions = storeData.mockup_variants[0]?.color_combinations[0]?.size_variants.map(sizeVariant => 
   //   sizeVariant.size_name
@@ -5530,19 +5555,6 @@ const sizeOptions = allSizesSet.size > 0
     }
   };
 
-   //console.log("design data", designData);
-
-  // //console.log('🔧 Transform completed with enhanced metrics:', {
-  //   totalElements: result.designMetrics.totalElements,
-  //   areasWithContent: result.designMetrics.areasWithElements.length,
-  //   complexityRating: result.designMetrics.complexityRating,
-  //   utilizationPercentage: result.designMetrics.utilizationPercentage,
-  //   hasDetailedAreaAnalysis: !!result.detailedAreaAnalysis,
-  //   hasDesignMetrics: !!result.designMetrics,
-  //   elementDetailsKeys: Object.keys(result.designMetrics?.elementDetails || {}),
-  //   areaBreakdownKeys: Object.keys(result.designMetrics?.areaBreakdown || {})
-  // });
-
   return result;
 }, [selectedColors, selectedSizes, allMockups, productData, calculatePriceFromCost]);
 
@@ -5725,20 +5737,11 @@ const navigateToCreatePage = useCallback((transformedData) => {
     }
   });
   
-  ////console.log('🔧 Navigation complete: Enhanced data sent to Create page with detailed area analysis');
-  // //console.log('🔧 Final data summary:', {
-  //   totalAreasWithData: transformedData.designMetrics?.areasWithElements?.length || 0,
-  //   totalEmptyAreas: transformedData.designMetrics?.areasWithoutElements?.length || 0,
-  //   totalMockupImages: Object.keys(transformedData.mockupImages || {}).length,
-  //   totalDesignImages: transformedData.designImages?.length || 0,
-  //   totalCanvasImages: transformedData.canvasImages?.length || 0,
-  //   overallUtilization: transformedData.designMetrics?.utilizationPercentage || 0,
-  //   complexityRating: transformedData.designMetrics?.complexityRating || 'Simple'
-  // });
-  
 }, [navigate]);
 
 
+// Complete Fixed generateComprehensiveMockups Function
+// Copy this function and replace the existing one in your Canvas.tsx file
 
 const generateComprehensiveMockups = async (
   productData: PayloadProductData,
@@ -6046,6 +6049,128 @@ for (const mockup of allMockups) {
 }
 
 const handleImportToStore = useCallback(async () => {
+  // ✅ CRITICAL: Check for no_mockup_compatible FIRST
+  if (productData?.surfConf?.No_Mockup_Compatible === true) {
+    console.log('⚠️ Product not mockup compatible - skipping mockup generation, navigating directly to Create');
+    
+    try {
+      setIsGeneratingForStore(true);
+      
+      // Filter product data to active technology
+      const filteredProductData = {
+        ...productData,
+        printT: Array.isArray(productData?.printT)
+          ? productData.printT.filter((t) => t.id === activeTechnology || t.technologyName === activeTechnology)
+          : []
+      };
+
+      if (filteredProductData.printT.length === 0) {
+        throw new Error(`No matching technology found for: ${activeTechnology}`);
+      }
+
+      // Prepare data WITHOUT mockups
+      const designImages = extractDesignImages();
+      const canvasImages = exportAllCanvasImages();
+      const finalPricingBreakdown = calculateTotalPricing();
+      const detailedAreaAnalysis = generateDetailedAreaAnalysis();
+
+       // 🔥 FIX: Calculate total current image area
+      let totalCurrentImageArea = 0;
+      Object.values(finalPricingBreakdown.areas).forEach(area => {
+        totalCurrentImageArea += area.currentImageArea;
+      });
+
+      const dataWithoutMockups = {
+        product_id: productData.id || `product-${Date.now()}`,
+        product_name: productData.name || 'Custom Product',
+        product_type: productData.productType || 'custom',
+        design_elements: getVisibleDesignElements(designElements),
+        design_configuration: {
+          canvas_configs: getAllCanvasConfigs,
+          printable_areas: getAllPrintableAreas,
+          design_metadata: {
+            total_elements: Object.values(designElements).flat().length,
+            areas_used: Object.keys(designElements).filter(area => designElements[area].length > 0),
+            creation_timestamp: new Date().toISOString(),
+            last_modified: new Date().toISOString()
+          }
+        },
+        canvas_images: canvasImages,
+        design_images: designImages,
+         
+        // 🔥 ADD: Include detailed area analysis
+        detailed_area_analysis: detailedAreaAnalysis,
+        
+        // 🔥 ADD: Include pricing data
+        pricing_data: {
+          final_price_per_unit: Number(finalPricingBreakdown.priceBreakdown.finalPrice.toFixed(2)),
+          currency: 'INR',
+          technology: activeTechnology,
+          technology_name: getCurrentTechnology()?.technologyName || activeTechnology,
+          pricing_breakdown: finalPricingBreakdown,
+          areas_pricing: finalPricingBreakdown.areas,
+          total_design_area: finalPricingBreakdown.totalDesignArea,
+          base_printing_cost: finalPricingBreakdown.priceBreakdown.basePrintingCost,
+          blank_product_cost: finalPricingBreakdown.priceBreakdown.blankProductCost,
+          setup_fees: finalPricingBreakdown.priceBreakdown.setupFees,
+          additional_costs: finalPricingBreakdown.priceBreakdown.additionalCosts,
+          markup: finalPricingBreakdown.priceBreakdown.markup,
+          price_calculation_details: {
+            minimum_prices: Object.values(finalPricingBreakdown.areas).map(area => ({
+              area: area.areaId,
+              minimum_price: area.minimumPrice,
+              price_per_sq_inch: area.pricePerSquareInch
+            })),
+            element_dimensions: Object.values(finalPricingBreakdown.areas)
+              .flatMap(area => 
+                area.elements.map(element => ({
+                  element_id: element.elementId,
+                  element_name: element.elementName,
+                  area: area.areaId,
+                  area_square_inches: element.areaSquareInches,
+                  element_price: element.elementPrice,
+                  original_area: element.originalArea,
+                  extra_area: element.extraArea
+                }))
+              )
+          },
+          quantity_pricing: {
+            selected_colors_count: selectedColors.length,
+            selected_sizes_count: selectedSizes.length,
+            total_variants: selectedColors.length * selectedSizes.length,
+            estimated_total_cost: Number((finalPricingBreakdown.priceBreakdown.finalPrice * selectedColors.length * selectedSizes.length).toFixed(2))
+          }
+        },
+        mockup_variants: [], // Empty - no mockups
+        generation_summary: {
+          total_combinations: 0,
+          total_images_generated: 0,
+          generation_started: new Date().toISOString(),
+          generation_completed: new Date().toISOString(),
+          total_time_ms: 0,
+          engine_usage: { canvas_professional: 0, pixi_dynamic: 0 },
+          errors: [],
+          message: 'Product not mockup compatible - skipped mockup generation'
+        }
+      };
+
+      // Transform the data for Create page (without mockups)
+      const transformedData = transformStoreDataForCreate(dataWithoutMockups, filteredProductData);
+      
+      // Navigate directly to Create page
+      navigateToCreatePage(transformedData);
+      
+    } catch (error) {
+      console.error('❌ Failed to prepare data for Create page:', error);
+      alert(`Failed to prepare product data: ${error.message}`);
+    } finally {
+      setIsGeneratingForStore(false);
+    }
+    
+    return; // Exit early - don't continue with mockup generation
+  }
+
+
   if (!hasDesignElements) {
     alert('⚠️ Please add design elements before importing to store.');
     return;
@@ -6095,33 +6220,6 @@ const handleImportToStore = useCallback(async () => {
   // Get ALL mockups and areas from technology
   const allMockupsForTech = [];
   const allAvailableAreas = new Set();
-  
-  // Process each selected color
-  // selectedColors.forEach(color => {
-  //   const mockupsForColor = getMockupsForColor(productData, color.value, activeTechnology);
-    
-  //   ////console.log(`🔧 Found ${mockupsForColor.length} mockups for color ${color.name} (${color.value})`);
-    
-  //   mockupsForColor.forEach(mockup => {
-  //     // Add this mockup to the processing list
-  //     allMockupsForTech.push({
-  //       ...mockup,
-  //       target_color: color.value,
-  //       target_color_name: color.name
-  //     });
-      
-  //     // Collect all area names from this mockup
-  //     if (mockup.area && Array.isArray(mockup.area)) {
-  //       mockup.area.forEach(area => {
-  //         if (area.areaName) {
-  //           const normalizedAreaName = normalizeAreaName(area.areaName);
-  //           allAvailableAreas.add(normalizedAreaName);
-  //           ////console.log(`🔧 Found mockup area: ${normalizedAreaName} (original: ${area.areaName})`);
-  //         }
-  //       });
-  //     }
-  //   });
-  // });
 
   // 🔥 FIX: Filter by selected sizes when size_Images is true
 selectedColors.forEach(color => {
@@ -6136,13 +6234,6 @@ selectedColors.forEach(color => {
         activeTechnology,
         size  // ✅ Pass the size parameter
       );
-      //console.log("MockupsforColorAndSize", mockupsForColorAndSize);
-      //console.log(`🔍 Mockups found for ${color.name} + ${size}:`, mockupsForColorAndSize.length);
-      // console.log('🔍 Mockup details:', mockupsForColorAndSize.map(m => ({
-      //   title: m.title,
-      //   photoSize: (m as any).photoSize,
-      //   photoColor: m.photoColor
-      // })));
       
       mockupsForColorAndSize.forEach(mockup => {
         allMockupsForTech.push({
@@ -6194,52 +6285,10 @@ selectedColors.forEach(color => {
   const allAreasList = Array.from(allAvailableAreas);
   const areasWithoutElements = allAreasList.filter(area => !areasWithElements.includes(area));
 
-  ////console.log('🔧 FINAL AREA ANALYSIS:');
-  ////console.log('  - All available areas:', allAreasList);
-  ////console.log('  - Areas with elements:', areasWithElements);
-  ////console.log('  - Areas without elements:', areasWithoutElements);
-  ////console.log('  - Total mockups to process:', allMockupsForTech.length);
-
-  // Validation
-  if (allMockupsForTech.length === 0) {
-    alert(`❌ No mockups found for technology: ${activeTechnology}. Please check your technology selection.`);
-    return;
-  }
-
   if (allAreasList.length === 0) {
     alert(`❌ No areas found in mockup data. Please check your product configuration.`);
     return;
   }
-
-  // Show detailed analysis to user before proceeding
-//   const analysisMessage = `
-// 📊 DESIGN ANALYSIS:
-// • Total Design Area: ${detailedAreaAnalysis.total_design_area_available.toFixed(1)}" sq
-// • Current Usage: ${detailedAreaAnalysis.current_image_area_used.toFixed(1)}" sq (${detailedAreaAnalysis.area_utilization_percentage}%)
-// • Areas with Content: ${detailedAreaAnalysis.areas_with_elements.join(', ')}
-// • Total Elements: ${detailedAreaAnalysis.area_summary.total_elements_across_all_areas}
-// • Complexity: ${detailedAreaAnalysis.area_summary.design_complexity_score.complexity_rating}
-
-// ELEMENT DETAILS:
-// ${detailedAreaAnalysis.areas_with_elements.map(areaId => {
-//   const areaBreakdown = detailedAreaAnalysis.detailed_areas_breakdown[areaId];
-//   const elements = detailedAreaAnalysis.element_details[areaId] || [];
-//   return `• ${areaId.toUpperCase()}: ${areaBreakdown.element_statistics.visible_elements} elements (${areaBreakdown.capacity.utilization_percentage}% used)
-//   ${elements.map(el => `  - ${el.element_name}: ${el.physical_dimensions.width_inches}" × ${el.physical_dimensions.height_inches}" ${el.transformations.rotation_degrees !== 0 ? `(rotated ${el.transformations.rotation_degrees}°)` : ''}`).join('\n  ')}`;
-// }).join('\n')}
-
-// MOCKUP GENERATION:
-// • Areas with custom designs: ${areasWithElements.join(', ') || 'None'}
-// • Areas with base mockups: ${areasWithoutElements.join(', ') || 'None'}
-// • Total mockups to generate: ${allMockupsForTech.length}
-// • Colors: ${selectedColors.map(c => c.name).join(', ')}
-// • Sizes: ${selectedSizes.join(', ')}
-
-// Continue with store import?`;
-
-  // if (!confirm(analysisMessage)) {
-  //   return;
-  // }
 
   // Calculate pricing and continue with generation
   const finalPricingBreakdown = calculateTotalPricing();
@@ -7112,12 +7161,12 @@ const renderPreview = useCallback(() => {
   // Check if mockups are compatible
  if (productData?.surfConf?.No_Mockup_Compatible) {
     return (
-      <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto mt-4 sm:mt-0">
+      <div className="flex items-center justify-center h-full mt-4 overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100 sm:mt-0">
         <div className="w-full max-w-xl px-4 mt-44 sm:mt-0">
           {/* Main Card */}
           <div className="relative overflow-hidden bg-white shadow-xl rounded-2xl">
             {/* Decorative Background */}
-            <div className="absolute top-0 right-0 w-44 h-44 opacity-5 -mr-16 -mt-16">
+            <div className="absolute top-0 right-0 -mt-16 -mr-16 w-44 h-44 opacity-5">
               <Palette className="w-full h-full" style={{ color: '#e65100' }} />
             </div>
             
@@ -7126,7 +7175,7 @@ const renderPreview = useCallback(() => {
               {/* Icon Header */}
               <div className="flex justify-center mb-2">
                 <div 
-                  className="p-3 rounded-xl shadow-lg"
+                  className="p-3 shadow-lg rounded-xl"
                   style={{ backgroundColor: '#e65100' }}
                 >
                   <Sparkles className="w-8 h-8 text-white" />

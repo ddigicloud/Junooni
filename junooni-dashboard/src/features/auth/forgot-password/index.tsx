@@ -58,13 +58,13 @@ export default function ForgotPassword() {
           </div>
           
           {/* Additional content for forgot password context */}
-          {/* <div className="flex-1 flex items-center justify-center px-8">
+          {/* <div className="flex items-center justify-center flex-1 px-8">
             <div className="text-center text-white">
-              <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
+              <div className="flex items-center justify-center w-20 h-20 mx-auto mb-6 rounded-full bg-white/10 backdrop-blur-sm">
                 <KeyRound className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-2xl font-bold mb-4 drop-shadow-lg">Secure Password Recovery</h2>
-              <p className="text-white/90 text-lg leading-relaxed max-w-md">
+              <h2 className="mb-4 text-2xl font-bold drop-shadow-lg">Secure Password Recovery</h2>
+              <p className="max-w-md text-lg leading-relaxed text-white/90">
                 We'll help you regain access to your creative workspace safely and securely.
               </p>
             </div>
@@ -73,7 +73,7 @@ export default function ForgotPassword() {
       </div>
       
       {/* Right Panel - Enhanced Forgot Password Form */}
-      <div className="flex flex-col items-center justify-center h-screen px-6 lg:pt-8 pt-2 bg-gradient-to-br from-gray-50 to-white">
+      <div className="flex flex-col items-center justify-start h-screen px-6 pt-12 lg:pt-8 bg-gradient-to-br from-gray-50 to-white">
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo - Enhanced */}
           <div className="flex items-center justify-center gap-3 mb-12 lg:hidden">
@@ -81,25 +81,25 @@ export default function ForgotPassword() {
               <img 
                 src={JunooniLogo} 
                 alt="Junooni Logo" 
-                className="w-10 h-8 object-contain" 
+                className="object-contain w-10 h-8" 
               />
             </div>
             <img 
               src={Junoonibrandlogo} 
               alt="Junooni Brand Logo" 
-              className="w-26 h-10 object-fill" 
+              className="object-fill h-10 w-26" 
             />  
           </div>
 
           {/* Enhanced Header with icon */}
-          <div className="-mt-8 text-center mb-8">
+          <div className="mb-8 -mt-8 text-center">
             <div className="w-16 h-16 bg-gradient-to-br from-[#e65100] to-[#ff8a50] rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg lg:hidden">
               <KeyRound className="w-8 h-8 text-white" />
             </div>
-            <h1 className="lg:mb-2 mb-2 text-2xl sm:text-3xl font-extrabold text-gray-900">
+            <h1 className="mb-2 text-2xl font-extrabold text-gray-900 lg:mb-2 sm:text-3xl">
               Forgot Password?
             </h1>
-            <p className="text-sm sm:text-base leading-relaxed text-gray-600">
+            <p className="text-sm leading-relaxed text-gray-600 sm:text-base">
               No worries! Enter your email address below and we'll send you a secure link to reset your password.
             </p>
           </div>

@@ -1661,10 +1661,10 @@ useEffect(() => {
                                     </Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem>
+                                  {/* <DropdownMenuItem>
                                     <Download className="w-4 h-4 mr-2" />
                                     Download vendor invoice
-                                  </DropdownMenuItem>
+                                  </DropdownMenuItem> */}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>

@@ -323,6 +323,30 @@ export default defineMiddlewares({
       ],
     },
     {
+      matcher: "/vendors/brand",
+      method: "POST",
+      middlewares: [
+        validateAndTransformBody(PostAdminCreateBrand),
+      ],
+    },
+    {
+      matcher: "/vendors/brand",
+      method: "GET",
+      middlewares: [
+        validateAndTransformQuery(
+          GetBrandsSchema,
+          {
+            defaults: [
+              "id",
+              "name",
+              "products.*",
+            ],
+            isList: true,
+          }
+        ),
+      ],
+    },
+    {
       matcher: "/store/customers/me/wishlists/items",
       method: "POST",
       middlewares: [

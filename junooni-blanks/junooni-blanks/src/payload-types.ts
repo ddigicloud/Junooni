@@ -560,6 +560,7 @@ export interface BlankProduct {
     shippingDimensions?: string | null;
     shippingCharges?: string | null;
     shippingLocationID?: string | null;
+    shippingProfileID?: string | null;
     packageType?: ('poly_mailer' | 'box' | 'envelope' | 'tube' | 'custom') | null;
   };
   colorOptions?:
@@ -2321,6 +2322,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
         shippingDimensions?: T;
         shippingCharges?: T;
         shippingLocationID?: T;
+        shippingProfileID?: T;
         packageType?: T;
       };
   colorOptions?:

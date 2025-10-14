@@ -38,25 +38,25 @@ import {
         artworkData
       )
   
-      const { vendor_artwork_media } = createArtworkMediasStep(
-        transform({
-            vendor_artwork,
-          medias,
-        },
-        (data) => ({
-          medias: data.medias.map((media) => ({
-            ...media,
-            vendor_artwork_id: data.vendor_artwork.id,
-          })),
-        })
-        )
-      )
+      // const { vendor_artwork_media } = createArtworkMediasStep(
+      //   transform({
+      //       vendor_artwork,
+      //     medias,
+      //   },
+      //   (data) => ({
+      //     medias: data.medias.map((media) => ({
+      //       ...media,
+      //       vendor_artwork_id: data.vendor_artwork.id,
+      //     })),
+      //   })
+      //   )
+      // )
   
         
       return new WorkflowResponse({
         vendor_artwork: {
-          ...vendor_artwork,
-          medias: vendor_artwork_media,
+          ...vendor_artwork
+          // medias: vendor_artwork,
         },
       })
     }

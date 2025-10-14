@@ -144,11 +144,11 @@ const ImageGallery = ({ images }: ImageGalleryProps) => {
       
       {/* Desktop Layout - Grid View */}
       <div className="hidden md:block">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-1">
           {images.map((image, index) => (
             <div 
               key={image.id} 
-              className="relative overflow-hidden rounded-lg shadow-sm cursor-pointer"
+              className="relative overflow-hidden rounded-sm shadow-sm cursor-pointer"
               style={{ height: '400px' }}
               onClick={() => openLightbox(index)}
             >

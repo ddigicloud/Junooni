@@ -2312,132 +2312,226 @@ const generateTrackingUrl = (carrier: string, trackingNumber: string): string =>
 };
 
   // ✅ Updated invoice generation for vendor-specific data
-  const generateInvoice = () => {
-    try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      
-      const titleFontSize = 20;
-      const headerFontSize = 12;
-      const normalFontSize = 10;
-      const smallFontSize = 8;
-      
-      // Add company logo/name
-      doc.setFontSize(titleFontSize);
-      doc.setTextColor(BRAND.primary);
-      doc.text("JUNOONI", 20, 20);
-      
-      // Add vendor-specific invoice heading
-      doc.setFontSize(headerFontSize);
-      doc.setTextColor(0, 0, 0);
-      doc.text(`VENDOR INVOICE #${order.display_id}`, pageWidth - 20, 20, { align: "right" });
-      
-      // Add vendor info
-      doc.setFontSize(normalFontSize);
-      doc.text(`Vendor: ${order.vendor_handle}`, pageWidth - 20, 30, { align: "right" });
-      
-      const invoiceDate = formatDate(order.created_at).split(',')[0];
-      doc.setFontSize(normalFontSize);
-      doc.text(`Date: ${invoiceDate}`, pageWidth - 20, 40, { align: "right" });
-      
-      // Add horizontal line
-      doc.setDrawColor(200, 200, 200);
-      doc.line(20, 45, pageWidth - 20, 45);
-      
-      // Add vendor-specific note
-      doc.setFontSize(normalFontSize);
-      doc.setTextColor(BRAND.primary);
-      doc.text("VENDOR PORTION OF ORDER", 20, 55);
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(smallFontSize);
-      doc.text("This invoice shows only your products and your portion of the payment.", 20, 60);
-      
-      // Customer information
-      doc.setFontSize(normalFontSize);
-      doc.text("Customer:", 20, 75);
-      doc.setFontSize(smallFontSize);
-      doc.text(`${order.customer.first_name} ${order.customer.last_name}`.trim(), 20, 80);
-      doc.text(`Email: ${order.customer.email}`, 20, 85);
-      
-      // Create table for vendor items only
-      const tableColumn = ["Your Products", "Description", "Qty", "Unit Price", "Total"];
-      const tableRows = [];
-      
-      // Add rows for vendor items only
-      order.vendor_items.forEach(item => {
-        const itemData = [
-          item.title,
-          item.subtitle || "",
-          item.quantity.toString(),
-          formatPrice(item.unit_price, order.currency_code),
-          formatPrice(item.total, order.currency_code)
-        ];
-        tableRows.push(itemData);
-      });
-      
-      autoTable(doc, {
-        head: [tableColumn],
-        body: tableRows,
-        startY: 95,
-        theme: "plain",
-        styles: { font: "helvetica", fontSize: 8 },
-        headStyles: { 
-          fillColor: [230, 230, 230], 
-          textColor: [50, 50, 50],
-          fontStyle: "bold"
-        },
-        columnStyles: {
-          0: { cellWidth: 50 },
-          1: { cellWidth: 50 },
-          2: { cellWidth: 15, halign: "center" },
-          3: { cellWidth: 30, halign: "right" },
-          4: { cellWidth: 30, halign: "right" }
-        },
-        margin: { left: 20, right: 20 }
-      });
-      
-      // Add vendor-specific summary
-      const finalY = doc.lastAutoTable.finalY + 10;
-      
-      const summaryData = [
-        ["Your Subtotal", formatPrice(order.vendor_subtotal, order.currency_code)],
-        ["Your Shipping", formatPrice(order.vendor_shipping_total, order.currency_code)],
-        ["Your Tax", formatPrice(order.vendor_tax_total, order.currency_code)],
-        ["Your Total", formatPrice(order.vendor_total, order.currency_code)]
+  // ✅ FIXED: Enhanced invoice generation with proper currency formatting
+const generateInvoice = () => {
+  try {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Helper function to format currency for PDF (avoiding encoding issues)
+    const formatPriceForPDF = (amount: number) => {
+      return `Rs. ${amount.toLocaleString('en-IN', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+      })}`;
+    };
+    
+    const titleFontSize = 20;
+    const headerFontSize = 12;
+    const normalFontSize = 10;
+    const smallFontSize = 8;
+    
+    // Add company logo/name
+    doc.setFontSize(titleFontSize);
+    doc.setTextColor(230, 81, 0); // BRAND.primary
+    doc.text("JUNOONI", 20, 20);
+    
+    // Add vendor-specific invoice heading
+    doc.setFontSize(headerFontSize);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`VENDOR INVOICE #${order.display_id}`, pageWidth - 20, 20, { align: "right" });
+    
+    // Add vendor info
+    doc.setFontSize(normalFontSize);
+    doc.text(`Vendor: ${order.vendor_handle}`, pageWidth - 20, 28, { align: "right" });
+    
+    const invoiceDate = formatDate(order.created_at).split(',')[0];
+    doc.text(`Date: ${invoiceDate}`, pageWidth - 20, 36, { align: "right" });
+    
+    // Add horizontal line
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, 42, pageWidth - 20, 42);
+    
+    // Add vendor-specific note
+    doc.setFontSize(normalFontSize);
+    doc.setTextColor(230, 81, 0);
+    doc.text("YOUR ORDER", 20, 52);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(smallFontSize);
+    doc.text("This invoice shows only your products and your portion of the payment.", 20, 58);
+    
+    // Customer information
+    doc.setFontSize(normalFontSize);
+    doc.setFont("helvetica", "bold");
+    doc.text("Customer:", 20, 70);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(smallFontSize);
+    doc.text(`${order.customer.first_name} ${order.customer.last_name}`.trim(), 20, 76);
+    doc.text(`Email: ${order.customer.email}`, 20, 82);
+    
+    // Create table for vendor items only
+    const tableColumn = ["Your Products", "Description", "Qty", "Unit Price", "Total"];
+    const tableRows = [];
+    
+    // Add rows for vendor items only
+    order.vendor_items.forEach(item => {
+      const itemData = [
+        item.title,
+        item.subtitle || "",
+        item.quantity.toString(),
+        formatPriceForPDF(item.unit_price),
+        formatPriceForPDF(item.total)
       ];
+      tableRows.push(itemData);
+    });
+    
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 90,
+      theme: "grid",
+      styles: { 
+        font: "helvetica", 
+        fontSize: 9,
+        cellPadding: 3
+      },
+      headStyles: { 
+        fillColor: [230, 230, 230], 
+        textColor: [50, 50, 50],
+        fontStyle: "bold",
+        halign: "center"
+      },
+      columnStyles: {
+        0: { cellWidth: 55, halign: "left" },
+        1: { cellWidth: 45, halign: "left" },
+        2: { cellWidth: 20, halign: "center" },
+        3: { cellWidth: 30, halign: "right" },
+        4: { cellWidth: 30, halign: "right" }
+      },
+      margin: { left: 20, right: 20 }
+    });
+    
+    // Add vendor-specific summary with better alignment
+    const finalY = doc.lastAutoTable.finalY + 10;
+    
+    // Calculate summary values
+    const { originalItems, returnedItems, replacementItems } = categorizeOrderItems(order.vendor_items);
+    
+    const calculateVendorPayoutTotals = (items: OrderItem[]) => {
+      return items.reduce((total, item) => {
+        const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
+          ? item.unit_price - item.product_cost 
+          : item.unit_price * 0.7;
+        return total + (vendorPayoutPerItem * item.quantity);
+      }, 0);
+    };
+
+    const originalVendorPayout = calculateVendorPayoutTotals(originalItems);
+    const returnedVendorPayout = calculateVendorPayoutTotals(returnedItems);
+    const replacementVendorPayout = calculateVendorPayoutTotals(replacementItems);
+    
+    const netVendorProfit = (() => {
+      const hasReturns = returnedItems.length > 0;
+      const hasReplacements = replacementItems.length > 0;
       
-      autoTable(doc, {
-        body: summaryData,
-        startY: finalY,
-        theme: "plain",
-        styles: { fontSize: 8 },
-        columnStyles: {
-          0: { cellWidth: 80, fontStyle: "bold" },
-          1: { cellWidth: 30, halign: "right" }
+      if (hasReplacements && !hasReturns) {
+        return originalVendorPayout - replacementVendorPayout;
+      } else if (hasReturns && !hasReplacements) {
+        return originalVendorPayout;
+      } else if (hasReturns && hasReplacements) {
+        return originalVendorPayout - replacementVendorPayout;
+      }
+      return originalVendorPayout;
+    })();
+    
+    // Summary table with proper alignment
+    const summaryData = [
+      ["Subtotal:", formatPriceForPDF(order.vendor_subtotal)],
+      ["Shipping:", formatPriceForPDF(order.vendor_shipping_total)],
+      ["Tax:", formatPriceForPDF(order.vendor_tax_total)],
+      ["", ""], // Separator row
+      ["Your Total Earnings:", formatPriceForPDF(order.payment_status === "refunded" ? 0 : Math.abs(netVendorProfit))]
+    ];
+    
+    autoTable(doc, {
+      body: summaryData,
+      startY: finalY,
+      theme: "plain",
+      styles: { 
+        fontSize: 9,
+        cellPadding: 2
+      },
+      columnStyles: {
+        0: { 
+          cellWidth: 80, 
+          fontStyle: "bold",
+          halign: "right"
         },
-        margin: { left: pageWidth - 130, right: 20 }
-      });
-      
-      // Add payment status
-      doc.setFontSize(smallFontSize);
-      doc.text("Payment Status: " + 
-        (order.payment_status === "paid" || order.payment_status === "captured" 
-          ? "Paid" 
-          : "Payment Pending"), 
-        20, doc.lastAutoTable.finalY + 10);
-      
-      // Add footer
-      const footerText = `Vendor Invoice for ${order.vendor_handle} - Junooni Marketplace`;
-      doc.setFontSize(normalFontSize);
-      doc.setTextColor(BRAND.primary);
-      doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
-      
-      // Save the PDF
-      doc.save(`Junooni_Vendor_Invoice_${order.display_id}_${order.vendor_handle}.pdf`);
-    } catch (error) {
-       alert("Failed to generate invoice. Please try again.");
+        1: { 
+          cellWidth: 35, 
+          halign: "right",
+          fontStyle: "normal"
+        }
+      },
+      didParseCell: function(data) {
+        // Make the last row (Your Total Earnings) bold and larger
+        if (data.row.index === 4) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fontSize = 10;
+          data.cell.styles.textColor = [230, 81, 0]; // BRAND.primary
+        }
+        // Hide the separator row
+        if (data.row.index === 3) {
+          data.cell.styles.fillColor = [255, 255, 255];
+          data.cell.styles.lineWidth = 0;
+        }
+      },
+      margin: { left: pageWidth - 135, right: 20 }
+    });
+    
+    // Add payment status
+    const paymentY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(smallFontSize);
+    doc.setFont("helvetica", "bold");
+    doc.text("Payment Status: ", 20, paymentY);
+    doc.setFont("helvetica", "normal");
+    
+    const paymentStatus = order.payment_status === "paid" || order.payment_status === "captured" 
+      ? "Paid" 
+      : order.payment_status === "refunded"
+      ? "Refunded"
+      : "Payment Pending";
+    
+    // Color code the payment status
+    if (paymentStatus === "Paid") {
+      doc.setTextColor(243, 156, 18); // Green
+    } else if (paymentStatus === "Refunded") {
+      doc.setTextColor(231, 76, 60); // Red
+    } else {
+      doc.setTextColor(243, 156, 18); // Orange
     }
-  };  
+    doc.text(paymentStatus, 52, paymentY);
+    
+    // Add note for claims/returns if applicable
+    if (returnedItems.length > 0 || replacementItems.length > 0) {
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(smallFontSize - 1);
+      doc.text("Note: This invoice reflects returns/replacements. Your earnings are calculated accordingly.", 20, paymentY + 6);
+    }
+    
+    // Add footer
+    doc.setFontSize(normalFontSize);
+    doc.setTextColor(230, 81, 0);
+    const footerText = `Vendor Invoice for ${order.vendor_handle} - Junooni Marketplace`;
+    doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 15, { align: "center" });
+    
+    // Save the PDF
+    doc.save(`Junooni_Vendor_Invoice_${order.display_id}_${order.vendor_handle}.pdf`);
+  } catch (error) {
+    console.error("Error generating invoice:", error);
+    alert("Failed to generate invoice. Please try again.");
+  }
+};
   
   if (loading) {
     return (
@@ -2556,11 +2650,11 @@ const generateTrackingUrl = (carrier: string, trackingNumber: string): string =>
                 <h1 className="text-lg font-bold" style={{ color: BRAND.secondary }}>
                   Order #{order.display_id}
                 </h1>
-                <div className="flex items-center mt-1 text-sm text-gray-600">
+                {/* <div className="flex items-center mt-1 text-sm text-gray-600">
                   <span className="px-2 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded">
                     Your Products Only
                   </span>
-                </div>
+                </div> */}
                 <div className="flex items-center mt-2 text-gray-500">
                   <Calendar className="w-4 h-4 mr-2" />
                   <span>{formatDate(order.created_at)}</span>
@@ -2578,10 +2672,11 @@ const generateTrackingUrl = (carrier: string, trackingNumber: string): string =>
                   <StatusBadge status={order.payment_status} />
                 </div>
               </div>
-              <div className="text-lg font-bold" style={{ color: BRAND.primary }}>
+              {/* <div className="text-lg font-bold" style={{ color: BRAND.primary }}>
                 {formatPrice(order.payment_status === 'refunded' ? 0 : order.vendor_total, order.currency_code)}
-              </div>
-              <div className="text-sm text-gray-500">Your portion</div>
+                {formatPrice(order.payment_status === 'refunded' ? 0 : Math.abs(netVendorProfit), order.currency_code)}
+              </div> */}
+              {/* <div className="text-sm text-gray-500">Your portion</div> */}
             </div>
           </div>
           
@@ -2674,7 +2769,7 @@ const generateTrackingUrl = (carrier: string, trackingNumber: string): string =>
                 Back to Orders
               </Link>
             </Button>
-            <Button size="sm" className="text-xs px-3 py-1.5" onClick={generateInvoice}>
+            <Button size="sm" className="text-xs px-3 py-1.5 bg-[#e65100]" onClick={generateInvoice}>
               <Download className="w-4 h-4 mr-2" />
               Download Vendor Invoice
             </Button>
@@ -3769,7 +3864,7 @@ const generateTrackingUrl = (carrier: string, trackingNumber: string): string =>
             <Card className="shadow-md">
               <CardContent className="p-4">
                 <div className="space-y-2">
-                  <Button className="w-full text-sm" size="sm" onClick={generateInvoice}>
+                  <Button className="w-full text-sm bg-[#e65100]" size="sm" onClick={generateInvoice}>
                     <Download className="w-4 h-4 mr-2" />
                     Download Vendor Invoice
                   </Button>

@@ -495,7 +495,7 @@ export const StreamlinedImageManager: React.FC<{
               </div>
               <div className="flex items-center justify-between p-3 border-t">
                 <div className="flex-1 text-sm text-gray-600 truncate">
-                  {item.file ? item.file.name.substring(0, 20) : `Image ${index + 1}`}
+                  {/* {item.file ? item.file.name.substring(0, 20) : `Image ${index + 1}`} */}
                   <div className="flex flex-wrap gap-1 mt-1">
                     {/* Show variant title for variant-specific images */}
                     {item.variantInfo?.variantId && (

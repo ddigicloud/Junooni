@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 // Images: place files into /src/assets/ as described above
-import heroVisual from '/src/assets/hero-visual.png';
+import heroVisual from '/src/assets/hero-visual.gif';
 import step1Img from '/src/assets/step-1.png';
 import step2Img from '/src/assets/step-2.png';
 import step3Img from '/src/assets/step-3.png';
@@ -179,7 +179,7 @@ const JunooniLandingPage = () => {
               </h1>
 
               <p className="max-w-2xl mt-6 text-lg text-gray-600">
-                Upload your artwork, apply it to high-quality product templates, and sell without managing inventory. Seamless onboarding and fast payouts.
+                Upload your artwork, apply it to high-quality product, and sell without managing inventory. Seamless onboarding and fast payouts.
               </p>
 
               <div className="flex flex-col gap-4 mt-8 sm:flex-row">
@@ -192,7 +192,7 @@ const JunooniLandingPage = () => {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mt-8 sm:grid-cols-4">
+              {/* <div className="grid grid-cols-2 gap-3 mt-8 sm:grid-cols-4">
                 {stats.map((stat, i) => {
                   const Icon = stat.icon;
                   return (
@@ -207,11 +207,11 @@ const JunooniLandingPage = () => {
                     </div>
                   );
                 })}
-              </div>
+              </div> */}
             </div>
 
-            <div className="flex items-center justify-center">
-              <div className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl transform hover:scale-[1.01] transition">
+            <div className="flex items-center justify-center -pt-4">
+              <div className="w-full max-w-md rounded-3xl overflow-hidden transform hover:scale-[1.01] transition">
                 <img src={heroVisual} alt="Junooni creator mockup" className="object-cover w-full" />
               </div>
             </div>

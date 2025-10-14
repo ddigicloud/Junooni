@@ -548,6 +548,11 @@ export const BlankProducts: CollectionConfig = {
                   type: 'text',
                   //dbName: 'shipping_location_id',
                 },
+                { 
+                  name: 'shippingProfileID', 
+                  type: 'text',
+                  //dbName: 'shipping_location_id',
+                },
                 {
                   name: 'packageType',
                   type: 'select',

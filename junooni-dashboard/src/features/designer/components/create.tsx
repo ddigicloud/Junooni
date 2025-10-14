@@ -115,6 +115,7 @@ interface PayloadProductData {
     weight?: number;
     shippingDimensions?: string;
     shippingLocationID?: string; // This is the correct path
+    shippingProfileID?: string;
     packageType?: string;
   };
   payloadConfiguration?: {
@@ -134,6 +135,13 @@ interface PayloadProductData {
     instruction: string;
     icon?: string;
   }>;
+   // ✅ ADD THESE MISSING FIELDS:
+  sizeChartHtml?: string;
+  vendorInfo?: {
+    supplier?: string;
+    supplierProductId?: string;
+    countryOrigin?: string;
+  };
 }
 
 interface ProcessedImage {
@@ -249,6 +257,7 @@ interface PayloadCMSProduct {
     weight: number;
     shippingDimensions: string;
     shippingLocationID?: string;
+    shippingProfileID?: string;
     packageType: string;
   };
   
@@ -2020,7 +2029,7 @@ useEffect(() => {
     if (location.state) {
       isProcessing = true; // Add this line
       const locationState = location.state as LocationState;
-      //console.log("Location state", locationState);
+      console.log("Location state", locationState);
       
       // STEP 1: Extract and store pre-generated images FIRST
       const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
@@ -5629,11 +5638,20 @@ const combinedArtworkPayload = {
     // Add size_chart_id from PayloadCMS data
     if (enhancedProductData && enhancedProductData.sizeChartHtml) {
       additionalData.size_chart_id = enhancedProductData.sizeChartHtml;
-      
+    }
+
+    // ✅ CORRECTED: Use supplierProductId as brand_id
+    if (enhancedProductData?.vendorInfo?.supplierProductId) {
+      additionalData.brand_id = enhancedProductData.vendorInfo.supplierProductId;
+      console.log('✅ Added brand_id from supplierProductId:', enhancedProductData.vendorInfo.supplierProductId);
+    } else {
+      // Fallback to empty string if not available
+      additionalData.brand_id = "";
+      console.log('⚠️ No supplierProductId found, brand_id set to empty string');
     }
     
     // Add brand_id (leave empty for now as requested)
-    additionalData.brand_id = "";
+    //additionalData.brand_id = "";
     
     // Log the final additional_data
 
@@ -5767,7 +5785,12 @@ if (!printTechId || !printTechName) {
       metadata: productMetadata,
       // Add HSN Code from PayloadCMS data
       ...(enhancedProductData?.HSNCode ? { hs_code: enhancedProductData.HSNCode } : {}),
-      
+
+      // ✅ ADD: Shipping Profile ID from PayloadCMS
+      ...(enhancedProductData?.shippingInfo?.shippingProfileID ? { 
+        shipping_profile_id: enhancedProductData.shippingInfo.shippingProfileID 
+      } : {}),
+          
       // 🔥 NEW: Add additional_data to product
       additional_data: additionalData
     };
@@ -6763,7 +6786,7 @@ if (!printTechId || !printTechName) {
                              <td className="p-3 border-r border-gray-200">
                                 <div className="relative">
                                   <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
-                                  <Input
+                                  {/* <Input
                                     type="number"
                                     min="0"
                                     step="0.01"
@@ -6772,6 +6795,15 @@ if (!printTechId || !printTechName) {
                                       const value = e.target.value === '' ? '' : parseFloat(e.target.value);
                                       handleVariantFieldChange(index, 'price', value === '' ? 0 : value);
                                     }}
+                                    className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+                                  /> */}
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    {...form.register(`variants.${index}.price`, {
+                                      valueAsNumber: true
+                                    })}
                                     className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
                                   />
                                 </div>

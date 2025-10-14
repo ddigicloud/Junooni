@@ -286,7 +286,7 @@ export const EnhancedOptionComponent = ({
                   <PopoverTrigger asChild>
                     <div className="relative cursor-pointer group">
                       <div 
-                        className="w-10 h-10 transition-all border-2 border-white rounded-full shadow-sm hover:shadow-md"
+                        className="w-10 h-10 transition-all border-2 border-gray-200 rounded-full shadow-sm hover:shadow-md"
                         style={{ backgroundColor: colorHexValues[value] || '#000000' }}
                       />
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -382,7 +382,7 @@ export const EnhancedOptionComponent = ({
       
       {/* Show a help message when image association is enabled */}
       {showImageAssociation && (
-        <div className="p-2 mt-2 text-xs text-blue-700 border border-blue-200 rounded-md bg-blue-50">
+        <div className="p-2 mt-2 text-xs text-orange-700 border border-orange-200 rounded-md bg-orange-50">
           <IconInfoCircle size={14} className="inline-block mr-1" />
           Image association enabled. Now you can upload separate images for each {isColorOpt ? 'color' : 'option value'}.
         </div>
