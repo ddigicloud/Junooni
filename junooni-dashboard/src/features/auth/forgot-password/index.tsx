@@ -73,7 +73,7 @@ export default function ForgotPassword() {
       </div>
       
       {/* Right Panel - Enhanced Forgot Password Form */}
-      <div className="flex flex-col items-center justify-start h-screen px-6 pt-12 lg:pt-8 bg-gradient-to-br from-gray-50 to-white">
+      <div className="flex flex-col items-center justify-start h-screen px-6 pt-12 sm:justify-center lg:pt-8 bg-gradient-to-br from-gray-50 to-white">
         <div className="w-full max-w-md mx-auto">
           {/* Mobile Logo - Enhanced */}
           <div className="flex items-center justify-center gap-3 mb-12 lg:hidden">
