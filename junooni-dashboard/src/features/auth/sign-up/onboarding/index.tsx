@@ -19,6 +19,14 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   Button 
 } from "@/components/ui/button";
@@ -226,7 +234,7 @@ const checkTokenForActorId = () => {
 };
 
 // Mock component for the forms - in reality these would be your actual form components
-const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toast, setVendorData, stepCompletion ,setCurrentStep, handleFileUpload, isUploading,  uploadType,  termsAgreed, setTermsAgreed  }) => {
+const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toast, setVendorData, stepCompletion ,setCurrentStep, handleFileUpload, isUploading,  uploadType,  termsAgreed, setTermsAgreed,  openDialog, setOpenDialog  }) => {
   
   const renderFormFields = () => {
     switch (stepId) {
@@ -1264,239 +1272,586 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         );
         
       case "final-review":
-        //console.log('Rendering final-review with vendorData:', vendorData);
+  //console.log('Rendering final-review with vendorData:', vendorData);
+
+  if (vendorData === null) {
+    return <div>Loading...</div>;
+  }
   
-        if (vendorData === null) {
-          return <div>Loading...</div>;
-        }
-        
-        if (!vendorData.vendor) {
-          vendorData = {
-            vendor: {
-              handle: "",
-              name: "",
-              logo: null,
-              coverphoto: null,
-              phonenumber: null,
-              GSTIN: null,
-              gst_verification_status: "pending",
-              companyname: null,
-              pan_number: null,
-              city: null,
-              pincode: null,
-              state: null,
-              address: null,
-              bank_account_holder_name: null,
-              bank_account_number: null,
-              bank_account_ifsc_code: null,
-              bank_name: null,
-              bank_account_type: "Saving",
-              cancelled_checkque: null,
-              creator_bio: null,
-              creator_title: null,
-              creator_category: "other",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          };
-        }
-        
-        if (!vendorData.vendor.admins || !Array.isArray(vendorData.vendor.admins) || vendorData.vendor.admins.length === 0) {
-          //console.log('admins data missing, initializing...');
-          const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+  if (!vendorData.vendor) {
+    vendorData = {
+      vendor: {
+        handle: "",
+        name: "",
+        logo: null,
+        coverphoto: null,
+        phonenumber: null,
+        GSTIN: null,
+        gst_verification_status: "pending",
+        companyname: null,
+        pan_number: null,
+        city: null,
+        pincode: null,
+        state: null,
+        address: null,
+        bank_account_holder_name: null,
+        bank_account_number: null,
+        bank_account_ifsc_code: null,
+        bank_name: null,
+        bank_account_type: "Saving",
+        cancelled_checkque: null,
+        creator_bio: null,
+        creator_title: null,
+        creator_category: "other",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    };
+  }
+  
+  if (!vendorData.vendor.admins || !Array.isArray(vendorData.vendor.admins) || vendorData.vendor.admins.length === 0) {
+    //console.log('admins data missing, initializing...');
+    const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+    
+    vendorData.vendor.admins = [{
+      email: userEmail,
+      first_name: '',
+      last_name: ''
+    }];
+  }
+
+  return (
+    <div className="py-4 space-y-6">
+      <div className="p-4 mb-6 border border-green-100 rounded-lg bg-green-50">
+        <div className="flex">
+          <IconCircleCheck className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-green-800">
+              {!vendorData.vendor.id 
+                ? "Let's review your information before submitting"
+                : "You're almost there!"}
+            </p>
+            <p className="mt-1 text-xs text-green-700">Review your information before submitting your profile.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="space-y-6">
+        {STEPS.filter(step => step.id !== "welcome" && step.id !== "final-review").map((step) => {
+          const isCompleted = stepCompletion[step.id];
+          const StepIcon = step.icon;
           
-          vendorData.vendor.admins = [{
-            email: userEmail,
-            first_name: '',
-            last_name: ''
-          }];
-        }
-        return (
-          <div className="py-4 space-y-6">
-            <div className="p-4 mb-6 border border-green-100 rounded-lg bg-green-50">
-              <div className="flex">
-                <IconCircleCheck className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-green-800">
-                    {!vendorData.vendor.id 
-                      ? "Let's review your information before submitting"
-                      : "You're almost there!"}
-                  </p>
-                  <p className="mt-1 text-xs text-green-700">Review your information before submitting your profile.</p>
+          return (
+            <div key={step.id} className="overflow-hidden border rounded-lg">
+              <div 
+                className="flex items-center justify-between px-4 py-3"
+                style={{ 
+                  backgroundColor: isCompleted ? `${brandColors.success}11` : `${brandColors.error}11`,
+                  borderBottom: `1px solid ${isCompleted ? `${brandColors.success}22` : `${brandColors.error}22`}`
+                }}
+              >
+                <div className="flex items-center">
+                  <div 
+                    className="flex items-center justify-center w-8 h-8 mr-3 rounded-full"
+                    style={{ 
+                      backgroundColor: isCompleted ? `${brandColors.success}22` : `${brandColors.error}22`,
+                      color: isCompleted ? brandColors.success : brandColors.error
+                    }}
+                  >
+                    {isCompleted ? (
+                      <IconCircleCheck className="w-5 h-5" />
+                    ) : (
+                      <StepIcon className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-medium">{step.title}</h3>
+                  </div>
                 </div>
+                <Button 
+                  variant="ghost" 
+                  className="h-8 px-3 text-sm"
+                  style={{ color: brandColors.primary }}
+                  onClick={() => setCurrentStep(step.id)}
+                >
+                  {isCompleted ? 'Edit' : 'Complete'}
+                </Button>
               </div>
-            </div>
-            
-            <div className="space-y-6">
-              {STEPS.filter(step => step.id !== "welcome" && step.id !== "final-review").map((step) => {
-                const isCompleted = stepCompletion[step.id];
-                const StepIcon = step.icon;
-                
-                const isNewVendor = !vendorData.vendor.id;
-          
-                return (
-                  <div key={step.id} className="overflow-hidden border rounded-lg">
-                    <div 
-                      className="flex items-center justify-between px-4 py-3"
-                      style={{ 
-                        backgroundColor: isCompleted ? `${brandColors.success}11` : `${brandColors.error}11`,
-                        borderBottom: `1px solid ${isCompleted ? `${brandColors.success}22` : `${brandColors.error}22`}`
-                      }}
-                    >
-                      <div className="flex items-center">
-                        <div 
-                          className="flex items-center justify-center w-8 h-8 mr-3 rounded-full"
-                          style={{ 
-                            backgroundColor: isCompleted ? `${brandColors.success}22` : `${brandColors.error}22`,
-                            color: isCompleted ? brandColors.success : brandColors.error
-                          }}
-                        >
-                          {isCompleted ? (
-                            <IconCircleCheck className="w-5 h-5" />
-                          ) : (
-                            <StepIcon className="w-5 h-5" />
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{step.title}</h3>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        className="h-8 px-3 text-sm"
-                        style={{ color: brandColors.primary }}
-                        onClick={() => setCurrentStep(step.id)}
-                      >
-                        {isCompleted ? 'Edit' : 'Complete'}
-                      </Button>
+              
+              <div className="p-4">
+                {step.id === "basic-info" && (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Brand Name</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.name || 'Not provided'}</p>
                     </div>
-                    
-                    <div className="p-4">
-                      {step.id === "basic-info" && (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Brand Name</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.name || 'Not provided'}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Phone Number</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.phonenumber || 'Not provided'}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Logo</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.logo ? 'Uploaded' : 'Not uploaded'}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Social Media</p>
-                            <p className="text-sm text-gray-700">
-                              {vendorData.vendor.instagram || vendorData.vendor.youtube ? 'Connected' : 'Not connected'}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {step.id === "business-details" && (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Company Name</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.companyname || 'Not provided'}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">GSTIN</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.GSTIN || 'Not provided'}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">PAN Number</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.pan_number || 'Not provided'}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Address</p>
-                            <p className="text-sm text-gray-700">
-                              {vendorData.vendor.address && vendorData.vendor.city ? 
-                                `${vendorData.vendor.address}, ${vendorData.vendor.city}, ${vendorData.vendor.state || ''} ${vendorData.vendor.pincode || ''}` : 
-                                'Not provided'}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {step.id === "banking-info" && (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Account Holder</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.bank_account_holder_name || 'Not provided'}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Account Number</p>
-                            <p className="text-sm text-gray-700">
-                              {vendorData.vendor.bank_account_number ? 
-                                `XXXX${vendorData.vendor.bank_account_number.slice(-4)}` : 
-                                'Not provided'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Bank Name</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.bank_name || 'Not provided'}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">IFSC Code</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.bank_account_ifsc_code || 'Not provided'}</p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {step.id === "creator-profile" && (
-                        <div className="space-y-3">
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Creator Title</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.creator_title || 'Not provided'}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Category</p>
-                            <p className="text-sm text-gray-700">{vendorData.vendor.creator_category || 'Not provided'}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1 text-sm font-medium">Bio</p>
-                            <p className="text-sm text-gray-700 line-clamp-3">{vendorData.vendor.creator_bio || 'Not provided'}</p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {!isCompleted && (
-                        <div className="pt-3 mt-3 border-t border-gray-100">
-                          <p className="flex items-center text-xs text-red-500">
-                            <IconAlertCircle className="w-3.5 h-3.5 mr-1" />
-                            Required information missing
-                          </p>
-                        </div>
-                      )}
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Phone Number</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.phonenumber || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Logo</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.logo ? 'Uploaded' : 'Not uploaded'}</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Social Media</p>
+                      <p className="text-sm text-gray-700">
+                        {vendorData.vendor.instagram || vendorData.vendor.youtube ? 'Connected' : 'Not connected'}
+                      </p>
                     </div>
                   </div>
-                );
-              })}
+                )}
+                
+                {step.id === "business-details" && (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Company Name</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.companyname || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-medium">GSTIN</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.GSTIN || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-medium">PAN Number</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.pan_number || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Address</p>
+                      <p className="text-sm text-gray-700">
+                        {vendorData.vendor.address && vendorData.vendor.city ? 
+                          `${vendorData.vendor.address}, ${vendorData.vendor.city}, ${vendorData.vendor.state || ''} ${vendorData.vendor.pincode || ''}` : 
+                          'Not provided'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {step.id === "banking-info" && (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Account Holder</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.bank_account_holder_name || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Account Number</p>
+                      <p className="text-sm text-gray-700">
+                        {vendorData.vendor.bank_account_number ? 
+                          `XXXX${vendorData.vendor.bank_account_number.slice(-4)}` : 
+                          'Not provided'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Bank Name</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.bank_name || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-medium">IFSC Code</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.bank_account_ifsc_code || 'Not provided'}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {step.id === "creator-profile" && (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Creator Title</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.creator_title || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Category</p>
+                      <p className="text-sm text-gray-700">{vendorData.vendor.creator_category || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-sm font-medium">Bio</p>
+                      <p className="text-sm text-gray-700 line-clamp-3">{vendorData.vendor.creator_bio || 'Not provided'}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {!isCompleted && (
+                  <div className="pt-3 mt-3 border-t border-gray-100">
+                    <p className="flex items-center text-xs text-red-500">
+                      <IconAlertCircle className="w-3.5 h-3.5 mr-1" />
+                      Required information missing
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-            
-             <div className="p-4 mt-8 bg-white border border-gray-200 rounded-lg">
-              <label className="flex items-start cursor-pointer">
-              <input
-                type="checkbox"
-                id="terms-checkbox"
-                className="w-5 h-5 mt-1 mr-3"
-                style={{ accentColor: brandColors.primary, cursor: 'pointer' }}
-                checked={termsAgreed}
-                onChange={() => {
-                  //console.log("Checkbox clicked - current value:", !termsAgreed);
-                  setTermsAgreed(!termsAgreed);
+          );
+        })}
+      </div>
+      
+      <div className="p-4 mt-8 bg-white border border-gray-200 rounded-lg">
+        <label className="flex items-start cursor-pointer">
+          <input
+            type="checkbox"
+            id="terms-checkbox"
+            className="w-5 h-5 mt-1 mr-3"
+            style={{ accentColor: brandColors.primary, cursor: 'pointer' }}
+            checked={termsAgreed}
+            onChange={() => {
+              setTermsAgreed(!termsAgreed);
+            }}
+          />
+          <div>
+            <p className="text-sm">I confirm that all the information provided is accurate and complete.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              By submitting, you agree to Junooni's{' '}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setOpenDialog('terms');
                 }}
-              />
-                <div>
-                  <p className="text-sm">I confirm that all the information provided is accurate and complete.</p>
-                  <p className="mt-1 text-xs text-gray-500">By submitting, you agree to Junooni's <a href="#" style={{ color: brandColors.primary }}>Terms of Service</a> and <a href="#" style={{ color: brandColors.primary }}>Seller Policy</a>.</p>
-                </div>
-              </label>
-            </div>
+                className="font-medium hover:underline"
+                style={{ color: brandColors.primary }}
+              >
+                Terms of Service
+              </button>
+              {' '}and{' '}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setOpenDialog('seller');
+                }}
+                className="font-medium hover:underline"
+                style={{ color: brandColors.primary }}
+              >
+                Seller Policy
+              </button>.
+            </p>
           </div>
-        );
+        </label>
+      </div>
+
+      {/* Terms of Service Dialog */}
+      <Dialog open={openDialog === 'terms'} onOpenChange={(open) => !open && setOpenDialog(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold" style={{ color: brandColors.primary }}>
+              Terms of Service
+            </DialogTitle>
+            <DialogDescription>
+              Last updated: {new Date().toLocaleDateString()}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 text-sm">
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                1. Acceptance of Terms
+              </h3>
+              <p className="text-gray-700">
+                By accessing and using Junooni's creator platform, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these Terms of Service, please do not use our platform.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                2. Account Registration
+              </h3>
+              <p className="text-gray-700 mb-2">
+                To become a creator on Junooni, you must:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>Provide accurate and complete registration information</li>
+                <li>Maintain and update your account information</li>
+                <li>Be at least 18 years of age or have parental consent</li>
+                <li>Have the legal authority to enter into this agreement</li>
+                <li>Not have been previously suspended or removed from the platform</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                3. Creator Responsibilities
+              </h3>
+              <p className="text-gray-700 mb-2">
+                As a creator, you are responsible for:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>The accuracy and legality of your product listings</li>
+                <li>Fulfilling orders in a timely manner</li>
+                <li>Providing excellent customer service</li>
+                <li>Complying with all applicable laws and regulations</li>
+                <li>Maintaining the confidentiality of your account credentials</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                4. Intellectual Property
+              </h3>
+              <p className="text-gray-700">
+                You retain all rights to your intellectual property. By listing products on Junooni, you grant us a limited license to display, promote, and sell your products through our platform. You warrant that you have all necessary rights to the content you upload.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                5. Payments and Fees
+              </h3>
+              <p className="text-gray-700 mb-2">
+                Junooni operates on a commission-based model:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>Platform fees are deducted from each sale</li>
+                <li>Payments are processed according to our payment schedule</li>
+                <li>You are responsible for applicable taxes on your earnings</li>
+                <li>Fee structures may be updated with advance notice</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                6. Prohibited Activities
+              </h3>
+              <p className="text-gray-700 mb-2">
+                You may not:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>Sell counterfeit, illegal, or prohibited items</li>
+                <li>Engage in fraudulent activities or misrepresentation</li>
+                <li>Violate intellectual property rights</li>
+                <li>Manipulate reviews or ratings</li>
+                <li>Spam or harass other users</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                7. Termination
+              </h3>
+              <p className="text-gray-700">
+                We reserve the right to suspend or terminate your account for violations of these terms, fraudulent activity, or at our discretion. You may close your account at any time, subject to fulfilling pending orders and obligations.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                8. Limitation of Liability
+              </h3>
+              <p className="text-gray-700">
+                Junooni provides the platform "as is" and makes no warranties about the service. We are not liable for indirect, incidental, or consequential damages arising from your use of the platform.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                9. Changes to Terms
+              </h3>
+              <p className="text-gray-700">
+                We may modify these terms at any time. Continued use of the platform after changes constitutes acceptance of the modified terms. We will notify you of significant changes via email or platform notification.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                10. Contact Information
+              </h3>
+              <p className="text-gray-700">
+                For questions about these Terms of Service, please contact us at support@junooni.com or through our support center.
+              </p>
+            </section>
+          </div>
+
+          <div className="flex justify-end pt-4 mt-4 border-t">
+            <Button
+              onClick={() => setOpenDialog(null)}
+              style={{
+                background: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.secondary} 100%)`,
+                color: 'white'
+              }}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Seller Policy Dialog */}
+      <Dialog open={openDialog === 'seller'} onOpenChange={(open) => !open && setOpenDialog(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold" style={{ color: brandColors.primary }}>
+              Seller Policy
+            </DialogTitle>
+            <DialogDescription>
+              Last updated: {new Date().toLocaleDateString()}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 text-sm">
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                1. Product Listings
+              </h3>
+              <p className="text-gray-700 mb-2">
+                All product listings must:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>Contain accurate and truthful descriptions</li>
+                <li>Include clear, high-quality images of actual products</li>
+                <li>Display correct pricing and availability</li>
+                <li>Specify shipping costs and delivery timeframes</li>
+                <li>Comply with applicable consumer protection laws</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                2. Prohibited Items
+              </h3>
+              <p className="text-gray-700 mb-2">
+                The following items are strictly prohibited:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>Counterfeit or replica products</li>
+                <li>Stolen goods or items obtained illegally</li>
+                <li>Weapons, ammunition, or explosives</li>
+                <li>Illegal drugs or controlled substances</li>
+                <li>Items that promote hate or violence</li>
+                <li>Adult content or services</li>
+                <li>Items infringing on intellectual property rights</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                3. Order Fulfillment
+              </h3>
+              <p className="text-gray-700 mb-2">
+                Sellers must:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>Ship orders within the stated processing time</li>
+                <li>Provide tracking information when available</li>
+                <li>Package items securely to prevent damage</li>
+                <li>Honor stated return and refund policies</li>
+                <li>Respond to customer inquiries within 24 hours</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                4. Pricing and Fees
+              </h3>
+              <p className="text-gray-700 mb-2">
+                Regarding pricing:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>Sellers set their own product prices</li>
+                <li>Platform commission is charged per transaction</li>
+                <li>Payment processing fees may apply</li>
+                <li>Sellers are responsible for applicable taxes</li>
+                <li>Price manipulation or false pricing is prohibited</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                5. Returns and Refunds
+              </h3>
+              <p className="text-gray-700">
+                Sellers must establish clear return policies that comply with consumer protection laws. At minimum, sellers should accept returns for defective or misrepresented items. The return policy must be clearly stated in product listings.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                6. Customer Service
+              </h3>
+              <p className="text-gray-700 mb-2">
+                Excellence in customer service includes:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>Prompt responses to customer messages</li>
+                <li>Professional and courteous communication</li>
+                <li>Fair resolution of disputes</li>
+                <li>Honoring commitments made to customers</li>
+                <li>Maintaining a high seller rating</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                7. Reviews and Ratings
+              </h3>
+              <p className="text-gray-700">
+                Reviews are crucial for marketplace trust. Sellers must not manipulate reviews through incentives, threats, or fake reviews. Negative reviews should be addressed professionally. Junooni reserves the right to remove reviews that violate guidelines.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                8. Account Requirements
+              </h3>
+              <p className="text-gray-700 mb-2">
+                To maintain seller status:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>Keep contact information current</li>
+                <li>Maintain valid payment details</li>
+                <li>Complete tax documentation as required</li>
+                <li>Respond to platform communications</li>
+                <li>Meet performance standards</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                9. Compliance and Legal
+              </h3>
+              <p className="text-gray-700">
+                Sellers must comply with all applicable laws including but not limited to: consumer protection laws, tax regulations, import/export restrictions, data protection requirements, and intellectual property laws. Sellers are solely responsible for legal compliance.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                10. Policy Violations
+              </h3>
+              <p className="text-gray-700 mb-2">
+                Violations of this policy may result in:
+              </p>
+              <ul className="pl-5 space-y-1 text-gray-700 list-disc">
+                <li>Warning notices</li>
+                <li>Listing removal</li>
+                <li>Account suspension</li>
+                <li>Permanent account termination</li>
+                <li>Withholding of funds pending investigation</li>
+                <li>Legal action for serious violations</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
+                11. Support and Appeals
+              </h3>
+              <p className="text-gray-700">
+                If you believe a policy decision was made in error, you may appeal through our support center. We will review appeals fairly and respond within 5-7 business days. Contact seller-support@junooni.com for assistance.
+              </p>
+            </section>
+          </div>
+
+          <div className="flex justify-end pt-4 mt-4 border-t">
+            <Button
+              onClick={() => setOpenDialog(null)}
+              style={{
+                background: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.secondary} 100%)`,
+                color: 'white'
+              }}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
         
       default:
         return <div>Unknown step</div>;
@@ -1536,6 +1891,7 @@ export default function ImprovedCreatorOnboarding() {
   const [termsAgreed, setTermsAgreed] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadType, setUploadType] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<'terms' | 'seller' | null>(null);
 
   const [pendingFiles, setPendingFiles] = useState({
     logo: null,
@@ -2714,12 +3070,91 @@ if (isLoading) {
                   termsAgreed={termsAgreed} 
                   setTermsAgreed={setTermsAgreed}
                   setVendorData={setVendorData}
+                  openDialog={openDialog}
+                  setOpenDialog={setOpenDialog}
                 />
               </CardContent>
               
               {/* UPDATED FOOTER WITH BOTH BUTTONS */}
               {currentStep !== "welcome" && (
-                <CardFooter className="flex justify-between px-6 pt-4 pb-6 border-t" style={{ borderColor: `${BRAND.primary}11` }}>
+                <CardFooter className="px-4 sm:px-6 pt-4 pb-6 border-t" style={{ borderColor: `${BRAND.primary}11` }}>
+                {/* Mobile Layout (< sm) - Stacked in 2 rows */}
+                <div className="flex flex-col w-full gap-3 sm:hidden">
+                  {/* Row 1: Back and Continue */}
+                  <div className="flex justify-between gap-2">
+                    <Button
+                      variant="outline"
+                      className="transition-all duration-200 text-sm h-9 flex-1"
+                      onClick={() => {
+                        const currentIndex = STEPS.findIndex(step => step.id === currentStep);
+                        if (currentIndex > 0) {
+                          setCurrentStep(STEPS[currentIndex - 1].id);
+                        }
+                      }}
+                    >
+                      Back
+                    </Button>
+                    
+                    <Button 
+                      onClick={handleContinue}
+                      className="transition-all duration-200 hover:shadow-md text-sm h-9 flex-1"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
+                        color: 'white' 
+                      }}
+                    >
+                      {currentStep === "final-review" ? (
+                        <>
+                          Complete
+                          <IconArrowRight className="w-3.5 h-3.5 ml-1" />
+                        </>
+                      ) : (
+                        <>
+                          Continue
+                          <IconArrowRight className="w-3.5 h-3.5 ml-1" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {/* Row 2: Save & Exit and Skip */}
+                  <div className="flex justify-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleSaveAndExit}
+                      className="transition-all duration-200 hover:shadow-md text-sm h-9 px-3"
+                      style={{ 
+                        borderColor: BRAND.primary,
+                        color: BRAND.primary 
+                      }}
+                    >
+                      <IconLogout className="w-3.5 h-3.5 mr-1" />
+                      Save & Exit
+                    </Button>
+                    
+                    {STEPS.find(step => step.id === currentStep)?.isSkippable && (
+                      <Button
+                        variant="ghost"
+                        className="text-sm h-9"
+                        style={{ 
+                        borderColor: BRAND.primary,
+                        color: BRAND.primary 
+                      }}
+                        onClick={() => {
+                          const currentIndex = STEPS.findIndex(step => step.id === currentStep);
+                          if (currentIndex < STEPS.length - 1) {
+                            setCurrentStep(STEPS[currentIndex + 1].id);
+                          }
+                        }}
+                      >
+                        Skip
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Desktop Layout (>= sm) - Original horizontal layout */}
+                <div className="hidden sm:flex justify-between w-full">
                   <div className="flex-1 max-w-[200px]">
                     <Button
                       variant="outline"
@@ -2787,7 +3222,8 @@ if (isLoading) {
                       )}
                     </Button>
                   </div>
-                </CardFooter>
+                </div>
+              </CardFooter>
               )}
               
               {/* WELCOME STEP FOOTER */}

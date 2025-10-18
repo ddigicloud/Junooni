@@ -971,6 +971,62 @@ const ProductPage = () => {
                         </Collapsible>
                       )}
 
+                      <CardFooter className="flex flex-col gap-3 px-6 pb-2 pt-2 bg-gradient-to-r from-white to-white">
+                        {/* Action Buttons */}
+                        <Button 
+                          className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#e65100] to-[#ff7043] hover:from-[#d84315] hover:to-[#e65100] transform transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+                          size="lg"
+                          disabled={!selectedColor || !selectedSize || !selectedTechnology}
+                          onClick={() => {
+                            router.navigate({ 
+                              to: `/designer/${productId}`, 
+                              search: { 
+                                color: selectedColor?.id,
+                                technology: selectedTechnology?.id,
+                              }
+                            });
+                          }}
+                        >
+                          {!selectedColor || !selectedSize || !selectedTechnology 
+                            ? 'Select Options Above' 
+                            : '🎨 Start Creating Magic'
+                          }
+                        </Button>
+                        
+                        <Button 
+                          onClick={() => router.navigate({ to: '/productCatalog' })}
+                          variant="outline"
+                          className="w-full h-11 border-[#e65100] text-[#e65100] hover:bg-[#e65100] hover:text-white transition-all duration-200"
+                        >
+                          ← Explore More Products
+                        </Button>
+                        
+                        {/* Trust indicators */}
+                        <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <Shield className="w-3 h-3 text-green-500" />
+                            <span>Quality Guaranteed</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                            <span>Premium Service</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Truck className="w-3 h-3 text-blue-500" />
+                            <span>Fast Delivery</span>
+                          </div>
+                        </div>
+                      </CardFooter>
+
+                      <Separator className="my-0" />
+
+                      <Alert className="p-4 border-[#e65100]/30 bg-gradient-to-r from-[#e65100]/10 to-[#ff7043]/10">
+                        <Settings className="w-5 h-5 text-[#e65100]" />
+                        <AlertDescription className="ml-2 text-sm font-medium text-gray-700">
+                          🎨 <span className="font-semibold text-[#e65100]">Ready to customize?</span> Select your preferred color, size, and printing technology to start creating with our professional design tools.
+                        </AlertDescription>
+                      </Alert>
+
                       {/* Product Details */}
                       <Collapsible 
                         open={openSections.details} 
@@ -1101,17 +1157,17 @@ const ProductPage = () => {
                     <Separator className="my-6" />
                     
                     {/* Enhanced Product Customization Alert */}
-                    <Alert className="p-4 border-[#e65100]/30 bg-gradient-to-r from-[#e65100]/10 to-[#ff7043]/10">
+                    {/* <Alert className="p-4 border-[#e65100]/30 bg-gradient-to-r from-[#e65100]/10 to-[#ff7043]/10">
                       <Settings className="w-5 h-5 text-[#e65100]" />
                       <AlertDescription className="ml-2 text-sm font-medium text-gray-700">
                         🎨 <span className="font-semibold text-[#e65100]">Ready to customize?</span> Select your preferred color, size, and printing technology to start creating with our professional design tools.
                       </AlertDescription>
-                    </Alert>
+                    </Alert> */}
                   </div>
                 </CardContent>
                 
-                <CardFooter className="flex flex-col gap-3 px-6 pb-6 bg-gradient-to-r from-gray-50 to-white">
-                  {/* Action Buttons */}
+                {/* <CardFooter className="flex flex-col gap-3 px-6 pb-6 bg-gradient-to-r from-gray-50 to-white">
+                  
                   <Button 
                     className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#e65100] to-[#ff7043] hover:from-[#d84315] hover:to-[#e65100] transform transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
                     size="lg"
@@ -1140,7 +1196,7 @@ const ProductPage = () => {
                     ← Explore More Products
                   </Button>
                   
-                  {/* Trust indicators */}
+                  
                   <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-600">
                     <div className="flex items-center gap-1">
                       <Shield className="w-3 h-3 text-green-500" />
@@ -1155,7 +1211,7 @@ const ProductPage = () => {
                       <span>Fast Delivery</span>
                     </div>
                   </div>
-                </CardFooter>
+                </CardFooter> */}
               </Card>
             </div>
           </div>

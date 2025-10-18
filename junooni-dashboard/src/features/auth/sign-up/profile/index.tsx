@@ -1946,7 +1946,7 @@ const openChatwoot = () => {
                           <span>Edit</span>
                         </Button>
                       ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                           <Button
                             variant="outline"
                             className="flex items-center gap-1"
@@ -2232,7 +2232,7 @@ const openChatwoot = () => {
                           <span>Edit</span>
                         </Button>
                       ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                           <Button
                             variant="outline"
                             className="flex items-center gap-1"

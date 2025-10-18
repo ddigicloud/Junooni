@@ -296,6 +296,19 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
   };
 };
 
+// ✅ NEW: Calculate payment processing fee (2% + 18% GST)
+const calculatePaymentProcessingFee = (totalAmount: number) => {
+  const gatewayFee = totalAmount * 0.02; // 2% of total
+  const gstOnFee = gatewayFee * 0.18; // 18% GST on gateway fee
+  const totalProcessingFee = gatewayFee + gstOnFee;
+  
+  return {
+    gatewayFee,
+    gstOnFee,
+    totalProcessingFee
+  };
+};
+
 // ✅ NEW: Fetch claims and returns separately to avoid field expansion issues
 const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
   console.log(`🔍 Fetching claims and returns for order: ${orderId}`);
@@ -498,6 +511,10 @@ const fetchProductMetadata = async (productId: string, scope: any) => {
         const product = products[0];
         console.log(`✅ Found product via query: ${product.title}`);
         console.log(`📋 Product metadata:`, product.metadata);
+         // ✅ If metadata has cost_price, log it specifically
+        if (product.metadata?.cost_price !== undefined) {
+          console.log(`💰 Found cost_price in product metadata: ${product.metadata.cost_price}`);
+        }
         return product.metadata;
       }
     } catch (queryError) {
@@ -886,10 +903,10 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
       console.log(`✅ Using original fulfillment_type:`, originalProductMetadata.fulfillment_type);
     }
     
-    if (originalProductMetadata.product_cost !== undefined) {
-      mergedMetadata.product_cost = originalProductMetadata.product_cost;
+    if (originalProductMetadata.cost_price !== undefined) {
+      mergedMetadata.cost_price = originalProductMetadata.cost_price;
       metadataSource += " + original_product(product_cost)";
-      console.log(`✅ Using original product_cost:`, originalProductMetadata.product_cost);
+      console.log(`✅ Using original product_cost:`, originalProductMetadata.cost_price);
     }
   }
   
@@ -928,11 +945,11 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
     }
     
     // Handle product_cost (should now come from original product)
-    if (mergedMetadata.product_cost !== undefined && mergedMetadata.product_cost !== null) {
-      if (typeof mergedMetadata.product_cost === 'string') {
-        productCost = parseFloat(mergedMetadata.product_cost) || 0;
-      } else if (typeof mergedMetadata.product_cost === 'number') {
-        productCost = mergedMetadata.product_cost;
+    if (mergedMetadata.cost_price !== undefined && mergedMetadata.cost_price !== null) {
+      if (typeof mergedMetadata.cost_price === 'string') {
+        productCost = parseFloat(mergedMetadata.cost_price) || 0;
+      } else if (typeof mergedMetadata.cost_price === 'number') {
+        productCost = mergedMetadata.cost_price;
       }
       console.log(`✅ Extracted product cost: ${productCost}`);
     }
@@ -958,7 +975,7 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
         
       case "Creator-fulfilment":
         // Vendor gets: 70% of Total (quantity already included in itemTotal)
-        vendorRevenue = itemTotal * 0.70;
+        vendorRevenue = itemTotal * 0.90;
         revenueCalculationType = "percentage_split";
         console.log(`💰 Creator fulfillment calculation:`);
         console.log(`   📦 Quantity: ${item.quantity}`);
@@ -967,8 +984,8 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
         break;
         
       default:
-        // Default: 70% of total (safe fallback)
-        vendorRevenue = itemTotal * 0.70;
+        // Default: 90% of total (safe fallback)
+        vendorRevenue = itemTotal * 0.90;
         revenueCalculationType = "default_percentage";
         console.log(`💰 Default calculation (${fulfillmentType}):`);
         console.log(`   📦 Quantity: ${item.quantity}`);
@@ -978,7 +995,7 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
     }
   } else {
     // No metadata found anywhere, use default 70%
-    vendorRevenue = itemTotal * 0.70;
+    vendorRevenue = itemTotal * 0.90;
     revenueCalculationType = "no_metadata";
     console.log(`💰 No metadata found anywhere, using default: ${itemTotal} × 70% = ${vendorRevenue}`);
   }
@@ -1487,267 +1504,6 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
   };
 };
 
-// ✅ NEW: Calculate vendor-specific payment status
-// const calculateVendorPaymentStatus = (order: any, vendorItems: any[], vendorTotal: number, vendorId: string) => {
-//   console.log(`💳 =================================`);
-//   console.log(`💳 ISOLATED VENDOR PAYMENT CALCULATION`);
-//   console.log(`💳 =================================`);
-//   console.log(`💳 Vendor ID: ${vendorId}`);
-//   console.log(`💳 Vendor Total: ${vendorTotal}`);
-//   console.log(`💳 Global Order Payment Status: ${order.payment_status} (IGNORED)`);
-//   console.log(`💳 Starting fresh calculation...`);
-  
-//   if (vendorTotal === 0) {
-//     return { 
-//       status: 'not_applicable', 
-//       captured_amount: 0, 
-//       refunded_amount: 0, 
-//       authorized_amount: 0, 
-//       net_amount: 0, 
-//       amount_owed: 0,
-//       isolation_applied: true
-//     };
-//   }
-  
-  // const paymentCollections = order.payment_collections || [];
-  // const isMultiVendor = order.metadata?.vendor_orders?.length > 1;
-  
-  // console.log(`💳 Multi-vendor order: ${isMultiVendor}`);
-  // console.log(`💳 Payment collections: ${paymentCollections.length}`);
-  
-  // let totalCapturedForVendor = 0;
-  // let totalAuthorizedForVendor = 0;
-  // let totalRefundedForVendor = 0; // ✅ Start with 0 and build up only vendor-specific refunds
-  
-  // ✅ STEP 2: Build vendor item tracking for refund detection
-  // const vendorItemIds = new Set(vendorItems.map(item => item.id));
-  // const vendorItemTitles = new Set(vendorItems.map(item => item.title?.toLowerCase()));
-  // const vendorItemPrices = new Set(vendorItems.map(item => item.unit_price));
-  
-  // console.log(`💳 Vendor items for refund matching:`, {
-  //   item_ids: Array.from(vendorItemIds),
-  //   item_titles: Array.from(vendorItemTitles),
-  //   item_prices: Array.from(vendorItemPrices)
-  // });
-  
-  // paymentCollections.forEach((collection, collectionIndex) => {
-  //   console.log(`\n💳 Processing Collection ${collectionIndex + 1}:`);
-    
-  //   const capturedAmount = parseFloat(collection.captured_amount) || 0;
-  //   const authorizedAmount = parseFloat(collection.authorized_amount) || 0;
-  //   const globalRefundedAmount = parseFloat(collection.refunded_amount) || 0;
-    
-  //   console.log(`   Raw amounts: captured=${capturedAmount}, authorized=${authorizedAmount}, global_refunded=${globalRefundedAmount}`);
-    
-    // ✅ STEP 3: Calculate captured/authorized amounts
-    // if (!isMultiVendor) {
-    //   // Single vendor gets full amounts
-    //   totalCapturedForVendor += capturedAmount;
-    //   totalAuthorizedForVendor += authorizedAmount;
-    //   console.log(`   Single vendor: using full captured/authorized amounts`);
-    // } else {
-      // Multi-vendor: proportional captured/authorized
-    //   const orderTotal = parseFloat(order.total) || 0;
-    //   if (orderTotal > 0) {
-    //     const vendorProportion = vendorTotal / orderTotal;
-    //     const vendorCaptured = capturedAmount * vendorProportion;
-    //     const vendorAuthorized = authorizedAmount * vendorProportion;
-        
-    //     totalCapturedForVendor += vendorCaptured;
-    //     totalAuthorizedForVendor += vendorAuthorized;
-        
-    //     console.log(`   Multi-vendor proportion: ${(vendorProportion * 100).toFixed(2)}%`);
-    //     console.log(`   Vendor captured: ${vendorCaptured}, authorized: ${vendorAuthorized}`);
-    //   }
-    // }
-    
-    // ✅ STEP 4: CRITICAL - Calculate vendor-specific refunds only
-    //let vendorRefundsInThisCollection = 0;
-    
-    // Method 1: Analyze individual refunds
-    // if (collection.payments && collection.payments.length > 0) {
-    //   console.log(`   Analyzing ${collection.payments.length} payments for vendor-specific refunds...`);
-      
-    //   collection.payments.forEach((payment, paymentIndex) => {
-    //     if (payment.refunds && payment.refunds.length > 0) {
-    //       console.log(`     Payment ${paymentIndex + 1} has ${payment.refunds.length} refunds:`);
-          
-    //       payment.refunds.forEach((refund, refundIndex) => {
-    //         console.log(`       Refund ${refundIndex + 1}:`, {
-    //           id: refund.id,
-    //           amount: refund.amount,
-    //           note: refund.note,
-    //           reason: refund.reason,
-    //           created_at: refund.created_at
-    //         });
-            
-    //         let belongsToVendor = false;
-    //         let matchMethod = '';
-            
-            // Detection Method 1: Vendor ID in metadata/note
-            // if (refund.metadata?.vendor_id === vendorId) {
-            //   belongsToVendor = true;
-            //   matchMethod = 'metadata_vendor_id';
-            // } else if (refund.note && refund.note.toLowerCase().includes(vendorId.toLowerCase())) {
-            //   belongsToVendor = true;
-            //   matchMethod = 'note_vendor_id';
-            // }
-            
-            // Detection Method 2: Item-specific refund
-            // if (!belongsToVendor && refund.metadata?.item_ids) {
-            //   const refundItemIds = Array.isArray(refund.metadata.item_ids) 
-            //     ? refund.metadata.item_ids 
-            //     : [refund.metadata.item_ids];
-              
-            //   if (refundItemIds.some(itemId => vendorItemIds.has(itemId))) {
-            //     belongsToVendor = true;
-            //     matchMethod = 'metadata_item_ids';
-            //   }
-            // }
-            
-            // Detection Method 3: Note mentions vendor item titles
-            // if (!belongsToVendor && refund.note) {
-            //   const noteText = refund.note.toLowerCase();
-            //   for (const itemTitle of vendorItemTitles) {
-            //     if (itemTitle && noteText.includes(itemTitle)) {
-            //       belongsToVendor = true;
-            //       matchMethod = 'note_item_title';
-            //       break;
-            //     }
-            //   }
-            // }
-            
-            // Detection Method 4: Refund amount matches vendor item price exactly
-            // if (!belongsToVendor) {
-            //   const refundAmount = parseFloat(refund.amount) || 0;
-            //   if (vendorItemPrices.has(refundAmount)) {
-            //     belongsToVendor = true;
-            //     matchMethod = 'exact_price_match';
-            //   }
-            // }
-            
-            // Detection Method 5: For single vendor orders, all refunds belong to vendor
-    //         if (!belongsToVendor && !isMultiVendor) {
-    //           belongsToVendor = true;
-    //           matchMethod = 'single_vendor_all_refunds';
-    //         }
-            
-    //         if (belongsToVendor) {
-    //           const refundAmount = parseFloat(refund.amount) || 0;
-    //           vendorRefundsInThisCollection += refundAmount;
-    //           console.log(`       ✅ VENDOR REFUND: ${refundAmount} (${matchMethod})`);
-    //         } else {
-    //           console.log(`       ❌ NOT VENDOR REFUND: belongs to other vendor`);
-    //         }
-    //       });
-    //     }
-    //   });
-    // }
-    
-    // ✅ STEP 5: CONSERVATIVE FALLBACK - Only if no specific refunds found and vendor wasn't fully paid
-  //   if (vendorRefundsInThisCollection === 0 && globalRefundedAmount > 0 && isMultiVendor) {
-  //     console.log(`   No vendor-specific refunds found. Checking if conservative fallback applies...`);
-      
-  //     // Only apply proportional refund if vendor hasn't been fully paid yet
-  //     const currentVendorCaptured = totalCapturedForVendor; // Captured so far
-  //     const stillOwed = Math.max(0, vendorTotal - currentVendorCaptured);
-      
-  //     console.log(`   Conservative check: captured=${currentVendorCaptured}, owed=${vendorTotal}, still_owed=${stillOwed}`);
-      
-  //     if (stillOwed > 0) {
-  //       const orderTotal = parseFloat(order.total) || 0;
-  //       if (orderTotal > 0) {
-  //         const vendorProportion = vendorTotal / orderTotal;
-  //         const proportionalRefund = globalRefundedAmount * vendorProportion;
-          
-  //         // Only apply if reasonable (not more than what vendor should have received)
-  //         if (proportionalRefund <= currentVendorCaptured) {
-  //           vendorRefundsInThisCollection = proportionalRefund;
-  //           console.log(`   ⚠️ Applied conservative proportional refund: ${proportionalRefund}`);
-  //         } else {
-  //           console.log(`   ❌ Proportional refund too large, not applying`);
-  //         }
-  //       }
-  //     } else {
-  //       console.log(`   ✅ Vendor fully paid - ignoring any global refunds`);
-  //     }
-  //   }
-    
-  //   totalRefundedForVendor += vendorRefundsInThisCollection;
-  //   console.log(`   Collection ${collectionIndex + 1} vendor refunds: ${vendorRefundsInThisCollection}`);
-  //   console.log(`   Total vendor refunds so far: ${totalRefundedForVendor}`);
-  // });
-  
-  // ✅ STEP 6: Final calculation with rounding
-  // const roundedVendorTotal = Math.round(vendorTotal * 100) / 100;
-  // const roundedCaptured = Math.round(totalCapturedForVendor * 100) / 100;
-  // const roundedRefunded = Math.round(totalRefundedForVendor * 100) / 100;
-  // const roundedAuthorized = Math.round(totalAuthorizedForVendor * 100) / 100;
-  // const netAmount = roundedCaptured - roundedRefunded;
-  
-  // console.log(`\n💳 FINAL VENDOR AMOUNTS:`);
-  // console.log(`   Vendor Total: ${roundedVendorTotal}`);
-  // console.log(`   Captured: ${roundedCaptured}`);
-  // console.log(`   Refunded: ${roundedRefunded} (VENDOR-SPECIFIC ONLY)`);
-  // console.log(`   Authorized: ${roundedAuthorized}`);
-  // console.log(`   Net Amount: ${netAmount}`);
-  
-  // ✅ STEP 7: Status determination (ISOLATED from global status)
-  // let vendorPaymentStatus = 'pending';
-  // const tolerance = 0.01; // 1 cent tolerance
-  
-  // console.log(`\n💳 STATUS DETERMINATION:`);
-  
-  // if (roundedRefunded >= (roundedVendorTotal - tolerance)) {
-  //   vendorPaymentStatus = 'refunded';
-  //   console.log(`   Status: REFUNDED (${roundedRefunded} >= ${roundedVendorTotal})`);
-  // } else if (roundedRefunded > tolerance) {
-    // Check if net amount still covers what vendor should receive
-//     if (netAmount >= (roundedVendorTotal - tolerance)) {
-//       vendorPaymentStatus = 'paid';
-//       console.log(`   Status: PAID (net ${netAmount} >= owed ${roundedVendorTotal} despite partial refund)`);
-//     } else {
-//       vendorPaymentStatus = 'partially_refunded';
-//       console.log(`   Status: PARTIALLY_REFUNDED (net ${netAmount} < owed ${roundedVendorTotal})`);
-//     }
-//   } else if (roundedCaptured >= (roundedVendorTotal - tolerance)) {
-//     vendorPaymentStatus = 'paid';
-//     console.log(`   Status: PAID (captured ${roundedCaptured} >= owed ${roundedVendorTotal})`);
-//   } else if (roundedCaptured > tolerance) {
-//     vendorPaymentStatus = 'partially_paid';
-//     console.log(`   Status: PARTIALLY_PAID (captured ${roundedCaptured} < owed ${roundedVendorTotal})`);
-//   } else if (roundedAuthorized >= (roundedVendorTotal - tolerance)) {
-//     vendorPaymentStatus = 'authorized';
-//     console.log(`   Status: AUTHORIZED`);
-//   } else {
-//     vendorPaymentStatus = 'pending';
-//     console.log(`   Status: PENDING`);
-//   }
-  
-//   console.log(`💳 =================================`);
-//   console.log(`💳 ISOLATED RESULT: ${vendorPaymentStatus}`);
-//   console.log(`💳 (Global status ${order.payment_status} was ignored)`);
-//   console.log(`💳 =================================`);
-  
-//   return {
-//     status: vendorPaymentStatus,
-//     captured_amount: roundedCaptured,
-//     refunded_amount: roundedRefunded,
-//     authorized_amount: roundedAuthorized,
-//     net_amount: netAmount,
-//     amount_owed: roundedVendorTotal,
-//     isolation_applied: true,
-//     vendor_specific_refunds_only: true,
-//     global_status_ignored: order.payment_status,
-//     debug_info: {
-//       is_multi_vendor: isMultiVendor,
-//       vendor_items_count: vendorItems.length,
-//       payment_collections_count: paymentCollections.length,
-//       refund_detection_methods_used: ['metadata_vendor_id', 'item_ids', 'note_matching', 'price_matching']
-//     }
-//   };
-// };
-
 // ✅ ENHANCED: Complete vendor item filtering with database lookup and replacement detection
 // ✅ CRITICAL FIX: Enhanced vendor filtering to prevent cross-vendor replacement items
 const filterOrderForVendor = async (order: any, vendorId: string, scope: any) => {
@@ -2040,6 +1796,12 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
   const vendorSubtotal = itemsWithRevenue.reduce((total, item) => total + (item.unit_price * item.quantity), 0);
   const calculatedVendorRevenue = itemsWithRevenue.reduce((total, item) => total + item.vendor_revenue, 0);
 
+  // ✅ NEW: Calculate payment processing fee
+const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(vendorSubtotal);
+
+// ✅ NEW: Calculate final vendor revenue after processing fee
+const finalVendorRevenue = calculatedVendorRevenue - totalProcessingFee;
+
   // ✅ DEBUG: Log vendor items before fulfillment calculation
   console.log(`🔍 DEBUG: Vendor items going into fulfillment calculation (${itemsWithRevenue.length}):`);
   itemsWithRevenue.forEach((item, index) => {
@@ -2133,7 +1895,8 @@ console.log(`💳 Vendor payment status for ${vendorId}:`, vendorPaymentData);
     updated_at: order.updated_at,
     
     vendor_items: itemsWithRevenue,
-    vendor_total: calculatedVendorRevenue,
+    // vendor_total: calculatedVendorRevenue,
+    vendor_total: finalVendorRevenue, // ✅ NEW: After processing fee
     vendor_subtotal: vendorSubtotal,
     vendor_shipping_total: vendorShippingTotal,
     vendor_tax_total: vendorTaxTotal,   
@@ -2161,7 +1924,8 @@ console.log(`💳 Vendor payment status for ${vendorId}:`, vendorPaymentData);
     payment_collections: order.payment_collections,
     fulfillments: order.fulfillments,
     
-    vendor_payment_amount: calculatedVendorRevenue,
+    // vendor_payment_amount: calculatedVendorRevenue,
+    vendor_payment_amount: finalVendorRevenue, // ✅ NEW: After processing fee
     currency_code: order.currency_code,
     
     original_order_id: order.id,
@@ -2312,6 +2076,7 @@ export const GET = async (
           "items.variant.sku",
           "items.product",
           "items.product.id",
+          "items.variant.metadata",  // ✅ ADD THIS LINE - this will fetch cost_price
           "shipping_methods",
           "payment_collections",
           "fulfillments",

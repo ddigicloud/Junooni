@@ -34,7 +34,7 @@ interface DesignElement {
   image?: HTMLImageElement;
   imageName?: string;
   imageUrl?: string;
-  imageBase64?: string; // ✨ Base64 for persistent storage
+  imageBase64?: string; // âœ¨ Base64 for persistent storage
   originalImageWidth?: number;
   originalImageHeight?: number;
   text?: string;
@@ -176,7 +176,7 @@ interface DynamicMockupPhoto {
   mockupType: string;
   photoColor: string;
   priority: number;
-   // 🔥 NEW: Mockup dimensions from PayloadCMS
+   // ðŸ”¥ NEW: Mockup dimensions from PayloadCMS
   mocwidthpx?: number;      // Mockup width in pixels (for main preview)
   mochigtpx?: number;       // Mockup height in pixels (for main preview)
   tmbwidthpx?: number;      // Thumbnail width in pixels (for thumbnails)
@@ -312,7 +312,7 @@ interface UploadedFile {
   id: string;
   file: File;
   url: string;
-  base64Data?: string; // ✨ Base64 for persistent storage
+  base64Data?: string; // âœ¨ Base64 for persistent storage
   name: string;
   size: number;
   type: string;
@@ -457,7 +457,7 @@ interface StoreImportData {
       }>;
     }>;
   }>;
-  // 🔥 ADD DESIGN IMAGES PROPERTY
+  // ðŸ”¥ ADD DESIGN IMAGES PROPERTY
   design_images?: Array<{
     id: string;
     name: string;
@@ -536,7 +536,7 @@ interface DesignData {
     mockupPreview: string | null;
     mockupPreviews: Record<string, string>;
     colorSpecificMockups: ColorSpecificMockupGroup[];
-    designImages?: Array<{ // ✨ NEW: Include design images
+    designImages?: Array<{ // âœ¨ NEW: Include design images
       id: string;
       name: string;
       type: string;
@@ -583,7 +583,6 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
 }) => {
   const [isImageLoading, setIsImageLoading] = useState(!canvasImage);
   
-  // 🔥 ADD: Update loading state when image changes
   useEffect(() => {
     setIsImageLoading(!canvasImage);
   }, [canvasImage]);
@@ -591,28 +590,32 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
   return (
     <button
       onClick={() => onSelect(areaId)}
-      className={`w-full p-2 sm:p-3 border rounded-lg transition-all touch-manipulation ${
+      className={`w-full p-2 sm:px-3 sm:py-2 border rounded-lg transition-all touch-manipulation ${
         isActive
           ? 'border-orange-500 border-2 '
-          : 'hover:border-gray-300 hover:shadow-sm border-[#F3F4F6]'
+          : 'hover:border-gray-300 hover:shadow-sm border-white'
       }`}
     >
       <div className="relative mb-2 overflow-hidden bg-gray-100 rounded aspect-square">
         {canvasImage ? (
           <div className="relative w-full h-full">
-            {/* 🔥 FIXED: Use CSS mask instead of background + multiply */}
+            {/* LAYER 1: Base color background */}
             <div 
               className="absolute inset-0 w-full h-full"
               style={{ 
-                backgroundColor: activeColor,
-                WebkitMask: `url(${canvasImage.src}) center/cover no-repeat`,
-                mask: `url(${canvasImage.src}) center/cover no-repeat`,
-                WebkitMaskComposite: 'source-in',
-                maskComposite: 'intersect'
+                backgroundColor: activeColor
               }}
             />
             
-            {/* Optional: Very subtle texture overlay for depth */}
+            {/* LAYER 2: Canvas template image - overlay with proper visibility */}
+            <img
+              src={canvasImage.src}
+              alt={areaName}
+              className="absolute inset-0 object-cover w-full h-full"
+              style={{ mixBlendMode: 'normal' }}
+            />
+            
+            {/* LAYER 3: Subtle texture overlay for depth - optional */}
             <img
               src={canvasImage.src}
               alt={areaName}
@@ -620,6 +623,7 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
               style={{ mixBlendMode: 'multiply' }}
             />
             
+            {/* Element count badge */}
             {elementCount > 0 && (
               <div className="absolute top-1 right-1">
                 <div className="flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-orange-500 rounded-full sm:w-5 sm:h-5">
@@ -630,7 +634,6 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
           </div>
         ) : (
           <div className="flex items-center justify-center w-full h-full text-gray-400">
-            {/* 🔥 ADD: Show loading state */}
             {isImageLoading ? (
               <div className="text-center">
                 <div className="w-3 h-3 mx-auto mb-1 border-b-2 border-gray-400 rounded-full sm:w-4 sm:h-4 animate-spin"></div>
@@ -661,7 +664,7 @@ const renderMockupDirectly = async (
   productColor: string,
   targetResolution: number = 1000
 ): Promise<string> => {
-  //console.log('🎨 Direct Canvas Render - No React Component');
+  //console.log('ðŸŽ¨ Direct Canvas Render - No React Component');
   
   return new Promise(async (resolve, reject) => {
     try {
@@ -861,11 +864,11 @@ const renderMockupDirectly = async (
       
       // Convert to base64
       const imageData = offscreenCanvas.toDataURL('image/png', 0.95);
-      //console.log('✅ Direct render complete');
+      //console.log('âœ… Direct render complete');
       resolve(imageData);
       
     } catch (error) {
-      //console.error('❌ Direct render failed:', error);
+      //console.error('âŒ Direct render failed:', error);
       reject(error);
     }
   });
@@ -1177,24 +1180,24 @@ const getMockupsForColor = (
     return false;
   });
   
-  // 🔥 FIX: If size_Images is true, STRICTLY filter by size
+  // ðŸ”¥ FIX: If size_Images is true, STRICTLY filter by size
   if (productData.size_Images && selectedSize) {
     filteredMockups = filteredMockups.filter(mockup => {
       const mockupSize = (mockup as any).photoSize;
       
-      // ⚠️ CRITICAL: If size_Images is true but mockup has no size, EXCLUDE IT
+      // âš ï¸ CRITICAL: If size_Images is true but mockup has no size, EXCLUDE IT
       if (!mockupSize) {
-        //console.warn(`⚠️ Mockup ${mockup.title} has no photoSize but size_Images=true - excluding`);
+        //console.warn(`âš ï¸ Mockup ${mockup.title} has no photoSize but size_Images=true - excluding`);
         return false;
       }
       
       return mockupSize.toLowerCase().trim() === selectedSize.toLowerCase().trim();
     });
     
-    // 🔥 If no size-specific mockups found, return EMPTY array
+    // ðŸ”¥ If no size-specific mockups found, return EMPTY array
     // Do NOT fall back to neutral mockups when size_Images is true
     if (filteredMockups.length === 0) {
-      //console.warn(`⚠️ No mockups found for size "${selectedSize}" and color "${colorHex}"`);
+      //console.warn(`âš ï¸ No mockups found for size "${selectedSize}" and color "${colorHex}"`);
       return [];
     }
   }
@@ -1226,7 +1229,7 @@ const calculateTotalMockups = (
   let totalMockups = 0;
   const calculationBreakdown: MockupCalculationResult['calculationBreakdown'] = [];
 
-  // 🔥 CORRECTED: Determine strategy based on BOTH flags
+  // ðŸ”¥ CORRECTED: Determine strategy based on BOTH flags
   let strategy: MockupCalculationResult['strategy'];
   
   if (color_Images && size_Images) {
@@ -1278,7 +1281,7 @@ else if (strategy === 'color_specific') {
     });
 
   } else if (strategy === 'size_specific') {
-  // ✅ Each size gets its own mockups, even when colors are shared
+  // âœ… Each size gets its own mockups, even when colors are shared
   selectedSizes.forEach(size => {
     const sizeMockups = getMockupsForColor(
       productData,
@@ -1299,7 +1302,7 @@ else if (strategy === 'color_specific') {
 
       totalMockups += sizeMockups.length;
     } else {
-      //console.warn(`⚠️ No mockups found for size: ${size}`);
+      //console.warn(`âš ï¸ No mockups found for size: ${size}`);
     }
   });
 }
@@ -1393,7 +1396,7 @@ const getProductColorForMockup = (
   productData?: PayloadProductData
 ) => {
   
-  // 🔥 CRITICAL FIX: ALWAYS use the selected color
+  // ðŸ”¥ CRITICAL FIX: ALWAYS use the selected color
   // This ensures #87CEEB shows as #87CEEB, not #588157
   
   const neutralDetector = createDynamicNeutralDetector(productData);
@@ -1421,14 +1424,14 @@ private capturePreviewRender = async (
   targetResolution: number = 1000,
   isStoreImport: boolean = false
 ): Promise<string> => {
-  //console.log('🔧 capturePreviewRender - isStoreImport:', isStoreImport);
+  //console.log('ðŸ”§ capturePreviewRender - isStoreImport:', isStoreImport);
   
   const selectedEngine = this.determineEngine(mockup);
-  //console.log('🔧 Selected engine:', selectedEngine);
+  //console.log('ðŸ”§ Selected engine:', selectedEngine);
   
   // CRITICAL: For store imports with Canvas, bypass React completely
   if (isStoreImport && selectedEngine === 'canvas_professional') {
-    //console.log('🎪 STORE IMPORT: Using Direct Canvas Render (No React)');
+    //console.log('ðŸŽª STORE IMPORT: Using Direct Canvas Render (No React)');
     
     try {
       const imageData = await renderMockupDirectly(
@@ -1440,11 +1443,11 @@ private capturePreviewRender = async (
         targetResolution
       );
       
-      //console.log('✅ Direct Canvas render succeeded');
+      //console.log('âœ… Direct Canvas render succeeded');
       return imageData;
       
     } catch (directCanvasError) {
-      //console.warn('⚠️ Direct Canvas failed, trying PIXI:', directCanvasError);
+      //console.warn('âš ï¸ Direct Canvas failed, trying PIXI:', directCanvasError);
       
       try {
         const pixiData = await this.captureWithPixiContainer(
@@ -1452,7 +1455,7 @@ private capturePreviewRender = async (
           productColor, productData, targetResolution
         );
         
-        //console.log('✅ PIXI fallback succeeded');
+        //console.log('âœ… PIXI fallback succeeded');
         return pixiData;
         
       } catch (pixiError) {
@@ -1463,13 +1466,13 @@ private capturePreviewRender = async (
   
   // For preview mode, use existing component-based rendering
   if (selectedEngine === 'canvas_professional') {
-    //console.log('👁️ PREVIEW: Using React Component Canvas');
+    //console.log('ðŸ‘ï¸ PREVIEW: Using React Component Canvas');
     return await this.captureWithCanvasSimplified(
       mockup, designElements, canvasConfigs, printableAreas,
       productColor, productData, targetResolution, isStoreImport
     );
   } else {
-    //console.log('🎨 Using PIXI engine');
+    //console.log('ðŸŽ¨ Using PIXI engine');
     return await this.captureWithPixiContainer(
       mockup, designElements, canvasConfigs, printableAreas,
       productColor, productData, targetResolution
@@ -1488,7 +1491,7 @@ private captureWithCanvasSimplified = async (
   targetResolution: number,
   isStoreImport: boolean = false
 ): Promise<string> => {
-  //console.log('🎨 captureWithCanvasSimplified - Store Import:', isStoreImport);
+  //console.log('ðŸŽ¨ captureWithCanvasSimplified - Store Import:', isStoreImport);
   
   return new Promise((resolve, reject) => {
     let renderCompleted = false;
@@ -1513,7 +1516,7 @@ private captureWithCanvasSimplified = async (
     container.id = `canvas-store-${Date.now()}`;
     document.body.appendChild(container);
     
-    //console.log('✅ Container created:', container.id);
+    //console.log('âœ… Container created:', container.id);
     
     const cleanup = () => {
       try {
@@ -1523,7 +1526,7 @@ private captureWithCanvasSimplified = async (
         setTimeout(() => {
           if (document.body.contains(container)) {
             document.body.removeChild(container);
-            //console.log('🧹 Container cleaned up');
+            //console.log('ðŸ§¹ Container cleaned up');
           }
         }, 100);
       } catch (e) {
@@ -1533,28 +1536,28 @@ private captureWithCanvasSimplified = async (
     
     // CRITICAL: Much longer timeout for Store Import
     const timeoutDuration = isStoreImport ? 90000 : 30000; // 90s for store, 30s for preview
-    //console.log('⏱️ Timeout set to:', timeoutDuration / 1000, 'seconds');
+    //console.log('â±ï¸ Timeout set to:', timeoutDuration / 1000, 'seconds');
     
     renderTimeout = setTimeout(() => {
       if (renderCompleted) return;
       renderCompleted = true;
       
-      //console.error('❌ Canvas TIMEOUT after', timeoutDuration / 1000, 'seconds');
+      //console.error('âŒ Canvas TIMEOUT after', timeoutDuration / 1000, 'seconds');
       cleanup();
       reject(new Error(`Canvas timeout after ${timeoutDuration / 1000}s`));
       
     }, timeoutDuration);
     
-    //console.log('📦 Importing react-dom/client...');
+    //console.log('ðŸ“¦ Importing react-dom/client...');
     
     import('react-dom/client').then(async ({ createRoot }) => {
-      //console.log('✅ React DOM imported, creating root...');
+      //console.log('âœ… React DOM imported, creating root...');
       
       try {
         const root = createRoot(container);
         componentMounted = true;
         
-        //console.log('🎭 Creating EnhancedMockupEngine component...');
+        //console.log('ðŸŽ­ Creating EnhancedMockupEngine component...');
         
         const mockupComponent = React.createElement(EnhancedMockupEngine, {
           mockup,
@@ -1574,42 +1577,42 @@ private captureWithCanvasSimplified = async (
           
           onRenderComplete: (imageData: string) => {
             if (renderCompleted) {
-              //console.warn('⚠️ onRenderComplete called but already completed');
+              //console.warn('âš ï¸ onRenderComplete called but already completed');
               return;
             }
             renderCompleted = true;
             
-            //console.log('✅ ✅ ✅ CANVAS RENDER COMPLETE!');
-            //console.log('📊 Image data length:', imageData?.length || 0);
+            //console.log('âœ… âœ… âœ… CANVAS RENDER COMPLETE!');
+            //console.log('ðŸ“Š Image data length:', imageData?.length || 0);
             
             if (renderTimeout) {
               clearTimeout(renderTimeout);
-              //console.log('⏱️ Timeout cleared');
+              //console.log('â±ï¸ Timeout cleared');
             }
             
             cleanup();
             
             if (imageData && imageData.length > 0) {
-              //console.log('✅ Resolving with image data');
+              //console.log('âœ… Resolving with image data');
               resolve(imageData);
             } else {
-              //console.error('❌ No image data received');
+              //console.error('âŒ No image data received');
               reject(new Error('No image data received'));
             }
           },
           
           onProgress: (progress: number) => {
-            //console.log(`📊 Canvas progress: ${Math.round(progress)}%`);
+            //console.log(`ðŸ“Š Canvas progress: ${Math.round(progress)}%`);
           },
           
           onError: (error: any) => {
             if (renderCompleted) {
-              //console.warn('⚠️ onError called but already completed');
+              //console.warn('âš ï¸ onError called but already completed');
               return;
             }
             renderCompleted = true;
             
-            //console.error('❌ ❌ ❌ CANVAS ERROR:', error);
+            //console.error('âŒ âŒ âŒ CANVAS ERROR:', error);
             
             if (renderTimeout) clearTimeout(renderTimeout);
             cleanup();
@@ -1617,12 +1620,12 @@ private captureWithCanvasSimplified = async (
           }
         });
         
-        //console.log('🚀 Rendering component...');
+        //console.log('ðŸš€ Rendering component...');
         root.render(mockupComponent);
-        //console.log('✅ Component render called, waiting for callbacks...');
+        //console.log('âœ… Component render called, waiting for callbacks...');
         
       } catch (renderError) {
-        //console.error('❌ Render exception:', renderError);
+        //console.error('âŒ Render exception:', renderError);
         if (!renderCompleted) {
           renderCompleted = true;
           if (renderTimeout) clearTimeout(renderTimeout);
@@ -1632,7 +1635,7 @@ private captureWithCanvasSimplified = async (
       }
       
     }).catch(importError => {
-      //console.error('❌ ReactDOM import failed:', importError);
+      //console.error('âŒ ReactDOM import failed:', importError);
       if (!renderCompleted) {
         renderCompleted = true;
         if (renderTimeout) clearTimeout(renderTimeout);
@@ -1654,7 +1657,7 @@ private tryCanvasEngine = async (
   targetResolution: number,
   isStoreImport: boolean = false
 ): Promise<string> => {
-  //console.log('🔧 tryCanvasEngine - isStoreImport:', isStoreImport);
+  //console.log('ðŸ”§ tryCanvasEngine - isStoreImport:', isStoreImport);
   
   return new Promise((resolve, reject) => {
     let renderCompleted = false;
@@ -1680,7 +1683,7 @@ private tryCanvasEngine = async (
     // Add progress indicator
     container.innerHTML = `
       <div style="position: absolute; top: 12px; left: 12px; right: 12px; background: ${isStoreImport ? '#10b981' : '#ef4444'}; color: white; padding: 8px 16px; font-size: 16px; border-radius: 8px; font-weight: bold; z-index: 10001; text-align: center;">
-        ${isStoreImport ? '🎪 STORE IMPORT' : '👁️ PREVIEW'} - Rendering...
+        ${isStoreImport ? 'ðŸŽª STORE IMPORT' : 'ðŸ‘ï¸ PREVIEW'} - Rendering...
       </div>
       <div id="progress-bar" style="position: absolute; bottom: 12px; left: 12px; right: 12px; height: 8px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden;">
         <div id="progress-fill" style="height: 100%; width: 0%; background: ${isStoreImport ? '#10b981' : '#ef4444'}; transition: width 0.3s;"></div>
@@ -1698,7 +1701,7 @@ private tryCanvasEngine = async (
         try {
           if (document.body.contains(container)) {
             document.body.removeChild(container);
-            //console.log('🔧 Container cleaned up after', cleanupDelay, 'ms');
+            //console.log('ðŸ”§ Container cleaned up after', cleanupDelay, 'ms');
           }
         } catch (e) {
           //console.warn('Cleanup error:', e);
@@ -1708,13 +1711,13 @@ private tryCanvasEngine = async (
     
     // Much longer timeout for Store Import - matching Preview behavior
     const timeoutDuration = isStoreImport ? 60000 : 20000; // 60s for store import
-    //console.log('🔧 Canvas timeout set to:', timeoutDuration / 1000, 'seconds');
+    //console.log('ðŸ”§ Canvas timeout set to:', timeoutDuration / 1000, 'seconds');
     
     renderTimeout = setTimeout(() => {
       if (renderCompleted) return;
       renderCompleted = true;
       
-      //console.error('❌ Canvas timeout after', timeoutDuration / 1000, 'seconds');
+      //console.error('âŒ Canvas timeout after', timeoutDuration / 1000, 'seconds');
       cleanup();
       reject(new Error(`Canvas timeout after ${timeoutDuration / 1000}s`));
       
@@ -1749,7 +1752,7 @@ private tryCanvasEngine = async (
           if (renderCompleted) return;
           renderCompleted = true;
           
-          //console.log('✅ Canvas render complete, data size:', imageData.length);
+          //console.log('âœ… Canvas render complete, data size:', imageData.length);
           updateProgress(100);
           
           if (renderTimeout) clearTimeout(renderTimeout);
@@ -1773,7 +1776,7 @@ private tryCanvasEngine = async (
           if (renderCompleted) return;
           renderCompleted = true;
           
-          //console.error('❌ Canvas error:', error);
+          //console.error('âŒ Canvas error:', error);
           
           if (renderTimeout) clearTimeout(renderTimeout);
           cleanup();
@@ -1783,7 +1786,7 @@ private tryCanvasEngine = async (
       
       try {
         root.render(mockupComponent);
-        //console.log('✅ Canvas component mounted successfully');
+        //console.log('âœ… Canvas component mounted successfully');
       } catch (renderError) {
         if (!renderCompleted) {
           renderCompleted = true;
@@ -1805,7 +1808,7 @@ private tryCanvasEngine = async (
 };
 
 
-// 🔥 PIXI ENGINE - Keep existing working version
+// ðŸ”¥ PIXI ENGINE - Keep existing working version
 private captureWithPixiContainer = async (
   mockup: DynamicMockupPhoto,
   designElements: Record<string, DesignElement[]>,
@@ -1914,7 +1917,7 @@ private captureWithPixiContainer = async (
   });
 };
 
-// 🔥 ENHANCED determineEngine method (your existing one is good, but here's the complete version)
+// ðŸ”¥ ENHANCED determineEngine method (your existing one is good, but here's the complete version)
 private determineEngine = (mockup: DynamicMockupPhoto): 'canvas_professional' | 'pixi_dynamic' => {
   const productType = this.productData?.productType?.toLowerCase() || '';
   const isApparel = productType.includes('shirt') || 
@@ -1948,17 +1951,17 @@ private determineEngine = (mockup: DynamicMockupPhoto): 'canvas_professional' | 
   return 'canvas_professional';
 };
 
-// 🔥 OPTIONAL: Add this property to the class to store product data
+// ðŸ”¥ OPTIONAL: Add this property to the class to store product data
 private productData: any;
 
-// 🔥 OPTIONAL: Update your constructor or add this method to set product data
+// ðŸ”¥ OPTIONAL: Update your constructor or add this method to set product data
 public setProductData(productData: any) {
   this.productData = productData;
 }
 
   
   private determineEngine = (mockup: DynamicMockupPhoto): 'canvas_professional' | 'pixi_dynamic' => {
-  // 🔥 FORCE CANVAS FOR T-SHIRTS - Add this check first
+  // ðŸ”¥ FORCE CANVAS FOR T-SHIRTS - Add this check first
   if (this.productData?.productType?.toLowerCase().includes('shirt') || 
       this.productData?.productType?.toLowerCase().includes('tee') ||
       this.productData?.productType?.toLowerCase().includes('apparel')) {
@@ -2002,17 +2005,17 @@ public setProductData(productData: any) {
   targetResolution: number = 1000,
   isStoreImport: boolean = false
 ): Promise<{ imageData: string; engine: 'canvas_professional' | 'pixi_dynamic'; metrics: any }> => {
-  //console.log('🎯 generateSingleMockup called with isStoreImport:', isStoreImport);
+  //console.log('ðŸŽ¯ generateSingleMockup called with isStoreImport:', isStoreImport);
   
   const startTime = performance.now();
   const engine = this.determineEngine(mockup);
   
-  //console.log('🔧 Determined engine:', engine);
+  //console.log('ðŸ”§ Determined engine:', engine);
   
   const cacheKey = `${mockup.id}-${productColor}-${Object.keys(designElements).length}-${targetResolution}-${isStoreImport ? 'store' : 'preview'}`;
   
   if (this.renderCache.has(cacheKey)) {
-    //console.log('💾 Using cached image');
+    //console.log('ðŸ’¾ Using cached image');
     const cachedImageData = this.renderCache.get(cacheKey)!;
     return {
       imageData: cachedImageData,
@@ -2026,7 +2029,7 @@ public setProductData(productData: any) {
     };
   }
   
-  //console.log('🚀 Starting fresh render with isStoreImport:', isStoreImport);
+  //console.log('ðŸš€ Starting fresh render with isStoreImport:', isStoreImport);
   
   // Call capturePreviewRender with the isStoreImport flag
   const imageData = await this.capturePreviewRender(
@@ -2037,13 +2040,13 @@ public setProductData(productData: any) {
     productColor, 
     productData, 
     targetResolution,
-    isStoreImport  // ← CRITICAL: Pass the flag here
+    isStoreImport  // â† CRITICAL: Pass the flag here
   );
   
   const endTime = performance.now();
   const renderTime = endTime - startTime;
   
-  //console.log('✅ Generation complete in', Math.round(renderTime), 'ms');
+  //console.log('âœ… Generation complete in', Math.round(renderTime), 'ms');
   
   this.renderCache.set(cacheKey, imageData);
   
@@ -2059,8 +2062,8 @@ public setProductData(productData: any) {
   };
 };
 
-  // 🔥 ENHANCED: Store import generation with proper color-specific grouping
-  // 🔥 CORRECTED: Store import generation with proper size_Images handling
+  // ðŸ”¥ ENHANCED: Store import generation with proper color-specific grouping
+  // ðŸ”¥ CORRECTED: Store import generation with proper size_Images handling
 public generateForStoreImport = async (
   productData: PayloadProductData,
   selectedColors: Array<{ name: string; value: string }>,
@@ -2072,7 +2075,7 @@ public generateForStoreImport = async (
   onProgress?: (progress: ImageGenerationProgress) => void
 ): Promise<StoreImportData> => {
 
-  // ✅ ADD THIS CHECK
+  // âœ… ADD THIS CHECK
   if (productData?.surfConf?.No_Mockup_Compatible === true) {
     return {
       product_id: productData.id || `product-${Date.now()}`,
@@ -2125,10 +2128,10 @@ public generateForStoreImport = async (
   const mockupVariants: StoreImportData['mockup_variants'] = [];
 
   try {
-    // 🔥 FIX: When size_Images=true, process each color-size combination
+    // ðŸ”¥ FIX: When size_Images=true, process each color-size combination
     for (const colorBreakdown of mockupCalculation.calculationBreakdown) {
       
-      // 🔥 FIX: For each size, get mockups specifically for that size
+      // ðŸ”¥ FIX: For each size, get mockups specifically for that size
       const sizesToProcess = productData.size_Images ? selectedSizes : [null];
       
       for (const size of sizesToProcess) {
@@ -2137,7 +2140,7 @@ public generateForStoreImport = async (
           ? colorBreakdown.mockups.filter(m => (m as any).photoSize === size)
           : colorBreakdown.mockups;
         
-        //console.log(`🎯 Processing ${mockupsToProcess.length} mockups for ${colorBreakdown.color}${size ? ` - ${size}` : ''}`);
+        //console.log(`ðŸŽ¯ Processing ${mockupsToProcess.length} mockups for ${colorBreakdown.color}${size ? ` - ${size}` : ''}`);
         
         for (const mockup of mockupsToProcess) {
           const smartProductColor = getProductColorForMockup(mockup, colorBreakdown.colorHex, productData);
@@ -2145,7 +2148,7 @@ public generateForStoreImport = async (
           
           const mockupAreas = mockup.area?.map(area => area.areaName?.toLowerCase()) || [];
           
-          // 🔥 FIX: Check if ANY of these areas have design elements
+          // ðŸ”¥ FIX: Check if ANY of these areas have design elements
           const hasDesignElements = mockupAreas.some(areaName => {
             const areaElements = designElements[areaName] || [];
             return areaElements.some(element => element.visible !== false);
@@ -2215,7 +2218,7 @@ public generateForStoreImport = async (
             }
 
           } else {
-            // 🔥 Size-specific: Each mockup generates for its specific size only
+            // ðŸ”¥ Size-specific: Each mockup generates for its specific size only
             const colorCombinations: any[] = [{
               color_name: colorBreakdown.color,
               color_hex: colorBreakdown.colorHex,
@@ -2257,12 +2260,12 @@ public generateForStoreImport = async (
                 mockup_title: mockup.title,
                 view_angle: mockup.viewAngle || 'front',
                 mockup_color: mockup.photoColor,
-                mockup_size: mockupSize, // 🔥 Critical: Store the specific size
+                mockup_size: mockupSize, // ðŸ”¥ Critical: Store the specific size
                 color_combinations: colorCombinations
               });
 
-              // 🔥 DEBUG: Log what we just added
-              // console.log('📦 ADDED MOCKUP VARIANT:', {
+              // ðŸ”¥ DEBUG: Log what we just added
+              // console.log('ðŸ“¦ ADDED MOCKUP VARIANT:', {
               //   title: mockup.title,
               //   mockup_size: mockupSize,
               //   mockup_color: mockup.photoColor,
@@ -2324,7 +2327,7 @@ public generateForStoreImport = async (
     }
   };
 
-//   console.log('📦 FINAL MOCKUP VARIANTS SUMMARY:', {
+//   console.log('ðŸ“¦ FINAL MOCKUP VARIANTS SUMMARY:', {
 //   total_variants: mockupVariants.length,
 //   variants: mockupVariants.map(v => ({
 //     title: v.mockup_title,
@@ -2379,7 +2382,7 @@ interface ThumbnailPreviewProps {
   isSelected: boolean;
   onSelect: () => void;
   displayDimensions?: { width: number; height: number };
-  isMainPreview?: boolean; // 🔥 ADD THIS PROP
+  isMainPreview?: boolean; // ðŸ”¥ ADD THIS PROP
   productData: any;
 }
 
@@ -2391,8 +2394,8 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   productColor,
   isSelected,
   onSelect,
-  displayDimensions = { width: 275, height: 275 }, // 🔥 DEFAULT TO THUMBNAIL SIZE
-  isMainPreview = false, // 🔥 DEFAULT TO FALSE
+  displayDimensions = { width: 275, height: 275 }, // ðŸ”¥ DEFAULT TO THUMBNAIL SIZE
+  isMainPreview = false, // ðŸ”¥ DEFAULT TO FALSE
   productData
 }) => {
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
@@ -2531,7 +2534,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
         <div className="relative mb-2 overflow-hidden bg-gray-100 rounded aspect-square">
           <div className="flex items-center justify-center w-full h-full text-gray-400">
             <div className="text-center">
-              <span className="text-xs">⚠ ️</span>
+              <span className="text-xs">âš  ï¸</span>
               <p className="mt-1 text-xs">Error</p>
             </div>
           </div>
@@ -2547,7 +2550,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   return (
     <button
       onClick={onSelect}
-      className={`w-full p-0 sm:p-2 border rounded-lg transition-all relative touch-manipulation ${
+      className={`w-full p-0 sm:p-2 sm:pt-2 border rounded-lg transition-all relative touch-manipulation ${
         isSelected
           ? 'border-white bg-white ring-2 ring-white'
           : 'border-white hover:border-white hover:shadow-sm'
@@ -2569,9 +2572,9 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
         }`}>
           {getEngineType}
         </span>
-        {mockup.dispMaps?.length > 0 && <span className="text-xs" title="Displacement Maps">🎨</span>}
-        {mockup.alpMasks?.length > 0 && <span className="text-xs" title="Alpha Masks">🎭</span>}
-        {mockup.light?.length > 0 && <span className="text-xs" title="Lighting Effects">💡</span>}
+        {mockup.dispMaps?.length > 0 && <span className="text-xs" title="Displacement Maps">ðŸŽ¨</span>}
+        {mockup.alpMasks?.length > 0 && <span className="text-xs" title="Alpha Masks">ðŸŽ­</span>}
+        {mockup.light?.length > 0 && <span className="text-xs" title="Lighting Effects">ðŸ’¡</span>}
       </div>
       
     </button>
@@ -2653,7 +2656,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
       </div>
       
       <div className="p-2 mb-2 text-xs text-gray-600 rounded bg-orange-50">
-        Drag to reorder • Top = Front
+        Drag to reorder â€¢ Top = Front
       </div>
       
       <div className="space-y-1 overflow-y-auto max-h-64 sm:max-h-80">
@@ -2705,7 +2708,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
                     {layer.element.layerName || layer.element.imageName || layer.element.text || `Layer ${index + 1}`}
                   </div>
                   <div className="text-xs text-gray-500 uppercase">
-                    {layer.element.type} • Z:{layer.element.zIndex || 0}
+                    {layer.element.type} â€¢ Z:{layer.element.zIndex || 0}
                   </div>
                 </div>
               </div>
@@ -2789,7 +2792,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
       
       {layers.length === 0 && (
         <div className="py-8 text-center text-gray-500">
-          <div className="mb-2 text-2xl">📄</div>
+          <div className="mb-2 text-2xl">ðŸ“„</div>
           <p className="text-sm">No layers yet</p>
           <p className="mt-1 text-xs">Upload images to create layers</p>
         </div>
@@ -2825,14 +2828,14 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
    // ADD THIS COMPONENT HERE:
   const RotatingMessage = () => {
     const messages = [
-      "✨ Magic is happening...",
-      "🎨 Creating masterpieces...",
-      "🚀 Generating awesomeness...",
-      "⚡ Working our magic...",
-      "🎪 Show time in progress...",
-      "🌟 Crafting something special...",
-      "🎯 Almost there...",
-      "💫 Making it perfect...",
+      "âœ¨ Magic is happening...",
+      "ðŸŽ¨ Creating masterpieces...",
+      "ðŸš€ Generating awesomeness...",
+      "âš¡ Working our magic...",
+      "ðŸŽª Show time in progress...",
+      "ðŸŒŸ Crafting something special...",
+      "ðŸŽ¯ Almost there...",
+      "ðŸ’« Making it perfect...",
     ];
 
     const [messageIndex, setMessageIndex] = React.useState(0);
@@ -2881,7 +2884,7 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
   const handleImportToStore = useCallback(() => {
     if (!importData) return;
     
-    alert(`✨ Ready to import to store!\n\n` +
+    alert(`âœ¨ Ready to import to store!\n\n` +
           `Product: ${importData.product_name}\n` +
           `Total Images: ${importData.generation_summary.total_images_generated}\n` +
           `Generation Time: ${Math.round(importData.generation_summary.total_time_ms / 1000)}s\n` +
@@ -2935,7 +2938,7 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
         {!isGenerating && importData && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 p-3 border rounded bg-green-50">
-              <span className="text-green-600">✅</span>
+              <span className="text-green-600">âœ…</span>
               <span className="text-sm text-green-700">
                 {importData.generation_summary.total_images_generated} images generated in{" "}
                 {Math.round(importData.generation_summary.total_time_ms / 1000)}s
@@ -2983,7 +2986,7 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
         {/* Empty */}
         {!isGenerating && !importData && (
           <div className="py-6 text-sm text-center text-gray-600">
-            <div className="mb-2 text-3xl">🎪</div>
+            <div className="mb-2 text-3xl">ðŸŽª</div>
             No import data yet. <br />
             <span className="text-gray-500">Generate & import to see results.</span>
           </div>
@@ -3029,7 +3032,7 @@ const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 sm:hidden">
-       {/* 🔥 NEW: Price summary bar */}
+       {/* ðŸ”¥ NEW: Price summary bar */}
         {totalPrice > 0 && (
           <div className="px-4 py-1 border-b border-green-200 bg-green-50">
             <div className="flex items-center justify-between text-xs">
@@ -3300,7 +3303,7 @@ const [activeSize, setActiveSize] = useState<string>(() => {
   const currentHero = useMemo(() => selectedHeroMockup || allMockups[0] || null, [selectedHeroMockup, allMockups]);
   const mockupGenerator = useMemo(() => new EnhancedMockupGenerator(), []);
 
-  // 🔥 ENHANCED: Mockup calculation with proper color-specific logic
+  // ðŸ”¥ ENHANCED: Mockup calculation with proper color-specific logic
   const mockupCalculation = useMemo(() => {
     if (selectedColors.length === 0 || selectedSizes.length === 0) {
       return null;
@@ -3308,7 +3311,7 @@ const [activeSize, setActiveSize] = useState<string>(() => {
     return calculateTotalMockups(productData, selectedColors, selectedSizes);
   }, [productData, selectedColors, selectedSizes]);
 
-  // 🔥 ENHANCED: Color-specific mockup groups
+  // ðŸ”¥ ENHANCED: Color-specific mockup groups
   const colorSpecificMockupGroups = useMemo(() => {
     return getColorSpecificMockupGroups(productData, selectedColors);
   }, [productData, selectedColors]);
@@ -3373,7 +3376,7 @@ const handlePanelMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) =
   e.preventDefault();
   e.stopPropagation();
   
-  // 🔥 FIX: Read current position directly from the DOM element instead of state
+  // ðŸ”¥ FIX: Read current position directly from the DOM element instead of state
   const currentLeft = panelRef.current ? parseFloat(panelRef.current.style.left || '0') : alignmentPanelPos.x;
   const currentTop = panelRef.current ? parseFloat(panelRef.current.style.top || '0') : alignmentPanelPos.y;
   
@@ -3387,7 +3390,7 @@ const handlePanelMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) =
   
   setIsDraggingPanel(true);
   
-  //console.log('🔵 Drag started:', dragStartRef.current);
+  //console.log('ðŸ”µ Drag started:', dragStartRef.current);
 }, [isMobile, alignmentPanelPos]); // Keep alignmentPanelPos as fallback only
 
 const handlePanelMouseMove = useCallback((e: MouseEvent) => {
@@ -3404,7 +3407,7 @@ const handlePanelMouseMove = useCallback((e: MouseEvent) => {
   const newX = dragStartRef.current.panelX + deltaX;
   const newY = dragStartRef.current.panelY + deltaY;
   
-  // 🔥 FIX: Get actual panel dimensions from the DOM
+  // ðŸ”¥ FIX: Get actual panel dimensions from the DOM
   const panelWidth = panelRef.current?.offsetWidth || 250;
   const panelHeight = panelRef.current?.offsetHeight || 200;
   
@@ -3447,7 +3450,7 @@ const handlePanelMouseUp = useCallback((e: MouseEvent) => {
   setAlignmentPanelPos({ x: boundedX, y: boundedY });
   setIsDraggingPanel(false);
   
-  //console.log('🟢 Drag ended at:', { x: boundedX, y: boundedY });
+  //console.log('ðŸŸ¢ Drag ended at:', { x: boundedX, y: boundedY });
 }, [isDraggingPanel]);
 
 
@@ -3601,7 +3604,7 @@ const getAreaDisplayData = useCallback((areaId: string) => {
     const area = getCustomizationAreaByName(areaId);
     if (!area?.designCanvasPhotos?.length) {
       const canvasConfig = getCanvasConfig(areaId);
-      // ✅ CORRECT: Use entire design area when no printAreaCoord is defined
+      // âœ… CORRECT: Use entire design area when no printAreaCoord is defined
       return { 
         x: 0,                      // Start from origin
         y: 0,                      // Start from origin  
@@ -3627,7 +3630,7 @@ const getAreaDisplayData = useCallback((areaId: string) => {
     }
     
     if (!canvasPhoto?.printAreaCoord) {
-      // ✅ FIXED: Even when photo exists but no printAreaCoord, use full area
+      // âœ… FIXED: Even when photo exists but no printAreaCoord, use full area
       const canvasConfig = getCanvasConfig(areaId);
       return { 
         x: 0, 
@@ -3649,7 +3652,7 @@ const getAreaDisplayData = useCallback((areaId: string) => {
     return printArea;
   } catch (error) {
     const canvasConfig = getCanvasConfig(areaId);
-    // ✅ FIXED: Fallback also uses full design area
+    // âœ… FIXED: Fallback also uses full design area
     return { 
       x: 0, 
       y: 0, 
@@ -3796,7 +3799,7 @@ Size: ${widthInches.toFixed(3)}" x ${heightInches.toFixed(3)}"
 Pixels: ${element.width} x ${element.height}
 Original: ${element.originalImageWidth || element.width} x ${element.originalImageHeight || element.height}
 Print Quality: ${dpiInfo.quality} (${dpiInfo.dpi} DPI)
-Rotation: ${element.rotation || 0}°
+Rotation: ${element.rotation || 0}Â°
 Scale: ${element.scaleX || 1} x ${element.scaleY || 1}
 Opacity: ${Math.round((element.opacity || 1) * 100)}%
 File: ${element.imageName || `design-image-${imageElements}.png`}
@@ -3844,7 +3847,7 @@ const getPricingInfoForArea = useCallback((areaId: string): { minimumPrice: numb
         const minimumPrice = parseFloat(area['Minimum printing price'] || '0');
         const pricePerSquareInch = parseFloat(area['Per sq inch printing price'] || '0');
         
-        // //console.log('🔧 AREA PRICING DATA:', {
+        // //console.log('ðŸ”§ AREA PRICING DATA:', {
         //   areaId,
         //   minimumPrice,
         //   pricePerSquareInch,
@@ -3883,7 +3886,7 @@ const getPricingInfoForArea = useCallback((areaId: string): { minimumPrice: numb
     
     // Case 4: No area-specific pricing, fallback to product cost
     const productCost = productData?.cost || 0;
-    // //console.log('🔧 FALLBACK TO PRODUCT COST:', {
+    // //console.log('ðŸ”§ FALLBACK TO PRODUCT COST:', {
     //   areaId,
     //   productCost,
     //   reason: 'No area-specific pricing found'
@@ -3912,7 +3915,7 @@ const calculateElementRealWorldDimensions = useCallback((element: DesignElement,
   const canvasConfig = getCanvasConfig(areaId);
   const printableArea = getPrintableAreaFromPhoto(areaId); // Design area bounds
   
-  // 🔧 FIXED: Calculate only the area within design boundaries
+  // ðŸ”§ FIXED: Calculate only the area within design boundaries
   const elementLeft = element.x;
   const elementTop = element.y;
   const elementRight = element.x + element.width;
@@ -3950,7 +3953,7 @@ const calculateElementRealWorldDimensions = useCallback((element: DesignElement,
   const yInches = ((intersectionTop - printableArea.y) / printableArea.height) * canvasConfig.realWorldHeight;
   const areaSquareInches = widthInches * heightInches;
 
-  // //console.log('🔧 INTERSECTION CALCULATION:', {
+  // //console.log('ðŸ”§ INTERSECTION CALCULATION:', {
   //   elementBounds: `${elementLeft},${elementTop} to ${elementRight},${elementBottom}`,
   //   designBounds: `${designLeft},${designTop} to ${designRight},${designBottom}`,
   //   intersectionBounds: `${intersectionLeft},${intersectionTop} to ${intersectionRight},${intersectionBottom}`,
@@ -3970,46 +3973,110 @@ const calculateElementRealWorldDimensions = useCallback((element: DesignElement,
 
 const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
   const elements = designElements[areaId] || [];
-  const visibleElements = elements.filter(element => element.visible !== false);
+  const visibleElements = elements
+    .filter(element => element.visible !== false)
+    .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)); // Sort by z-index (bottom to top)
+  
   const { minimumPrice, pricePerSquareInch, isFixedPrice } = getPricingInfoForArea(areaId);
   
   const canvasConfig = getCanvasConfig(areaId);
+  const printableArea = getPrintableAreaFromPhoto(areaId);
   const totalDesignAreaAvailable = canvasConfig.realWorldWidth * canvasConfig.realWorldHeight;
 
-  let totalCurrentImageArea = 0;
+  // 🔥 FIXED: Precise area calculation with overlap detection using analytical geometry
+  const calculateVisibleAreas = () => {
+    if (visibleElements.length === 0) return { totalArea: 0, elementAreas: [] };
+    if (visibleElements.length === 1) {
+      const dims = calculateElementRealWorldDimensions(visibleElements[0], areaId);
+      return { 
+        totalArea: dims.areaSquareInches, 
+        elementAreas: [{ element: visibleElements[0], visibleArea: dims.areaSquareInches }] 
+      };
+    }
+
+    // Get all element rectangles
+    const elementRects = visibleElements.map(element => {
+      const dims = calculateElementRealWorldDimensions(element, areaId);
+      return {
+        element,
+        x: dims.xInches,
+        y: dims.yInches,
+        width: dims.widthInches,
+        height: dims.heightInches,
+        area: dims.areaSquareInches
+      };
+    }).filter(rect => rect.area > 0); // Skip zero-area elements
+
+    // Helper function to calculate intersection area between two rectangles
+    const getIntersectionArea = (rect1: any, rect2: any): number => {
+      const x1 = Math.max(rect1.x, rect2.x);
+      const y1 = Math.max(rect1.y, rect2.y);
+      const x2 = Math.min(rect1.x + rect1.width, rect2.x + rect2.width);
+      const y2 = Math.min(rect1.y + rect1.height, rect2.y + rect2.height);
+      
+      if (x2 <= x1 || y2 <= y1) return 0; // No intersection
+      
+      return (x2 - x1) * (y2 - y1);
+    };
+
+    // Calculate total area using inclusion-exclusion principle for rectangles
+    // Start with sum of all individual areas
+    let totalArea = elementRects.reduce((sum, rect) => sum + rect.area, 0);
+
+    // Subtract all pairwise intersections (overlaps counted once, not twice)
+    for (let i = 0; i < elementRects.length; i++) {
+      for (let j = i + 1; j < elementRects.length; j++) {
+        const overlapArea = getIntersectionArea(elementRects[i], elementRects[j]);
+        if (overlapArea > 0) {
+          totalArea -= overlapArea;
+        }
+      }
+    }
+
+    // For triple+ overlaps, this is more complex (inclusion-exclusion principle)
+    // But for most practical cases with 2-3 elements, pairwise is sufficient
+    // If you have many overlapping elements, we'd need the full inclusion-exclusion
+
+    // Calculate visible area for each element (their actual area within printable region)
+    const elementAreas = elementRects.map(rect => {
+      return {
+        element: rect.element,
+        visibleArea: Number(rect.area.toFixed(3))
+      };
+    });
+    
+    return {
+      totalArea: Number(totalArea.toFixed(3)),
+      elementAreas
+    };
+  };
+
+  const { totalArea: totalCurrentImageArea, elementAreas } = calculateVisibleAreas();
   const elementPricing: AreaPricingInfo['elements'] = [];
 
-  // //console.log('🔧 PRICING CALCULATION START:', {
-  //   areaId,
-  //   minimumPrice,
-  //   pricePerSquareInch,
-  //   isFixedPrice,
-  //   visibleElementsCount: visibleElements.length
-  // });
-
-  visibleElements.forEach((element, index) => {
+  elementAreas.forEach(({ element, visibleArea }) => {
     const currentRealWorldDims = calculateElementRealWorldDimensions(element, areaId);
     const currentAreaSquareInches = currentRealWorldDims.areaSquareInches;
-    
-    totalCurrentImageArea += currentAreaSquareInches;
 
     let elementPrice: number;
 
     if (isFixedPrice) {
       // Fixed price model - use minimum price regardless of area
       elementPrice = minimumPrice;
-      ////console.log(`🔧 FIXED PRICE: ${elementPrice} for ${element.id}`);
     } else {
-      // Area-based pricing model
-      const calculatedPrice = currentAreaSquareInches * pricePerSquareInch;
-      elementPrice = Math.max(minimumPrice, calculatedPrice);
-      ////console.log(`🔧 AREA-BASED PRICE: max(${minimumPrice}, ${calculatedPrice}) = ${elementPrice}`);
+      // Area-based pricing model - distribute price based on VISIBLE area
+      const proportionalShare = totalCurrentImageArea > 0 
+        ? (visibleArea / totalCurrentImageArea)
+        : 1 / visibleElements.length;
+      
+      const totalAreaPrice = totalCurrentImageArea * pricePerSquareInch;
+      const totalPrice = Math.max(minimumPrice, totalAreaPrice);
+      elementPrice = totalPrice * proportionalShare;
     }
 
     // Calculate original area for reference
     let originalAreaSquareInches = 0;
     if (element.type === 'image') {
-      const printableArea = getPrintableAreaFromPhoto(areaId);
       const originalImageWidthInInches = ((element.originalImageWidth || element.width) / printableArea.width) * canvasConfig.realWorldWidth;
       const originalImageHeightInInches = ((element.originalImageHeight || element.height) / printableArea.height) * canvasConfig.realWorldHeight;
       originalAreaSquareInches = originalImageWidthInInches * originalImageHeightInInches;
@@ -4020,17 +4087,23 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
     elementPricing.push({
       elementId: element.id,
       elementName: element.imageName || element.text || `Element ${element.id.slice(-4)}`,
-      areaSquareInches: currentAreaSquareInches,
+      areaSquareInches: visibleArea, // 🔥 Use visible area instead of total area
       elementPrice: Number(elementPrice.toFixed(2)),
       originalArea: Number(originalAreaSquareInches.toFixed(3)),
-      extraArea: Number(Math.max(0, currentAreaSquareInches - originalAreaSquareInches).toFixed(3))
+      extraArea: Number(Math.max(0, visibleArea - originalAreaSquareInches).toFixed(3))
     });
 
     element.realWorldDimensions = currentRealWorldDims;
   });
 
-  // Calculate total cost
-  const totalCost = elementPricing.reduce((sum, el) => sum + el.elementPrice, 0);
+  // Calculate total cost using visible area only
+  let totalCost: number;
+  if (isFixedPrice) {
+    totalCost = minimumPrice;
+  } else {
+    const calculatedPrice = totalCurrentImageArea * pricePerSquareInch;
+    totalCost = Math.max(minimumPrice, calculatedPrice);
+  }
 
   return {
     areaId,
@@ -4144,7 +4217,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     // Get the canvas background image (t-shirt template)
     const canvasImage = canvasImages[`${areaId}_${activeColor}`] || canvasImages[areaId];
     
-    // //console.log(`🎯 CANVAS CAPTURE: Starting capture for ${areaId}`, {
+    // //console.log(`ðŸŽ¯ CANVAS CAPTURE: Starting capture for ${areaId}`, {
     //   canvasConfig,
     //   hasCanvasImage: !!canvasImage,
     //   visibleElements: visibleElements.length,
@@ -4175,7 +4248,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     
     // STEP 2: Add the t-shirt template with color applied only to the t-shirt shape
     if (canvasImage) {
-      ////console.log(`🎯 CANVAS CAPTURE: Adding t-shirt template with color ${activeColor}`);
+      ////console.log(`ðŸŽ¯ CANVAS CAPTURE: Adding t-shirt template with color ${activeColor}`);
       
       // First, add a colored rectangle for the t-shirt
       const tshirtColorRect = new Konva.Rect({
@@ -4227,7 +4300,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     // STEP 4: Add all visible design elements INSIDE the clipping group
     for (const element of visibleElements) {
       if (element.type === 'image' && element.image) {
-        ////console.log(`🎯 CANVAS CAPTURE: Adding clipped image element ${element.id}`);
+        ////console.log(`ðŸŽ¯ CANVAS CAPTURE: Adding clipped image element ${element.id}`);
         
         const imageNode = new Konva.Image({
           image: element.image,
@@ -4244,7 +4317,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
         clippingGroup.add(imageNode); // Add to clipping group instead of layer
         
       } else if (element.type === 'text') {
-        ////console.log(`🎯 CANVAS CAPTURE: Adding clipped text element ${element.id}`);
+        ////console.log(`ðŸŽ¯ CANVAS CAPTURE: Adding clipped text element ${element.id}`);
         
         const textNode = new Konva.Text({
           text: element.text || 'Text',
@@ -4290,7 +4363,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
       pixelRatio: 2
     });
     
-    // //console.log(`🎯 CANVAS CAPTURE: Successfully captured ${areaId}`, {
+    // //console.log(`ðŸŽ¯ CANVAS CAPTURE: Successfully captured ${areaId}`, {
     //   dataUrlLength: dataURL.length,
     //   hasBackground: !!canvasImage,
     //   clippedElements: visibleElements.length
@@ -4302,7 +4375,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     return dataURL;
     
   } catch (error) {
-    ////console.error(`🎯 CANVAS CAPTURE: Error capturing area ${areaId}:`, error);
+    ////console.error(`ðŸŽ¯ CANVAS CAPTURE: Error capturing area ${areaId}:`, error);
     return null;
   }
 }, [getCanvasConfig, getPrintableAreaFromPhoto, designElements, activeColor, canvasImages]);
@@ -4344,7 +4417,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
         element_name: element.imageName || element.text || `Element ${index + 1}`,
         element_type: element.type,
         
-        // 🔥 NEW: Physical dimensions in inches
+        // ðŸ”¥ NEW: Physical dimensions in inches
         physical_dimensions: {
           width_inches: Number(realWorldDims.widthInches.toFixed(3)),
           height_inches: Number(realWorldDims.heightInches.toFixed(3)),
@@ -4353,7 +4426,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           position_y_inches: Number(realWorldDims.yInches.toFixed(3))
         },
         
-        // 🔥 NEW: Pixel dimensions
+        // ðŸ”¥ NEW: Pixel dimensions
         pixel_dimensions: {
           width_pixels: Math.round(element.width),
           height_pixels: Math.round(element.height),
@@ -4361,7 +4434,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           position_y_pixels: Math.round(element.y)
         },
         
-        // 🔥 NEW: Original image information
+        // ðŸ”¥ NEW: Original image information
         original_image_info: {
           original_width_pixels: element.originalImageWidth || element.width,
           original_height_pixels: element.originalImageHeight || element.height,
@@ -4369,7 +4442,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           original_aspect_ratio: Number(((element.originalImageWidth || element.width) / (element.originalImageHeight || element.height)).toFixed(3))
         },
         
-        // 🔥 NEW: Transformation details (including rotation)
+        // ðŸ”¥ NEW: Transformation details (including rotation)
         transformations: {
           rotation_degrees: Number((element.rotation || 0).toFixed(2)),
           scale_x: Number((element.scaleX || 1).toFixed(3)),
@@ -4379,7 +4452,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           is_scaled: Math.abs((element.scaleX || 1) - 1) > 0.01 || Math.abs((element.scaleY || 1) - 1) > 0.01
         },
         
-        // 🔥 NEW: Quality and DPI information
+        // ðŸ”¥ NEW: Quality and DPI information
         print_quality: (() => {
           const dpiInfo = calculateDPI(element);
           return {
@@ -4390,13 +4463,13 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           };
         })(),
         
-        // 🔥 NEW: Area utilization for this element
+        // ðŸ”¥ NEW: Area utilization for this element
         area_utilization: {
           design_area_consumed_percentage: Number(((realWorldDims.areaSquareInches / areaDesignAvailable) * 100).toFixed(2)),
           printable_area_consumed_percentage: Number(((realWorldDims.areaSquareInches / (printableArea.width * printableArea.height / (canvasConfig.width * canvasConfig.height) * areaDesignAvailable)) * 100).toFixed(2))
         },
         
-        // 🔥 NEW: Positioning information
+        // ðŸ”¥ NEW: Positioning information
         positioning: {
           is_centered_horizontally: Math.abs((element.x + element.width/2) - (printableArea.x + printableArea.width/2)) < 5,
           is_centered_vertically: Math.abs((element.y + element.height/2) - (printableArea.y + printableArea.height/2)) < 5,
@@ -4408,7 +4481,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           }
         },
         
-        // 🔥 NEW: State information
+        // ðŸ”¥ NEW: State information
         state: {
           visible: element.visible !== false,
           locked: element.locked || false,
@@ -4437,7 +4510,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
       area_name: areaId.charAt(0).toUpperCase() + areaId.slice(1),
       has_elements: visibleElements.length > 0,
       
-      // 🔥 NEW: Area capacity information
+      // ðŸ”¥ NEW: Area capacity information
       capacity: {
         design_area_available_sq_inches: Number(areaDesignAvailable.toFixed(3)),
         current_image_area_used_sq_inches: Number(areaCurrentImageUsed.toFixed(3)),
@@ -4445,7 +4518,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
         utilization_percentage: Number(areaUtilization.toFixed(2))
       },
       
-      // 🔥 NEW: Canvas and printable area info
+      // ðŸ”¥ NEW: Canvas and printable area info
       area_specifications: {
         canvas_width_pixels: canvasConfig.width,
         canvas_height_pixels: canvasConfig.height,
@@ -4463,7 +4536,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
         }
       },
       
-      // 🔥 NEW: Element statistics
+      // ðŸ”¥ NEW: Element statistics
       element_statistics: {
         total_elements: elements.length,
         visible_elements: visibleElements.length,
@@ -4474,7 +4547,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
         scaled_elements: visibleElements.filter(el => Math.abs((el.scaleX || 1) - 1) > 0.01 || Math.abs((el.scaleY || 1) - 1) > 0.01).length
       },
       
-      // 🔥 NEW: Individual elements in this area
+      // ðŸ”¥ NEW: Individual elements in this area
       elements: elementDetails
     };
     
@@ -4541,7 +4614,7 @@ const generateDetailedAreaAnalysis = useCallback(() => {
     })()
   };
 
-  ////console.log('🔧 Generated detailed area analysis:', detailedAnalysis);
+  ////console.log('ðŸ”§ Generated detailed area analysis:', detailedAnalysis);
   return detailedAnalysis;
 }, [availableAreas, designElements, getCanvasConfig, getPrintableAreaFromPhoto, calculateElementRealWorldDimensions, calculateDPI]);
 
@@ -4653,7 +4726,7 @@ const generateDetailedDescription = useCallback((areaId: string, metadata: Canva
     description += `   Pixels: ${element.dimensions.width_pixels} x ${element.dimensions.height_pixels}\n`;
     
     if (element.transformations.rotation !== 0) {
-      description += `   Rotation: ${element.transformations.rotation}°\n`;
+      description += `   Rotation: ${element.transformations.rotation}Â°\n`;
     }
     if (element.transformations.scale_x !== 1 || element.transformations.scale_y !== 1) {
       description += `   Scale: ${element.transformations.scale_x} x ${element.transformations.scale_y}\n`;
@@ -4770,8 +4843,8 @@ const renderTechnologySelector = () => {
             <div key={area.id} className="flex justify-between py-1">
               <span className="text-gray-600">{area.areaName}:</span>
               <span className="text-gray-800">
-                ₹{area['Minimum printing price'] || 'N/A'} min, 
-                ₹{area['Per sq inch printing price'] || 'N/A'}/sq"
+                Rs.{area['Minimum printing price'] || 'N/A'} min, 
+                Rs.{area['Per sq inch printing price'] || 'N/A'}/sq"
               </span>
             </div>
           ))}
@@ -4780,7 +4853,7 @@ const renderTechnologySelector = () => {
             <div className="pt-2 mt-2 border-t border-gray-200">
               <div className="flex justify-between font-medium">
                 <span>Current Design Cost:</span>
-                <span className="text-green-600">₹{totalPrice}</span>
+                <span className="text-green-600">Rs.{totalPrice}</span>
               </div>
             </div>
           )}
@@ -4852,7 +4925,7 @@ const renderPricingPanel = () => {
             </div>
           </div>
           <div className="text-3xl font-bold text-green-800">
-            ₹{priceBreakdown.finalPrice}
+            Rs.{priceBreakdown.finalPrice}
           </div>
           <p className="mt-1 text-xs text-green-600">
             Technology: {getCurrentTechnology()?.technologyName || activeTechnology}
@@ -4904,7 +4977,7 @@ const renderPricingPanel = () => {
                 </span>
               </div>
               <span className="text-base font-bold text-green-600">
-                ₹{area.finalPrice}
+                Rs.{area.finalPrice}
               </span>
             </summary>
             
@@ -4921,11 +4994,11 @@ const renderPricingPanel = () => {
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Rate</div>
-                  <div className="font-semibold text-gray-800">₹{area.pricePerSquareInch}/sq&quot;</div>
+                  <div className="font-semibold text-gray-800">Rs.{area.pricePerSquareInch}/sq&quot;</div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Minimum</div>
-                  <div className="font-semibold text-gray-800">₹{area.minimumPrice}</div>
+                  <div className="font-semibold text-gray-800">Rs.{area.minimumPrice}</div>
                 </div>
               </div>
 
@@ -4933,10 +5006,10 @@ const renderPricingPanel = () => {
               <div className="p-2 border-l-2 border-orange-400 rounded bg-orange-50">
                 <div className="mb-1 text-xs font-medium text-orange-700">Calculation</div>
                 <div className="font-mono text-xs text-orange-900">
-                  max(₹{area.minimumPrice}, {area.currentImageArea}&quot; × ₹{area.pricePerSquareInch})
+                  max(Rs.{area.minimumPrice}, {area.currentImageArea}&quot; Ã— Rs.{area.pricePerSquareInch})
                 </div>
                 <div className="mt-1 text-xs text-orange-600">
-                  = ₹{area.finalPrice}
+                  = Rs.{area.finalPrice}
                 </div>
               </div>
 
@@ -4952,7 +5025,7 @@ const renderPricingPanel = () => {
                           <div className="text-xs text-gray-500">Area: {element.areaSquareInches}&quot; sq</div>
                         </div>
                         <div className="text-sm font-bold text-green-600 whitespace-nowrap">
-                          ₹{element.elementPrice}
+                          Rs.{element.elementPrice}
                         </div>
                       </div>
                       
@@ -4983,12 +5056,12 @@ const renderPricingPanel = () => {
           <div className="p-2 space-y-1 rounded bg-orange-50">
             <div className="flex justify-between font-medium text-orange-800">
               <span>Base Printing</span>
-              <span>₹{priceBreakdown.basePrintingCost}</span>
+              <span>Rs.{priceBreakdown.basePrintingCost}</span>
             </div>
             {priceBreakdown.printingGSTAmount > 0 && (
               <div className="flex justify-between pl-4 text-xs text-orange-600">
                 <span>+ GST ({productData?.additionalCosts?.printingGST}%)</span>
-                <span>₹{priceBreakdown.printingGSTAmount.toFixed(2)}</span>
+                <span>Rs.{priceBreakdown.printingGSTAmount.toFixed(2)}</span>
               </div>
             )}
           </div>
@@ -4997,12 +5070,12 @@ const renderPricingPanel = () => {
           <div className="p-2 space-y-1 rounded bg-orange-50">
             <div className="flex justify-between font-medium text-orange-800">
               <span>Blank Product</span>
-              <span>₹{priceBreakdown.blankProductCost}</span>
+              <span>Rs.{priceBreakdown.blankProductCost}</span>
             </div>
             {priceBreakdown.productGSTAmount > 0 && (
               <div className="flex justify-between pl-4 text-xs text-orange-600">
                 <span>+ GST ({productData?.['GST Cost']}%)</span>
-                <span>₹{priceBreakdown.productGSTAmount.toFixed(2)}</span>
+                <span>Rs.{priceBreakdown.productGSTAmount.toFixed(2)}</span>
               </div>
             )}
           </div>
@@ -5013,19 +5086,19 @@ const renderPricingPanel = () => {
               {priceBreakdown.setupFees > 0 && (
                 <div className="flex justify-between text-gray-700">
                   <span>Setup Fees</span>
-                  <span>₹{priceBreakdown.setupFees}</span>
+                  <span>Rs.{priceBreakdown.setupFees}</span>
                 </div>
               )}
               {priceBreakdown.additionalCosts > 0 && (
                 <div className="flex justify-between text-gray-700">
                   <span>Additional Costs</span>
-                  <span>₹{priceBreakdown.additionalCosts}</span>
+                  <span>Rs.{priceBreakdown.additionalCosts}</span>
                 </div>
               )}
               {priceBreakdown.shippingCharges > 0 && (
                 <div className="flex justify-between text-gray-700">
                   <span>Shipping</span>
-                  <span>₹{priceBreakdown.shippingCharges}</span>
+                  <span>Rs.{priceBreakdown.shippingCharges}</span>
                 </div>
               )}
             </div>
@@ -5034,7 +5107,7 @@ const renderPricingPanel = () => {
           {/* Total */}
           <div className="flex justify-between pt-3 text-base font-bold text-green-800 border-t-2 border-green-300">
             <span>Total per Unit</span>
-            <span>₹{priceBreakdown.finalPrice}</span>
+            <span>Rs.{priceBreakdown.finalPrice}</span>
           </div>
         </div>
       </div>
@@ -5050,7 +5123,7 @@ const renderPricingPanel = () => {
   );
 };
 
-// 🔥 NEW: Enhanced technology change handler
+// ðŸ”¥ NEW: Enhanced technology change handler
 const handleTechnologyChange = useCallback((newTechnologyId: string) => {
   ////console.log('Technology changing from:', activeTechnology, 'to:', newTechnologyId);
   
@@ -5124,7 +5197,7 @@ const handleTechnologyChange = useCallback((newTechnologyId: string) => {
   
 }, [activeTechnology, productData, getAvailableAreas, activeArea, pricingBreakdown, designElements, updatePricingData, isMobile]);
 
-// 🔥 NEW: Technology comparison helper
+// ðŸ”¥ NEW: Technology comparison helper
 const compareTechnologyPricing = useCallback((tech1Id: string, tech2Id: string) => {
   const tech1 = productData?.printT?.find((tech: any) => tech.id === tech1Id);
   const tech2 = productData?.printT?.find((tech: any) => tech.id === tech2Id);
@@ -5174,13 +5247,13 @@ const compareTechnologyPricing = useCallback((tech1Id: string, tech2Id: string) 
 const mockupImages = {};
 const colorSpecificImages = {};
 
-// 🔥 FIX: Define flags early and with proper fallbacks
+// ðŸ”¥ FIX: Define flags early and with proper fallbacks
 const productDataFlags = {
   color_Images: filteredProductData?.color_Images ?? productData?.color_Images ?? false,
   size_Images: filteredProductData?.size_Images ?? productData?.size_Images ?? false
 };
 
-//console.log('🔧 Product flags:', productDataFlags);
+//console.log('ðŸ”§ Product flags:', productDataFlags);
 
 // Process mockup variants
 if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
@@ -5207,7 +5280,7 @@ if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
           const generatedImage = firstSizeVariant.generated_images[0];
           
           // Create key based on what varies
-          // 🔥 FIX: Include view_angle to distinguish front/back mockups
+          // ðŸ”¥ FIX: Include view_angle to distinguish front/back mockups
           let uniqueKey;
           if (useColorLabels) {
             uniqueKey = `${mockupVariant.mockup_title}_${mockupVariant.view_angle}_${colorCombo.color_name}`;
@@ -5282,14 +5355,14 @@ if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
   });
 }
 
-//console.log('🔧 Generated mockup images:', Object.keys(mockupImages).length);
-//console.log('🔧 Color-specific groups:', Object.keys(colorSpecificImages).length);
+//console.log('ðŸ”§ Generated mockup images:', Object.keys(mockupImages).length);
+//console.log('ðŸ”§ Color-specific groups:', Object.keys(colorSpecificImages).length);
 
   const designImages = storeData.design_images || [];
   const canvasImages = storeData.canvas_images || [];
 
   // Extract color details from the calculation breakdown
- // ✅ SAFE: Extract color details from the calculation breakdown with fallback
+ // âœ… SAFE: Extract color details from the calculation breakdown with fallback
 const colorDetails = storeData.generation_summary?.mockup_calculation?.calculationBreakdown?.map(breakdown => ({
   name: breakdown.color,
   value: breakdown.colorHex
@@ -5302,19 +5375,19 @@ const colorDetails = storeData.generation_summary?.mockup_calculation?.calculati
   // const sizeOptions = storeData.mockup_variants[0]?.color_combinations[0]?.size_variants.map(sizeVariant => 
   //   sizeVariant.size_name
   // ) || selectedSizes.slice();
-// ✅ FIXED CODE - Collect sizes from ALL mockup variants
-// ✅ FIXED: Collect sizes from ALL mockup variants
+// âœ… FIXED CODE - Collect sizes from ALL mockup variants
+// âœ… FIXED: Collect sizes from ALL mockup variants
 const allSizesSet = new Set<string>();
 
 if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
   storeData.mockup_variants.forEach(mockupVariant => {
-    // 🔥 FIX 1: Check mockup_size at the variant level (for size_Images=true)
+    // ðŸ”¥ FIX 1: Check mockup_size at the variant level (for size_Images=true)
     if (mockupVariant.mockup_size) {
       allSizesSet.add(mockupVariant.mockup_size);
       //console.log('Found size from mockup_size:', mockupVariant.mockup_size);
     }
     
-    // 🔥 FIX 2: Also check color_combinations (fallback for size_Images=false)
+    // ðŸ”¥ FIX 2: Also check color_combinations (fallback for size_Images=false)
     if (mockupVariant.color_combinations && Array.isArray(mockupVariant.color_combinations)) {
       mockupVariant.color_combinations.forEach(colorCombo => {
         if (colorCombo.size_variants && Array.isArray(colorCombo.size_variants)) {
@@ -5334,7 +5407,7 @@ const sizeOptions = allSizesSet.size > 0
   ? Array.from(allSizesSet) 
   : selectedSizes.slice();
 
-//console.log('🔧 Extracted all sizes:', sizeOptions);
+//console.log('ðŸ”§ Extracted all sizes:', sizeOptions);
   
   // Create enhanced product data
   const enhancedProductData = {
@@ -5603,7 +5676,7 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
 
 
 const navigateToCreatePage = useCallback((transformedData) => {
-  // //console.log('🔧 NAVIGATION DEBUG - Enhanced data being sent to Create:', {
+  // //console.log('ðŸ”§ NAVIGATION DEBUG - Enhanced data being sent to Create:', {
   //   hasDetailedAreaAnalysis: !!transformedData.detailedAreaAnalysis,
   //   hasDesignMetrics: !!transformedData.designMetrics,
   //   totalElements: transformedData.designMetrics?.totalElements,
@@ -5621,15 +5694,15 @@ const navigateToCreatePage = useCallback((transformedData) => {
   // Log detailed element information for each area
   if (transformedData.designMetrics?.elementDetails) {
     Object.entries(transformedData.designMetrics.elementDetails).forEach(([areaId, elements]) => {
-      // //console.log(`🔧 ${areaId.toUpperCase()} ELEMENTS (${elements.length}):`, elements.map(el => ({
+      // //console.log(`ðŸ”§ ${areaId.toUpperCase()} ELEMENTS (${elements.length}):`, elements.map(el => ({
       //   name: el.name,
-      //   dimensions: `${el.widthInches.toFixed(2)}" × ${el.heightInches.toFixed(2)}" = ${el.areaSquareInches.toFixed(2)} sq"`,
-      //   pixels: `${el.widthPixels} × ${el.heightPixels}`,
-      //   rotation: el.rotationDegrees + '°',
+      //   dimensions: `${el.widthInches.toFixed(2)}" Ã— ${el.heightInches.toFixed(2)}" = ${el.areaSquareInches.toFixed(2)} sq"`,
+      //   pixels: `${el.widthPixels} Ã— ${el.heightPixels}`,
+      //   rotation: el.rotationDegrees + 'Â°',
       //   quality: `${el.printQuality} (${el.dpi} DPI)`,
       //   isRotated: el.isRotated,
       //   isScaled: el.isScaled,
-      //   originalSize: `${el.originalWidth} × ${el.originalHeight}`
+      //   originalSize: `${el.originalWidth} Ã— ${el.originalHeight}`
       // })));
     });
   }
@@ -5637,7 +5710,7 @@ const navigateToCreatePage = useCallback((transformedData) => {
   // Log area breakdown information
   if (transformedData.designMetrics?.areaBreakdown) {
     Object.entries(transformedData.designMetrics.areaBreakdown).forEach(([areaId, breakdown]) => {
-      // //console.log(`🔧 ${areaId.toUpperCase()} BREAKDOWN:`, {
+      // //console.log(`ðŸ”§ ${areaId.toUpperCase()} BREAKDOWN:`, {
       //   hasElements: breakdown.hasElements,
       //   designAreaAvailable: breakdown.designAreaAvailable.toFixed(2) + ' sq"',
       //   currentImageAreaUsed: breakdown.currentImageAreaUsed.toFixed(2) + ' sq"',
@@ -5656,24 +5729,24 @@ const navigateToCreatePage = useCallback((transformedData) => {
     if (!mockupsByArea[area]) mockupsByArea[area] = 0;
     mockupsByArea[area]++;
   });
-  ////console.log('🔧 MOCKUP IMAGES BY AREA:', mockupsByArea);
+  ////console.log('ðŸ”§ MOCKUP IMAGES BY AREA:', mockupsByArea);
 
   // Verify design images
   if (transformedData.designImages?.length > 0) {
-    // //console.log('🔧 DESIGN IMAGES:', transformedData.designImages.map(img => ({
+    // //console.log('ðŸ”§ DESIGN IMAGES:', transformedData.designImages.map(img => ({
     //   name: img.name,
     //   area: img.area,
-    //   dimensions: `${img.originalWidth} × ${img.originalHeight}`,
+    //   dimensions: `${img.originalWidth} Ã— ${img.originalHeight}`,
     //   hasBase64: !!img.base64Data,
     //   position: `${img.position?.x}, ${img.position?.y}`,
-    //   size: `${img.dimensions?.width} × ${img.dimensions?.height}`,
+    //   size: `${img.dimensions?.width} Ã— ${img.dimensions?.height}`,
     //   rotation: img.rotation || 0
     // })));
   }
 
   // Verify canvas images
   if (transformedData.canvasImages?.length > 0) {
-    // //console.log('🔧 CANVAS IMAGES:', transformedData.canvasImages.map(img => ({
+    // //console.log('ðŸ”§ CANVAS IMAGES:', transformedData.canvasImages.map(img => ({
     //   area: img.area_id,
     //   hasImageData: !!img.image_data,
     //   elementsCount: img.metadata?.design_elements?.length || 0
@@ -5770,7 +5843,7 @@ const generateComprehensiveMockups = async (
   ////console.log(`Processing ${totalCombinations} total combinations for all areas`);
 
   try {
-  // 🔥 AROUND LINE 2970 - REPLACE THIS SECTION
+  // ðŸ”¥ AROUND LINE 2970 - REPLACE THIS SECTION
 for (const mockup of allMockups) {
   const colorCombinations: any[] = [{
     color_name: mockup.target_color_name,
@@ -5780,15 +5853,15 @@ for (const mockup of allMockups) {
 
   const mockupAreas = mockup.area?.map(area => area.areaName?.toLowerCase()) || [];
   
-  // 🔥 NEW: Detect cylindrical products
+  // ðŸ”¥ NEW: Detect cylindrical products
   const surfaceConfig = getSurfaceConfiguration();
   const isCylindrical = surfaceConfig.renderType === 'cylindrical';
   
-  // 🔥 NEW: Check if product has only ONE customization area
+  // ðŸ”¥ NEW: Check if product has only ONE customization area
   const custAreas = productData.printT?.[0]?.custAreas || [];
   const hasSingleCustArea = custAreas.length === 1;
   
-//   console.log('🔧 Product Configuration:', {
+//   console.log('ðŸ”§ Product Configuration:', {
 //   isCylindrical,
 //   custAreasCount: custAreas.length,
 //   hasSingleCustArea,
@@ -5800,8 +5873,8 @@ for (const mockup of allMockups) {
   let hasDesignElements: boolean;
   
   if (isCylindrical && hasSingleCustArea && areasWithElements.length > 0) {
-    // 🔥 CYLINDRICAL LOGIC: Use the single custArea's design for ALL mockups
-    //console.log('🔧 Cylindrical product with single area - applying design to all mockups');
+    // ðŸ”¥ CYLINDRICAL LOGIC: Use the single custArea's design for ALL mockups
+    //console.log('ðŸ”§ Cylindrical product with single area - applying design to all mockups');
     
     const singleAreaName = areasWithElements[0]; // The one area with design
     designToUse = {
@@ -5816,7 +5889,7 @@ for (const mockup of allMockups) {
     hasDesignElements = true;
     
   } else {
-    // 🔥 EXISTING LOGIC: Match mockup areas to design areas
+    // ðŸ”¥ EXISTING LOGIC: Match mockup areas to design areas
     hasDesignElements = mockupAreas.some(areaName => 
       areasWithElements.some(elementArea => elementArea.toLowerCase() === areaName)
     );
@@ -5827,8 +5900,8 @@ for (const mockup of allMockups) {
   // Rest of the generation logic remains the same...
   // const sizesToProcess = productData.size_Images && mockupSize ? [mockupSize] : selectedSizes;
 
-    // 🔥 CRITICAL FIX: When size_Images is true, only process the size that matches this mockup
-    // 🔥 FIX: Determine which sizes to process for this mockup
+    // ðŸ”¥ CRITICAL FIX: When size_Images is true, only process the size that matches this mockup
+    // ðŸ”¥ FIX: Determine which sizes to process for this mockup
     const mockupSize = (mockup as any).photoSize;
     let sizesToProcess: string[];
 
@@ -5842,7 +5915,7 @@ for (const mockup of allMockups) {
       }
     } else if (productData.size_Images && !mockupSize) {
       // Mockup has no size but size_Images is true - this is an error
-      //console.warn(`⚠️ Mockup ${mockup.title} has no photoSize but size_Images=true`);
+      //console.warn(`âš ï¸ Mockup ${mockup.title} has no photoSize but size_Images=true`);
       continue;
     } else {
       // Size-shared: Process all selected sizes
@@ -5911,7 +5984,7 @@ for (const mockup of allMockups) {
       }
 
     } else {
-      // 🔥 FIX: Generate separate images - but ONLY for the matching size
+      // ðŸ”¥ FIX: Generate separate images - but ONLY for the matching size
       for (const size of sizesToProcess) {
         const combinationId = `${mockup.title}-${mockup.target_color_name}-${size}-${hasDesignElements ? 'custom' : 'base'}`;
         
@@ -5976,7 +6049,7 @@ for (const mockup of allMockups) {
       mockup_title: mockup.title,
       view_angle: mockup.viewAngle || 'front',
       mockup_color: mockup.photoColor,
-      mockup_size: mockupSize, // 🔥 Store the specific size
+      mockup_size: mockupSize, // ðŸ”¥ Store the specific size
       has_design_elements: hasDesignElements,
       mockup_areas: mockupAreas,
       color_combinations: colorCombinations
@@ -6049,9 +6122,9 @@ for (const mockup of allMockups) {
 }
 
 const handleImportToStore = useCallback(async () => {
-  // ✅ CRITICAL: Check for no_mockup_compatible FIRST
+  // âœ… CRITICAL: Check for no_mockup_compatible FIRST
   if (productData?.surfConf?.No_Mockup_Compatible === true) {
-    console.log('⚠️ Product not mockup compatible - skipping mockup generation, navigating directly to Create');
+    console.log('âš ï¸ Product not mockup compatible - skipping mockup generation, navigating directly to Create');
     
     try {
       setIsGeneratingForStore(true);
@@ -6074,7 +6147,7 @@ const handleImportToStore = useCallback(async () => {
       const finalPricingBreakdown = calculateTotalPricing();
       const detailedAreaAnalysis = generateDetailedAreaAnalysis();
 
-       // 🔥 FIX: Calculate total current image area
+       // ðŸ”¥ FIX: Calculate total current image area
       let totalCurrentImageArea = 0;
       Object.values(finalPricingBreakdown.areas).forEach(area => {
         totalCurrentImageArea += area.currentImageArea;
@@ -6098,10 +6171,10 @@ const handleImportToStore = useCallback(async () => {
         canvas_images: canvasImages,
         design_images: designImages,
          
-        // 🔥 ADD: Include detailed area analysis
+        // ðŸ”¥ ADD: Include detailed area analysis
         detailed_area_analysis: detailedAreaAnalysis,
         
-        // 🔥 ADD: Include pricing data
+        // ðŸ”¥ ADD: Include pricing data
         pricing_data: {
           final_price_per_unit: Number(finalPricingBreakdown.priceBreakdown.finalPrice.toFixed(2)),
           currency: 'INR',
@@ -6161,7 +6234,7 @@ const handleImportToStore = useCallback(async () => {
       navigateToCreatePage(transformedData);
       
     } catch (error) {
-      console.error('❌ Failed to prepare data for Create page:', error);
+      console.error('âŒ Failed to prepare data for Create page:', error);
       alert(`Failed to prepare product data: ${error.message}`);
     } finally {
       setIsGeneratingForStore(false);
@@ -6172,30 +6245,30 @@ const handleImportToStore = useCallback(async () => {
 
 
   if (!hasDesignElements) {
-    alert('⚠️ Please add design elements before importing to store.');
+    alert('âš ï¸ Please add design elements before importing to store.');
     return;
   }
 
   if (selectedColors.length === 0 || selectedSizes.length === 0) {
-    alert('⚠️ Please select colors and sizes before importing to store.');
+    alert('âš ï¸ Please select colors and sizes before importing to store.');
     return;
   }
 
   if (!mockupCalculation) {
-    alert('⚠️ Unable to calculate mockups. Please check your selections.');
+    alert('âš ï¸ Unable to calculate mockups. Please check your selections.');
     return;
   }
 
-  ////console.log('🔧 IMPORT DEBUG - Starting import process...');
-  ////console.log('🔧 Current designElements:', designElements);
-  ////console.log('🔧 Available areas:', availableAreas);
+  ////console.log('ðŸ”§ IMPORT DEBUG - Starting import process...');
+  ////console.log('ðŸ”§ Current designElements:', designElements);
+  ////console.log('ðŸ”§ Available areas:', availableAreas);
 
   // Generate detailed area analysis BEFORE import
-  ////console.log('🔧 Generating detailed area analysis...');
+  ////console.log('ðŸ”§ Generating detailed area analysis...');
   const detailedAreaAnalysis = generateDetailedAreaAnalysis();
   
-  ////console.log('🔧 DETAILED AREA ANALYSIS:', detailedAreaAnalysis);
-  ////console.log('🔧 Area Summary:', detailedAreaAnalysis.area_summary);
+  ////console.log('ðŸ”§ DETAILED AREA ANALYSIS:', detailedAreaAnalysis);
+  ////console.log('ðŸ”§ Area Summary:', detailedAreaAnalysis.area_summary);
 
   // Enhanced area identification with normalization
   const normalizeAreaName = (areaName) => {
@@ -6208,12 +6281,12 @@ const handleImportToStore = useCallback(async () => {
     const elements = designElements[areaId] || [];
     const visibleElements = elements.filter(element => element.visible !== false);
     
-    ////console.log(`🔧 Checking area "${areaId}": ${visibleElements.length} visible elements`);
+    ////console.log(`ðŸ”§ Checking area "${areaId}": ${visibleElements.length} visible elements`);
     
     if (visibleElements.length > 0) {
       const normalizedAreaId = normalizeAreaName(areaId);
       areasWithElements.push(normalizedAreaId);
-      ////console.log(`🔧 Added area with elements: ${normalizedAreaId} (original: ${areaId})`);
+      ////console.log(`ðŸ”§ Added area with elements: ${normalizedAreaId} (original: ${areaId})`);
     }
   });
 
@@ -6221,18 +6294,18 @@ const handleImportToStore = useCallback(async () => {
   const allMockupsForTech = [];
   const allAvailableAreas = new Set();
 
-  // 🔥 FIX: Filter by selected sizes when size_Images is true
+  // ðŸ”¥ FIX: Filter by selected sizes when size_Images is true
 selectedColors.forEach(color => {
   if (productData.size_Images && selectedSizes.length > 0) {
-     //console.log('🔍 Selected sizes to process:', selectedSizes);
+     //console.log('ðŸ” Selected sizes to process:', selectedSizes);
     // When size_Images is true, get mockups for each selected size
     selectedSizes.forEach(size => {
-      //console.log('🔍 Processing size:', size);
+      //console.log('ðŸ” Processing size:', size);
       const mockupsForColorAndSize = getMockupsForColor(
         productData, 
         color.value, 
         activeTechnology,
-        size  // ✅ Pass the size parameter
+        size  // âœ… Pass the size parameter
       );
       
       mockupsForColorAndSize.forEach(mockup => {
@@ -6286,7 +6359,7 @@ selectedColors.forEach(color => {
   const areasWithoutElements = allAreasList.filter(area => !areasWithElements.includes(area));
 
   if (allAreasList.length === 0) {
-    alert(`❌ No areas found in mockup data. Please check your product configuration.`);
+    alert(`âŒ No areas found in mockup data. Please check your product configuration.`);
     return;
   }
 
@@ -6331,15 +6404,15 @@ selectedColors.forEach(color => {
 
     // Enhanced progress callback
     const progressCallback = (progress) => {
-      ////console.log(`🔧 Generation Progress: ${progress.completed}/${progress.total} - ${progress.current_combination}`);
+      ////console.log(`ðŸ”§ Generation Progress: ${progress.completed}/${progress.total} - ${progress.current_combination}`);
       setStoreGenerationProgress({ ...progress });
       
       if (progress.errors && progress.errors.length > 0) {
-        ////console.error('🔧 Generation errors:', progress.errors);
+        ////console.error('ðŸ”§ Generation errors:', progress.errors);
       }
     };
 
-    ////console.log('🔧 Starting comprehensive mockup generation for ALL areas...');
+    ////console.log('ðŸ”§ Starting comprehensive mockup generation for ALL areas...');
     
     // Generate comprehensive mockups
     const comprehensiveImportData = await generateComprehensiveMockups(
@@ -6356,7 +6429,7 @@ selectedColors.forEach(color => {
     );
 
 
-    // //console.log('🔧 Comprehensive generation completed:', {
+    // //console.log('ðŸ”§ Comprehensive generation completed:', {
     //   totalImages: comprehensiveImportData.generation_summary.total_images_generated,
     //   timeMs: comprehensiveImportData.generation_summary.total_time_ms,
     //   errors: comprehensiveImportData.generation_summary.errors.length,
@@ -6420,7 +6493,7 @@ selectedColors.forEach(color => {
     const designImages = extractDesignImages();
     const canvasImages = exportAllCanvasImages();
 
-  //   console.log('📦 GENERATION COMPLETE:', {
+  //   console.log('ðŸ“¦ GENERATION COMPLETE:', {
   //   total_variants: comprehensiveImportData.mockup_variants.length,
   //   variants: comprehensiveImportData.mockup_variants.map(v => ({
   //     title: v.mockup_title,
@@ -6542,7 +6615,7 @@ selectedColors.forEach(color => {
       }
     };
 
-    // //console.log('🔧 Enhanced import data created with detailed analysis:', {
+    // //console.log('ðŸ”§ Enhanced import data created with detailed analysis:', {
     //   totalElements: detailedAreaAnalysis.area_summary.total_elements_across_all_areas,
     //   complexityRating: detailedAreaAnalysis.area_summary.design_complexity_score.complexity_rating,
     //   utilizationPercentage: detailedAreaAnalysis.area_utilization_percentage,
@@ -6560,20 +6633,20 @@ selectedColors.forEach(color => {
 
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // //console.log('🔧 Transforming comprehensive data and navigating...');
+    // //console.log('ðŸ”§ Transforming comprehensive data and navigating...');
     //const transformedData = transformStoreDataForCreate(comprehensiveImportData, filteredProductData);
 
-  //   console.log('📦 BEFORE TRANSFORM:', {
+  //   console.log('ðŸ“¦ BEFORE TRANSFORM:', {
   //   total_mockup_variants: comprehensiveImportData.mockup_variants.length,
   //   has_design_images: !!comprehensiveImportData.design_images,
   //   design_images_count: comprehensiveImportData.design_images?.length || 0
   // });
 
   // Transform the data
-  //console.log('🔧 CALLING transformStoreDataForCreate...');
+  //console.log('ðŸ”§ CALLING transformStoreDataForCreate...');
   const transformedData = transformStoreDataForCreate(comprehensiveImportData, filteredProductData);
 
-  // console.log('🔧 AFTER TRANSFORM:', {
+  // console.log('ðŸ”§ AFTER TRANSFORM:', {
   //   mockupImagesCount: Object.keys(transformedData.mockupImages || {}).length,
   //   mockupImageKeys: Object.keys(transformedData.mockupImages || {}),
   //   colorSpecificImagesCount: Object.keys(transformedData.colorSpecificImages || {}).length
@@ -6582,7 +6655,7 @@ selectedColors.forEach(color => {
      navigateToCreatePage(transformedData);
 
   } catch (error) {
-    ////console.error('🔧 Enhanced store import failed:', error);
+    ////console.error('ðŸ”§ Enhanced store import failed:', error);
     
     setStoreGenerationProgress(prev => ({
       ...prev,
@@ -6654,7 +6727,7 @@ const renderUploadPanel = () => {
             <div className="p-2 rounded-lg sm:p-3 bg-white/60">
               <div className="text-xs font-medium text-blue-600">STATUS</div>
               <div className={`text-lg font-bold ${imagesWithBase64 === totalImages ? 'text-green-600' : 'text-orange-600'}`}>
-                {imagesWithBase64 === totalImages ? '✅' : '⚠️'}
+                {imagesWithBase64 === totalImages ? 'âœ…' : 'âš ï¸'}
               </div>
               <div className="text-xs text-blue-600">
                 {imagesWithBase64 === totalImages ? 'All stored' : 'Partial storage'}
@@ -6792,7 +6865,7 @@ const renderUploadPanel = () => {
                     </p>
                     <div className="flex items-center mt-1 space-x-3 text-xs text-gray-500">
                       <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
-                      <span>•</span>
+                      <span>â€¢</span>
                       <span className={file.base64Data ? 'text-green-600' : 'text-orange-600'}>
                         {file.base64Data ? 'Base64 stored' : 'Not stored'}
                       </span>
@@ -6843,7 +6916,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
         const centerX = printableArea.x + (printableArea.width - width) / 2;
         const centerY = printableArea.y + (printableArea.height - height) / 2;
         
-        // ✅ CREATE ELEMENT WITH GUARANTEED BASE64
+        // âœ… CREATE ELEMENT WITH GUARANTEED BASE64
         const element = {
           id: `img-${Date.now()}-${Math.random()}`,
           type: 'image',
@@ -6852,14 +6925,14 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           draggable: true, selected: false, zIndex: 1,
           image: img, imageName: imageName || 'Uploaded Image',
           imageUrl: imageSrc,
-          imageBase64: base64Data, // ✅ STORE BASE64
+          imageBase64: base64Data, // âœ… STORE BASE64
           originalImageWidth: img.naturalWidth || img.width,
           originalImageHeight: img.naturalHeight || img.height,
           opacity: 1, visible: true, locked: false
         };
         
         
-        // ✅ ATOMIC STATE UPDATE WITH PROPER MERGING
+        // âœ… ATOMIC STATE UPDATE WITH PROPER MERGING
         setDesignElements(currentState => {
           
           // Ensure area exists
@@ -6920,7 +6993,7 @@ const handleFileUpload = useCallback(async (files) => {
       const success = await addImageToCanvasWithStateProtection(blobUrl, file.name, activeArea, base64Data);
       
       if (success) {
-        // 🔥 NEW: Trigger pricing calculation after successful upload
+        // ðŸ”¥ NEW: Trigger pricing calculation after successful upload
         setTimeout(() => {
           updatePricingData();
         }, 500); // Small delay to ensure state is updated
@@ -7259,19 +7332,19 @@ const renderPreview = useCallback(() => {
                     </p>
                     <ul className="space-y-1 text-xs text-gray-700">
                       <li className="flex items-start gap-1.5">
-                        <span className="mt-0.5 text-orange-500">•</span>
+                        <span className="mt-0.5 text-orange-500">â€¢</span>
                         <span>Complete your design in the editor</span>
                       </li>
                       <li className="flex items-start gap-1.5">
-                        <span className="mt-0.5 text-orange-500">•</span>
+                        <span className="mt-0.5 text-orange-500">â€¢</span>
                         <span>Create your product with confidence</span>
                       </li>
                       <li className="flex items-start gap-1.5">
-                        <span className="mt-0.5 text-orange-500">•</span>
+                        <span className="mt-0.5 text-orange-500">â€¢</span>
                         <span>Our team creates a professional mockup</span>
                       </li>
                       <li className="flex items-start gap-1.5">
-                        <span className="mt-0.5 text-orange-500">•</span>
+                        <span className="mt-0.5 text-orange-500">â€¢</span>
                         <span>Production begins after approval</span>
                       </li>
                     </ul>
@@ -7300,12 +7373,12 @@ const renderPreview = useCallback(() => {
     );
   }
 
-  // 🔥 CRITICAL FIX: Immediately stop preview rendering when store import starts
+  // ðŸ”¥ CRITICAL FIX: Immediately stop preview rendering when store import starts
   if (isGeneratingForStore || showStoreImportModal) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-50">
         <div className="text-center text-gray-500">
-          <div className="mb-4 text-4xl">⏳</div>
+          <div className="mb-4 text-4xl">â³</div>
           <p className="font-medium">Generating store mockups...</p>
           <p className="mt-2 text-sm">Preview paused</p>
         </div>
@@ -7321,7 +7394,7 @@ const renderPreview = useCallback(() => {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-gray-500">
-          <div className="mb-4 text-4xl">🎨</div>
+          <div className="mb-4 text-4xl">ðŸŽ¨</div>
           <p className="font-medium">Select colors and sizes to see preview</p>
           <p className="mt-2 text-sm">Choose options from the design panel</p>
         </div>
@@ -7333,7 +7406,7 @@ const renderPreview = useCallback(() => {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-gray-500">
-          <div className="mb-4 text-4xl">🖼️</div>
+          <div className="mb-4 text-4xl">ðŸ–¼ï¸</div>
           <p className="font-medium">No mockups available</p>
         </div>
       </div>
@@ -7475,7 +7548,7 @@ const renderPreview = useCallback(() => {
                   
                   const mockupAreaName = mockup.area?.[0]?.areaName || mockup.viewAngle || mockup.title || `View ${index + 1}`;
 
-                   // 🔥 Get thumbnail dimensions from PayloadCMS
+                   // ðŸ”¥ Get thumbnail dimensions from PayloadCMS
                   const thumbnailDims = getMockupDimensions(mockup, 'thumbnail');
 
                   const engineType = determineRequiredEngine(mockup);
@@ -7546,12 +7619,12 @@ const renderPreview = useCallback(() => {
       </div>
       
       {/* Main Preview */}
-      <div className="flex flex-col flex-1 p-2 overflow-y-auto sm:px-4 sm:py-2">
+      <div className="flex flex-col flex-1 p-2 overflow-y-auto sm:px-4 sm:pb-2 sm:pt-0">
         <div className="flex items-center justify-center flex-1">
           {/* Main Container - Preview + Color Circles */}
           <div className="flex flex-col items-center gap-4">
             
-            {/* 🔥 MOBILE: Color Circles ABOVE Preview */}
+            {/* ðŸ”¥ MOBILE: Color Circles ABOVE Preview */}
             {isMobile && productData?.color_Images && (
               <div className="w-[300px]">
                 <div className="flex flex-wrap justify-center gap-3 py-2">
@@ -7588,10 +7661,10 @@ const renderPreview = useCallback(() => {
             
             {/* Main Preview */}
             <div className="relative">
-              <div className="w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] relative bg-gray-50 rounded-lg overflow-hidden shadow-lg">
+              <div className="w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] relative bg-white rounded-lg overflow-hidden">
                 {(() => {
                   const getHeroMockupForActiveColorAndArea = () => {
-                  // 🔥 FIX: Check if selected mockup matches current size
+                  // ðŸ”¥ FIX: Check if selected mockup matches current size
                   if (selectedHeroMockup) {
                     const mockupSize = (selectedHeroMockup as any).photoSize;
                     
@@ -7629,7 +7702,7 @@ const renderPreview = useCallback(() => {
                     return (
                       <div className="flex items-center justify-center w-full h-full text-gray-400">
                         <div className="text-center">
-                          <div className="mb-4 text-4xl">🎨</div>
+                          <div className="mb-4 text-4xl">ðŸŽ¨</div>
                           <p className="font-medium">No preview available</p>
                           <p className="mt-2 text-sm">for <strong>{activeArea}</strong> area</p>
                           <p className="text-sm">in <strong>{activeColorName}</strong></p>
@@ -7686,7 +7759,7 @@ const renderPreview = useCallback(() => {
               </div>
             </div>
             
-            {/* 🔥 MOBILE: Mockup Thumbnails - Horizontal Scrollable BELOW Preview */}
+            {/* ðŸ”¥ MOBILE: Mockup Thumbnails - Horizontal Scrollable BELOW Preview */}
             {isMobile && productData?.color_Images && (
               <div className="w-[300px]">
                 <div className="flex gap-3 pb-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
@@ -7767,7 +7840,7 @@ const renderPreview = useCallback(() => {
               </div>
             )}
             
-            {/* 🔥 DESKTOP: Color Circles BELOW Preview (unchanged) */}
+            {/* ðŸ”¥ DESKTOP: Color Circles BELOW Preview (unchanged) */}
             {!isMobile && productData?.color_Images&& (
               <div className="w-[400px]">
                 <div className="flex flex-wrap justify-center gap-3 py-0">
@@ -8037,7 +8110,7 @@ const renderPreview = useCallback(() => {
             const newWidth = Math.max(10, node.width() * scaleX);
             const newHeight = Math.max(10, node.height() * scaleY);
             
-            // //console.log('🔧 TRANSFORM UPDATE:', {
+            // //console.log('ðŸ”§ TRANSFORM UPDATE:', {
             //   elementId: element.id,
             //   beforeWidth: element.width,
             //   beforeHeight: element.height,
@@ -8101,7 +8174,7 @@ const renderPreview = useCallback(() => {
            onDragEnd={(e) => {
               if (isLocked) return;
               
-              // //console.log('🔧 DRAG UPDATE:', {
+              // //console.log('ðŸ”§ DRAG UPDATE:', {
               //   elementId: element.id,
               //   newX: e.target.x(),
               //   newY: e.target.y()
@@ -8140,7 +8213,7 @@ const renderPreview = useCallback(() => {
                 return updated;
               });
               
-              // 🔥 NEW: Recalculate pricing after transform
+              // ðŸ”¥ NEW: Recalculate pricing after transform
               setTimeout(() => updatePricingData(), 100);
             }}
           />
@@ -8152,22 +8225,21 @@ const renderPreview = useCallback(() => {
 }, [designElements, selectedId, updatePricingData]);
   
   const renderCanvas = useCallback(() => {
-    const canvasConfig = getCanvasConfig(activeArea, activeColor);
-    const printableArea = getPrintableAreaFromPhoto(activeArea, activeColor);
-    const canvasImage = canvasImages[`${activeArea}_${activeColor}`] || canvasImages[activeArea];
-    const surfaceConfig = getSurfaceConfiguration();
-    
-    // Mobile responsive dimensions
-    const baseWidth = canvasConfig.width;
-    const baseHeight = canvasConfig.height;
-    const maxWidth = isMobile ? window.innerWidth - 40 : baseWidth;
-    const maxHeight = isMobile ? window.innerHeight * 0.6 : baseHeight;
-    
-    const scale = Math.min(maxWidth / baseWidth, maxHeight / baseHeight, 1);
-    const displayWidth = baseWidth * scale;
-    const displayHeight = baseHeight * scale;
-    
-    return (
+ const canvasConfig = getCanvasConfig(activeArea, activeColor);
+ const printableArea = getPrintableAreaFromPhoto(activeArea, activeColor);
+ const canvasImage = canvasImages[`${activeArea}_${activeColor}`] || canvasImages[activeArea];
+ const surfaceConfig = getSurfaceConfiguration();
+
+ const baseWidth = canvasConfig.width;
+ const baseHeight = canvasConfig.height;
+ const maxWidth = isMobile ? window.innerWidth - 40 : baseWidth;
+ const maxHeight = isMobile ? window.innerHeight * 0.6 : baseHeight;
+
+ const scale = Math.min(maxWidth / baseWidth, maxHeight / baseHeight, 1);
+ const displayWidth = baseWidth * scale;
+ const displayHeight = baseHeight * scale;
+
+ return (
       <div className="relative">
         <Stage
           ref={stageRef}
@@ -8176,241 +8248,244 @@ const renderPreview = useCallback(() => {
           scaleX={scale}
           scaleY={scale}
           onClick={handleStageClick}
-          onTap={handleStageClick} // ADD THIS for mobile
-          onTouchStart={(e) => {  // ADD THIS for better mobile handling
-            if (e.target === e.target.getStage()) {
-              setSelectedId(null);
-            }
+          onTap={handleStageClick}
+          onTouchStart={(e) => {
+          if (e.target === e.target.getStage()) {
+          setSelectedId(null);
+          }
           }}
-          className="bg-white border border-gray-300 rounded-lg shadow-sm touch-manipulation"
+          className="bg-white border border-none rounded-lg shadow-sm touch-manipulation"
         >
-          <Layer ref={layerRef}>
-            <Rect
-              x={0}
-              y={0}
-              width={canvasConfig.width}
-              height={canvasConfig.height}
-              fill={activeColor}
-            />
-            
-            {canvasImage && (
-              <KonvaImage
-                image={canvasImage}
-                x={0}
-                y={0}
-                width={canvasConfig.width}
-                height={canvasConfig.height}
-                globalCompositeOperation="destination-in"
-                listening={false}
-              />
-            )}
-            
-            {canvasImage && (
-              <KonvaImage
-                image={canvasImage}
-                x={0}
-                y={0}
-                width={canvasConfig.width}
-                height={canvasConfig.height}
-                opacity={surfaceConfig.renderType === 'leather' ? 0.12 : 0.08}
-                globalCompositeOperation="multiply"
-                listening={false}
-              />
-            )}
-            
-            <Rect
-              x={printableArea.x}
-              y={printableArea.y}
-              width={printableArea.width}
-              height={printableArea.height}
-              stroke={brandColor}
-              strokeWidth={2}
-              dash={[6, 4]}
-              listening={false}
-            />
-            
-            <Group
-              clipFunc={(ctx) => {
-                ctx.beginPath();
-                ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
-                ctx.closePath();
-                ctx.clip();
-              }}
-            >
-              {renderDesignElements(activeArea)}
-            </Group>
-            
-            <Transformer
-              ref={transformerRef}
-              anchorStroke={brandColor}
-              anchorFill="#FFFFFF"
-              anchorSize={isMobile ? 12 : 8}
-              borderStroke={brandColor}
-              borderDash={[4, 4]}
-              rotateAnchorOffset={25}
-              keepRatio={false}
-              listening={true}
-              anchorStyleFunc={(anchor) => {
-                anchor.cornerRadius(2);
-                anchor.strokeWidth(2);
-                if (anchor.hasName('top-center') || anchor.hasName('bottom-center') || 
-                    anchor.hasName('middle-left') || anchor.hasName('middle-right')) {
-                  anchor.width(8);
-                  anchor.height(8);
-                }
-              }}
-              boundBoxFunc={(oldBox, newBox) => {
-                if (newBox.width < 10 || newBox.height < 10) {
-                  return oldBox;
-                }
-                return newBox;
-              }}
-              enabledAnchors={[
-                'top-left', 'top-center', 'top-right',
-                'middle-left', 'middle-right',
-                'bottom-left', 'bottom-center', 'bottom-right',
-              ]}
-            />
-          </Layer>
-        </Stage>
-        {/* Mobile selection indicator */}
-        {/* {isMobile && selectedId && (
-          <div className="absolute z-50 p-2 text-xs text-white bg-orange-500 rounded-lg -top-4 left-2 right-2">
-            Element selected - Use controls below to align
+      {/* LAYER 1: Base Color Layer - Always visible, changes with activeColor */}
+      <Layer>
+        <Rect
+        x={0}
+        y={0}
+        width={canvasConfig.width}
+        height={canvasConfig.height}
+        fill={activeColor}
+        listening={false}
+        />
+      </Layer>
+
+      {/* LAYER 2: Template/T-Shirt Image Layer - Shows on top with proper masking */}
+      {canvasImage && (
+        <Layer>
+          <KonvaImage
+          image={canvasImage}
+          x={0}
+          y={0}
+          width={canvasConfig.width}
+          height={canvasConfig.height}
+          listening={false}
+          opacity={1}
+          />
+        </Layer>
+      )}
+
+      {/* LAYER 3: Subtle texture overlay - optional */}
+      {canvasImage && (
+        <Layer>
+          <KonvaImage
+          image={canvasImage}
+          x={0}
+          y={0}
+          width={canvasConfig.width}
+          height={canvasConfig.height}
+          opacity={surfaceConfig.renderType === 'leather' ? 0.12 : 0.08}
+          globalCompositeOperation="multiply"
+          listening={false}
+          />
+        </Layer>
+      )}
+
+      {/* LAYER 4: Printable area boundary */}
+      <Layer>
+        <Rect
+        x={printableArea.x}
+        y={printableArea.y}
+        width={printableArea.width}
+        height={printableArea.height}
+        stroke={brandColor}
+        strokeWidth={2}
+        dash={[6, 4]}
+        listening={false}
+        />
+      </Layer>
+
+      {/* LAYER 5: Design elements (clipped to printable area) */}
+      <Layer ref={layerRef}>
+        <Group
+        clipFunc={(ctx) => {
+        ctx.beginPath();
+        ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
+        ctx.closePath();
+        ctx.clip();
+        }}
+        >
+        {renderDesignElements(activeArea)}
+        </Group>
+      </Layer>
+
+      {/* LAYER 6: Transformer for selected element - MUST BE LAST to stay on top */}
+      <Layer listening={true}>
+        <Transformer
+        ref={transformerRef}
+        anchorStroke={brandColor}
+        anchorFill="#FFFFFF"
+        anchorSize={isMobile ? 12 : 8}
+        borderStroke={brandColor}
+        borderDash={[4, 4]}
+        rotateAnchorOffset={25}
+        keepRatio={false}
+        listening={true}
+        anchorStyleFunc={(anchor) => {
+        anchor.cornerRadius(2);
+        anchor.strokeWidth(2);
+        if (anchor.hasName('top-center') || anchor.hasName('bottom-center') ||
+        anchor.hasName('middle-left') || anchor.hasName('middle-right')) {
+        anchor.width(8);
+        anchor.height(8);
+        }
+        }}
+        boundBoxFunc={(oldBox, newBox) => {
+        if (newBox.width < 10 || newBox.height < 10) {
+        return oldBox;
+        }
+        return newBox;
+        }}
+        enabledAnchors={[
+        'top-left', 'top-center', 'top-right',
+        'middle-left', 'middle-right',
+        'bottom-left', 'bottom-center', 'bottom-right',
+        ]}
+        />
+      </Layer>
+      </Stage>
+
+      {/* Dragging overlay indicator */}
+      {isDraggingPanel && !isMobile && (
+        <div className="fixed inset-0 z-40 pointer-events-none bg-black/5">
+          <div className="absolute px-4 py-2 text-sm font-medium text-orange-600 -translate-x-1/2 bg-white rounded-lg shadow-lg top-4 left-1/2">
+          ↕️ Drag to reposition alignment panel
           </div>
-        )} */}
+        </div>
+      )}
 
-         {/* Dragging overlay indicator */}
-        {isDraggingPanel && !isMobile && (
-          <div className="fixed inset-0 z-40 pointer-events-none bg-black/5">
-            <div className="absolute px-4 py-2 text-sm font-medium text-orange-600 -translate-x-1/2 bg-white rounded-lg shadow-lg top-4 left-1/2">
-              ↕️ Drag to reposition alignment panel
-            </div>
-          </div>
-        )}
-        
-        {/* Mobile-friendly element controls */}
-        {/* Mobile-friendly element controls */}
-        {selectedId && (
-          <div 
-            ref={panelRef}
-            className={`${
-              isMobile 
-                ? 'absolute -bottom-16 left-4 right-4' 
-                : 'fixed'
-            } p-3 bg-white border-2 border-orange-500 shadow-xl rounded-xl z-[60] ${
-              isDraggingPanel ? 'cursor-grabbing shadow-2xl' : 'cursor-default'
-            }`}
-            style={!isMobile ? {
-              left: `${alignmentPanelPos.x}px`,
-              top: `${alignmentPanelPos.y}px`,
-              userSelect: 'none',
-              transition: isDraggingPanel ? 'none' : 'box-shadow 0.2s ease',
-              pointerEvents: 'auto',
-              maxWidth: '250px',
-              willChange: isDraggingPanel ? 'transform' : 'auto',
-              transform: isDraggingPanel ? 'scale(1.02)' : 'scale(1)',
-            } : {}}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={handlePanelMouseDown}
-          >
-          {/* Drag handle for desktop */}
-          {!isMobile && (
-            <div 
-              data-drag-handle="true"
-              className={`flex items-center justify-between pb-2 mb-2 border-b border-gray-200 ${
-                isDraggingPanel ? 'cursor-grabbing bg-gray-50' : 'cursor-grab hover:bg-gray-50'
-              } rounded-t-lg transition-colors px-2 py-1`}
-            >
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className={`w-1 h-1 rounded-full transition-colors ${
-                    isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
-                  }`}></div>
-                  <div className={`w-1 h-1 rounded-full transition-colors ${
-                    isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
-                  }`}></div>
-                  <div className={`w-1 h-1 rounded-full transition-colors ${
-                    isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
-                  }`}></div>
-                  <div className={`w-1 h-1 rounded-full transition-colors ${
-                    isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
-                  }`}></div>
-                </div>
-                <span className="text-xs font-medium text-gray-500">
-                  {isDraggingPanel ? 'Dragging...' : 'Drag to move'}
-                </span>
-              </div>
-            </div>
-          )}
-            
-            <div className="space-y-0 md:space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 md:flex-col md:gap-0">
-                {/* Alignment Section */}
-                <div className="flex items-center gap-1 md:w-full">
-                  <div className="text-xs font-medium text-gray-700">Alignment</div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => centerElement('horizontal')}
-                      className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
-                      title="Center horizontally"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8M8 17h8M12 3v18" />
-                      </svg>
-                    </button>
+      {/* Mobile-friendly element controls */}
+      {selectedId && (
+        <div
+        ref={panelRef}
+        className={`${
+        isMobile
+        ? 'absolute -bottom-16 left-4 right-4'
+        : 'fixed'
+        } p-3 bg-white border-2 border-orange-500 shadow-xl rounded-xl z-[60] ${
+        isDraggingPanel ? 'cursor-grabbing shadow-2xl' : 'cursor-default'
+        }`}
+        style={!isMobile ? {
+        left: `${alignmentPanelPos.x}px`,
+        top: `${alignmentPanelPos.y}px`,
+        userSelect: 'none',
+        transition: isDraggingPanel ? 'none' : 'box-shadow 0.2s ease',
+        pointerEvents: 'auto',
+        maxWidth: '250px',
+        willChange: isDraggingPanel ? 'transform' : 'auto',
+        transform: isDraggingPanel ? 'scale(1.02)' : 'scale(1)',
+        } : {}}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={handlePanelMouseDown}
+        >
+      {!isMobile && (
+        <div
+        data-drag-handle="true"
+        className={`flex items-center justify-between pb-2 mb-2 border-b border-gray-200 ${
+        isDraggingPanel ? 'cursor-grabbing bg-gray-50' : 'cursor-grab hover:bg-gray-50'
+        } rounded-t-lg transition-colors px-2 py-1`}
+        >
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1">
+      <div className={`w-1 h-1 rounded-full transition-colors ${
+      isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
+      }`}></div>
+      <div className={`w-1 h-1 rounded-full transition-colors ${
+      isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
+      }`}></div>
+      <div className={`w-1 h-1 rounded-full transition-colors ${
+      isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
+      }`}></div>
+      <div className={`w-1 h-1 rounded-full transition-colors ${
+      isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
+      }`}></div>
+      </div>
+      <span className="text-xs font-medium text-gray-500">
+      {isDraggingPanel ? 'Dragging...' : 'Drag to move'}
+      </span>
+      </div>
+      </div>
+      )}
 
-                    <button
-                      onClick={() => centerElement('both')}
-                      className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
-                      title="Center both"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v18M3 12h18" />
-                      </svg>
-                    </button>
-
-                    <button
-                      onClick={() => centerElement('vertical')}
-                      className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
-                      title="Center vertically"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8v8M17 8v8M3 12h18" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Actions Section */}
-                <div className="flex items-center gap-2 md:w-full md:pt-3 md:border-t md:border-gray-200">
-                  <button
-                    onClick={deleteSelectedElement}
-                    className="p-2 text-red-600 transition-colors rounded-md hover:bg-red-50 touch-manipulation"
-                    title="Delete element"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedId(null);
-                    }}
-                    className="p-2 text-orange-500 transition-colors rounded-md hover:bg-orange-50"
-                    title="Close"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      <div className="space-y-0 md:space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 md:flex-col md:gap-0">
+      <div className="flex items-center gap-1 md:w-full">
+      <div className="text-xs font-medium text-gray-700">Alignment</div>
+      <div className="flex gap-1">
+      <button
+      onClick={() => centerElement('horizontal')}
+      className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
+      title="Center horizontally"
+      >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8M8 17h8M12 3v18" />
+      </svg>
+      </button>
+      <button
+      onClick={() => centerElement('both')}
+      className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
+      title="Center both"
+      >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v18M3 12h18" />
+      </svg>
+      </button>
+      <button
+      onClick={() => centerElement('vertical')}
+      className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
+      title="Center vertically"
+      >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8v8M17 8v8M3 12h18" />
+      </svg>
+      </button>
+      </div>
+      </div>
+      <div className="flex items-center gap-2 md:w-full md:pt-3 md:border-t md:border-gray-200">
+      <button
+      onClick={deleteSelectedElement}
+      className="p-2 text-red-600 transition-colors rounded-md hover:bg-red-50 touch-manipulation"
+      title="Delete element"
+      >
+      <Trash2 size={14} />
+      </button>
+      <button
+      onClick={(e) => {
+      e.stopPropagation();
+      setSelectedId(null);
+      }}
+      className="p-2 text-orange-500 transition-colors rounded-md hover:bg-orange-50"
+      title="Close"
+      >
+      <X size={16} />
+      </button>
+      </div>
+      </div>
+      </div>
+      </div>
+      )}
       </div>
       );
-    }, [getCanvasConfig, getPrintableAreaFromPhoto, activeArea, activeColor, canvasImages, handleStageClick, brandColor, renderDesignElements, selectedId, centerElement, deleteSelectedElement, getSurfaceConfiguration, isMobile]);
-    
+}, [getCanvasConfig, getPrintableAreaFromPhoto, activeArea, activeColor, canvasImages, handleStageClick, brandColor, renderDesignElements, selectedId, centerElement, deleteSelectedElement, getSurfaceConfiguration, isMobile, handlePanelMouseDown, isDraggingPanel, alignmentPanelPos]);
+
     // =====================================
     // SETTINGS PANELS
     // =====================================
@@ -8436,11 +8511,11 @@ const renderPreview = useCallback(() => {
                   <p className="mt-1 text-sm text-black">{productData?.brand || 'Junooni'}</p>
                 </div>
 
-                 {/* 🔥 NEW: Current pricing summary */}
+                 {/* ðŸ”¥ NEW: Current pricing summary */}
                 {totalPrice > 0 && (
                   <div className="p-2 border border-green-200 rounded bg-green-50">
                     <label className="text-xs font-medium tracking-wider text-green-700 uppercase">Current Price</label>
-                    <p className="mt-1 text-lg font-bold text-green-800">₹{totalPrice}</p>
+                    <p className="mt-1 text-lg font-bold text-green-800">Rs.{totalPrice}</p>
                     <p className="text-xs text-green-600">per unit</p>
                   </div>
                 )}
@@ -8626,7 +8701,7 @@ useEffect(() => {
     }
     
     // Close the panel by deselecting the element
-    //console.log('🔵 Clicked outside alignment panel - closing');
+    //console.log('ðŸ”µ Clicked outside alignment panel - closing');
     setSelectedId(null);
   };
 
@@ -8677,7 +8752,7 @@ useEffect(() => {
   }
 }, [isDraggingPanel, handlePanelMouseMove, handlePanelMouseUp]);
 
-// 🔥 FIX: Reset hero mockup when size changes
+// ðŸ”¥ FIX: Reset hero mockup when size changes
   useEffect(() => {
     designElementsRef.current = designElements;
   }, [designElements]);
@@ -8696,13 +8771,13 @@ useEffect(() => {
       }
     }
   } catch (err) {
-    // non-fatal — ignore if window or URLSearchParams unavailable in some envs
+    // non-fatal â€” ignore if window or URLSearchParams unavailable in some envs
     ////console.warn('Unable to parse technology from URL', err);
   }
 }, [productData]);
 
 
-  // ✅ ADD THIS: Periodic state validator
+  // âœ… ADD THIS: Periodic state validator
   useEffect(() => {
     const validator = setInterval(() => {
       const stateImages = Object.values(designElements).flat().filter(el => el.type === 'image').length;
@@ -8775,7 +8850,7 @@ useEffect(() => {
       }
     }, [selectedId, designElements, activeArea, isMobile]);
     
-    // 🔥 FIX: Load canvas images for ALL areas, not just the active one
+    // ðŸ”¥ FIX: Load canvas images for ALL areas, not just the active one
   useEffect(() => {
     const loadAllAreaImages = async () => {
       const technology = getCurrentTechnology();
@@ -8840,7 +8915,7 @@ useEffect(() => {
     loadAllAreaImages();
   }, [activeColor, activeTechnology, availableAreas, getCurrentTechnology, getCustomizationAreaByName]);
 
-  // 🔥 ADD: Separate effect for active area changes
+  // ðŸ”¥ ADD: Separate effect for active area changes
   useEffect(() => {
     const loadActiveAreaImage = async () => {
       const area = getCustomizationAreaByName(activeArea);
@@ -8906,9 +8981,9 @@ useEffect(() => {
     }, [activeTechnology, getAvailableAreas, activeArea]);
     
     useEffect(() => {
-    // ✅ REMOVED triggerUpdate() call
+    // âœ… REMOVED triggerUpdate() call
     setSelectedId(null);
-  }, [activeArea]); // ✅ REMOVED triggerUpdate from deps
+  }, [activeArea]); // âœ… REMOVED triggerUpdate from deps
     
     useEffect(() => {
       if (activeView === 'preview') {
@@ -8916,7 +8991,7 @@ useEffect(() => {
       }
     }, [activeView]);
     
-    // ✅ REPLACE THIS useEffect to prevent state reset
+    // âœ… REPLACE THIS useEffect to prevent state reset
   useEffect(() => {
     setDesignElements(prev => {
       const newElements = { ...prev };
@@ -8945,7 +9020,7 @@ useEffect(() => {
       return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedId, deleteSelectedElement]);
     
-  // 🔥 ADD: Initialize canvas images on component mount
+  // ðŸ”¥ ADD: Initialize canvas images on component mount
   useEffect(() => {
     ////console.log('Component mounted, initializing canvas images...');
     
@@ -8974,7 +9049,7 @@ useEffect(() => {
 
 // 7. EFFECTS SECTION - Add these useEffect hooks for pricing recalculation
 
-// 🔥 NEW: Main pricing recalculation effect
+// ðŸ”¥ NEW: Main pricing recalculation effect
 useEffect(() => {
   // Recalculate pricing whenever design elements change or technology changes
   if (Object.keys(designElements).length > 0) {
@@ -8998,7 +9073,7 @@ useEffect(() => {
   }
 }, [designElements, activeTechnology, updatePricingData]);
 
-// 🔥 NEW: Technology change pricing recalculation
+// ðŸ”¥ NEW: Technology change pricing recalculation
 useEffect(() => {
   // When technology changes, recalculate all pricing
   if (activeTechnology) {
@@ -9024,7 +9099,7 @@ useEffect(() => {
   }
 }, [activeTechnology, designElements, updatePricingData]);
 
-// 🔥 NEW: Active area change effect
+// ðŸ”¥ NEW: Active area change effect
 useEffect(() => {
   // When active area changes, update pricing display if needed
   if (activeArea && pricingBreakdown) {
@@ -9034,7 +9109,7 @@ useEffect(() => {
   }
 }, [activeArea, pricingBreakdown]);
 
-// 🔥 NEW: Color/Size selection pricing impact
+// ðŸ”¥ NEW: Color/Size selection pricing impact
 useEffect(() => {
   // Recalculate total pricing when color or size selections change
   // This affects the final quantity-based pricing calculations
@@ -9047,7 +9122,7 @@ useEffect(() => {
   }
 }, [selectedColors, selectedSizes, pricingBreakdown]);
 
-// 🔥 NEW: Element deletion effect
+// ðŸ”¥ NEW: Element deletion effect
 useEffect(() => {
   // When selectedId is null and we previously had a selection,
   // it might indicate element deletion, so recalculate pricing
@@ -9073,7 +9148,7 @@ useEffect(() => {
   prevSelectedIdRef.current = selectedId;
 }, [selectedId, designElements, updatePricingData]);
 
-// 🔥 NEW: Canvas image loading effect with pricing
+// ðŸ”¥ NEW: Canvas image loading effect with pricing
 useEffect(() => {
   // When canvas images load, we might need to recalculate pricing
   // if it affects the printable area calculations
@@ -9095,7 +9170,7 @@ useEffect(() => {
   }
 }, [canvasImages, availableAreas.length, designElements, pricingBreakdown, updatePricingData]);
 
-// 🔥 NEW: Product data change effect
+// ðŸ”¥ NEW: Product data change effect
 useEffect(() => {
   // When product data changes (e.g., from API updates), recalculate pricing
   if (productData && Object.keys(designElements).length > 0) {
@@ -9109,7 +9184,7 @@ useEffect(() => {
 
 // In renderPreview, right after getting colorMockups
 // useEffect(() => {
-//   console.log('🔍 Preview State:', {
+//   console.log('ðŸ” Preview State:', {
 //     activeSize,
 //     activeColor,
 //     selectedSizes,
@@ -9117,7 +9192,7 @@ useEffect(() => {
 //   });
 // }, [activeSize, activeColor, selectedSizes, productData?.size_Images]);
 
-// 🔥 NEW: Error handling for pricing calculations
+// ðŸ”¥ NEW: Error handling for pricing calculations
 useEffect(() => {
   // Monitor for pricing calculation errors and provide user feedback
   if (priceCalculationLoading) {
@@ -9186,7 +9261,7 @@ useEffect(() => {
                 </button>
                 {/* Debug //console Log */}
                 {/* {(() => {
-                  console.log('🔍 Debug No_Mockup_Compatible:', {
+                  console.log('ðŸ” Debug No_Mockup_Compatible:', {
                     productData: productData,
                     No_Mockup_Compatible: productData?.No_Mockup_Compatible,
                     type: typeof productData?.No_Mockup_Compatible,
@@ -9256,81 +9331,79 @@ useEffect(() => {
           </div>
 
           {/* Mobile Area Thumbnails - Horizontal Scrollable */}
-        {activeView === 'design' && isMobile && availableAreas.length > 1 && (
-          <div className="w-full bg-gray-100 border-b border-gray-100">
-            <div className="px-4 pt-2 pb-0">
-              {/* <h4 className="mb-2 text-sm font-medium text-gray-700">Design Areas</h4> */}
-              <div className="flex pb-0 space-x-3 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                {availableAreas.map(area => {
-                  const areaData = getAreaDisplayData(area);
-                  const elementCount = designElements[area]?.length || 0;
-                  const canvasImage = canvasImages[`${area}_${activeColor}`] || canvasImages[area];
+          {activeView === 'design' && isMobile && availableAreas.length > 1 && (
+            <div className="w-full bg-gray-100 border-b border-gray-100">
+              <div className="px-4 pt-2 pb-0">
+                <div className="flex pb-0 space-x-3 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  {availableAreas.map(area => {
+                    const areaData = getAreaDisplayData(area);
+                    const elementCount = designElements[area]?.length || 0;
+                    const canvasImage = canvasImages[`${area}_${activeColor}`] || canvasImages[area];
                   
-                  return (
-                    <div key={area} className="flex-shrink-0">
-                      <button
-                        onClick={() => setActiveArea(area)}
-                        className={`flex flex-col items-center p-2 border rounded-lg transition-all touch-manipulation min-w-[80px] ${
-                          activeArea === area
-                            ? 'border-orange-500 border-2 bg-orange-50'
-                            : ' hover:border-gray-400 hover:shadow-sm bg-gray-100'
-                        }`}
-                      >
-                        <div className="relative w-16 h-16 mb-0 overflow-hidden bg-gray-100 rounded">
-                          {canvasImage ? (
-                            <div className="relative w-full h-full">
-                              {/* Color overlay with mask */}
-                              <div 
-                                className="absolute inset-0 w-full h-full"
-                                style={{ 
-                                  backgroundColor: activeColor,
-                                  WebkitMask: `url(${canvasImage.src}) center/cover no-repeat`,
-                                  mask: `url(${canvasImage.src}) center/cover no-repeat`,
-                                  WebkitMaskComposite: 'source-in',
-                                  maskComposite: 'intersect'
-                                }}
-                              />
+                    return (
+                      <div key={area} className="flex-shrink-0">
+                        <button
+                          onClick={() => setActiveArea(area)}
+                          className={`flex flex-col items-center p-2 border rounded-lg transition-all touch-manipulation min-w-[80px] ${
+                            activeArea === area
+                              ? 'border-orange-500 border-2 bg-orange-50'
+                              : 'hover:border-gray-400 hover:shadow-sm bg-gray-100'
+                          }`}
+                        >
+                          <div className="relative w-16 h-16 mb-0 overflow-hidden bg-gray-100 rounded">
+                            {canvasImage ? (
+                              <div className="relative w-full h-full">
+                                {/* LAYER 1: Base color background */}
+                                <div
+                                  className="absolute inset-0 w-full h-full"
+                                  style={{
+                                    backgroundColor: activeColor
+                                  }}
+                                />
                               
-                              {/* Subtle texture overlay */}
-                              <img
-                                src={canvasImage.src}
-                                alt={areaData.displayName}
-                                className="absolute inset-0 object-cover w-full h-full opacity-5"
-                                style={{ mixBlendMode: 'multiply' }}
-                              />
+                                {/* LAYER 2: Canvas template image - overlay on top */}
+                                <img
+                                  src={canvasImage.src}
+                                  alt={areaData.displayName}
+                                  className="absolute inset-0 object-cover w-full h-full"
+                                  style={{ mixBlendMode: 'normal' }}
+                                />
                               
-                              {/* Element count badge */}
-                              {elementCount > 0 && (
-                                <div className="absolute top-1 right-1">
-                                  <div className="flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-orange-500 rounded-full">
-                                    {elementCount}
+                                {/* LAYER 3: Subtle texture overlay for depth */}
+                                <img
+                                  src={canvasImage.src}
+                                  alt={areaData.displayName}
+                                  className="absolute inset-0 object-cover w-full h-full opacity-5"
+                                  style={{ mixBlendMode: 'multiply' }}
+                                />
+                              
+                                {/* Element count badge */}
+                                {elementCount > 0 && (
+                                  <div className="absolute top-1 right-1">
+                                    <div className="flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-orange-500 rounded-full">
+                                      {elementCount}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center w-full h-full text-gray-400">
-                              <span className="text-xs">Loading...</span>
-                            </div>
-                          )}
-                        </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center w-full h-full text-gray-400">
+                                <span className="text-xs">Loading...</span>
+                              </div>
+                            )}
+                          </div>
                         
-                        <p className="text-xs font-medium leading-tight text-center text-gray-700">
-                          {areaData.displayName}
-                        </p>
-                        
-                        {/* Active indicator */}
-                        {/* {activeArea === area && (
-                          <div className="w-6 h-1 mt-1 bg-orange-500 rounded-full"></div>
-                        )} */}
-                      </button>
-                    </div>
-                  );
-                })}
+                          <p className="text-xs font-medium leading-tight text-center text-gray-700">
+                            {areaData.displayName}
+                          </p>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
 
         {/* Main Content Container */}
@@ -9504,7 +9577,7 @@ useEffect(() => {
           }`}>
             {/* Add Area Thumbnails for Design Mode - Desktop Only */}
             {activeView === 'design' && !isMobile && availableAreas.length > 1 && (
-              <div className="w-40 p-3 bg-[#F3F4F6] overflow-y-auto">
+              <div className="w-40 p-3 bg-white overflow-y-auto">
                 
                 <div className="space-y-2">
                   {availableAreas.map(area => {
@@ -9529,7 +9602,7 @@ useEffect(() => {
               </div>
             )}
             
-            <div className="flex-1 px-2 pt-0 pb-2 overflow-hidden sm:p-2">
+            <div className="flex-1 px-2 pt-0 pb-2 overflow-hidden sm:p-2 bg-white">
              {activeView === 'design' ? (
               <div className={`flex items-center justify-center h-full overflow-y-auto ${
                 isMobile ? 'px-2 pt-0 pb-28' : 'px-2 pt-0 pb-2 sm:p-4' // More bottom padding for mobile

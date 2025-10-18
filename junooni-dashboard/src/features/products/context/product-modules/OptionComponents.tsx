@@ -304,7 +304,7 @@ export const EnhancedOptionComponent = ({
                       >
                         <IconX size={12} />
                       </button>
-                      <span className="block text-xs text-center mt-1.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[80px]">{value}</span>
+                      <span className="block text-xs text-center mt-1.5 whitespace-nowrap overflow-hidden truncate text-ellipsis max-w-[80px]">{value}</span>
                     </div>
                   </PopoverTrigger>
                   <PopoverContent className="p-3 w-52">

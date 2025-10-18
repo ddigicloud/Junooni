@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { SidebarTrigger } from '@/components/ui/sidebar'
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { 
@@ -90,6 +91,19 @@ const formatDate = (dateString: string) => {
     hour: '2-digit',
     minute: '2-digit'
   }).format(date);
+};
+
+// Calculate payment processing fee
+const calculatePaymentProcessingFee = (totalAmount: number) => {
+  const gatewayFee = totalAmount * 0.02; // 2% of total
+  const gstOnFee = gatewayFee * 0.18; // 18% GST on gateway fee
+  const totalProcessingFee = gatewayFee + gstOnFee;
+  
+  return {
+    gatewayFee,
+    gstOnFee,
+    totalProcessingFee
+  };
 };
 
 // ✅ UPDATED: Mark as Shipped Modal Component
@@ -551,6 +565,74 @@ const calculateCustomerTotalPayment = (order: VendorOrder, originalItems: OrderI
 };
 
 // Add this helper function at the top of your OrderDetails component, after the imports
+
+// ✅ NEW: Calculate final vendor profit after all fees
+const calculateFinalVendorProfit = (order: VendorOrder) => {
+  const { originalItems, returnedItems, replacementItems } = categorizeOrderItems(order.vendor_items);
+  
+  // Calculate vendor payout amounts
+  const calculateVendorPayoutTotals = (items: OrderItem[]) => {
+    return items.reduce((total, item) => {
+      const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
+        ? item.unit_price - item.product_cost 
+        : item.unit_price * 0.9;
+      
+      return total + (vendorPayoutPerItem * item.quantity);
+    }, 0);
+  };
+
+  const originalVendorPayout = calculateVendorPayoutTotals(originalItems);
+  const returnedVendorPayout = calculateVendorPayoutTotals(returnedItems);
+  const replacementVendorPayout = calculateVendorPayoutTotals(replacementItems);
+  
+  // Calculate net vendor profit before fees
+  const netVendorProfit = (() => {
+    const hasReturns = returnedItems.length > 0;
+    const hasReplacements = replacementItems.length > 0;
+    
+    if (hasReplacements && !hasReturns) {
+      return originalVendorPayout - replacementVendorPayout;
+    } else if (hasReturns && !hasReplacements) {
+      return originalVendorPayout;
+    } else if (hasReturns && hasReplacements) {
+      return originalVendorPayout - replacementVendorPayout;
+    }
+    return originalVendorPayout;
+  })();
+
+  // Calculate net subtotal for processing fee
+  const originalTotals = calculateCategoryTotals(originalItems, order.currency_code);
+  const returnedTotals = calculateCategoryTotals(returnedItems, order.currency_code);
+  const replacementTotals = calculateCategoryTotals(replacementItems, order.currency_code);
+  
+  const netSubtotal = (() => {
+    const hasReturns = returnedItems.length > 0;
+    const hasReplacements = replacementItems.length > 0;
+    
+    if (hasReplacements && !hasReturns) {
+      return originalTotals.subtotal - replacementTotals.subtotal;
+    } else if (hasReturns && !hasReplacements) {
+      return originalTotals.subtotal;
+    } else if (hasReturns && hasReplacements) {
+      return originalTotals.subtotal - replacementTotals.subtotal;
+    }
+    return originalTotals.subtotal;
+  })();
+
+  // Calculate payment processing fee
+  const { totalProcessingFee } = calculatePaymentProcessingFee(netSubtotal);
+  
+  // Calculate final vendor profit after processing fee
+  const finalVendorProfit = netVendorProfit - totalProcessingFee;
+
+  return {
+    netVendorProfit,
+    totalProcessingFee,
+    finalVendorProfit,
+    netSubtotal
+  };
+};
+
 const getVendorSpecificClaimsReturns = (vendorItems, claims, returns, claimItems, returnItems) => {
   // Check if any of this vendor's items are involved in claims
   const vendorHasClaims = vendorItems.some(item => 
@@ -914,6 +996,7 @@ const calculateCategoryTotals = (items: OrderItem[], currencyCode: string) => {
 
 // ✅ Updated Cost Breakdown Modal Component
 // ✅ FIXED: Calculate accurate vendor profit based on actual payout amounts
+// ✅ UPDATED: Cost Breakdown Modal Component with Payment Processing Fee
 const CostBreakdownModal = ({ order, isOpen, onClose }: { 
   order: VendorOrder, 
   isOpen: boolean, 
@@ -925,12 +1008,12 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
   const returnedTotals = calculateCategoryTotals(returnedItems, order.currency_code);
   const replacementTotals = calculateCategoryTotals(replacementItems, order.currency_code);
   
-  // ✅ NEW: Calculate vendor payout amounts (not just product prices)
+  // ✅ Calculate vendor payout amounts (not just product prices)
   const calculateVendorPayoutTotals = (items: OrderItem[]) => {
     return items.reduce((total, item) => {
       const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
         ? item.unit_price - item.product_cost 
-        : item.unit_price * 0.7;
+        : item.unit_price * 0.9;
       
       return total + (vendorPayoutPerItem * item.quantity);
     }, 0);
@@ -941,19 +1024,18 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
   const replacementVendorPayout = calculateVendorPayoutTotals(replacementItems);
   
   // ✅ Calculate net vendor profit (actual payout amounts)
-  //const netVendorProfit = originalVendorPayout - returnedVendorPayout + replacementVendorPayout;
   const netVendorProfit = (() => {
     const hasReturns = returnedItems.length > 0;
     const hasReplacements = replacementItems.length > 0;
     
     if (hasReplacements && !hasReturns) {
-      return originalVendorPayout - replacementVendorPayout; // Original + replacements
+      return originalVendorPayout - replacementVendorPayout;
     } else if (hasReturns && !hasReplacements) {
-      return originalVendorPayout; // Original - returns
+      return originalVendorPayout;
     } else if (hasReturns && hasReplacements) {
-      return originalVendorPayout - replacementVendorPayout; // All changes
+      return originalVendorPayout - replacementVendorPayout;
     }
-    return originalVendorPayout; // No changes
+    return originalVendorPayout;
   })();
 
   // Calculate net totals for display
@@ -963,16 +1045,15 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
     const hasReplacements = replacementItems.length > 0;
     
     if (hasReplacements && !hasReturns) {
-      return originalTotals.subtotal + replacementTotals.subtotal; // Original + replacements
+      return originalTotals.subtotal + replacementTotals.subtotal;
     } else if (hasReturns && !hasReplacements) {
-      return originalTotals.subtotal - returnedTotals.subtotal; // Original - returns
-    }
-      else if (hasReturns && hasReplacements && !hasOriginals) {
-      return replacementTotals.subtotal; // Original - returns
+      return originalTotals.subtotal - returnedTotals.subtotal;
+    } else if (hasReturns && hasReplacements && !hasOriginals) {
+      return replacementTotals.subtotal;
     } else if (hasReturns && hasReplacements) {
-      return originalTotals.subtotal - returnedTotals.subtotal + replacementTotals.subtotal; // All changes
+      return originalTotals.subtotal - returnedTotals.subtotal + replacementTotals.subtotal;
     }
-    return originalTotals.subtotal; // No changes
+    return originalTotals.subtotal;
   })();
 
   const netItemCount = (() => {
@@ -980,14 +1061,20 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
     const hasReplacements = replacementItems.length > 0;
     
     if (hasReplacements && !hasReturns) {
-      return originalTotals.count + replacementTotals.count; // Original + replacements
+      return originalTotals.count + replacementTotals.count;
     } else if (hasReturns && !hasReplacements) {
-      return originalTotals.count; // Original - returns
+      return originalTotals.count;
     } else if (hasReturns && hasReplacements) {
-      return originalTotals.count + replacementTotals.count; // All changes
+      return originalTotals.count + replacementTotals.count;
     }
-    return originalTotals.count; // No changes
+    return originalTotals.count;
   })();
+
+  // ✅ NEW: Calculate payment processing fee
+  const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(netSubtotal);
+  
+  // ✅ NEW: Calculate final vendor profit after processing fee
+  const finalVendorProfit = netVendorProfit - totalProcessingFee;
 
   const renderItemSection = (items: OrderItem[], title: string, isDeduction = false, isAddition = false) => {
     if (items.length === 0) return null;
@@ -1007,7 +1094,7 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
           {items.map((item, index) => {
             const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
               ? item.unit_price - item.product_cost 
-              : item.unit_price * 0.7;
+              : item.unit_price * 0.9;
             
             const totalVendorPayout = vendorPayoutPerItem * item.quantity;
             const displayTotal = isDeduction ? -item.total : item.total;
@@ -1053,8 +1140,8 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
                     </span>
                   ) : (
                     <span className="text-gray-600">
-                      Product price × 70% = Your payout<br/>
-                      {formatPrice(item.unit_price, order.currency_code)} × 70% = 
+                      Product price × 90% = Your payout<br/>
+                      {formatPrice(item.unit_price, order.currency_code)} × 90% = 
                       <span className={`font-medium ml-1 ${isDeduction ? 'text-red-600' : isAddition ? 'text-green-600' : 'text-gray-600'}`}>
                         {isDeduction ? '-' : ''}{formatPrice(vendorPayoutPerItem, order.currency_code)}
                       </span>
@@ -1101,7 +1188,7 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
 
           <Separator />
 
-          {/* ✅ UPDATED: Summary Section with Vendor Payout Breakdown */}
+          {/* Customer Payment Summary */}
           <div className="space-y-2">
             <h4 className="font-medium text-gray-800">Customer Payment Summary</h4>
             
@@ -1139,7 +1226,44 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
 
           <Separator />
 
-          {/* ✅ NEW: Vendor Payout Breakdown */}
+          {/* ✅ NEW: Payment Processing Fee Section */}
+          <div className="space-y-2">
+            <h4 className="font-medium text-gray-800">Payment Processing Fees</h4>
+            
+            <div className="p-3 border border-orange-200 rounded-lg bg-orange-50">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-700">Payment gateway fee (2%)</span>
+                  <span className="font-medium text-red-600">-{formatPrice(gatewayFee, order.currency_code)}</span>
+                </div>
+                
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-700">GST on gateway fee (18%)</span>
+                  <span className="font-medium text-red-600">-{formatPrice(gstOnFee, order.currency_code)}</span>
+                </div>
+                
+                <Separator className="my-2 bg-orange-300" />
+                
+                <div className="flex items-center justify-between text-sm font-bold">
+                  <span className="text-orange-800">Total processing fee</span>
+                  <span className="text-red-600">-{formatPrice(totalProcessingFee, order.currency_code)}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-2 text-xs text-orange-700 border border-orange-200 rounded bg-orange-50">
+              <div className="flex items-start">
+                <Info className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                <span>
+                  Payment processing fees are calculated on the net customer payment amount and include the gateway fee plus applicable GST.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* ✅ UPDATED: Vendor Payout Breakdown */}
           <div className="space-y-2">
             <h4 className="font-medium text-gray-800">Your Payout Breakdown</h4>
             
@@ -1166,11 +1290,31 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
             
             <Separator />
             
-            <div className="flex items-center justify-between text-lg font-bold">
-              <span>Your total profit</span>
-              <span className="text-green-600">
-                +{formatPrice(order.payment_status === "refunded" ? 0 : Math.abs(netVendorProfit), order.currency_code)}
+            <div className="flex items-center justify-between text-sm font-medium">
+              <span className="text-gray-700">Subtotal before fees</span>
+              <span className="text-gray-900">
+                {formatPrice(order.payment_status === "refunded" ? 0 : Math.abs(netVendorProfit), order.currency_code)}
               </span>
+            </div>
+            
+            {/* ✅ NEW: Show processing fee deduction */}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-red-600">Payment processing fee</span>
+              <span className="text-red-600">-{formatPrice(totalProcessingFee, order.currency_code)}</span>
+            </div>
+            
+            <Separator />
+            
+            {/* ✅ UPDATED: Final profit after fees */}
+            <div className="flex items-center justify-between text-lg font-bold">
+              <span>Your total profit (after fees)</span>
+              <span className="text-green-600">
+                {formatPrice(order.payment_status === "refunded" ? 0 : Math.abs(finalVendorProfit), order.currency_code)}
+              </span>
+            </div>
+            
+            <div className="p-2 text-xs text-gray-600 rounded bg-gray-50">
+              * This is your final earnings after deducting payment processing fees
             </div>
           </div>
 
@@ -1183,7 +1327,7 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
                   This order includes {returnedItems.length > 0 ? 'returns' : ''} 
                   {returnedItems.length > 0 && replacementItems.length > 0 ? ' and ' : ''}
                   {replacementItems.length > 0 ? 'replacements' : ''}. 
-                  Your profit calculation considers actual payout amounts after product costs and commissions.
+                  Your profit calculation considers actual payout amounts after product costs, commissions, and payment processing fees.
                 </span>
               </div>
             </div>
@@ -1768,18 +1912,60 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
       (item.raw_unit_price?.value) ? parseFloat(item.raw_unit_price.value) : 0
     
     const quantity = item.quantity || 1
+
+     // 🔍 DEBUG: Log the entire item to see all available fields
+    console.log('=== DEBUG: Full Item Data ===', index);
+    console.log(JSON.stringify(item, null, 2));
+    
+    // 🔍 DEBUG: Check specific fields that might contain product_cost
+    console.log('=== DEBUG: Cost Fields ===');
+    console.log('item.product_cost:', item.product_cost);
+    console.log('item.cost:', item.cost);
+    console.log('item.unit_cost:', item.unit_cost);
+    console.log('item.vendor_cost:', item.vendor_cost);
+    console.log('item.item_cost:', item.item_cost);
+    console.log('item.base_cost:', item.base_cost);
+    console.log('item.metadata:', item.metadata);
+    console.log('item.merged_metadata:', item.merged_metadata);
+
+    // 🔍 DEBUG: Check nested structures
+    if (item.variant) {
+      console.log('item.variant.product_cost:', item.variant?.product_cost);
+      console.log('item.variant.cost:', item.variant?.cost);
+      console.log('item.variant.metadata:', item.variant?.metadata);
+    }
+    
+     if (item.product) {
+      console.log('item.product.cost:', item.product?.cost);
+      console.log('item.product.product_cost:', item.product?.product_cost);
+      console.log('item.product.metadata:', item.product?.metadata);
+    }
       
       // ✅ Extract product_cost (enhanced from backend)
     let productCost = 0;
-    if (typeof item.product_cost === 'number') {
-      productCost = item.product_cost;
-    } else if (typeof item.product_cost === 'string') {
-      productCost = parseFloat(item.product_cost) || 0;
-    } else if (item.merged_metadata?.product_cost) {
-      productCost = typeof item.merged_metadata.product_cost === 'number' 
-        ? item.merged_metadata.product_cost 
-        : parseFloat(item.merged_metadata.product_cost) || 0;
-    }
+   // Check variant metadata for cost_price
+if (item.variant?.metadata?.cost_price !== undefined) {
+  productCost = typeof item.variant.metadata.cost_price === 'number' 
+    ? item.variant.metadata.cost_price 
+    : parseFloat(item.variant.metadata.cost_price) || 0;
+  console.log(`✅ Found cost_price in variant.metadata: ${productCost}`);
+} 
+// Fallback to other possible locations
+else if (item.metadata?.cost_price !== undefined) {
+  productCost = typeof item.metadata.cost_price === 'number' 
+    ? item.metadata.cost_price 
+    : parseFloat(item.metadata.cost_price) || 0;
+  console.log(`✅ Found cost_price in item.metadata: ${productCost}`);
+}
+// Check merged_metadata as another fallback
+else if (item.merged_metadata?.cost_price !== undefined) {
+  productCost = typeof item.merged_metadata.cost_price === 'number' 
+    ? item.merged_metadata.cost_price 
+    : parseFloat(item.merged_metadata.cost_price) || 0;
+  console.log(`✅ Found cost_price in merged_metadata: ${productCost}`);
+}
+
+console.log(`✅ Final extracted product_cost for item ${index}: ${productCost}`);
       
       // Get subtitle from various fields
       let subtitle = "";
@@ -2312,7 +2498,7 @@ const generateTrackingUrl = (carrier: string, trackingNumber: string): string =>
 };
 
   // ✅ Updated invoice generation for vendor-specific data
-  // ✅ FIXED: Enhanced invoice generation with proper currency formatting
+
 const generateInvoice = () => {
   try {
     const doc = new jsPDF();
@@ -2331,199 +2517,298 @@ const generateInvoice = () => {
     const normalFontSize = 10;
     const smallFontSize = 8;
     
-    // Add company logo/name
-    doc.setFontSize(titleFontSize);
-    doc.setTextColor(230, 81, 0); // BRAND.primary
-    doc.text("JUNOONI", 20, 20);
+    // ✅ Categorize items by fulfillment type
+    const { creatorItems, junooniFulfillmentItems } = categorizeItemsByFulfillment(order.vendor_items);
+    const hasMixedFulfillment = creatorItems.length > 0 && junooniFulfillmentItems.length > 0;
     
-    // Add vendor-specific invoice heading
-    doc.setFontSize(headerFontSize);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`VENDOR INVOICE #${order.display_id}`, pageWidth - 20, 20, { align: "right" });
-    
-    // Add vendor info
-    doc.setFontSize(normalFontSize);
-    doc.text(`Vendor: ${order.vendor_handle}`, pageWidth - 20, 28, { align: "right" });
-    
-    const invoiceDate = formatDate(order.created_at).split(',')[0];
-    doc.text(`Date: ${invoiceDate}`, pageWidth - 20, 36, { align: "right" });
-    
-    // Add horizontal line
-    doc.setDrawColor(200, 200, 200);
-    doc.line(20, 42, pageWidth - 20, 42);
-    
-    // Add vendor-specific note
-    doc.setFontSize(normalFontSize);
-    doc.setTextColor(230, 81, 0);
-    doc.text("YOUR ORDER", 20, 52);
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(smallFontSize);
-    doc.text("This invoice shows only your products and your portion of the payment.", 20, 58);
-    
-    // Customer information
-    doc.setFontSize(normalFontSize);
-    doc.setFont("helvetica", "bold");
-    doc.text("Customer:", 20, 70);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(smallFontSize);
-    doc.text(`${order.customer.first_name} ${order.customer.last_name}`.trim(), 20, 76);
-    doc.text(`Email: ${order.customer.email}`, 20, 82);
-    
-    // Create table for vendor items only
-    const tableColumn = ["Your Products", "Description", "Qty", "Unit Price", "Total"];
-    const tableRows = [];
-    
-    // Add rows for vendor items only
-    order.vendor_items.forEach(item => {
-      const itemData = [
-        item.title,
-        item.subtitle || "",
-        item.quantity.toString(),
-        formatPriceForPDF(item.unit_price),
-        formatPriceForPDF(item.total)
-      ];
-      tableRows.push(itemData);
-    });
-    
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 90,
-      theme: "grid",
-      styles: { 
-        font: "helvetica", 
-        fontSize: 9,
-        cellPadding: 3
-      },
-      headStyles: { 
-        fillColor: [230, 230, 230], 
-        textColor: [50, 50, 50],
-        fontStyle: "bold",
-        halign: "center"
-      },
-      columnStyles: {
-        0: { cellWidth: 55, halign: "left" },
-        1: { cellWidth: 45, halign: "left" },
-        2: { cellWidth: 20, halign: "center" },
-        3: { cellWidth: 30, halign: "right" },
-        4: { cellWidth: 30, halign: "right" }
-      },
-      margin: { left: 20, right: 20 }
-    });
-    
-    // Add vendor-specific summary with better alignment
-    const finalY = doc.lastAutoTable.finalY + 10;
-    
-    // Calculate summary values
-    const { originalItems, returnedItems, replacementItems } = categorizeOrderItems(order.vendor_items);
-    
-    const calculateVendorPayoutTotals = (items: OrderItem[]) => {
-      return items.reduce((total, item) => {
-        const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
-          ? item.unit_price - item.product_cost 
-          : item.unit_price * 0.7;
-        return total + (vendorPayoutPerItem * item.quantity);
-      }, 0);
-    };
-
-    const originalVendorPayout = calculateVendorPayoutTotals(originalItems);
-    const returnedVendorPayout = calculateVendorPayoutTotals(returnedItems);
-    const replacementVendorPayout = calculateVendorPayoutTotals(replacementItems);
-    
-    const netVendorProfit = (() => {
-      const hasReturns = returnedItems.length > 0;
-      const hasReplacements = replacementItems.length > 0;
+    // Helper function to add page header
+    const addPageHeader = (pageTitle: string, fulfillmentType: string) => {
+      // Add company logo/name
+      doc.setFontSize(titleFontSize);
+      doc.setTextColor(0, 0, 0); // BLACK
+      doc.text("JUNOONI", 20, 20);
       
-      if (hasReplacements && !hasReturns) {
-        return originalVendorPayout - replacementVendorPayout;
-      } else if (hasReturns && !hasReplacements) {
-        return originalVendorPayout;
-      } else if (hasReturns && hasReplacements) {
-        return originalVendorPayout - replacementVendorPayout;
-      }
-      return originalVendorPayout;
-    })();
+      // Add vendor-specific invoice heading
+      doc.setFontSize(headerFontSize);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`VENDOR INVOICE #${order.display_id}`, pageWidth - 20, 20, { align: "right" });
+      
+      // Add vendor info
+      doc.setFontSize(normalFontSize);
+      doc.text(`Vendor: ${order.vendor_handle}`, pageWidth - 20, 28, { align: "right" });
+      
+      const invoiceDate = formatDate(order.created_at).split(',')[0];
+      doc.text(`Date: ${invoiceDate}`, pageWidth - 20, 36, { align: "right" });
+      
+      // Add horizontal line
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, 42, pageWidth - 20, 42);
+      
+      // Add page-specific note
+      doc.setFontSize(normalFontSize);
+      doc.setTextColor(0, 0, 0); // BLACK
+      doc.text(pageTitle, 20, 52);
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(smallFontSize);
+      doc.text(`${fulfillmentType} - This invoice shows only your products and your portion of the payment.`, 20, 58);
+      
+      // Customer information
+      doc.setFontSize(normalFontSize);
+      doc.setFont("helvetica", "bold");
+      doc.text("Customer:", 20, 70);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(smallFontSize);
+      doc.text(`${order.customer.first_name} ${order.customer.last_name}`.trim(), 20, 76);
+      doc.text(`Email: ${order.customer.email}`, 20, 82);
+    };
     
-    // Summary table with proper alignment
-    const summaryData = [
-      ["Subtotal:", formatPriceForPDF(order.vendor_subtotal)],
-      ["Shipping:", formatPriceForPDF(order.vendor_shipping_total)],
-      ["Tax:", formatPriceForPDF(order.vendor_tax_total)],
-      ["", ""], // Separator row
-      ["Your Total Earnings:", formatPriceForPDF(order.payment_status === "refunded" ? 0 : Math.abs(netVendorProfit))]
-    ];
-    
-    autoTable(doc, {
-      body: summaryData,
-      startY: finalY,
-      theme: "plain",
-      styles: { 
-        fontSize: 9,
-        cellPadding: 2
-      },
-      columnStyles: {
-        0: { 
-          cellWidth: 80, 
-          fontStyle: "bold",
-          halign: "right"
+    // Helper function to add product table
+    const addProductTable = (items: OrderItem[], startY: number, headerColor: number[]) => {
+      const tableColumn = ["Your Products", "Description", "Qty", "Unit Price", "Total"];
+      const tableRows = [];
+      
+      items.forEach(item => {
+        tableRows.push([
+          item.title,
+          item.subtitle || "",
+          item.quantity.toString(),
+          formatPriceForPDF(item.unit_price),
+          formatPriceForPDF(item.total)
+        ]);
+      });
+      
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: startY,
+        theme: "grid",
+        styles: { 
+          font: "helvetica", 
+          fontSize: 9,
+          cellPadding: 3
         },
-        1: { 
-          cellWidth: 35, 
-          halign: "right",
-          fontStyle: "normal"
+        headStyles: { 
+          fillColor: headerColor,
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          halign: "center"
+        },
+        columnStyles: {
+          0: { cellWidth: 55, halign: "left" },
+          1: { cellWidth: 45, halign: "left" },
+          2: { cellWidth: 20, halign: "center" },
+          3: { cellWidth: 30, halign: "right" },
+          4: { cellWidth: 30, halign: "right" }
+        },
+        margin: { left: 20, right: 20 }
+      });
+    };
+    
+    // Helper function to calculate totals for specific items
+    const calculateItemTotals = (items: OrderItem[]) => {
+      return items.reduce((total, item) => total + item.total, 0);
+    };
+    
+    // Helper function to add summary section
+    const addSummary = (items: OrderItem[]) => {
+      const { originalItems, returnedItems, replacementItems } = categorizeOrderItems(items);
+      
+      const calculateVendorPayoutTotals = (items: OrderItem[]) => {
+        return items.reduce((total, item) => {
+          const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
+            ? item.unit_price - item.product_cost 
+            : item.unit_price * 0.9;
+          return total + (vendorPayoutPerItem * item.quantity);
+        }, 0);
+      };
+
+      const originalVendorPayout = calculateVendorPayoutTotals(originalItems);
+      const returnedVendorPayout = calculateVendorPayoutTotals(returnedItems);
+      const replacementVendorPayout = calculateVendorPayoutTotals(replacementItems);
+      
+      const netVendorProfit = (() => {
+        const hasReturns = returnedItems.length > 0;
+        const hasReplacements = replacementItems.length > 0;
+        
+        if (hasReplacements && !hasReturns) {
+          return originalVendorPayout - replacementVendorPayout;
+        } else if (hasReturns && !hasReplacements) {
+          return originalVendorPayout;
+        } else if (hasReturns && hasReplacements) {
+          return originalVendorPayout - replacementVendorPayout;
         }
-      },
-      didParseCell: function(data) {
-        // Make the last row (Your Total Earnings) bold and larger
-        if (data.row.index === 4) {
-          data.cell.styles.fontStyle = "bold";
-          data.cell.styles.fontSize = 10;
-          data.cell.styles.textColor = [230, 81, 0]; // BRAND.primary
-        }
-        // Hide the separator row
-        if (data.row.index === 3) {
-          data.cell.styles.fillColor = [255, 255, 255];
-          data.cell.styles.lineWidth = 0;
-        }
-      },
-      margin: { left: pageWidth - 135, right: 20 }
-    });
+        return originalVendorPayout;
+      })();
+      
+      const itemSubtotal = calculateItemTotals(items);
+      const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(itemSubtotal);
+      const finalVendorProfit = netVendorProfit - totalProcessingFee;
+      
+      const finalY = doc.lastAutoTable.finalY + 10;
+      
+      const summaryData = [
+        ["Subtotal:", formatPriceForPDF(itemSubtotal)],
+        ["", ""], // Separator row
+        ["Subtotal (before fees):", formatPriceForPDF(Math.abs(netVendorProfit))],
+        ["", ""], // Separator row
+        ["Payment Processing Fees:", ""],
+        ["  Gateway Fee (2%):", formatPriceForPDF(-gatewayFee)],
+        ["  GST on Fee (18%):", formatPriceForPDF(-gstOnFee)],
+        ["  Total Processing Fee:", formatPriceForPDF(-totalProcessingFee)],
+        ["", ""], // Separator row
+        ["Your Total Earnings (after fees):", formatPriceForPDF(Math.abs(finalVendorProfit))]
+      ];
+      
+      autoTable(doc, {
+        body: summaryData,
+        startY: finalY,
+        theme: "plain",
+        styles: { 
+          fontSize: 9,
+          cellPadding: 2
+        },
+        columnStyles: {
+          0: { 
+            cellWidth: 80, 
+            fontStyle: "bold",
+            halign: "right"
+          },
+          1: { 
+            cellWidth: 35, 
+            halign: "right",
+            fontStyle: "normal"
+          }
+        },
+        didParseCell: function(data) {
+          if (data.row.index === 9) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.fontSize = 10;
+            data.cell.styles.textColor = [0, 0, 0]; // BLACK
+          }
+          if (data.row.index >= 4 && data.row.index <= 7) {
+            if (data.row.index === 4) {
+              data.cell.styles.fontStyle = "bold";
+              data.cell.styles.textColor = [0, 0, 0]; // BLACK
+            } else if (data.row.index === 7) {
+              data.cell.styles.fontStyle = "bold";
+              data.cell.styles.textColor = [0, 0, 0]; // BLACK
+            } else {
+              data.cell.styles.textColor = [100, 100, 100]; // GRAY for sub-items
+            }
+          }
+          if (data.row.index === 1 || data.row.index === 3 || data.row.index === 8) {
+            data.cell.styles.fillColor = [255, 255, 255];
+            data.cell.styles.lineWidth = 0;
+          }
+        },
+        margin: { left: pageWidth - 135, right: 20 }
+      });
+    };
     
-    // Add payment status
-    const paymentY = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(smallFontSize);
-    doc.setFont("helvetica", "bold");
-    doc.text("Payment Status: ", 20, paymentY);
-    doc.setFont("helvetica", "normal");
-    
-    const paymentStatus = order.payment_status === "paid" || order.payment_status === "captured" 
-      ? "Paid" 
-      : order.payment_status === "refunded"
-      ? "Refunded"
-      : "Payment Pending";
-    
-    // Color code the payment status
-    if (paymentStatus === "Paid") {
-      doc.setTextColor(243, 156, 18); // Green
-    } else if (paymentStatus === "Refunded") {
-      doc.setTextColor(231, 76, 60); // Red
-    } else {
-      doc.setTextColor(243, 156, 18); // Orange
-    }
-    doc.text(paymentStatus, 52, paymentY);
-    
-    // Add note for claims/returns if applicable
-    if (returnedItems.length > 0 || replacementItems.length > 0) {
+    // Helper function to add footer
+    const addFooter = (pageNumber: number, totalPages: number) => {
+      const paymentY = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(smallFontSize);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0); // BLACK
+      doc.text("Payment Status: ", 20, paymentY);
+      doc.setFont("helvetica", "normal");
+      
+      const paymentStatus = order.payment_status === "paid" || order.payment_status === "captured" 
+        ? "Paid" 
+        : order.payment_status === "refunded"
+        ? "Refunded"
+        : "Payment Pending";
+      
+      doc.setTextColor(0, 0, 0); // BLACK for all statuses
+      doc.text(paymentStatus, 52, paymentY);
+      
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(smallFontSize - 1);
-      doc.text("Note: This invoice reflects returns/replacements. Your earnings are calculated accordingly.", 20, paymentY + 6);
-    }
+      doc.text("* Payment processing fees include 2% gateway fee plus 18% GST", 20, paymentY + 6);
+      
+      // Page number
+      doc.setFontSize(smallFontSize);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Page ${pageNumber} of ${totalPages}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: "center" });
+      
+      doc.setFontSize(normalFontSize);
+      doc.setTextColor(0, 0, 0); // BLACK
+      const footerText = `Vendor Invoice for ${order.vendor_handle} - Junooni Marketplace`;
+      doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 15, { align: "center" });
+    };
     
-    // Add footer
-    doc.setFontSize(normalFontSize);
-    doc.setTextColor(230, 81, 0);
-    const footerText = `Vendor Invoice for ${order.vendor_handle} - Junooni Marketplace`;
-    doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 15, { align: "center" });
+    // ✅ MAIN LOGIC: Check if mixed fulfillment and create separate pages
+    if (hasMixedFulfillment) {
+      // PAGE 1: CREATOR FULFILLMENT
+      if (creatorItems.length > 0) {
+        addPageHeader("CREATOR FULFILLMENT", "Products fulfilled by you");
+        
+        // Add fulfillment type badge
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0); // BLACK
+        doc.text("CREATOR FULFILLMENT", 20, 90);
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(8);
+        doc.text(`${creatorItems.length} item(s) - You are responsible for shipping these products`, 20, 96);
+        
+        addProductTable(creatorItems, 100, [0, 0, 0]); // BLACK header
+        addSummary(creatorItems);
+        addFooter(1, 2);
+      }
+      
+      // PAGE 2: JUNOONI FULFILLMENT
+      if (junooniFulfillmentItems.length > 0) {
+        doc.addPage(); // ✅ CREATE NEW PAGE
+        
+        addPageHeader("JUNOONI FULFILLMENT", "Products fulfilled by Junooni");
+        
+        // Add fulfillment type badge
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0); // BLACK
+        doc.text("JUNOONI FULFILLMENT", 20, 90);
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(8);
+        doc.text(`${junooniFulfillmentItems.length} item(s) - Fulfilled by Junooni warehouses`, 20, 96);
+        
+        addProductTable(junooniFulfillmentItems, 100, [0, 0, 0]); // BLACK header
+        addSummary(junooniFulfillmentItems);
+        addFooter(2, 2);
+      }
+    } else {
+      // SINGLE PAGE: ALL ITEMS SAME FULFILLMENT TYPE
+      addPageHeader("YOUR ORDER", "All products");
+      
+      const allItems = order.vendor_items;
+      const fulfillmentType = allItems[0]?.fulfillment_type;
+      
+      if (fulfillmentType === 'creator') {
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0); // BLACK
+        doc.text("CREATOR FULFILLMENT", 20, 90);
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(8);
+        doc.text(`${allItems.length} item(s) - Fulfilled by you`, 20, 96);
+        addProductTable(allItems, 100, [0, 0, 0]); // BLACK header
+      } else if (fulfillmentType === 'junooni') {
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0); // BLACK
+        doc.text("JUNOONI FULFILLMENT", 20, 90);
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(8);
+        doc.text(`${allItems.length} item(s) - Fulfilled by Junooni`, 20, 96);
+        addProductTable(allItems, 100, [0, 0, 0]); // BLACK header
+      } else {
+        addProductTable(allItems, 90, [0, 0, 0]); // BLACK header
+      }
+      
+      addSummary(allItems);
+      addFooter(1, 1);
+    }
     
     // Save the PDF
     doc.save(`Junooni_Vendor_Invoice_${order.display_id}_${order.vendor_handle}.pdf`);
@@ -2769,7 +3054,7 @@ const generateInvoice = () => {
                 Back to Orders
               </Link>
             </Button>
-            <Button size="sm" className="text-xs px-3 py-1.5 bg-[#e65100]" onClick={generateInvoice}>
+            <Button size="sm" className="text-xs px-3 py-1.5 bg-[#e65100] hover:bg-[#d95f00]" onClick={generateInvoice}>
               <Download className="w-4 h-4 mr-2" />
               Download Vendor Invoice
             </Button>
@@ -3638,7 +3923,7 @@ const generateInvoice = () => {
                       return items.reduce((total, item) => {
                         const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
                           ? item.unit_price - item.product_cost 
-                          : item.unit_price * 0.7;
+                          : item.unit_price * 0.9;
                         
                         return total + (vendorPayoutPerItem * item.quantity);
                       }, 0);
@@ -3775,7 +4060,7 @@ const generateInvoice = () => {
                         <Separator className="my-3" />
                         
                         <div className="flex justify-between font-bold">
-                          <span>Customer paid (inc. delivery charges)</span>
+                          <span>Customer paid</span>
                           <span style={{ color: BRAND.primary }}>
                             {formatPrice(netSubtotal, order.currency_code)}
                           </span>
@@ -3786,7 +4071,7 @@ const generateInvoice = () => {
                         {/* ✅ UPDATED: Use calculated vendor profit instead of order.vendor_total */}
                         <div className="flex justify-between font-bold">
                           <span>You earned (net)</span>
-                          <span style={{ color: BRAND.primary }}>{formatPrice(order.payment_status === 'refunded' ? 0 : Math.abs(netVendorProfit), order.currency_code)}</span>
+                          <span style={{ color: BRAND.primary }}>{formatPrice(order.payment_status === 'refunded' ? 0 : Math.abs(calculateFinalVendorProfit(order).finalVendorProfit), order.currency_code)}</span>
                         </div>
                         
                         {/* Status Notice */}
@@ -3864,7 +4149,7 @@ const generateInvoice = () => {
             <Card className="shadow-md">
               <CardContent className="p-4">
                 <div className="space-y-2">
-                  <Button className="w-full text-sm bg-[#e65100]" size="sm" onClick={generateInvoice}>
+                  <Button className="w-full text-sm bg-[#e65100] hover:bg-[#d95f00]" size="sm" onClick={generateInvoice}>
                     <Download className="w-4 h-4 mr-2" />
                     Download Vendor Invoice
                   </Button>

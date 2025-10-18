@@ -1593,7 +1593,7 @@ useEffect(() => {
                                 #{order.display_id}
                               </Button>
                               {/* ✅ Enhanced: Show claim/return indicators */}
-                              {(order.has_claims || order.has_returns) && (
+                              {/* {(order.has_claims || order.has_returns) && (
                                 <div className="flex gap-1 mt-1">
                                   {order.has_returns && (
                                     <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50">
@@ -1606,9 +1606,9 @@ useEffect(() => {
                                     </Badge>
                                   )}
                                 </div>
-                              )}
+                              )} */}
                               {/* ✅ Show fulfillment type indicator for creator fulfillment items */}
-                              {order.vendor_items.some(item => 
+                              {/* {order.vendor_items.some(item => 
                                 item.fulfillment_type === "Creator-fulfilment"
                               ) && (
                                 <div className="mt-1">
@@ -1616,7 +1616,7 @@ useEffect(() => {
                                     Creator Fulfillment
                                   </Badge>
                                 </div>
-                              )}
+                              )} */}
                             </TableCell>
                             <TableCell>
                               {`${order.customer.first_name} ${order.customer.last_name}`.trim() || 'Guest'}
