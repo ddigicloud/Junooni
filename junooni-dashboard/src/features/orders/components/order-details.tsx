@@ -37,8 +37,15 @@ import {
   MoreHorizontal,
   Check,
   CheckCircle2,
-  XCircle
+  XCircle,
+  HelpCircle
 } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -685,9 +692,6 @@ const getVendorSpecificClaimsReturns = (vendorItems, claims, returns, claimItems
   };
 };
 
-// ✅ ADD THESE FUNCTIONS HERE:
-// Helper functions to categorize items by fulfillment type
-// ✅ ADD THESE FUNCTIONS HERE:
 // Helper functions to categorize items by fulfillment type
 const categorizeItemsByFulfillment = (items: OrderItem[]) => {
   const creatorItems = items.filter(item => item.fulfillment_type === 'creator');
@@ -1077,259 +1081,207 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
   const finalVendorProfit = netVendorProfit - totalProcessingFee;
 
   const renderItemSection = (items: OrderItem[], title: string, isDeduction = false, isAddition = false) => {
-    if (items.length === 0) return null;
-    
-    const sectionColor = isDeduction ? 'red' : isAddition ? 'green' : 'gray';
-    const bgColor = isDeduction ? 'bg-red-50' : isAddition ? 'bg-green-50' : 'bg-gray-50';
-    const textColor = isDeduction ? 'text-red-800' : isAddition ? 'text-green-800' : 'text-gray-800';
-    
+  if (items.length === 0) return null;
+  
+  const sectionColor = isDeduction ? 'red' : isAddition ? 'green' : 'gray';
+  const bgColor = isDeduction ? 'bg-red-50' : isAddition ? 'bg-green-50' : 'bg-gray-50';
+  const textColor = isDeduction ? 'text-red-800' : isAddition ? 'text-green-800' : 'text-gray-800';
+  
+  // Helper function to generate tooltip content
+  const getTooltipContent = (item: OrderItem) => {
+  const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
+    ? item.unit_price - item.product_cost 
+    : item.unit_price * 0.9;
+  
+  const totalVendorPayout = vendorPayoutPerItem * item.quantity;
+
+  if (item.product_cost && item.product_cost > 0) {
     return (
-      <div className={`p-3 rounded-lg ${bgColor} border border-${sectionColor}-200`}>
-        <h4 className={`font-medium ${textColor} mb-2 flex items-center`}>
-          {isDeduction && <span className="mr-1">↩</span>}
-          {isAddition && <span className="mr-1">🔄</span>}
-          {title}
-        </h4>
-        <div className="space-y-2">
-          {items.map((item, index) => {
-            const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
-              ? item.unit_price - item.product_cost 
-              : item.unit_price * 0.9;
-            
-            const totalVendorPayout = vendorPayoutPerItem * item.quantity;
-            const displayTotal = isDeduction ? -item.total : item.total;
-            const displayPayout = isDeduction ? -totalVendorPayout : totalVendorPayout;
-            
-            return (
-              <div key={item.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{item.title}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">
-                      ({isDeduction ? '-' : ''}{item.quantity} {item.quantity > 1 ? 'items' : 'item'})
-                    </span>
-                    <span className={`font-medium ${isDeduction ? 'text-red-600' : isAddition ? 'text-green-600' : 'text-gray-900'}`}>
-                      {isDeduction ? '-' : ''}{formatPrice(item.total, order.currency_code)}
-                    </span>
-                  </div>
-                </div>
-                {item.subtitle && (
-                  <div className="ml-0 text-sm text-gray-500">{item.subtitle}</div>
-                )}
-                {(item.return_reason || item.claim_reason) && (
-                  <div className="ml-0 text-xs text-gray-500">
-                    Reason: {item.return_reason || item.claim_reason}
-                  </div>
-                )}
-                <div className={`p-2 ml-0 text-xs rounded ${bgColor}`}>
-                  {item.product_cost && item.product_cost > 0 ? (
-                    <span className="text-gray-600">
-                      Product price - Product cost = Your payout<br/>
-                      {formatPrice(item.unit_price, order.currency_code)} - {formatPrice(item.product_cost, order.currency_code)} = 
-                      <span className={`font-medium ml-1 ${isDeduction ? 'text-red-600' : isAddition ? 'text-green-600' : 'text-gray-600'}`}>
-                        {isDeduction ? '-' : ''}{formatPrice(vendorPayoutPerItem, order.currency_code)}
-                      </span>
-                      {item.quantity > 1 && (
-                        <>
-                          <br/>Total: {isDeduction ? '-' : ''}{formatPrice(vendorPayoutPerItem, order.currency_code)} × {item.quantity} = 
-                          <span className={`font-medium ml-1 ${isDeduction ? 'text-red-600' : isAddition ? 'text-green-600' : 'text-gray-600'}`}>
-                            {isDeduction ? '-' : ''}{formatPrice(totalVendorPayout, order.currency_code)}
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="text-gray-600">
-                      Product price × 90% = Your payout<br/>
-                      {formatPrice(item.unit_price, order.currency_code)} × 90% = 
-                      <span className={`font-medium ml-1 ${isDeduction ? 'text-red-600' : isAddition ? 'text-green-600' : 'text-gray-600'}`}>
-                        {isDeduction ? '-' : ''}{formatPrice(vendorPayoutPerItem, order.currency_code)}
-                      </span>
-                      {item.quantity > 1 && (
-                        <>
-                          <br/>Total: {isDeduction ? '-' : ''}{formatPrice(vendorPayoutPerItem, order.currency_code)} × {item.quantity} = 
-                          <span className={`font-medium ml-1 ${isDeduction ? 'text-red-600' : isAddition ? 'text-green-600' : 'text-gray-600'}`}>
-                            {isDeduction ? '-' : ''}{formatPrice(totalVendorPayout, order.currency_code)}
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+      <div className="space-y-1 text-xs">
+        <div>Product price - Product cost = Your payout per unit</div>
+        <div className="font-medium">
+          {formatPrice(item.unit_price, order.currency_code)} - {formatPrice(item.product_cost, order.currency_code)} = {formatPrice(vendorPayoutPerItem, order.currency_code)}
         </div>
+        {item.quantity > 1 && (
+          <>
+            <div className="pt-1 mt-1 border-t border-gray-300">
+              Total: {formatPrice(vendorPayoutPerItem, order.currency_code)} × {item.quantity} = {formatPrice(totalVendorPayout, order.currency_code)}
+            </div>
+          </>
+        )}
       </div>
     );
-  };
+  } else {
+    // ✅ UPDATED: Show 10% deduction instead of 90% commission
+    const commission = item.unit_price * 0.1; // 10% commission
+    
+    return (
+      <div className="space-y-1 text-xs">
+        <div>Product price - 10% commission = Your payout per unit</div>
+        <div className="font-medium">
+          {formatPrice(item.unit_price, order.currency_code)} - {formatPrice(commission, order.currency_code)} = {formatPrice(vendorPayoutPerItem, order.currency_code)}
+        </div>
+        {item.quantity > 1 && (
+          <>
+            <div className="pt-1 mt-1 border-t border-gray-300">
+              Total: {formatPrice(vendorPayoutPerItem, order.currency_code)} × {item.quantity} = {formatPrice(totalVendorPayout, order.currency_code)}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+};
+  
+  return (
+    <div className={`p-3 rounded-lg ${bgColor} border border-${sectionColor}-200`}>
+      <h4 className={`font-medium ${textColor} mb-2 flex items-center`}>
+        {isDeduction && <span className="mr-1">↩</span>}
+        {isAddition && <span className="mr-1">🔄</span>}
+        {title}
+      </h4>
+      <div className="space-y-3">
+        {items.map((item, index) => {
+          const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
+            ? item.unit_price - item.product_cost 
+            : item.unit_price * 0.9;
+          
+          const totalVendorPayout = vendorPayoutPerItem * item.quantity;
+          
+          return (
+            <div key={item.id} className="space-y-1.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start flex-1 gap-1.5">
+                  {/* ✅ Question mark with tooltip */}
+                  {/* <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="flex-shrink-0 w-3.5 h-3.5 mt-0.5 text-gray-400 cursor-help hover:text-gray-600" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        {getTooltipContent(item)}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider> */}
+                  
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{item.title}</div>
+                    {item.subtitle && (
+                      <div className="text-xs text-gray-500">{item.subtitle}</div>
+                    )}
+                    {(item.return_reason || item.claim_reason) && (
+                      <div className="text-xs text-gray-500">
+                        Reason: {item.return_reason || item.claim_reason}
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-500">Qty: {item.quantity}</div>
+                  </div>
+                </div>
+                
+                {/* ✅ Show vendor payout instead of product price */}
+                <div className="text-right">
+                  <div className={`font-semibold ${
+                    isDeduction ? 'text-red-600' : 
+                    isAddition ? 'text-green-600' : 
+                    'text-gray-900'
+                  }`}>
+                    {isDeduction ? '-' : '+'}{formatPrice(totalVendorPayout, order.currency_code)}
+                  </div>
+                  <div className="text-xs text-gray-500">Your payout</div>
+                </div>
+
+                <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="flex-shrink-0 w-3.5 h-3.5 mt-0.5 text-gray-400 cursor-help hover:text-gray-600" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        {getTooltipContent(item)}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-xl mx-auto max-h-[85vh] overflow-y-auto">
-        <DialogHeader className="flex flex-row items-center justify-between">
-          <DialogTitle className="text-lg font-bold">Costs breakdown</DialogTitle>
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold">Cost Breakdown</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-3">
-          <div>
-            <h3 className="mb-3 font-medium text-gray-800">Product costs breakdown</h3>
-            <div className="space-y-2">
-              {/* Original Items */}
-              {renderItemSection(originalItems, `Original Order (${originalTotals.count} ${originalTotals.count === 1 ? "item" : "items"})`)}
-              
-              {/* Returned Items */}
-              {renderItemSection(returnedItems, `Returned Items (${returnedTotals.count} ${returnedTotals.count === 1 ? "item" : "items"})`, true)}
-              
-              {/* Replacement Items */}
-              {renderItemSection(replacementItems, `Replacement Items (${replacementTotals.count} ${replacementTotals.count === 1 ? "item" : "items"})`, false, true)}
-            </div>
+        <div className="space-y-4">
+          {/* Simplified Product Summary */}
+          <div className="space-y-2">
+            <h3 className="font-medium text-gray-800">Order Items</h3>
+            
+           {renderItemSection(originalItems, `Item${originalTotals.count > 1 ? "s" : ""} (${originalTotals.count})`)}
+           {renderItemSection(returnedItems, `Returned Item${returnedTotals.count > 1 ? "s" : ""} (${returnedTotals.count})`, true)}
+            {renderItemSection(replacementItems,`Replacement Item${replacementTotals.count > 1 ? "s" : ""} (${replacementTotals.count})`,false,true)}
+
           </div>
 
           <Separator />
 
-          {/* Customer Payment Summary */}
+          {/* Consolidated Calculation */}
           <div className="space-y-2">
-            <h4 className="font-medium text-gray-800">Customer Payment Summary</h4>
+            <h3 className="font-medium text-gray-800">Your Earnings</h3>
             
-            {originalItems.length > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Original products total</span>
-                <span>{formatPrice(originalTotals.subtotal, order.currency_code)}</span>
-              </div>
-            )}
-            
-            {returnedItems.length > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-red-600">Returned products deduction</span>
-                <span className="text-red-600">-{formatPrice(returnedTotals.subtotal, order.currency_code)}</span>
-              </div>
-            )}
-            
-            {replacementItems.length > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-green-600">Replacement products addition</span>
-                <span className="text-green-600">+{formatPrice(replacementTotals.subtotal, order.currency_code)}</span>
-              </div>
-            )}
-            
-            <Separator />
-            
-            <div className="flex items-center justify-between font-bold">
-              <span>Net customer payment ({netItemCount} {netItemCount === 1 ? "item" : "items"})</span>
-              <span>{formatPrice(netSubtotal, order.currency_code)}</span>
-            </div>
-            <div className="text-xs text-gray-500">
-              (without any taxes or shipping costs)
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* ✅ NEW: Payment Processing Fee Section */}
-          <div className="space-y-2">
-            <h4 className="font-medium text-gray-800">Payment Processing Fees</h4>
-            
-            <div className="p-3 border border-orange-200 rounded-lg bg-orange-50">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-700">Payment gateway fee (2%)</span>
-                  <span className="font-medium text-red-600">-{formatPrice(gatewayFee, order.currency_code)}</span>
+            <div className="space-y-1.5 text-sm">
+              {/* Revenue */}
+              {originalItems.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Revenue from items</span>
+                  <span className="text-green-600">+{formatPrice(order.payment_status === "refunded" ? 0 : originalVendorPayout, order.currency_code)}</span>
                 </div>
-                
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-700">GST on gateway fee (18%)</span>
-                  <span className="font-medium text-red-600">-{formatPrice(gstOnFee, order.currency_code)}</span>
+              )}
+              
+              {returnedItems.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Returns</span>
+                  <span className="text-red-600">-{formatPrice(returnedVendorPayout, order.currency_code)}</span>
                 </div>
-                
-                <Separator className="my-2 bg-orange-300" />
-                
-                <div className="flex items-center justify-between text-sm font-bold">
-                  <span className="text-orange-800">Total processing fee</span>
-                  <span className="text-red-600">-{formatPrice(totalProcessingFee, order.currency_code)}</span>
+              )}
+              
+              {replacementItems.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Replacements</span>
+                  <span className="text-green-600">+{formatPrice(replacementVendorPayout, order.currency_code)}</span>
                 </div>
-              </div>
-            </div>
-            
-            <div className="p-2 text-xs text-orange-700 border border-orange-200 rounded bg-orange-50">
-              <div className="flex items-start">
-                <Info className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
-                <span>
-                  Payment processing fees are calculated on the net customer payment amount and include the gateway fee plus applicable GST.
+              )}
+              
+              {/* Processing Fee */}
+              <div className="flex justify-between">
+                <span className="text-gray-600">
+                  Processing fee (2% + GST)
+                  <span className="ml-1 text-xs text-gray-500">on {formatPrice(netSubtotal, order.currency_code)}</span>
                 </span>
+                <span className="text-red-600">-{formatPrice(totalProcessingFee, order.currency_code)}</span>
               </div>
             </div>
-          </div>
-
-          <Separator />
-
-          {/* ✅ UPDATED: Vendor Payout Breakdown */}
-          <div className="space-y-2">
-            <h4 className="font-medium text-gray-800">Your Payout Breakdown</h4>
             
-            {originalItems.length > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Your payout from existing items</span>
-                <span className="text-green-600">+{formatPrice(order.payment_status === "refunded" ? 0 : originalVendorPayout, order.currency_code)}</span>
-              </div>
-            )}
+            <Separator className="my-3" />
             
-            {returnedItems.length > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-red-600">Payout lost from returns</span>
-                <span className="text-red-600">-{formatPrice(returnedVendorPayout, order.currency_code)}</span>
-              </div>
-            )}
-            
-            {replacementItems.length > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-green-600">Payout from replacements</span>
-                <span className="text-green-600">+{formatPrice(replacementVendorPayout, order.currency_code)}</span>
-              </div>
-            )}
-            
-            <Separator />
-            
-            <div className="flex items-center justify-between text-sm font-medium">
-              <span className="text-gray-700">Subtotal before fees</span>
-              <span className="text-gray-900">
-                {formatPrice(order.payment_status === "refunded" ? 0 : Math.abs(netVendorProfit), order.currency_code)}
-              </span>
-            </div>
-            
-            {/* ✅ NEW: Show processing fee deduction */}
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-red-600">Payment processing fee</span>
-              <span className="text-red-600">-{formatPrice(totalProcessingFee, order.currency_code)}</span>
-            </div>
-            
-            <Separator />
-            
-            {/* ✅ UPDATED: Final profit after fees */}
-            <div className="flex items-center justify-between text-lg font-bold">
-              <span>Your total profit (after fees)</span>
-              <span className="text-green-600">
+            {/* Final Profit */}
+            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+              <span className="font-bold text-gray-900">Your Total Profit</span>
+              <span className="text-xl font-bold text-green-600">
                 {formatPrice(order.payment_status === "refunded" ? 0 : Math.abs(finalVendorProfit), order.currency_code)}
               </span>
             </div>
-            
-            <div className="p-2 text-xs text-gray-600 rounded bg-gray-50">
-              * This is your final earnings after deducting payment processing fees
-            </div>
           </div>
 
-          {/* ✅ UPDATED: Info Notice */}
+          {/* Simplified Info */}
           {(returnedItems.length > 0 || replacementItems.length > 0) && (
-            <div className="p-3 text-xs text-blue-800 border border-blue-200 rounded-md bg-blue-50">
-              <div className="flex items-center">
-                <Info className="w-3 h-3 mr-1" />
-                <span>
-                  This order includes {returnedItems.length > 0 ? 'returns' : ''} 
-                  {returnedItems.length > 0 && replacementItems.length > 0 ? ' and ' : ''}
-                  {replacementItems.length > 0 ? 'replacements' : ''}. 
-                  Your profit calculation considers actual payout amounts after product costs, commissions, and payment processing fees.
-                </span>
-              </div>
+            <div className="flex items-start gap-2 p-2 text-xs text-gray-600 bg-gray-50 rounded">
+              <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              <span>Profit includes adjustments for returns/replacements and processing fees.</span>
             </div>
           )}
         </div>
@@ -2512,10 +2464,12 @@ const generateInvoice = () => {
       })}`;
     };
     
-    const titleFontSize = 20;
-    const headerFontSize = 12;
-    const normalFontSize = 10;
-    const smallFontSize = 8;
+    // ✅ UPDATED: Increased font sizes for better readability
+    const titleFontSize = 24;      // 20 → 24
+    const headerFontSize = 14;     // 12 → 14
+    const normalFontSize = 11;     // 10 → 11
+    const smallFontSize = 9;       // 8 → 9
+    const tableFontSize = 10;      // 9 → 10
     
     // ✅ Categorize items by fulfillment type
     const { creatorItems, junooniFulfillmentItems } = categorizeItemsByFulfillment(order.vendor_items);
@@ -2523,46 +2477,59 @@ const generateInvoice = () => {
     
     // Helper function to add page header
     const addPageHeader = (pageTitle: string, fulfillmentType: string) => {
-      // Add company logo/name
+      // ✅ UPDATED: Larger, bolder company name
       doc.setFontSize(titleFontSize);
-      doc.setTextColor(0, 0, 0); // BLACK
-      doc.text("JUNOONI", 20, 20);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text("JUNOONI", 20, 22);
       
-      // Add vendor-specific invoice heading
+      // ✅ UPDATED: Larger invoice number
       doc.setFontSize(headerFontSize);
-      doc.setTextColor(0, 0, 0);
-      doc.text(`VENDOR INVOICE #${order.display_id}`, pageWidth - 20, 20, { align: "right" });
+      doc.setFont("helvetica", "bold");
+      doc.text(`VENDOR INVOICE #${order.display_id}`, pageWidth - 20, 22, { align: "right" });
       
-      // Add vendor info
-      doc.setFontSize(normalFontSize);
-      doc.text(`Vendor: ${order.vendor_handle}`, pageWidth - 20, 28, { align: "right" });
-      
-      const invoiceDate = formatDate(order.created_at).split(',')[0];
-      doc.text(`Date: ${invoiceDate}`, pageWidth - 20, 36, { align: "right" });
-      
-      // Add horizontal line
-      doc.setDrawColor(200, 200, 200);
-      doc.line(20, 42, pageWidth - 20, 42);
-      
-      // Add page-specific note
-      doc.setFontSize(normalFontSize);
-      doc.setTextColor(0, 0, 0); // BLACK
-      doc.text(pageTitle, 20, 52);
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(smallFontSize);
-      doc.text(`${fulfillmentType} - This invoice shows only your products and your portion of the payment.`, 20, 58);
-      
-      // Customer information
+      // ✅ UPDATED: Larger vendor info
       doc.setFontSize(normalFontSize);
       doc.setFont("helvetica", "bold");
-      doc.text("Customer:", 20, 70);
+      doc.text("Vendor:", pageWidth - 20, 31, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      doc.text(order.vendor_handle, pageWidth - 20, 38, { align: "right" });
+      
+      const invoiceDate = formatDate(order.created_at).split(',')[0];
+      doc.setFont("helvetica", "bold");
+      doc.text("Date:", pageWidth - 20, 45, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      doc.text(invoiceDate, pageWidth - 20, 52, { align: "right" });
+      
+      // ✅ UPDATED: Thicker horizontal line
+      doc.setDrawColor(150, 150, 150);
+      doc.setLineWidth(0.5);
+      doc.line(20, 58, pageWidth - 20, 58);
+      
+      // ✅ UPDATED: Larger page-specific note
+      doc.setFontSize(normalFontSize);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text(pageTitle, 20, 68);
+      
       doc.setFont("helvetica", "normal");
       doc.setFontSize(smallFontSize);
-      doc.text(`${order.customer.first_name} ${order.customer.last_name}`.trim(), 20, 76);
-      doc.text(`Email: ${order.customer.email}`, 20, 82);
+      doc.setTextColor(80, 80, 80);
+      doc.text(`${fulfillmentType} - This invoice shows only your products and your portion of the payment.`, 20, 75);
+      
+      // ✅ UPDATED: Larger customer information section
+      doc.setFontSize(normalFontSize);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text("Customer Information:", 20, 88);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(smallFontSize);
+      doc.text(`${order.customer.first_name} ${order.customer.last_name}`.trim(), 20, 95);
+      doc.text(`${order.customer.email}`, 20, 101);
     };
     
-    // Helper function to add product table
+    // ✅ UPDATED: Improved product table with better styling
     const addProductTable = (items: OrderItem[], startY: number, headerColor: number[]) => {
       const tableColumn = ["Your Products", "Description", "Qty", "Unit Price", "Total"];
       const tableRows = [];
@@ -2584,21 +2551,23 @@ const generateInvoice = () => {
         theme: "grid",
         styles: { 
           font: "helvetica", 
-          fontSize: 9,
-          cellPadding: 3
+          fontSize: tableFontSize,      // ✅ Increased from 9 to 10
+          cellPadding: 4,               // ✅ Increased from 3 to 4
+          lineWidth: 0.3                // ✅ Slightly thicker borders
         },
         headStyles: { 
           fillColor: headerColor,
           textColor: [255, 255, 255],
           fontStyle: "bold",
-          halign: "center"
+          halign: "center",
+          fontSize: normalFontSize       // ✅ Larger header font
         },
         columnStyles: {
-          0: { cellWidth: 55, halign: "left" },
+          0: { cellWidth: 55, halign: "left", fontStyle: "bold" },  // ✅ Bold product names
           1: { cellWidth: 45, halign: "left" },
-          2: { cellWidth: 20, halign: "center" },
+          2: { cellWidth: 20, halign: "center", fontStyle: "bold" },  // ✅ Bold quantity
           3: { cellWidth: 30, halign: "right" },
-          4: { cellWidth: 30, halign: "right" }
+          4: { cellWidth: 30, halign: "right", fontStyle: "bold" }   // ✅ Bold total
         },
         margin: { left: 20, right: 20 }
       });
@@ -2609,7 +2578,7 @@ const generateInvoice = () => {
       return items.reduce((total, item) => total + item.total, 0);
     };
     
-    // Helper function to add summary section
+    // ✅ UPDATED: Simplified and compact summary section
     const addSummary = (items: OrderItem[]) => {
       const { originalItems, returnedItems, replacementItems } = categorizeOrderItems(items);
       
@@ -2644,19 +2613,15 @@ const generateInvoice = () => {
       const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(itemSubtotal);
       const finalVendorProfit = netVendorProfit - totalProcessingFee;
       
-      const finalY = doc.lastAutoTable.finalY + 10;
+      const finalY = doc.lastAutoTable.finalY + 12;  // ✅ Reduced spacing
       
+      // ✅ SIMPLIFIED: Consolidated summary data - removed unnecessary rows
       const summaryData = [
         ["Subtotal:", formatPriceForPDF(itemSubtotal)],
-        ["", ""], // Separator row
-        ["Subtotal (before fees):", formatPriceForPDF(Math.abs(netVendorProfit))],
-        ["", ""], // Separator row
-        ["Payment Processing Fees:", ""],
-        ["  Gateway Fee (2%):", formatPriceForPDF(-gatewayFee)],
-        ["  GST on Fee (18%):", formatPriceForPDF(-gstOnFee)],
-        ["  Total Processing Fee:", formatPriceForPDF(-totalProcessingFee)],
-        ["", ""], // Separator row
-        ["Your Total Earnings (after fees):", formatPriceForPDF(Math.abs(finalVendorProfit))]
+        ["Your payout (before fees):", formatPriceForPDF(Math.abs(netVendorProfit))],
+        ["Processing fee (2% + 18% GST):", formatPriceForPDF(-totalProcessingFee)],
+        ["", ""],  // Single separator
+        ["Your Total Earnings:", formatPriceForPDF(Math.abs(finalVendorProfit))]
       ];
       
       autoTable(doc, {
@@ -2664,55 +2629,62 @@ const generateInvoice = () => {
         startY: finalY,
         theme: "plain",
         styles: { 
-          fontSize: 9,
-          cellPadding: 2
+          fontSize: tableFontSize,
+          cellPadding: 2.5           // ✅ Reduced padding for compactness
         },
         columnStyles: {
           0: { 
-            cellWidth: 80, 
+            cellWidth: 85, 
             fontStyle: "bold",
             halign: "right"
           },
           1: { 
-            cellWidth: 35, 
+            cellWidth: 40, 
             halign: "right",
             fontStyle: "normal"
           }
         },
         didParseCell: function(data) {
-          if (data.row.index === 9) {
+          // ✅ Style the final total row
+          if (data.row.index === 4) {
             data.cell.styles.fontStyle = "bold";
-            data.cell.styles.fontSize = 10;
-            data.cell.styles.textColor = [0, 0, 0]; // BLACK
+            data.cell.styles.fontSize = 13;
+            data.cell.styles.textColor = [0, 100, 0];  // Green
+            data.cell.styles.fillColor = [240, 255, 240];  // Light green background
           }
-          if (data.row.index >= 4 && data.row.index <= 7) {
-            if (data.row.index === 4) {
-              data.cell.styles.fontStyle = "bold";
-              data.cell.styles.textColor = [0, 0, 0]; // BLACK
-            } else if (data.row.index === 7) {
-              data.cell.styles.fontStyle = "bold";
-              data.cell.styles.textColor = [0, 0, 0]; // BLACK
-            } else {
-              data.cell.styles.textColor = [100, 100, 100]; // GRAY for sub-items
-            }
-          }
-          if (data.row.index === 1 || data.row.index === 3 || data.row.index === 8) {
+          
+          // ✅ Separator row styling
+          if (data.row.index === 3) {
             data.cell.styles.fillColor = [255, 255, 255];
             data.cell.styles.lineWidth = 0;
+            data.cell.styles.minCellHeight = 3;  // ✅ Minimal height
+          }
+          
+          // ✅ Style other rows
+          if (data.row.index === 0 || data.row.index === 1) {
+            data.cell.styles.fontSize = 10;
+          }
+          
+          // ✅ Processing fee in red
+          if (data.row.index === 2) {
+            data.cell.styles.fontSize = 10;
+            if (data.column.index === 1) {
+              data.cell.styles.textColor = [200, 0, 0];  // Red for fee
+            }
           }
         },
-        margin: { left: pageWidth - 135, right: 20 }
+        margin: { left: pageWidth - 145, right: 20 }
       });
     };
     
-    // Helper function to add footer
+    // ✅ UPDATED: Improved footer with better styling
     const addFooter = (pageNumber: number, totalPages: number) => {
-      const paymentY = doc.lastAutoTable.finalY + 10;
-      doc.setFontSize(smallFontSize);
+      const paymentY = doc.lastAutoTable.finalY + 12;  // ✅ Increased spacing
+      
+      doc.setFontSize(normalFontSize);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 0, 0); // BLACK
+      doc.setTextColor(0, 0, 0);
       doc.text("Payment Status: ", 20, paymentY);
-      doc.setFont("helvetica", "normal");
       
       const paymentStatus = order.payment_status === "paid" || order.payment_status === "captured" 
         ? "Paid" 
@@ -2720,20 +2692,34 @@ const generateInvoice = () => {
         ? "Refunded"
         : "Payment Pending";
       
-      doc.setTextColor(0, 0, 0); // BLACK for all statuses
-      doc.text(paymentStatus, 52, paymentY);
+      doc.setFont("helvetica", "bold");  // ✅ Bold payment status
+      doc.setFontSize(normalFontSize);
       
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(smallFontSize - 1);
-      doc.text("* Payment processing fees include 2% gateway fee plus 18% GST", 20, paymentY + 6);
+      // ✅ Color-coded payment status
+      if (paymentStatus === "Paid") {
+        doc.setTextColor(0, 128, 0);  // Green
+      } else if (paymentStatus === "Refunded") {
+        doc.setTextColor(200, 0, 0);  // Red
+      } else {
+        doc.setTextColor(200, 100, 0);  // Orange
+      }
       
-      // Page number
-      doc.setFontSize(smallFontSize);
+      doc.text(paymentStatus, 58, paymentY);
+      
       doc.setTextColor(100, 100, 100);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(smallFontSize);
+      doc.text("* Payment processing fees include 2% gateway fee plus 18% GST", 20, paymentY + 7);
+      
+      // ✅ UPDATED: Larger page number
+      doc.setFontSize(smallFontSize);
+      doc.setTextColor(120, 120, 120);
       doc.text(`Page ${pageNumber} of ${totalPages}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: "center" });
       
+      // ✅ UPDATED: Larger footer text
       doc.setFontSize(normalFontSize);
-      doc.setTextColor(0, 0, 0); // BLACK
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
       const footerText = `Vendor Invoice for ${order.vendor_handle} - Junooni Marketplace`;
       doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 15, { align: "center" });
     };
@@ -2744,36 +2730,40 @@ const generateInvoice = () => {
       if (creatorItems.length > 0) {
         addPageHeader("CREATOR FULFILLMENT", "Products fulfilled by you");
         
-        // Add fulfillment type badge
-        doc.setFontSize(12);
+        // ✅ UPDATED: Larger, more prominent fulfillment badge
+        doc.setFontSize(14);           // ✅ Increased from 12
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 0, 0); // BLACK
-        doc.text("CREATOR FULFILLMENT", 20, 90);
-        doc.setTextColor(100, 100, 100);
-        doc.setFontSize(8);
-        doc.text(`${creatorItems.length} item(s) - You are responsible for shipping these products`, 20, 96);
+        doc.setTextColor(0, 0, 0);
+        doc.text("CREATOR FULFILLMENT", 20, 112);
         
-        addProductTable(creatorItems, 100, [0, 0, 0]); // BLACK header
+        doc.setTextColor(80, 80, 80);
+        doc.setFontSize(smallFontSize);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${creatorItems.length} item(s) - You are responsible for shipping these products`, 20, 119);
+        
+        addProductTable(creatorItems, 125, [0, 0, 0]);
         addSummary(creatorItems);
         addFooter(1, 2);
       }
       
       // PAGE 2: JUNOONI FULFILLMENT
       if (junooniFulfillmentItems.length > 0) {
-        doc.addPage(); // ✅ CREATE NEW PAGE
+        doc.addPage();
         
         addPageHeader("JUNOONI FULFILLMENT", "Products fulfilled by Junooni");
         
-        // Add fulfillment type badge
-        doc.setFontSize(12);
+        // ✅ UPDATED: Larger, more prominent fulfillment badge
+        doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 0, 0); // BLACK
-        doc.text("JUNOONI FULFILLMENT", 20, 90);
-        doc.setTextColor(100, 100, 100);
-        doc.setFontSize(8);
-        doc.text(`${junooniFulfillmentItems.length} item(s) - Fulfilled by Junooni warehouses`, 20, 96);
+        doc.setTextColor(0, 0, 0);
+        doc.text("JUNOONI FULFILLMENT", 20, 112);
         
-        addProductTable(junooniFulfillmentItems, 100, [0, 0, 0]); // BLACK header
+        doc.setTextColor(80, 80, 80);
+        doc.setFontSize(smallFontSize);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${junooniFulfillmentItems.length} item(s) - Fulfilled by Junooni warehouses`, 20, 119);
+        
+        addProductTable(junooniFulfillmentItems, 125, [0, 0, 0]);
         addSummary(junooniFulfillmentItems);
         addFooter(2, 2);
       }
@@ -2785,25 +2775,31 @@ const generateInvoice = () => {
       const fulfillmentType = allItems[0]?.fulfillment_type;
       
       if (fulfillmentType === 'creator') {
-        doc.setFontSize(12);
+        doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 0, 0); // BLACK
-        doc.text("CREATOR FULFILLMENT", 20, 90);
-        doc.setTextColor(100, 100, 100);
-        doc.setFontSize(8);
-        doc.text(`${allItems.length} item(s) - Fulfilled by you`, 20, 96);
-        addProductTable(allItems, 100, [0, 0, 0]); // BLACK header
+        doc.setTextColor(0, 0, 0);
+        doc.text("CREATOR FULFILLMENT", 20, 112);
+        
+        doc.setTextColor(80, 80, 80);
+        doc.setFontSize(smallFontSize);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${allItems.length} item(s) - Fulfilled by you`, 20, 119);
+        
+        addProductTable(allItems, 125, [0, 0, 0]);
       } else if (fulfillmentType === 'junooni') {
-        doc.setFontSize(12);
+        doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 0, 0); // BLACK
-        doc.text("JUNOONI FULFILLMENT", 20, 90);
-        doc.setTextColor(100, 100, 100);
-        doc.setFontSize(8);
-        doc.text(`${allItems.length} item(s) - Fulfilled by Junooni`, 20, 96);
-        addProductTable(allItems, 100, [0, 0, 0]); // BLACK header
+        doc.setTextColor(0, 0, 0);
+        doc.text("JUNOONI FULFILLMENT", 20, 112);
+        
+        doc.setTextColor(80, 80, 80);
+        doc.setFontSize(smallFontSize);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${allItems.length} item(s) - Fulfilled by Junooni`, 20, 119);
+        
+        addProductTable(allItems, 125, [0, 0, 0]);
       } else {
-        addProductTable(allItems, 90, [0, 0, 0]); // BLACK header
+        addProductTable(allItems, 110, [0, 0, 0]);
       }
       
       addSummary(allItems);
