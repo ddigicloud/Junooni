@@ -101,7 +101,7 @@ const VendorList: React.FC = () => {
         <div className="flex items-center justify-between mb-8">
           <p className="text-4xl font-bold tracking-tight">Featured creators</p>
           <Link 
-            href={'/ourcreators'} 
+            href={'/creators'} 
             className="flex items-center font-medium text-black transition-colors group hover:text-gray-700"
           >
             <span className="border-b border-transparent group-hover:border-current">View all</span>

@@ -1269,7 +1269,7 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
             <Separator className="my-3" />
             
             {/* Final Profit */}
-            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center justify-between p-3 border border-green-200 rounded-lg bg-green-50">
               <span className="font-bold text-gray-900">Your Total Profit</span>
               <span className="text-xl font-bold text-green-600">
                 {formatPrice(order.payment_status === "refunded" ? 0 : Math.abs(finalVendorProfit), order.currency_code)}
@@ -1279,7 +1279,7 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
 
           {/* Simplified Info */}
           {(returnedItems.length > 0 || replacementItems.length > 0) && (
-            <div className="flex items-start gap-2 p-2 text-xs text-gray-600 bg-gray-50 rounded">
+            <div className="flex items-start gap-2 p-2 text-xs text-gray-600 rounded bg-gray-50">
               <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <span>Profit includes adjustments for returns/replacements and processing fees.</span>
             </div>
@@ -1866,31 +1866,31 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
     const quantity = item.quantity || 1
 
      // 🔍 DEBUG: Log the entire item to see all available fields
-    console.log('=== DEBUG: Full Item Data ===', index);
-    console.log(JSON.stringify(item, null, 2));
+    //console.log('=== DEBUG: Full Item Data ===', index);
+    //console.log(JSON.stringify(item, null, 2));
     
     // 🔍 DEBUG: Check specific fields that might contain product_cost
-    console.log('=== DEBUG: Cost Fields ===');
-    console.log('item.product_cost:', item.product_cost);
-    console.log('item.cost:', item.cost);
-    console.log('item.unit_cost:', item.unit_cost);
-    console.log('item.vendor_cost:', item.vendor_cost);
-    console.log('item.item_cost:', item.item_cost);
-    console.log('item.base_cost:', item.base_cost);
-    console.log('item.metadata:', item.metadata);
-    console.log('item.merged_metadata:', item.merged_metadata);
+    //console.log('=== DEBUG: Cost Fields ===');
+    //console.log('item.product_cost:', item.product_cost);
+    //console.log('item.cost:', item.cost);
+    //console.log('item.unit_cost:', item.unit_cost);
+    //console.log('item.vendor_cost:', item.vendor_cost);
+    //console.log('item.item_cost:', item.item_cost);
+    //console.log('item.base_cost:', item.base_cost);
+    //console.log('item.metadata:', item.metadata);
+    //console.log('item.merged_metadata:', item.merged_metadata);
 
     // 🔍 DEBUG: Check nested structures
     if (item.variant) {
-      console.log('item.variant.product_cost:', item.variant?.product_cost);
-      console.log('item.variant.cost:', item.variant?.cost);
-      console.log('item.variant.metadata:', item.variant?.metadata);
+      //console.log('item.variant.product_cost:', item.variant?.product_cost);
+      //console.log('item.variant.cost:', item.variant?.cost);
+      //console.log('item.variant.metadata:', item.variant?.metadata);
     }
     
      if (item.product) {
-      console.log('item.product.cost:', item.product?.cost);
-      console.log('item.product.product_cost:', item.product?.product_cost);
-      console.log('item.product.metadata:', item.product?.metadata);
+      //console.log('item.product.cost:', item.product?.cost);
+      //console.log('item.product.product_cost:', item.product?.product_cost);
+      //console.log('item.product.metadata:', item.product?.metadata);
     }
       
       // ✅ Extract product_cost (enhanced from backend)
@@ -1900,24 +1900,24 @@ if (item.variant?.metadata?.cost_price !== undefined) {
   productCost = typeof item.variant.metadata.cost_price === 'number' 
     ? item.variant.metadata.cost_price 
     : parseFloat(item.variant.metadata.cost_price) || 0;
-  console.log(`✅ Found cost_price in variant.metadata: ${productCost}`);
+  //console.log(`✅ Found cost_price in variant.metadata: ${productCost}`);
 } 
 // Fallback to other possible locations
 else if (item.metadata?.cost_price !== undefined) {
   productCost = typeof item.metadata.cost_price === 'number' 
     ? item.metadata.cost_price 
     : parseFloat(item.metadata.cost_price) || 0;
-  console.log(`✅ Found cost_price in item.metadata: ${productCost}`);
+  //console.log(`✅ Found cost_price in item.metadata: ${productCost}`);
 }
 // Check merged_metadata as another fallback
 else if (item.merged_metadata?.cost_price !== undefined) {
   productCost = typeof item.merged_metadata.cost_price === 'number' 
     ? item.merged_metadata.cost_price 
     : parseFloat(item.merged_metadata.cost_price) || 0;
-  console.log(`✅ Found cost_price in merged_metadata: ${productCost}`);
+  //console.log(`✅ Found cost_price in merged_metadata: ${productCost}`);
 }
 
-console.log(`✅ Final extracted product_cost for item ${index}: ${productCost}`);
+//console.log(`✅ Final extracted product_cost for item ${index}: ${productCost}`);
       
       // Get subtitle from various fields
       let subtitle = "";
@@ -2809,7 +2809,7 @@ const generateInvoice = () => {
     // Save the PDF
     doc.save(`Junooni_Vendor_Invoice_${order.display_id}_${order.vendor_handle}.pdf`);
   } catch (error) {
-    console.error("Error generating invoice:", error);
+    //console.error("Error generating invoice:", error);
     alert("Failed to generate invoice. Please try again.");
   }
 };
