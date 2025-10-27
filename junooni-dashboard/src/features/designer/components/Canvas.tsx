@@ -590,7 +590,7 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
   return (
     <button
       onClick={() => onSelect(areaId)}
-      className={`w-full p-2 sm:px-3 sm:py-2 border rounded-lg transition-all touch-manipulation ${
+      className={`w-full p-2 sm:px-6 sm:py-4 border rounded-lg transition-all touch-manipulation ${
         isActive
           ? 'border-orange-500 border-2 '
           : 'hover:border-gray-300 hover:shadow-sm border-white'
@@ -3177,6 +3177,7 @@ const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ product
   const designElementsRef = useRef<Record<string, DesignElement[]>>({});
   const prevSelectedIdRef = useRef<string | null>(null);
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 }); // ADD THIS
+  const [isTablet, setIsTablet] = useState(false);
 
 const [alignmentPanelPos, setAlignmentPanelPos] = useState({ x: 500, y: 320 });
 const [isDraggingPanel, setIsDraggingPanel] = useState(false);
@@ -3284,16 +3285,29 @@ const [activeSize, setActiveSize] = useState<string>(() => {
   // MOBILE DETECTION
   // =====================================
 
+  // useEffect(() => {
+  //   const checkIsMobile = () => {
+  //     setIsMobile(window.innerWidth < 768);
+  //   };
+    
+  //   checkIsMobile();
+  //   window.addEventListener('resize', checkIsMobile);
+    
+  //   return () => window.removeEventListener('resize', checkIsMobile);
+  // }, []);
+
   useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkIsMobile();
-    window.addEventListener('resize', checkIsMobile);
-    
-    return () => window.removeEventListener('resize', checkIsMobile);
-  }, []);
+  const checkDevice = () => {
+    const width = window.innerWidth;
+    setIsMobile(width < 768);
+    setIsTablet(width >= 768 && width < 1024);  // ✅ Tablet detection
+  };
+  
+  checkDevice();
+  window.addEventListener('resize', checkDevice);
+  
+  return () => window.removeEventListener('resize', checkDevice);
+}, []);
 
   // =====================================
   // MEMOIZED CONFIGURATIONS
@@ -6748,7 +6762,7 @@ const renderUploadPanel = () => {
             : 'border-gray-300 hover:border-orange-300 hover:bg-orange-50/30'
         }`}
       >
-        <div className="p-8 text-center sm:p-12">
+        <div className="p-8 text-center sm:py-12 sm:px-8">
           <div className={`w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 rounded-full flex items-center justify-center transition-all ${
             isDragging ? 'bg-orange-100' : 'bg-gray-100'
           }`}>
@@ -8534,12 +8548,12 @@ const renderPreview = useCallback(() => {
             <div className="space-y-4">
               <h3 className="font-medium">Enhanced Color Selection</h3>
               
-              <div className={`grid ${isMobile ? 'grid-cols-3' : 'grid-cols-4'} gap-2 mb-4`}>
+              <div className={`flex flex-wrap gap-2 mb-4`}>
                 {productData?.colorOptions?.map((color: any) => (
                   <button
                     key={color.colorHex}
                     onClick={() => handleColorChange(color.colorHex, color.colorName)}
-                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center touch-manipulation ${
+                    className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center touch-manipulation ${
                       selectedColors.some(c => c.value === color.colorHex)
                         ? 'border-orange-500 ring-2 ring-orange-200 scale-110' 
                         : 'border-gray-300 hover:border-gray-400'
@@ -8549,7 +8563,7 @@ const renderPreview = useCallback(() => {
                   >
                     {selectedColors.some(c => c.value === color.colorHex) && (
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" 
-                           fill={color.colorHex === '#ffffff' ? 'black' : 'white'} width="16" height="16">
+                          fill={color.colorHex === '#ffffff' ? 'black' : 'white'} width="16" height="16">
                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                       </svg>
                     )}
@@ -9245,7 +9259,7 @@ useEffect(() => {
                 <button
                   onClick={() => setActiveView('design')}
                   className={`flex items-center gap-0.5 sm:gap-2 
-                    px-1.5 sm:px-4 py-1 sm:py-2 
+                    px-2 md:px-3 lg:px-4 py-1.5 md:py-2 
                     text-[12px] sm:text-sm font-medium 
                     rounded-md transition-all touch-manipulation ${
                       activeView === 'design'
@@ -9332,7 +9346,7 @@ useEffect(() => {
 
           {/* Mobile Area Thumbnails - Horizontal Scrollable */}
           {activeView === 'design' && isMobile && availableAreas.length > 1 && (
-            <div className="w-full bg-gray-100 border-b border-gray-100">
+            <div className="w-full bg-white">
               <div className="px-4 pt-2 pb-0">
                 <div className="flex pb-0 space-x-3 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                   {availableAreas.map(area => {
@@ -9344,13 +9358,13 @@ useEffect(() => {
                       <div key={area} className="flex-shrink-0">
                         <button
                           onClick={() => setActiveArea(area)}
-                          className={`flex flex-col items-center p-2 border rounded-lg transition-all touch-manipulation min-w-[80px] ${
+                          className={`flex flex-col items-center p-2 rounded-lg transition-all touch-manipulation min-w-[80px] ${
                             activeArea === area
                               ? 'border-orange-500 border-2 bg-orange-50'
-                              : 'hover:border-gray-400 hover:shadow-sm bg-gray-100'
+                              : 'bg-white'
                           }`}
                         >
-                          <div className="relative w-16 h-16 mb-0 overflow-hidden bg-gray-100 rounded">
+                          <div className="relative w-16 h-16 mb-0 overflow-hidden bg-white border-none rounded">
                             {canvasImage ? (
                               <div className="relative w-full h-full">
                                 {/* LAYER 1: Base color background */}
@@ -9413,7 +9427,7 @@ useEffect(() => {
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className={`fixed z-40 p-2 bg-white border border-gray-300 rounded-r-lg shadow-md hover:bg-gray-50 transition-all duration-300 ${
-                sidebarCollapsed ? 'left-20' : 'left-96'
+                sidebarCollapsed ? 'left-20 md:left-27' : 'left-80 lg:left-96'
               } top-[calc(50%+4rem)] -translate-y-1/2`}
               title={sidebarCollapsed ? 'Expand content panel' : 'Collapse content panel'}
             >
@@ -9432,7 +9446,7 @@ useEffect(() => {
           {activeView === 'design' && !isMobile && (
             <div className="flex bg-white border-r border-gray-200 shadow-sm">
               {/* Vertical Navigation - Always Visible */}
-              <div className="flex flex-col border-r border-gray-200 w-17" style={{ backgroundColor: '#e65100' }}>
+              <div className="flex flex-col border-r border-gray-200 w-16 md:w-20 lg:w-17" style={{ backgroundColor: '#e65100' }}>
                 
                 <nav className="flex flex-col flex-1 p-2 space-y-1">
                   {([
@@ -9507,7 +9521,7 @@ useEffect(() => {
               
               {/* Content Panel - Collapsible */}
               <div className={`flex flex-col transition-all duration-300 overflow-hidden h-full ${
-                sidebarCollapsed ? 'w-0' : 'w-80'
+                sidebarCollapsed ? 'w-0' : 'w-72 md:w-64 lg:w-80'
               }`}>
                 {/* Header */}
                 <div className="px-6 py-4 border-l-3 border-r-2 border-b border-t-2  border-[#e65100] bg-[#fed7aa]">
@@ -9566,18 +9580,16 @@ useEffect(() => {
           )}
 
           {/* Main Content Area */}
-          <div className={`flex transition-all duration-300 ${
-            activeView === 'design' 
-              ? !isMobile
-                ? sidebarCollapsed 
-                  ? 'w-[calc(100%-4rem)]' 
-                  : 'w-[calc(100%-24rem)]' 
-                : 'flex-1'
-              : 'flex-1'
+          <div className={`flex flex-1 transition-all duration-300 ${
+            activeView === 'design' && !isMobile
+              ? sidebarCollapsed 
+                ? 'md:w-[calc(100%-6rem)] lg:w-[calc(100%-4rem)]'
+                : 'md:w-[calc(100%-20rem)] lg:w-[calc(100%-24rem)]'
+              : ''
           }`}>
             {/* Add Area Thumbnails for Design Mode - Desktop Only */}
             {activeView === 'design' && !isMobile && availableAreas.length > 1 && (
-              <div className="w-40 p-3 bg-white overflow-y-auto">
+              <div className="w-32 md:w-32 lg:w-44 p-2 md:p-3 bg-white overflow-y-auto">
                 
                 <div className="space-y-2">
                   {availableAreas.map(area => {
@@ -9604,8 +9616,8 @@ useEffect(() => {
             
             <div className="flex-1 px-2 pt-0 pb-2 overflow-hidden sm:p-2 bg-white">
              {activeView === 'design' ? (
-              <div className={`flex items-center justify-center h-full overflow-y-auto ${
-                isMobile ? 'px-2 pt-0 pb-28' : 'px-2 pt-0 pb-2 sm:p-4' // More bottom padding for mobile
+              <div className={`flex items-center justify-center h-auto overflow-y-auto ${
+                isMobile ?'px-2 pt-0 pb-28' : 'px-3 md:px-4 pt-0 pb-2 sm:p-3 md:p-6' // More bottom padding for mobile
               }`}>
                 <div className="relative"> {/* Add wrapper div */}
                   {renderCanvas()}

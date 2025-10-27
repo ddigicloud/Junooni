@@ -1,5 +1,6 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ChevronDown from "@modules/common/icons/chevron-down"
+import junooni from "@assets/junooni.png"
 // import MedusaCTA from "@modules/layout/components/medusa-cta"
 
 export default function CheckoutLayout({
@@ -26,10 +27,10 @@ export default function CheckoutLayout({
           </LocalizedClientLink>
           <LocalizedClientLink
             href="/"
-            className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
+            className="text-2xl font-bold text-black hover:text-ui-fg-base uppercase"
             data-testid="store-link"
           >
-            JUNOONI
+            <img src={junooni.src} alt="Junooni" className="w-32 h-auto object-contain" />
           </LocalizedClientLink>
           <div className="flex-1 basis-0" />
         </nav>

@@ -1064,13 +1064,13 @@ class InvoiceGeneratorService extends MedusaService({
       console.log('📦 Using Ship From:', shipFromAddress.company || shipFromAddress.address_1)
 
       // Calculate vendor-specific totals
-      const vendorSubtotal = vendorItems.reduce((sum, item) => 
+      let vendorSubtotal = vendorItems.reduce((sum, item) => 
         sum + (item.total - item.tax_total), 0
       )
-      const vendorTaxTotal = vendorItems.reduce((sum, item) => 
+      let vendorTaxTotal = vendorItems.reduce((sum, item) => 
         sum + item.tax_total, 0
       )
-      const vendorTotal = vendorItems.reduce((sum, item) => 
+      let vendorTotal = vendorItems.reduce((sum, item) => 
         sum + item.total, 0
       )
 
@@ -1079,7 +1079,7 @@ class InvoiceGeneratorService extends MedusaService({
       
       console.log('🧾 GST Breakdown for vendor:', gstBreakdown)
 
-      // Format vendor-specific amounts
+      // Format vendor-specific amounts (will be updated after adding shipping)
       const formattedVendorTotals = {
         subtotal: await this.formatAmount(vendorSubtotal, params.order.currency_code),
         tax_total: await this.formatAmount(vendorTaxTotal, params.order.currency_code),
@@ -1130,7 +1130,10 @@ class InvoiceGeneratorService extends MedusaService({
         })
       )
 
-      // Build items table for this vendor
+      // ============================================================================
+      // ✅ FIXED: Build items table with shipping charges row
+      // ============================================================================
+      // Build items table for this vendor (without final total row initially)
       const itemsTableBody = [
         [
           { text: 'Product\nDescription', style: 'tableHeader', alignment: 'left', rowSpan: 2 },
@@ -1170,28 +1173,145 @@ class InvoiceGeneratorService extends MedusaService({
           { text: item.igst_rate, style: 'tableRow', alignment: 'center' },
           { text: item.igst_amount, style: 'tableRow', alignment: 'center' },
           { text: item.net_amount, style: 'tableRow', alignment: 'right', bold: true }
-        ]),
-        [
-          { text: '', style: 'tableRow', border: [false, true, false, false] },
-          { text: '', style: 'tableRow', border: [false, true, false, false] },
-          { text: '', style: 'tableRow', border: [false, true, false, false] },
-          { text: '', style: 'tableRow', border: [false, true, false, false] },
-          { text: '', style: 'tableRow', border: [false, true, false, false] },
-          { text: '', style: 'tableRow', border: [false, true, false, false] },
-          { text: '', style: 'tableRow', border: [false, true, false, false] },
-          { text: '', style: 'tableRow', border: [false, true, false, false] },
-          { text: '', style: 'tableRow', border: [false, true, false, false] },
+        ])
+      ]
+
+      // ✅ NEW: Add shipping charges row if shipping exists
+      const shippingSubtotal = safeOrderTotals.shipping_subtotal
+      const shippingTaxTotal = safeOrderTotals.shipping_tax_total
+      const shippingTotal = safeOrderTotals.shipping_total
+
+      console.log('📦 Processing shipping charges:', {
+        subtotal: shippingSubtotal,
+        tax: shippingTaxTotal,
+        total: shippingTotal,
+        fulfillmentType: firstVendorItem.fulfillment_type
+      })
+
+      // ✅ Only add shipping charges to Junooni fulfillment pages
+      if (shippingTotal > 0 && firstVendorItem.fulfillment_type === 'junooni') {
+        // Calculate shipping GST breakdown
+        let shippingCgstAmount = 0
+        let shippingSgstAmount = 0
+        let shippingIgstAmount = 0
+
+        if (shippingTaxTotal > 0) {
+          if (gstBreakdown.isIntraState) {
+            // Intra-state: Split between CGST and SGST
+            shippingCgstAmount = shippingTaxTotal / 2
+            shippingSgstAmount = shippingTaxTotal / 2
+            console.log('   📍 Intra-state shipping: CGST + SGST')
+          } else {
+            // Inter-state: Full amount as IGST
+            shippingIgstAmount = shippingTaxTotal
+            console.log('   📍 Inter-state shipping: IGST')
+          }
+        }
+
+        console.log('   ✅ Adding shipping row to invoice table')
+        
+        // Add shipping charges row to table
+        itemsTableBody.push([
           { 
-            text: formattedVendorTotals.total, 
-            style: 'totalValue', 
+            text: 'Shipping Charges', 
+            style: 'tableRow', 
+            alignment: 'left',
+            margin: [3, 4, 3, 4],
+            bold: true,
+            fillColor: '#f8f9fa'  // Light background to distinguish from products
+          },
+          { 
+            text: await this.formatAmount(shippingSubtotal, params.order.currency_code), 
+            style: 'tableRow', 
+            alignment: 'center',
+            fillColor: '#f8f9fa'
+          },
+          { 
+            text: '1',  // Quantity is always 1 for shipping
+            style: 'tableRow', 
+            alignment: 'center',
+            fillColor: '#f8f9fa'
+          },
+          { 
+            text: gstBreakdown.isIntraState ? `${gstBreakdown.cgst.rate.toFixed(2)}` : '0.00', 
+            style: 'tableRow', 
+            alignment: 'center',
+            fillColor: '#f8f9fa'
+          },
+          { 
+            text: await this.formatAmount(shippingCgstAmount, params.order.currency_code), 
+            style: 'tableRow', 
+            alignment: 'center',
+            fillColor: '#f8f9fa'
+          },
+          { 
+            text: gstBreakdown.isIntraState ? `${gstBreakdown.sgst.rate.toFixed(2)}` : '0.00', 
+            style: 'tableRow', 
+            alignment: 'center',
+            fillColor: '#f8f9fa'
+          },
+          { 
+            text: await this.formatAmount(shippingSgstAmount, params.order.currency_code), 
+            style: 'tableRow', 
+            alignment: 'center',
+            fillColor: '#f8f9fa'
+          },
+          { 
+            text: !gstBreakdown.isIntraState ? `${gstBreakdown.igst.rate.toFixed(2)}` : '0.00', 
+            style: 'tableRow', 
+            alignment: 'center',
+            fillColor: '#f8f9fa'
+          },
+          { 
+            text: await this.formatAmount(shippingIgstAmount, params.order.currency_code), 
+            style: 'tableRow', 
+            alignment: 'center',
+            fillColor: '#f8f9fa'
+          },
+          { 
+            text: await this.formatAmount(shippingTotal, params.order.currency_code), 
+            style: 'tableRow', 
             alignment: 'right', 
             bold: true,
-            fontSize: 9,
-            fillColor: '#f8f9fa',
-            border: [true, true, true, true]
+            fillColor: '#f8f9fa'
           }
-        ]
-      ]
+        ])
+
+        // Update vendor totals to include shipping
+        vendorTotal = vendorTotal + shippingTotal
+        vendorTaxTotal = vendorTaxTotal + shippingTaxTotal
+        vendorSubtotal = vendorSubtotal + shippingSubtotal
+
+        console.log('   ✅ Updated vendor totals with shipping')
+        console.log(`      New Vendor Total: ${await this.formatAmount(vendorTotal, params.order.currency_code)}`)
+      } else if (shippingTotal > 0 && firstVendorItem.fulfillment_type !== 'junooni') {
+        console.log(`   ⏭️  Skipping shipping charges for ${firstVendorItem.fulfillment_type} fulfillment (shipping only on Junooni invoices)`)
+      }
+
+      // Add final total row
+      itemsTableBody.push([
+        { text: '', style: 'tableRow', border: [false, true, false, false] },
+        { text: '', style: 'tableRow', border: [false, true, false, false] },
+        { text: '', style: 'tableRow', border: [false, true, false, false] },
+        { text: '', style: 'tableRow', border: [false, true, false, false] },
+        { text: '', style: 'tableRow', border: [false, true, false, false] },
+        { text: '', style: 'tableRow', border: [false, true, false, false] },
+        { text: '', style: 'tableRow', border: [false, true, false, false] },
+        { text: '', style: 'tableRow', border: [false, true, false, false] },
+        { text: '', style: 'tableRow', border: [false, true, false, false] },
+        { 
+          text: await this.formatAmount(vendorTotal, params.order.currency_code), 
+          style: 'totalValue', 
+          alignment: 'right', 
+          bold: true,
+          fontSize: 9,
+          fillColor: '#e9ecef',
+          border: [true, true, true, true]
+        }
+      ])
+      // ============================================================================
+      // END OF FIX
+      // ============================================================================
 
       const formatAddress = (addr: any): string => {
         if (!addr) return 'No address provided'

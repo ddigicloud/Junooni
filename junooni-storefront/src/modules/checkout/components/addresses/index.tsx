@@ -340,7 +340,7 @@ const Addresses = ({
 
               <div className="flex flex-col gap-3">
                 <SubmitButton 
-                  className={`w-full bg-[#e65100] hover:bg-[#bf360c] text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${
+                  className={`w-full bg-[#e65100] hover:bg-[#bf360c] text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-none disabled:transform-none ${
                     isSubmitting ? 'animate-pulse' : ''
                   }`}
                   disabled={isSubmitting}

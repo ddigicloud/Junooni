@@ -797,7 +797,7 @@ const Shipping: React.FC<ShippingProps> = ({
               />
               <Button
                 size="large"
-                className="w-full bg-[#e65100] hover:bg-[#bf360c] text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg"
+                className="w-full bg-[#e65100] hover:bg-[#bf360c] text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg shadow-none"
                 onClick={handleSubmit}
                 isLoading={isLoading}
                 disabled={!cart.shipping_methods?.[0]}

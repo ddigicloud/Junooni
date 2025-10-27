@@ -2029,7 +2029,7 @@ useEffect(() => {
     if (location.state) {
       isProcessing = true; // Add this line
       const locationState = location.state as LocationState;
-      console.log("Location state", locationState);
+      // console.log("Location state", locationState);
       
       // STEP 1: Extract and store pre-generated images FIRST
       const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
@@ -4550,100 +4550,6 @@ useEffect(() => {
     
     loadCategories();
   }, []);
-
-
-// Add this new function to process designImages array format
-// Replace your processDesignImagesArray function with this enhanced version
-// Replace your processDesignImagesArray with this version that has detailed logging
-
-// Update your useEffect to process both formats
-// Replace your existing useEffect with this corrected version
-// useEffect(() => {
-//   // GUARD: Prevent multiple processing
-//   if (hasProcessedInitialData) {
-//     console.log('🚫 Initial data already processed, skipping...');
-//     return;
-//   }
-  
-//   const processLocationState = async () => {
-//     if (location.state) {
-//       console.log('🎯 CREATE DEBUG: Starting location state processing');
-//       setHasProcessedInitialData(true); // Set flag immediately to prevent re-processing
-      
-//       const locationState = location.state as LocationState;
-      
-//       try {
-//         // STEP 1: Extract pre-generated images first
-//         const hasPreGeneratedImages = extractAndStorePreGeneratedImages(locationState);
-        
-//         // STEP 2: Process canvas images
-//         if (locationState.canvasImages && Array.isArray(locationState.canvasImages)) {
-//           console.log('🎯 CREATE DEBUG: Found', locationState.canvasImages.length, 'canvas images');
-//           setImportedCanvasImages(locationState.canvasImages);
-//         }
-        
-//         // STEP 3: Process design images ONLY if they exist
-//         if (locationState.designImages && Array.isArray(locationState.designImages) && locationState.designImages.length > 0) {
-//           console.log('🎯 CREATE DEBUG: Processing', locationState.designImages.length, 'design images');
-//           await processDesignImagesArray(locationState.designImages);
-//         }
-        
-//         // STEP 4: Set design data without triggering form population yet
-//         if (locationState.designData) {
-//           console.log('🎯 CREATE DEBUG: Setting design data');
-//           setDesignData(locationState.designData);
-//           setEnhancedProductData(locationState.enhancedProductData);
-          
-//           const imageSettings = {
-//             color_Images: locationState.enhancedProductData?.color_Images || false,
-//             size_Images: locationState.enhancedProductData?.size_Images || false,
-//             material_Images: locationState.enhancedProductData?.material_Images || false,
-//             style_Images: locationState.enhancedProductData?.style_Images || false
-//           };
-          
-//           setPayloadImageSettings(imageSettings);
-          
-//           // STEP 5: Populate form with a longer delay to ensure all processing is complete
-//           setTimeout(() => {
-//             console.log('🎯 CREATE DEBUG: Starting form population');
-//             try {
-//               if (locationState.enhancedProductData && Object.keys(locationState.enhancedProductData).length > 10) {
-//                 console.log('🎯 CREATE DEBUG: Using PayloadCMS data');
-//                 const payloadProduct = locationState.enhancedProductData as PayloadCMSProduct;
-//                 populateFormWithPayloadCMSData(payloadProduct);
-//               } else {
-//                 console.log('🎯 CREATE DEBUG: Using design data');
-//                 populateFormWithDesignData(locationState.designData, locationState.enhancedProductData, imageSettings);
-//               }
-              
-//               // Process mockup images AFTER form is populated
-//               if (hasPreGeneratedImages || Object.keys(locationState.mockupImages || {}).length > 0) {
-//                 console.log('🎯 CREATE DEBUG: Processing mockup images');
-//                 handleMockupImagesEnhanced(locationState, imageSettings);
-//               }
-              
-//               setShowImportNotification(true);
-//               console.log('🎯 CREATE DEBUG: Form population completed');
-              
-//             } catch (populationError) {
-//               console.error('🎯 CREATE ERROR: Form population failed:', populationError);
-//               setError('Failed to populate form with imported data');
-//             }
-//           }, 2000); // Increased delay to prevent race conditions
-//         }
-        
-//       } catch (error) {
-//         console.error('🎯 CREATE ERROR: Location state processing failed:', error);
-//         setError('Failed to process imported design data');
-//         setHasProcessedInitialData(false); // Reset flag on error
-//       }
-//     }
-//   };
-  
-//   // Execute processing
-//   processLocationState();
-// }, [location.state]);
-
 
 useEffect(() => {
   // Early return if there's no location state to process

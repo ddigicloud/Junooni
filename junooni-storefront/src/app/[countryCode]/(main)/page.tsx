@@ -90,6 +90,7 @@ import VendorList from "@modules/home/components/VendorList"
 import CreatorInstagram from "@modules/home/components/CreatorInstagram"
 import HomeCategories from "@modules/home/components/HomeCategories"
 import CollectionBanner from "@modules/home/components/CollectionBanner"
+import ChatwootWidget from "./chatwootWidget/page"
 
 // Heavy components - product sections with API calls
 import Bestsellers from "@modules/home/components/BestSellers"
@@ -162,6 +163,8 @@ export default async function Home(props: {
           
           {/* 7. CreatorInstagram - Fast component, loads immediately */}
           <CreatorInstagram vendorsList={vendorsList} />
+
+          <ChatwootWidget />
           
           {/* 8. FanContent - Fast component, loads immediately */}
           {/* <FanContent /> */}

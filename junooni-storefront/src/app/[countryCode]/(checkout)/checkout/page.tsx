@@ -1,88 +1,3 @@
-// import { retrieveCart } from "@lib/data/cart"
-// import { retrieveCustomer } from "@lib/data/customer"
-// import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
-// import CheckoutForm from "@modules/checkout/templates/checkout-form"
-// import CheckoutSummary from "@modules/checkout/templates/checkout-summary"
-// import { Metadata } from "next"
-// import { notFound } from "next/navigation"
-
-// export const metadata: Metadata = {
-//   title: "Checkout",
-// }
-
-// export default async function Checkout() {
-//   const cart = await retrieveCart()
-
-//   if (!cart) {
-//     return notFound()
-//   }
-
-//   const customer = await retrieveCustomer()
-
-//   return (
-//     <div className="grid grid-cols-1 small:grid-cols-[1fr_416px] content-container gap-x-40 py-12">
-//       <PaymentWrapper cart={cart}>
-//       <CheckoutForm cart={cart} customer={customer} />
-//         </PaymentWrapper>
-//       <CheckoutSummary cart={cart} />
-//     </div>
-//   )
-// }
-
-// import { retrieveCart } from "@lib/data/cart"
-// import { retrieveCustomer } from "@lib/data/customer"
-// import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
-// import CheckoutForm from "@modules/checkout/templates/checkout-form"
-// import CheckoutSummary from "@modules/checkout/templates/checkout-summary"
-// import { Metadata } from "next"
-// import { notFound } from "next/navigation"
-
-// export const metadata: Metadata = {
-//   title: "Checkout",
-// }
-
-// export default async function Checkout() {
-//   const cart = await retrieveCart()
-
-//   if (!cart) {
-//     return notFound()
-//   }
-
-//   const customer = await retrieveCustomer()
-
-//   return (
-//     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-//       <div className="container px-4 py-8 mx-auto lg:py-12">
-//         {/* Header */}
-//         <div className="mb-8 text-center lg:mb-12">
-//           <h1 className="mb-2 text-3xl font-bold text-gray-900 lg:text-4xl">
-//             Secure Checkout
-//           </h1>
-//           <p className="text-lg text-gray-600">
-//             Complete your order in a few simple steps
-//           </p>
-//         </div>
-
-//         {/* Main Content */}
-//         <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 lg:gap-12 max-w-7xl mx-auto">
-//           {/* Checkout Form */}
-//           <div className="order-2 lg:order-1">
-//             <PaymentWrapper cart={cart}>
-//               <CheckoutForm cart={cart} customer={customer} />
-//             </PaymentWrapper>
-//           </div>
-
-//           {/* Order Summary */}
-//           <div className="order-1 lg:order-2">
-//             <div className="lg:sticky lg:top-8">
-//               <CheckoutSummary cart={cart} />
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   )
-// }
 import { retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
 import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
@@ -90,125 +5,118 @@ import CheckoutForm from "@modules/checkout/templates/checkout-form"
 import CheckoutSummary from "@modules/checkout/templates/checkout-summary"
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { 
-  Shield, 
-  Lock, 
-  CreditCard, 
-  Phone, 
-  Mail, 
-  CheckCircle,
-  Truck,
-  RotateCcw
-} from "lucide-react"
+import { listCategories } from "@lib/data/categories"
+import { listCollections } from "@lib/data/collections"
+import { Text, clx } from "@medusajs/ui"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 export const metadata: Metadata = {
   title: "Checkout",
 }
 
-// Checkout Footer Component
-const CheckoutFooter = () => {
-  const currentYear = new Date().getFullYear()
+// Checkout Footer Component (with UI from Footer)
+const CheckoutFooter = async () => {
+  const productCategories = await listCategories();
+  const { collections } = await listCollections();
 
   return (
-    <footer className="bg-white border-t border-gray-200 mt-16">
+    <footer className="w-full text-white bg-black border-t border-gray-700">
+      <div className="container px-6 py-16 mx-auto">
+        <div className="w-full">
+          {/* Help Center & Other Links */}
+          <div className="grid grid-cols-1 gap-8 text-sm sm:grid-cols-2 md:grid-cols-5">
+            {productCategories?.length > 0 && (
+              <div>
+                <h3 className="mb-3 text-lg font-semibold text-white">Categories</h3>
+                <ul className="flex flex-col mt-2 space-y-2 text-gray-300">
+                  {productCategories.map((c) => {
+                    if (c.parent_category) return null;
+                    return (
+                      <li key={c.id}>
+                        <LocalizedClientLink
+                          className="text-sm transition-colors hover:text-orange-400"
+                          href={`/categories/${c.handle}`}
+                        >
+                          {c.name}
+                        </LocalizedClientLink>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
 
-      {/* Main Footer Content */}
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-6xl mx-auto">
-          
-          {/* Customer Support */}
-          <div className="text-center md:text-left">
-            <h4 className="text-lg font-semibold text-gray-900 mb-6">Need Help?</h4>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 justify-center md:justify-start">
-                <div className="w-8 h-8 bg-[#e65100] rounded-full flex items-center justify-center">
-                  <Phone size={16} className="text-white" />
-                </div>
-                <span className="text-gray-700 font-medium">+91 9557294610</span>
+            {/* Collections */}
+            {collections && collections.length > 0 && (
+              <div className="flex flex-col gap-y-2">
+                <span className="text-lg font-semibold text-white">
+                  Collections
+                </span>
+                <ul className={clx("grid grid-cols-1 gap-2 text-gray-300")}>
+                  {collections.map((c) => (
+                    <li key={c.id}>
+                      <LocalizedClientLink
+                        className="text-sm transition-colors hover:text-orange-400"
+                        href={`/collections/${c.handle}`}
+                      >
+                        {c.title}
+                      </LocalizedClientLink>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="flex items-center gap-3 justify-center md:justify-start">
-                <div className="w-8 h-8 bg-[#e65100] rounded-full flex items-center justify-center">
-                  <Mail size={16} className="text-white" />
-                </div>
-                <span className="text-gray-700 font-medium">support@junooni.com</span>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-600 font-medium">Business Hours:</p>
-                <p className="text-sm text-gray-600">Mon-Fri: 9AM-8PM EST</p>
-                <p className="text-sm text-gray-600">Sat-Sun: 10AM-6PM EST</p>
+            )}
+
+            {/* Help Center */}
+            <div>
+              <span className="text-lg font-semibold text-white">Help Center</span>
+              <ul className="mt-2 space-y-2 text-sm text-gray-300">
+                <li><LocalizedClientLink href="/contact-us" className="text-base hover:text-orange-400">Contact us</LocalizedClientLink></li>
+                <li><LocalizedClientLink href="/support" className="text-base hover:text-orange-400">Support</LocalizedClientLink></li>
+                <li><LocalizedClientLink href="/orders-shipping" className="text-base hover:text-orange-400">Orders & Shipping</LocalizedClientLink></li>
+              </ul>
+            </div>
+
+            <div>
+              <span className="text-lg font-semibold text-white">Quick links</span>
+              <ul className="mt-2 space-y-2 text-sm text-gray-300">
+                <li><LocalizedClientLink href="/privacy-policy" className="text-base hover:text-orange-400">Privacy Policy</LocalizedClientLink></li>
+                 <li><LocalizedClientLink href="/payment-methods" className="text-base hover:text-orange-400">Payment Methods</LocalizedClientLink></li>
+                <li><LocalizedClientLink href="/product-care" className="text-base hover:text-orange-400">Product Care</LocalizedClientLink></li>
+                <li><LocalizedClientLink href="/refund-exchange" className="text-base hover:text-orange-400">Refund & Exchange Policy</LocalizedClientLink></li>
+                <li><LocalizedClientLink href="/terms-condition" className="text-base hover:text-orange-400">Terms of Service</LocalizedClientLink></li>
+              </ul>
+            </div>
+
+            {/* Call to Action */}
+            <div className="pt-0 mt-0 text-center">
+              <p className="mb-4 text-sm text-white sm:text-base">
+                Have a passion for creating? Turn it into something bigger.
+              </p>
+              <div className="flex flex-col justify-center gap-3 sm:flex-row">
+                <a 
+                  href="https://studio.junooni.com/" 
+                  className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 transform rounded-lg shadow-md bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 hover:scale-105"
+                >
+                  Join as a Creator
+                  <svg className="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </a>
               </div>
             </div>
-          </div>
-
-          
-            {/* Company Info */}
-          <div className="text-center">
-            <h4 className="text-lg font-semibold text-gray-900 mb-6">Junooni Store</h4>
-            
-            <p className="text-gray-600 mb-6 leading-relaxed">
-              Premium quality products with fast shipping and excellent customer service. Your satisfaction is our priority.
-            </p>
-            
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-              <Shield size={16} className="text-green-600" />
-              <span>Secure & Trusted Shopping</span>
-            </div>
-          </div>
-          {/* Quick Links */}
-          <div className="text-center md:text-right">
-            <h4 className="text-lg font-semibold text-gray-900 mb-6">Quick Links</h4>
-            <ul className="space-y-3">
-              <li>
-                <a href="/shipping-info" className="text-gray-600 hover:text-[#e65100] transition-colors duration-200 font-medium block">
-                  Shipping Information
-                </a>
-              </li>
-              <li>
-                <a href="/returns" className="text-gray-600 hover:text-[#e65100] transition-colors duration-200 font-medium block">
-                  Return Policy
-                </a>
-              </li>
-              <li>
-                <a href="/faq" className="text-gray-600 hover:text-[#e65100] transition-colors duration-200 font-medium block">
-                  FAQ
-                </a>
-              </li>
-              <li>
-                <a href="/contact" className="text-gray-600 hover:text-[#e65100] transition-colors duration-200 font-medium block">
-                  Contact Us
-                </a>
-              </li>
-              <li>
-                <a href="/track-order" className="text-gray-600 hover:text-[#e65100] transition-colors duration-200 font-medium block">
-                  Track Your Order
-                </a>
-              </li>
-            </ul>
           </div>
         </div>
       </div>
 
-      {/* Bottom Bar */}
-      <div className="border-t border-gray-200 bg-gray-50">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600 max-w-6xl mx-auto">
-            <div className="flex items-center gap-4">
-              <span className="font-medium">© {currentYear} Junooni Store. All rights reserved.</span>
-            </div>
-            <div className="flex items-center gap-6">
-              <a href="/privacy-policy" className="hover:text-[#e65100] transition-colors duration-200 font-medium">
-                Privacy Policy
-              </a>
-              <span className="text-gray-400">•</span>
-              <a href="/terms" className="hover:text-[#e65100] transition-colors duration-200 font-medium">
-                Terms of Service
-              </a>
-            </div>
-          </div>
+      {/* Footer Bottom */}
+      <div className="flex-col px-4 py-4 text-sm text-gray-400 border-t border-gray-700 md:flex-row">
+        <div className="flex justify-center mx-auto max-w-7xl">
+          <Text>© {new Date().getFullYear()} Junooni Store. All rights reserved.</Text>
         </div>
       </div>
     </footer>
-  )
+  );
 }
 
 export default async function Checkout() {
@@ -223,16 +131,16 @@ export default async function Checkout() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
       <div className="flex-1">
-        <div className="container px-4 py-8 mx-auto lg:py-12">
+        <div className="container px-4 py-4 mx-auto lg:py-12">
           {/* Header */}
-          <div className="mb-8 text-center lg:mb-12">
+          {/* <div className="mb-8 text-center lg:mb-12">
             <h1 className="mb-2 text-3xl font-bold text-gray-900 lg:text-4xl">
               Secure Checkout
             </h1>
             <p className="text-lg text-gray-600">
               Complete your order in a few simple steps
             </p>
-          </div>
+          </div> */}
 
           {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 lg:gap-12 max-w-7xl mx-auto">

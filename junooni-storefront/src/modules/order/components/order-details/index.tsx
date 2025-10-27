@@ -146,10 +146,17 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "fulfilled":
+      case "delivered":
         return (
           <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             <Check size={14} className="mr-1" />
+            {formatStatus(status)}
+          </div>
+        )
+      case "fulfilled":
+        return (
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <Clock size={14} className="mr-1" />
             {formatStatus(status)}
           </div>
         )

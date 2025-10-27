@@ -138,9 +138,6 @@ import { listCategories } from "@lib/data/categories";
 import { Text, clx } from "@medusajs/ui";
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
 import { listCollections } from "@lib/data/collections";
-// import { FaFacebookF } from "react-icons/fa";
-// import { FiLinkedin } from "react-icons/fi";
-// import { RxTwitterLogo } from "react-icons/rx";
 
 export default async function Footer() {
   const productCategories = await listCategories();
@@ -214,15 +211,6 @@ export default async function Footer() {
                 <li><LocalizedClientLink href="/terms-condition" className="text-base hover:text-orange-400">Terms of Service</LocalizedClientLink></li>
               </ul>
             </div>
-
-            {/* Order Tracking */}
-            {/* <div>
-              <span className="text-lg font-semibold text-white">Order Tracking</span>
-              <ul className="mt-2 space-y-2 text-gray-300">
-                <li><LocalizedClientLink href="/track-order" className="text-base hover:text-orange-400">Track by Order ID</LocalizedClientLink></li>
-                <li><LocalizedClientLink href="/shipment-status" className="text-base hover:text-orange-400">Shipment Status</LocalizedClientLink></li>
-              </ul>
-            </div> */}
 
             {/* Call to Action */}
             <div className="pt-0 mt-0 text-center">
