@@ -2147,40 +2147,32 @@ useEffect(() => {
 
   // ===== ENHANCED MOCKUP IMAGE PROCESSING WITH REUSE =====
   // REPLACE your handleMockupImagesEnhanced function
+
+
+  
 const handleMockupImagesEnhanced = async (
-  locationState: LocationState, 
+  locationState: LocationState,
   directImageSettings?: ImageAssociationSettings
 ) => {
   try {
-    //console.log('🚀 handleMockupImagesEnhanced called');
-    
-    const { mockupImages = {}, uniqueImages = {}, designData, enhancedProductData } = locationState;
+    const { colorSpecificImages = {}, uniqueImages = {}, designData, enhancedProductData } = locationState;  // ✅ Use colorSpecificImages instead of mockupImages
     const settingsToUse = directImageSettings || payloadImageSettings;
     
-    // 🔥 EXTRACT AREAS DIRECTLY HERE (don't rely on state)
     const extractedAreas = extractAvailableAreas(locationState);
-    //console.log('🎯 Extracted areas for processing:', extractedAreas);
 
-    // STEP 1: Process raw design images FIRST
-    // if (designData?.designElements) {
-    //   await processRawDesignImages(designData.designElements);
-    // }
-
-    // STEP 2: Process mockup images with extracted areas
     if (skipMockupGeneration && Object.keys(preGeneratedMockupImages).length > 0) {
       await reusePreGeneratedMockupImages(designData!, settingsToUse);
     } else {
       if (Object.keys(uniqueImages).length > 0) {
         await processUniqueImagesFromCanvas(uniqueImages, designData!, settingsToUse, extractedAreas);
-      } else if (Object.keys(mockupImages).length > 0) {
-        await processMockupImagesDirectly(mockupImages, designData!, settingsToUse, extractedAreas);
+      } else if (Object.keys(colorSpecificImages).length > 0) {  // ✅ Check colorSpecificImages
+        await processColorSpecificImages(colorSpecificImages, designData!, settingsToUse, extractedAreas);  // ✅ New function
       } else {
         setError('No mockup images found from designer');
       }
     }
     
   } catch (error) {
-    //console.error('❌ Error in handleMockupImagesEnhanced:', error);
     setError('Failed to process images from designer');
   }
 };
@@ -2677,6 +2669,68 @@ const processUniqueImagesFromCanvas = async (
 
   // ===== HELPER FUNCTIONS =====
 
+const processColorSpecificImages = async (
+  colorSpecificImages: Record<string, any[]>,
+  designData: DesignData,
+  imageSettings: ImageAssociationSettings,
+  extractedAreas?: string[]
+) => {
+  try {
+    const processedImages: MediaItem[] = [];
+    let currentRank = 1000;
+    
+    // Iterate through each color group
+    for (const [colorHex, mockups] of Object.entries(colorSpecificImages)) {
+      // Find the color name
+      const colorDetail = designData.colorDetails?.find(c => c.value.toLowerCase() === colorHex.toLowerCase());
+      const colorName = colorDetail?.name || colorHex;
+      
+      // Process each mockup in this color group
+      for (const mockup of mockups) {
+        const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.png`;
+        
+        const processedImage = await processBase64ToFile(
+          mockup.imageData,
+          fileName,
+          colorName
+        );
+        
+        if (processedImage) {
+          const mediaItem: MediaItem = {
+            file: processedImage.file,
+            url: processedImage.url,
+            rank: currentRank++,
+            isNew: true,
+            variantInfo: {
+              optionName: 'Color',
+              optionValues: [colorName],
+              isSharedAcrossSizes: !imageSettings.size_Images
+            },
+            colorValue: colorName,
+            metadata: {
+              mockupId: mockup.mockupId,
+              viewAngle: mockup.viewAngle,
+              hasDesign: mockup.hasDesign,
+              extractedColorName: colorName,
+              payloadSettings: { ...imageSettings }
+            }
+          };
+          
+          processedImages.push(mediaItem);
+        }
+      }
+    }
+    
+    if (processedImages.length > 0) {
+      setMediaItems(prev => [...prev, ...processedImages]);
+      setTimeout(() => setActiveImageTab('upload'), 100);
+    }
+    
+  } catch (error) {
+    //console.error('Error processing color-specific images:', error);
+    setError('Failed to process mockup images');
+  }
+};
 
   // Add this helper function before the Create component
 // Updated helper function to access the correct nested property
@@ -5549,11 +5603,11 @@ const combinedArtworkPayload = {
     // ✅ CORRECTED: Use supplierProductId as brand_id
     if (enhancedProductData?.vendorInfo?.supplierProductId) {
       additionalData.brand_id = enhancedProductData.vendorInfo.supplierProductId;
-      console.log('✅ Added brand_id from supplierProductId:', enhancedProductData.vendorInfo.supplierProductId);
+      //console.log('✅ Added brand_id from supplierProductId:', enhancedProductData.vendorInfo.supplierProductId);
     } else {
       // Fallback to empty string if not available
       additionalData.brand_id = "";
-      console.log('⚠️ No supplierProductId found, brand_id set to empty string');
+      //console.log('⚠️ No supplierProductId found, brand_id set to empty string');
     }
     
     // Add brand_id (leave empty for now as requested)

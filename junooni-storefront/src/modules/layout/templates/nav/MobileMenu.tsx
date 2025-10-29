@@ -241,16 +241,16 @@ const hamburgerColor = useMemo(() => {
   const isPastTenVH = scrollY > viewportHeight * 0.1;
   const shouldBeWhite = isHomeOrLocalized && !isAnyMenuHovered && !isPastTenVH;
   
-  console.log('🍔 Direct scroll detection:', {
-    isHomeOrLocalized,
-    isAnyMenuHovered,
-    scrollY,
-    viewportHeight,
-    tenPercentVH: viewportHeight * 0.1,
-    isPastTenVH,
-    shouldBeWhite,
-    result: shouldBeWhite ? 'WHITE' : 'BLACK'
-  });
+  // console.log('🍔 Direct scroll detection:', {
+  //   isHomeOrLocalized,
+  //   isAnyMenuHovered,
+  //   scrollY,
+  //   viewportHeight,
+  //   tenPercentVH: viewportHeight * 0.1,
+  //   isPastTenVH,
+  //   shouldBeWhite,
+  //   result: shouldBeWhite ? 'WHITE' : 'BLACK'
+  // });
   
   return shouldBeWhite ? "text-white" : "text-black";
 }, [isHomePage, isAnyMenuHovered, scrollY]); 

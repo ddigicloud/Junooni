@@ -181,6 +181,9 @@ interface DynamicMockupPhoto {
   mochigtpx?: number;       // Mockup height in pixels (for main preview)
   tmbwidthpx?: number;      // Thumbnail width in pixels (for thumbnails)
   tmbhigtpx?: number; 
+  // 🆕 NEW: Color masking fields
+  requiresColorMasking?: boolean;  // Flag to indicate this mockup needs color masking
+  maskColor?: string;               // The actual color to apply in the mask
   dispMaps?: Array<{
     id: string;
     dispImg: {
@@ -664,7 +667,11 @@ const renderMockupDirectly = async (
   productColor: string,
   targetResolution: number = 1000
 ): Promise<string> => {
-  //console.log('ðŸŽ¨ Direct Canvas Render - No React Component');
+  // console.log('🎨 Direct Canvas Render - Checking for color masking');
+  // console.log('   Mockup color:', mockup.photoColor);
+  // console.log('   Product color:', productColor);
+  // console.log('   requiresColorMasking:', mockup.requiresColorMasking);
+  // console.log('   maskColor:', mockup.maskColor);
   
   return new Promise(async (resolve, reject) => {
     try {
@@ -681,87 +688,106 @@ const renderMockupDirectly = async (
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       
-      // Load mockup base image
-      const mockupBaseImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('Failed to load mockup'));
-        img.src = resolveImageUrl(mockup.photo.url);
-      });
+      // 🆕 NEW: Check if mockup requires color masking (transparent mockup)
+      const requiresColorMasking = mockup.requiresColorMasking === true || 
+                                   mockup.photoColor?.toLowerCase() === '#00000000';
+      const maskColor = mockup.maskColor || productColor || '#ffffff';
       
-      // Draw mockup base
-      ctx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
-      
-      // Apply product color overlay - only to white t-shirt fabric
-      if (productColor !== '#ffffff') {
-        // Create temporary canvas for color detection
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = targetResolution;
-        tempCanvas.height = targetResolution;
-        const tempCtx = tempCanvas.getContext('2d');
+      if (requiresColorMasking) {
+        // console.log('✅ Applying color masking for transparent mockup');
+        // console.log('   Mask color:', maskColor);
         
-        if (tempCtx) {
-          // Draw original image to analyze
-          tempCtx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
-          const imageData = tempCtx.getImageData(0, 0, targetResolution, targetResolution);
-          const data = imageData.data;
+        // LAYER 1: Draw base color layer FIRST
+        ctx.fillStyle = maskColor;
+        ctx.fillRect(0, 0, targetResolution, targetResolution);
+        
+        // LAYER 2: Load and draw transparent mockup on top
+        const mockupBaseImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('Failed to load mockup'));
+          img.src = resolveImageUrl(mockup.photo.url);
+        });
+        
+        // Draw transparent mockup over the color layer
+        ctx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
+        
+      } else {
+        // ORIGINAL LOGIC: Non-transparent mockup
+        //console.log('📷 Using standard mockup rendering (no color masking)');
+        
+        // Load mockup base image
+        const mockupBaseImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('Failed to load mockup'));
+          img.src = resolveImageUrl(mockup.photo.url);
+        });
+        
+        // Draw mockup base
+        ctx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
+        
+        // Apply product color overlay - only to white t-shirt fabric
+        if (productColor !== '#ffffff') {
+          // Create temporary canvas for color detection
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = targetResolution;
+          tempCanvas.height = targetResolution;
+          const tempCtx = tempCanvas.getContext('2d');
           
-          // Create mask: detect only the WHITE t-shirt fabric
-          // We need to be more selective - only recolor pixels that are originally white/light gray
-          const whiteMin = 200; // Minimum brightness for white fabric
-          const whiteMax = 250; // Maximum brightness (exclude pure white background)
-          
-          for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
+          if (tempCtx) {
+            // Draw original image to analyze
+            tempCtx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
+            const imageData = tempCtx.getImageData(0, 0, targetResolution, targetResolution);
+            const data = imageData.data;
             
-            // Calculate brightness and color variance
-            const brightness = (r + g + b) / 3;
-            const colorVariance = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
+            // Create mask: detect only the WHITE t-shirt fabric
+            const whiteMin = 200;
+            const whiteMax = 250;
             
-            // Only select pixels that are:
-            // 1. Bright but NOT pure white (fabric has slight gray/texture)
-            // 2. Have low color variance (neutral, not skin tones)
-            // 3. Not too bright (exclude pure white background)
-            const isWhiteFabric = brightness >= whiteMin && 
-                                  brightness <= whiteMax && 
-                                  colorVariance < 15 &&
-                                  !(r > 250 && g > 250 && b > 250); // Exclude pure white
-            
-            if (!isWhiteFabric) {
-              // Make non-fabric pixels transparent
-              data[i + 3] = 0;
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+              
+              const brightness = (r + g + b) / 3;
+              const colorVariance = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
+              
+              const isWhiteFabric = brightness >= whiteMin && 
+                                    brightness <= whiteMax && 
+                                    colorVariance < 15 &&
+                                    !(r > 250 && g > 250 && b > 250);
+              
+              if (!isWhiteFabric) {
+                data[i + 3] = 0;
+              }
             }
-          }
-          
-          tempCtx.putImageData(imageData, 0, 0);
-          
-          // Now apply color with multiply blend
-          const colorLayer = document.createElement('canvas');
-          colorLayer.width = targetResolution;
-          colorLayer.height = targetResolution;
-          const colorCtx = colorLayer.getContext('2d');
-          
-          if (colorCtx) {
-            // Fill with product color
-            colorCtx.fillStyle = productColor;
-            colorCtx.fillRect(0, 0, targetResolution, targetResolution);
             
-            // Use the masked t-shirt as alpha mask
-            colorCtx.globalCompositeOperation = 'destination-in';
-            colorCtx.drawImage(tempCanvas, 0, 0);
+            tempCtx.putImageData(imageData, 0, 0);
             
-            // Composite colored t-shirt onto main canvas
-            ctx.drawImage(colorLayer, 0, 0);
+            // Now apply color with multiply blend
+            const colorLayer = document.createElement('canvas');
+            colorLayer.width = targetResolution;
+            colorLayer.height = targetResolution;
+            const colorCtx = colorLayer.getContext('2d');
             
-            // Add texture/detail back from original
-            ctx.globalAlpha = 0.15;
-            ctx.globalCompositeOperation = 'multiply';
-            ctx.drawImage(tempCanvas, 0, 0);
-            ctx.globalAlpha = 1;
-            ctx.globalCompositeOperation = 'source-over';
+            if (colorCtx) {
+              colorCtx.fillStyle = productColor;
+              colorCtx.fillRect(0, 0, targetResolution, targetResolution);
+              
+              colorCtx.globalCompositeOperation = 'destination-in';
+              colorCtx.drawImage(tempCanvas, 0, 0);
+              
+              ctx.drawImage(colorLayer, 0, 0);
+              
+              ctx.globalAlpha = 0.15;
+              ctx.globalCompositeOperation = 'multiply';
+              ctx.drawImage(tempCanvas, 0, 0);
+              ctx.globalAlpha = 1;
+              ctx.globalCompositeOperation = 'source-over';
+            }
           }
         }
       }
@@ -864,11 +890,11 @@ const renderMockupDirectly = async (
       
       // Convert to base64
       const imageData = offscreenCanvas.toDataURL('image/png', 0.95);
-      //console.log('âœ… Direct render complete');
+      //console.log('✅ Direct render complete with color masking');
       resolve(imageData);
       
     } catch (error) {
-      //console.error('âŒ Direct render failed:', error);
+      //console.error('❌ Direct render failed:', error);
       reject(error);
     }
   });
@@ -877,15 +903,18 @@ const renderMockupDirectly = async (
 const createDynamicNeutralDetector = (productData: PayloadProductData) => {
   const neutralVariations = new Set<string>();
   
-  // Add common neutral variations
-  const baseNeutrals = ['#ffffff', '#f5f5f5', '#fafafa', '#f0f0f0', '#e5e5e5'];
+  // 🆕 ADD: Transparent mockups should be neutral (work for all colors)
+  const baseNeutrals = [
+    '#ffffff', '#f5f5f5', '#fafafa', '#f0f0f0', '#e5e5e5',
+    '#00000000', '00000000', 'transparent'  // ✅ Added transparent variations
+  ];
   baseNeutrals.forEach(color => {
     neutralVariations.add(color.toLowerCase());
     neutralVariations.add(color.toLowerCase().replace('#', ''));
   });
   
   // Add word-based neutrals
-  ['white', 'neutral', 'natural', 'default'].forEach(word => {
+  ['white', 'neutral', 'natural', 'default', 'transparent'].forEach(word => {
     neutralVariations.add(word.toLowerCase());
   });
   
@@ -1129,6 +1158,45 @@ const extractAllMockupsFromPayload = (productData: PayloadProductData): DynamicM
 };
 
 // =====================================
+// COLOR UTILITY FUNCTIONS
+// =====================================
+
+/**
+ * Calculate brightness of a hex color (0-255)
+ * Returns higher values for lighter colors
+ */
+const getColorBrightness = (hexColor: string): number => {
+  // Remove # if present
+  const hex = hexColor.replace('#', '');
+  
+  // Handle 3-digit hex codes
+  let r, g, b;
+  if (hex.length === 3) {
+    r = parseInt(hex.charAt(0) + hex.charAt(0), 16);
+    g = parseInt(hex.charAt(1) + hex.charAt(1), 16);
+    b = parseInt(hex.charAt(2) + hex.charAt(2), 16);
+  } else {
+    r = parseInt(hex.substring(0, 2), 16);
+    g = parseInt(hex.substring(2, 4), 16);
+    b = parseInt(hex.substring(4, 6), 16);
+  }
+  
+  // Calculate perceived brightness using standard formula
+  // Human eye is more sensitive to green, less to blue
+  return (r * 299 + g * 587 + b * 114) / 1000;
+};
+
+/**
+ * Determine if a color is light or dark
+ * Returns true for light colors, false for dark
+ */
+const isLightColor = (hexColor: string): boolean => {
+  const brightness = getColorBrightness(hexColor);
+  // Threshold of 128 works well (half of 255)
+  return brightness > 128;
+};
+
+// =====================================
 // ENHANCED MOCKUP CALCULATION LOGIC
 // =====================================
 
@@ -1142,13 +1210,22 @@ const getMockupsForColor = (
   activeTechnology: string,
   selectedSize?: string
 ): DynamicMockupPhoto[] => {
+  // console.log('🔍 getMockupsForColor called:', {
+  //   colorHex,
+  //   selectedSize,
+  //   activeTechnology
+  // });
+  
   const allMockups: DynamicMockupPhoto[] = [];
   
   const activeTech = productData.printT?.find(tech => 
     tech.id === activeTechnology || tech.technologyName === activeTechnology
   );
   
-  if (!activeTech) return [];
+  if (!activeTech) {
+    //console.log('❌ No active technology found');
+    return [];
+  }
   
   if (activeTech.mockupPhotos && Array.isArray(activeTech.mockupPhotos)) {
     activeTech.mockupPhotos.forEach(mockup => {
@@ -1158,60 +1235,85 @@ const getMockupsForColor = (
     });
   }
   
-  if (!productData?.colorOptions) return allMockups;
+  //console.log('📦 Total mockups in tech:', allMockups.length);
+  // console.log('📸 Mockup colors:', allMockups.map(m => ({ 
+  //   id: m.id, 
+  //   title: m.title, 
+  //   photoColor: m.photoColor 
+  // })));
+  
+  if (!productData?.colorOptions) {
+    //console.log('⚠️ No color options, returning all mockups');
+    return allMockups;
+  }
 
   const neutralDetector = createDynamicNeutralDetector(productData);
   const colorMatcher = createCanvasColorMatcher(productData);
   const targetColorInfo = colorMatcher.getColorInfo(colorHex);
   
-  if (!targetColorInfo) return allMockups;
+  //console.log('🎨 Neutral colors:', neutralDetector.getNeutralColors());
+  
+  if (!targetColorInfo) {
+    //console.log('⚠️ No target color info, returning all mockups');
+    return allMockups;
+  }
 
   // Filter by color
-  let filteredMockups = allMockups.filter(mockup => {
-    if (colorMatcher.areColorsSimilar(mockup.photoColor || '', colorHex)) {
-      return true;
-    }
-    
-    const mockupColor = mockup.photoColor?.toLowerCase() || '';
-    if (neutralDetector.isNeutral(mockupColor)) {
-      return true;
-    }
-    
-    return false;
+ // STEP 1: Find color-specific mockups ONLY
+  let colorSpecificMockups = allMockups.filter(mockup => {
+      return colorMatcher.areColorsSimilar(mockup.photoColor || '', colorHex);
   });
+
+  // STEP 2: Use color-specific if found, otherwise fallback to transparent
+  let filteredMockups: DynamicMockupPhoto[];
+
+  if (colorSpecificMockups.length > 0) {
+      filteredMockups = colorSpecificMockups;  // Use color-specific ONLY
+  } else {
+      // Fallback to transparent/neutral mockups
+      filteredMockups = allMockups.filter(mockup => {
+          return neutralDetector.isNeutral(mockup.photoColor?.toLowerCase() || '');
+      });
+  }
+    
+  //console.log(`✅ After color filter: ${filteredMockups.length} mockups`);
   
-  // ðŸ”¥ FIX: If size_Images is true, STRICTLY filter by size
+  // Filter by size if needed
   if (productData.size_Images && selectedSize) {
     filteredMockups = filteredMockups.filter(mockup => {
       const mockupSize = (mockup as any).photoSize;
       
-      // âš ï¸ CRITICAL: If size_Images is true but mockup has no size, EXCLUDE IT
       if (!mockupSize) {
-        //console.warn(`âš ï¸ Mockup ${mockup.title} has no photoSize but size_Images=true - excluding`);
+        //console.log(`⚠️ Mockup ${mockup.title} has no photoSize - excluding`);
         return false;
       }
       
-      return mockupSize.toLowerCase().trim() === selectedSize.toLowerCase().trim();
+      const sizeMatch = mockupSize.toLowerCase().trim() === selectedSize.toLowerCase().trim();
+      //console.log(`   Size check for ${mockup.title}: ${mockupSize} === ${selectedSize} ? ${sizeMatch}`);
+      return sizeMatch;
     });
     
-    // ðŸ”¥ If no size-specific mockups found, return EMPTY array
-    // Do NOT fall back to neutral mockups when size_Images is true
+    //console.log(`✅ After size filter: ${filteredMockups.length} mockups`);
+    
     if (filteredMockups.length === 0) {
-      //console.warn(`âš ï¸ No mockups found for size "${selectedSize}" and color "${colorHex}"`);
+      //console.log(`❌ No mockups found for size "${selectedSize}" and color "${colorHex}"`);
       return [];
     }
   }
   
   // Only return neutral fallback when size_Images is FALSE
   if (filteredMockups.length === 0 && !productData.size_Images) {
+    //console.log('⚠️ No color matches, trying neutral fallback');
     const neutralMockups = allMockups.filter(mockup => {
       const mockupColor = mockup.photoColor?.toLowerCase() || '';
       return neutralDetector.isNeutral(mockupColor);
     });
     
+    //console.log(`✅ Found ${neutralMockups.length} neutral mockups`);
     return neutralMockups;
   }
   
+  //console.log(`🎯 Final result: ${filteredMockups.length} mockups for color ${colorHex}`);
   return filteredMockups;
 };
 
@@ -1472,7 +1574,7 @@ private capturePreviewRender = async (
       productColor, productData, targetResolution, isStoreImport
     );
   } else {
-    //console.log('ðŸŽ¨ Using PIXI engine');
+    //console.log('🎨 Using PIXI engine');
     return await this.captureWithPixiContainer(
       mockup, designElements, canvasConfigs, printableAreas,
       productColor, productData, targetResolution
@@ -1491,7 +1593,7 @@ private captureWithCanvasSimplified = async (
   targetResolution: number,
   isStoreImport: boolean = false
 ): Promise<string> => {
-  //console.log('ðŸŽ¨ captureWithCanvasSimplified - Store Import:', isStoreImport);
+  //console.log('🎨 captureWithCanvasSimplified - Store Import:', isStoreImport);
   
   return new Promise((resolve, reject) => {
     let renderCompleted = false;
@@ -2012,7 +2114,8 @@ public setProductData(productData: any) {
   
   //console.log('ðŸ”§ Determined engine:', engine);
   
-  const cacheKey = `${mockup.id}-${productColor}-${Object.keys(designElements).length}-${targetResolution}-${isStoreImport ? 'store' : 'preview'}`;
+  // const cacheKey = `${mockup.id}-${productColor}-${Object.keys(designElements).length}-${targetResolution}-${isStoreImport ? 'store' : 'preview'}`;
+  const cacheKey = `${mockup.id}-${mockup.viewAngle || 'front'}-${productColor}-${Object.keys(designElements).length}-${targetResolution}-${isStoreImport ? 'store' : 'preview'}`;
   
   if (this.renderCache.has(cacheKey)) {
     //console.log('ðŸ’¾ Using cached image');
@@ -2449,72 +2552,117 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   }, [mockup]);
 
   const renderMockupThumbnail = useCallback(() => {
-    if (!mockup?.photo?.url) {
-      return (
-        <div className="flex items-center justify-center w-full h-full text-gray-400">
-          <span className="text-xs">No Image</span>
-        </div>
-      );
-    }
+  if (!mockup?.photo?.url) {
+    return (
+      <div className="flex items-center justify-center w-full h-full text-gray-400">
+        <span className="text-xs">No Image</span>
+      </div>
+    );
+  }
 
-    const hasDesignElements = Object.values(designElements).some(elements => elements.length > 0);
-    
-    if (!hasDesignElements) {
-      return (
-        <img
-          src={resolveImageUrl(mockup.photo.url)}
-          alt={mockup.title}
-          className="object-cover w-full h-full"
-          onError={() => setThumbnailError('Failed to load image')}
-        />
-      );
-    }
+  const hasDesignElements = Object.values(designElements).some(elements => elements.length > 0);
+  
+  // 🆕 Check if transparent mockup needs color masking
+  const requiresColorMasking = mockup.requiresColorMasking === true || 
+                               mockup.photoColor?.toLowerCase() === '#00000000';
+  const maskColor = mockup.maskColor || productColor || '#ffffff';
 
-    const renderEngine = determineRenderEngine();
-
-    if (forceRender || renderComplete) {
+  // NO DESIGN ELEMENTS - Show mockup only
+  if (!hasDesignElements) {
+    // If transparent mockup, apply color masking using simple HTML layers
+    if (requiresColorMasking) {
       return (
-        <div className="relative w-full h-full">
-          <EnhancedMockupEngine
-            mockup={mockup}
-             showBadges={false}
-            designElements={designElements}
-            canvasConfigs={canvasConfigs}
-            canvasPrintableAreas={canvasPrintableAreas}
-              displayDimensions={displayDimensions}
-            productType={productData.productType || 'flat'}
-            productColor={productColor}
-            renderEngine={renderEngine}
-            enablePixiFeatures={true}
-            pixelRatio={isMainPreview ? 2 : 1}
-            onRenderComplete={() => {
-            }}
-            onProgress={(progress) => {
-            }}
+        <div className="relative w-full h-full overflow-hidden">
+          {/* LAYER 1: Base color */}
+          <div 
+            className="absolute inset-0 w-full h-full"
+            style={{ backgroundColor: maskColor }}
+          />
+          {/* LAYER 2: Transparent mockup on top */}
+          <img
+            src={resolveImageUrl(mockup.photo.url)}
+            alt={mockup.title}
+            className="absolute inset-0 object-cover w-full h-full"
+            onError={() => setThumbnailError('Failed to load image')}
           />
         </div>
       );
     }
+    
+    // Normal mockup without color masking
+    return (
+      <img
+        src={resolveImageUrl(mockup.photo.url)}
+        alt={mockup.title}
+        className="object-cover w-full h-full"
+        onError={() => setThumbnailError('Failed to load image')}
+      />
+    );
+  }
 
+  // HAS DESIGN ELEMENTS - Use EnhancedMockupEngine WITHOUT external color layer
+  const renderEngine = determineRenderEngine();
+
+  if (forceRender || renderComplete) {
     return (
       <div className="relative w-full h-full">
-        <div className="flex items-center justify-center w-full h-full bg-gray-100">
+        {/* ❌ REMOVED: External color layer - let EnhancedMockupEngine handle it */}
+        <EnhancedMockupEngine
+          mockup={mockup}
+          showBadges={false}
+          designElements={designElements}
+          canvasConfigs={canvasConfigs}
+          canvasPrintableAreas={canvasPrintableAreas}
+          displayDimensions={displayDimensions}
+          productType={productData.productType || 'flat'}
+          productColor={productColor}  // ✅ This tells the engine what color to use
+          renderEngine={renderEngine}
+          enablePixiFeatures={true}
+          pixelRatio={isMainPreview ? 2 : 1}
+          onRenderComplete={() => {
+          }}
+          onProgress={(progress) => {
+          }}
+        />
+      </div>
+    );
+  }
+
+  // LOADING STATE
+  return (
+    <div className="relative w-full h-full">
+      <div className="flex items-center justify-center w-full h-full bg-gray-100">
+        {requiresColorMasking ? (
+          <div className="relative w-full h-full">
+            <div 
+              className="absolute inset-0"
+              style={{ backgroundColor: maskColor }}
+            />
+            <img
+              src={resolveImageUrl(mockup.photo.url)}
+              alt={mockup.title}
+              className="relative object-cover w-full h-full opacity-30"
+              onError={() => setThumbnailError('Failed to load mockup')}
+            />
+          </div>
+        ) : (
           <img
             src={resolveImageUrl(mockup.photo.url)}
             alt={mockup.title}
             className="object-cover w-full h-full opacity-30"
             onError={() => setThumbnailError('Failed to load mockup')}
           />
-          <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-            <div className="text-center">
-              <div className="w-3 h-3 mx-auto mb-1 border-b-2 border-blue-500 rounded-full animate-spin"></div>
-              <div className="text-xs text-gray-600">Loading...</div>
-            </div>
+        )}
+        <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+          <div className="text-center">
+            <div className="w-3 h-3 mx-auto mb-1 border-b-2 border-blue-500 rounded-full animate-spin"></div>
+            <div className="text-xs text-gray-600">Loading...</div>
           </div>
         </div>
       </div>
-    );
-  }, [mockup, designElements, canvasConfigs, canvasPrintableAreas, productColor, productData, renderComplete, thumbnailError, determineRenderEngine, forceRender]);
+    </div>
+  );
+}, [mockup, designElements, canvasConfigs, canvasPrintableAreas, productColor, productData, renderComplete, thumbnailError, determineRenderEngine, forceRender, displayDimensions, isMainPreview]);
 
   const getEngineType = useMemo(() => {
     const renderEngine = determineRenderEngine();
@@ -2572,9 +2720,9 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
         }`}>
           {getEngineType}
         </span>
-        {mockup.dispMaps?.length > 0 && <span className="text-xs" title="Displacement Maps">ðŸŽ¨</span>}
-        {mockup.alpMasks?.length > 0 && <span className="text-xs" title="Alpha Masks">ðŸŽ­</span>}
-        {mockup.light?.length > 0 && <span className="text-xs" title="Lighting Effects">ðŸ’¡</span>}
+        {mockup.dispMaps?.length > 0 && <span className="text-xs" title="Displacement Maps">🎨</span>}
+        {mockup.alpMasks?.length > 0 && <span className="text-xs" title="Alpha Masks">🎉</span>}
+        {mockup.light?.length > 0 && <span className="text-xs" title="Lighting Effects">💡</span>}
       </div>
       
     </button>
@@ -2828,15 +2976,15 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
    // ADD THIS COMPONENT HERE:
   const RotatingMessage = () => {
     const messages = [
-      "âœ¨ Magic is happening...",
-      "ðŸŽ¨ Creating masterpieces...",
-      "ðŸš€ Generating awesomeness...",
-      "âš¡ Working our magic...",
-      "ðŸŽª Show time in progress...",
-      "ðŸŒŸ Crafting something special...",
-      "ðŸŽ¯ Almost there...",
-      "ðŸ’« Making it perfect...",
-    ];
+    "✨ Magic is happening...",
+    "🎨 Creating masterpieces...",
+    "🚀 Generating awesomeness...",
+    "☑️ Working our magic...",
+    "🎪 Show time in progress...",
+    "🌟 Crafting something special...",
+    "🎯 Almost there...",
+    "💌 Making it perfect..."
+  ];
 
     const [messageIndex, setMessageIndex] = React.useState(0);
 
@@ -5254,28 +5402,59 @@ const compareTechnologyPricing = useCallback((tech1Id: string, tech2Id: string) 
     return Math.round(cost + markup + baseProfit);
   };
 
-  const transformStoreDataForCreate = useCallback((storeData, filteredProductData) => {
+ const transformStoreDataForCreate = useCallback((storeData, filteredProductData) => {
 
   // Extract mockup images based on PayloadCMS flags
- // Extract mockup images based on PayloadCMS flags
 const mockupImages = {};
 const colorSpecificImages = {};
 
-// ðŸ”¥ FIX: Define flags early and with proper fallbacks
+// 🔥 FIX: Define flags early and with proper fallbacks
 const productDataFlags = {
   color_Images: filteredProductData?.color_Images ?? productData?.color_Images ?? false,
   size_Images: filteredProductData?.size_Images ?? productData?.size_Images ?? false
 };
 
-//console.log('ðŸ”§ Product flags:', productDataFlags);
+//console.log('🔥 Product flags:', productDataFlags);
 
 // Process mockup variants
 if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
+  // 🔍 DEBUG: Log the raw mockup variants data BEFORE processing
+  // console.log('🔍 RAW MOCKUP VARIANTS DATA:', JSON.stringify(
+  //   storeData.mockup_variants.map(mv => ({
+  //     id: mv.mockup_id,
+  //     title: mv.mockup_title,
+  //     viewAngle: mv.view_angle,
+  //     hasDesign: mv.has_design_elements,
+  //     colorCombosCount: mv.color_combinations?.length,
+  //     firstColorHex: mv.color_combinations?.[0]?.color_hex,
+  //     firstSizeVariantsCount: mv.color_combinations?.[0]?.size_variants?.length,
+  //     firstImageDataPreview: mv.color_combinations?.[0]?.size_variants?.[0]?.generated_images?.[0]?.image_data?.substring(0, 50)
+  //   })),
+  //   null, 2
+  // ));
+  
+  // 🆕 Track processed mockups by image data hash to prevent true duplicates
+  const processedMockups = new Set<string>();
+  const seenImageData = new Map<string, string>(); // imageData hash -> unique ID
+  
   storeData.mockup_variants.forEach(mockupVariant => {
     if (!mockupVariant?.color_combinations) return;
     
     mockupVariant.color_combinations.forEach(colorCombo => {
       if (!colorCombo) return;
+      
+      // 🆕 Create unique identifier for this mockup variant
+      const mockupUniqueId = `${mockupVariant.mockup_id}_${mockupVariant.view_angle}_${colorCombo.color_hex}`;
+      
+      // 🆕 Skip if already processed
+      if (processedMockups.has(mockupUniqueId)) {
+        //console.log(`⏭️  Skipping duplicate: ${mockupUniqueId}`);
+        return;
+      }
+      
+      // Mark as processed
+      processedMockups.add(mockupUniqueId);
+      //console.log(`✅ Processing: ${mockupUniqueId}`);
       
       // Initialize color group if not exists
       if (!colorSpecificImages[colorCombo.color_hex]) {
@@ -5293,30 +5472,47 @@ if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
         if (firstSizeVariant?.generated_images?.length > 0) {
           const generatedImage = firstSizeVariant.generated_images[0];
           
-          // Create key based on what varies
-          // ðŸ”¥ FIX: Include view_angle to distinguish front/back mockups
-          let uniqueKey;
-          if (useColorLabels) {
-            uniqueKey = `${mockupVariant.mockup_title}_${mockupVariant.view_angle}_${colorCombo.color_name}`;
-          } else {
-            uniqueKey = `${mockupVariant.mockup_title}_${mockupVariant.view_angle}`;
-          }
-
-          const cleanKey = uniqueKey.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-          mockupImages[cleanKey] = generatedImage.image_data;
-
-          // Also create area-specific keys for better organization
-          if (mockupVariant.mockup_areas && mockupVariant.mockup_areas.length > 0) {
-            mockupVariant.mockup_areas.forEach(areaName => {
-              const areaKey = `${areaName}_${colorCombo.color_name}`;
-              const cleanAreaKey = areaKey.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-              mockupImages[cleanAreaKey] = generatedImage.image_data;
-            });
+          // 🆕 CRITICAL: Validate that imageData exists and is not empty
+          if (!generatedImage?.image_data || generatedImage.image_data.length < 100) {
+            //console.error(`❌ SKIPPING: ${mockupVariant.mockup_title} (${mockupVariant.view_angle}) - Empty or invalid image data`);
+            //console.error(`   hasDesign: ${mockupVariant.has_design_elements}`);
+            //console.error(`   imageData length: ${generatedImage?.image_data?.length || 0}`);
+            return; // Skip this mockup - don't add to colorSpecificImages
           }
           
+          // 🆕 CRITICAL: Check if this exact image data already exists for this color
+          const imageDataHash = generatedImage.image_data.substring(0, 100); // Use first 100 chars as hash
+          const imageKey = `${colorCombo.color_hex}_${imageDataHash}`;
+          
+          if (seenImageData.has(imageKey)) {
+            //console.log(`⏭️  Skipping duplicate image data for ${mockupVariant.mockup_title} (${mockupVariant.view_angle})`);
+            //console.log(`   Duplicate of: ${seenImageData.get(imageKey)}`);
+            return; // Skip this duplicate image
+          }
+          
+         seenImageData.set(imageKey, mockupUniqueId);
+          //console.log(`✅ Adding unique mockup: [${mockupVariant.mockup_title}] view: [${mockupVariant.view_angle}] hasDesign: [${mockupVariant.has_design_elements}]`);
+          
+          // 🆕 CRITICAL: Create ONE key only - no multiple formats!
+          const standardKey = `${mockupVariant.mockup_id}_${mockupVariant.view_angle}_${colorCombo.color_hex}`
+            .toLowerCase()
+            .replace(/\s+/g, '_')
+            .replace(/[^a-z0-9_]/g, '');
+          
+          // Store with ONE key only
+          mockupImages[standardKey] = generatedImage.image_data;
+          
+          //console.log(`📦 Stored with ONE key: [${standardKey}]`);
+
+          // Add to colorSpecificImages (this is what Create page uses)
           colorSpecificImages[colorCombo.color_hex].push({
+            mockupId: mockupVariant.mockup_id,
+            viewAngle: mockupVariant.view_angle,
             mockupTitle: mockupVariant.mockup_title,
-            imageData: generatedImage.image_data
+            hasDesign: mockupVariant.has_design_elements,
+            areas: mockupVariant.mockup_areas || [],
+            imageData: generatedImage.image_data,
+            storageKey: standardKey
           });
           
           // Create size-specific keys for compatibility
@@ -5326,6 +5522,13 @@ if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
               const sizeKey = `${mockupVariant.mockup_title}_${colorCombo.color_name}_${sizeVariant.size_name}`;
               const cleanSizeKey = sizeKey.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
               mockupImages[cleanSizeKey] = generatedImage.image_data;
+              
+              // 🆕 Store size keys with multiple formats
+              const sizeSpaceKey = sizeKey.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+              if (sizeSpaceKey !== cleanSizeKey) {
+                mockupImages[sizeSpaceKey] = generatedImage.image_data;
+              }
+              mockupImages[sizeKey] = generatedImage.image_data;
             });
           }
         }
@@ -5336,30 +5539,44 @@ if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
             if (!sizeVariant?.generated_images) return;
             
             sizeVariant.generated_images.forEach((generatedImage) => {
-              if (!generatedImage?.image_data) return;
-              
-              // Create key based on what varies
-              let key;
-              if (useColorLabels && useSizeLabels) {
-                // Both vary
-                key = `${mockupVariant.mockup_title}_${colorCombo.color_name}_${sizeVariant.size_name}`;
-              } else if (useSizeLabels) {
-                // Only size varies
-                key = `${mockupVariant.mockup_title}_${sizeVariant.size_name}`;
-              } else if (useColorLabels) {
-                // Only color varies
-                key = `${mockupVariant.mockup_title}_${colorCombo.color_name}`;
-              } else {
-                // Neither varies
-                key = mockupVariant.mockup_title;
+              // 🆕 CRITICAL: Validate that imageData exists
+              if (!generatedImage?.image_data || generatedImage.image_data.length < 100) {
+                //console.error(`❌ SKIPPING: ${mockupVariant.mockup_title} (${sizeVariant.size_name}) - Empty image data`);
+                return;
               }
               
-              const cleanKey = key.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-              mockupImages[cleanKey] = generatedImage.image_data;
+              // 🆕 CRITICAL: Check if this exact image data already exists
+              const imageDataHash = generatedImage.image_data.substring(0, 100);
+              const imageKey = `${colorCombo.color_hex}_${sizeVariant.size_name}_${imageDataHash}`;
               
+              if (seenImageData.has(imageKey)) {
+                //console.log(`⏭️  Skipping duplicate image data for ${mockupVariant.mockup_title} (${sizeVariant.size_name})`);
+                return;
+              }
+              
+             seenImageData.set(imageKey, mockupUniqueId);
+              //console.log(`✅ Adding unique size-specific mockup: [${mockupVariant.mockup_title}] size: [${sizeVariant.size_name}]`);
+              
+              // 🆕 CRITICAL: ONE key only
+              const standardKey = `${mockupVariant.mockup_id}_${mockupVariant.view_angle}_${colorCombo.color_hex}_${sizeVariant.size_name}`
+                .toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/[^a-z0-9_]/g, '');
+              
+              // Store with ONE key only
+              mockupImages[standardKey] = generatedImage.image_data;
+              
+              //console.log(`📦 Stored with ONE key: [${standardKey}]`);
+              
+              // Add to colorSpecificImages
               colorSpecificImages[colorCombo.color_hex].push({
+                mockupId: mockupVariant.mockup_id,
+                viewAngle: mockupVariant.view_angle,
                 mockupTitle: `${mockupVariant.mockup_title} (${sizeVariant.size_name})`,
-                imageData: generatedImage.image_data
+                hasDesign: mockupVariant.has_design_elements,
+                areas: mockupVariant.mockup_areas || [],
+                imageData: generatedImage.image_data,
+                storageKey: standardKey
               });
             });
           });
@@ -5369,14 +5586,35 @@ if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
   });
 }
 
-//console.log('ðŸ”§ Generated mockup images:', Object.keys(mockupImages).length);
-//console.log('ðŸ”§ Color-specific groups:', Object.keys(colorSpecificImages).length);
+// 🆕 DEBUG: Log final count
+// console.log('📊 FINAL MOCKUP COUNT:', {
+//   totalVariantsProcessed: processedMockups.size,
+//   totalUniqueImages: seenImageData.size,
+//   colorGroups: Object.keys(colorSpecificImages).map(hex => ({
+//     color: hex,
+//     mockupCount: colorSpecificImages[hex].length,
+//     mockups: colorSpecificImages[hex].map(m => ({
+//       title: m.mockupTitle,
+//       viewAngle: m.viewAngle,
+//       hasDesign: m.hasDesign,
+//       hasImageData: m.imageData?.length > 100
+//     }))
+//   }))
+// });
+
+// 🆕 DEBUG: Log all mockup image keys to verify multi-word colors are stored
+// console.log('📊 All mockup image keys generated:', Object.keys(mockupImages).length);
+// console.log('📊 Sample keys:', Object.keys(mockupImages).slice(0, 10));
+// console.log('📊 Keys containing spaces:', Object.keys(mockupImages).filter(k => k.includes(' ')).slice(0, 5));
+// console.log('📊 Keys with underscores:', Object.keys(mockupImages).filter(k => k.includes('_')).slice(0, 5));
+
+// console.log('🔥 Generated mockup images:', Object.keys(mockupImages).length);
+// console.log('🔥 Color-specific groups:', Object.keys(colorSpecificImages).length);
 
   const designImages = storeData.design_images || [];
   const canvasImages = storeData.canvas_images || [];
 
   // Extract color details from the calculation breakdown
- // âœ… SAFE: Extract color details from the calculation breakdown with fallback
 const colorDetails = storeData.generation_summary?.mockup_calculation?.calculationBreakdown?.map(breakdown => ({
   name: breakdown.color,
   value: breakdown.colorHex
@@ -5385,30 +5623,23 @@ const colorDetails = storeData.generation_summary?.mockup_calculation?.calculati
   value: color.value
 })) || [];
 
-  // Extract size options
-  // const sizeOptions = storeData.mockup_variants[0]?.color_combinations[0]?.size_variants.map(sizeVariant => 
-  //   sizeVariant.size_name
-  // ) || selectedSizes.slice();
-// âœ… FIXED CODE - Collect sizes from ALL mockup variants
-// âœ… FIXED: Collect sizes from ALL mockup variants
+  // Extract size options - Collect sizes from ALL mockup variants
 const allSizesSet = new Set<string>();
 
 if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
   storeData.mockup_variants.forEach(mockupVariant => {
-    // ðŸ”¥ FIX 1: Check mockup_size at the variant level (for size_Images=true)
+    // Check mockup_size at the variant level (for size_Images=true)
     if (mockupVariant.mockup_size) {
       allSizesSet.add(mockupVariant.mockup_size);
-      //console.log('Found size from mockup_size:', mockupVariant.mockup_size);
     }
     
-    // ðŸ”¥ FIX 2: Also check color_combinations (fallback for size_Images=false)
+    // Also check color_combinations (fallback for size_Images=false)
     if (mockupVariant.color_combinations && Array.isArray(mockupVariant.color_combinations)) {
       mockupVariant.color_combinations.forEach(colorCombo => {
         if (colorCombo.size_variants && Array.isArray(colorCombo.size_variants)) {
           colorCombo.size_variants.forEach(sizeVariant => {
             if (sizeVariant.size_name) {
               allSizesSet.add(sizeVariant.size_name);
-              //console.log('Found size from size_variants:', sizeVariant.size_name);
             }
           });
         }
@@ -5421,7 +5652,7 @@ const sizeOptions = allSizesSet.size > 0
   ? Array.from(allSizesSet) 
   : selectedSizes.slice();
 
-//console.log('ðŸ”§ Extracted all sizes:', sizeOptions);
+//console.log('🔥 Extracted all sizes:', sizeOptions);
   
   // Create enhanced product data
   const enhancedProductData = {
@@ -5484,16 +5715,52 @@ const sizeOptions = allSizesSet.size > 0
     });
   });
   
-  // Create color-specific mockup groups
+  // 🆕 IMPROVED: Create color-specific mockup groups with better color matching
   const colorSpecificMockups = Object.keys(colorSpecificImages).map(colorHex => {
-    const colorName = colorDetails.find(c => c.value === colorHex)?.name || 'Unknown';
+    const normalizedColorHex = colorHex.toLowerCase();
+    
+    let colorMatch = colorDetails.find(c => c.value.toLowerCase() === normalizedColorHex);
+    
+    if (!colorMatch) {
+      colorMatch = colorDetails.find(c => 
+        c.value.toLowerCase().replace('#', '') === normalizedColorHex.replace('#', '')
+      );
+    }
+    
+    if (!colorMatch && selectedColors.length > 0) {
+      colorMatch = selectedColors.find(c => c.value.toLowerCase() === normalizedColorHex);
+    }
+    
+    const colorName = colorMatch?.name || `Color ${colorHex}`;
+    
+    //console.log(`🎨 Color Mapping: ${colorHex} → ${colorName} (${colorSpecificImages[colorHex].length} mockups)`);
+    
     return {
       colorName,
       colorHex,
-      mockups: [],
+      mockups: colorSpecificImages[colorHex].map((img, index) => ({
+        id: `${colorHex}-mockup-${index}`,
+        mockupId: img.mockupId,
+        viewAngle: img.viewAngle,
+        title: img.mockupTitle,
+        hasDesign: img.hasDesign,
+        imageData: img.imageData,
+        storageKey: img.storageKey  // 🆕 Include the storage key
+      })),
       imageCount: colorSpecificImages[colorHex].length
     };
   });
+  
+  // console.log('✅ Final color-specific mockups:', colorSpecificMockups.map(c => ({
+  //   name: c.colorName,
+  //   hex: c.colorHex,
+  //   mockupCount: c.imageCount,
+  //   mockups: c.mockups.map(m => ({ 
+  //     viewAngle: m.viewAngle, 
+  //     hasDesign: m.hasDesign,
+  //     hasImageData: m.imageData?.length > 100
+  //   }))
+  // })));
   
   const designData = {
     productInfo: {
@@ -5524,7 +5791,7 @@ const sizeOptions = allSizesSet.size > 0
       selectedMockup: allMockups[0] || null,
       allMockups: allMockups,
       mockupPreview: Object.values(mockupImages)[0] || null,
-      mockupPreviews: mockupImages,
+      // mockupPreviews: mockupImages,
       colorSpecificMockups: colorSpecificMockups,
       designImages: designImages
     },
@@ -5828,6 +6095,7 @@ const navigateToCreatePage = useCallback((transformedData) => {
 
 
 // Complete Fixed generateComprehensiveMockups Function
+
 // Copy this function and replace the existing one in your Canvas.tsx file
 
 const generateComprehensiveMockups = async (
@@ -6136,9 +6404,9 @@ for (const mockup of allMockups) {
 }
 
 const handleImportToStore = useCallback(async () => {
-  // âœ… CRITICAL: Check for no_mockup_compatible FIRST
+  // ✅ CRITICAL: Check for no_mockup_compatible FIRST
   if (productData?.surfConf?.No_Mockup_Compatible === true) {
-    console.log('âš ï¸ Product not mockup compatible - skipping mockup generation, navigating directly to Create');
+    //console.log('âš ï¸ Product not mockup compatible - skipping mockup generation, navigating directly to Create');
     
     try {
       setIsGeneratingForStore(true);
@@ -6248,7 +6516,7 @@ const handleImportToStore = useCallback(async () => {
       navigateToCreatePage(transformedData);
       
     } catch (error) {
-      console.error('âŒ Failed to prepare data for Create page:', error);
+      //console.error('âŒ Failed to prepare data for Create page:', error);
       alert(`Failed to prepare product data: ${error.message}`);
     } finally {
       setIsGeneratingForStore(false);
@@ -7408,7 +7676,7 @@ const renderPreview = useCallback(() => {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-gray-500">
-          <div className="mb-4 text-4xl">ðŸŽ¨</div>
+          <div className="mb-4 text-4xl">🎨</div>
           <p className="font-medium">Select colors and sizes to see preview</p>
           <p className="mt-2 text-sm">Choose options from the design panel</p>
         </div>
@@ -7716,7 +7984,7 @@ const renderPreview = useCallback(() => {
                     return (
                       <div className="flex items-center justify-center w-full h-full text-gray-400">
                         <div className="text-center">
-                          <div className="mb-4 text-4xl">ðŸŽ¨</div>
+                          <div className="mb-4 text-4xl">🎨</div>
                           <p className="font-medium">No preview available</p>
                           <p className="mt-2 text-sm">for <strong>{activeArea}</strong> area</p>
                           <p className="text-sm">in <strong>{activeColorName}</strong></p>
@@ -8549,26 +8817,41 @@ const renderPreview = useCallback(() => {
               <h3 className="font-medium">Enhanced Color Selection</h3>
               
               <div className={`flex flex-wrap gap-2 mb-4`}>
-                {productData?.colorOptions?.map((color: any) => (
-                  <button
-                    key={color.colorHex}
-                    onClick={() => handleColorChange(color.colorHex, color.colorName)}
-                    className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center touch-manipulation ${
-                      selectedColors.some(c => c.value === color.colorHex)
-                        ? 'border-orange-500 ring-2 ring-orange-200 scale-110' 
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                    style={{ backgroundColor: color.colorHex }}
-                    title={color.colorName}
-                  >
-                    {selectedColors.some(c => c.value === color.colorHex) && (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" 
-                          fill={color.colorHex === '#ffffff' ? 'black' : 'white'} width="16" height="16">
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
+                {productData?.colorOptions?.map((color: any) => {
+                  const isSelected = selectedColors.some(c => c.value === color.colorHex);
+                  const tickColor = isLightColor(color.colorHex) ? '#000000' : '#FFFFFF';
+                  
+                  return (
+                    <button
+                      key={color.colorHex}
+                      onClick={() => handleColorChange(color.colorHex, color.colorName)}
+                      className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center touch-manipulation ${
+                        isSelected
+                          ? 'border-orange-500 ring-2 ring-orange-200 scale-110' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      style={{ backgroundColor: color.colorHex }}
+                      title={color.colorName}
+                    >
+                      {isSelected && (
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          viewBox="0 0 24 24" 
+                          fill={tickColor}
+                          width="16" 
+                          height="16"
+                          style={{ 
+                            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
+                            strokeWidth: '0.5px',
+                            stroke: tickColor === '#FFFFFF' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)'
+                          }}
+                        >
+                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
               
               <div className="space-y-2">
@@ -9446,7 +9729,7 @@ useEffect(() => {
           {activeView === 'design' && !isMobile && (
             <div className="flex bg-white border-r border-gray-200 shadow-sm">
               {/* Vertical Navigation - Always Visible */}
-              <div className="flex flex-col border-r border-gray-200 w-16 md:w-20 lg:w-17" style={{ backgroundColor: '#e65100' }}>
+              <div className="flex flex-col w-16 border-r border-gray-200 md:w-20 lg:w-17" style={{ backgroundColor: '#e65100' }}>
                 
                 <nav className="flex flex-col flex-1 p-2 space-y-1">
                   {([
@@ -9589,7 +9872,7 @@ useEffect(() => {
           }`}>
             {/* Add Area Thumbnails for Design Mode - Desktop Only */}
             {activeView === 'design' && !isMobile && availableAreas.length > 1 && (
-              <div className="w-32 md:w-32 lg:w-44 p-2 md:p-3 bg-white overflow-y-auto">
+              <div className="w-32 p-2 overflow-y-auto bg-white md:w-32 lg:w-44 md:p-3">
                 
                 <div className="space-y-2">
                   {availableAreas.map(area => {
@@ -9614,7 +9897,7 @@ useEffect(() => {
               </div>
             )}
             
-            <div className="flex-1 px-2 pt-0 pb-2 overflow-hidden sm:p-2 bg-white">
+            <div className="flex-1 px-2 pt-0 pb-2 overflow-y-auto bg-white sm:p-2">
              {activeView === 'design' ? (
               <div className={`flex items-center justify-center h-auto overflow-y-auto ${
                 isMobile ?'px-2 pt-0 pb-28' : 'px-3 md:px-4 pt-0 pb-2 sm:p-3 md:p-6' // More bottom padding for mobile

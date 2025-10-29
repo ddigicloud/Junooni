@@ -107,43 +107,49 @@ const Navbar = () => {
     return result
   }
 
-  const getCategoryPath = (category: Category, parentPath = ""): string =>
-    parentPath ? `${parentPath}/${category.slug}` : category.slug
+  // const getCategoryPath = (category: Category, parentPath = ""): string =>
+  //   parentPath ? `${parentPath}/${category.slug}` : category.slug
 
-  const renderSubcategoryWithChildren = (subcategory: Category, parentPath: string) => {
-    const fullPath = getCategoryPath(subcategory, parentPath)
-    const hasChildren = subcategory.children && subcategory.children.length > 0
+  const getCategoryPath = (category: Category): string => category.slug
 
-    return (
-      <div key={subcategory.id} className="mb-4">
-        <Link
-          to={`/productCatalog/category/${fullPath}`}
-          className="block mb-2 font-medium text-gray-900 dark:text-gray-100 hover:text-[#e65100] dark:hover:text-[#ff6f00]"
-          onClick={() => setMobileOpen(false)}
-        >
-          {subcategory.title}
-        </Link>
-        {hasChildren && (
-          <ul className="ml-0 space-y-1">
-            {subcategory.children?.map((childCategory) => (
-              <li key={childCategory.id}>
+ const renderSubcategoryWithChildren = (subcategory: Category, parentPath: string = "") => {
+  const hasChildren = subcategory.children && subcategory.children.length > 0
+
+  return (
+    <div key={subcategory.id} className="mb-4">
+      <Link
+        to={`/productCatalog/category/${subcategory.slug}`}
+        className="block mb-2 font-medium text-gray-900 dark:text-gray-100 hover:text-[#e65100] dark:hover:text-[#ff6f00]"
+        onClick={() => setMobileOpen(false)}
+      >
+        {subcategory.title}
+      </Link>
+      {hasChildren && (
+        <ul className="ml-3 space-y-1">
+          {subcategory.children?.map((childCategory) => (
+            <li key={childCategory.id}>
+              {childCategory.children && childCategory.children.length > 0 ? (
+                // If child has its own children, recursively render them
+                <div className="mb-2">
+                  {renderSubcategoryWithChildren(childCategory, subcategory.slug)}
+                </div>
+              ) : (
+                // If child has no children, just render the link
                 <Link
-                  to={`/productCatalog/category/${getCategoryPath(
-                    childCategory,
-                    fullPath
-                  )}`}
+                  to={`/productCatalog/category/${childCategory.slug}`}
                   className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#e65100] dark:hover:text-[#ff6f00] block py-1"
                   onClick={() => setMobileOpen(false)}
                 >
                   {childCategory.title}
                 </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    )
-  }
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
   return (
     <div className="fixed z-50 w-full border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
@@ -187,6 +193,7 @@ const Navbar = () => {
 
           {organizedCategories.map((category) => {
             const hasChildren = category.children && category.children.length > 0
+            //console.log("category slug", category.slug)
             return (
               <div
                 key={category.id}

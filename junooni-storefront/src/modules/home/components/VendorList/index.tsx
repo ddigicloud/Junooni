@@ -53,9 +53,9 @@ const VendorList: React.FC = () => {
   useEffect(() => {
     const fetchVendors = async () => {
       try {
-        console.log('🔍 Fetching vendors...');
+        //console.log('🔍 Fetching vendors...');
         const data = await retriveVendors();
-        console.log('📊 Raw vendors data:', data);
+        //console.log('📊 Raw vendors data:', data);
         
         if (data && Array.isArray(data)) {
           setVendorsData(data);
@@ -63,25 +63,25 @@ const VendorList: React.FC = () => {
           // Filter for featured vendors only
           const featured = data.filter(vendor => {
             const isFeatured = isFeaturedVendor(vendor);
-            console.log(`🏷️ Vendor "${vendor.name}" featured status:`, {
-              isFeatured,
-              metafield: vendor.metafield,
-              metadata: vendor.metadata,
-              direct: vendor.featured_vendor
-            });
+            // console.log(`🏷️ Vendor "${vendor.name}" featured status:`, {
+            //   isFeatured,
+            //   metafield: vendor.metafield,
+            //   metadata: vendor.metadata,
+            //   direct: vendor.featured_vendor
+            // });
             return isFeatured;
           });
           
-          console.log('⭐ Featured vendors found:', featured.length);
-          console.log('⭐ Featured vendors:', featured);
+          //console.log('⭐ Featured vendors found:', featured.length);
+          //console.log('⭐ Featured vendors:', featured);
           setFeaturedVendors(featured);
         } else {
-          console.log('❌ No vendor data received or invalid format');
+          //console.log('❌ No vendor data received or invalid format');
           setVendorsData([]);
           setFeaturedVendors([]);
         }
       } catch (error) {
-        console.error('❌ Error fetching vendors:', error);
+        //console.error('❌ Error fetching vendors:', error);
         setVendorsData([]);
         setFeaturedVendors([]);
       }
@@ -93,7 +93,7 @@ const VendorList: React.FC = () => {
   // Use featured vendors for display instead of all vendors
   const displayVendors = featuredVendors;
 
-  console.log('🎬 Display vendors:', displayVendors);
+  //console.log('🎬 Display vendors:', displayVendors);
 
   return (
     <section className="relative py-20 bg-gray-50">

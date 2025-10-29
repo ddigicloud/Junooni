@@ -293,7 +293,7 @@ const ProductPage = () => {
   useEffect(() => {
     const loadProduct = async () => {
       if (!productId) {
-        console.error("Product ID not found in URL parameters");
+        //console.error("Product ID not found in URL parameters");
         router.navigate({ to: '/productCatalog' });
         return;
       }
@@ -355,7 +355,7 @@ const ProductPage = () => {
         
         sessionStorage.setItem(`product_${productId}`, JSON.stringify(data));
       } catch (error) {
-        console.error("Error loading product:", error);
+        //console.error("Error loading product:", error);
       } finally {
         setLoading(false);
       }
@@ -726,13 +726,13 @@ const ProductPage = () => {
                 <CardHeader className="px-6 pt-6 pb-4 bg-gradient-to-r from-gray-50 to-white">
                   {/* Categories and Dynamic Tags */}
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex gap-2">
+                    {/* <div className="flex gap-2">
                       {product.categories && product.categories.slice(0, 2).map((category: Category) => (
                         <Badge key={category.id} className="bg-[#e65100]/10 text-[#e65100] border-[#e65100]/20 hover:bg-[#e65100]/20 transition-colors duration-200">
                           {category.title}
                         </Badge>
                       ))}
-                    </div>
+                    </div> */}
                     {renderTags()}
                   </div>
                   
@@ -971,7 +971,7 @@ const ProductPage = () => {
                         </Collapsible>
                       )}
 
-                      <CardFooter className="flex flex-col gap-3 px-6 pb-2 pt-2 bg-gradient-to-r from-white to-white">
+                      <CardFooter className="flex flex-col gap-3 px-0 pb-2 pt-2 bg-gradient-to-r from-white to-white">
                         {/* Action Buttons */}
                         <Button 
                           className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#e65100] to-[#ff7043] hover:from-[#d84315] hover:to-[#e65100] transform transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
@@ -1020,12 +1020,12 @@ const ProductPage = () => {
 
                       <Separator className="my-0" />
 
-                      <Alert className="p-4 border-[#e65100]/30 bg-gradient-to-r from-[#e65100]/10 to-[#ff7043]/10">
+                      {/* <Alert className="p-4 border-[#e65100]/30 bg-gradient-to-r from-[#e65100]/10 to-[#ff7043]/10">
                         <Settings className="w-5 h-5 text-[#e65100]" />
                         <AlertDescription className="ml-2 text-sm font-medium text-gray-700">
                           🎨 <span className="font-semibold text-[#e65100]">Ready to customize?</span> Select your preferred color, size, and printing technology to start creating with our professional design tools.
                         </AlertDescription>
-                      </Alert>
+                      </Alert> */}
 
                       {/* Product Details */}
                       <Collapsible 
@@ -1056,7 +1056,7 @@ const ProductPage = () => {
                           )}
                           
                           {/* Categories */}
-                          {product.categories && product.categories.length > 0 && (
+                          {/* {product.categories && product.categories.length > 0 && (
                             <div>
                               <h4 className="mb-2 text-sm font-semibold text-gray-900">Product Categories</h4>
                               <div className="flex flex-wrap gap-2">
@@ -1071,7 +1071,7 @@ const ProductPage = () => {
                                 ))}
                               </div>
                             </div>
-                          )}
+                          )} */}
                         </CollapsibleContent>
                       </Collapsible>
                       

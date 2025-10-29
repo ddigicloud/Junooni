@@ -25,7 +25,7 @@ export default function SearchBar({ categories }: { categories: any[] }) {
       try {
         setRecentSearches(JSON.parse(saved))
       } catch (e) {
-        console.error('Error loading recent searches:', e)
+        //console.error('Error loading recent searches:', e)
       }
     }
   }, [])
@@ -78,15 +78,15 @@ export default function SearchBar({ categories }: { categories: any[] }) {
         })
 
         if (!res.ok) {
-          console.error("API responded with error:", res.status)
+          //console.error("API responded with error:", res.status)
           return
         }
 
         const data = await res.json()
-        console.log("Received search suggestions:", data.hits)
+        //console.log("Received search suggestions:", data.hits)
         setResults(data.hits || [])
       } catch (err) {
-        console.error("Search fetch error:", err)
+        //console.error("Search fetch error:", err)
       } finally {
         setIsLoading(false)
       }
@@ -158,7 +158,7 @@ export default function SearchBar({ categories }: { categories: any[] }) {
     }
   }
 
-  console.log("Current rendered results:", results)
+  //console.log("Current rendered results:", results)
 
   return (
     <div className="relative" ref={searchRef}>

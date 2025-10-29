@@ -140,7 +140,7 @@ export const WishlistProducts = ({
           }
         }
       } catch (error) {
-        console.error("Error fetching wishlist items:", error)
+        //console.error("Error fetching wishlist items:", error)
       } finally {
         setIsLoadingItems(false)
       }
@@ -154,7 +154,7 @@ export const WishlistProducts = ({
       await ItemDelete(itemId)
       setItems((prev) => prev.filter((item) => item.id !== itemId))
     } catch (error) {
-      console.error("Error removing item:", error)
+      //console.error("Error removing item:", error)
     }
   }
 
@@ -235,7 +235,7 @@ export const WishlistProducts = ({
             countryCode = potentialCountryCode
           }
         } catch (error) {
-          console.log('⚠️ Could not detect country code, using default:', countryCode)
+          //console.log('⚠️ Could not detect country code, using default:', countryCode)
         }
 
         // 🔧 Step 2: Import and use the same functions as StoreTemplate
@@ -248,16 +248,16 @@ export const WishlistProducts = ({
           throw new Error('Could not get region for pricing calculation')
         }
         
-        console.log('🌍 Using region for pricing:', {
-          countryCode,
-          regionId: region.id,
-          currency: region.currency_code
-        })
+        // console.log('🌍 Using region for pricing:', {
+        //   countryCode,
+        //   regionId: region.id,
+        //   currency: region.currency_code
+        // })
         
         // Extract product IDs from wishlist items
         const productIds = items.map(item => item.product_variant.product_id)
         
-        console.log('🛒 Fetching wishlist products using EXACT StoreTemplate method...')
+        //console.log('🛒 Fetching wishlist products using EXACT StoreTemplate method...')
         
         // 🔧 Step 3: Use EXACT same method as StoreTemplate
         const {
@@ -272,7 +272,7 @@ export const WishlistProducts = ({
           countryCode, // ✅ CRITICAL: Region context for pricing
         })
         
-        console.log('✅ SUCCESS: Fetched products with pricing data:', fetchedProducts.length)
+        //console.log('✅ SUCCESS: Fetched products with pricing data:', fetchedProducts.length)
         
         // 🔧 Step 4: Verify pricing data (same check as StoreTemplate)
         let productsWithPricing = 0
@@ -285,28 +285,28 @@ export const WishlistProducts = ({
           }
           
           if (index < 2) { // Debug first 2 products
-            console.log(`\n📦 ${product.title}:`)
-            console.log('- Has calculated_price:', !!hasPrice)
-            console.log('- Amount:', variant?.calculated_price?.calculated_amount)
-            console.log('- Currency:', variant?.calculated_price?.currency_code)
-            console.log('- Display price:', hasPrice ? `${region.currency_code} ${(variant.calculated_price.calculated_amount / 100).toFixed(2)}` : 'N/A')
+            //console.log(`\n📦 ${product.title}:`)
+            //console.log('- Has calculated_price:', !!hasPrice)
+            //console.log('- Amount:', variant?.calculated_price?.calculated_amount)
+            //console.log('- Currency:', variant?.calculated_price?.currency_code)
+            //console.log('- Display price:', hasPrice ? `${region.currency_code} ${(variant.calculated_price.calculated_amount / 100).toFixed(2)}` : 'N/A')
           }
         })
         
-        console.log(`💰 Products with pricing: ${productsWithPricing}/${fetchedProducts.length}`)
+        //console.log(`💰 Products with pricing: ${productsWithPricing}/${fetchedProducts.length}`)
         
         if (productsWithPricing === 0) {
-          console.warn('⚠️ No products have pricing data - check your Medusa admin panel')
+          //console.warn('⚠️ No products have pricing data - check your Medusa admin panel')
         }
 
         setProducts(fetchedProducts)
         
       } catch (error) {
-        console.error("❌ StoreTemplate method failed:", error)
+        //console.error("❌ StoreTemplate method failed:", error)
         
         // Enhanced fallback with better error handling
         try {
-          console.log('🔄 Trying enhanced fallback...')
+          //console.log('🔄 Trying enhanced fallback...')
           
           const results = await Promise.all(
             items.map(async (item) => {
@@ -338,7 +338,7 @@ export const WishlistProducts = ({
           }
           
         } catch (fallbackError) {
-          console.error("❌ All methods failed:", fallbackError)
+          //console.error("❌ All methods failed:", fallbackError)
           setProducts([])
         }
       } finally {
@@ -409,14 +409,14 @@ export const WishlistProducts = ({
             // 🔧 Find the exact product for this wishlist item
             const product = products.find(p => p.id === item.product_variant.product_id)
             if (!product) {
-              console.warn(`⚠️ Product ${item.product_variant.product_id} not found`)
+              //console.warn(`⚠️ Product ${item.product_variant.product_id} not found`)
               return null
             }
 
             // 🔧 Find the EXACT variant that was added to wishlist
             const specificVariant = product.variants.find(v => v.id === item.product_variant_id)
             if (!specificVariant) {
-              console.warn(`⚠️ Variant ${item.product_variant_id} not found for product ${product.title}`)
+              //console.warn(`⚠️ Variant ${item.product_variant_id} not found for product ${product.title}`)
               return null
             }
 
@@ -425,7 +425,7 @@ export const WishlistProducts = ({
             const variantDisplayInfo = getVariantDisplayInfo(specificVariant)
 
             // 🔧 Log the correct matching for debugging
-            console.log(`✅ Matched: ${product.title} → ${specificVariant.title} → $${specificVariant.calculated_price?.calculated_amount ? (specificVariant.calculated_price.calculated_amount / 100).toFixed(2) : '0.00'}`)
+            //console.log(`✅ Matched: ${product.title} → ${specificVariant.title} → $${specificVariant.calculated_price?.calculated_amount ? (specificVariant.calculated_price.calculated_amount / 100).toFixed(2) : '0.00'}`)
 
             return (
               <div

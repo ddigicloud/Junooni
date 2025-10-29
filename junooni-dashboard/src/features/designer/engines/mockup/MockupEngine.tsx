@@ -235,6 +235,26 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
   const [engineError, setEngineError] = useState<string | null>(null);
   const [isPixiSupported, setIsPixiSupported] = useState(true);
 
+  // 🆕 NEW: Check if mockup requires color masking
+  const requiresColorMasking = React.useMemo(() => {
+    return mockup.photoColor?.toLowerCase() === '#00000000';
+  }, [mockup.photoColor]);
+
+  // 🆕 NEW: Get the color for masking
+  const maskColor = React.useMemo(() => {
+    return productColor || '#ffffff';
+  }, [productColor]);
+
+  // 🆕 NEW: Log color masking info
+  React.useEffect(() => {
+    if (requiresColorMasking) {
+      console.log('🎨 MockupEngine: Transparent mockup detected - applying color masking');
+      console.log('   Mockup color:', mockup.photoColor);
+      console.log('   Mask color:', maskColor);
+      console.log('   Design elements:', designElements);
+    }
+  }, [requiresColorMasking, maskColor, mockup.photoColor, designElements]);
+
   // Determine optimal rendering engine with enhanced error detection
   const determineOptimalEngine = useCallback(() => {
     if (renderEngine !== 'auto') {
@@ -243,7 +263,6 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
 
     // Check browser compatibility first
     if (!isPixiSupported) {
-      //console.log('🔄 Pixi.js not supported, using Canvas engine');
       return 'canvas';
     }
 
@@ -270,12 +289,10 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
 
     // Use Pixi.js if advanced features are needed and supported
     if (enablePixiFeatures && (needsPixiFeatures || hasPixiAssets || isComplexSurface || hasAdvancedLighting)) {
-      //console.log('🚀 Using Pixi.js engine for advanced features');
       return 'pixi';
     }
 
     // Fallback to Canvas for simpler mockups or if Pixi.js isn't needed
-    //console.log('🎨 Using Canvas engine for basic rendering');
     return 'canvas';
   }, [mockup, surfaceConfiguration, renderEngine, enablePixiFeatures, isPixiSupported]);
 
@@ -287,9 +304,6 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
 
   // Handle Pixi.js errors and fallback with enhanced error reporting
   const handlePixiError = useCallback((error: any) => {
-    //console.error('❌ Pixi.js rendering error, falling back to Canvas:', error);
-    
-    // Determine error type for better user feedback
     let errorType = 'Unknown error';
     if (error.message?.includes('WebGL')) {
       errorType = 'WebGL compatibility issue';
@@ -302,9 +316,6 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
     setEngineError(`Pixi.js error (${errorType}): ${error.message || 'Unknown error'}`);
     setIsPixiSupported(false);
     setSelectedEngine('canvas');
-    
-    // Clear any existing render progress
-    //console.log('🔄 Switching to Canvas engine for fallback rendering');
   }, []);
 
   // Render progress handler
@@ -314,24 +325,43 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
 
   // Enhanced render complete handler
   const handleRenderComplete = useCallback((imageData: string) => {
-    //console.log(`✅ Mockup rendered successfully with ${selectedEngine} engine`);
     onRenderComplete?.(imageData);
   }, [selectedEngine, onRenderComplete]);
 
   return (
-    <div className="relative">
-      {/* Engine indicator (development only) */}
-      {/* {process.env.NODE_ENV === 'development' && (
-        <div className="absolute z-10 px-2 py-1 text-xs text-white rounded top-2 left-2 bg-black/75">
-          Engine: {selectedEngine.toUpperCase()}
-          {engineError && <div className="text-red-300">⚠️ {engineError}</div>}
-        </div>
-      )} */}
+    <div className="relative w-full h-full overflow-hidden">
+      {/* 🆕 LAYER 0: Base color layer for transparent mockups */}
+      {requiresColorMasking && (
+        <div 
+          className="absolute inset-0 w-full h-full"
+          style={{ 
+            backgroundColor: maskColor,
+            zIndex: 0
+          }}
+        />
+      )}
 
-      {/* Render with selected engine */}
-      {selectedEngine === 'pixi' ? (
-        <ErrorBoundary onError={handlePixiError}>
-          <DynamicMockupEngine
+      {/* LAYER 1: Mockup engine with design elements */}
+      <div className="relative w-full h-full" style={{ zIndex: 1 }}>
+        {/* Render with selected engine */}
+        {selectedEngine === 'pixi' ? (
+          <ErrorBoundary onError={handlePixiError}>
+            <DynamicMockupEngine
+              mockup={mockup}
+              designElements={designElements}
+              canvasConfigs={canvasConfigs}
+              canvasPrintableAreas={canvasPrintableAreas}
+              displayDimensions={displayDimensions}
+              productType={productType}
+              productColor={productColor}
+              fabricSettings={fabricSettings}
+              surfaceConfiguration={surfaceConfiguration}
+              onRenderComplete={handleRenderComplete}
+              onProgress={handleProgress}
+            />
+          </ErrorBoundary>
+        ) : (
+          <ProfessionalMockupEngine
             mockup={mockup}
             designElements={designElements}
             canvasConfigs={canvasConfigs}
@@ -344,23 +374,8 @@ const EnhancedMockupEngine: React.FC<EnhancedMockupEngineProps> = ({
             onRenderComplete={handleRenderComplete}
             onProgress={handleProgress}
           />
-        </ErrorBoundary>
-      ) : (
-        <ProfessionalMockupEngine
-          mockup={mockup}
-          designElements={designElements}
-          canvasConfigs={canvasConfigs}
-          canvasPrintableAreas={canvasPrintableAreas}
-          displayDimensions={displayDimensions}
-          productType={productType}
-          productColor={productColor}
-          fabricSettings={fabricSettings}
-          surfaceConfiguration={surfaceConfiguration}
-          onRenderComplete={handleRenderComplete}  // ✅ FIXED
-          onProgress={handleProgress}              // ✅ FIXED  
-          // onError={handleEngineError}   
-        />
-      )}
+        )}
+      </div>
     </div>
   );
 };

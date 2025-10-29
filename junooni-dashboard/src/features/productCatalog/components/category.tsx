@@ -1349,10 +1349,10 @@ const parseRichTextContent = (description: any): { heading: string; subheading: 
     subheading: "Discover our curated collection of premium products designed to meet your needs."
   };
 
-  console.log("Parsing description:", description); // Debug log
+  //console.log("Parsing description:", description); // Debug log
 
   if (!description || !description.root || !description.root.children) {
-    console.log("No description structure found, using fallback");
+    //console.log("No description structure found, using fallback");
     return fallback;
   }
   
@@ -1371,21 +1371,21 @@ const parseRichTextContent = (description: any): { heading: string; subheading: 
   let heading = fallback.heading;
   let subheading = fallback.subheading;
   
-  console.log("Description children:", description.root.children); // Debug log
+  //console.log("Description children:", description.root.children); // Debug log
   
   description.root.children.forEach((child: any, index: number) => {
-    console.log(`Child ${index}:`, child); // Debug log
+    //console.log(`Child ${index}:`, child); // Debug log
     
     if (child.type === "heading" && child.tag === "h1" && child.children) {
       heading = extractTextFromChildren(child.children);
-      console.log("Found heading:", heading);
+      //console.log("Found heading:", heading);
     } else if (child.type === "paragraph" && child.children) {
       subheading = extractTextFromChildren(child.children);
-      console.log("Found subheading:", subheading);
+      //console.log("Found subheading:", subheading);
     }
   });
   
-  console.log("Final result:", { heading, subheading });
+  //console.log("Final result:", { heading, subheading });
   return { heading, subheading };
 };
 
@@ -1771,9 +1771,9 @@ const CategoryPage: React.FC = () => {
   const params = useParams({strict:false});
   const slug = params.slug as string;
 
-  console.log("🔗 URL params:", params);
-  console.log("🔗 Extracted slug:", slug);
-  console.log("🔗 Slug type:", typeof slug);
+  // console.log("🔗 URL params:", params);
+  // console.log("🔗 Extracted slug:", slug);
+  // console.log("🔗 Slug type:", typeof slug);
 
   // Check if we're in mobile view
   useEffect(() => {
@@ -1812,42 +1812,42 @@ const CategoryPage: React.FC = () => {
 
   // Fetch categories and products from API
 useEffect(() => {
-  console.log("🚀 useEffect triggered with slug:", slug);
+ //console.log("🚀 useEffect triggered with slug:", slug);
   
   const fetchCategories = async () => {
-    console.log("📡 Starting API fetch...");
+    //console.log("📡 Starting API fetch...");
     try {
       const response = await fetch(`${vite_payload}/api/categories`);
       const data = await response.json();
       setCategories(data.docs);
-      console.log("📦 category response:", data);
+      //console.log("📦 category response:", data);
       
-      console.log("🔍 Looking for slug:", slug);
-      console.log("🔍 Available categories:", data.docs.map((cat: Category) => ({ 
-        id: cat.id, 
-        slug: cat.slug, 
-        title: cat.title,
-        hasDescription: !!cat.description 
-      })));
+      //console.log("🔍 Looking for slug:", slug);
+      // console.log("🔍 Available categories:", data.docs.map((cat: Category) => ({ 
+      //   id: cat.id, 
+      //   slug: cat.slug, 
+      //   title: cat.title,
+      //   hasDescription: !!cat.description 
+      // })));
       
       // Find the category matching the current slug
       const matchedCategory = data.docs.find((item: Category) => {
-        console.log(`🔍 Comparing "${item.slug}" with "${slug}"`);
+        //console.log(`🔍 Comparing "${item.slug}" with "${slug}"`);
         return item.slug === slug;
       });
       
-      console.log("✅ Matched category:", matchedCategory);
+      ////console.log("✅ Matched category:", matchedCategory);
       
       if (matchedCategory) {
         // Always set the current category for description/hero section
-        console.log("🎯 Setting currentCategory to:", matchedCategory.title);
+        //console.log("🎯 Setting currentCategory to:", matchedCategory.title);
         setCurrentCategory(matchedCategory);
-        console.log("✅ setCurrentCategory called");
-        console.log("✅ Category description exists:", !!matchedCategory.description);
+        //console.log("✅ setCurrentCategory called");
+        //console.log("✅ Category description exists:", !!matchedCategory.description);
         
         // Only process products if they exist
         if (matchedCategory.products && matchedCategory.products.length > 0) {
-          console.log("Found category with products:", matchedCategory.title);
+          //console.log("Found category with products:", matchedCategory.title);
           
           // Store the original API products
           setApiProducts(matchedCategory.products);
@@ -1917,15 +1917,15 @@ useEffect(() => {
           setSimplifiedProducts(sortedProducts);
           setFilteredProducts(sortedProducts);
           
-          console.log("Set products:", formattedProducts.length);
+          //console.log("Set products:", formattedProducts.length);
         } else {
-          console.log("Category found but no products directly attached");
+          //console.log("Category found but no products directly attached");
           setSimplifiedProducts([]);
           setApiProducts([]);
           setFilteredProducts([]);
         }
       } else {
-        console.log("No matching category found for slug:", slug);
+        //console.log("No matching category found for slug:", slug);
         setCurrentCategory(null);
         setSimplifiedProducts([]);
         setApiProducts([]);
@@ -1935,7 +1935,7 @@ useEffect(() => {
       setLoadingCategories(false);
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      //console.error('Error fetching categories:', error);
       setLoadingCategories(false);
       setLoading(false);
     }
@@ -2065,16 +2065,16 @@ useEffect(() => {
           {/* Dynamic Hero Section */}
           <div className="sm:mt-12 mb-4 animate-fadeIn">
             {(() => {
-              console.log("🎯 Hero section - currentCategory:", currentCategory);
-              console.log("🎯 Hero section - has description:", !!currentCategory?.description);
+              // console.log("🎯 Hero section - currentCategory:", currentCategory);
+              // console.log("🎯 Hero section - has description:", !!currentCategory?.description);
               
               const { heading, subheading } = currentCategory && currentCategory.description 
                 ? parseRichTextContent(currentCategory.description)
                 : { heading: "Products", subheading: "Discover our curated collection of premium products designed to meet your needs." };
-              
-              console.log("🎯 Final heading:", heading);
-              console.log("🎯 Final subheading:", subheading);
-              
+
+              // console.log("🎯 Final heading:", heading);
+              // console.log("🎯 Final subheading:", subheading);
+
               return (
                 <>
                   <h1 className="mb-4 text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#e65100] to-orange-600 bg-clip-text text-transparent">
@@ -2105,6 +2105,7 @@ useEffect(() => {
           {/* Category Pill Navigation */}
           <div className="flex gap-3 pb-2 mb-6 overflow-x-auto md:hidden flex-nowrap">
             {categories.map((item) => (
+              //console.log("item slug", item.slug),
               <div 
                 key={item.id}
                 className={`category-pill rounded-full px-6 py-3 whitespace-nowrap text-sm font-medium cursor-pointer ${

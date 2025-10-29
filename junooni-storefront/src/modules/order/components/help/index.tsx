@@ -36,7 +36,7 @@ const Help = () => {
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-gray-900">Call Us</h3>
-                <p className="text-sm text-gray-600">+91 9557294610</p>
+                <p className="text-sm text-gray-600">+91 8694062222</p>
               </div>
             </div>
 

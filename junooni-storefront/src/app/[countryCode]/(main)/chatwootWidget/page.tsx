@@ -1,5 +1,4 @@
 // components/ChatwootWidget.tsx
-'use client'
 
 import React, { useEffect } from 'react';
 
@@ -9,14 +8,15 @@ const ChatwootWidget: React.FC = () => {
     const script = document.createElement('script');
     script.innerHTML = `
       (function(d,t) {
-        var BASE_URL="https://chat.junooni.com";
+       var BASE_URL = "http://localhost:3000";
         var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
         g.src=BASE_URL+"/packs/js/sdk.js";
+        g.defer = true;
         g.async = true;
         s.parentNode.insertBefore(g,s);
         g.onload=function(){
           window.chatwootSDK.run({
-            websiteToken: 'RScGx9Ddg5z1b94oRENU29Js',
+            websiteToken: 'BqrxfRV6KzG8mPjS8ZuZ6wrr',
             baseUrl: BASE_URL
           })
         }

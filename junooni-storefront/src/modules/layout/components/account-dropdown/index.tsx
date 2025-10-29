@@ -143,7 +143,7 @@ const AccountDropdown = ({
                   </p>
                   <div className="flex flex-col w-full gap-y-2">
                     <LocalizedClientLink 
-                      href="/account" 
+                      href="/account?view=sign-in" 
                       className="w-full" 
                       passHref
                       onClick={close}
@@ -156,7 +156,7 @@ const AccountDropdown = ({
                       </Button>
                     </LocalizedClientLink>
                     <LocalizedClientLink 
-                      href="/account/register" 
+                      href="/account?view=register" 
                       className="w-full" 
                       passHref
                       onClick={close}

@@ -1,7 +1,6 @@
 // "use client"
 
 // import { useState } from "react"
-
 // import Register from "@modules/account/components/register"
 // import Login from "@modules/account/components/login"
 
@@ -14,16 +13,14 @@
 //   const [currentView, setCurrentView] = useState<string>("sign-in")
 
 //   return (
-//     <div className="flex items-center justify-center w-full min-h-screen px-0 py-0 md:px-4" 
-//          style={{ backgroundColor: "#ffffff" }}>
-//       <div className="w-full max-w-md p-0 bg-white rounded-lg shadow-sm">
-//         {currentView === "sign-in" ? (
-//           <Login setCurrentView={setCurrentView} />
-//         ) : (
-//           <Register setCurrentView={setCurrentView} />
-//         )}
-//       </div>
-//     </div>
+//     // Remove the wrapper container - let Login/Register handle their own layout
+//     <>
+//       {currentView === "sign-in" ? (
+//         <Login setCurrentView={setCurrentView} />
+//       ) : (
+//         <Register setCurrentView={setCurrentView} />
+//       )}
+//     </>
 //   )
 // }
 
@@ -31,7 +28,8 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Register from "@modules/account/components/register"
 import Login from "@modules/account/components/login"
 
@@ -41,10 +39,21 @@ export enum LOGIN_VIEW {
 }
 
 const LoginTemplate = () => {
+  const searchParams = useSearchParams()
+  const viewParam = searchParams.get("view")
+  
   const [currentView, setCurrentView] = useState<string>("sign-in")
 
+  // Update view when URL changes
+  useEffect(() => {
+    if (viewParam === "register") {
+      setCurrentView("register")
+    } else if (viewParam === "sign-in") {
+      setCurrentView("sign-in")
+    }
+  }, [viewParam])
+
   return (
-    // Remove the wrapper container - let Login/Register handle their own layout
     <>
       {currentView === "sign-in" ? (
         <Login setCurrentView={setCurrentView} />
