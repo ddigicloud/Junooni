@@ -469,6 +469,16 @@ export const StreamlinedImageManager: React.FC<{
                   className="object-cover w-full h-full"
                 />
                 <div className="absolute inset-0 flex items-center justify-center transition-all duration-200 bg-black bg-opacity-0 opacity-0 group-hover:bg-opacity-20 group-hover:opacity-100">
+                  {/* Trash button - top right corner */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(originalIndex)}
+                    className="absolute top-2 right-2 p-1.5 text-red-500 bg-red-50 rounded-full hover:bg-red-100"
+                  >
+                    <IconTrash size={16} />
+                  </button>
+                  
+                  {/* Move buttons - center */}
                   <div className="flex space-x-1">
                     <button
                       type="button"
@@ -493,11 +503,11 @@ export const StreamlinedImageManager: React.FC<{
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between p-3 border-t">
+              {/* <div className="flex items-center justify-between p-3 border-t">
                 <div className="flex-1 text-sm text-gray-600 truncate">
-                  {/* {item.file ? item.file.name.substring(0, 20) : `Image ${index + 1}`} */}
+                  {item.file ? item.file.name.substring(0, 20) : `Image ${index + 1}`}
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {/* Show variant title for variant-specific images */}
+                    Show variant title for variant-specific images
                     {item.variantInfo?.variantId && (
                       <Badge className="bg-[#e65100] text-white text-xs">
                         {item.variantInfo.variantTitle || 
@@ -506,7 +516,7 @@ export const StreamlinedImageManager: React.FC<{
                       </Badge>
                     )}
                     
-                    {/* Show option value for option-specific images */}
+                    Show option value for option-specific images
                     {item.variantInfo?.optionName && item.variantInfo.optionValues?.[0] && !item.variantInfo.variantId && (
                       <Badge className="bg-[#e65100] text-white text-xs">
                         {isColorOption(item.variantInfo.optionName) && 
@@ -530,12 +540,12 @@ export const StreamlinedImageManager: React.FC<{
                 >
                   <IconTrash size={16} />
                 </button>
-              </div>
-              {originalIndex === 0 && (
+              </div> */}
+              {/* {originalIndex === 0 && (
                 <div className="absolute top-2 left-2 bg-[#e65100] text-white text-xs px-2 py-1 rounded-md">
                   Main
                 </div>
-              )}
+              )} */}
             </div>
           );
         })}

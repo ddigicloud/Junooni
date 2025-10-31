@@ -1922,7 +1922,15 @@ console.log(`💳 Vendor payment status for ${vendorId}:`, vendorPaymentData);
     billing_address: order.billing_address,
     shipping_methods: order.shipping_methods,
     payment_collections: order.payment_collections,
-    fulfillments: order.fulfillments,
+    // fulfillments: order.fulfillments,
+    // ✅ FIX: Filter fulfillments to only include vendor's fulfillments
+  fulfillments: order.fulfillments?.filter(fulfillment => {
+    // Only include fulfillments that contain at least one vendor item
+    return fulfillment.items?.some(fulfillmentItem => {
+      const itemId = fulfillmentItem.line_item_id || fulfillmentItem.item_id;
+      return itemsWithRevenue.some(vendorItem => vendorItem.id === itemId);
+    });
+  }) || [],
     
     // vendor_payment_amount: calculatedVendorRevenue,
     vendor_payment_amount: finalVendorRevenue, // ✅ NEW: After processing fee
@@ -2055,6 +2063,7 @@ export const GET = async (
           "id",           // ✅ ADD: Explicitly request id
            "display_id",
           "metadata",
+          "created_at",
           "total",
           "subtotal",
           "shipping_total", 
@@ -2123,13 +2132,30 @@ export const GET = async (
     orderWithVendorPaymentStatus.metadata?.vendor_orders?.forEach(vo => {
       console.log(`   Vendor ${vo.vendor_id}: ${vo.vendor_payment_status}`);
     });
+
+    console.log(`🔍 DEBUG - Order fulfillments passed to filter:`, order.fulfillments?.length || 0);
+//console.log(`🔍 DEBUG - Vendor order fulfillments after filter:`, vendorOrderView.fulfillments?.length || 0);
     
     // ✅ MODIFY: Use updated order for vendor filtering
     console.log(`🔄 Step 2: Filtering for vendor ${vendorId}...`);
     const vendorOrderView = await filterOrderForVendor(orderWithVendorPaymentStatus, vendorId, req.scope);
     
+    // 🚨 CRITICAL DEBUG: Verify fulfillments in vendorOrderView
+    console.log(`\n🚨 CRITICAL - vendorOrderView.fulfillments:`, vendorOrderView?.fulfillments?.length || 'UNDEFINED/NULL');
+    console.log(`🚨 Has fulfillments property:`, 'fulfillments' in (vendorOrderView || {}));
+    console.log(`🚨 vendorOrderView keys:`, Object.keys(vendorOrderView || {}).sort());
+    if (vendorOrderView?.fulfillments && vendorOrderView.fulfillments.length > 0) {
+      console.log(`✅ First fulfillment ID:`, vendorOrderView.fulfillments[0].id);
+      console.log(`✅ First fulfillment has labels:`, vendorOrderView.fulfillments[0].labels?.length || 0);
+    } else {
+      console.log(`❌ WARNING: vendorOrderView.fulfillments is MISSING or EMPTY!`);
+      console.log(`❌ This is why frontend shows no tracking info!`);
+    }
+
+// ✅ DEBUG: Log fulfillments before processing
+console.log(`\n🔍 DEBUG: Order fulfillments (${order.fulfillments?.length || 0}):`);
     // ✅ DEBUG: Log fulfillments before processing
-    console.log(`🔍 DEBUG: Order fulfillments (${order.fulfillments?.length || 0}):`);
+    //console.log(`🔍 DEBUG: Order fulfillments (${order.fulfillments?.length || 0}):`);
     order.fulfillments?.forEach((fulfillment, index) => {
       console.log(`  Fulfillment ${index + 1}:`, {
         id: fulfillment.id,

@@ -652,6 +652,22 @@ const isNewVariant = (variant) => {
         }
         
         // Extract shipping info from metadata
+        // let shippingDays = '7-10';
+        // let handlingTime = '2-3';
+        
+        // if (product.metadata && product.metadata.fulfillment_type) {
+        //   try {
+        //     const fulfillmentInfo = JSON.parse(product.metadata.fulfillment_type);
+        //     if (typeof fulfillmentInfo === 'object') {
+        //       shippingDays = fulfillmentInfo.shipping_time || '7-10';
+        //       handlingTime = fulfillmentInfo.handling_time || '2-3';
+        //     }
+        //   } catch (e) {
+        //     ////console.error("Error parsing fulfillment_type:", e);
+        //   }
+        // }
+
+        // Extract shipping info from metadata
         let shippingDays = '7-10';
         let handlingTime = '2-3';
         
@@ -659,11 +675,19 @@ const isNewVariant = (variant) => {
           try {
             const fulfillmentInfo = JSON.parse(product.metadata.fulfillment_type);
             if (typeof fulfillmentInfo === 'object') {
-              shippingDays = fulfillmentInfo.shipping_time || '7-10';
-              handlingTime = fulfillmentInfo.handling_time || '2-3';
+              // Extract just the numeric part from strings like "2-3 business days"
+              if (fulfillmentInfo.shipping_time) {
+                const shippingMatch = fulfillmentInfo.shipping_time.match(/(\d+-?\d*)/);
+                shippingDays = shippingMatch ? shippingMatch[1] : '7-10';
+              }
+              
+              if (fulfillmentInfo.handling_time) {
+                const handlingMatch = fulfillmentInfo.handling_time.match(/(\d+-?\d*)/);
+                handlingTime = handlingMatch ? handlingMatch[1] : '2-3';
+              }
             }
           } catch (e) {
-            ////console.error("Error parsing fulfillment_type:", e);
+            console.error("Error parsing fulfillment_type:", e);
           }
         }
         // Transform variants to match component format
@@ -3683,23 +3707,23 @@ const handleApiError = (apiError: any) => {
                             </div>
                             <div className="flex items-center justify-between p-3 border-t">
                               <div className="flex-1 text-sm text-gray-600 truncate">
-                                {item.file ? item.file.name.substring(0, 20) : `Image ${index + 1}`}
-                                {item.variantInfo && (
+                                {/* {item.file ? item.file.name.substring(0, 20) : `Image ${index + 1}`} */}
+                                {/* {item.variantInfo && (
                                   <div className="mt-1">
-                                    {/* <Badge className="bg-[#e65100] text-white text-xs">
+                                    <Badge className="bg-[#e65100] text-white text-xs">
                                       {item.variantInfo.variantTitle || 
                                       item.variantInfo.optionName && item.variantInfo.optionValues?.[0] ? 
                                       `${item.variantInfo.optionName}: ${item.variantInfo.optionValues[0]}` : 
                                       'Variant'}
-                                    </Badge>  */}
+                                    </Badge> 
                                   <Badge className="bg-[#e65100] text-white text-xs">
-                                    {/* {item.colorValue || 
+                                    {item.colorValue || 
                                     (item.variantInfo?.optionName?.toLowerCase() === "color" 
                                         ? item.variantInfo.optionValues?.[0] 
-                                        : "")} */}
+                                        : "")}
                                   </Badge>
                                 </div>
-                                )}
+                                )} */}
                               </div>
                               <button
                                 type="button"
@@ -4270,11 +4294,12 @@ const handleApiError = (apiError: any) => {
                   />
                 </section>
                 {/* Shipping & Fulfillment Info Card */}
+                {/* Shipping & Fulfillment Info Card */}
                 <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
                   <Separator className="mb-4" />
                   
-                  <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-orange-100 rounded-full text-[#e65100]">
                       <IconTruck size={24} />
                     </div>
@@ -4291,80 +4316,46 @@ const handleApiError = (apiError: any) => {
                         {fulfillmentData?.type === "Creator-fulfilment" 
                           ? "You'll handle all order shipping" 
                           : fulfillmentData?.type === "Junooni-fulfilment"
-                          ? "Junooni will handle order fulfillment"
+                          ? "Fulfillment managed by Junooni"
                           : "Standard fulfillment process"
                         }
                       </p>
                     </div>
                   </div>
                   
-                  {/* Shipping information */}
-                  <div className="mt-6 space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="shippingDays"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center font-medium text-gray-700">
-                            <IconTruck size={18} className="mr-1.5 text-[#e65100]" />
-                            Shipping Time
-                          </FormLabel>
-                          <Select {...field}
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                                <SelectValue placeholder="Select shipping time" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="3-5">3-5 business days</SelectItem>
-                              <SelectItem value="5-7">5-7 business days</SelectItem>
-                              <SelectItem value="7-10">7-10 business days</SelectItem>
-                              <SelectItem value="10-14">10-14 business days</SelectItem>
-                              <SelectItem value="14-21">2-3 weeks</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            Estimated time for delivery after shipping
-                          </FormDescription>
-                        </FormItem>
-                      )}
-                    />
+                  {/* Shipping information - Display only */}
+                  <div className="space-y-4">
+                    {/* Shipping Time Display */}
+                    <div className="p-4 border border-orange-100 rounded-lg bg-orange-50">
+                      <div className="flex items-start gap-3">
+                        <IconTruck size={18} className="mt-0.5 text-[#e65100]" />
+                        <div className="flex-1">
+                          <h4 className="font-medium text-[#e65100] mb-1">Shipping Time</h4>
+                          <p className="text-[#e65100] font-medium">
+                            {form.watch('shippingDays') 
+                              ? `${form.watch('shippingDays')} business days`
+                              : '7-10 business days'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                     
-                    <FormField
-                      control={form.control}
-                      name="handlingTime"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center font-medium text-gray-700">
-                            <IconClock size={18} className="mr-1.5 text-[#e65100]" />
-                            Handling Time
-                          </FormLabel>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                                <SelectValue placeholder="Select handling time" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="1">1 business day</SelectItem>
-                              <SelectItem value="1-2">1-2 business days</SelectItem>
-                              <SelectItem value="2-3">2-3 business days</SelectItem>
-                              <SelectItem value="3-5">3-5 business days</SelectItem>
-                              <SelectItem value="5-7">5-7 business days</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            Time needed to prepare and package the order
-                          </FormDescription>
-                        </FormItem>
-                      )}
-                    />
+                    {/* Handling Time Display */}
+                    <div className="p-4 border border-orange-100 rounded-lg bg-orange-50">
+                      <div className="flex items-start gap-3">
+                        <IconClock size={18} className="mt-0.5 text-[#e65100]" />
+                        <div className="flex-1">
+                          <h4 className="font-medium text-[#e65100] mb-1">Handling Time</h4>
+                          <p className="text-[#e65100] font-medium">
+                            {form.watch('handlingTime') 
+                              ? `${form.watch('handlingTime')} business days`
+                              : '2-3 business days'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   
                   {/* Stock Management Info */}

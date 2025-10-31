@@ -3319,7 +3319,7 @@ const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ product
   // =====================================
   
   const [activeView, setActiveView] = useState<'design' | 'preview'>('design');
-  const [activeTab, setActiveTab] = useState<'product' | 'colors' | 'sizes' | 'upload' | 'library' | 'layers' | 'pricing'>('upload');
+  const [activeTab, setActiveTab] = useState<'product' | 'colors' | 'sizes' | 'upload' | 'library' | 'layers' | 'pricing'>('product');
   const [debugMode, setDebugMode] = useState(false);
   const navigate = useNavigate();
   const designElementsRef = useRef<Record<string, DesignElement[]>>({});
@@ -6134,6 +6134,9 @@ for (const mockup of allMockups) {
   }];
 
   const mockupAreas = mockup.area?.map(area => area.areaName?.toLowerCase()) || [];
+
+  console.log('🖼️ ', mockup.title, '→ areas:', mockupAreas);
+  console.log('   Checking against:', areasWithElements);
   
   // ðŸ”¥ NEW: Detect cylindrical products
   const surfaceConfig = getSurfaceConfiguration();
@@ -6175,8 +6178,12 @@ for (const mockup of allMockups) {
     hasDesignElements = mockupAreas.some(areaName => 
       areasWithElements.some(elementArea => elementArea.toLowerCase() === areaName)
     );
+
+    console.log('   Result:', hasDesignElements ? '✅ HAS DESIGN' : '❌ NO DESIGN');
+    console.log('');
     
     designToUse = designElements;
+    console.log('   Using design elements as-is for this mockup', designToUse);
   }
 
   // Rest of the generation logic remains the same...
@@ -6565,13 +6572,18 @@ const handleImportToStore = useCallback(async () => {
     
     ////console.log(`ðŸ”§ Checking area "${areaId}": ${visibleElements.length} visible elements`);
     
+
+    console.log(`📍 "${areaId}" → ${visibleElements.length} visible elements`);
     if (visibleElements.length > 0) {
       const normalizedAreaId = normalizeAreaName(areaId);
       areasWithElements.push(normalizedAreaId);
       ////console.log(`ðŸ”§ Added area with elements: ${normalizedAreaId} (original: ${areaId})`);
+
+      console.log(`   ✅ "${normalizedAreaId}" added`);
     }
   });
 
+  console.log('📊 areasWithElements:', areasWithElements);
   // Get ALL mockups and areas from technology
   const allMockupsForTech = [];
   const allAvailableAreas = new Set();

@@ -621,14 +621,16 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
                         Learn how to optimize your product listings, manage inventory, and
                         boost sales with our comprehensive guides.
                       </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        style={{ borderColor: BRAND.primary, color: BRAND.primary }}
-                        className="hover:bg-orange-50"
-                      >
-                        View Product Guides
-                      </Button>
+                      <Link href="/help-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          style={{ borderColor: BRAND.primary, color: BRAND.primary }}
+                          className="hover:bg-orange-50"
+                        >
+                          View Product Guides
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </CardContent>

@@ -3144,7 +3144,7 @@ useEffect(() => {
      // Convert PayloadCMS description to HTML format for TipTapEditor
       const convertedDescription = convertLexicalToHtml(payloadProduct.description);
       form.setValue('description', convertedDescription);
-      form.setValue('subtitle', `${payloadProduct.brand} - ${payloadProduct.productType.replace('_', ' ')}`);
+      // form.setValue('subtitle', `${payloadProduct.brand} - ${payloadProduct.productType.replace('_', ' ')}`);
       
       const widthInCm = Math.round(payloadProduct.physicalDimensions.widthInches);
       const heightInCm = Math.round(payloadProduct.physicalDimensions.heightInches);
@@ -3441,9 +3441,9 @@ const populateFormWithDesignData = (
         form.setValue('description', convertedDescription);
       }
       
-      if (data.productInfo.brand) {
-        form.setValue('subtitle', `By ${data.productInfo.brand}`);
-      }
+      // if (data.productInfo.brand) {
+      //   form.setValue('subtitle', `By ${data.productInfo.brand}`);
+      // }
     }
     
     // STEP 2: Enhanced product data
@@ -6994,11 +6994,11 @@ if (!printTechId || !printTechName) {
                       </div>
                     )}
                     
-                    <div className="p-3 mt-4 border border-gray-200 rounded-md bg-gray-50">
+                    {/* <div className="p-3 mt-4 border border-gray-200 rounded-md bg-gray-50">
                       <p className="text-sm text-gray-600">
                         <strong>Note:</strong> Shipping and handling times are pre-configured in the product catalog and cannot be modified.
                       </p>
-                    </div>
+                    </div> */}
                   </div>
                 ) : (
                   <div className="p-4 mt-6 border border-gray-200 rounded-lg bg-gray-50">

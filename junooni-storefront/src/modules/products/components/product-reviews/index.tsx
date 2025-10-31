@@ -150,7 +150,7 @@ export default function ProductReviews({
           )}
           
           <Button 
-            className="w-full bg-[#e65100] border-none text-white font-medium hover:bg-[#d84315]"
+            className="w-full bg-[#e65100] border-none text-white font-medium hover:bg-[#d84315] shadow-none"
             onClick={() => setShowReviewForm(!showReviewForm)}
           >
             Write a Review

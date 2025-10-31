@@ -162,6 +162,7 @@ import MobileMenu from "./MobileMenu";
 import SearchBar from "@modules/layout/components/search-button";
 import WishlistButton from "@modules/wishlists/components/wishlist-button";
 import Image from "next/image";
+import junooniHeaderLogo from "@assets/junooni.png";
 import LogoDisplay from "@modules/layout/components/LogoDisplay"; // We'll create this component
 import BackButton from "@modules/layout/components/BackButton"; // We'll create this component
 
@@ -237,7 +238,7 @@ export default async function Nav() {
           className="mr-8 text-2xl font-semibold uppercase transition-colors duration-300"
           data-testid="nav-store-link"
         >
-          JUNOONI
+          <img src={junooniHeaderLogo.src} alt="Junooni Logo" className="h-6"/>
         </LocalizedClientLink>
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useParams } from "@tanstack/react-router"
 import {
   DropdownMenu,
@@ -1847,6 +1847,45 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
   fetchVendorOrderDetails()
 }, [id])
   
+// At the top of the component
+const fulfillments = useMemo(() => {
+  // Ensure we're reading from the correct path
+  return order?.fulfillments || [];
+}, [order]);
+
+const activeFulfillments = useMemo(() => {
+  return fulfillments.filter(f => !f.canceled_at && !f.deleted_at);
+}, [fulfillments]);
+
+// Debug info
+console.log({
+  totalFulfillments: fulfillments.length,        // Should show: 1
+  activeFulfillments: activeFulfillments.length, // Should show: 1
+  fulfillmentStatus: order?.fulfillment_status,  // Should show: "delivered"
+  hasLabels: activeFulfillments[0]?.labels?.length > 0 // Should show: true
+});
+
+// Add this at the very top of your TrackingInformation component
+useEffect(() => {
+  console.log('🔍 RAW ORDER DEBUG:');
+  console.log('1. Full order object:', order);
+  console.log('2. order.fulfillments:', order?.fulfillments);
+  console.log('3. order.fulfillment_status:', order?.fulfillment_status);
+  console.log('4. Type of order.fulfillments:', typeof order?.fulfillments);
+  console.log('5. Is array?:', Array.isArray(order?.fulfillments));
+  console.log('6. Order keys:', order ? Object.keys(order) : 'no order');
+  
+  // Check if fulfillments exist elsewhere
+  console.log('7. Checking alternative paths:');
+  console.log('   - order.fulfillment:', order?.fulfillment);
+  console.log('   - order._fulfillments:', order?._fulfillments);
+  console.log('   - order.data?.fulfillments:', order?.data?.fulfillments);
+  
+  // Raw JSON check
+  console.log('8. Stringified order (first 500 chars):', 
+    JSON.stringify(order).substring(0, 500)
+  );
+}, [order]);
 
   const transformVendorOrderDataWithClaims = (orderData: any): VendorOrder => {
     
@@ -2101,6 +2140,7 @@ if (itemFulfillment) {
     shipping_methods: [],
     payment_collections: [],
     
+    fulfillments: orderData.fulfillments || [],
     vendor_id: orderData.vendor_id || "",
     vendor_handle: orderData.vendor_handle || "unknown",
     original_order_id: orderData.original_order_id || orderData.id,
@@ -3624,7 +3664,7 @@ const generateInvoice = () => {
   </CardContent>
 </Card>
                       
-            {/* Tracking Information */}
+           {/* Tracking Information */}
             <Card className="mb-4 shadow-md">
               <CardHeader className="px-4 py-3 border-b">
                 <div className="flex items-center justify-between">
@@ -3638,7 +3678,6 @@ const generateInvoice = () => {
                     </CardDescription>
                   </div>
                   
-                  {/* ✅ NEW: Quick Action Button for Adding Tracking */}
                   {order.vendor_items.some(item => item.fulfillment_status === 'fulfilled' && !item.shipped_at) && (
                     <Button 
                       size="sm"
@@ -3655,136 +3694,256 @@ const generateInvoice = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-4">
+              <div className="space-y-3">
                 <div className="space-y-3">
-                  <div className="space-y-3">
-                    {(() => {
-                      // ✅ Get vendor-specific claims/returns data
-                      const {
-                        vendorHasClaims,
-                        vendorHasReturns,
-                        vendorClaims,
-                        vendorReturns,
-                        vendorReturnItemCount,
-                        vendorReplacementItemCount
-                      } = getVendorSpecificClaimsReturns(
-                        order.vendor_items, 
-                        order.claims, 
-                        order.returns, 
-                        order.claim_items, 
-                        order.return_items
-                      );
-                      
-                      return (
-                        <>
-                          {/* Order Placed */}
+                  {(() => {
+                    // ✅ DEBUGGING: Log all the data
+                    console.log('=== ORDER DEBUG START ===');
+                    console.log('1. Order created_at:', order.created_at);
+                    console.log('2. Order display_id:', order.display_id);
+                    console.log('3. Order fulfillment_status:', order.fulfillment_status);
+                    console.log('4. Total fulfillments:', order.fulfillments?.length || 0);
+                    
+                    // Log each fulfillment
+                    if (order.fulfillments) {
+                      order.fulfillments.forEach((f, index) => {
+                        console.log(`\nFulfillment ${index}:`, {
+                          id: f.id,
+                          packed_at: f.packed_at,
+                          shipped_at: f.shipped_at,
+                          delivered_at: f.delivered_at,
+                          canceled_at: f.canceled_at,
+                          deleted_at: f.deleted_at,
+                          items_count: f.items?.length || 0
+                        });
+                      });
+                    }
+                    
+                    // Filter active fulfillments
+                    const activeFulfillments = order.fulfillments 
+                      ? order.fulfillments.filter(f => !f.canceled_at && !f.deleted_at)
+                      : [];
+                    
+                    console.log('\n5. Active fulfillments count:', activeFulfillments.length);
+                    
+                    if (activeFulfillments.length > 0) {
+                      console.log('6. Selected fulfillment (last active):', {
+                        id: activeFulfillments[activeFulfillments.length - 1].id,
+                        packed_at: activeFulfillments[activeFulfillments.length - 1].packed_at,
+                        shipped_at: activeFulfillments[activeFulfillments.length - 1].shipped_at,
+                        delivered_at: activeFulfillments[activeFulfillments.length - 1].delivered_at
+                      });
+                    }
+                    
+                    // Check formatDate function
+                    console.log('\n7. Formatted order date:', formatDate(order.created_at));
+                    
+                    const {
+                      vendorHasClaims,
+                      vendorHasReturns,
+                      vendorClaims,
+                      vendorReturns,
+                      vendorReturnItemCount,
+                      vendorReplacementItemCount
+                    } = getVendorSpecificClaimsReturns(
+                      order.vendor_items, 
+                      order.claims, 
+                      order.returns, 
+                      order.claim_items, 
+                      order.return_items
+                    );
+                    
+                    console.log('\n8. Vendor claims/returns:', {
+                      vendorHasClaims,
+                      vendorHasReturns,
+                      vendorReturnItemCount,
+                      vendorReplacementItemCount
+                    });
+                    
+                    const fulfillment = activeFulfillments.length > 0 
+                      ? activeFulfillments[activeFulfillments.length - 1]
+                      : null;
+                    
+                    console.log('\n9. Final selected fulfillment:', fulfillment ? {
+                      id: fulfillment.id,
+                      has_packed_at: !!fulfillment.packed_at,
+                      has_shipped_at: !!fulfillment.shipped_at,
+                      has_delivered_at: !!fulfillment.delivered_at,
+                      packed_at: fulfillment.packed_at,
+                      shipped_at: fulfillment.shipped_at,
+                      delivered_at: fulfillment.delivered_at
+                    } : 'No fulfillment found');
+                    
+                    const hasFulfillmentEvents = fulfillment && (
+                      fulfillment.packed_at || 
+                      fulfillment.shipped_at || 
+                      fulfillment.delivered_at
+                    );
+                    
+                    console.log('10. Has fulfillment events:', hasFulfillmentEvents);
+                    console.log('=== ORDER DEBUG END ===\n');
+                    
+                    return (
+                      <>
+                        {/* Order Placed */}
+                        <div className="flex">
+                          <div className="flex flex-col items-center mr-4">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full" 
+                                style={{ backgroundColor: `${BRAND.primary}22`, color: BRAND.primary }}>
+                              <Package className="w-4 h-4" />
+                            </div>
+                            {hasFulfillmentEvents && <div className="w-px h-full my-1 bg-gray-200"></div>}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium">Order Placed</div>
+                            <div className="text-xs text-gray-500">{formatDate(order.created_at)}</div>
+                            <div className="mt-1 text-sm">
+                              Your products were ordered in order #{order.display_id}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* ✅ Debug display to see what's happening */}
+                        {/* <div className="p-3 text-xs border border-blue-200 rounded bg-blue-50">
+                          <div className="font-bold text-blue-900">Debug Info:</div>
+                          <div className="mt-1 space-y-1 text-blue-800">
+                            <div>Order Date: {order.created_at}</div>
+                            <div>Fulfillments: {order.fulfillments?.length || 0}</div>
+                            <div>Active Fulfillments: {activeFulfillments.length}</div>
+                            <div>Selected Fulfillment: {fulfillment?.id || 'None'}</div>
+                            <div>Has Events: {hasFulfillmentEvents ? 'Yes' : 'No'}</div>
+                            {fulfillment && (
+                              <>
+                                <div>Packed: {fulfillment.packed_at || 'No'}</div>
+                                <div>Shipped: {fulfillment.shipped_at || 'No'}</div>
+                                <div>Delivered: {fulfillment.delivered_at || 'No'}</div>
+                              </>
+                            )}
+                          </div>
+                        </div> */}
+                        
+                        {/* Rest of your timeline code... */}
+                        {/* Returns */}
+                        {vendorHasReturns && vendorReturns.length > 0 && (
                           <div className="flex">
                             <div className="flex flex-col items-center mr-4">
-                              <div className="flex items-center justify-center w-8 h-8 rounded-full" 
-                                  style={{ backgroundColor: `${BRAND.primary}22`, color: BRAND.primary }}>
-                                <Package className="w-4 h-4" />
+                              <div className="flex items-center justify-center w-8 h-8 bg-orange-100 rounded-full">
+                                <RefreshCw className="w-4 h-4 text-orange-700" />
                               </div>
                               <div className="w-px h-full my-1 bg-gray-200"></div>
                             </div>
                             <div>
-                              <div className="text-sm font-medium">Order Placed</div>
-                              <div className="text-xs text-gray-500">{formatDate(order.created_at)}</div>
+                              <div className="text-sm font-medium">Return Requested</div>
+                              <div className="text-xs text-gray-500">
+                                {formatDate(vendorReturns[0].created_at)}
+                              </div>
                               <div className="mt-1 text-sm">
-                                Your products were ordered in order #{order.display_id}
+                                Customer requested return for {vendorReturnItemCount} of your item(s)
                               </div>
                             </div>
                           </div>
-                          
-                          {/* ✅ FIXED: Only show returns if THIS vendor has returns */}
-                          {vendorHasReturns && vendorReturns.length > 0 && (
-                            <div className="flex">
-                              <div className="flex flex-col items-center mr-4">
-                                <div className="flex items-center justify-center w-8 h-8 bg-orange-100 rounded-full">
-                                  <RefreshCw className="w-4 h-4 text-orange-700" />
-                                </div>
+                        )}
+                        
+                        {/* Claims */}
+                        {vendorHasClaims && vendorClaims.length > 0 && (
+                          <div className="flex">
+                            <div className="flex flex-col items-center mr-4">
+                              <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
+                                <RefreshCw className="w-4 h-4 text-blue-700" />
+                              </div>
+                              <div className="w-px h-full my-1 bg-gray-200"></div>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium">Claim Processed</div>
+                              <div className="text-xs text-gray-500">
+                                {formatDate(vendorClaims[0].created_at)}
+                              </div>
+                              <div className="mt-1 text-sm">
+                                {vendorReplacementItemCount > 0 
+                                  ? `${vendorReplacementItemCount} of your items replaced through claim process`
+                                  : 'Your items processed through claim'
+                                }
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Processing */}
+                        {fulfillment && fulfillment.packed_at && (
+                          <div className="flex">
+                            <div className="flex flex-col items-center mr-4">
+                              <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
+                                <RefreshCw className="w-4 h-4 text-blue-700" />
+                              </div>
+                              {(fulfillment.shipped_at || fulfillment.delivered_at) && (
                                 <div className="w-px h-full my-1 bg-gray-200"></div>
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium">Processing</div>
+                              <div className="text-xs text-gray-500">
+                                {formatDate(fulfillment.packed_at)}
                               </div>
-                              <div>
-                                <div className="text-sm font-medium">Return Requested</div>
-                                <div className="text-xs text-gray-500">
-                                  {formatDate(vendorReturns[0].created_at)}
-                                </div>
-                                <div className="mt-1 text-sm">
-                                  Customer requested return for {vendorReturnItemCount} of your item(s)
-                                </div>
+                              <div className="mt-1 text-sm">
+                                Your products are being prepared for shipping
                               </div>
                             </div>
-                          )}
-                          
-                          {/* ✅ FIXED: Only show claims if THIS vendor has claims */}
-                          {vendorHasClaims && vendorClaims.length > 0 && (
-                            <div className="flex">
-                              <div className="flex flex-col items-center mr-4">
-                                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-                                  <RefreshCw className="w-4 h-4 text-blue-700" />
-                                </div>
+                          </div>
+                        )}
+                        
+                        {/* Shipped */}
+                        {fulfillment && fulfillment.shipped_at && (
+                          <div className="flex">
+                            <div className="flex flex-col items-center mr-4">
+                              <div className="flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full">
+                                <Truck className="w-4 h-4 text-purple-700" />
+                              </div>
+                              {fulfillment.delivered_at && (
                                 <div className="w-px h-full my-1 bg-gray-200"></div>
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium">Shipped</div>
+                              <div className="text-xs text-gray-500">
+                                {formatDate(fulfillment.shipped_at)}
                               </div>
-                              <div>
-                                <div className="text-sm font-medium">Claim Processed</div>
-                                <div className="text-xs text-gray-500">
-                                  {formatDate(vendorClaims[0].created_at)}
-                                </div>
-                                <div className="mt-1 text-sm">
-                                  {vendorReplacementItemCount > 0 
-                                    ? `${vendorReplacementItemCount} of your items replaced through claim process`
-                                    : 'Your items processed through claim'
-                                  }
-                                </div>
+                              <div className="mt-1 text-sm">
+                                Your products have been shipped
+                                {fulfillment.labels && fulfillment.labels[0] && (
+                                  <span className="block mt-1 text-xs text-gray-500">
+                                    Tracking: {fulfillment.labels[0].tracking_number}
+                                  </span>
+                                )}
                               </div>
                             </div>
-                          )}
-                          
-                          {/* Processing */}
-                          {order.fulfillment_status !== "pending" && order.fulfillment_status !== "not_fulfilled" && (
-                            <div className="flex">
-                              <div className="flex flex-col items-center mr-4">
-                                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-                                  <RefreshCw className="w-4 h-4 text-blue-700" />
-                                </div>
-                                <div className="w-px h-full my-1 bg-gray-200"></div>
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium">Processing</div>
-                                <div className="text-xs text-gray-500">
-                                  {formatDate(new Date(new Date(order.created_at).getTime() + 3600000).toISOString())}
-                                </div>
-                                <div className="mt-1 text-sm">
-                                  Your products are being prepared for shipping
-                                </div>
+                          </div>
+                        )}
+                        
+                        {/* Delivered */}
+                        {fulfillment && fulfillment.delivered_at && (
+                          <div className="flex">
+                            <div className="flex flex-col items-center mr-4">
+                              <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
+                                <CircleCheck className="w-4 h-4 text-green-700" />
                               </div>
                             </div>
-                          )}
-                          
-                          {/* Delivered */}
-                          {order.fulfillment_status === "delivered" && (
-                            <div className="flex">
-                              <div className="flex flex-col items-center mr-4">
-                                <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-                                  <CircleCheck className="w-4 h-4 text-green-700" />
-                                </div>
+                            <div>
+                              <div className="text-sm font-medium">Delivered</div>
+                              <div className="text-xs text-gray-500">
+                                {formatDate(fulfillment.delivered_at)}
                               </div>
-                              <div>
-                                <div className="text-sm font-medium">Delivered</div>
-                                <div className="text-xs text-gray-500">
-                                  {formatDate(new Date(new Date(order.created_at).getTime() + 7 * 24 * 3600000).toISOString())}
-                                </div>
-                                <div className="mt-1 text-sm">
-                                  Your products have been delivered successfully
-                                </div>
+                              <div className="mt-1 text-sm">
+                                Your products have been delivered successfully
                               </div>
                             </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
                   
-                  {/* Per-Item Tracking Information - remains the same */}
+                  {/* Per-Item Tracking Information */}
                   <div className="pt-4 mt-6 border-t border-gray-200">
                     <h4 className="mb-4 text-sm font-medium text-gray-800">Individual Product Tracking</h4>
                     <div className="space-y-3">
@@ -3818,7 +3977,7 @@ const generateInvoice = () => {
                     </div>
                   </div>
                   
-                  {/* ✅ FIXED: Current Status with vendor-specific claim/return info */}
+                  {/* Current Status */}
                   <div className="p-4 rounded-lg" style={{ backgroundColor: `${BRAND.primary}11` }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
@@ -3854,7 +4013,6 @@ const generateInvoice = () => {
                       <StatusBadge status={order.fulfillment_status} />
                     </div>
                     
-                    {/* ✅ FIXED: Show claim/return summary only if this vendor is affected */}
                     {(() => {
                       const {
                         vendorHasClaims,
@@ -4142,7 +4300,7 @@ const generateInvoice = () => {
             </Card>
             
             {/* Action Buttons */}
-            <Card className="shadow-md">
+            {/* <Card className="shadow-md">
               <CardContent className="p-4">
                 <div className="space-y-2">
                   <Button className="w-full text-sm bg-[#e65100] hover:bg-[#d95f00]" size="sm" onClick={generateInvoice}>
@@ -4156,7 +4314,7 @@ const generateInvoice = () => {
                   </Button>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </div>
         

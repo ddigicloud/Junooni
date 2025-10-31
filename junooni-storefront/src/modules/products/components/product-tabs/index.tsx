@@ -349,6 +349,8 @@ import {
   Flame
 } from "lucide-react"
 import ProductReviews from "../product-reviews"
+import Link from "next/link"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 type ProductTabsProps = {
   product: HttpTypes.StoreProduct
@@ -462,7 +464,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                 )}
                 
                 {/* Fulfillment type badge - only show if data exists */}
-                {fulfillmentType && (
+                {/* {fulfillmentType && (
                   <div className="p-3 mb-4 rounded-md bg-blue-50 sm:p-4 sm:mb-6">
                     <div className="flex items-center mb-1 sm:mb-2">
                       <Truck size={16} className="text-[#e65100] mr-2" />
@@ -478,7 +480,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                       </p>
                     )}
                   </div>
-                )}
+                )} */}
                 
                 {/* Limited edition badge - only if inventory is low */}
                 {(product.inventory_quantity && product.inventory_quantity < 50) && (
@@ -691,15 +693,21 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                 </div>
               </div>
 
-              <div>
+             <div>
                 <h3 className="flex items-center mb-2 text-sm font-medium sm:text-lg sm:mb-3">
                   <RefreshCw size={16} className="text-[#e65100] mr-2 sm:size-18" />
                   Returns Policy
                 </h3>
                 <div className="p-3 space-y-3 rounded-md bg-gray-50 sm:p-4 sm:space-y-4">
-                  <p className="text-xs text-gray-500 sm:text-sm italic">
-                    Returns policy information not available. Please contact support for details.
+                  <p className="text-xs text-gray-700 sm:text-sm mb-3">
+                    We want you to be completely satisfied with your purchase. View our complete refund and exchange policy for details.
                   </p>
+                  <LocalizedClientLink
+                    href="/refund-exchange"
+                    className="inline-flex items-center px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[#e65100] rounded-md hover:bg-[#d84e00] transition-colors"
+                  >
+                    View Refund & Exchange Policy
+                  </LocalizedClientLink>
                 </div>
               </div>
             </div>

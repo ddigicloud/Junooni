@@ -5,6 +5,7 @@ import { HttpTypes } from "@medusajs/types"
 import { Button, Input, Label, Textarea, toast, Toaster } from "@medusajs/ui"
 import { Star, StarSolid } from "@medusajs/icons"
 import { addProductReview } from "@lib/data/products"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 type ProductReviewsFormProps = {
   productId: string
@@ -30,8 +31,13 @@ export default function ProductReviewsForm({
 
   if (!customer) {
     return <div className="p-4 text-sm text-center rounded bg-gray-50">
-      Please sign in to leave a review
-    </div>
+            <LocalizedClientLink
+             href="/account"
+              className="text-orange-600 underline hover:text-orange-800"
+            >
+              Please sign in to leave a review
+            </LocalizedClientLink>
+          </div>
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
