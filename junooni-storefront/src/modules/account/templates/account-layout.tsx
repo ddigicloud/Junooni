@@ -529,7 +529,7 @@ const handleSignOut = async () => {
       {/* Desktop Layout - Show for ALL auth pages on mobile, normal behavior on desktop */}
       <div className={`flex-col flex-1 h-full pt-4 mx-auto bg-white content-container ${
         isAuthPage ? "flex" : "hidden md:flex"
-      }`}>
+       }`}>
         <div className="grid grid-cols-1 small:grid-cols-[240px_1fr] py-12">
           <div>
             {/* Only show sidebar for logged-in users */}

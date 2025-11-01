@@ -1409,35 +1409,44 @@ const CreatorDiscoveryPage = () => {
           // User is logged in - fetch their follows
           const result = await retriveVendorsFollowers()
           
+          let creators: Creator[] = []
+          
           if (result && typeof result === 'object' && 'follow' in result) {
-            const followerResult = result as FollowerResult
+            const followerResult = result as CustomerFollowers
+            console.log("Fetched follower result:", followerResult)
             
-            if (Array.isArray(followerResult.follow)) {
-              const customerFollowersData = { follow: { creators: followerResult.follow } }
-              const creators = customerFollowersData.follow?.creators || []
-              setCustomerVendors(creators)
-              setFilteredVendors(creators)
-
-              // Initialize followed creators map
-              const followedMap: Record<string, boolean> = {}
-              creators.forEach((creator) => {
-                if (creator.vendor?.id) {
-                  followedMap[creator.vendor.id] = true
-                }
-              })
-              setFollowedCreators(followedMap)
-
-              // Sync with cookies
-              creators.forEach((creator) => {
-                if (creator.vendor?.id && creator.vendor?.creator_title) {
-                  trackCreatorInteraction(creator.vendor.id, creator.vendor.creator_title, 'follow')
-                }
-              })
+            // Check if follow.creators exists and is an array
+            if (followerResult.follow?.creators && Array.isArray(followerResult.follow.creators)) {
+              creators = followerResult.follow.creators
+            }
+            // Fallback: check if follow itself is an array (for backwards compatibility)
+            else if (Array.isArray((result as FollowerResult).follow)) {
+              creators = (result as FollowerResult).follow as any
             }
           }
+          console.log("Fetched creators:", creators)
 
-          // Fetch follower counts
-          const countsPromises = (customerVendors || []).map(async (creator) => {
+          setCustomerVendors(creators)
+          setFilteredVendors(creators)
+
+          // Initialize followed creators map
+          const followedMap: Record<string, boolean> = {}
+          creators.forEach((creator) => {
+            if (creator.vendor?.id) {
+              followedMap[creator.vendor.id] = true
+            }
+          })
+          setFollowedCreators(followedMap)
+
+          // Sync with cookies
+          creators.forEach((creator) => {
+            if (creator.vendor?.id && creator.vendor?.creator_title) {
+              trackCreatorInteraction(creator.vendor.id, creator.vendor.creator_title, 'follow')
+            }
+          })
+
+          // Fetch follower counts using the newly fetched creators (not old state)
+          const countsPromises = creators.map(async (creator) => {
             const count = await followerList(creator.vendor?.id || "")
             return { id: creator.vendor?.id || "", count: count || 0 }
           })

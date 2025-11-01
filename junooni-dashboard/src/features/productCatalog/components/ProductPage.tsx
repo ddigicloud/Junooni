@@ -509,10 +509,14 @@ const ProductPage = () => {
   };
   
   // Format description
-  const formatDescription = (): string[] => {
-    if (!product?.description) return [];
-    return product.description.split("\n").filter((line: string) => line.trim() !== "");
-  };
+  // const formatDescription = (): string[] => {
+  //   if (!product?.description) return [];
+  //   return product.description.split("\n").filter((line: string) => line.trim() !== "");
+  // };
+  const formatDescription = (): string => {
+  if (!product?.description) return "";
+  return product.description.replace(/\n/g, '<br />');
+};
 
   // Get primary category path
   const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
@@ -1044,7 +1048,7 @@ const ProductPage = () => {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="p-4 bg-white">
                           {/* Description */}
-                          {descriptionParagraphs.length > 0 && (
+                          {/* {descriptionParagraphs.length > 0 && (
                             <div className="p-3 mb-4 rounded-lg bg-gray-50">
                               <h4 className="mb-2 text-sm font-semibold text-gray-900">Product Description</h4>
                               <div className="space-y-2 text-gray-700">
@@ -1052,6 +1056,15 @@ const ProductPage = () => {
                                   <p key={index} className="text-sm leading-relaxed">{paragraph}</p>
                                 ))}
                               </div>
+                            </div>
+                          )} */}
+                          {descriptionParagraphs && (
+                            <div className="p-3 mb-4 rounded-lg bg-gray-50">
+                              <h4 className="mb-2 text-sm font-semibold text-gray-900">Product Description</h4>
+                              <div 
+                                className="space-y-2 text-sm leading-relaxed text-gray-700"
+                                dangerouslySetInnerHTML={{ __html: descriptionParagraphs }}
+                              />
                             </div>
                           )}
                           

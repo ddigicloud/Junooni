@@ -34,7 +34,7 @@ useEffect(() => {
       description: "Please sign in to access your profile.",
       variant: "destructive",
     });
-    console.log("No token found, redirecting to sign-in page...");
+    //console.log("No token found, redirecting to sign-in page...");
     // Redirect to sign-in page
     window.location.href = '/sign-in';
     return;

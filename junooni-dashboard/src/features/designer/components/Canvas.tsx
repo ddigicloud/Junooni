@@ -2954,6 +2954,14 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
 // STORE IMPORT MODAL COMPONENT
 // =====================================
 
+// =====================================
+// STORE IMPORT MODAL COMPONENT
+// =====================================
+
+// =====================================
+// STORE IMPORT MODAL COMPONENT
+// =====================================
+
 interface StoreImportModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -2961,6 +2969,8 @@ interface StoreImportModalProps {
   isGenerating: boolean;
   generationProgress: ImageGenerationProgress | null;
   mockupCalculation: MockupCalculationResult | null;
+  setActiveView?: (view: 'design' | 'preview') => void;
+  setActiveTab?: (tab: string) => void;
 }
 
 const StoreImportModal: React.FC<StoreImportModalProps> = ({
@@ -2969,22 +2979,29 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
   importData,
   isGenerating,
   generationProgress,
-  mockupCalculation
+  mockupCalculation,
+  setActiveView,
+  setActiveTab
 }) => {
   const brandColor = '#ec5100';
+  
+  // ✅ ERROR DETECTION
+  const hasError = importData?.generation_summary?.errors?.length > 0;
+  const errorType = importData?.generation_summary?.error_type;
+  const errorMessages = importData?.generation_summary?.errors || [];
 
-   // ADD THIS COMPONENT HERE:
+  // Rotating message component
   const RotatingMessage = () => {
     const messages = [
-    "✨ Magic is happening...",
-    "🎨 Creating masterpieces...",
-    "🚀 Generating awesomeness...",
-    "☑️ Working our magic...",
-    "🎪 Show time in progress...",
-    "🌟 Crafting something special...",
-    "🎯 Almost there...",
-    "💌 Making it perfect..."
-  ];
+      "✨ Magic is happening...",
+      "🎨 Creating masterpieces...",
+      "🚀 Generating awesomeness...",
+      "☑️ Working our magic...",
+      "🎪 Show time in progress...",
+      "🌟 Crafting something special...",
+      "🎯 Almost there...",
+      "💌 Making it perfect..."
+    ];
 
     const [messageIndex, setMessageIndex] = React.useState(0);
 
@@ -3021,6 +3038,7 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
           }
           URL.revokeObjectURL(url);
         } catch (cleanupError) {
+          console.error('Cleanup error:', cleanupError);
         }
       }, 100);
       
@@ -3032,7 +3050,7 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
   const handleImportToStore = useCallback(() => {
     if (!importData) return;
     
-    alert(`âœ¨ Ready to import to store!\n\n` +
+    alert(`✨ Ready to import to store!\n\n` +
           `Product: ${importData.product_name}\n` +
           `Total Images: ${importData.generation_summary.total_images_generated}\n` +
           `Generation Time: ${Math.round(importData.generation_summary.total_time_ms / 1000)}s\n` +
@@ -3041,109 +3059,219 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
           `Integration with store API would happen here.`);
   }, [importData]);
 
+  const handleCloseAndNavigate = (tab: string) => {
+    onClose();
+    if (setActiveView) setActiveView('design');
+    if (setActiveTab) setActiveTab(tab);
+  };
+
   if (!isOpen) return null;
 
   return (
-  <div
-    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-    onClick={(e) => {
-      if (e.target === e.currentTarget && !isGenerating) onClose();
-    }}
-  >
     <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-lg sm:max-w-3xl max-h-[90vh] overflow-auto"
-        onClick={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isGenerating) onClose();
+      }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <h2 className="text-lg font-semibold" style={{ color: brandColor }}>
-          Store Import
-        </h2>
-      </div>
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-lg sm:max-w-2xl max-h-[90vh] overflow-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <h2 className="text-lg font-semibold" style={{ color: hasError ? '#dc2626' : brandColor }}>
+            {hasError ? '⚠️ Limit Exceeded' : 'Store Import'}
+          </h2>
+          {!isGenerating && (
+            <button
+              onClick={onClose}
+              className="p-1 text-gray-400 transition-colors rounded-lg hover:text-gray-600 hover:bg-gray-100"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
 
-      <div className="px-4 py-5 space-y-5">
-        {/* Progress */}
-        {isGenerating && generationProgress && (
-          <div className="p-6 border rounded bg-orange-50">
-            <div className="flex flex-col items-center gap-4">
-              {/* Spinning Loader */}
-              <div className="w-12 h-12 border-t-2 border-b-2 border-[#e65100] rounded-full animate-spin"></div>
-              
-              {/* Rotating Message */}
-              <div className="text-center">
-                <div className="font-medium text-[#e65100] mb-1">
-                  <RotatingMessage />
+        <div className="px-4 py-5 space-y-5">
+          {/* ✅ ERROR STATE - SHORTENED */}
+          {hasError && !isGenerating && (
+            <div className="p-6 space-y-4 rounded-lg bg-white">
+              {/* Error Icon and Message */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 bg-red-100 rounded-full">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
                 </div>
-                <div className="text-sm text-gray-600">
-                  {generationProgress.completed}/{generationProgress.total} images
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-red-800">
+                    Too Many Mockups
+                  </h3>
+                  <p className="mt-1 text-sm text-red-700">
+                    Please reduce selected colors to continue
+                  </p>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* Completed */}
-        {!isGenerating && importData && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 p-3 border rounded bg-green-50">
-              <span className="text-green-600">âœ…</span>
-              <span className="text-sm text-green-700">
-                {importData.generation_summary.total_images_generated} images generated in{" "}
-                {Math.round(importData.generation_summary.total_time_ms / 1000)}s
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-sm text-center">
-              <div className="p-3 rounded bg-gray-50">
-                <div className="text-xl font-bold" style={{ color: brandColor }}>
-                  {importData.mockup_variants.length}
+              {/* Current Selection Info */}
+              {/* {mockupCalculation && (
+                <div className="p-3 border-l-4 border-red-400 rounded bg-red-100/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-red-800">Current Selection:</span>
+                    <span className="px-2 py-1 text-sm font-bold text-red-700 bg-red-200 rounded-full">
+                      {mockupCalculation.totalMockups} mockups
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-red-600">
+                    Recommended: Keep under 50 mockups for optimal performance
+                  </p>
                 </div>
-                <div className="text-gray-600">Variants</div>
+              )} */}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  onClick={() => handleCloseAndNavigate('product')}
+                  className="flex items-center justify-center flex-1 gap-2 px-4 py-2 text-sm font-medium text-white transition-colors bg-red-600 rounded hover:bg-red-700"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
+                  Reduce Colors
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 transition-colors bg-white border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Close
+                </button>
               </div>
-              <div className="p-3 rounded bg-gray-50">
-                <div className="text-xl font-bold" style={{ color: brandColor }}>
-                  {importData.generation_summary.total_images_generated}
+
+              {/* Technical Details (Collapsible) - Optional */}
+              {/* {errorMessages.length > 0 && (
+                <details className="mt-2">
+                  <summary className="text-xs font-medium text-red-600 cursor-pointer hover:text-red-700 hover:underline">
+                    View technical details
+                  </summary>
+                  <div className="p-2 mt-2 space-y-1 overflow-x-auto font-mono text-xs text-red-800 rounded bg-red-100/50">
+                    {errorMessages.map((err, i) => (
+                      <div key={i} className="py-1">
+                        {err}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )} */}
+            </div>
+          )}
+
+          {/* Progress State */}
+          {isGenerating && generationProgress && (
+            <div className="p-6 border rounded bg-orange-50">
+              <div className="flex flex-col items-center gap-4">
+                {/* Spinning Loader */}
+                <div className="w-12 h-12 border-t-2 border-b-2 border-[#e65100] rounded-full animate-spin"></div>
+                
+                {/* Rotating Message */}
+                <div className="text-center">
+                  <div className="font-medium text-[#e65100] mb-1">
+                    <RotatingMessage />
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {generationProgress.completed}/{generationProgress.total} images
+                  </div>
                 </div>
-                <div className="text-gray-600">Images</div>
+
+                {/* Progress Bar */}
+                <div className="w-full max-w-md">
+                  <div className="w-full h-2 overflow-hidden bg-gray-200 rounded-full">
+                    <div
+                      className="h-full transition-all duration-300 bg-[#e65100]"
+                      style={{
+                        width: `${(generationProgress.completed / generationProgress.total) * 100}%`
+                      }}
+                    />
+                  </div>
+                  <div className="mt-2 text-xs text-center text-gray-600">
+                    {Math.round((generationProgress.completed / generationProgress.total) * 100)}% Complete
+                  </div>
+                </div>
+
+                {/* Current Task */}
+                {/* {generationProgress.current_combination && (
+                  <div className="text-xs text-center text-gray-600">
+                    <div className="font-semibold">{generationProgress.current_mockup}</div>
+                    <div className="text-gray-500">{generationProgress.current_engine}</div>
+                  </div>
+                )} */}
               </div>
             </div>
+          )}
 
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                onClick={handleImportToStore}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white rounded bg-[#e65100] hover:opacity-90"
-              >
-                Import
-              </button>
-              <button
-                onClick={downloadImportData}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
-              >
-                Download
-              </button>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded hover:bg-gray-700"
-              >
-                Close
-              </button>
+          {/* Completed State */}
+          {!isGenerating && importData && !hasError && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 p-3 border rounded bg-green-50">
+                <span className="text-green-600">✅</span>
+                <span className="text-sm text-green-700">
+                  {importData.generation_summary.total_images_generated} images generated in{" "}
+                  {Math.round(importData.generation_summary.total_time_ms / 1000)}s
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm text-center">
+                <div className="p-3 rounded bg-gray-50">
+                  <div className="text-xl font-bold" style={{ color: brandColor }}>
+                    {importData.mockup_variants.length}
+                  </div>
+                  <div className="text-gray-600">Variants</div>
+                </div>
+                <div className="p-3 rounded bg-gray-50">
+                  <div className="text-xl font-bold" style={{ color: brandColor }}>
+                    {importData.generation_summary.total_images_generated}
+                  </div>
+                  <div className="text-gray-600">Images</div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  onClick={handleImportToStore}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white rounded bg-[#e65100] hover:opacity-90"
+                >
+                  Import
+                </button>
+                <button
+                  onClick={downloadImportData}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+                >
+                  Download
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Empty */}
-        {!isGenerating && !importData && (
-          <div className="py-6 text-sm text-center text-gray-600">
-            <div className="mb-2 text-3xl">ðŸŽª</div>
-            No import data yet. <br />
-            <span className="text-gray-500">Generate & import to see results.</span>
-          </div>
-        )}
+          {/* Empty State */}
+          {!isGenerating && !importData && !hasError && (
+            <div className="py-6 text-sm text-center text-gray-600">
+              <div className="mb-2 text-3xl">🎪</div>
+              No import data yet. <br />
+              <span className="text-gray-500">Generate & import to see results.</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
-
+  );
 };
 
 // =====================================
@@ -6135,8 +6263,8 @@ for (const mockup of allMockups) {
 
   const mockupAreas = mockup.area?.map(area => area.areaName?.toLowerCase()) || [];
 
-  console.log('🖼️ ', mockup.title, '→ areas:', mockupAreas);
-  console.log('   Checking against:', areasWithElements);
+  // console.log('🖼️ ', mockup.title, '→ areas:', mockupAreas);
+  // console.log('   Checking against:', areasWithElements);
   
   // ðŸ”¥ NEW: Detect cylindrical products
   const surfaceConfig = getSurfaceConfiguration();
@@ -6179,11 +6307,11 @@ for (const mockup of allMockups) {
       areasWithElements.some(elementArea => elementArea.toLowerCase() === areaName)
     );
 
-    console.log('   Result:', hasDesignElements ? '✅ HAS DESIGN' : '❌ NO DESIGN');
-    console.log('');
+    // console.log('   Result:', hasDesignElements ? '✅ HAS DESIGN' : '❌ NO DESIGN');
+    // console.log('');
     
     designToUse = designElements;
-    console.log('   Using design elements as-is for this mockup', designToUse);
+    //console.log('   Using design elements as-is for this mockup', designToUse);
   }
 
   // Rest of the generation logic remains the same...
@@ -6573,17 +6701,17 @@ const handleImportToStore = useCallback(async () => {
     ////console.log(`ðŸ”§ Checking area "${areaId}": ${visibleElements.length} visible elements`);
     
 
-    console.log(`📍 "${areaId}" → ${visibleElements.length} visible elements`);
+    //console.log(`📍 "${areaId}" → ${visibleElements.length} visible elements`);
     if (visibleElements.length > 0) {
       const normalizedAreaId = normalizeAreaName(areaId);
       areasWithElements.push(normalizedAreaId);
       ////console.log(`ðŸ”§ Added area with elements: ${normalizedAreaId} (original: ${areaId})`);
 
-      console.log(`   ✅ "${normalizedAreaId}" added`);
+      //console.log(`   ✅ "${normalizedAreaId}" added`);
     }
   });
 
-  console.log('📊 areasWithElements:', areasWithElements);
+  //console.log('📊 areasWithElements:', areasWithElements);
   // Get ALL mockups and areas from technology
   const allMockupsForTech = [];
   const allAvailableAreas = new Set();
@@ -6949,7 +7077,7 @@ selectedColors.forEach(color => {
      navigateToCreatePage(transformedData);
 
   } catch (error) {
-    ////console.error('ðŸ”§ Enhanced store import failed:', error);
+    console.error('🔧 Enhanced store import failed:', error);
     
     setStoreGenerationProgress(prev => ({
       ...prev,
@@ -6958,7 +7086,17 @@ selectedColors.forEach(color => {
       errors: [...(prev?.errors || []), error.message]
     }));
     
-    alert(`Store import failed: ${error.message}`);
+    // ⚠️ SHOW CUSTOM ERROR POPUP INSTEAD OF ALERT
+    setShowStoreImportModal(true);
+    setStoreImportData({
+      ...storeImportData,
+      generation_summary: {
+        ...storeImportData?.generation_summary,
+        errors: [error.message],
+        error_type: 'limit_exceeded'
+      }
+    } as any);
+    
   } finally {
     setTimeout(() => {
       setIsGeneratingForStore(false);
@@ -8800,10 +8938,10 @@ const renderPreview = useCallback(() => {
                   <p className="mt-1 text-sm text-black capitalize">{productData?.productType || 'Unknown'}</p>
                 </div>
                 
-                <div>
+                {/* <div>
                   <label className="text-xs font-medium tracking-wider text-black uppercase">Brand</label>
                   <p className="mt-1 text-sm text-black">{productData?.brand || 'Junooni'}</p>
-                </div>
+                </div> */}
 
                  {/* ðŸ”¥ NEW: Current pricing summary */}
                 {totalPrice > 0 && (

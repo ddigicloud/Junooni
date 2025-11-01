@@ -1,3 +1,117 @@
+// "use server"
+
+// import { sdk } from "@lib/config"
+// import medusaError from "@lib/util/medusa-error"
+// import { getAuthHeaders, getCacheOptions } from "./cookies"
+// import { HttpTypes } from "@medusajs/types"
+
+// export const retrieveOrder = async (id: string) => {
+//   const headers = {
+//     ...(await getAuthHeaders()),
+//   }
+
+//   const next = {
+//     ...(await getCacheOptions("orders")),
+//   }
+
+//   return sdk.client
+//     .fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${id}`, {
+//       method: "GET",
+//       query: {
+//         fields:
+//           "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product",
+//       },
+//       headers,
+//       next
+//       // cache: "force-cache",
+//     })
+//     .then(({ order }) => order)
+//     .catch((err) => medusaError(err))
+// }
+
+// export const listOrders = async (
+//   limit: number = 1000,
+//   offset: number = 0,
+//   filters?: Record<string, any>
+// ) => {
+//   const headers = {
+//     ...(await getAuthHeaders()),
+//   }
+
+//   const next = {
+//     ...(await getCacheOptions("orders")),
+//   }
+
+//   return sdk.client
+//     .fetch<HttpTypes.StoreOrderListResponse>(`/store/orders`, {
+//       method: "GET",
+//       query: {
+//         limit,
+//         offset,
+//         order: "-created_at",
+//         // fields: "*items,+items.metadata,*items.variant,*items.product",
+//         fields: "*items,+items.metadata,*items.variant,*items.product,*fulfillments,*fulfillments.items,*payment_collections,*payment_collections.payments,*shipping_methods,*shipping_address,*billing_address",
+//         ...filters,
+//       },
+//       headers,
+//       next
+//       // cache: "force-cache"
+//     })
+//     .then(({ orders }) => orders)
+//     .catch((err) => medusaError(err))
+// }
+
+// export const createTransferRequest = async (
+//   state: {
+//     success: boolean
+//     error: string | null
+//     order: HttpTypes.StoreOrder | null
+//   },
+//   formData: FormData
+// ): Promise<{
+//   success: boolean
+//   error: string | null
+//   order: HttpTypes.StoreOrder | null
+// }> => {
+//   const id = formData.get("order_id") as string
+
+//   if (!id) {
+//     return { success: false, error: "Order ID is required", order: null }
+//   }
+
+//   const headers = await getAuthHeaders()
+
+//   return await sdk.store.order
+//     .requestTransfer(
+//       id,
+//       {},
+//       {
+//         fields: "id, email",
+//       },
+//       headers
+//     )
+//     .then(({ order }) => ({ success: true, error: null, order }))
+//     .catch((err) => ({ success: false, error: err.message, order: null }))
+// }
+
+// export const acceptTransferRequest = async (id: string, token: string) => {
+//   const headers = await getAuthHeaders()
+
+//   return await sdk.store.order
+//     .acceptTransfer(id, { token }, {}, headers)
+//     .then(({ order }) => ({ success: true, error: null, order }))
+//     .catch((err) => ({ success: false, error: err.message, order: null }))
+// }
+
+// export const declineTransferRequest = async (id: string, token: string) => {
+//   const headers = await getAuthHeaders()
+
+//   return await sdk.store.order
+//     .declineTransfer(id, { token }, {}, headers)
+//     .then(({ order }) => ({ success: true, error: null, order }))
+//     .catch((err) => ({ success: false, error: err.message, order: null }))
+// }
+
 "use server"
 
 import { sdk } from "@lib/config"
@@ -19,11 +133,10 @@ export const retrieveOrder = async (id: string) => {
       method: "GET",
       query: {
         fields:
-          "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product",
+          "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product,*fulfillments,*fulfillments.items,*shipping_methods,*shipping_address,*billing_address",
       },
       headers,
       next
-      // cache: "force-cache",
     })
     .then(({ order }) => order)
     .catch((err) => medusaError(err))
@@ -42,22 +155,34 @@ export const listOrders = async (
     ...(await getCacheOptions("orders")),
   }
 
-  return sdk.client
+  // Fetch orders with proper fields
+  const orders = await sdk.client
     .fetch<HttpTypes.StoreOrderListResponse>(`/store/orders`, {
       method: "GET",
       query: {
         limit,
         offset,
+        // Try different sort parameter syntax
         order: "-created_at",
-        fields: "*items,+items.metadata,*items.variant,*items.product",
+        fields: "*items,*items.metadata,*items.variant,*items.product,*fulfillments,*fulfillments.items,*payment_collections,*payment_collections.payments,*shipping_methods,*shipping_address,*billing_address",
         ...filters,
       },
       headers,
       next
-      // cache: "force-cache"
     })
     .then(({ orders }) => orders)
     .catch((err) => medusaError(err))
+
+  // CLIENT-SIDE SORT AS BACKUP - Sort by created_at descending (newest first)
+  if (orders && Array.isArray(orders)) {
+    return orders.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime()
+      const dateB = new Date(b.created_at).getTime()
+      return dateB - dateA // Descending (newest first)
+    })
+  }
+
+  return orders
 }
 
 export const createTransferRequest = async (

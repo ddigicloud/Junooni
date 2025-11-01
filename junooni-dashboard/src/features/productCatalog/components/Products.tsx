@@ -284,7 +284,7 @@ const Products = () => {
         
         setProductMetadata(metadata);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        //console.error("Error fetching products:", error);
       } finally {
         setLoading(false);
       }
