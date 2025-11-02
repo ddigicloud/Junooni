@@ -2804,7 +2804,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
       </div>
       
       <div className="p-2 mb-2 text-xs text-gray-600 rounded bg-orange-50">
-        Drag to reorder â€¢ Top = Front
+        Drag to reorder • Top = Front
       </div>
       
       <div className="space-y-1 overflow-y-auto max-h-64 sm:max-h-80">
@@ -2940,7 +2940,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
       
       {layers.length === 0 && (
         <div className="py-8 text-center text-gray-500">
-          <div className="mb-2 text-2xl">ðŸ“„</div>
+          <div className="mb-2 text-2xl">📄</div>
           <p className="text-sm">No layers yet</p>
           <p className="mt-1 text-xs">Upload images to create layers</p>
         </div>
@@ -8003,7 +8003,7 @@ const renderPreview = useCallback(() => {
                         className={`w-full p-2 border rounded-lg transition-all touch-manipulation ${
                           isSelectedMockup
                             ? 'border-orange-500 ring-2 ring-orange-200'
-                            : 'border-white-200 hover:border-white-300 hover:shadow-sm'
+                            : 'border-none hover:border-white-300 hover:shadow-sm'
                         }`}
                       >
                         <div className="relative mb-2 overflow-hidden rounded bg-white-100 aspect-square">
@@ -8227,11 +8227,11 @@ const renderPreview = useCallback(() => {
                             onClick={() => setSelectedHeroMockup(mockup)}
                             className={`w-20 h-20 p-1 border rounded-lg transition-all touch-manipulation ${
                               isSelectedMockup
-                                ? 'border-orange-500 ring-2 ring-orange-200'
-                                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                                ? 'border-orange-500 ring-orange-200'
+                                : 'border-none hover:border-white-300 hover:shadow-sm'
                             }`}
                           >
-                            <div className="relative w-full h-full overflow-hidden bg-gray-100 rounded">
+                            <div className="relative w-full h-full overflow-hidden bg-gray-100 rounded border-none">
                                {requiresPixi ? (
                               // PIXI: Use dynamic key to force cleanup
                               <ThumbnailPreview
@@ -9703,7 +9703,9 @@ useEffect(() => {
                     backgroundColor: activeView === 'design' ? brandColor : 'transparent'
                   }}
                 >
-                  <PenTool size={isMobile ? 12 : 16} strokeWidth={2} />
+                 {!isMobile && (
+                    <PenTool size={16} strokeWidth={2} />
+                  )}
                   Design
                 </button>
                 {/* Debug //console Log */}
@@ -9733,7 +9735,9 @@ useEffect(() => {
                     backgroundColor: activeView === 'preview' ? brandColor : 'transparent'
                   }}
                 >
-                  <Eye size={isMobile ? 12 : 16} strokeWidth={2} />
+                  {!isMobile && (
+                    <Eye size={16} strokeWidth={2} />
+                  )}
                   Preview
                 </button>
                 
@@ -9794,12 +9798,12 @@ useEffect(() => {
                           className={`flex flex-col items-center p-2 rounded-lg transition-all touch-manipulation min-w-[80px] ${
                             activeArea === area
                               ? 'border-orange-500 border-2 bg-orange-50'
-                              : 'bg-white'
+                              : 'bg-white border-none'
                           }`}
                         >
                           <div className="relative w-16 h-16 mb-0 overflow-hidden bg-white border-none rounded">
                             {canvasImage ? (
-                              <div className="relative w-full h-full">
+                              <div className="relative w-full h-full border-none">
                                 {/* LAYER 1: Base color background */}
                                 <div
                                   className="absolute inset-0 w-full h-full"
@@ -10050,7 +10054,7 @@ useEffect(() => {
             <div className="flex-1 px-2 pt-0 pb-2 overflow-y-auto bg-white sm:p-2">
              {activeView === 'design' ? (
               <div className={`flex items-center justify-center h-auto overflow-y-auto ${
-                isMobile ?'px-2 pt-0 pb-28' : 'px-3 md:px-4 pt-0 pb-2 sm:p-3 md:p-6' // More bottom padding for mobile
+                isMobile ?'px-2 pt-8 pb-20' : 'px-3 md:px-4 pt-0 pb-2 sm:p-3 md:p-6' // More bottom padding for mobile
               }`}>
                 <div className="relative"> {/* Add wrapper div */}
                   {renderCanvas()}

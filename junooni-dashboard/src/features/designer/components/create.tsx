@@ -6463,7 +6463,7 @@ if (!printTechId || !printTechName) {
                       </Badge>
                     </div>
                     
-                    <div className="p-4 mb-5 border border-orange-200 rounded-md bg-orange-50">
+                    {/* <div className="p-4 mb-5 border border-orange-200 rounded-md bg-orange-50">
                       <div className="flex items-start">
                         <div className="flex-shrink-0 mr-3">
                           <IconInfoCircle className="h-5 w-5 text-[#e65100]" />
@@ -6477,7 +6477,7 @@ if (!printTechId || !printTechName) {
                           </p>
                         </div>
                       </div>
-                    </div>
+                    </div> */}
                     
                     {optionFields.map((opt, optionIndex) => (
                       <div key={opt.id} className="p-5 mb-4 transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
@@ -6639,7 +6639,7 @@ if (!printTechId || !printTechName) {
                                       </Button>
                                     </div>
                                   </div>
-                                  <div>
+                                  {/* <div>
                                     <label className="block mb-1.5 text-sm text-gray-700">Set stock for all selected</label>
                                     <div className="flex gap-2">
                                       <Input
@@ -6661,7 +6661,7 @@ if (!printTechId || !printTechName) {
                                         Apply
                                       </Button>
                                     </div>
-                                  </div>
+                                  </div> */}
                                 </div>
                               )}
                             </>

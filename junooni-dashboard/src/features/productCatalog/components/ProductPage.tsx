@@ -850,7 +850,7 @@ const ProductPage = () => {
                           </TooltipProvider>
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-3 flex flex-row gap-3 overflow-x-auto pb-2 hide-scrollbar">
                           {product.printT.map((tech: PrintingTechnology) => {
                             const isSelected = selectedTechnology?.id === tech.id;
                             const quality = getTechnologyQuality(tech);

@@ -164,7 +164,7 @@ export const listOrders = async (
         offset,
         // Try different sort parameter syntax
         order: "-created_at",
-        fields: "*items,*items.metadata,*items.variant,*items.product,*fulfillments,*fulfillments.items,*payment_collections,*payment_collections.payments,*shipping_methods,*shipping_address,*billing_address",
+       // fields:  "fulfillment_status,*items,*items.metadata,*items.variant,*items.product,*fulfillments,*fulfillments.items,*payment_collections,*payment_collections.payments,*shipping_methods,*shipping_address,*billing_address",
         ...filters,
       },
       headers,

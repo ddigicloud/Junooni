@@ -569,7 +569,7 @@ export const StreamlinedImageManager: React.FC<{
       )}
       
       {/* Association description text based on mode */}
-      {associationMode !== 'none' && (
+      {/* {associationMode !== 'none' && (
         <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
           <p className="flex items-start text-sm text-gray-700">
             <IconInfoCircle size={16} className="mt-0.5 mr-1.5 text-[#e65100]" />
@@ -581,7 +581,7 @@ export const StreamlinedImageManager: React.FC<{
             </span>
           </p>
         </div>
-      )}
+      )} */}
       
       {/* Single upload interface based on the current mode */}
       {renderUploadInterface()}

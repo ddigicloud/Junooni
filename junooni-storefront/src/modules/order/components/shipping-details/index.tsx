@@ -556,45 +556,45 @@ type ShippingDetailsProps = {
 const ShippingDetails = ({ order }: ShippingDetailsProps) => {
   // Function to get a more detailed fulfillment status with additional information
   const getDetailedFulfillmentStatus = () => {
-    console.log("=== ORDER DEBUG INFO ===")
-    console.log("Order ID:", order.id)
-    console.log("Fulfillment Status:", order.fulfillment_status)
-    console.log("Payment Status:", order.payment_status)
-    console.log("Order Status:", order.status)
-    console.log("Fulfillments:", order.fulfillments)
-    console.log("========================")
+    //console.log("=== ORDER DEBUG INFO ===")
+    //console.log("Order ID:", order.id)
+    //console.log("Fulfillment Status:", order.fulfillment_status)
+    //console.log("Payment Status:", order.payment_status)
+    //console.log("Order Status:", order.status)
+    //console.log("Fulfillments:", order.fulfillments)
+    //console.log("========================")
     
     // If order is fulfilled, it's delivered
     if (order.fulfillment_status === "fulfilled") {
-      console.log("✅ Status determined: DELIVERED")
+      //console.log("✅ Status determined: DELIVERED")
       return "delivered"
     }
     
     // If partially fulfilled, it's shipped
     if (order.fulfillment_status === "partially_fulfilled") {
-      console.log("✅ Status determined: SHIPPED")
+      //console.log("✅ Status determined: SHIPPED")
       return "shipped"
     }
     
     // If not fulfilled but payment is captured, it's being processed
     if (order.fulfillment_status === "not_fulfilled" && order.payment_status === "captured") {
-      console.log("✅ Status determined: PROCESSING")
+      //console.log("✅ Status determined: PROCESSING")
       return "processing"
     }
     
     // If payment is captured but status is unclear, assume processing
     if (order.payment_status === "captured") {
-      console.log("✅ Status determined: PROCESSING (fallback)")
+      //console.log("✅ Status determined: PROCESSING (fallback)")
       return "processing"
     }
     
     // Default to pending if payment not captured
-    console.log("✅ Status determined: PENDING")
+    //console.log("✅ Status determined: PENDING")
     return "pending"
   }
 
   const status = getDetailedFulfillmentStatus()
-  console.log("Final status:", status)
+  //console.log("Final status:", status)
 
   // Enhanced timeline steps with dynamic updates based on actual API data
   const getTimelineSteps = () => {
@@ -690,30 +690,36 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
           </div>
 
           {/* Contact Info */}
-          <div className="p-4 rounded-lg bg-gray-50">
+          <div className="p-4 rounded-lg bg-gray-50 w-full">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <div className="flex items-center justify-center w-10 h-10 text-orange-600 bg-orange-100 rounded-full">
                   <MapPin size={20} />
                 </div>
               </div>
-              <div className="ml-4" data-testid="shipping-contact-summary">
+
+              <div
+                className="ml-4 w-full break-words overflow-hidden"
+                data-testid="shipping-contact-summary"
+              >
                 <h3 className="text-sm font-medium text-gray-700">
                   Contact Information
                 </h3>
-                <div className="mt-2 text-sm text-gray-600">
-                  <p>
+
+                <div className="mt-2 text-sm text-gray-600 break-words overflow-hidden">
+                  <p className="break-words">
                     <span className="font-medium">Email:</span> {order.email}
                   </p>
+
                   {order.shipping_address?.phone && (
-                    <p>
+                    <p className="break-words">
                       <span className="font-medium">Phone:</span>{" "}
                       {order.shipping_address?.phone}
                     </p>
                   )}
-                  {/* Add customer information if available */}
+
                   {(order.customer?.first_name || order.customer?.last_name) && (
-                    <p>
+                    <p className="break-words">
                       <span className="font-medium">Customer:</span>{" "}
                       {order.customer?.first_name} {order.customer?.last_name}
                     </p>
@@ -722,6 +728,7 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
               </div>
             </div>
           </div>
+
 
           {/* Shipping Method */}
           <div className="p-4 rounded-lg bg-gray-50">

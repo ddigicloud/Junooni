@@ -45,7 +45,7 @@ export default async function Orders() {
               order-related questions, please contact our customer support team.
             </p>
 
-            <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-3">
+            {/* <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-3">
               <div className="flex items-center p-3 bg-white border border-gray-100 rounded-md shadow-sm">
                 <div className="flex items-center justify-center w-8 h-8 mr-3 text-green-600 bg-green-100 rounded-full">
                   <Package size={16} />
@@ -82,7 +82,7 @@ export default async function Orders() {
                 </div>
                 <ArrowRight size={16} className="ml-auto text-gray-400" />
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

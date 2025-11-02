@@ -1557,7 +1557,7 @@ ${params.order.shipping_address.city || ''} - ${params.order.shipping_address.po
           columns: [
             {
               width: '*',
-              text: `If you have any questions, feel free to call customer care at ${billFromAddress.phone || '+91 00 0000 0000'} or use Contact Us section in our App, or log on to www.junooni.com/contactus`,
+             text: `If you have any questions, feel free to call customer care at +91 8694062222 or log on to www.junooni.com/contact-us`,
               style: 'footerText',
               margin: [0, 0, 0, 0]
             }

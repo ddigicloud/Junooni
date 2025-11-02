@@ -1075,7 +1075,7 @@
 
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import {
   Search,
   ArrowLeft,
@@ -1106,6 +1106,7 @@ import { toast } from "react-toastify"
 import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { useRouter } from "next/navigation"
 
 // Cookie utility functions
 const getCookie = (name: string): string | null => {
@@ -1133,7 +1134,7 @@ const getUserPreferences = () => {
       interactions: {}
     }
   } catch (error) {
-    console.error('Error parsing user preferences:', error)
+    //console.error('Error parsing user preferences:', error)
     return {
       likedCategories: [],
       viewedCreators: [],
@@ -1146,7 +1147,7 @@ const saveUserPreferences = (preferences: any) => {
   try {
     setCookie('userPreferences', encodeURIComponent(JSON.stringify(preferences)))
   } catch (error) {
-    console.error('Error saving user preferences:', error)
+    //console.error('Error saving user preferences:', error)
   }
 }
 
@@ -1244,24 +1245,113 @@ const CreatorDiscoveryPage = () => {
     Record<string, boolean>
   >({})
   const [userPreferences, setUserPreferences] = useState(getUserPreferences())
+  const [refetchTrigger, setRefetchTrigger] = useState(0)
 
   const avatarImage = assets.rabit
   const CoverImage = assets.wishlistBanner
+  const router = useRouter()
+  const showSuccessToast = (message: string) => {
+  toast.success(message, {
+    style: {
+      background: '#e65100',
+      color: '#fff',
+    },
+    iconTheme: {
+      primary: '#fff',
+      secondary: '#e65100',
+    },
+  })
+}
+
+  // Helper function to safely get string value from potentially nested data
+  const safeString = (value: any, fallback: string = ""): string => {
+    if (value === null || value === undefined) return fallback
+    if (typeof value === "string") return value
+    if (typeof value === "number") return String(value)
+    if (typeof value === "object") {
+      // If it's an object, try to extract a meaningful string
+      if (value.name) return String(value.name)
+      if (value.title) return String(value.title)
+      if (value.value) return String(value.value)
+      return fallback
+    }
+    return String(value)
+  }
+
+  // Helper to safely get number
+  const safeNumber = (value: any, fallback: number = 0): number => {
+    if (value === null || value === undefined) return fallback
+    const num = typeof value === "number" ? value : Number(value)
+    return isNaN(num) ? fallback : num
+  }
 
   // Helper function to check if a vendor matches current filters
   const matchesCurrentFilters = (vendor: any) => {
+    const vendorName = safeString(vendor.name).toLowerCase()
+    const searchLower = searchQuery.toLowerCase()
+    
     const matchesSearch =
       searchQuery === "" ||
-      vendor.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      false
+      vendorName.includes(searchLower)
 
+    const vendorCategory = safeString(vendor.creator_title).toLowerCase()
     const matchesCategory =
       activeCategory === "all" ||
-      (vendor.creator_title &&
-        vendor.creator_title.toLowerCase() === activeCategory.toLowerCase())
+      vendorCategory === activeCategory.toLowerCase()
 
     return matchesSearch && matchesCategory
   }
+
+  // Function to refetch followed creators
+  const refetchFollowedCreators = useCallback(async () => {
+    if (!currentCustomer) return
+    
+    try {
+      //console.log("Refetching followed creators...")
+      const result = await retriveVendorsFollowers()
+      
+      let creators: Creator[] = []
+      
+      // Enhanced parsing to handle various API response structures
+      if (result) {
+        //console.log("Refetch - Raw API result:", JSON.stringify(result, null, 2))
+        
+        if (typeof result === 'object' && 'follow' in result) {
+          const followerResult = result as CustomerFollowers
+          
+          if (followerResult.follow?.creators && Array.isArray(followerResult.follow.creators)) {
+            creators = followerResult.follow.creators
+          } else if (Array.isArray(followerResult.follow)) {
+            creators = followerResult.follow.map((item: any) => ({
+              id: item.vendor?.id || item.id,
+              vendor: item.vendor || item
+            }))
+          }
+        } else if (Array.isArray(result)) {
+          creators = result.map((item: any) => ({
+            id: item.vendor?.id || item.id,
+            vendor: item.vendor || item
+          }))
+        }
+      }
+      
+      //console.log("Refetch - Parsed creators:", creators)
+      setCustomerVendors(creators)
+      setFilteredVendors(creators)
+      
+      // Update followed creators map
+      const followedMap: Record<string, boolean> = {}
+      creators.forEach((creator) => {
+        if (creator.vendor?.id) {
+          followedMap[creator.vendor.id] = true
+        }
+      })
+      setFollowedCreators(followedMap)
+      //console.log("Refetch - Updated followed map:", followedMap)
+    } catch (error) {
+      //console.error("Error refetching followed creators:", error)
+    }
+  }, [currentCustomer])
 
   // Function to get related creators based on followed creators AND cookie preferences
   const getRelatedCreators = (followedCreators: Creator[], allVendors: AllVendor[], preferences: any) => {
@@ -1275,15 +1365,19 @@ const CreatorDiscoveryPage = () => {
       if (creator.vendor?.id) {
         followedCreatorIds.add(creator.vendor.id)
       }
-      if (creator.vendor?.creator_title) {
-        followedCategories.add(creator.vendor.creator_title.toLowerCase())
+      const creatorTitle = safeString(creator.vendor?.creator_title).toLowerCase()
+      if (creatorTitle) {
+        followedCategories.add(creatorTitle)
       }
     })
 
     // Add categories from cookie preferences
     if (preferences?.likedCategories) {
       preferences.likedCategories.forEach((cat: string) => {
-        followedCategories.add(cat.toLowerCase())
+        const catStr = safeString(cat).toLowerCase()
+        if (catStr) {
+          followedCategories.add(catStr)
+        }
       })
     }
 
@@ -1293,8 +1387,10 @@ const CreatorDiscoveryPage = () => {
       .map((vendor) => {
         let score = 0
         
+        const vendorCategory = safeString(vendor.creator_title).toLowerCase()
+        
         // Higher score for matching category preferences
-        if (vendor.creator_title && followedCategories.has(vendor.creator_title.toLowerCase())) {
+        if (vendorCategory && followedCategories.has(vendorCategory)) {
           score += 10
         }
         
@@ -1327,15 +1423,19 @@ const CreatorDiscoveryPage = () => {
     
     // From actual follows
     customerVendors.forEach((creator) => {
-      if (creator.vendor?.creator_title) {
-        categories.add(creator.vendor.creator_title)
+      const title = safeString(creator.vendor?.creator_title)
+      if (title) {
+        categories.add(title)
       }
     })
     
     // From cookie preferences
     if (userPreferences?.likedCategories) {
       userPreferences.likedCategories.forEach((cat: string) => {
-        categories.add(cat)
+        const title = safeString(cat)
+        if (title) {
+          categories.add(title)
+        }
       })
     }
     
@@ -1355,9 +1455,10 @@ const CreatorDiscoveryPage = () => {
     const fetchCustomer = async () => {
       try {
         const customer = await retrieveCustomer()
+        //console.log("Customer fetched:", customer)
         setCurrentCustomer(customer)
       } catch (error) {
-        console.log('User not logged in, using cookie-based preferences')
+        //console.log('User not logged in, using cookie-based preferences')
         setCurrentCustomer(null)
       }
     }
@@ -1370,14 +1471,16 @@ const CreatorDiscoveryPage = () => {
     const fetchAllVendors = async () => {
       try {
         const vendors = await retriveVendors()
+        //console.log("All vendors fetched:", vendors?.length || 0)
         if (vendors && Array.isArray(vendors)) {
           setAllVendors(vendors)
           
-          // Extract unique categories from vendors
+          // Extract unique categories from vendors - using safe string helper
           const uniqueCategories = new Set<string>()
           vendors.forEach((vendor) => {
-            if (vendor.creator_title) {
-              uniqueCategories.add(vendor.creator_title)
+            const title = safeString(vendor.creator_title)
+            if (title) {
+              uniqueCategories.add(title)
             }
           })
 
@@ -1392,13 +1495,37 @@ const CreatorDiscoveryPage = () => {
           setCategories(categoryList)
         }
       } catch (error) {
-        console.error("Error fetching vendors:", error)
+        //console.error("Error fetching vendors:", error)
         toast.error("Failed to load creators")
       }
     }
 
     fetchAllVendors()
   }, [])
+
+  // ADD THE NEW USEEFFECT HERE - RIGHT AFTER THE ABOVE ONE
+// useEffect(() => {
+//   const fetchAllFollowerCounts = async () => {
+//     if (allVendors.length > 0) {
+//       const countsPromises = allVendors.map(async (vendor) => {
+//         const count = await retriveVendorsFollowers(vendor.id || "")
+//         return { id: vendor.id || "", count: count || 0 }
+//       })
+
+//       const counts = await Promise.all(countsPromises)
+//       const countsMap = counts.reduce(
+//         (acc, { id, count }) => {
+//           acc[id] = count
+//           return acc
+//         },
+//         {} as Record<string, number>
+//       )
+//       setFollowerCounts(prev => ({ ...prev, ...countsMap }))
+//     }
+//   }
+
+//   fetchAllFollowerCounts()
+// }, [allVendors])
 
   // Fetch customer vendors data (only if logged in)
   useEffect(() => {
@@ -1407,24 +1534,58 @@ const CreatorDiscoveryPage = () => {
       try {
         if (currentCustomer) {
           // User is logged in - fetch their follows
-          const result = await retriveVendorsFollowers()
+          //const result = await retriveVendorsFollowers()
+          const result = await followerList()
+          
           
           let creators: Creator[] = []
           
-          if (result && typeof result === 'object' && 'follow' in result) {
-            const followerResult = result as CustomerFollowers
-            console.log("Fetched follower result:", followerResult)
+          // Enhanced parsing to handle various API response structures
+          if (result) {
+            //console.log("Raw API result:", JSON.stringify(result, null, 2))
             
-            // Check if follow.creators exists and is an array
-            if (followerResult.follow?.creators && Array.isArray(followerResult.follow.creators)) {
-              creators = followerResult.follow.creators
+            // Try multiple possible response structures
+            if (typeof result === 'object' && 'follow' in result) {
+              const followerResult = result as CustomerFollowers
+              
+              // Pattern 1: follow.creators array
+              if (followerResult.follow?.creators && Array.isArray(followerResult.follow.creators)) {
+                creators = followerResult.follow.creators
+                //console.log("Pattern 1: Found creators in follow.creators")
+              }
+              // Pattern 2: follow is directly an array
+              else if (Array.isArray(followerResult.follow)) {
+                creators = followerResult.follow.map((item: any) => ({
+                  id: item.vendor?.id || item.id,
+                  vendor: item.vendor || item
+                }))
+                //console.log("Pattern 2: Found creators in follow array")
+              }
+              // Pattern 3: follow is an object with vendor data
+              else if (followerResult.follow && typeof followerResult.follow === 'object') {
+                // Check if follow has vendor properties directly
+                const followObj = followerResult.follow as any
+                if (followObj.vendor || followObj.id) {
+                  creators = [{
+                    id: followObj.vendor?.id || followObj.id,
+                    vendor: followObj.vendor || followObj
+                  }]
+                  //console.log("Pattern 3: Found single creator in follow object")
+                }
+              }
             }
-            // Fallback: check if follow itself is an array (for backwards compatibility)
-            else if (Array.isArray((result as FollowerResult).follow)) {
-              creators = (result as FollowerResult).follow as any
+            // Pattern 4: result is directly an array of creators
+            else if (Array.isArray(result)) {
+              creators = result.map((item: any) => ({
+                id: item.vendor?.id || item.id,
+                vendor: item.vendor || item
+              }))
+              //console.log("Pattern 4: Found creators in direct array")
             }
           }
-          console.log("Fetched creators:", creators)
+          
+          //console.log("Final parsed creators:", creators)
+          //console.log("Number of creators found:", creators.length)
 
           setCustomerVendors(creators)
           setFilteredVendors(creators)
@@ -1437,6 +1598,7 @@ const CreatorDiscoveryPage = () => {
             }
           })
           setFollowedCreators(followedMap)
+          //console.log("Followed creators map:", followedMap)
 
           // Sync with cookies
           creators.forEach((creator) => {
@@ -1446,27 +1608,32 @@ const CreatorDiscoveryPage = () => {
           })
 
           // Fetch follower counts using the newly fetched creators (not old state)
-          const countsPromises = creators.map(async (creator) => {
-            const count = await followerList(creator.vendor?.id || "")
-            return { id: creator.vendor?.id || "", count: count || 0 }
-          })
+          if (creators.length > 0) {
+            const countsPromises = creators.map(async (creator) => {
+              const count = await retriveVendorsFollowers(creator.vendor?.id || "")
+              return { id: creator.vendor?.id || "", count: count || 0 }
+            })
 
-          const counts = await Promise.all(countsPromises)
-          const countsMap = counts.reduce(
-            (acc, { id, count }) => {
-              acc[id] = count
-              return acc
-            },
-            {} as Record<string, number>
-          )
-          setFollowerCounts(countsMap)
+            const counts = await Promise.all(countsPromises)
+            const countsMap = counts.reduce(
+              (acc, { id, count }) => {
+                acc[id] = count
+                return acc
+              },
+              {} as Record<string, number>
+            )
+            setFollowerCounts(countsMap)
+          }
         } else {
           // User not logged in - show no followed creators but still show recommendations
           setCustomerVendors([])
           setFilteredVendors([])
+          setFollowedCreators({})
         }
       } catch (error) {
-        console.error("Error fetching data:", error)
+        //console.error("Error fetching followed creators:", error)
+        // Log the full error for debugging
+        //console.error("Full error details:", JSON.stringify(error, null, 2))
         toast.error("Failed to load your followed creators")
       } finally {
         setIsLoading(false)
@@ -1474,7 +1641,7 @@ const CreatorDiscoveryPage = () => {
     }
 
     fetchData()
-  }, [currentCustomer])
+  }, [currentCustomer, refetchTrigger])
 
   // Filter vendors based on search and category
   useEffect(() => {
@@ -1513,7 +1680,10 @@ const CreatorDiscoveryPage = () => {
     try {
       if (followedCreators[vendorId]) {
         // Unfollow
+        //console.log("Unfollowing vendor:", vendorId)
         await deletefollower(vendorId)
+        
+        // Update local state immediately
         setFollowedCreators((prev) => ({ ...prev, [vendorId]: false }))
         
         // Remove from customer vendors
@@ -1524,7 +1694,10 @@ const CreatorDiscoveryPage = () => {
         toast.success("Unfollowed successfully")
       } else {
         // Follow
+        //console.log("Following vendor:", vendorId)
         await Addfollower(vendorId)
+        
+        // Update local state immediately
         setFollowedCreators((prev) => ({ ...prev, [vendorId]: true }))
         
         // Add to customer vendors
@@ -1535,13 +1708,26 @@ const CreatorDiscoveryPage = () => {
         }
         
         toast.success("Followed successfully")
+        //showSuccessToast("Followed successfully")
       }
       
       // Refresh preferences
       setUserPreferences(getUserPreferences())
+      
+      // Trigger a refetch to ensure data consistency
+      setTimeout(() => {
+        setRefetchTrigger(prev => prev + 1)
+      }, 500)
     } catch (error) {
-      console.error("Error toggling follow:", error)
+      //console.error("Error toggling follow:", error)
       toast.error("Failed to update follow status")
+      
+      // Revert the optimistic update on error
+      if (followedCreators[vendorId]) {
+        setFollowedCreators((prev) => ({ ...prev, [vendorId]: true }))
+      } else {
+        setFollowedCreators((prev) => ({ ...prev, [vendorId]: false }))
+      }
     } finally {
       setIsLoadingFollow((prev) => ({ ...prev, [vendorId]: false }))
     }
@@ -1577,8 +1763,8 @@ const CreatorDiscoveryPage = () => {
 
     return (
       <Link
-        href={`/creator/${vendor.handle || vendor.id}`}
-        onClick={() => handleCreatorView(vendor.id, vendor.creator_title || '')}
+        href={`/creator/${safeString(vendor.handle) || vendor.id}`}
+        onClick={() => handleCreatorView(vendor.id, safeString(vendor.creator_title))}
       >
         <motion.div
           className="flex flex-col h-full overflow-hidden transition-all duration-300 bg-white rounded-lg shadow-sm hover:shadow-md"
@@ -1588,8 +1774,8 @@ const CreatorDiscoveryPage = () => {
           <div className="relative h-32 bg-gradient-to-r from-[#e65100] to-[#ff6d00] flex-shrink-0">
             {vendor.coverphoto ? (
               <Image
-                src={vendor.coverphoto}
-                alt={`${vendor.name} banner`}
+                src={safeString(vendor.coverphoto)}
+                alt={`${safeString(vendor.name)} banner`}
                 fill
                 className="object-cover"
               />
@@ -1607,8 +1793,8 @@ const CreatorDiscoveryPage = () => {
               <div className="w-full h-full overflow-hidden bg-white border-4 border-white rounded-full">
                 {vendor.logo ? (
                   <Image
-                    src={vendor.logo}
-                    alt={vendor.name}
+                    src={safeString(vendor.logo)}
+                    alt={safeString(vendor.name)}
                     width={64}
                     height={64}
                     className="object-cover w-full h-full"
@@ -1624,15 +1810,15 @@ const CreatorDiscoveryPage = () => {
             {/* Creator Info - Fixed Height Container */}
             <div className="flex flex-col flex-grow">
               <h3 className="mb-1 text-lg font-semibold text-center line-clamp-1">
-                {vendor.name}
+                {safeString(vendor.name, "Creator")}
               </h3>
               <p className="mb-1 text-sm text-center text-gray-600 truncate">
-                @{vendor.handle || vendor.id}
+                @{safeString(vendor.handle) || vendor.id}
               </p>
               <div className="flex items-center justify-center h-5 mb-3">
                 {vendor.creator_title && (
                   <p className="text-xs text-center text-[#e65100] truncate">
-                    {vendor.creator_title}
+                    {safeString(vendor.creator_title)}
                   </p>
                 )}
               </div>
@@ -1641,33 +1827,33 @@ const CreatorDiscoveryPage = () => {
               <div className="flex items-start justify-center h-10 mb-3">
                 {vendor.creator_bio && (
                   <p className="text-sm text-center text-gray-600 line-clamp-2">
-                    {vendor.creator_bio}
+                    {safeString(vendor.creator_bio)}
                   </p>
                 )}
               </div>
 
               {/* Stats - Fixed Height */}
-              <div className="flex items-center justify-center h-6 gap-4 mb-3 text-sm">
+              {/* <div className="flex items-center justify-center h-6 gap-4 mb-3 text-sm">
                 <div className="flex items-center gap-1">
                   <Users size={14} className="flex-shrink-0 text-gray-400" />
-                  <span>{followerCounts[vendor.id] || 0}</span>
+                  <span>{safeNumber(followerCounts[vendor.id], 0)}</span>
                 </div>
                 {vendor.popular_product && (
                   <div className="flex items-center gap-1">
                     <Star size={14} className="text-[#e65100] flex-shrink-0" />
                     <span className="text-xs text-gray-500 truncate max-w-[100px]">
-                      {vendor.popular_product}
+                      {safeString(vendor.popular_product)}
                     </span>
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>
 
             {/* Follow Button - Fixed at Bottom */}
             <button
               onClick={(e) => {
                 e.preventDefault()
-                handleFollowToggle(vendor.id, vendor.creator_title || '')
+                handleFollowToggle(vendor.id, safeString(vendor.creator_title))
               }}
               disabled={isLoadingFollow[vendor.id]}
               className={`w-full py-2 text-sm font-medium rounded-md transition flex-shrink-0 ${
@@ -1694,8 +1880,8 @@ const CreatorDiscoveryPage = () => {
 
     return (
       <Link
-        href={`/creator/${vendor.handle || vendor.id}`}
-        onClick={() => handleCreatorView(vendor.id, vendor.creator_title || '')}
+        href={`/creator/${safeString(vendor.handle) || vendor.id}`}
+        onClick={() => handleCreatorView(vendor.id, safeString(vendor.creator_title))}
       >
         <motion.div
           className="flex flex-col h-full overflow-hidden transition-all duration-300 bg-white rounded-lg shadow-sm hover:shadow-md"
@@ -1705,8 +1891,8 @@ const CreatorDiscoveryPage = () => {
           <div className="relative h-32 bg-gradient-to-r from-[#e65100] to-[#ff6d00] flex-shrink-0">
             {vendor.coverphoto ? (
               <Image
-                src={vendor.coverphoto}
-                alt={`${vendor.name} banner`}
+                src={safeString(vendor.coverphoto)}
+                alt={`${safeString(vendor.name)} banner`}
                 fill
                 className="object-cover"
               />
@@ -1732,8 +1918,8 @@ const CreatorDiscoveryPage = () => {
               <div className="w-full h-full overflow-hidden bg-white border-4 border-white rounded-full">
                 {vendor.logo ? (
                   <Image
-                    src={vendor.logo}
-                    alt={vendor.name}
+                    src={safeString(vendor.logo)}
+                    alt={safeString(vendor.name)}
                     width={64}
                     height={64}
                     className="object-cover w-full h-full"
@@ -1749,15 +1935,15 @@ const CreatorDiscoveryPage = () => {
             {/* Creator Info - Fixed Height Container */}
             <div className="flex flex-col flex-grow">
               <h3 className="mb-1 text-lg font-semibold text-center line-clamp-1">
-                {vendor.name}
+                {safeString(vendor.name, "Creator")}
               </h3>
               <p className="mb-1 text-sm text-center text-gray-600 truncate">
-                @{vendor.handle || vendor.id}
+                @{safeString(vendor.handle) || vendor.id}
               </p>
               <div className="flex items-center justify-center h-5 mb-3">
                 {vendor.creator_title && (
                   <p className="text-xs text-center text-[#e65100] truncate">
-                    {vendor.creator_title}
+                    {safeString(vendor.creator_title)}
                   </p>
                 )}
               </div>
@@ -1766,7 +1952,7 @@ const CreatorDiscoveryPage = () => {
               <div className="flex items-start justify-center h-10 mb-3">
                 {vendor.creator_bio && (
                   <p className="text-sm text-center text-gray-600 line-clamp-2">
-                    {vendor.creator_bio}
+                    {safeString(vendor.creator_bio)}
                   </p>
                 )}
               </div>
@@ -1777,7 +1963,7 @@ const CreatorDiscoveryPage = () => {
                   <div className="flex items-center justify-center gap-1">
                     <Star size={14} className="text-[#e65100] flex-shrink-0" />
                     <span className="text-xs text-gray-500 truncate max-w-[180px]">
-                      {vendor.popular_product}
+                      {safeString(vendor.popular_product)}
                     </span>
                   </div>
                 )}
@@ -1788,7 +1974,7 @@ const CreatorDiscoveryPage = () => {
             <button
               onClick={(e) => {
                 e.preventDefault()
-                handleFollowToggle(vendor.id, vendor.creator_title || '')
+                handleFollowToggle(vendor.id, safeString(vendor.creator_title))
               }}
               disabled={isLoadingFollow[vendor.id]}
               className={`w-full py-2 text-sm font-medium rounded-md transition flex-shrink-0 ${
@@ -1815,27 +2001,40 @@ const CreatorDiscoveryPage = () => {
       <header className="sticky top-0 z-50 mt-16 bg-white border-b shadow-sm">
         <div className="container px-4 py-4 mx-auto">
           <div className="flex items-center justify-between">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search creators..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[#e65100] focus:border-transparent w-40 md:w-64"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Search
-                className="absolute text-gray-400 transform -translate-y-1/2 left-3 top-1/2"
-                size={18}
-              />
-              {searchQuery && (
-                <button
-                  className="absolute text-gray-400 transform -translate-y-1/2 right-3 top-1/2 hover:text-gray-500"
-                  onClick={() => setSearchQuery("")}
-                >
-                  <X size={16} />
-                </button>
-              )}
+            <div className="flex items-center gap-3">
+              {/* Back Button */}
+              <button
+                onClick={() => router.back()}
+                className="p-2 transition-colors rounded-full hover:bg-gray-100"
+                aria-label="Go back"
+              >
+                <ArrowLeft size={20} className="text-gray-700" />
+              </button>
+              
+              {/* Search Bar */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search creators..."
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[#e65100] focus:border-transparent w-40 md:w-64"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Search
+                  className="absolute text-gray-400 transform -translate-y-1/2 left-3 top-1/2"
+                  size={18}
+                />
+                {searchQuery && (
+                  <button
+                    className="absolute text-gray-400 transform -translate-y-1/2 right-3 top-1/2 hover:text-gray-500"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
             </div>
+            
             <div className="">
               <button
                 className="relative flex items-center gap-2 p-2 px-4 bg-gray-100 rounded-full"
@@ -2033,8 +2232,15 @@ const CreatorDiscoveryPage = () => {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {allVendors
                   .filter(v => !recommendedCreators.some(rc => rc.id === v.id))
-                  .filter(v => activeCategory === 'all' || v.creator_title?.toLowerCase() === activeCategory)
-                  .filter(v => searchQuery === '' || v.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .filter(v => {
+                    const vCategory = safeString(v.creator_title).toLowerCase()
+                    return activeCategory === 'all' || vCategory === activeCategory
+                  })
+                  .filter(v => {
+                    const vName = safeString(v.name).toLowerCase()
+                    const search = searchQuery.toLowerCase()
+                    return searchQuery === '' || vName.includes(search)
+                  })
                   .slice(0, 8)
                   .map((vendor) => (
                     <RecommendedCreatorCard key={vendor.id} vendor={vendor} />

@@ -624,35 +624,78 @@ const DashboardTab = ({
   }
 
   const getDisplayStatus = (order) => {
-    if (order.fulfillment_status) {
-      const statusMap = {
-        'not_fulfilled': 'Processing',
-        'partially_fulfilled': 'Partially Fulfilled',
-        'fulfilled': 'Fulfilled',
-        'partially_shipped': 'Partially Shipped',
-        'shipped': 'Shipped',
-        'partially_delivered': 'Partially Delivered',
-        'delivered': 'Delivered',
-        'canceled': 'Canceled'
-      }
-      return statusMap[order.fulfillment_status] || 
-             order.fulfillment_status.charAt(0).toUpperCase() + 
-             order.fulfillment_status.slice(1).replace(/_/g, ' ')
+  // First, try to use fulfillment_status if it exists
+  if (order.fulfillment_status) {
+    const statusMap = {
+      'not_fulfilled': 'Processing',
+      'partially_fulfilled': 'Partially Fulfilled',
+      'fulfilled': 'Fulfilled',
+      'partially_shipped': 'Partially Shipped',
+      'shipped': 'Shipped',
+      'partially_delivered': 'Partially Delivered',
+      'delivered': 'Delivered',
+      'canceled': 'Canceled'
     }
-
-    if (order.status) {
-      const statusMap = {
-        'pending': 'Processing',
-        'completed': 'Completed',
-        'canceled': 'Canceled',
-        'requires_action': 'Requires Action'
-      }
-      return statusMap[order.status] || 
-             order.status.charAt(0).toUpperCase() + order.status.slice(1)
-    }
-
-    return 'Processing'
+    return statusMap[order.fulfillment_status] || 
+           order.fulfillment_status.charAt(0).toUpperCase() + 
+           order.fulfillment_status.slice(1).replace(/_/g, ' ')
   }
+
+  // If not available, derive from fulfillments array
+  if (order.fulfillments && order.fulfillments.length > 0) {
+    const activeFulfillments = order.fulfillments.filter(f => !f.canceled_at)
+    
+    if (activeFulfillments.length === 0) {
+      return 'Processing'
+    }
+    
+    // Check if all items are delivered
+    const allDelivered = activeFulfillments.every(f => f.delivered_at)
+    if (allDelivered) {
+      return 'Delivered'
+    }
+    
+    // Check if any items are delivered
+    const someDelivered = activeFulfillments.some(f => f.delivered_at)
+    if (someDelivered) {
+      return 'Partially Delivered'
+    }
+    
+    // Check if all items are shipped
+    const allShipped = activeFulfillments.every(f => f.shipped_at)
+    if (allShipped) {
+      return 'Shipped'
+    }
+    
+    // Check if any items are shipped
+    const someShipped = activeFulfillments.some(f => f.shipped_at)
+    if (someShipped) {
+      return 'Partially Shipped'
+    }
+    
+    // Check if any items are packed
+    const somePacked = activeFulfillments.some(f => f.packed_at)
+    if (somePacked) {
+      return 'Packed'
+    }
+    
+    return 'Fulfilled'
+  }
+
+  // Fall back to order.status
+  if (order.status) {
+    const statusMap = {
+      'pending': 'Processing',
+      'completed': 'Completed',
+      'canceled': 'Canceled',
+      'requires_action': 'Requires Action'
+    }
+    return statusMap[order.status] || 
+           order.status.charAt(0).toUpperCase() + order.status.slice(1)
+  }
+
+  return 'Processing'
+}
 
   const hasExpandedData = (order) => {
     return order.fulfillments !== undefined && 

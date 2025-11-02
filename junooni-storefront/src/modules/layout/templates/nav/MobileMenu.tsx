@@ -235,25 +235,19 @@ useEffect(() => {
 // }, []);
 
 const hamburgerColor = useMemo(() => {
-  const currentPath = window?.location?.pathname;
+  // Guard against SSR - return default color if window is not available
+  if (typeof window === 'undefined') {
+    return "text-black";
+  }
+  
+  const currentPath = window.location.pathname;
   const isHomeOrLocalized = isHomePage || currentPath === '/in';
-  const viewportHeight = window?.innerHeight || 800;
+  const viewportHeight = window.innerHeight || 800;
   const isPastTenVH = scrollY > viewportHeight * 0.1;
   const shouldBeWhite = isHomeOrLocalized && !isAnyMenuHovered && !isPastTenVH;
   
-  // console.log('🍔 Direct scroll detection:', {
-  //   isHomeOrLocalized,
-  //   isAnyMenuHovered,
-  //   scrollY,
-  //   viewportHeight,
-  //   tenPercentVH: viewportHeight * 0.1,
-  //   isPastTenVH,
-  //   shouldBeWhite,
-  //   result: shouldBeWhite ? 'WHITE' : 'BLACK'
-  // });
-  
   return shouldBeWhite ? "text-white" : "text-black";
-}, [isHomePage, isAnyMenuHovered, scrollY]); 
+}, [isHomePage, isAnyMenuHovered, scrollY]);
 
   return (
     <div>
