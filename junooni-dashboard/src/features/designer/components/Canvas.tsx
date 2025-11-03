@@ -13,6 +13,7 @@ import {
 } from 'react-konva';
 import EnhancedMockupEngine from '../engines/mockup/MockupEngine';
 import { useNavigate } from '@tanstack/react-router';
+import JUNO from "@/assets/JUNO.mp4";
 import { Palette, Ruler, Upload, FolderOpen, Layers, Package, PenTool, Eye, Trash, Trash2, Menu, X, ChevronUp, ChevronDown , Calculator , IndianRupee, Shield, CheckCircle, ArrowLeft, Sparkles, Info } from 'lucide-react';
 // =====================================
 // TYPE DEFINITIONS
@@ -3654,6 +3655,7 @@ const [activeSize, setActiveSize] = useState<string>(() => {
   }, [productData]);
 
 
+
 const handlePanelMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
   if (isMobile) return;
   
@@ -3805,6 +3807,26 @@ const determineRequiredEngine = useCallback((mockup: DynamicMockupPhoto): 'canva
     return ['front'];
   }
 }, [getCurrentTechnology]);
+
+// Helper function to check if mockup generation should be skipped
+const shouldSkipMockupGeneration = useCallback((): boolean => {
+  // Check if product is not mockup compatible
+  if (productData?.surfConf?.No_Mockup_Compatible === true) {
+    return true;
+  }
+  
+  // Check if technology is Embroidery or Vinyl/Heat Transfer
+  const currentTech = getCurrentTechnology();
+  const techName = currentTech?.technologyName?.toLowerCase().trim() || '';
+  
+  // List of technologies that don't support mockup generation
+  const unsupportedTechnologies = [
+    'embroidery',
+    'vinyl/heat transfer'
+  ];
+  
+  return unsupportedTechnologies.some(tech => techName === tech);
+}, [productData, getCurrentTechnology]);
 
 const getAreaDisplayData = useCallback((areaId: string) => {
   try {
@@ -6540,7 +6562,7 @@ for (const mockup of allMockups) {
 
 const handleImportToStore = useCallback(async () => {
   // ✅ CRITICAL: Check for no_mockup_compatible FIRST
-  if (productData?.surfConf?.No_Mockup_Compatible === true) {
+ if (shouldSkipMockupGeneration()) {
     //console.log('âš ï¸ Product not mockup compatible - skipping mockup generation, navigating directly to Create');
     
     try {
@@ -7664,7 +7686,7 @@ const handleFileUpload = useCallback(async (files) => {
 const renderPreview = useCallback(() => {
 
   // Check if mockups are compatible
- if (productData?.surfConf?.No_Mockup_Compatible) {
+ if (shouldSkipMockupGeneration()) {
     return (
       <div className="flex items-center justify-center h-full mt-4 overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100 sm:mt-0">
         <div className="w-full max-w-xl px-4 mt-44 sm:mt-0">
@@ -7678,111 +7700,30 @@ const renderPreview = useCallback(() => {
             {/* Content */}
             <div className="relative p-6">
               {/* Icon Header */}
-              <div className="flex justify-center mb-2">
-                <div 
-                  className="p-3 shadow-lg rounded-xl"
-                  style={{ backgroundColor: '#e65100' }}
-                >
-                  <Sparkles className="w-8 h-8 text-white" />
+              <div className="flex justify-center mt-4">
+                <div className="p-0">
+                  <video 
+                    src={JUNO} 
+                    autoPlay 
+                    loop 
+                    muted 
+                    playsInline
+                    className="w-36 h-36 object-contain rounded-md"
+                  />
                 </div>
               </div>
               
               {/* Title */}
               <h2 className="mb-0 text-2xl font-bold text-center text-gray-900">
-                Preview of this Product is not Available
+                JUNO Will Create Your Mockup
               </h2>
               
               {/* Subtitle */}
               <p className="mb-1 text-sm text-center text-gray-600">
-                This product requires our team's expertise to create product photos
+                We don't have the ability to create mockups for the tech used, but JUNO does
               </p>
               
               {/* Features Grid */}
-              <div className="grid gap-3 mb-3 sm:grid-cols-3">
-                {/* Feature 1 */}
-                <div className="flex flex-col items-center p-3 transition-all rounded-lg bg-gray-50 hover:bg-gray-100">
-                  <div 
-                    className="p-2 mb-2 rounded-full"
-                    style={{ backgroundColor: '#fff3e0' }}
-                  >
-                    <Shield className="w-5 h-5" style={{ color: '#e65100' }} />
-                  </div>
-                  <h3 className="mb-1 text-xs font-semibold text-gray-900">
-                    Design Protected
-                  </h3>
-                  <p className="text-xs text-center text-gray-600">
-                    Elements saved
-                  </p>
-                </div>
-                
-                {/* Feature 2 */}
-                <div className="flex flex-col items-center p-3 transition-all rounded-lg bg-gray-50 hover:bg-gray-100">
-                  <div 
-                    className="p-2 mb-2 rounded-full"
-                    style={{ backgroundColor: '#fff3e0' }}
-                  >
-                    <CheckCircle className="w-5 h-5" style={{ color: '#e65100' }} />
-                  </div>
-                  <h3 className="mb-1 text-xs font-semibold text-gray-900">
-                    Expert Review
-                  </h3>
-                  <p className="text-xs text-center text-gray-600">
-                    Quality assured
-                  </p>
-                </div>
-                
-                {/* Feature 3 */}
-                <div className="flex flex-col items-center p-3 transition-all rounded-lg bg-gray-50 hover:bg-gray-100">
-                  <div 
-                    className="p-2 mb-2 rounded-full"
-                    style={{ backgroundColor: '#fff3e0' }}
-                  >
-                    <Palette className="w-5 h-5" style={{ color: '#e65100' }} />
-                  </div>
-                  <h3 className="mb-1 text-xs font-semibold text-gray-900">
-                    Custom Mockup
-                  </h3>
-                  <p className="text-xs text-center text-gray-600">
-                    Tailored design
-                  </p>
-                </div>
-              </div>
-              
-              {/* Info Box */}
-              <div 
-                className="p-3 mb-3 border-l-4 rounded-r-lg"
-                style={{ 
-                  backgroundColor: '#fff3e0',
-                  borderColor: '#e65100'
-                }}
-              >
-                <div className="flex items-start gap-2">
-                  <Info className="flex-shrink-0 w-4 h-4 mt-0.5" style={{ color: '#e65100' }} />
-                  <div>
-                    <p className="mb-1.5 text-xs font-semibold" style={{ color: '#e65100' }}>
-                      How it works
-                    </p>
-                    <ul className="space-y-1 text-xs text-gray-700">
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-0.5 text-orange-500">â€¢</span>
-                        <span>Complete your design in the editor</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-0.5 text-orange-500">â€¢</span>
-                        <span>Create your product with confidence</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-0.5 text-orange-500">â€¢</span>
-                        <span>Our team creates a professional mockup</span>
-                      </li>
-                      <li className="flex items-start gap-1.5">
-                        <span className="mt-0.5 text-orange-500">â€¢</span>
-                        <span>Production begins after approval</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
               
               {/* Action Button */}
               <button
@@ -8975,7 +8916,7 @@ const renderPreview = useCallback(() => {
                     <button
                       key={color.colorHex}
                       onClick={() => handleColorChange(color.colorHex, color.colorName)}
-                      className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center touch-manipulation ${
+                      className={`w-8 h-8 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center touch-manipulation ${
                         isSelected
                           ? 'border-orange-500 ring-2 ring-orange-200 scale-110' 
                           : 'border-gray-300 hover:border-gray-400'

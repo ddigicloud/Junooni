@@ -519,23 +519,60 @@ const ProductPage = () => {
 };
 
   // Get primary category path
-  const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
-    if (!product?.categories || product.categories.length === 0) {
-      return [{ url: '/productCatalog', label: 'Catalog' }];
-    }
+  // const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
+  //   if (!product?.categories || product.categories.length === 0) {
+  //     return [{ url: '/productCatalog', label: 'Catalog' }];
+  //   }
     
-    const primaryCategory = product.categories.reduce((prev: Category, current: Category) => 
-      (prev.breadcrumbs.length > current.breadcrumbs.length) ? prev : current
-    );
+  //   const primaryCategory = product.categories.reduce((prev: Category, current: Category) => 
+  //     (prev.breadcrumbs.length > current.breadcrumbs.length) ? prev : current
+  //   );
     
-    return [
-      { url: '/productCatalog', label: 'Catalog' },
-      ...primaryCategory.breadcrumbs.map((crumb: Breadcrumb) => ({ 
-        url: crumb.url, 
-        label: crumb.label 
-      }))
-    ];
-  };
+  //   return [
+  //     { url: '/productCatalog', label: 'Catalog' },
+  //     ...primaryCategory.breadcrumbs.map((crumb: Breadcrumb) => ({ 
+  //       url: crumb.url, 
+  //       label: crumb.label 
+  //     }))
+  //   ];
+  // };
+  // Get primary category path
+// Get primary category path
+const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
+  if (!product?.categories || product.categories.length === 0) {
+    return [{ url: '/productCatalog', label: 'Catalog' }];
+  }
+  
+  const primaryCategory = product.categories.reduce((prev: Category, current: Category) => 
+    (prev.breadcrumbs.length > current.breadcrumbs.length) ? prev : current
+  );
+  
+  return [
+    { url: '/productCatalog', label: 'Catalog' },
+    ...primaryCategory.breadcrumbs.map((crumb: Breadcrumb, index: number) => {
+      // Check if this is the last breadcrumb (current page)
+      const isLast = index === primaryCategory.breadcrumbs.length - 1;
+      
+      if (isLast) {
+        // Last breadcrumb uses the URL as-is (it's the current page)
+        return { 
+          url: crumb.url, 
+          label: crumb.label 
+        };
+      } else {
+        // For category breadcrumbs, extract only the last segment of the path
+        const urlPath = crumb.url.replace(/^\//, ''); // Remove leading slash
+        const segments = urlPath.split('/');
+        const slug = segments[segments.length - 1]; // Get the last segment
+        
+        return {
+          url: `/productCatalog/category/${slug}`,
+          label: crumb.label
+        };
+      }
+    })
+  ];
+};
   
   const toggleSection = (section: keyof typeof openSections): void => {
     setOpenSections(prev => ({
@@ -867,9 +904,9 @@ const ProductPage = () => {
                                 `}
                               >
                                 <div className="flex items-start gap-3">
-                                  <div className="flex-shrink-0 mt-1">
+                                  {/* <div className="flex-shrink-0 mt-1">
                                     {getTechnologyIcon(tech.technologyName)}
-                                  </div>
+                                  </div> */}
                                   
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-2">

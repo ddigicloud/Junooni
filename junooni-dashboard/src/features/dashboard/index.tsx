@@ -1606,7 +1606,7 @@ const DashboardPage = () => {
                     className="flex flex-col items-center justify-center h-auto py-4"
                     asChild
                   >
-                    <Link to="/settings">
+                    <Link to="/profile">
                       <Settings className="w-6 h-6 mb-2 text-gray-600" />
                       <span>Settings</span>
                     </Link>

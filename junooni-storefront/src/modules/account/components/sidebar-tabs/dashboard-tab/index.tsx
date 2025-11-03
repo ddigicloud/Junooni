@@ -132,6 +132,9 @@
 //   const safeUser = user || { name: "Customer", following: [] }
 //   const safeOrders = orders || []
 //   const safeUpcomingEvents = upcomingEvents || []
+//   console.log("Safe Orders:", safeOrders)
+//   console.log("Original Orders:", orders)
+//   console.log("Order fulfillment status:", safeOrders.length > 0 ? safeOrders[0].fulfillment_status : "N/A")
 
 //   // Helper function to get most recent order display
 //   // This handles both API and fallback data formats
@@ -427,7 +430,7 @@
 
 // export default DashboardTab
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   Package,
   ShoppingBag,
@@ -441,6 +444,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { WishlistProducts } from "@modules/wishlists/components/wishlistProducts"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { retrieveOrder } from "@lib/data/orders"
 
 const CreatorAvatar = ({ creator, size = 40 }) => {
   const [imageError, setImageError] = useState(false)
@@ -539,18 +543,53 @@ const DashboardTab = ({
   const safeUser = user || { name: "Customer", following: [] }
   const safeUpcomingEvents = upcomingEvents || []
 
-  // ⬇️ FIX: REVERSE THE ORDERS ARRAY SO NEWEST IS FIRST ⬇️
+  // State for detailed order data
+  const [latestOrderDetails, setLatestOrderDetails] = useState(null)
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false)
+
+  // Sort orders (newest first)
   const safeOrders = React.useMemo(() => {
     if (!orders || !Array.isArray(orders)) return []
     
-    // Sort by created_at date, newest first
     return [...orders].sort((a, b) => {
       const dateA = new Date(a.created_at).getTime()
       const dateB = new Date(b.created_at).getTime()
-      return dateB - dateA // Descending order (newest first)
+      return dateB - dateA
     })
   }, [orders])
-  console.log("Safe Orders (Sorted):", safeOrders)
+
+  // Fetch detailed data for the latest order
+  useEffect(() => {
+    const fetchLatestOrderDetails = async () => {
+      if (!safeOrders || safeOrders.length === 0) return
+      
+      setIsLoadingDetails(true)
+      try {
+        const latestOrderId = safeOrders[0].id
+        console.log("Fetching detailed order for:", latestOrderId)
+        
+        // Use your retrieveOrder server action
+        const detailedOrder = await retrieveOrder(latestOrderId)
+        
+        console.log("Detailed order received:", detailedOrder)
+        console.log("Fulfillment status:", detailedOrder?.fulfillment_status)
+        
+        setLatestOrderDetails(detailedOrder)
+      } catch (error) {
+        console.error('Failed to fetch order details:', error)
+      } finally {
+        setIsLoadingDetails(false)
+      }
+    }
+
+    fetchLatestOrderDetails()
+  }, [safeOrders])
+
+  // Use detailed order for tracking if available, otherwise fallback to basic order
+  const orderForTracking = latestOrderDetails || (safeOrders.length > 0 ? safeOrders[0] : null)
+
+  console.log("Order for tracking:", orderForTracking)
+  //console.log("Has expanded data:", orderForTracking ? hasExpandedData(orderForTracking) : false)
 
   const buildTimelineFromFulfillments = (order) => {
     const timeline = []
@@ -568,6 +607,7 @@ const DashboardTab = ({
 
     if (order.fulfillments && order.fulfillments.length > 0) {
       const activeFulfillments = order.fulfillments.filter(f => !f.canceled_at)
+      console.log("Fulfillment status:", order.fulfillment_status)
       
       activeFulfillments.forEach(fulfillment => {
         if (fulfillment.packed_at) {
@@ -624,78 +664,78 @@ const DashboardTab = ({
   }
 
   const getDisplayStatus = (order) => {
-  // First, try to use fulfillment_status if it exists
-  if (order.fulfillment_status) {
-    const statusMap = {
-      'not_fulfilled': 'Processing',
-      'partially_fulfilled': 'Partially Fulfilled',
-      'fulfilled': 'Fulfilled',
-      'partially_shipped': 'Partially Shipped',
-      'shipped': 'Shipped',
-      'partially_delivered': 'Partially Delivered',
-      'delivered': 'Delivered',
-      'canceled': 'Canceled'
+    // First, try to use fulfillment_status if it exists
+    if (order.fulfillment_status) {
+      const statusMap = {
+        'not_fulfilled': 'Processing',
+        'partially_fulfilled': 'Partially Fulfilled',
+        'fulfilled': 'Fulfilled',
+        'partially_shipped': 'Partially Shipped',
+        'shipped': 'Shipped',
+        'partially_delivered': 'Partially Delivered',
+        'delivered': 'Delivered',
+        'canceled': 'Canceled'
+      }
+      return statusMap[order.fulfillment_status] || 
+             order.fulfillment_status.charAt(0).toUpperCase() + 
+             order.fulfillment_status.slice(1).replace(/_/g, ' ')
     }
-    return statusMap[order.fulfillment_status] || 
-           order.fulfillment_status.charAt(0).toUpperCase() + 
-           order.fulfillment_status.slice(1).replace(/_/g, ' ')
-  }
 
-  // If not available, derive from fulfillments array
-  if (order.fulfillments && order.fulfillments.length > 0) {
-    const activeFulfillments = order.fulfillments.filter(f => !f.canceled_at)
-    
-    if (activeFulfillments.length === 0) {
-      return 'Processing'
+    // If not available, derive from fulfillments array
+    if (order.fulfillments && order.fulfillments.length > 0) {
+      const activeFulfillments = order.fulfillments.filter(f => !f.canceled_at)
+      
+      if (activeFulfillments.length === 0) {
+        return 'Processing'
+      }
+      
+      // Check if all items are delivered
+      const allDelivered = activeFulfillments.every(f => f.delivered_at)
+      if (allDelivered) {
+        return 'Delivered'
+      }
+      
+      // Check if any items are delivered
+      const someDelivered = activeFulfillments.some(f => f.delivered_at)
+      if (someDelivered) {
+        return 'Partially Delivered'
+      }
+      
+      // Check if all items are shipped
+      const allShipped = activeFulfillments.every(f => f.shipped_at)
+      if (allShipped) {
+        return 'Shipped'
+      }
+      
+      // Check if any items are shipped
+      const someShipped = activeFulfillments.some(f => f.shipped_at)
+      if (someShipped) {
+        return 'Partially Shipped'
+      }
+      
+      // Check if any items are packed
+      const somePacked = activeFulfillments.some(f => f.packed_at)
+      if (somePacked) {
+        return 'Packed'
+      }
+      
+      return 'Fulfilled'
     }
-    
-    // Check if all items are delivered
-    const allDelivered = activeFulfillments.every(f => f.delivered_at)
-    if (allDelivered) {
-      return 'Delivered'
-    }
-    
-    // Check if any items are delivered
-    const someDelivered = activeFulfillments.some(f => f.delivered_at)
-    if (someDelivered) {
-      return 'Partially Delivered'
-    }
-    
-    // Check if all items are shipped
-    const allShipped = activeFulfillments.every(f => f.shipped_at)
-    if (allShipped) {
-      return 'Shipped'
-    }
-    
-    // Check if any items are shipped
-    const someShipped = activeFulfillments.some(f => f.shipped_at)
-    if (someShipped) {
-      return 'Partially Shipped'
-    }
-    
-    // Check if any items are packed
-    const somePacked = activeFulfillments.some(f => f.packed_at)
-    if (somePacked) {
-      return 'Packed'
-    }
-    
-    return 'Fulfilled'
-  }
 
-  // Fall back to order.status
-  if (order.status) {
-    const statusMap = {
-      'pending': 'Processing',
-      'completed': 'Completed',
-      'canceled': 'Canceled',
-      'requires_action': 'Requires Action'
+    // Fall back to order.status
+    if (order.status) {
+      const statusMap = {
+        'pending': 'Processing',
+        'completed': 'Completed',
+        'canceled': 'Canceled',
+        'requires_action': 'Requires Action'
+      }
+      return statusMap[order.status] || 
+             order.status.charAt(0).toUpperCase() + order.status.slice(1)
     }
-    return statusMap[order.status] || 
-           order.status.charAt(0).toUpperCase() + order.status.slice(1)
-  }
 
-  return 'Processing'
-}
+    return 'Processing'
+  }
 
   const hasExpandedData = (order) => {
     return order.fulfillments !== undefined && 
@@ -716,35 +756,37 @@ const DashboardTab = ({
   }
 
   const getRecentOrderDisplay = () => {
-    if (!safeOrders || safeOrders.length === 0) return null
+  // Use orderForTracking if available (has full data), otherwise fallback to basic order
+  const displayOrder = orderForTracking || safeOrders[0]
+  
+  if (!displayOrder) return null
 
-    const recentOrder = safeOrders[0]
-    const orderId = recentOrder.display_id || recentOrder.id
-    const orderDate = recentOrder.created_at
-      ? new Date(recentOrder.created_at).toLocaleDateString()
-      : "Recent"
-    const orderStatus = getDisplayStatus(recentOrder)
+  const orderId = displayOrder.display_id || displayOrder.id
+  const orderDate = displayOrder.created_at
+    ? new Date(displayOrder.created_at).toLocaleDateString()
+    : "Recent"
+  const orderStatus = getDisplayStatus(displayOrder)  // ✅ Now using detailed data
 
-    return (
-      <div className="flex items-center gap-4">
-        <div className="flex items-center justify-center flex-shrink-0 bg-blue-100 rounded-full w-14 h-14">
-          <Package size={24} className="text-blue-600" />
-        </div>
-        <div>
-          <div className="font-medium">#{orderId}</div>
-          <div className="mb-1 text-sm text-gray-600">{orderDate}</div>
-          <div className="flex items-center">
-            <span
-              className={`inline-block w-2 h-2 rounded-full mr-1 ${
-                getStatusColor ? getStatusColor(orderStatus) : getStatusColorInternal(orderStatus)
-              }`}
-            ></span>
-            <span className="text-sm">{orderStatus}</span>
-          </div>
+  return (
+    <div className="flex items-center gap-4">
+      <div className="flex items-center justify-center flex-shrink-0 bg-blue-100 rounded-full w-14 h-14">
+        <Package size={24} className="text-orange-600" />
+      </div>
+      <div>
+        <div className="font-medium">#{orderId}</div>
+        <div className="mb-1 text-sm text-gray-600">{orderDate}</div>
+        <div className="flex items-center">
+          <span
+            className={`inline-block w-2 h-2 rounded-full mr-1 ${
+              getStatusColor ? getStatusColor(orderStatus) : getStatusColorInternal(orderStatus)
+            }`}
+          ></span>
+          <span className="text-sm">{orderStatus}</span>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
   const firstName = safeUser.name ? safeUser.name.split(" ")[0] : "Customer"
 
@@ -837,17 +879,26 @@ const DashboardTab = ({
       </div>
 
       {/* Tracking Latest Order */}
-      {safeOrders.length > 0 && shouldShowTracking(safeOrders[0]) && (
+      {orderForTracking && shouldShowTracking(orderForTracking) && (
         <div className="p-6 mb-6 bg-white rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Track Your Order</h2>
             <span className="text-sm text-gray-500">
-              #{safeOrders[0].display_id || safeOrders[0].id}
+              #{orderForTracking.display_id || orderForTracking.id}
             </span>
           </div>
 
+          {/* Loading state */}
+          {isLoadingDetails && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                ⏳ Loading detailed tracking information...
+              </p>
+            </div>
+          )}
+
           {/* Show alert if data is not expanded */}
-          {!hasExpandedData(safeOrders[0]) && (
+          {!isLoadingDetails && !hasExpandedData(orderForTracking) && (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800">
                 ⚠️ <strong>Limited tracking data available.</strong> Full tracking details will appear once the order data is properly loaded.
@@ -859,16 +910,16 @@ const DashboardTab = ({
             <div className="absolute left-0 ml-4 mt-2 h-full w-0.5 bg-gray-200"></div>
 
             <div className="relative space-y-6">
-              {hasExpandedData(safeOrders[0]) ? (
+              {hasExpandedData(orderForTracking) ? (
                 // Show real timeline from fulfillments
-                buildTimelineFromFulfillments(safeOrders[0]).map((event, index) => (
+                buildTimelineFromFulfillments(orderForTracking).map((event, index) => (
                   <div key={index} className="flex">
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center relative z-10 flex-shrink-0 ${
                         index === 0
                           ? "bg-[#e65100] text-white"
                           : event.completed
-                          ? "bg-green-500 text-white"
+                          ? "bg-orange-500 text-white"
                           : "bg-gray-200 text-gray-500"
                       }`}
                     >
@@ -879,7 +930,7 @@ const DashboardTab = ({
                       <div
                         className={`font-medium ${
                           index === 0 ? "text-[#e65100]" : 
-                          event.completed ? "text-green-600" : "text-gray-800"
+                          event.completed ? "text-orange-600" : "text-gray-800"
                         }`}
                       >
                         {event.status}
@@ -898,11 +949,11 @@ const DashboardTab = ({
                   </div>
                   <div className="ml-4">
                     <div className="font-medium text-[#e65100]">
-                      {getDisplayStatus(safeOrders[0])}
+                      {getDisplayStatus(orderForTracking)}
                     </div>
                     <div className="text-sm text-gray-500">
-                      {safeOrders[0].created_at 
-                        ? new Date(safeOrders[0].created_at).toLocaleDateString() 
+                      {orderForTracking.created_at 
+                        ? new Date(orderForTracking.created_at).toLocaleDateString() 
                         : "Recently"}
                     </div>
                   </div>
@@ -916,7 +967,7 @@ const DashboardTab = ({
               className="text-sm text-[#e65100] hover:underline flex items-center"
               onClick={() => {
                 if (setActiveTab) setActiveTab("orders")
-                if (setActiveOrder) setActiveOrder(safeOrders[0].id)
+                if (setActiveOrder) setActiveOrder(orderForTracking.id)
               }}
             >
               View order details
