@@ -689,11 +689,12 @@ const renderMockupDirectly = async (
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       
+      // 🔥 FIXED: Check if mockup requires color masking (transparent mockup)
       // 🆕 NEW: Check if mockup requires color masking (transparent mockup)
       const requiresColorMasking = mockup.requiresColorMasking === true || 
-                                   mockup.photoColor?.toLowerCase() === '#00000000';
+                                  mockup.photoColor?.toLowerCase() === '#00000000';
       const maskColor = mockup.maskColor || productColor || '#ffffff';
-      
+
       if (requiresColorMasking) {
         // console.log('✅ Applying color masking for transparent mockup');
         // console.log('   Mask color:', maskColor);
@@ -731,66 +732,66 @@ const renderMockupDirectly = async (
         ctx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
         
         // Apply product color overlay - only to white t-shirt fabric
-        if (productColor !== '#ffffff') {
-          // Create temporary canvas for color detection
-          const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = targetResolution;
-          tempCanvas.height = targetResolution;
-          const tempCtx = tempCanvas.getContext('2d');
+      //   if (productColor !== '#ffffff') {
+      //     // Create temporary canvas for color detection
+      //     const tempCanvas = document.createElement('canvas');
+      //     tempCanvas.width = targetResolution;
+      //     tempCanvas.height = targetResolution;
+      //     const tempCtx = tempCanvas.getContext('2d');
           
-          if (tempCtx) {
-            // Draw original image to analyze
-            tempCtx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
-            const imageData = tempCtx.getImageData(0, 0, targetResolution, targetResolution);
-            const data = imageData.data;
+      //     if (tempCtx) {
+      //       // Draw original image to analyze
+      //       tempCtx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
+      //       const imageData = tempCtx.getImageData(0, 0, targetResolution, targetResolution);
+      //       const data = imageData.data;
             
-            // Create mask: detect only the WHITE t-shirt fabric
-            const whiteMin = 200;
-            const whiteMax = 250;
+      //       // Create mask: detect only the WHITE t-shirt fabric
+      //       const whiteMin = 200;
+      //       const whiteMax = 250;
             
-            for (let i = 0; i < data.length; i += 4) {
-              const r = data[i];
-              const g = data[i + 1];
-              const b = data[i + 2];
+      //       for (let i = 0; i < data.length; i += 4) {
+      //         const r = data[i];
+      //         const g = data[i + 1];
+      //         const b = data[i + 2];
               
-              const brightness = (r + g + b) / 3;
-              const colorVariance = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
+      //         const brightness = (r + g + b) / 3;
+      //         const colorVariance = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
               
-              const isWhiteFabric = brightness >= whiteMin && 
-                                    brightness <= whiteMax && 
-                                    colorVariance < 15 &&
-                                    !(r > 250 && g > 250 && b > 250);
+      //         const isWhiteFabric = brightness >= whiteMin && 
+      //                               brightness <= whiteMax && 
+      //                               colorVariance < 15 &&
+      //                               !(r > 250 && g > 250 && b > 250);
               
-              if (!isWhiteFabric) {
-                data[i + 3] = 0;
-              }
-            }
+      //         if (!isWhiteFabric) {
+      //           data[i + 3] = 0;
+      //         }
+      //       }
             
-            tempCtx.putImageData(imageData, 0, 0);
+      //       tempCtx.putImageData(imageData, 0, 0);
             
-            // Now apply color with multiply blend
-            const colorLayer = document.createElement('canvas');
-            colorLayer.width = targetResolution;
-            colorLayer.height = targetResolution;
-            const colorCtx = colorLayer.getContext('2d');
+      //       // Now apply color with multiply blend
+      //       const colorLayer = document.createElement('canvas');
+      //       colorLayer.width = targetResolution;
+      //       colorLayer.height = targetResolution;
+      //       const colorCtx = colorLayer.getContext('2d');
             
-            if (colorCtx) {
-              colorCtx.fillStyle = productColor;
-              colorCtx.fillRect(0, 0, targetResolution, targetResolution);
+      //       if (colorCtx) {
+      //         colorCtx.fillStyle = productColor;
+      //         colorCtx.fillRect(0, 0, targetResolution, targetResolution);
               
-              colorCtx.globalCompositeOperation = 'destination-in';
-              colorCtx.drawImage(tempCanvas, 0, 0);
+      //         colorCtx.globalCompositeOperation = 'destination-in';
+      //         colorCtx.drawImage(tempCanvas, 0, 0);
               
-              ctx.drawImage(colorLayer, 0, 0);
+      //         ctx.drawImage(colorLayer, 0, 0);
               
-              ctx.globalAlpha = 0.15;
-              ctx.globalCompositeOperation = 'multiply';
-              ctx.drawImage(tempCanvas, 0, 0);
-              ctx.globalAlpha = 1;
-              ctx.globalCompositeOperation = 'source-over';
-            }
-          }
-        }
+      //         ctx.globalAlpha = 0.15;
+      //         ctx.globalCompositeOperation = 'multiply';
+      //         ctx.drawImage(tempCanvas, 0, 0);
+      //         ctx.globalAlpha = 1;
+      //         ctx.globalCompositeOperation = 'source-over';
+      //       }
+      //     }
+      //   }
       }
       
       // Draw design elements for each area
@@ -2498,32 +2499,17 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   productColor,
   isSelected,
   onSelect,
-  displayDimensions = { width: 275, height: 275 }, // ðŸ”¥ DEFAULT TO THUMBNAIL SIZE
-  isMainPreview = false, // ðŸ”¥ DEFAULT TO FALSE
+  displayDimensions = { width: 275, height: 275 },
+  isMainPreview = false,
   productData
 }) => {
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isRendering, setIsRendering] = useState(true);
   const [renderComplete, setRenderComplete] = useState(false);
   const [forceRender, setForceRender] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setForceRender(true);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (mockup?.photo?.url) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => setRenderComplete(true);
-      img.onerror = () => setThumbnailError('Failed to load base image');
-      img.src = resolveImageUrl(mockup.photo.url);
-    }
-  }, [mockup?.photo?.url]);
-
+  // Determine which engine this mockup needs
   const determineRenderEngine = useCallback((): 'canvas' | 'pixi' | 'auto' => {
     if (mockup.render?.pfEngine) {
       switch (mockup.render.pfEngine) {
@@ -2552,123 +2538,194 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
     return requiresPixi ? 'pixi' : 'canvas';
   }, [mockup]);
 
+  const renderEngine = determineRenderEngine();
+  const shouldUseDirectRender = renderEngine === 'canvas'; // 🔥 Only use direct render for Canvas
+
+  // 🔥 NEW: Use renderMockupDirectly ONLY for Canvas engine
+  useEffect(() => {
+    if (!shouldUseDirectRender) {
+      // For PIXI, use the old component-based approach
+      setIsRendering(false);
+      return;
+    }
+
+    let isMounted = true;
+    
+    const generatePreview = async () => {
+      try {
+        setIsRendering(true);
+        
+        // Use direct rendering for Canvas engine only
+        const imageData = await renderMockupDirectly(
+          mockup,
+          designElements,
+          canvasConfigs,
+          canvasPrintableAreas,
+          productColor,
+          displayDimensions.width
+        );
+        
+        if (isMounted) {
+          setPreviewImage(imageData);
+          setIsRendering(false);
+        }
+      } catch (error) {
+        console.error('Canvas preview render failed:', error);
+        if (isMounted) {
+          setThumbnailError('Failed to render preview');
+          setIsRendering(false);
+        }
+      }
+    };
+    
+    generatePreview();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [mockup.id, productColor, shouldUseDirectRender, displayDimensions.width]);
+
+  // For PIXI engine, use the old component-based rendering
+  useEffect(() => {
+    if (shouldUseDirectRender) return; // Skip for Canvas
+
+    const timer = setTimeout(() => {
+      setForceRender(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [shouldUseDirectRender]);
+
+  useEffect(() => {
+    if (shouldUseDirectRender) return; // Skip for Canvas
+    
+    if (mockup?.photo?.url) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => setRenderComplete(true);
+      img.onerror = () => setThumbnailError('Failed to load base image');
+      img.src = resolveImageUrl(mockup.photo.url);
+    }
+  }, [mockup?.photo?.url, shouldUseDirectRender]);
+
   const renderMockupThumbnail = useCallback(() => {
-  if (!mockup?.photo?.url) {
-    return (
-      <div className="flex items-center justify-center w-full h-full text-gray-400">
-        <span className="text-xs">No Image</span>
-      </div>
-    );
-  }
-
-  const hasDesignElements = Object.values(designElements).some(elements => elements.length > 0);
-  
-  // 🆕 Check if transparent mockup needs color masking
-  const requiresColorMasking = mockup.requiresColorMasking === true || 
-                               mockup.photoColor?.toLowerCase() === '#00000000';
-  const maskColor = mockup.maskColor || productColor || '#ffffff';
-
-  // NO DESIGN ELEMENTS - Show mockup only
-  if (!hasDesignElements) {
-    // If transparent mockup, apply color masking using simple HTML layers
-    if (requiresColorMasking) {
+    if (!mockup?.photo?.url) {
       return (
-        <div className="relative w-full h-full overflow-hidden">
-          {/* LAYER 1: Base color */}
-          <div 
-            className="absolute inset-0 w-full h-full"
-            style={{ backgroundColor: maskColor }}
-          />
-          {/* LAYER 2: Transparent mockup on top */}
-          <img
-            src={resolveImageUrl(mockup.photo.url)}
-            alt={mockup.title}
-            className="absolute inset-0 object-cover w-full h-full"
-            onError={() => setThumbnailError('Failed to load image')}
-          />
+        <div className="flex items-center justify-center w-full h-full text-gray-400">
+          <span className="text-xs">No Image</span>
         </div>
       );
     }
-    
-    // Normal mockup without color masking
-    return (
-      <img
-        src={resolveImageUrl(mockup.photo.url)}
-        alt={mockup.title}
-        className="object-cover w-full h-full"
-        onError={() => setThumbnailError('Failed to load image')}
-      />
-    );
-  }
 
-  // HAS DESIGN ELEMENTS - Use EnhancedMockupEngine WITHOUT external color layer
-  const renderEngine = determineRenderEngine();
+    // 🔥 Canvas Engine: Show direct render result
+    if (shouldUseDirectRender) {
+      if (isRendering) {
+        return (
+          <div className="flex items-center justify-center w-full h-full">
+            <div className="text-center">
+              <div className="w-6 h-6 mx-auto mb-1 border-b-2 border-Orange-500 rounded-full animate-spin"></div>
+              {/* <div className="text-xs text-gray-600">Canvas Rendering...</div> */}
+            </div>
+          </div>
+        );
+      }
 
-  if (forceRender || renderComplete) {
-    return (
-      <div className="relative w-full h-full">
-        {/* ❌ REMOVED: External color layer - let EnhancedMockupEngine handle it */}
-        <EnhancedMockupEngine
-          mockup={mockup}
-          showBadges={false}
-          designElements={designElements}
-          canvasConfigs={canvasConfigs}
-          canvasPrintableAreas={canvasPrintableAreas}
-          displayDimensions={displayDimensions}
-          productType={productData.productType || 'flat'}
-          productColor={productColor}  // ✅ This tells the engine what color to use
-          renderEngine={renderEngine}
-          enablePixiFeatures={true}
-          pixelRatio={isMainPreview ? 2 : 1}
-          onRenderComplete={() => {
-          }}
-          onProgress={(progress) => {
-          }}
-        />
-      </div>
-    );
-  }
-
-  // LOADING STATE
-  return (
-    <div className="relative w-full h-full">
-      <div className="flex items-center justify-center w-full h-full bg-gray-100">
-        {requiresColorMasking ? (
+      if (previewImage) {
+        return (
           <div className="relative w-full h-full">
+            <img
+              src={previewImage}
+              alt={mockup.title}
+              className="object-contain w-full h-full"
+            />
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex items-center justify-center w-full h-full text-gray-400">
+          <span className="text-xs">No Preview</span>
+        </div>
+      );
+    }
+
+    // 🔥 PIXI Engine: Use EnhancedMockupEngine component
+    const hasDesignElements = Object.values(designElements).some(elements => elements.length > 0);
+    
+    const requiresColorMasking = mockup.requiresColorMasking === true || 
+                                 mockup.photoColor?.toLowerCase() === '#00000000';
+    const maskColor = mockup.maskColor || productColor || '#ffffff';
+
+    // NO DESIGN ELEMENTS - Show mockup only
+    if (!hasDesignElements) {
+      if (requiresColorMasking) {
+        return (
+          <div className="relative w-full h-full overflow-hidden">
             <div 
-              className="absolute inset-0"
+              className="absolute inset-0 w-full h-full"
               style={{ backgroundColor: maskColor }}
             />
             <img
               src={resolveImageUrl(mockup.photo.url)}
               alt={mockup.title}
-              className="relative object-cover w-full h-full opacity-30"
-              onError={() => setThumbnailError('Failed to load mockup')}
+              className="absolute inset-0 object-cover w-full h-full"
+              onError={() => setThumbnailError('Failed to load image')}
             />
           </div>
-        ) : (
-          <img
-            src={resolveImageUrl(mockup.photo.url)}
-            alt={mockup.title}
-            className="object-cover w-full h-full opacity-30"
-            onError={() => setThumbnailError('Failed to load mockup')}
+        );
+      }
+      
+      return (
+        <img
+          src={resolveImageUrl(mockup.photo.url)}
+          alt={mockup.title}
+          className="object-cover w-full h-full"
+          onError={() => setThumbnailError('Failed to load image')}
+        />
+      );
+    }
+
+    // HAS DESIGN ELEMENTS - Use EnhancedMockupEngine for PIXI
+    if (forceRender || renderComplete) {
+      return (
+        <div className="relative w-full h-full">
+          <EnhancedMockupEngine
+            mockup={mockup}
+            showBadges={false}
+            designElements={designElements}
+            canvasConfigs={canvasConfigs}
+            canvasPrintableAreas={canvasPrintableAreas}
+            displayDimensions={displayDimensions}
+            productType={productData.productType || 'flat'}
+            productColor={productColor}
+            renderEngine="pixi"
+            enablePixiFeatures={true}
+            pixelRatio={isMainPreview ? 2 : 1}
+            onRenderComplete={() => {}}
+            onProgress={() => {}}
           />
-        )}
-        <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-          <div className="text-center">
-            <div className="w-3 h-3 mx-auto mb-1 border-b-2 border-blue-500 rounded-full animate-spin"></div>
-            <div className="text-xs text-gray-600">Loading...</div>
+        </div>
+      );
+    }
+
+    // PIXI LOADING STATE
+    return (
+      <div className="relative w-full h-full">
+        <div className="flex items-center justify-center w-full h-full bg-gray-100">
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+            <div className="text-center">
+              <div className="w-3 h-3 mx-auto mb-1 border-b-2 border-purple-500 rounded-full animate-spin"></div>
+              <div className="text-xs text-gray-600">PIXI Loading...</div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}, [mockup, designElements, canvasConfigs, canvasPrintableAreas, productColor, productData, renderComplete, thumbnailError, determineRenderEngine, forceRender, displayDimensions, isMainPreview]);
+    );
+  }, [mockup, designElements, shouldUseDirectRender, isRendering, previewImage, forceRender, renderComplete, productColor, displayDimensions, isMainPreview, productData]);
 
   const getEngineType = useMemo(() => {
-    const renderEngine = determineRenderEngine();
     return renderEngine === 'pixi' ? 'PIXI' : 'Canvas';
-  }, [determineRenderEngine]);
+  }, [renderEngine]);
 
   if (thumbnailError) {
     return (
@@ -2683,7 +2740,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
         <div className="relative mb-2 overflow-hidden bg-gray-100 rounded aspect-square">
           <div className="flex items-center justify-center w-full h-full text-gray-400">
             <div className="text-center">
-              <span className="text-xs">âš  ï¸</span>
+              <span className="text-xs">⚠️</span>
               <p className="mt-1 text-xs">Error</p>
             </div>
           </div>
@@ -2691,7 +2748,6 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
         
         <p className="text-xs font-medium text-center line-clamp-1">{mockup.title}</p>
         <p className="text-xs text-center text-gray-500">{mockup.viewAngle}</p>
-        <p className="text-xs text-center text-gray-400">{mockup.photoColor}</p>
       </button>
     );
   }
@@ -9180,39 +9236,69 @@ useEffect(() => {
   }, [designElements]);
 
   // Auto-select hero mockup based on active color
-  useEffect(() => {
-    if (allMockups.length > 0) {
-      // Find mockup that matches active color
-      let bestMockup = allMockups.find(mockup => {
-        const mockupColor = mockup.photoColor?.toLowerCase() || '';
-        return mockupColor === activeColor?.toLowerCase();
-      });
-      
-      // Fallback to neutral mockup
-      if (!bestMockup) {
-        const neutralColors = ['#ffffff', '#f5f5f5', '#fafafa', 'white'];
-        bestMockup = allMockups.find(mockup => {
-          const mockupColor = mockup.photoColor?.toLowerCase() || '';
-          return neutralColors.includes(mockupColor);
-        });
-      }
-      
-      // Use dynamic neutral detector as last resort
-      if (!bestMockup) {
-        const neutralDetector = createDynamicNeutralDetector(productData);
-        bestMockup = allMockups.find(mockup => {
-          const mockupColor = mockup.photoColor || '';
-          return neutralDetector.isNeutral(mockupColor);
-        });
-      }
-      
-      // Auto-select the best mockup for active color
-      if (bestMockup) {
-        ////console.log('Auto-selecting mockup for active color:', activeColor, '-> mockup:', bestMockup.photoColor);
-        setSelectedHeroMockup(bestMockup);
+  // Auto-select hero mockup based on active color - PRESERVE AREA on color change
+useEffect(() => {
+  if (allMockups.length > 0 && activeColor) {
+    // 🔥 FIX: Determine which area to preserve
+    // If user has a selected mockup, keep its area when color changes
+    let targetArea = activeArea; // Default to activeArea
+    
+    if (selectedHeroMockup?.area && selectedHeroMockup.area.length > 0) {
+      // User has selected a specific mockup - preserve its area
+      const currentMockupArea = selectedHeroMockup.area[0]?.areaName?.toLowerCase();
+      if (currentMockupArea) {
+        targetArea = currentMockupArea; // Use the selected mockup's area
+        //console.log('Preserving area from selected mockup:', targetArea);
       }
     }
-  }, [activeColor, allMockups, productData]); // This will re-run when activeColor changes
+    
+    // Get mockups for the active color
+    const colorMockups = getMockupsForColor(
+      productData,
+      activeColor,
+      activeTechnology,
+      productData.size_Images ? activeSize : undefined
+    );
+    
+    // 🔥 FIX: Filter to mockups that match the TARGET area (preserved from selection)
+    const areaSpecificMockups = colorMockups.filter(mockup => {
+      if (!mockup.area || !Array.isArray(mockup.area)) return false;
+      
+      return mockup.area.some(area => {
+        if (!area?.areaName) return false;
+        return area.areaName.toLowerCase() === targetArea.toLowerCase();
+      });
+    });
+    
+    // Prefer area-specific mockup, fallback to any mockup for this color
+    let bestMockup = areaSpecificMockups[0] || colorMockups[0];
+    
+    // If still no mockup, try neutral colors for the target area
+    if (!bestMockup) {
+      const neutralDetector = createDynamicNeutralDetector(productData);
+      const neutralMockups = allMockups.filter(mockup => {
+        const mockupColor = mockup.photoColor || '';
+        
+        if (!mockup.area || !Array.isArray(mockup.area)) return false;
+        
+        const hasTargetArea = mockup.area.some(area => {
+          if (!area?.areaName) return false;
+          return area.areaName.toLowerCase() === targetArea.toLowerCase();
+        });
+        
+        return neutralDetector.isNeutral(mockupColor) && hasTargetArea;
+      });
+      
+      bestMockup = neutralMockups[0];
+    }
+    
+    // Auto-select the best mockup for the target area
+    if (bestMockup) {
+      //console.log('Auto-selecting mockup for area:', targetArea, '-> mockup:', bestMockup.title);
+      setSelectedHeroMockup(bestMockup);
+    }
+  }
+}, [activeColor, allMockups, productData, activeTechnology, activeSize, selectedHeroMockup]);
     
     useEffect(() => {
       const transformer = transformerRef.current;

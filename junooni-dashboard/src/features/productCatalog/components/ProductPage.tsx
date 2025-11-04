@@ -814,17 +814,15 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div
-                                    onClick={() => setSelectedColor(color)}
-                                    className={`
-                                      w-8 h-8 rounded-full cursor-pointer border-2 transition-all duration-200 shadow-md hover:shadow-lg
-                                      ${selectedColor?.id === color.id 
-                                        ? 'ring-4 ring-[#e65100]/30 ring-offset-1 scale-110 border-[#e65100]' 
-                                        : 'border-gray-300 hover:scale-105 hover:border-[#e65100]/50'
-                                      }
-                                    `}
+                                    className="
+                                      w-8 h-8 rounded-full border-2 shadow-sm
+                                      cursor-allowed transition-all duration-200
+                                    "
                                     style={{ 
                                       backgroundColor: color.colorHex,
-                                      border: color.colorHex.toLowerCase() === '#ffffff' ? '2px solid #e5e7eb' : 'none' 
+                                      border: color.colorHex?.toLowerCase() === '#ffffff' 
+                                        ? '2px solid #e5e7eb' 
+                                        : '2px solid #ccc'
                                     }}
                                   ></div>
                                 </TooltipTrigger>
@@ -835,6 +833,7 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                             </TooltipProvider>
                           ))}
                         </div>
+
                       </div>
                     )}
                     
@@ -844,30 +843,25 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-semibold text-gray-900">Size</h3>
                         </div>
+
                         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                           {product.sizeOptions.map((size: SizeOption) => (
                             <div
                               key={size.id}
-                              onClick={() => setSelectedSize(size)}
-                              className={`
-                                py-2 px-3 border-2 rounded-lg text-center cursor-pointer 
-                                transition-all duration-200 text-sm font-medium
-                                ${selectedSize?.id === size.id 
-                                  ? 'border-[#e65100] bg-[#e65100] text-white scale-105 shadow-md' 
-                                  : 'border-gray-300 hover:border-[#e65100] hover:scale-105 hover:bg-[#e65100]/5'}
-                              `}
+                              className="
+                                py-2 px-3 border-2 rounded-lg text-center text-md font-medium
+                                border-[#e65100] bg-[#e65100] text-white cursor-allowed
+                              "
                             >
                               {size.sizeName}
                             </div>
                           ))}
                         </div>
-                        {selectedSize?.sizeDescription && (
-                          <p className="p-2 text-xs text-gray-600 rounded-lg bg-gray-50">
-                            💡 {selectedSize.sizeDescription}
-                          </p>
-                        )}
+
+                        {/* No size description should show because nothing can be selected */}
                       </div>
                     )}
+
 
                     {/* NEW: Printing Technology Selection */}
                     {product.printT && product.printT.length > 0 && (
@@ -887,49 +881,34 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                           </TooltipProvider>
                         </div>
 
-                        <div className="space-y-3 flex flex-row gap-3 overflow-x-auto pb-2 hide-scrollbar">
+                        <div className="space-y-3 flex flex-row gap-3 overflow-x-auto pb-2 hide-scrollbar items-end">
                           {product.printT.map((tech: PrintingTechnology) => {
                             const isSelected = selectedTechnology?.id === tech.id;
-                            const quality = getTechnologyQuality(tech);
-                            
+
                             return (
                               <div
                                 key={tech.id}
                                 onClick={() => setSelectedTechnology(tech)}
                                 className={`
-                                  p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 w-fit
+                                  p-3 min-h-[30px] border-2 rounded-lg cursor-pointer transition-all duration-200 flex items-center
                                   ${isSelected 
-                                    ? 'border-[#e65100] bg-[#e65100]/5 shadow-md scale-102' 
-                                    : 'border-gray-200 hover:border-[#e65100]/50 hover:bg-[#e65100]/5'}
+                                    ? 'border-[#e65100] bg-[#e65100]' 
+                                    : 'border-[#e65100]'
+                                  }
                                 `}
                               >
-                                <div className="flex items-start gap-3">
-                                  {/* <div className="flex-shrink-0 mt-1">
-                                    {getTechnologyIcon(tech.technologyName)}
-                                  </div> */}
+                                <div className="flex items-start gap-3 w-full">
                                   
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <h4 className="text-sm font-semibold text-gray-900 truncate">
-                                        {tech.technologyName.toUpperCase()}
-                                      </h4>
-                                    </div>
-                                    
-                                    {/* Technology tags */}
-                                    {tech.tags && tech.tags.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mb-2">
-                                        {tech.tags.slice(0, 3).map((tag) => (
-                                          <Badge 
-                                            key={tag.id}
-                                            variant="outline"
-                                            className="text-xs h-4 px-1.5 border-[#e65100]/30 text-[#e65100]"
-                                          >
-                                            {tag.tag}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    )}
-                                    
+                                    <h4
+                                      className={`text-base font-semibold truncate leading-tight
+                                        ${isSelected ? "text-white" : "text-[#e65100]"}
+                                      `}
+                                    >
+                                      {tech.technologyName.toUpperCase()}
+                                    </h4>
+
+
                                   </div>
                                 </div>
                               </div>

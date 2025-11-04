@@ -1817,7 +1817,7 @@ useEffect(() => {
   const fetchCategories = async () => {
     //console.log("📡 Starting API fetch...");
     try {
-      const response = await fetch(`${vite_payload}/api/categories`);
+      const response = await fetch(`${vite_payload}/api/categories?limit=0`);
       const data = await response.json();
       setCategories(data.docs);
       //console.log("📦 category response:", data);
