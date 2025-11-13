@@ -1607,45 +1607,74 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, children, defaultO
 };
 
 const ColorFilter: React.FC<ColorFilterProps> = ({ colors, selectedColors, onChange }) => {
+  const [showAll, setShowAll] = useState(false);
+  const INITIAL_COLOR_COUNT = 12; // Show 12 colors initially
+  
   // Deduplicate colors by colorHex value - this ensures we only show each unique color once
   const uniqueColors = colors.filter((color, index, self) => 
     index === self.findIndex((c) => c.colorHex === color.colorHex)
   );
   
+  // Determine which colors to display
+  const displayedColors = showAll ? uniqueColors : uniqueColors.slice(0, INITIAL_COLOR_COUNT);
+  const hasMoreColors = uniqueColors.length > INITIAL_COLOR_COUNT;
+  
   return (
-    <div className="flex flex-wrap gap-3">
-      {uniqueColors.map((color) => {
-        const isSelected = selectedColors.includes(color.colorHex);
-        return (
-          <button
-            key={color.colorHex}
-            type="button"
-            title={color.colorName}
-            aria-label={`${color.colorName} ${isSelected ? 'selected' : ''}`}
-            onClick={() => {
-              if (isSelected) {
-                onChange(selectedColors.filter((hex) => hex !== color.colorHex));
-              } else {
-                onChange([...selectedColors, color.colorHex]);
-              }
-            }}
-            className={`
-              w-9 h-9 rounded-full 
-              flex items-center justify-center
-              transition-all duration-200 transform hover:scale-110
-              ${isSelected ? 'ring-3 ring-[#e65100] ring-offset-2 shadow-lg' : 'ring-1 ring-gray-200 hover:ring-2 hover:ring-gray-300'}
-              ${color.colorHex.toLowerCase() === '#ffffff' || color.colorHex.toLowerCase() === '#fff' ? 'border border-gray-200' : ''}
-            `}
-            style={{ backgroundColor: color.colorHex }}
-          >
-            {isSelected && (
-              <span className={`text-sm font-bold ${isLightColor(color.colorHex) ? 'text-black' : 'text-white'}`}>
-                ✓
-              </span>
-            )}
-          </button>
-        );
-      })}
+    <div>
+      <div className="flex flex-wrap gap-3">
+        {displayedColors.map((color) => {
+          const isSelected = selectedColors.includes(color.colorHex);
+          return (
+            <button
+              key={color.colorHex}
+              type="button"
+              title={color.colorName}
+              aria-label={`${color.colorName} ${isSelected ? 'selected' : ''}`}
+              onClick={() => {
+                if (isSelected) {
+                  onChange(selectedColors.filter((hex) => hex !== color.colorHex));
+                } else {
+                  onChange([...selectedColors, color.colorHex]);
+                }
+              }}
+              className={`
+                w-9 h-9 rounded-full 
+                flex items-center justify-center
+                transition-all duration-200 transform hover:scale-110
+                ${isSelected ? 'ring-3 ring-[#e65100] ring-offset-2 shadow-lg' : 'ring-1 ring-gray-200 hover:ring-2 hover:ring-gray-300'}
+                ${color.colorHex.toLowerCase() === '#ffffff' || color.colorHex.toLowerCase() === '#fff' ? 'border border-gray-200' : ''}
+              `}
+              style={{ backgroundColor: color.colorHex }}
+            >
+              {isSelected && (
+                <span className={`text-sm font-bold ${isLightColor(color.colorHex) ? 'text-black' : 'text-white'}`}>
+                  ✓
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      
+      {/* Show more/less button */}
+      {hasMoreColors && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          className="mt-4 text-sm font-medium text-[#e65100] hover:text-orange-700 transition-colors flex items-center gap-1"
+        >
+          {showAll ? (
+            <>
+              <span>Show less</span>
+              <ChevronRight size={16} className="rotate-[-90deg]" />
+            </>
+          ) : (
+            <>
+              <span>Show more ({uniqueColors.length - INITIAL_COLOR_COUNT} more)</span>
+              <ChevronRight size={16} className="rotate-90" />
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 };
@@ -2395,7 +2424,7 @@ useEffect(() => {
                         return (
                           <div 
                             key={product.id} 
-                            className="relative w-full max-w-full mx-auto group transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+                            className="relative w-full max-w-full mx-auto group transform transition-all duration-300 hover:scale-[1.02]"
                             onClick={() => storeCompleteProductData(product.id)}
                             style={{ animationDelay: `${index * 0.1}s` }}
                           >

@@ -42,7 +42,7 @@ const HomeCategories = async () => {
               className="group"
             >
               <div className="overflow-hidden transition-all duration-300">
-                <div className="relative bg-gray-100 aspect-square">
+                <div className="relative bg-gray-100 aspect-auto">
                   {category.metadata && category.metadata.featured_image && (
                     <img 
                       src={category.metadata.featured_image as string}

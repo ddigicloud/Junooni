@@ -5792,31 +5792,6 @@ if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
   });
 }
 
-// 🆕 DEBUG: Log final count
-// console.log('📊 FINAL MOCKUP COUNT:', {
-//   totalVariantsProcessed: processedMockups.size,
-//   totalUniqueImages: seenImageData.size,
-//   colorGroups: Object.keys(colorSpecificImages).map(hex => ({
-//     color: hex,
-//     mockupCount: colorSpecificImages[hex].length,
-//     mockups: colorSpecificImages[hex].map(m => ({
-//       title: m.mockupTitle,
-//       viewAngle: m.viewAngle,
-//       hasDesign: m.hasDesign,
-//       hasImageData: m.imageData?.length > 100
-//     }))
-//   }))
-// });
-
-// 🆕 DEBUG: Log all mockup image keys to verify multi-word colors are stored
-// console.log('📊 All mockup image keys generated:', Object.keys(mockupImages).length);
-// console.log('📊 Sample keys:', Object.keys(mockupImages).slice(0, 10));
-// console.log('📊 Keys containing spaces:', Object.keys(mockupImages).filter(k => k.includes(' ')).slice(0, 5));
-// console.log('📊 Keys with underscores:', Object.keys(mockupImages).filter(k => k.includes('_')).slice(0, 5));
-
-// console.log('🔥 Generated mockup images:', Object.keys(mockupImages).length);
-// console.log('🔥 Color-specific groups:', Object.keys(colorSpecificImages).length);
-
   const designImages = storeData.design_images || [];
   const canvasImages = storeData.canvas_images || [];
 
@@ -7375,9 +7350,9 @@ const renderUploadPanel = () => {
                     </p>
                     <div className="flex items-center mt-1 space-x-3 text-xs text-gray-500">
                       <span>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
-                      <span>â€¢</span>
+                      {/* <span>â€¢</span> */}
                       <span className={file.base64Data ? 'text-green-600' : 'text-orange-600'}>
-                        {file.base64Data ? 'Base64 stored' : 'Not stored'}
+                        {file.base64Data ? 'Stored' : 'Not stored'}
                       </span>
                     </div>
                   </div>
@@ -7699,35 +7674,56 @@ const handleFileUpload = useCallback(async (files) => {
     handleDeleteLayer(selectedId);
   }, [selectedId, handleDeleteLayer]);
   
-  const centerElement = useCallback((alignment: 'horizontal' | 'vertical' | 'both') => {
-    if (!selectedId) return;
-    
-    const printableArea = getPrintableAreaFromPhoto(activeArea, activeColor);
-    
-    setDesignElements(prev => {
-      const updated = { ...prev };
-      if (updated[activeArea]) {
-        updated[activeArea] = updated[activeArea].map(el => {
-          if (el.id !== selectedId) return el;
-          
-          let newX = el.x;
-          let newY = el.y;
-          
-          if (alignment === 'horizontal' || alignment === 'both') {
-            newX = printableArea.x + (printableArea.width - el.width) / 2;
-          }
-          if (alignment === 'vertical' || alignment === 'both') {
-            newY = printableArea.y + (printableArea.height - el.height) / 2;
-          }
-          
-          return { ...el, x: newX, y: newY };
-        });
+  const centerElement = useCallback((alignment: 'horizontal' | 'vertical' | 'both' | 'left' | 'right' | 'top' | 'bottom' | 'hcenter' | 'vcenter') => {
+  if (!selectedId) return;
+
+  const printableArea = getPrintableAreaFromPhoto(activeArea, activeColor);
+  if (!printableArea) return;
+
+  setDesignElements(prev => {
+    const updated = { ...prev };
+    if (!updated[activeArea]) return updated;
+
+    updated[activeArea] = updated[activeArea].map(el => {
+      if (el.id !== selectedId) return el;
+
+      // defaults to current position
+      let newX = el.x;
+      let newY = el.y;
+
+      // horizontal centering
+      const doHCenter = alignment === 'horizontal' || alignment === 'both' || alignment === 'hcenter';
+      // vertical centering
+      const doVCenter = alignment === 'vertical' || alignment === 'both' || alignment === 'vcenter';
+
+      if (doHCenter) {
+        newX = printableArea.x + (printableArea.width - (el.width || 0)) / 2;
       }
-      return updated;
+
+      if (doVCenter) {
+        newY = printableArea.y + (printableArea.height - (el.height || 0)) / 2;
+      }
+
+      // explicit edge alignments override centers
+      if (alignment === 'left') {
+        newX = printableArea.x;
+      } else if (alignment === 'right') {
+        newX = printableArea.x + printableArea.width - (el.width || 0);
+      } else if (alignment === 'top') {
+        newY = printableArea.y;
+      } else if (alignment === 'bottom') {
+        newY = printableArea.y + printableArea.height - (el.height || 0);
+      }
+
+      return { ...el, x: newX, y: newY };
     });
-    
-    triggerUpdate();
-  }, [selectedId, activeArea, activeColor, getPrintableAreaFromPhoto, triggerUpdate]);
+
+    return updated;
+  });
+
+  triggerUpdate();
+}, [selectedId, activeArea, activeColor, getPrintableAreaFromPhoto, triggerUpdate]);
+
   
   const handleStageClick = useCallback((e: any) => {
     if (e.target === e.target.getStage()) {
@@ -8766,7 +8762,8 @@ const renderPreview = useCallback(() => {
         borderStroke={brandColor}
         borderDash={[4, 4]}
         rotateAnchorOffset={25}
-        keepRatio={false}
+        keepRatio={true
+        }
         listening={true}
         anchorStyleFunc={(anchor) => {
         anchor.cornerRadius(2);
@@ -8809,7 +8806,7 @@ const renderPreview = useCallback(() => {
         isMobile
         ? 'absolute -bottom-16 left-4 right-4'
         : 'fixed'
-        } p-3 bg-white border-2 border-orange-500 shadow-xl rounded-xl z-[60] ${
+        } sm:p-3 px-3 py-0 bg-white border-2 border-orange-500 shadow-xl rounded-xl z-[60] ${
         isDraggingPanel ? 'cursor-grabbing shadow-2xl' : 'cursor-default'
         }`}
         style={!isMobile ? {
@@ -8858,35 +8855,106 @@ const renderPreview = useCallback(() => {
       <div className="flex flex-wrap items-center justify-between gap-2 md:flex-col md:gap-0">
       <div className="flex items-center gap-1 md:w-full">
       <div className="text-xs font-medium text-gray-700">Alignment</div>
-      <div className="flex gap-1">
-      <button
-      onClick={() => centerElement('horizontal')}
-      className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
-      title="Center horizontally"
-      >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8M8 17h8M12 3v18" />
-      </svg>
-      </button>
-      <button
-      onClick={() => centerElement('both')}
-      className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
-      title="Center both"
-      >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v18M3 12h18" />
-      </svg>
-      </button>
-      <button
-      onClick={() => centerElement('vertical')}
-      className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
-      title="Center vertically"
-      >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8v8M17 8v8M3 12h18" />
-      </svg>
-      </button>
-      </div>
+
+{/* Desktop alignment: 3x2 grid with arrows */}
+<div className="grid grid-cols-3 gap-1 ml-1">
+  {/* Left */}
+  <button
+    onClick={() => centerElement('left')}
+    className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
+    title="Align left"
+  >
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5 5-5M6 12h12" />
+    </svg>
+  </button>
+
+  {/* Horizontal center */}
+  <button
+    onClick={() => centerElement('hcenter')}
+    className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
+    title="Center horizontally"
+  >
+   <svg
+  className="w-4 h-4"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  strokeWidth={2}
+  strokeLinecap="round"
+  strokeLinejoin="round"
+>
+  {/* Center vertical bar */}
+  <path d="M12 4v16" />
+
+  {/* Left arrow (pointing right, toward the bar) */}
+  <path d="M4 12h5" />
+  <path d="M7 9l3 3-3 3" />
+
+  {/* Right arrow (pointing left, toward the bar) */}
+  <path d="M20 12h-5" />
+  <path d="M17 9l-3 3 3 3" />
+</svg>
+
+
+  </button>
+  {/* Right */}
+  <button
+    onClick={() => centerElement('right')}
+    className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
+    title="Align right"
+  >
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5-5 5M6 12h12" />
+    </svg>
+  </button>
+
+  {/* Top */}
+  <button
+    onClick={() => centerElement('top')}
+    className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
+    title="Align top"
+  >
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11V3m0 0L7 7m5-4 5 4M4 21h16" />
+    </svg>
+  </button>
+
+  {/* Vertical center */}
+  <button
+    onClick={() => centerElement('vcenter')}
+    className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
+    title="Center vertically"
+  >
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+     strokeLinecap="round" strokeLinejoin="round">
+
+  {/* Top arrow */}
+  <path d="M12 5v5" />
+  <path d="M9 8l3 3 3-3" />
+
+  {/* Center horizontal bar */}
+  <path d="M4 12h16" />
+
+  {/* Bottom arrow */}
+  <path d="M12 19v-5" />
+  <path d="M9 16l3-3 3 3" />
+</svg>
+
+  </button>
+
+  {/* Bottom */}
+  <button
+    onClick={() => centerElement('bottom')}
+    className="p-2 text-gray-600 transition-colors rounded-md hover:bg-orange-50 hover:text-orange-600 touch-manipulation"
+    title="Align bottom"
+  >
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 13v8m0 0l5-4m-5 4-5-4M4 3h16" />
+    </svg>
+  </button>
+</div>
+
       </div>
       <div className="flex items-center gap-2 md:w-full md:pt-3 md:border-t md:border-gray-200">
       <button

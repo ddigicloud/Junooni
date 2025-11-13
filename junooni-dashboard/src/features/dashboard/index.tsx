@@ -1401,95 +1401,104 @@ const DashboardPage = () => {
         <SummaryCards orders={orders} products={products} />
 
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Recent Orders Card */}
-          <Card className="shadow-md">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center text-lg">
-                  <Package className="w-5 h-5 mr-2 text-gray-500" />
-                  Recent Orders
-                </CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8"
-                  asChild
-                >
-                  <Link to="/orders">View All</Link>
-                </Button>
+         {/* Recent Orders Card */}
+<Card className="shadow-md">
+  <CardHeader className="pb-3">
+    <div className="flex items-center justify-between">
+      <CardTitle className="flex items-center text-lg">
+        <Package className="w-5 h-5 mr-2 text-gray-500" />
+        Recent Orders
+      </CardTitle>
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        className="h-8"
+        asChild
+      >
+        <Link to="/orders">View All</Link>
+      </Button>
+    </div>
+    <CardDescription>
+      Latest orders containing your products
+    </CardDescription>
+  </CardHeader>
+  <CardContent className="pb-2">
+    {orders && orders.length > 0 ? (
+      <div className="space-y-4">
+        {orders.slice(0, 5).map((order) => {
+          // Additional safety check in render
+          if (!order || typeof order.vendor_total !== 'number') {
+            return null;
+          }
+          
+          return (
+            <div key={order.id} className="flex items-start space-x-3">
+              <div className="hidden p-1.5 rounded-full bg-gray-100 sm:block">
+                <Package className="w-4 h-4 text-gray-600" />
               </div>
-              <CardDescription>
-                Latest orders containing your products
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pb-2">
-              {orders && orders.length > 0 ? (
-                <div className="space-y-4">
-                  {orders.slice(0, 5).map((order) => {
-                    // Additional safety check in render
-                    if (!order || typeof order.vendor_total !== 'number') {
-                      return null;
-                    }
+              <div className="flex-1 min-w-0">
+                {/* Order Header - Responsive */}
+                <div className="flex flex-col gap-2 mb-2 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      <Link 
+                        to={`/orders/${order.id}`}
+                        className="hover:underline"
+                        style={{ color: BRAND.primary }}
+                      >
+                        #{order.display_id}
+                      </Link>
+                      <span className="hidden md:inline"> - </span>
+                      <span className="block md:inline">{order.customer.first_name} {order.customer.last_name}</span>
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-500 whitespace-nowrap">{formatDate(order.created_at)}</p>
+                </div>
+                
+                {/* Status and Price - Responsive Layout */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  {/* Left side - Badges */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={order.fulfillment_status} />
+                    <PaymentBadge status={order.payment_status} />
                     
-                    return (
-                      <div key={order.id} className="flex items-start space-x-3">
-                        <div className="p-1.5 rounded-full bg-gray-100">
-                          <Package className="w-4 h-4 text-gray-600" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium">
-                              <Link 
-                                to={`/orders/${order.id}`}
-                                className="hover:underline"
-                                style={{ color: BRAND.primary }}
-                              >
-                                #{order.display_id}
-                              </Link> - {order.customer.first_name} {order.customer.last_name}
-                            </p>
-                            <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
-                          </div>
-                          <div className="flex items-center justify-between mt-1">
-                            <div className="flex items-center gap-2">
-                              <StatusBadge status={order.fulfillment_status} />
-                              <PaymentBadge status={order.payment_status} />
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs font-medium">{formatPrice(order.vendor_total)}</p>
-                              <p className="text-xs text-gray-500">
-                                {order.vendor_items.reduce((acc, item) => acc + item.quantity, 0)} items
-                              </p>
-                            </div>
-                          </div>
-                          {/* Show claim/return indicators if any */}
-                          {(order.has_claims || order.has_returns) && (
-                            <div className="flex gap-1 mt-1">
-                              {order.has_returns && (
-                                <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50">
-                                  Return
-                                </Badge>
-                              )}
-                              {order.has_claims && (
-                                <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50">
-                                  Claim
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  }).filter(Boolean)} {/* Remove any null renders */}
+                    {/* Show claim/return indicators inline on tablet */}
+                    {order.has_returns && (
+                      <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50">
+                        Return
+                      </Badge>
+                    )}
+                    {order.has_claims && (
+                      <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50">
+                        Claim
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {/* Right side - Price info */}
+                  <div className="flex items-center gap-3 sm:text-right">
+                    <div>
+                      <p className="text-sm font-semibold">{formatPrice(order.vendor_total)}</p>
+                      <p className="text-xs text-gray-500">
+                        {order.vendor_items.reduce((acc, item) => acc + item.quantity, 0)} item{order.vendor_items.reduce((acc, item) => acc + item.quantity, 0) !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="py-12 text-center">
-                  <Package className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                  <h3 className="text-base font-medium text-gray-600">No orders yet</h3>
-                  <p className="mt-1 text-sm text-gray-500">Orders will appear here once customers place them</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          );
+        }).filter(Boolean)} {/* Remove any null renders */}
+      </div>
+    ) : (
+      <div className="py-12 text-center">
+        <Package className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+        <h3 className="text-base font-medium text-gray-600">No orders yet</h3>
+        <p className="mt-1 text-sm text-gray-500">Orders will appear here once customers place them</p>
+      </div>
+    )}
+  </CardContent>
+</Card>
           
           {/* Recent Products & Quick Actions */}
           <div className="space-y-6">

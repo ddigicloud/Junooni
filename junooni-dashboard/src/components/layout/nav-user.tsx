@@ -35,23 +35,29 @@ type Vendor = {
 }
 
 // Utility function to decode JWT token and check for actor_id
-const checkTokenForActorId = () => {
+// Utility function to decode JWT token and check validity
+const validateToken = () => {
   try {
     const token = localStorage.getItem('vendorToken');
-    if (!token) return { hasActorId: false, actorId: null };
+    if (!token) return { isValid: false, hasActorId: false, actorId: null };
 
-    // Decode JWT token (assuming it's base64 encoded)
+    // Decode JWT token
     const payload = JSON.parse(atob(token.split('.')[1]));
-    //console.log('Token payload:', payload);
+    
+    // Check if token is expired
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      return { isValid: false, hasActorId: false, actorId: null };
+    }
     
     const actorId = payload.actor_id || payload.sub || payload.id;
     return { 
+      isValid: true,
       hasActorId: !!actorId, 
       actorId: actorId 
     };
   } catch (error) {
-    //console.error('Error decoding token:', error);
-    return { hasActorId: false, actorId: null };
+    // Token is malformed/corrupted
+    return { isValid: false, hasActorId: false, actorId: null };
   }
 };
 
@@ -75,81 +81,82 @@ export function NavUser({
   }
   
   useEffect(() => {
-    const validateAndFetchVendor = async () => {
+  const validateAndFetchVendor = async () => {
+    try {
+      setIsLoading(true)
+      const token = localStorage.getItem("vendorToken")
+      
+      if (!token) {
+        navigate({ to: '/sign-in' })
+        return
+      }
+      
+      // Validate token first
+      const { isValid, hasActorId, actorId } = validateToken()
+      
+      // If token is invalid or expired, go to sign-in
+      if (!isValid) {
+        localStorage.clear()
+        navigate({ to: '/sign-in' })
+        return
+      }
+      
+      // If token is valid but no actor_id, go to onboarding
+      if (!hasActorId) {
+        window.location.href = '/onboarding?step=basic-info'
+        return
+      }
+      
+      // Token is valid with actor_id, fetch vendor data
       try {
-        setIsLoading(true)
-        const token = localStorage.getItem("vendorToken")
-        
-        if (!token) {
-          //console.error("No vendor token found")
-          navigate({ to: '/sign-in' })
-          return
-        }
-        
-        // Check if token has actor_id
-        const { hasActorId, actorId } = checkTokenForActorId()
-        
-        if (!hasActorId) {
-          //console.log("No actor_id in token. Redirecting to onboarding.")
-          window.location.href = '/onboarding?step=basic-info'
-          return
-        }
-        
-        //console.log("Valid vendor token found with actor_id:", actorId)
-        
-        // Only fetch vendor data if token is valid (has actor_id)
-        // This call is now just for getting display data, not for validation
-        try {
-          const res = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
-            },
-          })
+        const res = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+        })
 
-          if (res.ok) {
-            const data = await res.json()
-            if (data?.vendor) {
-              setVendor(data.vendor)
-            } else {
-              // Even if API fails, we know user is valid from token
-              // Set fallback vendor data
-              setVendor({
-                name: 'Vendor Profile',
-                handle: 'loading...',
-                logo: undefined
-              })
-            }
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.vendor) {
+            setVendor(data.vendor)
           } else {
-            // API failed but token is valid, set fallback
-            //console.warn("Failed to fetch vendor profile, but token is valid")
             setVendor({
               name: 'Vendor Profile',
               handle: 'loading...',
               logo: undefined
             })
           }
-        } catch (apiError) {
-          //console.error("API error:", apiError)
-          // Even if API fails, we know user is valid from token
+        } else if (res.status === 401) {
+          // Token rejected by backend (expired/invalid)
+          localStorage.clear()
+          navigate({ to: '/sign-in' })
+          return
+        } else {
           setVendor({
             name: 'Vendor Profile',
             handle: 'loading...',
             logo: undefined
           })
         }
-        
-      } catch (err) {
-        //console.error("Token validation error:", err)
-        // If token validation fails, redirect to sign-in
-        navigate({ to: '/sign-in' })
-      } finally {
-        setIsLoading(false)
+      } catch (apiError) {
+        setVendor({
+          name: 'Vendor Profile',
+          handle: 'loading...',
+          logo: undefined
+        })
       }
+      
+    } catch (err) {
+      localStorage.clear()
+      navigate({ to: '/sign-in' })
+    } finally {
+      setIsLoading(false)
     }
+  }
 
-    validateAndFetchVendor()
-  }, [navigate])
+  validateAndFetchVendor()
+}, [navigate])
 
   // Show loading state while validating
   if (isLoading) {

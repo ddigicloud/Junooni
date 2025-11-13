@@ -1595,7 +1595,7 @@ const openChatwoot = () => {
                         )}
                        
                         {editMode.profile && (
-                          <div className="absolute bottom-4 right-4">
+                          <div className="absolute bottom-4 right-4 z-20">
                             <Button
                               className="flex items-center gap-1 text-white bg-black/50 hover:bg-black/70"
                               onClick={() => coverPhotoInputRef.current?.click()}

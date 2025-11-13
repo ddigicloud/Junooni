@@ -152,14 +152,14 @@
 // }
 
 //   return (
-//     <div className="fixed z-50 w-full border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+//     <div className="fixed z-50 w-full bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
 //       {/* Top navbar row - Desktop and Mobile */}
 //       <div className="py-3 sm:py-4 w-full max-w-[95%] mx-auto flex items-center justify-between min-h-[60px] relative">
 //         {/* Left: Hamburger (mobile only) + Logo (desktop only) */}
 //         <div className="flex items-center gap-4">
 //           <button
 //             aria-label="Open menu"
-//             className="sm:hidden p-1 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20"
+//             className="p-1 rounded-lg sm:hidden hover:bg-orange-50 dark:hover:bg-orange-950/20"
 //             onClick={() => setMobileOpen(true)}
 //           >
 //             <MenuIcon className="w-6 h-6" style={{ color: BRAND.primary }}/>
@@ -168,7 +168,7 @@
 //           {/* Desktop Logo */}
 //           <Link
 //             to="/dashboard"
-//             className="hidden sm:inline-block font-bold transition-transform duration-300 brand-accent hover:scale-105 logo logo-glow"
+//             className="hidden font-bold transition-transform duration-300 sm:inline-block brand-accent hover:scale-105 logo logo-glow"
 //           >
 //             <img src={JunooniLogo} alt="Junooni Logo" className="h-6 sm:h-8" />
 //           </Link>
@@ -177,13 +177,13 @@
 //         {/* Mobile Centered Logo */}
 //         <Link
 //           to="/dashboard"
-//           className="sm:hidden absolute left-1/2 transform -translate-x-1/2 font-bold transition-transform duration-300 brand-accent hover:scale-105 logo logo-glow"
+//           className="absolute font-bold transition-transform duration-300 transform -translate-x-1/2 sm:hidden left-1/2 brand-accent hover:scale-105 logo logo-glow"
 //         >
 //           <img src={JunooniLogo} alt="Junooni Logo" className="h-8" />
 //         </Link>
 
 //         {/* Center: Desktop categories (hidden on mobile) */}
-//         <div className="hidden sm:flex items-center space-x-6">
+//         <div className="items-center hidden space-x-6 sm:flex">
 //           <Link
 //             to="/productCatalog/products"
 //             className="category-link font-medium text-gray-700 dark:text-gray-300 hover:text-[#e65100] dark:hover:text-[#ff6f00] px-3 py-2 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20"
@@ -244,17 +244,17 @@
 //           {/* Mobile Off-Canvas Menu */}
 //           <div className="sm:hidden fixed top-0 left-0 z-[101] h-screen w-80 max-w-[85vw] bg-white dark:bg-gray-900 shadow-2xl">
 //             {/* Fixed Header */}
-//             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+//             <div className="flex items-center justify-between px-4 py-4 bg-white border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
 //               <div className="flex items-center gap-3">
-//                 <img src={JunooniLogo} alt="Junooni" className="h-7 w-auto" />
-//                 {/* <span className="font-semibold text-base text-gray-900 dark:text-gray-100">
+//                 <img src={JunooniLogo} alt="Junooni" className="w-auto h-7" />
+//                 {/* <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
 //                   Junooni
 //                 </span> */}
 //               </div>
 //               <button
 //                 aria-label="Close menu"
 //                 onClick={() => setMobileOpen(false)}
-//                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+//                 className="p-2 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
 //               >
 //                 <X size={20} className="text-gray-600 dark:text-gray-400" />
 //               </button>
@@ -262,11 +262,11 @@
 
 //             {/* Scrollable Content */}
 //             <div className="h-[calc(100vh-80px)] bg-white dark:bg-gray-900">
-//               <div className="h-full overflow-y-auto px-4 py-4 bg-white dark:bg-gray-900">
+//               <div className="h-full px-4 py-4 overflow-y-auto bg-white dark:bg-gray-900">
 //                 {/* All Products Link */}
 //                 <Link
 //                   to="/productCatalog/products"
-//                   className="block mb-4 px-3 py-3 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20 font-medium text-gray-800 dark:text-gray-200 transition-colors"
+//                   className="block px-3 py-3 mb-4 font-medium text-gray-800 transition-colors rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20 dark:text-gray-200"
 //                   onClick={() => setMobileOpen(false)}
 //                 >
 //                   All Products
@@ -275,7 +275,7 @@
 //                 {/* Categories */}
 //                 <div className="space-y-4">
 //                   {organizedCategories.map((category) => (
-//                     <div key={category.id} className="border-b border-gray-100 dark:border-gray-800 pb-4 last:border-b-0">
+//                     <div key={category.id} className="pb-4 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
 //                       <Link
 //                         to={`/productCatalog/category/${category.slug}`}
 //                         className="block mb-3 font-semibold text-gray-900 dark:text-gray-100 hover:text-[#e65100] dark:hover:text-[#ff6f00] transition-colors px-3 py-2 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20"
@@ -320,7 +320,7 @@
 //             onMouseEnter={() => setActiveCategory(category.id)}
 //             onMouseLeave={() => setActiveCategory(null)}
 //           >
-//             <div className="max-w-5xl px-6 py-6 mx-auto grid grid-cols-4 gap-6">
+//             <div className="grid max-w-5xl grid-cols-4 gap-6 px-6 py-6 mx-auto">
 //               {columnGroups.map((columnItems, i) => (
 //                 <div key={i} className="space-y-4">
 //                   {columnItems.map((subcategory) =>
@@ -507,14 +507,14 @@ const Navbar = () => {
 }
 
   return (
-    <div className="fixed z-50 w-full border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+    <div className="fixed z-50 w-full bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
       {/* Top navbar row - Desktop and Mobile */}
       <div className="py-3 sm:py-4 w-full max-w-[95%] mx-auto flex items-center justify-between min-h-[60px] relative">
         {/* Left: Hamburger (mobile only) + Logo (desktop only) */}
-        <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="flex items-center flex-shrink-0 gap-4">
           <button
             aria-label="Open menu"
-            className="sm:hidden p-1 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20"
+            className="p-1 rounded-lg sm:hidden hover:bg-orange-50 dark:hover:bg-orange-950/20"
             onClick={() => setMobileOpen(true)}
           >
             <MenuIcon className="w-6 h-6" style={{ color: BRAND.primary }}/>
@@ -523,7 +523,7 @@ const Navbar = () => {
           {/* Desktop Logo */}
           <Link
             to="/dashboard"
-            className="hidden sm:inline-block font-bold transition-transform duration-300 brand-accent hover:scale-105 logo logo-glow"
+            className="hidden font-bold transition-transform duration-300 sm:inline-block brand-accent hover:scale-105 logo logo-glow"
           >
             <img src={JunooniLogo} alt="Junooni Logo" className="h-6 sm:h-8" />
           </Link>
@@ -532,19 +532,19 @@ const Navbar = () => {
         {/* Mobile Centered Logo */}
         <Link
           to="/dashboard"
-          className="sm:hidden absolute left-1/2 transform -translate-x-1/2 font-bold transition-transform duration-300 brand-accent hover:scale-105 logo logo-glow"
+          className="absolute font-bold transition-transform duration-300 transform -translate-x-1/2 sm:hidden left-1/2 brand-accent hover:scale-105 logo logo-glow"
         >
           <img src={JunooniLogo} alt="Junooni Logo" className="h-8" />
         </Link>
 
         {/* Center: Desktop categories with horizontal scroll (hidden on mobile) */}
-        <div className="hidden sm:flex items-center flex-1 mx-4 overflow-hidden relative">
+        <div className="relative items-center justify-center flex-1 mx-4 overflow-hidden sm:flex">
           {/* Fade effect on left */}
-          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-gray-900 to-transparent pointer-events-none z-10" />
+          <div className="absolute top-0 bottom-0 left-0 z-10 w-8 pointer-events-none bg-gradient-to-r from-white dark:from-gray-900 to-transparent" />
           
           {/* Scrollable container */}
           <div 
-            className="flex items-center gap-4 overflow-x-auto px-2 scroll-smooth"
+            className="flex items-center gap-4 px-2 overflow-x-auto scroll-smooth"
             style={{
               scrollbarWidth: 'none', /* Firefox */
               msOverflowStyle: 'none',  /* IE and Edge */
@@ -569,7 +569,7 @@ const Navbar = () => {
               return (
                 <div
                   key={category.id}
-                  className="relative group flex-shrink-0"
+                  className="relative flex-shrink-0 group"
                   onMouseEnter={() => setActiveCategory(category.id)}
                   onMouseLeave={() => setActiveCategory(null)}
                 >
@@ -597,11 +597,11 @@ const Navbar = () => {
           </div>
           
           {/* Fade effect on right */}
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-gray-900 to-transparent pointer-events-none z-10" />
+          <div className="absolute top-0 bottom-0 right-0 z-10 w-8 pointer-events-none bg-gradient-to-l from-white dark:from-gray-900 to-transparent" />
         </div>
 
         {/* Right: Profile */}
-        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+        <div className="flex items-center flex-shrink-0 gap-2 sm:gap-4">
           <div className="p-1 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20">
             <ProfileDropdown />
           </div>
@@ -620,17 +620,17 @@ const Navbar = () => {
           {/* Mobile Off-Canvas Menu */}
           <div className="sm:hidden fixed top-0 left-0 z-[101] h-screen w-80 max-w-[85vw] bg-white dark:bg-gray-900 shadow-2xl">
             {/* Fixed Header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+            <div className="flex items-center justify-between px-4 py-4 bg-white border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
               <div className="flex items-center gap-3">
-                <img src={JunooniLogo} alt="Junooni" className="h-7 w-auto" />
-                {/* <span className="font-semibold text-base text-gray-900 dark:text-gray-100">
+                <img src={JunooniLogo} alt="Junooni" className="w-auto h-7" />
+                {/* <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
                   Junooni
                 </span> */}
               </div>
               <button
                 aria-label="Close menu"
                 onClick={() => setMobileOpen(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="p-2 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <X size={20} className="text-gray-600 dark:text-gray-400" />
               </button>
@@ -638,11 +638,11 @@ const Navbar = () => {
 
             {/* Scrollable Content */}
             <div className="h-[calc(100vh-80px)] bg-white dark:bg-gray-900">
-              <div className="h-full overflow-y-auto px-4 py-4 bg-white dark:bg-gray-900">
+              <div className="h-full px-4 py-4 overflow-y-auto bg-white dark:bg-gray-900">
                 {/* All Products Link */}
                 <Link
                   to="/productCatalog/products"
-                  className="block mb-4 px-3 py-3 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20 font-medium text-gray-800 dark:text-gray-200 transition-colors"
+                  className="block px-3 py-3 mb-4 font-medium text-gray-800 transition-colors rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20 dark:text-gray-200"
                   onClick={() => setMobileOpen(false)}
                 >
                   All Products
@@ -651,7 +651,7 @@ const Navbar = () => {
                 {/* Categories */}
                 <div className="space-y-4">
                   {organizedCategories.map((category) => (
-                    <div key={category.id} className="border-b border-gray-100 dark:border-gray-800 pb-4 last:border-b-0">
+                    <div key={category.id} className="pb-4 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
                       <Link
                         to={`/productCatalog/category/${category.slug}`}
                         className="block mb-3 font-semibold text-gray-900 dark:text-gray-100 hover:text-[#e65100] dark:hover:text-[#ff6f00] transition-colors px-3 py-2 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-950/20"
@@ -696,7 +696,7 @@ const Navbar = () => {
             onMouseEnter={() => setActiveCategory(category.id)}
             onMouseLeave={() => setActiveCategory(null)}
           >
-            <div className="max-w-5xl px-6 py-6 mx-auto grid grid-cols-4 gap-6">
+            <div className="grid max-w-5xl grid-cols-4 gap-6 px-6 py-6 mx-auto">
               {columnGroups.map((columnItems, i) => (
                 <div key={i} className="space-y-4">
                   {columnItems.map((subcategory) =>

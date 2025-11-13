@@ -2213,7 +2213,7 @@ const handleConfirmOrder = async () => {
     };
     
     // ✅ Create fulfillment using the exact endpoint from your route.ts
-    const fulfillmentResponse = await fetch(`http://localhost:9000/vendors/orders/${order.original_order_id}/fulfillments`, {
+    const fulfillmentResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders/${order.original_order_id}/fulfillments`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2277,7 +2277,7 @@ const handleConfirmOrder = async () => {
           ]
         };
         
-        const cancelResponse = await fetch(`http://localhost:9000/vendors/orders/${order.original_order_id}/cancel`, {
+        const cancelResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders/${order.original_order_id}/cancel`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -2398,7 +2398,7 @@ const updatePayload = {
    
     // ✅ Update fulfillment status to shipped with tracking info
         const updateResponse = await fetch(
-      `http://localhost:9000/vendors/orders/${order.original_order_id}/fulfillments/${selectedShipmentItem.fulfillment_id}/shipment`, 
+      `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders/${order.original_order_id}/fulfillments/${selectedShipmentItem.fulfillment_id}/shipment`, 
       {
         method: "POST",
         headers: {

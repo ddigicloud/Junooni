@@ -814,10 +814,7 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div
-                                    className="
-                                      w-8 h-8 rounded-full border-2 shadow-sm
-                                      cursor-allowed transition-all duration-200
-                                    "
+                                    className="w-8 h-8 transition-all duration-200 border-2 rounded-full shadow-sm cursor-allowed"
                                     style={{ 
                                       backgroundColor: color.colorHex,
                                       border: color.colorHex?.toLowerCase() === '#ffffff' 
@@ -844,7 +841,7 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                           <h3 className="text-sm font-semibold text-gray-900">Size</h3>
                         </div>
 
-                        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                        <div className="flex flex-wrap gap-2">
                           {product.sizeOptions.map((size: SizeOption) => (
                             <div
                               key={size.id}
@@ -881,7 +878,7 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                           </TooltipProvider>
                         </div>
 
-                        <div className="space-y-3 flex flex-row gap-3 overflow-x-auto pb-2 hide-scrollbar items-end">
+                        <div className="flex flex-row items-end gap-3 pb-2 space-y-3 overflow-x-auto hide-scrollbar">
                           {product.printT.map((tech: PrintingTechnology) => {
                             const isSelected = selectedTechnology?.id === tech.id;
 
@@ -897,7 +894,7 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                                   }
                                 `}
                               >
-                                <div className="flex items-start gap-3 w-full">
+                                <div className="flex items-start w-full gap-3">
                                   
                                   <div className="flex-1 min-w-0">
                                     <h4
@@ -991,7 +988,7 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
                         </Collapsible>
                       )}
 
-                      <CardFooter className="flex flex-col gap-3 px-0 pb-2 pt-2 bg-gradient-to-r from-white to-white">
+                      <CardFooter className="flex flex-col gap-3 px-0 pt-2 pb-2 bg-gradient-to-r from-white to-white">
                         {/* Action Buttons */}
                         <Button 
                           className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#e65100] to-[#ff7043] hover:from-[#d84315] hover:to-[#e65100] transform transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"

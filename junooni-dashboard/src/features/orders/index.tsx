@@ -1369,7 +1369,7 @@ useEffect(() => {
               />
             </div>
             
-            <div className="flex flex-wrap gap-3 md:flex-nowrap">
+            <div className="flex flex-wrap gap-3">
               <div className="flex items-center gap-2">
                 <DateFilter
                   selectedDate={dateFilterMode === 'single' ? dateFilter : undefined}
