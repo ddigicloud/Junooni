@@ -160,37 +160,37 @@ const ColorFilteredImageGallery: React.FC<ColorFilteredImageGalleryProps> = ({ p
   const initialColor = colorOption?.values?.[0]?.value || "";
   const [selectedColor, setSelectedColor] = useState<string>(initialColor);
   
-  console.log('🖼️ ColorFilteredImageGallery rendered');
-  console.log('🖼️ Product title:', product.title);
-  console.log('🖼️ Initial/Current selectedColor:', selectedColor);
-  console.log('🖼️ Product images count:', product.images?.length || 0);
-  console.log('🎨 Available colors:', colorOption?.values?.map(v => v.value));
+  // console.log('🖼️ ColorFilteredImageGallery rendered');
+  // console.log('🖼️ Product title:', product.title);
+  // console.log('🖼️ Initial/Current selectedColor:', selectedColor);
+  // console.log('🖼️ Product images count:', product.images?.length || 0);
+  // console.log('🎨 Available colors:', colorOption?.values?.map(v => v.value));
   
   // Dispatch initial color event when component mounts (only if we have an initial color)
   useEffect(() => {
     if (initialColor) {
-      console.log('🚀 Dispatching initial color event:', initialColor);
+      //console.log('🚀 Dispatching initial color event:', initialColor);
       try {
         const event = new CustomEvent('colorOptionChanged', {
           detail: { color: initialColor }
         });
         window.dispatchEvent(event);
       } catch (error) {
-        console.error('❌ Failed to dispatch initial color event:', error);
+        //console.error('❌ Failed to dispatch initial color event:', error);
       }
     }
   }, []); // Empty dependency array - runs only once on mount
 
   // Function to filter images based on selected color
   const getFilteredImages = () => {
-    console.log('🔍 getFilteredImages called with selectedColor:', selectedColor);
+    //console.log('🔍 getFilteredImages called with selectedColor:', selectedColor);
     
     if (!selectedColor || !colorOption) {
-      console.log('⚠️ No selectedColor or colorOption, returning all images');
+      //console.log('⚠️ No selectedColor or colorOption, returning all images');
       return product.images || [];
     }
     
-    console.log('🔍 Filtering images for color:', selectedColor);
+    //console.log('🔍 Filtering images for color:', selectedColor);
     
     // Find the variant that matches the selected color
     const matchingVariant = product.variants?.find(variant => {
@@ -200,22 +200,22 @@ const ColorFilteredImageGallery: React.FC<ColorFilteredImageGalleryProps> = ({ p
       );
     });
     
-    console.log('🔍 Found matching variant:', matchingVariant?.id);
+    //console.log('🔍 Found matching variant:', matchingVariant?.id);
     
     if (!matchingVariant) {
-      console.log('⚠️ No matching variant found for color:', selectedColor);
+      //console.log('⚠️ No matching variant found for color:', selectedColor);
       return product.images || [];
     }
     
     // Try to get image URLs from variant metadata
     try {
       const metadata = matchingVariant.metadata;
-      console.log('📦 Variant metadata:', metadata);
+      ////console.log('📦 Variant metadata:', metadata);
       
       // Try variant_images first (simplest format)
       if (metadata?.variant_images) {
         const variantImages = JSON.parse(metadata.variant_images as string);
-        console.log('📷 Parsed variant_images:', variantImages);
+        //console.log('📷 Parsed variant_images:', variantImages);
         
         if (Array.isArray(variantImages) && variantImages.length > 0) {
           // Filter product images to match the variant image URLs
@@ -223,7 +223,7 @@ const ColorFilteredImageGallery: React.FC<ColorFilteredImageGalleryProps> = ({ p
             variantImages.includes(image.url)
           );
           
-          console.log('✅ Filtered images from variant_images:', filteredImages.length);
+          //console.log('✅ Filtered images from variant_images:', filteredImages.length);
           
           if (filteredImages.length > 0) {
             return filteredImages;
@@ -234,17 +234,17 @@ const ColorFilteredImageGallery: React.FC<ColorFilteredImageGalleryProps> = ({ p
       // Try option_images as backup
       if (metadata?.option_images) {
         const optionImages = JSON.parse(metadata.option_images as string);
-        console.log('📷 Parsed option_images:', optionImages);
+        //console.log('📷 Parsed option_images:', optionImages);
         
         if (Array.isArray(optionImages)) {
           const imageUrls = optionImages.map((img: any) => img.url);
-          console.log('📷 Extracted URLs from option_images:', imageUrls);
+          //console.log('📷 Extracted URLs from option_images:', imageUrls);
           
           const filteredImages = (product.images || []).filter(image => 
             imageUrls.includes(image.url)
           );
           
-          console.log('✅ Filtered images from option_images:', filteredImages.length);
+          //console.log('✅ Filtered images from option_images:', filteredImages.length);
           
           if (filteredImages.length > 0) {
             return filteredImages;
@@ -255,17 +255,17 @@ const ColorFilteredImageGallery: React.FC<ColorFilteredImageGalleryProps> = ({ p
       // Try color_images as backup
       if (metadata?.color_images) {
         const colorImages = JSON.parse(metadata.color_images as string);
-        console.log('📷 Parsed color_images:', colorImages);
+        //console.log('📷 Parsed color_images:', colorImages);
         
         if (Array.isArray(colorImages)) {
           const imageUrls = colorImages.map((img: any) => img.url);
-          console.log('📷 Extracted URLs from color_images:', imageUrls);
+          //console.log('📷 Extracted URLs from color_images:', imageUrls);
           
           const filteredImages = (product.images || []).filter(image => 
             imageUrls.includes(image.url)
           );
           
-          console.log('✅ Filtered images from color_images:', filteredImages.length);
+          //console.log('✅ Filtered images from color_images:', filteredImages.length);
           
           if (filteredImages.length > 0) {
             return filteredImages;
@@ -274,11 +274,11 @@ const ColorFilteredImageGallery: React.FC<ColorFilteredImageGalleryProps> = ({ p
       }
       
     } catch (error) {
-      console.error('❌ Error parsing variant metadata:', error);
+      //console.error('❌ Error parsing variant metadata:', error);
     }
     
     // Fallback: filter by color name in URL
-    console.log('⚠️ Falling back to URL filtering');
+    //console.log('⚠️ Falling back to URL filtering');
     const filteredImages = (product.images || []).filter(image => {
       const url = image.url.toLowerCase();
       const color = selectedColor.toLowerCase();
@@ -286,36 +286,36 @@ const ColorFilteredImageGallery: React.FC<ColorFilteredImageGalleryProps> = ({ p
     });
     
     if (filteredImages.length > 0) {
-      console.log('✅ Filtered images by URL:', filteredImages.length);
+      //console.log('✅ Filtered images by URL:', filteredImages.length);
       return filteredImages;
     }
     
-    console.log('⚠️ No filtering worked, returning all images');
+    //console.log('⚠️ No filtering worked, returning all images');
     return product.images || [];
   };
 
   // Listen for color selection changes via custom events
   useEffect(() => {
-    console.log('👂 Setting up event listener for colorOptionChanged');
+    //console.log('👂 Setting up event listener for colorOptionChanged');
     
     const handleColorChange = (event: CustomEvent) => {
-      console.log('📩 Received colorOptionChanged event:', event.detail);
-      console.log('📩 Event color:', event.detail.color);
-      console.log('📩 Current selectedColor before update:', selectedColor);
+      // console.log('📩 Received colorOptionChanged event:', event.detail);
+      // console.log('📩 Event color:', event.detail.color);
+      // console.log('📩 Current selectedColor before update:', selectedColor);
       setSelectedColor(event.detail.color);
     };
 
     window.addEventListener('colorOptionChanged', handleColorChange as EventListener);
     
     return () => {
-      console.log('🧹 Cleaning up event listener');
+      //console.log('🧹 Cleaning up event listener');
       window.removeEventListener('colorOptionChanged', handleColorChange as EventListener);
     };
   }, []);
 
   const filteredImages = getFilteredImages();
 
-  console.log('🎬 Rendering ProductImageGallery with', filteredImages.length, 'images');
+  //console.log('🎬 Rendering ProductImageGallery with', filteredImages.length, 'images');
 
   return <ProductImageGallery images={filteredImages} />;
 };

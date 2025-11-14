@@ -481,7 +481,7 @@ const CreatorAvatar = ({ creator, size = 40 }) => {
   const fontSize = Math.max(Math.floor(size * 0.4), 12)
   const hasValidLogo = creator.vendor?.logo && !imageError
 
-  const containerStyle = {
+  const containerStyle: React.CSSProperties = {
     width: size,
     height: size,
     position: 'relative',
@@ -494,10 +494,9 @@ const CreatorAvatar = ({ creator, size = 40 }) => {
     <div style={containerStyle}>
       {hasValidLogo ? (
         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-          <Image
+          <img
             src={creator.vendor.logo}
             alt={vendorName}
-            fill
             className="object-cover"
             sizes={`${size}px`}
             onLoad={() => setIsLoading(false)}
@@ -890,7 +889,7 @@ const DashboardTab = ({
 
           {/* Loading state */}
           {isLoadingDetails && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="p-3 mb-4 border border-blue-200 rounded-lg bg-blue-50">
               <p className="text-sm text-blue-800">
                 ⏳ Loading detailed tracking information...
               </p>
@@ -899,7 +898,7 @@ const DashboardTab = ({
 
           {/* Show alert if data is not expanded */}
           {!isLoadingDetails && !hasExpandedData(orderForTracking) && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="p-3 mb-4 border rounded-lg bg-amber-50 border-amber-200">
               <p className="text-sm text-amber-800">
                 ⚠️ <strong>Limited tracking data available.</strong> Full tracking details will appear once the order data is properly loaded.
               </p>

@@ -79,7 +79,7 @@ export const NavLink = ({ href, label, submenuItems = [] }: NavLinkProps) => {
                         <li key={level3Index}>
                           <LocalizedClientLink
                             href={level3Item.href}
-                            className="block text-sm text-gray-500 transition-all duration-200 hover:text-black"
+                            className="block text-sm text-black transition-all duration-200 hover:text-black"
                           >
                             {level3Item.label}
                           </LocalizedClientLink>

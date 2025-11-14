@@ -515,14 +515,14 @@ const CreatorInstagram = () => {
   }
 
   return (
-    <section className="py-8 md:py-16 bg-white">
+    <section className="py-8 bg-white md:py-16">
       <div className="container px-0 mx-auto sm:px-4">
         <h2 className="mb-4 text-2xl font-bold text-center md:mb-10 md:text-3xl">Creator Spotlight</h2>
         
         <div className="flex flex-col items-center overflow-hidden bg-white md:flex-row rounded-xl">
           {/* Image Section */}
           <div className="w-full md:w-2/5">
-            <div className="bg-gray-200 aspect-square">
+            <div className="bg-none aspect-square">
               <img 
                 src={spotlightVendor.metadata?.profile_image || spotlightVendor.logo || "/api/placeholder/600/600"} 
                 alt={`${spotlightVendor.name} spotlight`}
@@ -580,7 +580,7 @@ const CreatorInstagram = () => {
               </div>
               
               {/* Social Media Links */}
-              <div className="flex gap-3 md:gap-4">
+              {/* <div className="flex gap-3 md:gap-4">
                 {spotlightVendor.metadata?.instagram_url && (
                   <a 
                     href={spotlightVendor.metadata.instagram_url} 
@@ -606,7 +606,7 @@ const CreatorInstagram = () => {
                     </svg>
                   </a>
                 )}
-              </div>
+              </div> */}
             </div>
 
             {/* Featured Products Section */}

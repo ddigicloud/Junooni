@@ -450,7 +450,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
         {/* Description & Details Tab */}
         {activeTab === 'description' && (
           <div>
-            <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
               {/* Description Column */}
               <div>
                 <h2 className="mb-2 text-base font-semibold sm:mb-4 sm:text-lg">Description</h2>
@@ -460,7 +460,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                     dangerouslySetInnerHTML={{ __html: product.description }}
                   />
                 ) : (
-                  <p className="mb-4 text-sm text-gray-500 italic sm:mb-6">No description available.</p>
+                  <p className="mb-4 text-sm italic text-gray-500 sm:mb-6">No description available.</p>
                 )}
                 
                 {/* Fulfillment type badge - only show if data exists */}
@@ -489,7 +489,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                       <Calendar size={16} className="text-[#e65100] mr-2" />
                       <h3 className="text-sm font-medium sm:text-base">Limited Stock</h3>
                     </div>
-                    <p className="text-xs text-gray-700 sm:text-sm">
+                    <p className="text-xs text-gray-700 sm:text-">
                       Only {product.inventory_quantity} left in stock.
                     </p>
                   </div>
@@ -498,10 +498,10 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
               
               {/* Product Details Column */}
               <div>
-                <h2 className="mb-2 text-base font-semibold sm:mb-4 sm:text-lg">Product Details</h2>
+                {/* <h2 className="mb-2 text-base font-semibold sm:mb-4 sm:text-lg">Product Details</h2> */}
                 
                 {/* Product specifications - only show if data exists */}
-                <div className="mb-4 space-y-3 text-sm sm:mb-6">
+                {/* <div className="mb-4 space-y-3 text-sm sm:mb-6">
                   {product.material && (
                     <div className="flex items-start">
                       <span className="text-[#e65100] mr-2">•</span>
@@ -552,7 +552,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                       </div>
                     </div>
                   )}
-                </div>
+                </div> */}
                 
                 {/* Product details from metadata - only show if exists */}
                 {productDetails && Array.isArray(productDetails) && productDetails.length > 0 && (
@@ -571,7 +571,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
 
                 {/* Show message if no additional details available */}
                 {!productDetails && !product.material && !product.origin_country && (
-                  <p className="text-sm text-gray-500 italic">Additional product details not available.</p>
+                  <p className="text-sm italic text-gray-500">Additional product details not available.</p>
                 )}
               </div>
 
@@ -579,7 +579,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
               <div>
                 <h2 className="mb-2 text-base font-semibold sm:mb-4 sm:text-lg">Care Instructions</h2>
                 
-                {/* Care Instructions - only show if exists */}
+               {/* Care Instructions - only show if exists */}
                 {careInstructions && Array.isArray(careInstructions) && careInstructions.length > 0 ? (
                   <div className="space-y-3">
                     {careInstructions.map((instruction, index) => {
@@ -593,7 +593,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                     })}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 italic">Care instructions not available for this product.</p>
+                  <p className="text-sm italic text-gray-500">Care instructions not available for this product.</p>
                 )}
               </div>
             </div>
@@ -634,8 +634,8 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                 </div>
               </>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500 italic">No story available for this product.</p>
+              <div className="py-8 text-center">
+                <p className="italic text-gray-500">No story available for this product.</p>
               </div>
             )}
           </div>
@@ -686,7 +686,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-500 sm:text-sm italic">
+                    <p className="text-xs italic text-gray-500 sm:text-sm">
                       Shipping information not available for this product.
                     </p>
                   )}
@@ -699,7 +699,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                   Returns Policy
                 </h3>
                 <div className="p-3 space-y-3 rounded-md bg-gray-50 sm:p-4 sm:space-y-4">
-                  <p className="text-xs text-gray-700 sm:text-sm mb-3">
+                  <p className="mb-3 text-xs text-gray-700 sm:text-sm">
                     We want you to be completely satisfied with your purchase. View our complete refund and exchange policy for details.
                   </p>
                   <LocalizedClientLink

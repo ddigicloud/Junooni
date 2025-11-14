@@ -235,10 +235,11 @@ export default async function Nav() {
       <div className="items-center hidden md:flex">
         <LocalizedClientLink
           href="/"
-          className="mr-8 text-2xl font-semibold uppercase transition-colors duration-300"
+          className="mr-8 text-2xl font-extrabold uppercase transition-colors duration-300 font-archivo"
           data-testid="nav-store-link"
         >
-          <img src={junooniHeaderLogo.src} alt="Junooni Logo" className="h-6"/>
+          JUNOONI
+          {/* <img src={junooniHeaderLogo.src} alt="Junooni Logo" className="h-6"/> */}
         </LocalizedClientLink>
       </div>
 

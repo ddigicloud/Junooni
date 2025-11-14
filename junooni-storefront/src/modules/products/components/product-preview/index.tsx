@@ -383,7 +383,7 @@ const ProductPreview = ({
   };
 
   return (
-    <div className="flex flex-col h-full group bg-white">
+    <div className="flex flex-col h-full bg-white group">
       {/* Product Image - Mobile First */}
       <div className="aspect-[3/4] sm:aspect-[4/5] bg-gray-50 relative overflow-hidden mb-3">
         <LocalizedClientLink href={`/products/${product.handle}`}>
@@ -413,7 +413,7 @@ const ProductPreview = ({
             </div>
           ) : (
             <div className="flex items-center justify-center w-full h-full bg-gray-200">
-              <p className="text-gray-400 text-sm">No image</p>
+              <p className="text-sm text-gray-400">No image</p>
             </div>
           )}
         </LocalizedClientLink>
@@ -433,7 +433,7 @@ const ProductPreview = ({
         {(productTags.mobile.length > 0 || productTags.desktop.length > 0) && (
           <div className="mb-2">
             {/* Mobile View - Max 3 tags */}
-            <div className="flex gap-1 mb-2 sm:hidden flex-wrap">
+            <div className="flex flex-wrap gap-1 mb-2 sm:hidden">
               {productTags.mobile.map((tag, index) => (
                 <span 
                   key={`mobile-${tag.id || index}`} 
@@ -445,7 +445,7 @@ const ProductPreview = ({
             </div>
             
             {/* Desktop View - Max 5 tags */}
-            <div className="hidden sm:flex gap-2 mb-2 flex-wrap">
+            <div className="flex-wrap hidden gap-2 mb-2 sm:flex">
               {productTags.desktop.map((tag, index) => (
                 <span 
                   key={`desktop-${tag.id || index}`} 
@@ -459,31 +459,35 @@ const ProductPreview = ({
         )}
         
         {/* 2. Vendor Name - Truncated */}
-        <div className="flex items-center mb-2 px-2">
-          <span className="text-xs text-gray-600 mr-1">{vendorName}</span>
+        <div className="flex items-center px-2 mb-2">
+          <span className="mr-1 text-xs text-gray-600">{vendorName}</span>
           {product.vendor?.verified === "Yes" && (
             <Check size={12} className="text-orange-500" />
           )}
         </div>
         
         {/* 3. Product Name */}
-        <h3 className="text-sm sm:text-base font-medium mb-1.5 leading-tight px-2">
-          <LocalizedClientLink 
+        <h3
+          className="text-sm sm:text-base font-medium mb-1.5 leading-tight px-2"
+          title={product.title} // <-- FULL TITLE ON HOVER (desktop)
+        >
+          <LocalizedClientLink
             href={`/products/${product.handle}`}
-            className="hover:text-orange-600 transition-colors"
+            className="transition-colors hover:text-orange-600"
           >
             <span className="block sm:hidden">
               {truncateTitle(product.title, 15)}
             </span>
             <span className="hidden sm:block">
-              {truncateTitle(product.title, 50)}
+              {truncateTitle(product.title, 26)}
             </span>
           </LocalizedClientLink>
         </h3>
+
         
         {/* 4. Color Options */}
         {allProductColors.length > 0 && (
-          <div className="flex items-center gap-1 mb-3 px-2">
+          <div className="flex items-center gap-1 px-2 mb-3">
             {allProductColors.slice(0, 5).map((color, index) => {
               const isSelected = selectedColors.some(selected => 
                 normalizeColorName(selected).toLowerCase().trim() === color.normalizedName.toLowerCase().trim()
@@ -516,17 +520,17 @@ const ProductPreview = ({
         )}
         
         {/* 5. Price */}
-        <div className="mb-2 px-2">
+        <div className="px-2 mb-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm sm:text-base font-bold text-gray-900">
+            <span className="text-sm font-bold text-gray-900 sm:text-base">
               {formattedPrice}
             </span>
             {hasDiscount && originalPrice && (
               <>
-                <span className="text-xs sm:text-sm text-gray-500 line-through">
+                <span className="text-xs text-gray-500 line-through sm:text-sm">
                   {originalPrice}
                 </span>
-                <span className="text-xs sm:text-sm text-red-600 font-medium">
+                <span className="text-xs font-medium text-red-600 sm:text-sm">
                   {discountPercentage}% off
                 </span>
               </>
@@ -535,7 +539,7 @@ const ProductPreview = ({
         </div>
         
         {/* 6. Reviews - Last */}
-        <div className="flex items-center pb-2 px-2">
+        <div className="flex items-center px-2 pb-2">
           {isLoadingReviews ? (
             <div className="flex items-center">
               <div className="flex mr-2">

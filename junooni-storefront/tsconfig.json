@@ -28,7 +28,7 @@
       }
     ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/modules/store/components/filter-handlers-wrapper/index.jsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/modules/store/components/filter-handlers-wrapper/index.jsx", "src/modules/layout/components/Desktoplogo"],
   "exclude": [
     "node_modules",
     ".next",

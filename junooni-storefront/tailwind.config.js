@@ -114,7 +114,8 @@ module.exports = {
   				'Helvetica Neue',
   				'Ubuntu',
   				'sans-serif'
-  			]
+  			],
+			'archivo': ['var(--font-archivo-black)', 'Archivo Black', 'sans-serif']
   		},
   		keyframes: {
   			ring: {
