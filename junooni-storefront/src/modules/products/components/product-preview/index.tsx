@@ -460,9 +460,9 @@ const ProductPreview = ({
         
         {/* 2. Vendor Name - Truncated */}
         <div className="flex items-center px-2 mb-2">
-          <span className="mr-1 text-xs text-gray-600">{vendorName}</span>
+          <span className="mr-1 text-sm font-medium text-black">{vendorName}</span>
           {product.vendor?.verified === "Yes" && (
-            <Check size={12} className="text-orange-500" />
+            <Check size={14} className="text-orange-500" />
           )}
         </div>
         
@@ -479,7 +479,7 @@ const ProductPreview = ({
               {truncateTitle(product.title, 15)}
             </span>
             <span className="hidden sm:block">
-              {truncateTitle(product.title, 26)}
+              {truncateTitle(product.title, 18)}
             </span>
           </LocalizedClientLink>
         </h3>

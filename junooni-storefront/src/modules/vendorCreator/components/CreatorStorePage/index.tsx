@@ -871,7 +871,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
         />
 
         {/* Dark gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#e65100] to-[#ffb74d] opacity-90"></div>
       </motion.div>
       
       <div className="w-full px-0 mx-auto max-w-7xl sm:px-4 sm:px-6 lg:px-8">

@@ -1773,10 +1773,9 @@ const CreatorDiscoveryPage = () => {
           {/* Banner Image */}
           <div className="relative h-32 bg-gradient-to-r from-[#e65100] to-[#ff6d00] flex-shrink-0">
             {vendor.coverphoto ? (
-              <Image
+              <img
                 src={safeString(vendor.coverphoto)}
                 alt={`${safeString(vendor.name)} banner`}
-                fill
                 className="object-cover"
               />
             ) : (
@@ -1792,7 +1791,7 @@ const CreatorDiscoveryPage = () => {
             <div className="relative flex-shrink-0 w-16 h-16 mx-auto mb-3 -mt-11">
               <div className="w-full h-full overflow-hidden bg-white border-4 border-white rounded-full">
                 {vendor.logo ? (
-                  <Image
+                  <img
                     src={safeString(vendor.logo)}
                     alt={safeString(vendor.name)}
                     width={64}
@@ -1890,10 +1889,9 @@ const CreatorDiscoveryPage = () => {
           {/* Banner Image */}
           <div className="relative h-32 bg-gradient-to-r from-[#e65100] to-[#ff6d00] flex-shrink-0">
             {vendor.coverphoto ? (
-              <Image
+              <img
                 src={safeString(vendor.coverphoto)}
                 alt={`${safeString(vendor.name)} banner`}
-                fill
                 className="object-cover"
               />
             ) : (
@@ -1917,7 +1915,7 @@ const CreatorDiscoveryPage = () => {
             <div className="relative flex-shrink-0 w-16 h-16 mx-auto mb-3 -mt-11">
               <div className="w-full h-full overflow-hidden bg-white border-4 border-white rounded-full">
                 {vendor.logo ? (
-                  <Image
+                  <img
                     src={safeString(vendor.logo)}
                     alt={safeString(vendor.name)}
                     width={64}

@@ -76,6 +76,7 @@ interface VariantData {
   product: Product
 }
 
+
 interface EnhancedWishlistItem extends WishlistItem {
   variantData?: VariantData
 }
@@ -84,6 +85,7 @@ interface WishlistProductsProps {
   isEmbedded?: boolean
   onCountUpdate?: (count: number) => void
 }
+
 
 // Skeleton for loading state
 const WishlistSkeleton = ({ isEmbedded = false }) => {
@@ -185,6 +187,7 @@ export const WishlistProducts = ({
       return variant.metadata.image_url
     }
     
+    //console.log("Product response",product);
     // Try to get variant-specific image from product images array
     if (product.images && product.images.length > 1) {
       // If variant has a specific index or color, try to match it
@@ -440,10 +443,9 @@ export const WishlistProducts = ({
                 </LocalizedClientLink>
 
                 <div className="relative overflow-hidden rounded-md bg-gray-50 aspect-[4/5] mb-3">
-                  <Image
+                  <img
                     src={variantImage}
                     alt={`${product.title} - ${specificVariant.title}`}
-                    fill
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, 33vw"
                   />
@@ -466,6 +468,7 @@ export const WishlistProducts = ({
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">
                     {product.vendor?.name || "Vendor"}
+                    
                   </p>
                   <h3 className="text-base font-semibold text-gray-900 truncate">
                     {product.title}

@@ -144,6 +144,14 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
     return formatted.slice(0, 1).toUpperCase() + formatted.slice(1)
   }
 
+  const formatPaymentStatus = (status: string) => {
+    if (status === "captured") {
+      return "Paid"
+    }
+    const formatted = status.split("_").join(" ")
+    return formatted.slice(0, 1).toUpperCase() + formatted.slice(1)
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "delivered":
@@ -197,21 +205,21 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
         return (
           <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             <Check size={14} className="mr-1" />
-            {formatStatus(status)}
+            {formatPaymentStatus(status)}
           </div>
         )
       case "awaiting":
         return (
           <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
             <Clock size={14} className="mr-1" />
-            {formatStatus(status)}
+            {formatPaymentStatus(status)}
           </div>
         )
       default:
         return (
           <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
             <Clock size={14} className="mr-1" />
-            {formatStatus(status)}
+            {formatPaymentStatus(status)}
           </div>
         )
     }

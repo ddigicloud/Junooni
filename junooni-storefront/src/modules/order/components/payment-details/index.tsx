@@ -82,7 +82,7 @@ const PaymentDetails = ({ order }: PaymentDetailsProps) => {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Status:</span>
                 <span className="font-medium text-green-600">
-                  {payment.captured_at ? "Captured" : "Authorized"}
+                  {payment.captured_at ? "Paid" : "Authorized"}
                 </span>
               </div>
             </div>

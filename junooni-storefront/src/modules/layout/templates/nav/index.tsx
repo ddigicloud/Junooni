@@ -235,7 +235,7 @@ export default async function Nav() {
       <div className="items-center hidden md:flex">
         <LocalizedClientLink
           href="/"
-          className="mr-8 text-2xl font-extrabold uppercase transition-colors duration-300 font-archivo"
+          className="mr-8 text-2xl font-extrabold uppercase transition-colors duration-300 font-archivo tracking-tighter"
           data-testid="nav-store-link"
         >
           JUNOONI

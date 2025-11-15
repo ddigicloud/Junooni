@@ -132,9 +132,9 @@
 //   const safeUser = user || { name: "Customer", following: [] }
 //   const safeOrders = orders || []
 //   const safeUpcomingEvents = upcomingEvents || []
-//   console.log("Safe Orders:", safeOrders)
-//   console.log("Original Orders:", orders)
-//   console.log("Order fulfillment status:", safeOrders.length > 0 ? safeOrders[0].fulfillment_status : "N/A")
+//   //console.log("Safe Orders:", safeOrders)
+//   //console.log("Original Orders:", orders)
+//   //console.log("Order fulfillment status:", safeOrders.length > 0 ? safeOrders[0].fulfillment_status : "N/A")
 
 //   // Helper function to get most recent order display
 //   // This handles both API and fallback data formats
@@ -565,17 +565,17 @@ const DashboardTab = ({
       setIsLoadingDetails(true)
       try {
         const latestOrderId = safeOrders[0].id
-        console.log("Fetching detailed order for:", latestOrderId)
+        //console.log("Fetching detailed order for:", latestOrderId)
         
         // Use your retrieveOrder server action
         const detailedOrder = await retrieveOrder(latestOrderId)
         
-        console.log("Detailed order received:", detailedOrder)
-        console.log("Fulfillment status:", detailedOrder?.fulfillment_status)
+        //console.log("Detailed order received:", detailedOrder)
+        //console.log("Fulfillment status:", detailedOrder?.fulfillment_status)
         
         setLatestOrderDetails(detailedOrder)
       } catch (error) {
-        console.error('Failed to fetch order details:', error)
+        //console.error('Failed to fetch order details:', error)
       } finally {
         setIsLoadingDetails(false)
       }
@@ -587,8 +587,8 @@ const DashboardTab = ({
   // Use detailed order for tracking if available, otherwise fallback to basic order
   const orderForTracking = latestOrderDetails || (safeOrders.length > 0 ? safeOrders[0] : null)
 
-  console.log("Order for tracking:", orderForTracking)
-  //console.log("Has expanded data:", orderForTracking ? hasExpandedData(orderForTracking) : false)
+  //console.log("Order for tracking:", orderForTracking)
+  ////console.log("Has expanded data:", orderForTracking ? hasExpandedData(orderForTracking) : false)
 
   const buildTimelineFromFulfillments = (order) => {
     const timeline = []
@@ -606,7 +606,7 @@ const DashboardTab = ({
 
     if (order.fulfillments && order.fulfillments.length > 0) {
       const activeFulfillments = order.fulfillments.filter(f => !f.canceled_at)
-      console.log("Fulfillment status:", order.fulfillment_status)
+      //console.log("Fulfillment status:", order.fulfillment_status)
       
       activeFulfillments.forEach(fulfillment => {
         if (fulfillment.packed_at) {
