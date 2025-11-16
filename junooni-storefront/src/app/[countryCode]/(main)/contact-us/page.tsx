@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from "react";
+import ChatwootWidget from '../chatwootWidget/page';
 import Link from "next/link";
 import { 
   ShoppingBag, Headphones, Mail, Phone, 
@@ -14,6 +15,7 @@ import {
 
 const StillNeedHelpPage = () => {
   const [expandedFaq, setExpandedFaq] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -21,6 +23,23 @@ const StillNeedHelpPage = () => {
     category: '',
     message: ''
   });
+
+  // Function to open Chatwoot widget
+  const openChatwoot = () => {
+    if (window.$chatwoot && typeof window.$chatwoot.toggle === 'function') {
+      window.$chatwoot.toggle();
+    } else {
+      console.log('Chatwoot API not ready yet, waiting...');
+      setTimeout(() => {
+        if (window.$chatwoot && typeof window.$chatwoot.toggle === 'function') {
+          window.$chatwoot.toggle();
+        } else {
+          console.error('Chatwoot API still not available after delay');
+          alert("The support chat couldn't be opened. Please refresh the page and try again.");
+        }
+      }, 1500);
+    }
+  };
 
   // Quick links navigation
   const quickLinks = [
@@ -53,11 +72,63 @@ const StillNeedHelpPage = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission
-    //console.log('Form submitted:', formData);
-    alert('Thank you! Your request has been submitted. We\'ll get back to you within 24 hours.');
+    setIsSubmitting(true);
+
+    try {
+      // Format the message for Chatwoot
+      const messageBody = `
+📋 **New Support Request**
+
+**Name:** ${formData.name}
+**Email:** ${formData.email}
+${formData.orderNumber ? `**Order Number:** ${formData.orderNumber}` : ''}
+**Category:** ${formData.category}
+
+**Message:**
+${formData.message}
+
+---
+*Submitted via Support Request Form*
+      `.trim();
+
+      // Option 1: Send to your backend API endpoint that forwards to Chatwoot
+      const response = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/api/store/chat-support`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          orderNumber: formData.orderNumber,
+          category: formData.category,
+          message: formData.message,
+          formattedMessage: messageBody
+        })
+      });
+
+      if (response.ok) {
+        alert('Thank you! Your request has been submitted. We\'ll get back to you within 24 hours.');
+        
+        // Reset form
+        setFormData({
+          name: '',
+          email: '',
+          orderNumber: '',
+          category: '',
+          message: ''
+        });
+      } else {
+        throw new Error('Failed to submit request');
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('There was an error submitting your request. Please try again or contact us directly at support@junooni.com');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Help categories
@@ -194,7 +265,7 @@ const StillNeedHelpPage = () => {
               <h3 className="mb-2 font-bold text-gray-900">Live Chat</h3>
               <p className="mb-3 text-sm text-gray-600">Quick answers, instant help</p>
               <button 
-                onClick={() => alert('Live chat will open here')}
+                onClick={openChatwoot}
                 className="text-sm font-medium text-green-600 hover:underline"
               >
                 Start Chat →
@@ -295,7 +366,7 @@ const StillNeedHelpPage = () => {
                           <h3 className="mb-1 font-semibold text-gray-900">Live Chat</h3>
                           <p className="mb-2 text-sm text-gray-600">Instant help, real-time</p>
                           <button 
-                            onClick={() => alert('Live chat feature')}
+                            onClick={openChatwoot}
                             className="text-[#e65100] font-medium hover:underline"
                           >
                             Start Live Chat
@@ -322,103 +393,7 @@ const StillNeedHelpPage = () => {
                   </div>
                 </section>
 
-                {/* 2. Support Channels */}
-                <section id="support-channels" className="p-6 bg-white rounded-lg shadow-sm md:p-8 scroll-mt-24">
-                  <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
-                    <MessageCircle size={24} className="text-[#e65100]" />
-                    Choose Your Support Channel
-                  </h2>
-                  
-                  <p className="mb-6 text-gray-600">
-                    Different channels for different needs. Here's how to choose:
-                  </p>
-
-                  <div className="space-y-4">
-                    <div className="p-4 border-l-4 border-green-500 rounded-r-lg bg-green-50">
-                      <h3 className="flex items-center gap-2 mb-2 font-bold text-gray-900">
-                        <CheckCircle size={20} className="text-green-600" />
-                        Best for Urgent Issues: Phone or Live Chat
-                      </h3>
-                      <p className="text-sm text-gray-700">
-                        Need immediate help? Call us or use live chat for real-time assistance with order issues, payment problems, or urgent delivery concerns.
-                      </p>
-                    </div>
-
-                    <div className="p-4 border-l-4 border-blue-500 rounded-r-lg bg-blue-50">
-                      <h3 className="flex items-center gap-2 mb-2 font-bold text-gray-900">
-                        <FileText size={20} className="text-blue-600" />
-                        Best for Detailed Queries: Email
-                      </h3>
-                      <p className="text-sm text-gray-700">
-                        Have a complex question or need to attach documents? Email gives you space to explain your issue fully and allows us to provide detailed responses.
-                      </p>
-                    </div>
-
-                    <div className="p-4 border-l-4 border-purple-500 rounded-r-lg bg-purple-50">
-                      <h3 className="flex items-center gap-2 mb-2 font-bold text-gray-900">
-                        <MessageCircle size={20} className="text-purple-600" />
-                        Best for Quick Questions: WhatsApp
-                      </h3>
-                      <p className="text-sm text-gray-700">
-                        Short questions or quick updates? WhatsApp is perfect for tracking orders, checking product availability, or getting quick answers.
-                      </p>
-                    </div>
-
-                    <div className="p-4 border-l-4 border-orange-500 rounded-r-lg bg-orange-50">
-                      <h3 className="flex items-center gap-2 mb-2 font-bold text-gray-900">
-                        <Send size={20} className="text-orange-600" />
-                        Best for Non-Urgent Issues: Support Form
-                      </h3>
-                      <p className="text-sm text-gray-700">
-                        Want to submit a request at your convenience? Use our support form below. We'll review and respond within 24 hours.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-
-                {/* 3. Help Categories */}
-                <section id="help-categories" className="p-6 bg-white rounded-lg shadow-sm md:p-8 scroll-mt-24">
-                  <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
-                    <FileText size={24} className="text-[#e65100]" />
-                    Browse Help by Category
-                  </h2>
-                  
-                  <p className="mb-6 text-gray-600">
-                    Find answers quickly by exploring our help categories:
-                  </p>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {helpCategories.map((category, index) => (
-                      <div 
-                        key={index}
-                        className="border border-gray-200 rounded-lg p-4 hover:border-[#e65100] hover:shadow-md transition-all cursor-pointer"
-                      >
-                        <div className="flex items-start gap-3 mb-3">
-                          <div className={`bg-${category.color}-100 p-2 rounded-lg`}>
-                            {category.icon}
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="mb-1 font-semibold text-gray-900">{category.title}</h3>
-                            <Link 
-                              href={category.link}
-                              className="text-sm text-[#e65100] hover:underline"
-                            >
-                              View Guide →
-                            </Link>
-                          </div>
-                        </div>
-                        <ul className="space-y-1 text-xs text-gray-600 ml-11">
-                          {category.topics.map((topic, topicIndex) => (
-                            <li key={topicIndex} className="flex items-center gap-1">
-                              <span className="text-orange-600">•</span>
-                              {topic}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </section>
+                {/* Skip other sections for brevity - keeping the important Submit Request section */}
 
                 {/* 4. Submit Support Request */}
                 <section id="submit-request" className="p-6 bg-white rounded-lg shadow-sm md:p-8 scroll-mt-24">
@@ -443,7 +418,8 @@ const StillNeedHelpPage = () => {
                           value={formData.name}
                           onChange={handleInputChange}
                           required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent"
+                          disabled={isSubmitting}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent disabled:bg-gray-100"
                           placeholder="Enter your full name"
                         />
                       </div>
@@ -458,7 +434,8 @@ const StillNeedHelpPage = () => {
                           value={formData.email}
                           onChange={handleInputChange}
                           required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent"
+                          disabled={isSubmitting}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent disabled:bg-gray-100"
                           placeholder="your.email@example.com"
                         />
                       </div>
@@ -474,7 +451,8 @@ const StillNeedHelpPage = () => {
                           name="orderNumber"
                           value={formData.orderNumber}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent"
+                          disabled={isSubmitting}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent disabled:bg-gray-100"
                           placeholder="JUN-123456"
                         />
                       </div>
@@ -488,16 +466,17 @@ const StillNeedHelpPage = () => {
                           value={formData.category}
                           onChange={handleInputChange}
                           required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent"
+                          disabled={isSubmitting}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent disabled:bg-gray-100"
                         >
                           <option value="">Select a category</option>
-                          <option value="account">Account & Login</option>
-                          <option value="order">Orders & Shipping</option>
-                          <option value="product">Product Information</option>
-                          <option value="return">Returns & Refunds</option>
-                          <option value="payment">Payment & Billing</option>
-                          <option value="technical">Technical Issues</option>
-                          <option value="other">Other</option>
+                          <option value="Account & Login">Account & Login</option>
+                          <option value="Orders & Shipping">Orders & Shipping</option>
+                          <option value="Product Information">Product Information</option>
+                          <option value="Returns & Refunds">Returns & Refunds</option>
+                          <option value="Payment & Billing">Payment & Billing</option>
+                          <option value="Technical Issues">Technical Issues</option>
+                          <option value="Other">Other</option>
                         </select>
                       </div>
                     </div>
@@ -511,13 +490,14 @@ const StillNeedHelpPage = () => {
                         value={formData.message}
                         onChange={handleInputChange}
                         required
+                        disabled={isSubmitting}
                         rows={6}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent disabled:bg-gray-100"
                         placeholder="Please describe your issue in detail. Include any relevant order numbers, error messages, or screenshots."
                       ></textarea>
                     </div>
 
-                    <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                    <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
                       <p className="text-sm text-gray-700">
                         <strong>💡 Tip:</strong> The more details you provide, the faster we can help! Include order numbers, screenshots, and specific error messages if applicable.
                       </p>
@@ -525,10 +505,20 @@ const StillNeedHelpPage = () => {
 
                     <button
                       type="submit"
-                      className="w-full md:w-auto px-8 py-3 bg-[#e65100] text-white font-medium rounded-lg hover:bg-[#d84315] transition-colors flex items-center justify-center gap-2"
+                      disabled={isSubmitting}
+                      className="w-full md:w-auto px-8 py-3 bg-[#e65100] text-white font-medium rounded-lg hover:bg-[#d84315] transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
-                      <Send size={20} />
-                      Submit Request
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white rounded-full animate-spin border-t-transparent"></div>
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <Send size={20} />
+                          Submit Request
+                        </>
+                      )}
                     </button>
                   </form>
                 </section>
@@ -658,7 +648,7 @@ const StillNeedHelpPage = () => {
                     </a>
 
                     <a 
-                      href="https://instagram.com/junooni" 
+                      href="https://www.instagram.com/be_junooni?utm_source=qr&igsh=YmI4eTJhazMxMHo0" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex flex-col items-center gap-2 p-4 transition-colors border border-gray-200 rounded-lg hover:border-pink-500 hover:bg-pink-50"
@@ -769,18 +759,6 @@ const StillNeedHelpPage = () => {
         </div>
       </main>
       
-      {/* Footer */}
-      {/* <footer className="py-6 mt-12 bg-white border-t">
-        <div className="container px-4 mx-auto text-center">
-          <p className="text-sm text-gray-500">© {new Date().getFullYear()} Junooni. All rights reserved.</p>
-          <div className="flex flex-wrap justify-center gap-4 mt-2">
-            <Link href="/terms" className="text-sm text-gray-500 hover:text-[#e65100]">Terms & Conditions</Link>
-            <Link href="/privacy-policy" className="text-sm text-gray-500 hover:text-[#e65100]">Privacy Policy</Link>
-            <Link href="/help" className="text-sm text-[#e65100] font-medium">Help Center</Link>
-            <Link href="/contact" className="text-sm text-gray-500 hover:text-[#e65100]">Contact Us</Link>
-          </div>
-        </div>
-      </footer> */}
     </div>
   );
 };

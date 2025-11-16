@@ -3,7 +3,7 @@ import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
 
-// Define interfaces - ideally these would be in a separate types file
+// Define interfaces
 interface Image {
   id: number;
   alt: string;
@@ -62,7 +62,7 @@ interface Product {
   cost: number;
   sku: string;
   brand: string;
-  categories: Category[]; // Array of category objects
+  categories: Category[];
   displayImages: DisplayImage[];
   colorOptions: ColorOption[];
   sizeOptions: SizeOption[];
@@ -81,6 +81,8 @@ interface ProductMetadata {
 
 type ProductMetadataMap = Record<number, ProductMetadata>;
 
+const PRODUCTS_PER_PAGE = 12;
+
 const Catalog = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -89,19 +91,20 @@ const Catalog = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [categories, setCategories] = useState<CategoryOption[]>([{ slug: "all", title: "All" }]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch categories and products in parallel
+        // Fetch all products and categories
         const [productsResponse, categoriesResponse] = await Promise.all([
-          fetch(`${vite_payload}/api/blank-products`, {
+          fetch(`${vite_payload}/api/blank-products?limit=1000&depth=1`, {
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
             },
           }),
-          fetch(`${vite_payload}/api/categories`, {
+          fetch(`${vite_payload}/api/categories?limit=100`, {
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
@@ -112,21 +115,13 @@ const Catalog = () => {
         // Handle products
         const productsData = await productsResponse.json();
         const fetchedProducts: Product[] = productsData.docs || productsData;
-        
-        //console.log("Sample product data:", fetchedProducts[0]);
-        //console.log("Product fields:", Object.keys(fetchedProducts[0] || {}));
-        
         setProducts(fetchedProducts);
 
         // Handle categories
         if (categoriesResponse.ok) {
           const categoriesData = await categoriesResponse.json();
-          //console.log("Categories response:", categoriesData);
-          
           const fetchedCategories: Category[] = categoriesData.docs || categoriesData;
-          //console.log("Processed categories:", fetchedCategories);
           
-          // Store both slug and title
           const categoryOptions = [
             { slug: "all", title: "All" },
             ...fetchedCategories.map((cat: Category) => ({
@@ -135,11 +130,8 @@ const Catalog = () => {
             }))
           ];
           
-          //console.log("Final category options:", categoryOptions);
           setCategories(categoryOptions);
         } else {
-          // Fallback to hardcoded categories if API fails
-          //console.warn("Failed to fetch categories, using fallback");
           setCategories([
             { slug: "all", title: "All" },
             { slug: "women-tee", title: "Women Tee" },
@@ -150,9 +142,8 @@ const Catalog = () => {
           ]);
         }
         
-        // Generate metadata that would normally come from the API
+        // Generate metadata
         const metadata: ProductMetadataMap = {};
-        
         fetchedProducts.forEach((product: Product) => {
           metadata[product.id] = {
             isBestSeller: Math.random() > 0.3,
@@ -164,8 +155,7 @@ const Catalog = () => {
         
         setProductMetadata(metadata);
       } catch (error) {
-        //console.error("Error fetching data:", error);
-        // Fallback categories on error
+        console.error("Error fetching data:", error);
         setCategories([
           { slug: "all", title: "All" },
           { slug: "women-tee", title: "Women Tee" },
@@ -183,23 +173,121 @@ const Catalog = () => {
     fetchData();
   }, []);
 
+  // Reset to page 1 when search or category changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // If "all" is selected, don't filter by category
     if (selectedCategory === "all") {
       return matchesSearch;
     }
     
-    // Check if product has categories and if any category slug matches the selected category
     const matchesCategory = product.categories && product.categories.some(category => 
       category.slug === selectedCategory
     );
     
-    //console.log(`Product: ${product.name}, Categories: ${product.categories?.map(c => c.slug).join(', ')}, Selected: ${selectedCategory}, Matches: ${matchesCategory}`);
-    
     return matchesSearch && matchesCategory;
   });
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
+  const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
+  const endIndex = startIndex + PRODUCTS_PER_PAGE;
+  const currentProducts = filteredProducts.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const renderPaginationButtons = () => {
+    const buttons = [];
+    const maxVisibleButtons = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisibleButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisibleButtons - 1);
+
+    if (endPage - startPage < maxVisibleButtons - 1) {
+      startPage = Math.max(1, endPage - maxVisibleButtons + 1);
+    }
+
+    // Previous button
+    buttons.push(
+      <button
+        key="prev"
+        onClick={() => handlePageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+      >
+        Previous
+      </button>
+    );
+
+    // First page
+    if (startPage > 1) {
+      buttons.push(
+        <button
+          key={1}
+          onClick={() => handlePageChange(1)}
+          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          1
+        </button>
+      );
+      if (startPage > 2) {
+        buttons.push(<span key="dots1" className="px-2">...</span>);
+      }
+    }
+
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-4 py-2 border rounded-lg transition-colors ${
+            currentPage === i
+              ? 'bg-[#e65100] text-white border-[#e65100]'
+              : 'border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    // Last page
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        buttons.push(<span key="dots2" className="px-2">...</span>);
+      }
+      buttons.push(
+        <button
+          key={totalPages}
+          onClick={() => handlePageChange(totalPages)}
+          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          {totalPages}
+        </button>
+      );
+    }
+
+    // Next button
+    buttons.push(
+      <button
+        key="next"
+        onClick={() => handlePageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+      >
+        Next
+      </button>
+    );
+
+    return buttons;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -224,7 +312,6 @@ const Catalog = () => {
           <div className="max-w-4xl mx-auto">
             <div className="p-3 bg-white border border-gray-200 shadow-xl dark:bg-gray-800 rounded-2xl dark:border-gray-700">
               <div className="flex flex-col gap-4 lg:flex-row">
-                {/* Search Input */}
                 <div className="flex-1">
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -242,7 +329,6 @@ const Catalog = () => {
                   </div>
                 </div>
 
-                {/* Category Filter */}
                 <div className="lg:w-64">
                   <select
                     value={selectedCategory}
@@ -277,21 +363,13 @@ const Catalog = () => {
             </h2>
             <p className="text-gray-600 dark:text-gray-300">
               {loading ? 'Loading...' : `${filteredProducts.length} products available`}
+              {!loading && filteredProducts.length > PRODUCTS_PER_PAGE && (
+                <span className="ml-2 text-sm">
+                  (Showing {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)})
+                </span>
+              )}
             </p>
           </div>
-          
-          {/* {!loading && (
-            <div className="flex gap-4 mt-4 sm:mt-0">
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <div className="w-3 h-3 bg-[#e65100] rounded-full"></div>
-                <span>Best Sellers</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span>Staff Picks</span>
-              </div>
-            </div>
-          )} */}
         </div>
 
         {/* Products Grid */}
@@ -312,25 +390,34 @@ const Catalog = () => {
           </div>
         ) : (
           <>
-            {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredProducts.map((product) => {
-                  const metadata = productMetadata[product.id] || {
-                    isBestSeller: false,
-                    isStaffPick: false,
-                    rating: 4.0,
-                    reviewCount: 0
-                  };
-                  
-                  return (
-                    <ProductCard 
-                      key={product.id} 
-                      product={product} 
-                      metadata={metadata} 
-                    />
-                  );
-                })}
-              </div>
+            {currentProducts.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {currentProducts.map((product) => {
+                    const metadata = productMetadata[product.id] || {
+                      isBestSeller: false,
+                      isStaffPick: false,
+                      rating: 4.0,
+                      reviewCount: 0
+                    };
+                    
+                    return (
+                      <ProductCard 
+                        key={product.id} 
+                        product={product} 
+                        metadata={metadata} 
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-12">
+                    {renderPaginationButtons()}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="py-16 text-center">
                 <div className="max-w-md mx-auto">
@@ -355,18 +442,6 @@ const Catalog = () => {
                     Clear Filters
                   </button>
                 </div>
-              </div>
-            )}
-
-            {/* Load More Button (if needed) */}
-            {filteredProducts.length > 0 && filteredProducts.length >= 12 && (
-              <div className="mt-12 text-center">
-                <button className="inline-flex items-center px-8 py-4 border-2 border-[#e65100] text-[#e65100] font-semibold rounded-xl hover:bg-[#e65100] hover:text-white transition-all duration-200 transform hover:scale-105">
-                  <span>Load More Products</span>
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
-                </button>
               </div>
             )}
           </>

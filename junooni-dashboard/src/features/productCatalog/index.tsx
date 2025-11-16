@@ -2,7 +2,7 @@
 
 import Catalog from "./components/Catalog";
 import Navbar from "./components/Navbar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 const BRAND = {
@@ -19,45 +19,166 @@ const BRAND = {
   textLight: "#999999"
 };
 
+// const vite_backend = import.meta.env.VITE_MEDUSA_BACKEND_URL;
+
+// // Utility function to decode JWT token and check validity (same as nav-user)
+// const validateToken = () => {
+//   try {
+//     const token = localStorage.getItem('vendorToken');
+//     if (!token) return { isValid: false, hasActorId: false, actorId: null };
+
+//     // Decode JWT token
+//     const payload = JSON.parse(atob(token.split('.')[1]));
+    
+//     // Check if token is expired
+//     if (payload.exp && payload.exp * 1000 < Date.now()) {
+//       return { isValid: false, hasActorId: false, actorId: null };
+//     }
+    
+//     const actorId = payload.actor_id || payload.sub || payload.id;
+//     return { 
+//       isValid: true,
+//       hasActorId: !!actorId, 
+//       actorId: actorId 
+//     };
+//   } catch (error) {
+//     // Token is malformed/corrupted
+//     return { isValid: false, hasActorId: false, actorId: null };
+//   }
+// };
+
 const ProductCatalog = () => {
- const { toast } = useToast();
-  // Add this useEffect near the top of your component, right after your state declarations
-useEffect(() => {
-  // Check if user is authenticated by looking for token
-  const token = localStorage.getItem('vendorToken');
-  
-  // If no token is found, redirect to sign-in page
-  if (!token) {
-    // Show a toast notification
-    toast({
-      title: "Authentication Required",
-      description: "Please sign in to access your profile.",
-      variant: "destructive",
-    });
-    //console.log("No token found, redirecting to sign-in page...");
-    // Redirect to sign-in page
-    window.location.href = '/sign-in';
-    return;
-  }
-}, []); // Empty dependency array means this runs once when component mounts
+  const { toast } = useToast();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  // useEffect(() => {
+  //   const validateAndVerify = async () => {
+  //     try {
+  //       setIsChecking(true);
+  //       const token = localStorage.getItem("vendorToken");
+        
+  //       if (!token) {
+  //         toast({
+  //           title: "Authentication Required",
+  //           description: "Please sign in to access the catalog.",
+  //           variant: "destructive",
+  //         });
+  //         window.location.href = '/sign-in';
+  //         return;
+  //       }
+        
+  //       // Validate token first (client-side check)
+  //       const { isValid, hasActorId, actorId } = validateToken();
+        
+  //       // If token is invalid or expired, go to sign-in
+  //       if (!isValid) {
+  //         localStorage.clear();
+  //         toast({
+  //           title: "Session Expired",
+  //           description: "Please sign in again.",
+  //           variant: "destructive",
+  //         });
+  //         window.location.href = '/sign-in';
+  //         return;
+  //       }
+        
+  //       // If token is valid but no actor_id, go to onboarding
+  //       if (!hasActorId) {
+  //         toast({
+  //           title: "Complete Your Profile",
+  //           description: "Please complete your vendor profile.",
+  //           variant: "destructive",
+  //         });
+  //         window.location.href = '/onboarding?step=basic-info';
+  //         return;
+  //       }
+        
+  //       // Token is valid with actor_id, verify with backend
+  //       try {
+  //         const response = await fetch(`${vite_backend}/vendors/me`, {
+  //           headers: {
+  //             "Authorization": `Bearer ${token}`,
+  //             "Content-Type": "application/json"
+  //           },
+  //         });
+
+  //         if (response.ok) {
+  //           const data = await response.json();
+  //           if (data?.vendor) {
+  //             // Vendor data exists, authenticated successfully
+  //             setIsAuthenticated(true);
+  //             setIsChecking(false);
+  //           } else {
+  //             // Unexpected response format
+  //             setIsAuthenticated(true);
+  //             setIsChecking(false);
+  //           }
+  //         } else if (response.status === 401) {
+  //           // Token rejected by backend (expired/invalid)
+  //           localStorage.clear();
+  //           toast({
+  //             title: "Session Expired",
+  //             description: "Please sign in again.",
+  //             variant: "destructive",
+  //           });
+  //           window.location.href = '/sign-in';
+  //           return;
+  //         } else {
+  //           // Other error, but allow access (fallback)
+  //           setIsAuthenticated(true);
+  //           setIsChecking(false);
+  //         }
+  //       } catch (apiError) {
+  //         console.error('Backend verification failed:', apiError);
+  //         // Network error, but token is valid locally - allow access
+  //         setIsAuthenticated(true);
+  //         setIsChecking(false);
+  //       }
+        
+  //     } catch (err) {
+  //       console.error('Authentication validation failed:', err);
+  //       localStorage.clear();
+  //       toast({
+  //         title: "Authentication Error",
+  //         description: "Please sign in again.",
+  //         variant: "destructive",
+  //       });
+  //       window.location.href = '/sign-in';
+  //     }
+  //   };
+
+  //   validateAndVerify();
+  // }, [toast]);
+
+  // // Show loading state while checking authentication
+  // if (isChecking || !isAuthenticated) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen">
+  //       <div className="text-center">
+  //         <div className="w-12 h-12 border-t-2 border-b-2 border-orange-500 rounded-full animate-spin" style={{ borderTopColor: BRAND.primary }}></div>
+  //         {/* <p className="mt-4 text-gray-600">Loading...</p> */}
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
   return (
     <>
-        <div className="relative" >
+      <div className="relative">
         <Navbar />
-        <Catalog/>
+        <Catalog />
         {/* Footer */}
-          <div className="py-6 mt-4 border-t border-gray-200">
-            <div className="container px-4 mx-auto text-center">
-              <p className="text-sm" style={{ color: BRAND.textLight }}>
-                &copy; {new Date().getFullYear()} Junooni. All rights reserved.
-              </p>
-            </div>
+        <div className="py-6 mt-4 border-t border-gray-200">
+          <div className="container px-4 mx-auto text-center">
+            <p className="text-sm" style={{ color: BRAND.textLight }}>
+              &copy; {new Date().getFullYear()} Junooni. All rights reserved.
+            </p>
           </div>
         </div>
-        
+      </div>
     </>
   );
- 
 };
 
 export default ProductCatalog;

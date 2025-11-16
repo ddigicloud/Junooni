@@ -173,7 +173,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                     <Truck size={18} className="text-[#e65100] mt-0.5 mr-2 flex-shrink-0" />
                     <div>
                       <h4 className="text-sm font-medium">Free Shipping</h4>
-                      <p className="text-xs text-gray-600">Orders over $100</p>
+                      <p className="text-xs text-gray-600">Orders over Rs.200</p>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -186,8 +186,8 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                   <div className="flex items-start">
                     <RefreshCw size={18} className="text-[#e65100] mt-0.5 mr-2 flex-shrink-0" />
                     <div>
-                      <h4 className="text-sm font-medium">Easy Returns</h4>
-                      <p className="text-xs text-gray-600">30 days return policy</p>
+                      <h4 className="text-sm font-medium">Made for You</h4>
+                      <p className="text-xs text-gray-600">Reduce carbon footprint</p>
                     </div>
                   </div>
                 </div>

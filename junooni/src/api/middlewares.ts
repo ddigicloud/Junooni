@@ -32,6 +32,7 @@ const allowedOrigins = [
   "http://localhost:8000", // Storefront
   "http://localhost:3000", //Blanks
   "http://localhost:5173",
+  "https://chat.junooni.com/",
   "http://localhost:9000"  // Vendor Dashboard
  
 ];

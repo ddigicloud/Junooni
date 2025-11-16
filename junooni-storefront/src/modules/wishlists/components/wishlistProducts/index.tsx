@@ -385,26 +385,6 @@ export const WishlistProducts = ({
         isEmbedded ? "w-full" : "max-w-screen-xl mx-auto w-full px-4 py-8"
       }
     >
-      {/* 🔧 DEBUG INFO in development */}
-      {/* {process.env.NODE_ENV === 'development' && (
-        <div className="p-3 mb-4 border border-blue-200 rounded bg-blue-50">
-          <h4 className="font-medium text-blue-800">Wishlist Debug Info:</h4>
-          <p className="text-sm text-blue-700">
-            Items: {items.length} | Products loaded: {products.length} | 
-            Removed variants: {removedVariantIds.size}
-          </p>
-          {items.slice(0, 2).map(item => {
-            const product = products.find(p => p.id === item.product_variant.product_id)
-            const variant = product?.variants.find(v => v.id === item.product_variant_id)
-            return (
-              <div key={item.id} className="mt-1 text-xs text-blue-600">
-                {product?.title} → Variant: {variant?.title || 'Not found'} 
-                (${variant?.calculated_price?.calculated_amount ? (variant.calculated_price.calculated_amount / 100).toFixed(2) : 'No price'})
-              </div>
-            )
-          })}
-        </div>
-      )} */}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {visibleItems
@@ -442,7 +422,7 @@ export const WishlistProducts = ({
                   <span className="sr-only">View {product.title} - {specificVariant.title}</span>
                 </LocalizedClientLink>
 
-                <div className="relative overflow-hidden rounded-md bg-gray-50 aspect-[4/5] mb-3">
+                <div className="relative overflow-hidden rounded-md bg-gray-50 aspect-auto mb-3">
                   <img
                     src={variantImage}
                     alt={`${product.title} - ${specificVariant.title}`}
@@ -457,12 +437,6 @@ export const WishlistProducts = ({
                     />
                   </div>
                   
-                  {/* 🔧 Show variant info badge */}
-                  {/* {variantDisplayInfo && (
-                    <div className="absolute px-2 py-1 text-xs text-white bg-black rounded bottom-2 left-2 bg-opacity-70">
-                      {variantDisplayInfo}
-                    </div>
-                  )} */}
                 </div>
 
                 <div className="space-y-1">

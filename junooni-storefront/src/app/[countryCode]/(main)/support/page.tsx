@@ -26,6 +26,39 @@ const HelpdeskPage = () => {
     setExpandedFaq(expandedFaq === index ? null : index);
   };
 
+  // Function to open Chatwoot widget
+  const openChatwoot = () => {
+    // Check if the Chatwoot API is available
+    if (window.$chatwoot && typeof window.$chatwoot.toggle === 'function') {
+      // Use the confirmed working method
+      window.$chatwoot.toggle();
+    } else {
+      console.log('Chatwoot API not ready yet, waiting...');
+      
+      // If you have a toast notification system, you can use it here:
+      // toast({
+      //   title: "Opening Support Chat",
+      //   description: "Please wait a moment while we connect you to support...",
+      // });
+      
+      // Try again after a short delay to allow for Chatwoot initialization
+      setTimeout(() => {
+        if (window.$chatwoot && typeof window.$chatwoot.toggle === 'function') {
+          window.$chatwoot.toggle();
+        } else {
+          console.error('Chatwoot API still not available after delay');
+          // If you have a toast notification system, you can use it here:
+          // toast({
+          //   title: "Support Chat Issue",
+          //   description: "The support chat couldn't be opened. Please refresh the page and try again.",
+          //   variant: "destructive",
+          // });
+          alert("The support chat couldn't be opened. Please refresh the page and try again.");
+        }
+      }, 1500); // 1.5 second delay
+    }
+  };
+
   // Common help categories
   const helpCategories = [
     { icon: <Package size={24} />, title: "Orders & Shipping", url: "/orders-shipping" },
@@ -167,7 +200,10 @@ const HelpdeskPage = () => {
               </p>
               <p className="mb-2 text-sm text-gray-500">Available Monday-Friday</p>
               <p className="text-sm font-medium">9:00 AM - 6:00 PM IST</p>
-              <button className="px-4 py-2 mt-4 text-white transition-colors bg-orange-600 rounded-md hover:bg-orange-700">
+              <button 
+                onClick={openChatwoot}
+                className="px-4 py-2 mt-4 text-white transition-colors bg-orange-600 rounded-md hover:bg-orange-700"
+              >
                 Start Chat
               </button>
             </div>
@@ -180,15 +216,15 @@ const HelpdeskPage = () => {
               <p className="mb-4 text-sm text-gray-600">
                 Send us an email and we'll respond within 24 hours.
               </p>
+               <p className="mb-2 text-sm text-gray-500">Available Monday-Friday</p>
               <Link 
                 href="mailto:support@junooni.com" 
                 className="text-[#e65100] font-medium hover:underline"
               >
-                support@junooni.com
-              </Link>
-              <button className="mt-4 px-4 py-2 bg-[#e65100] text-white rounded-md hover:bg-[#d84315] transition-colors">
+                <button className="mt-4 px-4 py-2 bg-[#e65100] text-white rounded-md hover:bg-[#d84315] transition-colors">
                 Send Email
-              </button>
+                </button>
+              </Link>
             </div>
             
             <div className="flex flex-col items-center p-4 text-center border border-gray-200 rounded-lg">
@@ -212,17 +248,7 @@ const HelpdeskPage = () => {
         </section>
       </main>
       
-      {/* Footer */}
-      {/* <footer className="py-6 mt-12 bg-white border-t">
-        <div className="container px-4 mx-auto text-center">
-          <p className="text-sm text-gray-500">© {new Date().getFullYear()} Junooni. All rights reserved.</p>
-          <div className="flex justify-center gap-4 mt-2">
-            <Link href="/terms" className="text-sm text-gray-500 hover:text-[#e65100]">Terms</Link>
-            <Link href="/privacy" className="text-sm text-gray-500 hover:text-[#e65100]">Privacy</Link>
-            <Link href="/contact" className="text-sm text-gray-500 hover:text-[#e65100]">Contact</Link>
-          </div>
-        </div>
-      </footer> */}
+      
       <ChatwootWidget/>
     </div>
   );

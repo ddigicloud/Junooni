@@ -18,6 +18,8 @@ import {
   Phone
 } from "lucide-react";
 
+import ChatwootWidget from '@/components/ChatwootWidget';
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -67,7 +69,39 @@ const HelpCenter = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArticle, setSelectedArticle] = useState<string | null>(null);
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
+  const { toast } = useToast();
 
+  // Function to open Chatwoot widget
+  const openChatwoot = () => {
+    // Check if the Chatwoot API is available
+    if (window.$chatwoot && typeof window.$chatwoot.toggle === 'function') {
+      // Use the confirmed working method
+      window.$chatwoot.toggle();
+    } else {
+      //console.log('Chatwoot API not ready yet, waiting...');
+      
+      // Notify the user
+      toast({
+        title: "Opening Support Chat",
+        description: "Please wait a moment while we connect you to support...",
+      });
+      
+      // Try again after a short delay to allow for Chatwoot initialization
+      setTimeout(() => {
+        if (window.$chatwoot && typeof window.$chatwoot.toggle === 'function') {
+          window.$chatwoot.toggle();
+        } else {
+          //console.error('Chatwoot API still not available after delay');
+          toast({
+            title: "Support Chat Issue",
+            description: "The support chat couldn't be opened. Please refresh the page and try again.",
+            variant: "destructive",
+          });
+        }
+      }, 1500); // 1.5 second delay
+    }
+  };
+  
   // Simplified essential articles
   const articles: HelpArticle[] = [
     {
@@ -444,6 +478,9 @@ const HelpCenter = () => {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Chatwoot Widget */}
+        <ChatwootWidget />
       </div>
     );
   }
@@ -569,7 +606,11 @@ const HelpCenter = () => {
                   <MessageCircle className="w-8 h-8 mx-auto mb-3" style={{ color: BRAND.primary }} />
                   <h4 className="font-medium mb-2">Live Chat</h4>
                   <p className="text-sm text-gray-600 mb-4">Get instant help</p>
-                  <Button size="sm" style={{ backgroundColor: BRAND.primary }}>
+                  <Button 
+                    size="sm" 
+                    style={{ backgroundColor: BRAND.primary }}
+                    onClick={openChatwoot}
+                  >
                     Start Chat
                   </Button>
                 </div>
@@ -577,15 +618,20 @@ const HelpCenter = () => {
                   <Mail className="w-8 h-8 mx-auto mb-3" style={{ color: BRAND.accent }} />
                   <h4 className="font-medium mb-2">Email Support</h4>
                   <p className="text-sm text-gray-600 mb-4">Detailed assistance</p>
-                  <Button size="sm" variant="outline" style={{ borderColor: BRAND.accent, color: BRAND.accent }}>
-                    Send Email
-                  </Button>
+                  <a href="mailto:support@junooni.com">
+                    <Button size="sm" variant="outline" style={{ borderColor: BRAND.accent, color: BRAND.accent }}>
+                      Send Email
+                    </Button>
+                  </a>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+      
+      {/* Chatwoot Widget */}
+      <ChatwootWidget />
     </div>
   );
 };

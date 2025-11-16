@@ -1236,7 +1236,7 @@ const VendorsDiscoveryPage = () => {
     const followerCount = followerCounts[id] || 0
 
     return (
-      <Link href={`/vendors/${handle}`}>
+      <Link href={`/creator/${handle}`}>
         <motion.div
           className="relative flex flex-col h-full overflow-hidden transition-all duration-300 bg-white rounded-lg shadow-sm cursor-pointer hover:shadow-md group"
           whileHover={{ y: -4 }}
@@ -1244,10 +1244,9 @@ const VendorsDiscoveryPage = () => {
           {/* Cover Image */}
           <div className="relative h-24 bg-gradient-to-br from-orange-400 to-orange-600">
             {coverphoto && (
-              <Image
+              <img
                 src={coverphoto}
                 alt={name}
-                fill
                 className="object-cover"
               />
             )}
@@ -1256,8 +1255,8 @@ const VendorsDiscoveryPage = () => {
           {/* Logo/Avatar */}
           <div className="absolute top-14 left-4">
             <div className="w-16 h-16 overflow-hidden bg-white border-4 border-white rounded-full shadow-md">
-              <Image
-                src={logo || avatarImage}
+              <img
+                src={logo || avatarImage.src}
                 alt={name}
                 width={64}
                 height={64}

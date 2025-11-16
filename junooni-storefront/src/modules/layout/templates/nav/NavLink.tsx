@@ -67,7 +67,7 @@ export const NavLink = ({ href, label, submenuItems = [] }: NavLinkProps) => {
                   {/* Level 2 Category Heading */}
                   <LocalizedClientLink
                     href={level2Item.href}
-                    className="block mb-3 text-lg font-medium text-gray-800 transition-all duration-200 hover:text-black"
+                    className="block mb-3 text-lg font-medium text-gray-800 transition-all duration-200 hover:text-[#e65100]"
                   >
                     {level2Item.label}
                   </LocalizedClientLink>
@@ -79,7 +79,7 @@ export const NavLink = ({ href, label, submenuItems = [] }: NavLinkProps) => {
                         <li key={level3Index}>
                           <LocalizedClientLink
                             href={level3Item.href}
-                            className="block text-sm text-black transition-all duration-200 hover:text-black"
+                            className="block text-sm text-black transition-all duration-200 hover:text-[#e65100]"
                           >
                             {level3Item.label}
                           </LocalizedClientLink>

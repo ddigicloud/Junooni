@@ -866,15 +866,16 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
       >
         <img
           src={creator.coverImage}
-          alt={`${creator.name} cover`}
           className="object-cover w-full h-full"
         />
 
-        {/* Dark gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#e65100] to-[#ffb74d] opacity-90"></div>
+        {/* Dark gradient overlay - only shown when no cover image */}
+        {!creator.coverImage && (
+          <div className="absolute inset-0 bg-gradient-to-t from-[#e65100] to-[#ffb74d] opacity-90"></div>
+        )}
       </motion.div>
       
-      <div className="w-full px-0 mx-auto max-w-7xl sm:px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-0 mx-auto max-w-7xl sm:px-4 lg:px-8">
         {/* creator profile section */}
          <motion.div variants={slideIn} className="relative w-full mb-8 -mt-12 md:-mt-16">
           <div className="bg-white rounded-lg shadow-lg">

@@ -789,7 +789,7 @@ for (const item of sortedMediaItems) {
       
       // Process fulfillment data with values directly from the form
       const fulfillmentData = {
-        type: "Creator-fulfilment",
+        type: "Creator-fulfillment",
         handling_time: formValues.handlingTime || '2-3',
         shipping_time: formValues.shippingDays || '7-10'
       };
@@ -2291,10 +2291,10 @@ if (result && result.id) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="3-5">3-5 business days</SelectItem>
-                            <SelectItem value="5-7">5-7 business days</SelectItem>
-                            <SelectItem value="7-10">7-10 business days</SelectItem>
-                            <SelectItem value="10-14">10-14 business days</SelectItem>
+                            <SelectItem value="3-5">3-5 business</SelectItem>
+                            <SelectItem value="5-7">5-7 business</SelectItem>
+                            <SelectItem value="7-10">7-10 business</SelectItem>
+                            <SelectItem value="10-14">10-14 business</SelectItem>
                             <SelectItem value="14-21">2-3 weeks</SelectItem>
                           </SelectContent>
                         </Select>
@@ -2325,10 +2325,10 @@ if (result && result.id) {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="1">1 business day</SelectItem>
-                            <SelectItem value="1-2">1-2 business days</SelectItem>
-                            <SelectItem value="2-3">2-3 business days</SelectItem>
-                            <SelectItem value="3-5">3-5 business days</SelectItem>
-                            <SelectItem value="5-7">5-7 business days</SelectItem>
+                            <SelectItem value="1-2">1-2 business</SelectItem>
+                            <SelectItem value="2-3">2-3 business</SelectItem>
+                            <SelectItem value="3-5">3-5 business</SelectItem>
+                            <SelectItem value="5-7">5-7 business</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormDescription>

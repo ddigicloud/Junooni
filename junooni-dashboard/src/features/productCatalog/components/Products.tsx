@@ -1,180 +1,12 @@
-// import { useEffect, useState } from "react";
-// import ProductCard, { ProductCardSkeleton } from "./ProductCard"; // Import the ProductCard component
-// import Navbar from "./Navbar";
-// import { useToast } from "@/hooks/use-toast";
-
-// const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
-
-// // Define all the interfaces for our data types
-// interface Image {
-//   id: number;
-//   alt: string;
-//   url: string;
-//   width: number;
-//   height: number;
-// }
-
-// interface DisplayImage {
-//   id: string;
-//   title: string | null;
-//   image: Image;
-//   caption: string | null;
-// }
-
-// interface ColorOption {
-//   id: string;
-//   colorName: string;
-//   colorHex: string;
-// }
-
-// interface SizeOption {
-//   id: string;
-//   sizeName: string;
-//   sizeDescription: string | null;
-// }
-
-// interface PrintingTechnology {
-//   id: string;
-//   technologyName: string;
-//   customizationAreas: any[];
-//   mockupPhotos: any[];
-// }
-
-// interface Product {
-//   id: number;
-//   name: string;
-//   cost: number;
-//   sku: string;
-//   brand: string;
-//   displayImages: DisplayImage[];
-//   colorOptions: ColorOption[];
-//   sizeOptions: SizeOption[];
-//   printingTechnologies: PrintingTechnology[];
-// }
-
-// interface ProductMetadata {
-//   isBestSeller: boolean;
-//   isStaffPick: boolean;
-//   rating: number;
-//   reviewCount: number;
-// }
-
-// // Define the state types
-// type ProductMetadataMap = Record<number, ProductMetadata>;
-
-// const Products = () => {
-//   const [products, setProducts] = useState<Product[]>([]);
-//   const [loading, setLoading] = useState<boolean>(true);
-//   const [productMetadata, setProductMetadata] = useState<ProductMetadataMap>({});
-
-//    const { toast } = useToast();
-//     // Add this useEffect near the top of your component, right after your state declarations
-//   useEffect(() => {
-//     // Check if user is authenticated by looking for token
-//     const token = localStorage.getItem('vendorToken');
-    
-//     // If no token is found, redirect to sign-in page
-//     if (!token) {
-//       // Show a toast notification
-//       toast({
-//         title: "Authentication Required",
-//         description: "Please sign in to access your profile.",
-//         variant: "destructive",
-//       });
-      
-//       // Redirect to sign-in page
-//       window.location.href = '/sign-in';
-//       return;
-//     }
-//   }, []); // Empty dependency array means this runs once when component mounts
-//   useEffect(() => {
-//     const fetchProducts = async () => {
-//       try {
-//         const response = await fetch(`${vite_payload}/api/blank-products`, {
-//           credentials: 'include',
-//           headers: {
-//             'Content-Type': 'application/json',
-//           },
-//         });
-//         const data = await response.json();
-//         const fetchedProducts: Product[] = data.docs || data;
-//         setProducts(fetchedProducts);
-        
-//         // Generate metadata that would normally come from the API
-//         const metadata: ProductMetadataMap = {};
-        
-//         fetchedProducts.forEach((product: Product) => {
-//           metadata[product.id] = {
-//             isBestSeller: Math.random() > 0.3,
-//             isStaffPick: Math.random() > 0.6,
-//             rating: 3.5 + Math.random() * 1.5,
-//             reviewCount: Math.floor(10 + Math.random() * 140)
-//           };
-//         });
-        
-//         setProductMetadata(metadata);
-//       } catch (error) {
-//         console.error("Error fetching products:", error);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     fetchProducts();
-//   }, []);
-
-//   return (
-//     <>
-//     <Navbar/>
-//     <div className="w-[100%] max-w-[95%] mx-auto mt-24">
-//       <h1 className="mb-10 text-2xl font-semibold text-gray-900 dark:text-white">What would you like to create?</h1>
-//       {loading ? (
-//         <div className="grid grid-cols-1 gap-x-4 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-//           {[...Array(5)].map((_, i) => (
-//             <ProductCardSkeleton key={i} />
-//           ))}
-//         </div>
-//       ) : (
-//         <div className="grid grid-cols-1 gap-x-3 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-//           {products.length > 0 ? (
-//             products.map((product) => {
-//               const metadata = productMetadata[product.id] || {
-//                 isBestSeller: false,
-//                 isStaffPick: false,
-//                 rating: 4.0,
-//                 reviewCount: 0
-//               };
-              
-//               return (
-//                 <div key={product.id} className="relative w-[100%] max-w-[90%] mx-auto">
-//                   <ProductCard 
-//                     product={product} 
-//                     metadata={metadata}
-//                   />
-//                 </div>
-//               );
-//             })
-//           ) : (
-//             <div className="py-8 text-center col-span-full">
-//               <p className="text-gray-500">No products found</p>
-//             </div>
-//           )}
-//         </div>
-//       )}
-//     </div>
-//     </>
-//   );
-// };
-
-// export default Products;
-
 import { useEffect, useState } from "react";
-import ProductCard, { ProductCardSkeleton } from "./ProductCard"; // Import the ProductCard component
+import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 import Navbar from "./Navbar";
 import { useToast } from "@/hooks/use-toast";
 
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
+const vite_backend = import.meta.env.VITE_MEDUSA_BACKEND_URL;
 
-// Define all the interfaces for our data types
+// Define all the interfaces
 interface Image {
   id: number;
   alt: string;
@@ -228,39 +60,115 @@ interface ProductMetadata {
   reviewCount: number;
 }
 
-// Define the state types
 type ProductMetadataMap = Record<number, ProductMetadata>;
+
+const PRODUCTS_PER_PAGE = 12;
+
+// Utility function to validate token
+const validateToken = () => {
+  try {
+    const token = localStorage.getItem('vendorToken');
+    if (!token) return { isValid: false, hasActorId: false, actorId: null };
+
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      return { isValid: false, hasActorId: false, actorId: null };
+    }
+    
+    const actorId = payload.actor_id || payload.sub || payload.id;
+    return { 
+      isValid: true,
+      hasActorId: !!actorId, 
+      actorId: actorId 
+    };
+  } catch (error) {
+    return { isValid: false, hasActorId: false, actorId: null };
+  }
+};
 
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [productMetadata, setProductMetadata] = useState<ProductMetadataMap>({});
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const { toast } = useToast();
 
-   const { toast } = useToast();
-    // Add this useEffect near the top of your component, right after your state declarations
   useEffect(() => {
-    // Check if user is authenticated by looking for token
-    const token = localStorage.getItem('vendorToken');
-    
-    // If no token is found, redirect to sign-in page
-    if (!token) {
-      // Show a toast notification
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to access your profile.",
-        variant: "destructive",
-      });
-      
-      // Redirect to sign-in page
-      window.location.href = '/sign-in';
-      return;
-    }
-  }, []); // Empty dependency array means this runs once when component mounts
+    const validateAndVerify = async () => {
+      try {
+        const token = localStorage.getItem("vendorToken");
+        
+        if (!token) {
+          toast({
+            title: "Authentication Required",
+            description: "Please sign in to access products.",
+            variant: "destructive",
+          });
+          window.location.href = '/sign-in';
+          return;
+        }
+        
+        const { isValid, hasActorId } = validateToken();
+        
+        if (!isValid) {
+          localStorage.clear();
+          toast({
+            title: "Session Expired",
+            description: "Please sign in again.",
+            variant: "destructive",
+          });
+          window.location.href = '/sign-in';
+          return;
+        }
+        
+        if (!hasActorId) {
+          toast({
+            title: "Complete Your Profile",
+            description: "Please complete your vendor profile.",
+            variant: "destructive",
+          });
+          window.location.href = '/onboarding?step=basic-info';
+          return;
+        }
+        
+        // Verify with backend
+        try {
+          const response = await fetch(`${vite_backend}/vendors/me`, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+          });
+
+          if (response.status === 401) {
+            localStorage.clear();
+            toast({
+              title: "Session Expired",
+              description: "Please sign in again.",
+              variant: "destructive",
+            });
+            window.location.href = '/sign-in';
+            return;
+          }
+        } catch (apiError) {
+          console.error('Backend verification failed:', apiError);
+        }
+        
+      } catch (err) {
+        console.error('Authentication validation failed:', err);
+        localStorage.clear();
+        window.location.href = '/sign-in';
+      }
+    };
+
+    validateAndVerify();
+  }, [toast]);
   
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch(`${vite_payload}/api/blank-products`, {
+        const response = await fetch(`${vite_payload}/api/blank-products?limit=1000&depth=1`, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -270,7 +178,6 @@ const Products = () => {
         const fetchedProducts: Product[] = data.docs || data;
         setProducts(fetchedProducts);
         
-        // Generate metadata that would normally come from the API
         const metadata: ProductMetadataMap = {};
         
         fetchedProducts.forEach((product: Product) => {
@@ -284,13 +191,110 @@ const Products = () => {
         
         setProductMetadata(metadata);
       } catch (error) {
-        //console.error("Error fetching products:", error);
+        console.error("Error fetching products:", error);
       } finally {
         setLoading(false);
       }
     };
     fetchProducts();
   }, []);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(products.length / PRODUCTS_PER_PAGE);
+  const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
+  const endIndex = startIndex + PRODUCTS_PER_PAGE;
+  const currentProducts = products.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const renderPaginationButtons = () => {
+    const buttons = [];
+    const maxVisibleButtons = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisibleButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisibleButtons - 1);
+
+    if (endPage - startPage < maxVisibleButtons - 1) {
+      startPage = Math.max(1, endPage - maxVisibleButtons + 1);
+    }
+
+    // Previous button
+    buttons.push(
+      <button
+        key="prev"
+        onClick={() => handlePageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+      >
+        Previous
+      </button>
+    );
+
+    // First page
+    if (startPage > 1) {
+      buttons.push(
+        <button
+          key={1}
+          onClick={() => handlePageChange(1)}
+          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          1
+        </button>
+      );
+      if (startPage > 2) {
+        buttons.push(<span key="dots1" className="px-2">...</span>);
+      }
+    }
+
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-4 py-2 border rounded-lg transition-colors ${
+            currentPage === i
+              ? 'bg-[#e65100] text-white border-[#e65100]'
+              : 'border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    // Last page
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        buttons.push(<span key="dots2" className="px-2">...</span>);
+      }
+      buttons.push(
+        <button
+          key={totalPages}
+          onClick={() => handlePageChange(totalPages)}
+          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          {totalPages}
+        </button>
+      );
+    }
+
+    // Next button
+    buttons.push(
+      <button
+        key="next"
+        onClick={() => handlePageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+      >
+        Next
+      </button>
+    );
+
+    return buttons;
+  };
 
   return (
     <>
@@ -311,77 +315,64 @@ const Products = () => {
             <p className="max-w-2xl mx-auto text-lg text-gray-600">
               Discover our premium collection of customizable products. From apparel to accessories, bring your designs to life.
             </p>
+            {!loading && products.length > PRODUCTS_PER_PAGE && (
+              <p className="mt-4 text-sm text-gray-500">
+                Showing {startIndex + 1}-{Math.min(endIndex, products.length)} of {products.length} products
+              </p>
+            )}
           </div>
-
-          {/* Stats Bar */}
-          {/* <div className="grid grid-cols-1 gap-6 mb-12 md:grid-cols-3">
-            <div className="p-6 text-center bg-white border border-gray-200 shadow-sm rounded-xl">
-              <div className="text-3xl font-bold text-[#e65100] mb-2">{products.length}+</div>
-              <div className="text-gray-600">Premium Products</div>
-            </div>
-            <div className="p-6 text-center bg-white border border-gray-200 shadow-sm rounded-xl">
-              <div className="text-3xl font-bold text-[#e65100] mb-2">24/7</div>
-              <div className="text-gray-600">Customer Support</div>
-            </div>
-            <div className="p-6 text-center bg-white border border-gray-200 shadow-sm rounded-xl">
-              <div className="text-3xl font-bold text-[#e65100] mb-2">Fast</div>
-              <div className="text-gray-600">Delivery</div>
-            </div>
-          </div> */}
 
           {/* Products Grid */}
           {loading ? (
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {[...Array(8)].map((_, i) => (
+              {[...Array(12)].map((_, i) => (
                 <ProductCardSkeleton key={i} />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {products.length > 0 ? (
-                products.map((product) => {
-                  const metadata = productMetadata[product.id] || {
-                    isBestSeller: false,
-                    isStaffPick: false,
-                    rating: 4.0,
-                    reviewCount: 0
-                  };
-                  
-                  return (
-                    <div key={product.id} className="group">
-                      <ProductCard 
-                        product={product} 
-                        metadata={metadata}
-                      />
+            <>
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {currentProducts.length > 0 ? (
+                  currentProducts.map((product) => {
+                    const metadata = productMetadata[product.id] || {
+                      isBestSeller: false,
+                      isStaffPick: false,
+                      rating: 4.0,
+                      reviewCount: 0
+                    };
+                    
+                    return (
+                      <div key={product.id} className="group">
+                        <ProductCard 
+                          product={product} 
+                          metadata={metadata}
+                        />
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="col-span-full">
+                    <div className="p-12 text-center bg-white border border-gray-200 shadow-sm rounded-2xl">
+                      <div className="flex items-center justify-center w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full">
+                        <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                      </div>
+                      <h3 className="mb-2 text-xl font-semibold text-gray-900">No products found</h3>
+                      <p className="text-gray-500">We're currently updating our catalog. Please check back soon!</p>
                     </div>
-                  );
-                })
-              ) : (
-                <div className="col-span-full">
-                  <div className="p-12 text-center bg-white border border-gray-200 shadow-sm rounded-2xl">
-                    <div className="flex items-center justify-center w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full">
-                      <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                      </svg>
-                    </div>
-                    <h3 className="mb-2 text-xl font-semibold text-gray-900">No products found</h3>
-                    <p className="text-gray-500">We're currently updating our catalog. Please check back soon!</p>
                   </div>
+                )}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-12">
+                  {renderPaginationButtons()}
                 </div>
               )}
-            </div>
+            </>
           )}
-
-          {/* Call to Action Section */}
-          {/* {!loading && products.length > 0 && (
-            <div className="mt-16 bg-gradient-to-r from-[#e65100] to-[#ff7043] rounded-2xl p-8 text-center text-white">
-              <h2 className="mb-4 text-2xl font-bold">Ready to start creating?</h2>
-              <p className="mb-6 text-lg opacity-90">Choose from our wide selection of premium products and bring your designs to life.</p>
-              <button className="bg-white text-[#e65100] font-semibold px-8 py-3 rounded-lg hover:bg-gray-50 transition-colors duration-200">
-                Get Started Today
-              </button>
-            </div>
-          )} */}
         </div>
       </div>
     </>

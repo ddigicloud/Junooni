@@ -3113,7 +3113,7 @@ useEffect(() => {
       fulfillmentSettings: {
         handlingTime: '2-3',
         shippingTime: '7-10',
-        provider: 'junooni'
+        provider: 'JUNOONI'
       },
        shippingInfo: {
       weight: payloadProduct.shippingInfo.weight,
@@ -5490,7 +5490,7 @@ const combinedArtworkPayload = {
     // Add fulfillment information
     if (payloadFulfillmentData.hasData) {
       const fulfillmentData = {
-        type: "Junooni-fulfilment",
+        type: "JUNOONI-fulfillment",
         ...(payloadFulfillmentData.shippingTime && { 
           shipping_time: payloadFulfillmentData.shippingTime 
         }),
@@ -6950,8 +6950,8 @@ if (!printTechId || !printTechName) {
                     <IconTruck size={24} />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-800">Junooni Fulfillment</h3>
-                    <p className="text-sm text-gray-600">Fulfillment managed by Junooni</p>
+                    <h3 className="font-medium text-gray-800">JUNOONI Fulfillment</h3>
+                    <p className="text-sm text-gray-600">Fulfillment managed by JUNOONI</p>
                   </div>
                 </div>
                 
