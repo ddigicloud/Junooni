@@ -367,7 +367,7 @@ const CustomerAccount = ({ customer, creatorList, Orders }) => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="px-2 py-8 sm:px-4">
+      <div className="px-2 py-3 sm:px-4">
         <div className="">
           {/* Sidebar Navigation */}
 

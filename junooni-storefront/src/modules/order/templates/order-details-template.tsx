@@ -171,12 +171,12 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
       </header>
 
       {/* Main Content */}
-      <main className="container px-4 py-8 mx-auto sm:px-6 lg:px-8">
+      <main className="container px-0 py-3 mx-auto sm:px-6 lg:px-8">
         {/* Order Info */}
         <OrderDetails order={order} showStatus />
 
         {/* Order Details Tabs */}
-        <div className="mb-6 overflow-hidden bg-white rounded-lg shadow">
+        <div className="mb-6 overflow-hidden bg-white rounded-lg sm:shadow md:shadow">
           <div className="border-b border-gray-200">
             <nav className="flex" aria-label="Tabs">
               <button
@@ -202,7 +202,7 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
             </nav>
           </div>
 
-          <div className="p-6">
+          <div className="sm:p-6 md:p-6 px-0 py-3">
             {activeTab === "items" && <Items order={order} />}
 
             {activeTab === "payment" && (

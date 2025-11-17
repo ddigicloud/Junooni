@@ -112,7 +112,7 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
   const items = order.items || []
 
   return (
-    <div className="mb-6 overflow-hidden bg-white rounded-lg shadow">
+    <div className="mb-6 overflow-hidden bg-white rounded-lg sm:shadow md:shadow">
       <div className="p-6">
         <div className="flex items-center mb-4">
           <div className="flex-shrink-0">

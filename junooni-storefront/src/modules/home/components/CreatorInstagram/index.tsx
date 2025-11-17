@@ -516,10 +516,10 @@ const CreatorInstagram = () => {
 
   return (
     <section className="py-8 bg-white md:py-16">
-      <div className="container px-0 mx-auto sm:px-4">
+      <div className="px-0 mx-auto sm:px-4 w-full">
         <h2 className="mb-4 text-2xl font-bold text-center md:mb-10 md:text-3xl">Creator Spotlight</h2>
         
-        <div className="flex flex-col items-center overflow-hidden bg-white md:flex-row rounded-xl">
+        <div className="flex flex-col items-center overflow-hidden bg-white md:flex-row">
           {/* Image Section */}
           <div className="w-full md:w-2/5">
             <div className="bg-none aspect-square">

@@ -1605,7 +1605,8 @@ ${params.order.shipping_address.city || ''} - ${params.order.shipping_address.po
         companyName: {
           fontSize: 18,
           bold: true,
-          color: '#000000'
+          color: '#000000',
+          characterSpacing: -0.8  // Tighter spacing
         },
         addressText: {
           fontSize: 11,

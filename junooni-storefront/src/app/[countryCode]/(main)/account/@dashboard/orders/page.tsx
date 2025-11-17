@@ -88,8 +88,8 @@ export default async function Orders() {
       </div>
 
       {/* Orders Overview Section */}
-      <div className="mb-8 overflow-hidden bg-white rounded-lg shadow">
-        <div className="px-2 py-4 sm:p-6">
+      <div className="mb-8 overflow-hidden bg-white rounded-lg sm:shadow md:shadow-lg">
+        <div className="px-0 py-2 sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-800">
               Order History

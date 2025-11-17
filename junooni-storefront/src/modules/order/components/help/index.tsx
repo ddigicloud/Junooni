@@ -6,8 +6,8 @@ import { HelpCircle, Mail, MessageSquare, Phone } from "lucide-react"
  */
 const Help = () => {
   return (
-    <div className="mb-6 overflow-hidden bg-white rounded-lg shadow">
-      <div className="p-6">
+    <div className="mb-6 overflow-hidden bg-white rounded-lg sm:shadow md:shadow">
+      <div className="sm:p-6 md:p-6 px-0 py-6">
         {/* Component Header */}
         <div className="flex items-center mb-4">
           <div className="flex-shrink-0">

@@ -78,7 +78,7 @@ export default function ProductRail({ collection, region }: ProductRailProps) {
   }
 
   return (
-    <div className="py-16 content-container">
+    <div className="py-8 sm:py-12 md:py-12 content-container">
       {/* Section header with collection title and "View all" link */}
       <div className="flex items-center justify-between mb-8">
         <Text className="text-4xl font-bold tracking-tight">{collection.title}</Text>

@@ -54,7 +54,7 @@ const LogoDisplay = () => {
     <LocalizedClientLink
       href="/"
       className={`transition-colors duration-300 ${
-        showBackButton ? "flex items-center" : "text-2xl font-semibold uppercase"
+        showBackButton ? "flex items-center" : "text-2xl font-extrabold uppercase font-archivo tracking-tighter"
       }`}
       data-testid="nav-store-link"
     >

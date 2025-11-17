@@ -47,6 +47,7 @@ import {
   retrieveCustomer,
 } from "@lib/data/customer"
 import { toast } from "react-toastify"
+import profileplaceholder from "@assets/profile-logo.png"
 
 // Updated DynamicProductCardProps to include region
 interface ExtendedProductCardProps extends DynamicProductCardProps {
@@ -889,7 +890,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                   <div className="w-full h-full overflow-hidden border-4 border-white rounded-full shadow-lg">
                     <div className="relative w-full h-full">
                       <img
-                        src={creator.profileImage}
+                        src={creator.profileImage || profileplaceholder.src}
                         alt={creator.name}
                         className="absolute inset-0 object-cover object-center w-full h-full"
                       />

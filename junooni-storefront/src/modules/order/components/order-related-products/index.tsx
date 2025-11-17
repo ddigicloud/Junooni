@@ -241,12 +241,12 @@ export default function OrderRelatedProducts({
         <span className="text-base-regular text-gray-600 mb-6">
           You might also like
         </span>
-        <p className="text-xl-regular text-ui-fg-base max-w-lg">
+        <p className="text-xl-regular text-ui-fg-base max-w-lg px-3">
           Based on your recent order, here are some products you might enjoy.
         </p>
       </div>
 
-      <ul className="grid grid-cols-2 small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-8">
+      <ul className="grid grid-cols-2 small:grid-cols-3 medium:grid-cols-4 gap-x-1 gap-y-3">
         {products.map((product) => (
           <li key={product.id}>
             {/* <Product 

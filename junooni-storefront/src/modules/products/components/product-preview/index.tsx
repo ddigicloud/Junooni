@@ -49,6 +49,7 @@ interface Product {
   tags?: ProductTag[];
   vendor?: {
     id: string;
+    handle?: string;
     name: string;
     verified?: string;
   };
@@ -459,8 +460,24 @@ const ProductPreview = ({
         )}
         
         {/* 2. Vendor Name - Truncated */}
-        <div className="flex items-center px-2 mb-2">
+        {/* <div className="flex items-center px-2 mb-2">
           <span className="mr-1 text-sm font-medium text-black">{vendorName}</span>
+          {product.vendor?.verified === "Yes" && (
+            <Check size={14} className="text-orange-500" />
+          )}
+        </div> */}
+        {/* 2. Vendor Name - Truncated */}
+        <div className="flex items-center px-2 mb-2">
+          {product.vendor?.handle ? (
+            <LocalizedClientLink 
+              href={`/creator/${product.vendor.handle}`}
+              className="mr-1 text-sm font-medium text-black hover:text-orange-600 transition-colors"
+            >
+              {vendorName}
+            </LocalizedClientLink>
+          ) : (
+            <span className="mr-1 text-sm font-medium text-black">{vendorName}</span>
+          )}
           {product.vendor?.verified === "Yes" && (
             <Check size={14} className="text-orange-500" />
           )}

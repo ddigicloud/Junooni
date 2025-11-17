@@ -345,7 +345,7 @@
 
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { MapPin, Truck, Calendar, Check, Clock, Package, AlertCircle } from "lucide-react"
+import { MapPin, Truck, Calendar, Check, Clock, Package, AlertCircle, ShoppingBag } from "lucide-react"
 import { formatDate } from "@lib/data/date-util"
 
 type ShippingDetailsProps = {
@@ -450,10 +450,18 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
 
   return (
     <div className="mb-6 overflow-hidden bg-white rounded-lg shadow">
-      <div className="p-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-800">
-          Shipping Information
-        </h2>
+      <div className="sm:p-6 md:p-6 px-0 py-3">
+        <div className="flex items-center mb-4">
+          <div className="flex-shrink-0">
+            <div className="flex items-center justify-center w-10 h-10 text-orange-600 bg-orange-100 rounded-full">
+              <ShoppingBag size={20} />
+            </div>
+          </div>
+          <h2 className="ml-3 text-lg font-semibold text-gray-800">
+            Shipping Information
+          </h2>
+        </div>
+        
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {/* Shipping Address */}
@@ -624,7 +632,12 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
             {/* Steps */}
             <div className="space-y-8">
               {timelineSteps.map((step, index) => (
-                <div key={index} className="relative flex items-center">
+                <div
+                  key={index}
+                  className="relative flex flex-col items-center sm:flex-row sm:items-center"
+                >
+
+                  {/* Desktop LEFT side */}
                   <div className="justify-end hidden w-1/2 pr-8 sm:flex">
                     <div className="text-right">
                       <h3 className={`text-sm font-medium ${
@@ -640,11 +653,14 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
                     </div>
                   </div>
 
-                  <div className={`z-10 flex items-center justify-center flex-shrink-0 w-8 h-8 mx-auto rounded-full sm:mx-0 ${
-                    step.status === "completed" 
-                      ? "bg-orange-100 border-2 border-orange-600" 
-                      : "bg-gray-100 border-2 border-gray-300"
-                  }`}>
+                  {/* Status icon */}
+                  <div
+                    className={`z-0 flex items-center justify-center flex-shrink-0 w-8 h-8 mx-auto rounded-full sm:mx-0 ${
+                      step.status === "completed"
+                        ? "bg-orange-100 border-2 border-orange-600"
+                        : "bg-gray-100 border-2 border-gray-300"
+                    }`}
+                  >
                     {step.status === "completed" ? (
                       <Check size={16} className="text-orange-600" />
                     ) : (
@@ -652,8 +668,9 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
                     )}
                   </div>
 
+                  {/* Mobile text */}
                   <div className="sm:w-1/2 sm:pl-8">
-                    <div className="sm:hidden">
+                    <div className="sm:hidden mt-3 text-center px-4">
                       <h3 className={`text-sm font-medium ${
                         step.status === "completed" ? "text-gray-900" : "text-gray-500"
                       }`}>
@@ -666,6 +683,11 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
                       </p>
                     </div>
                   </div>
+
+                  {/* Vertical line for mobile timeline */}
+                  {index !== timelineSteps.length - 1 && (
+                    <div className="absolute left-1/2 top-8 w-px h-full bg-gray-300 sm:hidden"></div>
+                  )}
                 </div>
               ))}
             </div>

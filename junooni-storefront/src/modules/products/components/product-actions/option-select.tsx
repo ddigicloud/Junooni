@@ -109,23 +109,23 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
 
   // Enhanced update function that dispatches custom event for color changes
   const handleOptionUpdate = (value: string, metadata?: Record<string, any>) => {
-    console.log('🎯 OptionSelect handleOptionUpdate called:', { option: option.title, value, metadata });
-    console.log('🎯 updateOption function exists?', typeof updateOption === 'function');
+    //console.log('🎯 OptionSelect handleOptionUpdate called:', { option: option.title, value, metadata });
+    //console.log('🎯 updateOption function exists?', typeof updateOption === 'function');
     
     // Call the original updateOption function
     updateOption(option.id, value, metadata)
     
     // If this is a color option, dispatch custom event for image filtering
     if (title.toLowerCase() === 'color') {
-      console.log('🎨 This is a color option, dispatching event');
+      //console.log('🎨 This is a color option, dispatching event');
       try {
         const event = new CustomEvent('colorOptionChanged', {
           detail: { color: value, metadata }
         });
         window.dispatchEvent(event);
-        console.log('✅ Color event dispatched from OptionSelect');
+        //console.log('✅ Color event dispatched from OptionSelect');
       } catch (error) {
-        console.error('❌ Failed to dispatch event from OptionSelect:', error);
+        //console.error('❌ Failed to dispatch event from OptionSelect:', error);
       }
     }
   }
@@ -150,8 +150,8 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
             
                 <button
                   onClick={() => {
-                    console.log('🔴 Color button clicked:', v);
-                    console.log('🔴 Button click event working');
+                    //console.log('🔴 Color button clicked:', v);
+                    //console.log('🔴 Button click event working');
                     handleOptionUpdate(v, { colorHex: colorHex || '#CCCCCC' });
                   }}
                   className={clx(

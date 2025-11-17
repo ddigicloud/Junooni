@@ -382,11 +382,11 @@ export const WishlistProducts = ({
   return (
     <div
       className={
-        isEmbedded ? "w-full" : "max-w-screen-xl mx-auto w-full px-4 py-8"
+        isEmbedded ? "w-full" : "max-w-screen-xl mx-auto w-fullsm:px-4 md:px-4 sm:py-8 md:py-8 px-0 py-3"
       }
     >
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {visibleItems
           .map((item) => {
             // 🔧 Find the exact product for this wishlist item
@@ -413,7 +413,7 @@ export const WishlistProducts = ({
             return (
               <div
                 key={`${product.id}-${specificVariant.id}`}
-                className="relative p-3 transition-all bg-white rounded-lg shadow group hover:shadow-lg"
+                className="relative p-3 transition-all bg-white shadow group hover:shadow-lg"
               >
                 <LocalizedClientLink
                   href={`/products/${product.handle}?variant=${specificVariant.id}`} // ✅ Link to specific variant

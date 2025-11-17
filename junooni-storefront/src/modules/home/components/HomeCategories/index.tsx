@@ -29,12 +29,12 @@ const HomeCategories = async () => {
 
   return (
     <section className="py-10 bg-gray-50">
-      <div className="container px-1 mx-auto sm:px-4">
+      <div className="mx-auto w-full max-w-full px-0 sm:px-4">
         <h2 className="mb-12 text-3xl font-bold text-center">
           <span className="inline-block pb-2">Shop by Category</span>
         </h2>
         
-        <div className="grid grid-cols-2 gap-2 sm:gap-6 md:grid-cols-4 md:gap-8">
+        <div className="grid grid-cols-2 gap-1 sm:gap-3 md:grid-cols-4 md:gap-2">
           {categoriesWithImages.map((category) => (
             <Link 
               href={`/categories/${category.handle}`} 
@@ -42,7 +42,7 @@ const HomeCategories = async () => {
               className="group"
             >
               <div className="overflow-hidden transition-all duration-300">
-                <div className="relative bg-gray-100 aspect-auto">
+                <div className="relative bg-gray-100 aspect-square">
                   {category.metadata && category.metadata.featured_image && (
                     <img 
                       src={category.metadata.featured_image as string}
@@ -55,7 +55,7 @@ const HomeCategories = async () => {
                   <div className="absolute inset-0 transition-all duration-300 bg-black bg-opacity-0 group-hover:bg-opacity-10 group-hover:scale-105"></div>
                 </div>
                 
-                <div className="p-4 text-center">
+                <div className="px-4 py-2 sm:p-4 md:p-4 text-center">
                   <h3 className="text-lg font-medium transition-colors duration-300 group-hover:text-orange-primary">
                     {category.name}
                   </h3>
