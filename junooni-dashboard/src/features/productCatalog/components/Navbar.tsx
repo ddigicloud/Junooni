@@ -189,7 +189,7 @@ const Navbar = () => {
         </Link>
 
         {/* Center: Desktop categories with horizontal scroll (hidden on mobile) */}
-        <div className="relative items-center justify-center flex-1 mx-4 overflow-hidden sm:flex">
+        <div className="relative items-center justify-center flex-1 mx-4 overflow-hidden hidden sm:flex">
           {/* Fade effect on left */}
           <div className="absolute top-0 bottom-0 left-0 z-10 w-8 pointer-events-none bg-gradient-to-r from-white dark:from-gray-900 to-transparent" />
           

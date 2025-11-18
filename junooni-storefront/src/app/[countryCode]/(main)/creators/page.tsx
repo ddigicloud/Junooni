@@ -65,7 +65,7 @@ const VendorsDiscoveryPage = () => {
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [vendorsPerPage] = useState<number>(12) // Show 12 vendors per page
 
-  const avatarImage = assets.rabit
+  const avatarImage = assets.profilelogo
   const CoverImage = assets.wishlistBanner
 
   // Pagination calculations

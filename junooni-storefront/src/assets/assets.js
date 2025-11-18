@@ -8,6 +8,7 @@ import wishlistBanner from "./wishlistBanner.jpg"
 import wishlisthero from "./wishlistBanner1.png"
 import rabit from "./rabbit.png"
 import user from "./user.png"
+import profilelogo from "./profile-logo.png"
 
 export const assets = {
     mens,
@@ -22,7 +23,8 @@ export const assets = {
     wishlistBanner,
     wishlisthero,
     user,
-    rabit
+    rabit,
+    profilelogo
     
 }
 

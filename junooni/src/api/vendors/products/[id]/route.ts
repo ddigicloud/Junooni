@@ -259,77 +259,61 @@ import {
 
  
   export const DELETE = async (
-    req: AuthenticatedMedusaRequest,
-    res: MedusaResponse
-  ) => {
-    try {
-      const { id } = req.params;
-      if (!id) {
-        return res.status(400).json({ message: "Product ID is required" });
+  req: AuthenticatedMedusaRequest,
+  res: MedusaResponse
+) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Product ID is required" });
+    }
+
+    const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
+    const marketplaceModuleService: MarketplaceModuleService =
+      req.scope.resolve(MARKETPLACE_MODULE);
+
+    const vendorAdmin = await marketplaceModuleService.retrieveVendorAdmin(
+      req.auth_context.actor_id,
+      {
+        relations: ["vendor"],
       }
- 
-      const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
-      const marketplaceModuleService: MarketplaceModuleService =
-        req.scope.resolve(MARKETPLACE_MODULE);
- 
-      // Retrieve the vendor admin details
-      const vendorAdmin = await marketplaceModuleService.retrieveVendorAdmin(
-        req.auth_context.actor_id,
-        {
-          relations: ["vendor"],
-        }
-      );
- 
-      // Verify the product belongs to the vendor
-      const {
-        data: [vendor],
-      } = await query.graph({
-        entity: "vendor",
-        fields: ["products.id"],
-        filters: {
-          id: vendorAdmin.vendor.id,
-        },
-      });
- 
-      const vendorProduct = vendor?.products?.find((p) => p.id === id);
-      if (!vendorProduct) {
-        return res.status(404).json({
-          message: "Product not found or does not belong to this vendor"
-        });
-      }
- 
-      // Register a hook for the delete workflow
-      deleteProductsWorkflow.hooks.productsDeleted(
-        async ({ ids }, { container }) => {
-          // You can add any post-deletion logic here if needed
-          console.log("Products deleted:", ids);
-        }
-      );
- 
-      // Run the delete workflow
-      const { result } = await deleteProductsWorkflow(req.scope).run({
-        input: {
-          ids: [id]
-        }
-      });
- 
-      if (!result) {
-        return res.status(404).json({
-          message: "Product could not be deleted"
-        });
-      }
- 
-      res.status(200).json({
-        message: "Product deleted successfully",
-        id: id
-      });
- 
-    } catch (error) {
-      console.error("Error deleting product:", error);
-      res.status(500).json({
-        message: "Failed to delete product",
-        error: error instanceof Error ? error.message : "Unknown error",
+    );
+
+    const {
+      data: [vendor],
+    } = await query.graph({
+      entity: "vendor",
+      fields: ["products.id"],
+      filters: {
+        id: vendorAdmin.vendor.id,
+      },
+    });
+
+    const vendorProduct = vendor?.products?.find((p) => p.id === id);
+    if (!vendorProduct) {
+      return res.status(404).json({
+        message: "Product not found or does not belong to this vendor"
       });
     }
-  };
 
+    // Run the delete workflow
+    await deleteProductsWorkflow(req.scope).run({
+      input: {
+        ids: [id]
+      }
+    });
+
+    // ✅ Just return success - if workflow throws, catch block handles it
+    res.status(200).json({
+      message: "Product deleted successfully",
+      id: id
+    });
+
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    res.status(500).json({
+      message: "Failed to delete product",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};

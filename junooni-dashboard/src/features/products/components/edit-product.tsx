@@ -45,7 +45,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ChevronsRightLeft, Loader2 } from 'lucide-react';
+import { ChevronsRightLeft, Loader2, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -3337,29 +3337,78 @@ const handleApiError = (apiError: any) => {
   }
 
   // Error state
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <div className="max-w-2xl px-4 text-center">
-          <h2 className="mb-4 text-2xl font-bold text-red-600">Error</h2>
-          <p className="mb-6">{error}</p>
-          <div className="p-4 mb-6 overflow-auto text-sm text-left bg-gray-100 rounded-md">
-            <pre className="break-words whitespace-pre-wrap">
-              Error details: {error}
-              {"\n"}
-              Product ID: {id}
-            </pre>
-          </div>
-          <Button 
-            onClick={() => navigate({ to: '/products' })}
-            className="bg-[#e65100] hover:bg-[#d84315] text-white"
-          >
-            Back to Products
-          </Button>
-        </div>
+ if (error) {
+  return (
+    <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50">
+      <div className="w-full max-w-md">
+        <Card className="">
+          <CardContent className="pt-6">
+            {/* Error Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full">
+                <AlertTriangle className="w-8 h-8 text-red-600" />
+              </div>
+            </div>
+            
+            {/* Error Title */}
+            <h2 className="mb-2 text-2xl font-bold text-center text-gray-900">
+              Unable to Load Product
+            </h2>
+            
+            {/* Error Message */}
+            <p className="mb-6 text-center text-gray-600">
+              We couldn't load this product. This might be because:
+            </p>
+            
+            {/* Error Reasons */}
+            <ul className="mb-6 space-y-2 text-sm text-gray-600">
+              <li className="flex items-start">
+                <span className="mr-2 text-red-500">•</span>
+                <span>The product doesn't exist or has been deleted</span>
+              </li>
+              {/* <li className="flex items-start">
+                <span className="mr-2 text-red-500">•</span>
+                <span>You don't have permission to access this product</span>
+              </li> */}
+              <li className="flex items-start">
+                <span className="mr-2 text-red-500">•</span>
+                <span>There's a temporary connection issue</span>
+              </li>
+            </ul>
+            
+            {/* Product ID for Reference */}
+            <div className="p-3 mb-6 rounded-lg bg-gray-50">
+              <p className="text-xs font-medium text-gray-500">Product ID:</p>
+              <p className="font-mono text-sm text-gray-700">{id}</p>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={() => window.location.reload()}
+                className="w-full bg-[#e65100] hover:bg-[#d84315] text-white"
+              >
+                Try Again
+              </Button>
+              <Button
+                onClick={() => navigate({ to: '/products' })}
+                variant="outline"
+                className="w-full text-gray-700 border-gray-300 hover:bg-gray-50"
+              >
+                Back to Products
+              </Button>
+            </div>
+            
+            {/* Help Text */}
+            <p className="mt-6 text-xs text-center text-gray-500">
+              If this problem persists, please contact support
+            </p>
+          </CardContent>
+        </Card>
       </div>
-    );
-  }
+    </div>
+  );
+}
   // Main component render
   return (
     <div className="px-6 py-8 bg-gray-50">

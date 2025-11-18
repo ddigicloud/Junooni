@@ -798,7 +798,11 @@ const renderMockupDirectly = async (
       for (const mockupArea of mockup.area || []) {
         const areaName = mockupArea.areaName.toLowerCase();
         const elements = designElements[areaName] || [];
-        const visibleElements = elements.filter(el => el.visible !== false && el.type === 'image');
+        // const visibleElements = elements.filter(el => el.visible !== false && el.type === 'image');
+        const visibleElements = elements
+        .filter(el => el.visible !== false && el.type === 'image')
+        .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)); // ✅ Sort by zIndex ascending (bottom to top)
+      
         
         if (visibleElements.length === 0) continue;
         
@@ -831,22 +835,47 @@ const renderMockupDirectly = async (
           ctx.save();
           
           // Convert canvas coordinates to mockup coordinates
-          const elementX = mockupAreaX + (element.x - printableArea.x) * scaleX;
-          const elementY = mockupAreaY + (element.y - printableArea.y) * scaleY;
-          const elementWidth = element.width * scaleX * (element.scaleX || 1);
-          const elementHeight = element.height * scaleY * (element.scaleY || 1);
+          // const elementX = mockupAreaX + (element.x - printableArea.x) * scaleX;
+          // const elementY = mockupAreaY + (element.y - printableArea.y) * scaleY;
+          // const elementWidth = element.width * scaleX * (element.scaleX || 1);
+          // const elementHeight = element.height * scaleY * (element.scaleY || 1);
           
           // Apply transformations
-          const centerX = elementX + elementWidth / 2;
-          const centerY = elementY + elementHeight / 2;
+          // const centerX = elementX + elementWidth / 2;
+          // const centerY = elementY + elementHeight / 2;
+
+          // Calculate center position in canvas space FIRST (using UNSCALED dimensions)
+          const centerInCanvasX = element.x + element.width / 2;
+          const centerInCanvasY = element.y + element.height / 2;
+
+          // Transform center to mockup space
+          const centerX = mockupAreaX + (centerInCanvasX - printableArea.x) * scaleX;
+          const centerY = mockupAreaY + (centerInCanvasY - printableArea.y) * scaleY;
+
+          // Calculate final dimensions (with all scales applied)
+          const elementWidth = element.width * scaleX * (element.scaleX || 1);
+          const elementHeight = element.height * scaleY * (element.scaleY || 1);
           
           ctx.translate(centerX, centerY);
           
           if (element.rotation) {
             ctx.rotate((element.rotation * Math.PI) / 180);
           }
+          // if (element.rotation) {
+          //   console.log('🔍 DEBUG:', {
+          //     id: element.id,
+          //     x: element.x,
+          //     y: element.y,
+          //     width: element.width,
+          //     scaleX: element.scaleX,
+          //     centerInCanvasX,
+          //     centerX
+          //   });
+          // }
           
-          ctx.globalAlpha = (element.opacity || 1) * (design.opacity || 1);
+          //ctx.globalAlpha = (element.opacity || 1) * (design.opacity || 1);
+          // Set element opacity (default to 1 if not specified)
+          ctx.globalAlpha = element.opacity || 1;
           
           if (design.blend && design.blend !== 'normal') {
             ctx.globalCompositeOperation = design.blend as GlobalCompositeOperation;
@@ -8045,7 +8074,7 @@ const renderPreview = useCallback(() => {
       
       {/* Main Preview */}
       <div className="flex flex-col flex-1 p-2 overflow-y-auto sm:px-4 sm:pb-2 sm:pt-0">
-        <div className="flex items-center justify-center flex-1">
+        <div className="flex items-start justify-center flex-1">
           {/* Main Container - Preview + Color Circles */}
           <div className="flex flex-col items-center gap-4">
             
@@ -8494,8 +8523,12 @@ const renderPreview = useCallback(() => {
             key={element.id}
             id={element.id}
             image={element.image}
-            x={element.x}
-            y={element.y}
+            // x={element.x}
+            // y={element.y}
+            x={element.x + element.width / 2}
+            y={element.y + element.height / 2}
+            offsetX={element.width / 2}
+            offsetY={element.height / 2}
             width={element.width}
             height={element.height}
             rotation={element.rotation}
@@ -8514,7 +8547,7 @@ const renderPreview = useCallback(() => {
                 const updated = { ...prev };
                 if (updated[areaId]) {
                   updated[areaId] = updated[areaId].map(el =>
-                    el.id === element.id ? { ...el, x: e.target.x(), y: e.target.y() } : el
+                    el.id === element.id ? { ...el, x: e.target.x() - element.width / 2, y: e.target.y() - element.height / 2 } : el
                   );
                 }
                 return updated;
@@ -8553,8 +8586,10 @@ const renderPreview = useCallback(() => {
                 updated[areaId] = updated[areaId].map(el =>
                   el.id === element.id ? {
                     ...el,
-                    x: node.x(),
-                    y: node.y(),
+                    // x: node.x(),
+                    // y: node.y(),
+                    x: node.x() - newWidth / 2,
+                    y: node.y() - newHeight / 2,
                     rotation: node.rotation(),
                     width: newWidth,      // Update with scaled width
                     height: newHeight,    // Update with scaled height  
@@ -8583,8 +8618,12 @@ const renderPreview = useCallback(() => {
             key={element.id}
             id={element.id}
             text={element.text || 'Text'}
-            x={element.x}
-            y={element.y}
+            // x={element.x}
+            // y={element.y}
+            x={element.x + element.width / 2}
+            y={element.y + (element.height || element.fontSize || 20) / 2}
+            offsetX={element.width / 2}
+            offsetY={(element.height || element.fontSize || 20) / 2}
             width={element.width}
             fontSize={element.fontSize || 20}
             fontFamily={element.fontFamily || 'Arial'}
@@ -8609,7 +8648,7 @@ const renderPreview = useCallback(() => {
                 const updated = { ...prev };
                 if (updated[areaId]) {
                   updated[areaId] = updated[areaId].map(el =>
-                    el.id === element.id ? { ...el, x: e.target.x(), y: e.target.y() } : el
+                    el.id === element.id ? { ...el, x: e.target.x() - element.width / 2, y: e.target.y() - (element.height || element.fontSize || 20) / 2 } : el
                   );
                 }
                 return updated;
@@ -8627,8 +8666,10 @@ const renderPreview = useCallback(() => {
                   updated[areaId] = updated[areaId].map(el =>
                     el.id === element.id ? {
                       ...el,
-                      x: node.x(),
-                      y: node.y(),
+                      // x: node.x(),
+                      // y: node.y(),
+                      x: node.x() - element.width / 2,
+                      y: node.y() - (element.height || element.fontSize || 20) / 2,
                       rotation: node.rotation(),
                       scaleX: node.scaleX(),
                       scaleY: node.scaleY(),
@@ -8956,6 +8997,26 @@ const renderPreview = useCallback(() => {
 </div>
 
       </div>
+      {/* Rotation Angle Display */}
+      {(() => {
+        const selectedElement = designElements[activeArea]?.find(el => el.id === selectedId);
+        const rotation = selectedElement?.rotation || 0;
+        return (
+          <div className="flex items-center justify-between w-full pt-2 pb-2 border-t border-gray-200">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span className="text-xs font-medium text-gray-700">Rotation</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-semibold text-orange-600">
+                {Math.round(rotation)}°
+              </span>
+            </div>
+          </div>
+        );
+      })()}
       <div className="flex items-center gap-2 md:w-full md:pt-3 md:border-t md:border-gray-200">
       <button
       onClick={deleteSelectedElement}

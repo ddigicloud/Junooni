@@ -6945,6 +6945,43 @@ if (!printTechId || !printTechName) {
                 <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
                 <Separator className="mb-4" />
                 
+                {/* Product Title and Technology Display */}
+                <div className="mb-6 space-y-3">
+                  <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
+                    <div className="flex items-start">
+                      <div className="p-2 mr-3 bg-orange-100 rounded-full text-orange-600">
+                        <IconInfoCircle size={20} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-orange-800">Product Title</p>
+                        <p className="mt-1 text-base font-semibold text-orange-900">
+                          {form.watch('title') || designData?.productInfo?.title || 'Untitled Product'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {(designData?.printingTechnology || enhancedProductData?.printT?.[0]?.technologyName) && (
+                    <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
+                      <div className="flex items-start">
+                        <div className="p-2 mr-3 bg-orange-100 rounded-full text-orange-600">
+                          <IconInfoCircle size={20} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-orange-800">Print Technology</p>
+                          <p className="mt-1 text-base font-semibold text-orange-900 uppercase">
+                            {designData?.printingTechnology || 
+                            enhancedProductData?.printT?.[0]?.technologyName || 
+                            'Not specified'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <Separator className="mb-4" />
+                
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-orange-100 rounded-full text-[#e65100]">
                     <IconTruck size={24} />
@@ -6993,12 +7030,6 @@ if (!printTechId || !printTechName) {
                         </div>
                       </div>
                     )}
-                    
-                    {/* <div className="p-3 mt-4 border border-gray-200 rounded-md bg-gray-50">
-                      <p className="text-sm text-gray-600">
-                        <strong>Note:</strong> Shipping and handling times are pre-configured in the product catalog and cannot be modified.
-                      </p>
-                    </div> */}
                   </div>
                 ) : (
                   <div className="p-4 mt-6 border border-gray-200 rounded-lg bg-gray-50">
@@ -7010,6 +7041,8 @@ if (!printTechId || !printTechName) {
                     </div>
                   </div>
                 )}
+              </section>
+              )}
                 
                 {/* Stock Management Info - Keep this part */}
                 {/* <div className="mt-6">
@@ -7026,8 +7059,8 @@ if (!printTechId || !printTechName) {
                     </AlertDescription>
                   </Alert>
                 </div> */}
-              </section>
-              )}
+              {/* </section>
+              )} */}
               
               {/* Physical Details Card */}
               <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">

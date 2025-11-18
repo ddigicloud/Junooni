@@ -281,6 +281,52 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
     fetchProducts();
   }, []);
 
+  const handleDeleteProduct = async (productId: string) => {
+  const token = localStorage.getItem("vendorToken");
+  
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products/${productId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to delete product");
+    }
+
+    // Remove the product from state
+    setProducts((prevProducts) => 
+      prevProducts.filter((product) => product.id !== productId)
+    );
+
+    // Show success message
+    toast({
+      title: "Success",
+      description: "Product deleted successfully",
+      variant: "default",
+    });
+
+    // If we deleted the last item on the current page, go to previous page
+    if (paginatedProducts.length === 1 && currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to delete product",
+      variant: "destructive",
+    });
+  }
+};
+
   // Reset to first page when items per page changes
   useEffect(() => {
     setCurrentPage(1);
@@ -581,7 +627,7 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
                   <div className="w-full">
                     <div className="p-2 overflow-x-auto sm:p-3 lg:p-6">
                       <div className="min-w-[600px]">
-                        <DataTable data={paginatedProducts} columns={columns} />
+                        <DataTable data={paginatedProducts} columns={columns} onDeleteProduct={handleDeleteProduct}/>
                       </div>
                     </div>
 
