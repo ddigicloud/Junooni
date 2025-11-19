@@ -14,7 +14,8 @@ import {
   IconPhotoPlus,
   IconInfoCircle,
   IconTruck,
-  IconClock
+  IconClock,
+  IconExternalLink
 } from '@tabler/icons-react';
 
 import { Button } from '@/components/ui/button';
@@ -85,6 +86,7 @@ interface PayloadImageSettings {
 
 interface PayloadProductData {
   id?: string;
+  name?: string;
   HSNCode?: string;
   cost?: number;
   dimensions?: {
@@ -1006,7 +1008,21 @@ const convertLexicalToHtml = (content: RichTextContent | string): string => {
 
 // Add this function to extract areas from location state
 // Replace the extractAvailableAreas function with this corrected version
-
+/**
+ * Find a category by ID in the nested category tree
+ */
+const findCategoryById = (categories: any[], categoryId: string): any => {
+  for (const category of categories) {
+    if (category.id === categoryId) {
+      return category;
+    }
+    if (category.category_children && category.category_children.length > 0) {
+      const found = findCategoryById(category.category_children, categoryId);
+      if (found) return found;
+    }
+  }
+  return null;
+};
 
 // ADD this helper function to create detailed file descriptions
 // CORRECTED createEnhancedFileDescription function
@@ -1851,7 +1867,7 @@ const [importedCanvasImages, setImportedCanvasImages] = useState<Array<{
       status: 'proposed',
       thumbnail: '',
       discountable: true,
-      category_id: '',
+      category_id: [],
       options: [
         {
           id: generateUUID(),
@@ -5482,6 +5498,12 @@ const combinedArtworkPayload = {
     // ✅ STEP 5: Prepare main product metadata
     const productMetadata: Record<string, any> = {};
     
+
+    // 🔥 NEW: Add PayloadCMS product name
+    if (enhancedProductData?.name) {
+      productMetadata.payload_product_name = enhancedProductData.name;
+    }
+
     // 🔥 ADD DESIGN ARTWORK DATA TO PRODUCT METADATA
     if (designArtworkPayloads.length > 0) {
       productMetadata.design_artwork = JSON.stringify(designArtworkPayloads);
@@ -5730,7 +5752,10 @@ if (!printTechId || !printTechName) {
       } : {}),
       
       // Add category if selected
-      ...(formValues.category_id ? { categories: [{ id: formValues.category_id }] } : {}),
+      //...(formValues.category_id ? { categories: [{ id: formValues.category_id }] } : {}),
+       ...(formValues.category_ids && formValues.category_ids.length > 0 ? { 
+          categories: formValues.category_ids.map(id => ({ id }))
+        } : {}),
       
       // Add physical dimensions if provided
       ...(formValues.weight ? { weight: parseInt(formValues.weight) || 0 } : {}),
@@ -6862,58 +6887,104 @@ if (!printTechId || !printTechName) {
 
                 {/* Category Selection */}
                 {isLoadingCategories ? (
-                  <FormField
-                    control={form.control}
-                    name="category_id"
-                    render={({ field }) => (
-                      <FormItem className="mb-5">
-                        <FormLabel className="font-medium text-gray-700">Product Category</FormLabel>
-                        <Select disabled={true}>
-                          <FormControl>
-                            <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                              <SelectValue placeholder="Loading categories..." />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <div className="p-2 text-gray-500">Loading...</div>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription className="text-sm text-gray-500">
-                          Categorize your product to help customers find it
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
-                ) : categoryError ? (
-                  <FormField
-                    control={form.control}
-                    name="category_id"
-                    render={({ field }) => (
-                      <FormItem className="mb-5">
-                        <FormLabel className="font-medium text-gray-700">Product Category</FormLabel>
-                        <Select disabled={true}>
-                          <FormControl>
-                            <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                              <SelectValue placeholder="Error loading categories" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <div className="p-2 text-sm text-red-500">{categoryError}</div>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription className="text-sm text-gray-500">
-                          Categorize your product to help customers find it
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
-                ) : (
-                  <HierarchicalCategorySelector 
-                    form={form} 
-                    categories={productCategories} 
-                    name="category_id" 
-                  />
-                )}
+                <FormField
+                  control={form.control}
+                  name="category_ids"
+                  render={({ field }) => (
+                    <FormItem className="mb-5">
+                      <FormLabel className="font-medium text-gray-700">Product Categories</FormLabel>
+                      <Select disabled={true}>
+                        <FormControl>
+                          <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
+                            <SelectValue placeholder="Loading categories..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <div className="p-2 text-gray-500">Loading...</div>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-sm text-gray-500">
+                        Select one or more categories for your product
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              ) : categoryError ? (
+                <FormField
+                  control={form.control}
+                  name="category_ids"
+                  render={({ field }) => (
+                    <FormItem className="mb-5">
+                      <FormLabel className="font-medium text-gray-700">Product Categories</FormLabel>
+                      <Select disabled={true}>
+                        <FormControl>
+                          <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
+                            <SelectValue placeholder="Error loading categories" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <div className="p-2 text-sm text-red-500">{categoryError}</div>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-sm text-gray-500">
+                        Select one or more categories for your product
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="category_ids"
+                  render={({ field }) => (
+                    <FormItem className="mb-5">
+                      {/* <FormLabel className="font-medium text-gray-700">Product Categories</FormLabel> */}
+                      
+                      {/* Selected Categories Display */}
+                      {/* {field.value && field.value.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {field.value.map((categoryId) => {
+                            const category = findCategoryById(productCategories, categoryId);
+                            return category ? (
+                              <Badge 
+                                key={categoryId}
+                                variant="outline"
+                                className="text-[#e65100] border-[#e65100] bg-orange-50 pr-1"
+                              >
+                                {category.title}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    const newValue = field.value.filter(id => id !== categoryId);
+                                    field.onChange(newValue);
+                                  }}
+                                  className="ml-1.5 hover:bg-orange-200 rounded-full p-0.5"
+                                >
+                                  <IconX size={14} />
+                                </button>
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      )} */}
+                      
+                      {/* Category Selector Dropdown */}
+                      <HierarchicalCategorySelector 
+                        form={form} 
+                        categories={productCategories} 
+                        name="category_ids"
+                        isMultiSelect={true}
+                      />
+                      
+                      {/* <FormDescription className="text-sm text-gray-500">
+                        Select one or more categories to help customers find your product
+                      </FormDescription> */}
+                      <FormMessage className="text-red-500" />
+                    </FormItem>
+                  )}
+                />
+              )}
 
                 <FormField
                   control={form.control}
@@ -6953,10 +7024,28 @@ if (!printTechId || !printTechName) {
                         <IconInfoCircle size={20} />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-orange-800">Product Title</p>
-                        <p className="mt-1 text-base font-semibold text-orange-900">
+                        <p className="text-sm font-medium text-orange-800">Product </p>
+                        {enhancedProductData?.name && enhancedProductData?.id ? (
+                          <a
+                            href={`/productCatalog/${enhancedProductData.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 text-base font-semibold text-orange-900 hover:text-orange-700 underline decoration-orange-300 hover:decoration-orange-500 transition-colors duration-200"
+                          >
+                            {enhancedProductData.name}
+                            <IconExternalLink size={14} className="inline ml-1 mb-0.5" />
+                          </a>
+                        ) : (
+                          <p className="mt-1 text-base font-semibold text-orange-900">
+                            {enhancedProductData?.name || 
+                            designData?.productInfo?.title || 
+                            form.watch('title') || 
+                            'Untitled Product'}
+                          </p>
+                        )}
+                        {/* <p className="mt-1 text-base font-semibold text-orange-900">
                           {form.watch('title') || designData?.productInfo?.title || 'Untitled Product'}
-                        </p>
+                        </p> */}
                       </div>
                     </div>
                   </div>

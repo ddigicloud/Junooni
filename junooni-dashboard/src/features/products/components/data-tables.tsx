@@ -152,7 +152,9 @@ export function DataTable({ data, columns, onDeleteProduct }: DataTableProps) {
   const [productToDelete, setProductToDelete] = useState<{id: string, name: string} | null>(null);
   
   // Professional delete handler with confirmation dialog
-  const handleDeleteClick = (product: Product) => {
+  const handleDeleteClick = (e: React.MouseEvent, product: Product) => {
+    e.preventDefault();
+    e.stopPropagation();
     setProductToDelete({
       id: product.id || '',
       name: product.title || 'this product'
@@ -205,30 +207,30 @@ export function DataTable({ data, columns, onDeleteProduct }: DataTableProps) {
           <TableBody>
             {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="border-b hover:bg-gray-50">
+                <TableRow key={row.id} className="border-b hover:bg-gray-50 group">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="px-4 py-2">
-                      {cell.column.id === 'thumbnail' ? (
-                        <img
-                          src={row.original.thumbnail || placeholder}
-                          alt={`thumbnail`}
-                          className="object-cover w-10 h-10 rounded"
-                        />
-                      ) : cell.column.id === 'title' ? (
-                        <Link
-                          to={`/products/${row.original.id}` as any}
-                          className="text-blue-900 hover:underline"
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </Link>
-                      ) : (
-                        flexRender(cell.column.columnDef.cell, cell.getContext())
-                      )}
+                      <Link
+                        to={`/products/${row.original.id}` as any}
+                        className="no-underline hover:no-underline"
+                      >
+                        {cell.column.id === 'thumbnail' ? (
+                          <img
+                            src={row.original.thumbnail || placeholder}
+                            alt={`thumbnail`}
+                            className="object-cover w-10 h-10 rounded"
+                          />
+                        ) : (
+                          <span className="text-black-900 group-hover:text-[#e65100] ">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </span>
+                        )}
+                      </Link>
                     </TableCell>
                   ))}
                   <TableCell className="px-4 py-2">
                     <button
-                      onClick={() => handleDeleteClick(row.original)}
+                      onClick={(e) => handleDeleteClick(e, row.original)}
                       className="p-2 text-red-500 transition-colors rounded-full hover:bg-red-50"
                       title="Delete product"
                     >

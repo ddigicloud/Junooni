@@ -522,7 +522,7 @@ export default function OrdersPage() {
             "Authorization": `Bearer ${token}`
           }
         });
-        
+
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -572,7 +572,7 @@ export default function OrdersPage() {
           setLoading(false);
           return;
         }
-        
+        console.log("Fetched Orders Data:", ordersArray);
         // ✅ FIXED: Enhanced data transformation with better error handling
         const transformedOrders = ordersArray.map((order: any, index: number) => {
           try {

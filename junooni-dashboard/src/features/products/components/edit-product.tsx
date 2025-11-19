@@ -116,6 +116,10 @@ const EditProduct = () => {
   const [activeImageTab, setActiveImageTab] = useState("upload");
   const [newImageUrl, setNewImageUrl] = useState("");
   const [productLoaded, setProductLoaded] = useState(false);
+  const [technologyName, setTechnologyName] = useState<string>('');
+  const [payloadProductName, setPayloadProductName] = useState<string>(''); // ADD THIS LINE
+  const [sourceProductId, setSourceProductId] = useState<number | null>(null); // ADD THIS LINE
+
   
   // For the product URL
   const [productViewUrl, setProductViewUrl] = useState("");
@@ -234,7 +238,7 @@ const EditProduct = () => {
       height: '',
       material: '',
       origin_country: '',
-      category_id: '',
+      category_id: [],
       productDetails: [{ id: generateUUID(), text: '' }],
       storyBehindDesign: '',
       shippingDays: '7-10',
@@ -447,6 +451,34 @@ const isNewVariant = (variant) => {
         if (!product) {
           throw new Error('Product data is empty or invalid');
         }
+        
+        // ===== STEP 2A: Extract Technology Name =====
+        // Access the technology name from product.metadata.print_technology_name
+        const techName = product.metadata?.print_technology_name || '';
+        
+        // Optional: Log for debugging
+        // console.log("Extracted Technology Name:", techName);
+        // console.log("Full metadata:", product.metadata);
+        
+        // Store in state
+        setTechnologyName(techName);
+        const payloadProdName = product.metadata?.payload_product_name || '';
+        setPayloadProductName(payloadProdName);
+
+        if (product.metadata?.payload_integration) {
+        try {
+          const payloadIntegration = typeof product.metadata.payload_integration === 'string'
+            ? JSON.parse(product.metadata.payload_integration)
+            : product.metadata.payload_integration;
+          
+          if (payloadIntegration?.source_product_id) {
+            setSourceProductId(payloadIntegration.source_product_id);
+          }
+        } catch (e) {
+          console.error("Failed to parse payload_integration:", e);
+        }
+      }
+        // ===== END EXTRACTION =====
         
         ////console.log("Loaded product data:", product);
         
@@ -1238,7 +1270,8 @@ width: product.width?.toString() || '',
 height: product.height?.toString() || '',
 material: product.material || '',
 origin_country: product.origin_country || '',
-category_id: product.categories && product.categories.length > 0 ? product.categories[0].id : '',
+category_ids: product.categories?.map(cat => cat.id) || [], // Load all category IDs
+//category_id: product.categories && product.categories.length > 0 ? product.categories[0].id : '',
 productDetails,
 storyBehindDesign,
 shippingDays,
@@ -2857,7 +2890,8 @@ const onSubmit = async (values: ProductFormValues) => {
                       options,
                       images,
                       // Add category if selected
-                      categories: values.category_id ? [{ id: values.category_id }] : [],
+                      //categories: values.category_id ? [{ id: values.category_id }] : [],
+                      categories: values.category_ids?.map(id => ({ id })) || [],
                       metadata: metadata
                     };
                     
@@ -4266,57 +4300,88 @@ const handleApiError = (apiError: any) => {
                   />
 
                   {/* Category Selection */}
+                  {/* Category Selection - Multi-select */}
                   {isLoadingCategories ? (
-                    <FormField
-                      control={form.control}
-                      name="category_id"
-                      render={({ field }) => (
-                        <FormItem className="mb-5">
-                          <FormLabel className="font-medium text-gray-700">Product Category</FormLabel>
-                          <Select disabled={true}>
-                            <FormControl>
-                              <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                                <SelectValue placeholder="Loading categories..." />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <div className="p-2 text-gray-500">Loading...</div>
-                            </SelectContent>
-                          </Select>
-                          <FormDescription className="text-sm text-gray-500">
-                            Categorize your product to help customers find it
-                          </FormDescription>
-                        </FormItem>
-                      )}
-                    />
+                    <div className="mb-5">
+                      <label className="block mb-2 font-medium text-gray-700">Product Categories</label>
+                      <div className="p-3 border border-gray-300 rounded-md bg-gray-50">
+                        <p className="text-sm text-gray-500">Loading categories...</p>
+                      </div>
+                    </div>
                   ) : categoryError ? (
+                    <div className="mb-5">
+                      <label className="block mb-2 font-medium text-gray-700">Product Categories</label>
+                      <Alert className="text-red-800 border border-red-200 bg-red-50">
+                        <IconInfoCircle className="w-5 h-5" />
+                        <AlertDescription>{categoryError}</AlertDescription>
+                      </Alert>
+                    </div>
+                  ) : (
                     <FormField
                       control={form.control}
-                      name="category_id"
+                      name="category_ids"
                       render={({ field }) => (
                         <FormItem className="mb-5">
-                          <FormLabel className="font-medium text-gray-700">Product Category</FormLabel>
-                          <Select disabled={true}>
-                            <FormControl>
-                              <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                                <SelectValue placeholder="Error loading categories" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <div className="p-2 text-sm text-red-500">{categoryError}</div>
-                            </SelectContent>
-                          </Select>
+                          <FormLabel className="font-medium text-gray-700">Product Categories</FormLabel>
+                          <FormControl>
+                            <div className="space-y-2">
+                              {/* Display selected categories */}
+                              {field.value && field.value.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-3 border border-gray-200 rounded-md bg-gray-50">
+                                  {field.value.map((categoryId) => {
+                                    const category = productCategories.find(c => c.id === categoryId);
+                                    return category ? (
+                                      <Badge 
+                                        key={categoryId}
+                                        className="bg-[#e65100] text-white hover:bg-[#d84315]"
+                                      >
+                                        {category.name}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const newValue = field.value.filter(id => id !== categoryId);
+                                            field.onChange(newValue);
+                                          }}
+                                          className="ml-2 hover:text-red-200"
+                                        >
+                                          <IconX size={14} />
+                                        </button>
+                                      </Badge>
+                                    ) : null;
+                                  })}
+                                </div>
+                              )}
+                              
+                              {/* Category selector */}
+                              <Select 
+                                onValueChange={(value) => {
+                                  if (!field.value.includes(value)) {
+                                    field.onChange([...field.value, value]);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
+                                  <SelectValue placeholder="Add a category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {productCategories
+                                    .filter(cat => !field.value.includes(cat.id))
+                                    .map(category => (
+                                      <SelectItem key={category.id} value={category.id}>
+                                        {category.name}
+                                      </SelectItem>
+                                    ))
+                                  }
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </FormControl>
                           <FormDescription className="text-sm text-gray-500">
-                            Categorize your product to help customers find it
+                            Select one or more categories for this product
                           </FormDescription>
+                          <FormMessage className="text-red-500" />
                         </FormItem>
                       )}
-                    />
-                  ) : (
-                    <HierarchicalCategorySelector 
-                      form={form} 
-                      categories={productCategories} 
-                      name="category_id" 
                     />
                   )}
 
@@ -4344,85 +4409,149 @@ const handleApiError = (apiError: any) => {
                 </section>
                 {/* Shipping & Fulfillment Info Card */}
                 {/* Shipping & Fulfillment Info Card */}
-                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
-                  <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
-                  <Separator className="mb-4" />
-                  
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-orange-100 rounded-full text-[#e65100]">
-                      <IconTruck size={24} />
-                    </div>
-                    <div>
-                       <h3 className="font-medium text-gray-800">
-                        {fulfillmentData?.type === "Creator-fulfilment" 
-                          ? "Creator Fulfillment" 
-                          : fulfillmentData?.type === "Junooni-fulfilment"
-                          ? "Junooni Fulfillment"
-                          : "Standard Fulfillment"
-                        }
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {fulfillmentData?.type === "Creator-fulfilment" 
-                          ? "You'll handle all order shipping" 
-                          : fulfillmentData?.type === "Junooni-fulfilment"
-                          ? "Fulfillment managed by Junooni"
-                          : "Standard fulfillment process"
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Shipping information - Display only */}
-                  <div className="space-y-4">
-                    {/* Shipping Time Display */}
-                    <div className="p-4 border border-orange-100 rounded-lg bg-orange-50">
-                      <div className="flex items-start gap-3">
-                        <IconTruck size={18} className="mt-0.5 text-[#e65100]" />
-                        <div className="flex-1">
-                          <h4 className="font-medium text-[#e65100] mb-1">Shipping Time</h4>
-                          <p className="text-[#e65100] font-medium">
-                            {form.watch('shippingDays') 
-                              ? `${form.watch('shippingDays')} business days`
-                              : '7-10 business days'
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Handling Time Display */}
-                    <div className="p-4 border border-orange-100 rounded-lg bg-orange-50">
-                      <div className="flex items-start gap-3">
-                        <IconClock size={18} className="mt-0.5 text-[#e65100]" />
-                        <div className="flex-1">
-                          <h4 className="font-medium text-[#e65100] mb-1">Handling Time</h4>
-                          <p className="text-[#e65100] font-medium">
-                            {form.watch('handlingTime') 
-                              ? `${form.watch('handlingTime')} business days`
-                              : '2-3 business days'
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Stock Management Info */}
-                  <div className="mt-6">
-                    <h3 className="mb-2 font-medium text-gray-700">Stock Information</h3>
-                    <p className="text-sm text-gray-600">
-                      Track inventory for each variant using the "Manage Stock" button in the variants section.
-                      Changes to inventory are only saved when you save the product.
-                    </p>
-                    
-                    <Alert className="mt-4">
-                      <IconInfoCircle className="w-4 h-4" />
-                      <AlertDescription>
-                        To update stock levels after making variant changes, first save the product and then use the "Manage Stock" button.
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                </section>
+                {/* Shipping & Fulfillment Info Card - UPDATED */}
+<section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+  <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
+  <Separator className="mb-4" />
+  
+  <div className="flex items-center gap-3 mb-6">
+    <div className="p-2 bg-orange-100 rounded-full text-[#e65100]">
+      <IconTruck size={24} />
+    </div>
+    <div>
+      <h3 className="font-medium text-gray-800">
+        {fulfillmentData?.type === "Creator-fulfilment" 
+          ? "Creator Fulfillment" 
+          : fulfillmentData?.type === "JUNOONI-fulfillment"
+          ? "Junooni Fulfillment"
+          : "Standard Fulfillment"
+        }
+      </h3>
+      <p className="text-sm text-gray-600">
+        {fulfillmentData?.type === "Creator-fulfilment" 
+          ? "You'll handle all order shipping" 
+          : fulfillmentData?.type === "JUNOONI-fulfillment"
+          ? "Fulfillment managed by Junooni"
+          : "Standard fulfillment process"
+        }
+      </p>
+    </div>
+  </div>
+  
+  {/* Product Info for Junooni Fulfillment */}
+  {fulfillmentData?.type === "JUNOONI-fulfillment" && (
+    <div className="p-4 mb-6 border border-orange-100 rounded-lg bg-orange-50">
+      <h4 className="mb-3 font-medium text-orange-900">Fulfillment Details</h4>
+      {/* <div className="space-y-2">
+        <div className="flex items-start gap-2">
+          <span className="text-blue-600 font-medium min-w-fit">Product :</span>
+          <span className="text-gray-800">{form.watch('title') || 'Not specified'}</span>
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="text-blue-600 font-medium min-w-fit">Technology Name:</span>
+          <span className="text-gray-800">
+            {technologyName  ||  'Not specified'}
+          </span>
+        </div>
+      </div> */}
+      <div className="mb-6 space-y-3">
+        <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
+          <div className="flex items-start">
+            {/* <div className="p-2 mr-3 bg-orange-100 rounded-full text-orange-600">
+              <IconInfoCircle size={20} />
+            </div> */}
+            <div className="flex-1">
+              <p className="text-sm font-medium text-orange-800">Product</p>
+              <p className="mt-1 text-base font-semibold text-orange-900">
+                {payloadProductName && sourceProductId ? (
+                  <a 
+                    href={`/productCatalog/${sourceProductId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-800 hover:text-[#e65100] underline decoration-orange-300 hover:decoration-[#e65100] transition-colors"
+                  >
+                    {payloadProductName}
+                    <IconExternalLink size={14} className="inline ml-1 mb-0.5" />
+                  </a>
+                ) : (
+                  <span className="text-gray-800">
+                    {payloadProductName || form.watch('title') || 'Not specified'}
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+       
+        <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
+          <div className="flex items-start">
+            {/* <div className="p-2 mr-3 bg-orange-100 rounded-full text-orange-600">
+              <IconInfoCircle size={20} />
+            </div> */}
+            <div className="flex-1">
+              <p className="text-sm font-medium text-orange-800">Print Technology</p>
+              <p className="mt-1 text-base font-semibold text-orange-900 uppercase">
+                {technologyName  ||  'Not specified'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+  
+  {/* Shipping information - Display only */}
+  <div className="space-y-4">
+    {/* Shipping Time Display */}
+    <div className="p-4 border border-orange-100 rounded-lg bg-orange-50">
+      <div className="flex items-start gap-3">
+        <IconTruck size={18} className="mt-0.5 text-[#e65100]" />
+        <div className="flex-1">
+          <h4 className="font-medium text-[#e65100] mb-1">Shipping Time</h4>
+          <p className="text-[#e65100] font-medium">
+            {form.watch('shippingDays') 
+              ? `${form.watch('shippingDays')} business days`
+              : '7-10 business days'
+            }
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    {/* Handling Time Display */}
+    <div className="p-4 border border-orange-100 rounded-lg bg-orange-50">
+      <div className="flex items-start gap-3">
+        <IconClock size={18} className="mt-0.5 text-[#e65100]" />
+        <div className="flex-1">
+          <h4 className="font-medium text-[#e65100] mb-1">Handling Time</h4>
+          <p className="text-[#e65100] font-medium">
+            {form.watch('handlingTime') 
+              ? `${form.watch('handlingTime')} business days`
+              : '2-3 business days'
+            }
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  {/* Stock Management Info */}
+  <div className="mt-6">
+    <h3 className="mb-2 font-medium text-gray-700">Stock Information</h3>
+    <p className="text-sm text-gray-600">
+      Track inventory for each variant using the "Manage Stock" button in the variants section.
+      Changes to inventory are only saved when you save the product.
+    </p>
+    
+    <Alert className="mt-4">
+      <IconInfoCircle className="w-4 h-4" />
+      <AlertDescription>
+        To update stock levels after making variant changes, first save the product and then use the "Manage Stock" button.
+      </AlertDescription>
+    </Alert>
+  </div>
+</section>
                 
                 {/* Physical Details Card */}
                 <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">

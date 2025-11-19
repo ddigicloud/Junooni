@@ -54,8 +54,8 @@ export const ProductSchema = z.object({
   status: z.enum(['published', 'draft', 'archived','proposed','rejected']).default('published'),
   category: z.string().optional(),
   
-
-  category_id: z.string().optional(),
+  category_ids: z.array(z.string()).optional().default([]),
+  //category_id: z.string().optional(),
   productDetails: z.array(
     z.object({
       id: z.string(),

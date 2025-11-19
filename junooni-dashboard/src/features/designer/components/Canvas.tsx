@@ -5367,7 +5367,7 @@ const renderPricingPanel = () => {
           <details key={area.areaId} className="overflow-hidden border border-gray-200 rounded-lg group bg-gray-50">
             <summary className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100">
               <div className="flex items-center gap-2">
-                <ChevronDown size={16} className="text-gray-400 transition-transform group-open:rotate-180" />
+                {/* <ChevronDown size={16} className="text-gray-400 transition-transform group-open:rotate-180" /> */}
                 <span className="font-medium text-gray-900">{area.areaName}</span>
                 <span className="px-2 py-0.5 text-xs font-medium text-gray-600 bg-gray-200 rounded-full">
                   {area.elements.length} element{area.elements.length !== 1 ? 's' : ''}
@@ -5378,8 +5378,8 @@ const renderPricingPanel = () => {
               </span>
             </summary>
             
-            <div className="p-3 space-y-3 bg-white border-t">
-              {/* Area Statistics */}
+            {/* <div className="p-3 space-y-3 bg-white border-t">
+              Area Statistics 
               <div className="grid grid-cols-2 gap-2 p-2 rounded bg-gray-50">
                 <div>
                   <div className="text-xs text-gray-500">Available Area</div>
@@ -5399,7 +5399,7 @@ const renderPricingPanel = () => {
                 </div>
               </div>
 
-              {/* Price Calculation Formula */}
+               Price Calculation Formula 
               <div className="p-2 border-l-2 border-orange-400 rounded bg-orange-50">
                 <div className="mb-1 text-xs font-medium text-orange-700">Calculation</div>
                 <div className="font-mono text-xs text-orange-900">
@@ -5410,7 +5410,7 @@ const renderPricingPanel = () => {
                 </div>
               </div>
 
-              {/* Elements Breakdown */}
+               Elements Breakdown 
               {area.elements.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-gray-700">Elements:</div>
@@ -5436,7 +5436,7 @@ const renderPricingPanel = () => {
                   ))}
                 </div>
               )}
-            </div>
+            </div> */}
           </details>
         ))}
       </div>
