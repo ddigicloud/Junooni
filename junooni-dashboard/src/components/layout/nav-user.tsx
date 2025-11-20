@@ -113,7 +113,7 @@ export function NavUser({
           headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
-          },
+          }
         })
 
         if (res.ok) {

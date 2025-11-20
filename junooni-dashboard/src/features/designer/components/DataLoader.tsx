@@ -753,45 +753,52 @@ const EnhancedDataLoader: React.FC<EnhancedDataLoaderProps> = ({ productId }) =>
   // =====================================
   
   const fetchWithRetry = async (url: string, attempt: number = 1): Promise<Response> => {
-    const config = getDynamicAPIConfig();
+  const config = getDynamicAPIConfig();
+  
+  setLoadingStatus(
+    attempt === 1 
+      ? 'Connecting to server...' 
+      : `Retrying connection (${attempt}/${config.retryAttempts})...`
+  );
+  setLoadingProgress(Math.min(20 + (attempt * 10), 40));
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), config.timeout);
     
-    setLoadingStatus(attempt === 1 ? 'Connecting to server...' : `Retrying connection (${attempt}/${config.retryAttempts})...`);
-    setLoadingProgress(Math.min(20 + (attempt * 10), 40));
+    const response = await fetch(url, {
+      signal: controller.signal,
+      method: "GET",
+      credentials: "include",   // ✔️ add this
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+    });
     
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), config.timeout);
-      
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      setLoadingProgress(50);
-      setLoadingStatus('Receiving data...');
-      
-      return response;
-      
-    } catch (fetchError: any) {
-      if (attempt < config.retryAttempts) {
-        const delay = Math.pow(2, attempt) * 1000;
-        setLoadingStatus(`Retry in ${delay / 1000}s...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return fetchWithRetry(url, attempt + 1);
-      }
-      
-      throw fetchError;
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-  };
+    
+    setLoadingProgress(50);
+    setLoadingStatus("Receiving data...");
+    
+    return response;
+    
+  } catch (fetchError: any) {
+    if (attempt < config.retryAttempts) {
+      const delay = Math.pow(2, attempt) * 1000;
+      setLoadingStatus(`Retry in ${delay / 1000}s...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return fetchWithRetry(url, attempt + 1);
+    }
+    
+    throw fetchError;
+  }
+};
+
   
   // =====================================
   // ENHANCED ERROR CLASSIFICATION

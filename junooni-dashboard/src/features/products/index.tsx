@@ -256,7 +256,7 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
-          },
+          }
         });
 
         if (!response.ok) {
@@ -292,7 +292,7 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-        },
+        }
       }
     );
 

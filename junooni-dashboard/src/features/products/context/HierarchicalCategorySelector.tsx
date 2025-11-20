@@ -249,15 +249,13 @@
 
 // export default HierarchicalCategorySelector;
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue,
-  SelectGroup,
-  SelectLabel
 } from '@/components/ui/select';
 import {
   FormField,
@@ -268,9 +266,8 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
-import { IconX, IconCheck, IconRefresh } from '@tabler/icons-react';
+import { IconX, IconCheck, IconChevronRight, IconArrowBack } from '@tabler/icons-react';
 import { UseFormReturn } from 'react-hook-form';
-import { Button } from '@/components/ui/button';
 
 // Define the Category interface
 interface Category {
@@ -306,11 +303,17 @@ const HierarchicalCategorySelector: React.FC<HierarchicalCategorySelectorProps> 
     allCategories: new Map()
   });
   
-  // Navigation selections (for cascading dropdowns)
-  const [selections, setSelections] = useState<string[]>([]);
+  // Navigation state - stack of parent IDs
+  const [navigationStack, setNavigationStack] = useState<string[]>([]);
   
   // Selected categories for multi-select
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  
+  // Dropdown open state
+  const [isOpen, setIsOpen] = useState(false);
+  
+  // Dropdown ref for click outside detection
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
   // Process categories on mount
   useEffect(() => {
@@ -364,30 +367,59 @@ const HierarchicalCategorySelector: React.FC<HierarchicalCategorySelectorProps> 
         if (Array.isArray(currentValues) && currentValues.length > 0) {
           setSelectedCategories(currentValues);
         }
-      } else {
-        const currentValue = form.getValues(name);
-        if (currentValue && allCategoriesMap.has(currentValue)) {
-          // Build path for single select
-          const path: string[] = [];
-          let current: Category | undefined = allCategoriesMap.get(currentValue);
-          
-          while (current) {
-            path.unshift(current.id);
-            if (current.parent_category_id) {
-              current = allCategoriesMap.get(current.parent_category_id);
-            } else {
-              break;
-            }
-          }
-          
-          setSelections(path);
-        }
       }
       
     } catch (error) {
       console.error("Error processing categories:", error);
     }
   }, [categories, form, name, isMultiSelect]);
+  
+  // Handle clicks outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+  
+  // Reset navigation stack when dropdown closes
+  useEffect(() => {
+    if (!isOpen) {
+      setNavigationStack([]);
+    }
+  }, [isOpen]);
+  
+  // Get current level categories
+  const getCurrentLevelCategories = (): Category[] => {
+    if (navigationStack.length === 0) {
+      return structure.rootCategories;
+    }
+    
+    const currentParentId = navigationStack[navigationStack.length - 1];
+    return structure.childrenMap.get(currentParentId) || [];
+  };
+  
+  // Get current parent category
+  const getCurrentParentCategory = (): Category | undefined => {
+    if (navigationStack.length === 0) return undefined;
+    const currentParentId = navigationStack[navigationStack.length - 1];
+    return structure.allCategories.get(currentParentId);
+  };
+  
+  // Check if category has children
+  const hasChildren = (categoryId: string): boolean => {
+    return structure.childrenMap.has(categoryId) && 
+           (structure.childrenMap.get(categoryId)?.length || 0) > 0;
+  };
   
   // Check if category is selected
   const isCategorySelected = (categoryId: string): boolean => {
@@ -397,52 +429,43 @@ const HierarchicalCategorySelector: React.FC<HierarchicalCategorySelectorProps> 
     return selectedCategories.includes(categoryId);
   };
   
-  // Reset navigation path
-  const handleResetNavigation = () => {
-    setSelections([]);
-    console.log('🔄 Navigation reset - you can now select other parent categories');
+  // Navigate into category children
+  const navigateInto = (categoryId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (hasChildren(categoryId)) {
+      setNavigationStack(prev => [...prev, categoryId]);
+    }
   };
   
-  // ✅ UPDATED: Auto-select categories when clicked
-  const handleSelect = (level: number, categoryId: string) => {
-    try {
-      console.log(`📊 Category selected at level ${level}:`, categoryId);
+  // Navigate back to parent
+  const navigateBack = () => {
+    setNavigationStack(prev => prev.slice(0, -1));
+  };
+  
+  // Toggle category selection
+  const toggleCategorySelection = (categoryId: string) => {
+    if (isMultiSelect) {
+      let newSelectedCategories: string[];
       
-      // Update navigation path
-      const newSelections = [...selections.slice(0, level), categoryId];
-      setSelections(newSelections);
-      
-      if (isMultiSelect) {
-        // ✅ CHANGE 1: Automatically add/remove from selection
-        let newSelectedCategories: string[];
-        
-        if (isCategorySelected(categoryId)) {
-          // Remove if already selected
-          newSelectedCategories = selectedCategories.filter(id => id !== categoryId);
-        } else {
-          // Add if not selected
-          newSelectedCategories = [...selectedCategories, categoryId];
-        }
-        
-        setSelectedCategories(newSelectedCategories);
-        form.setValue(name, newSelectedCategories, {
-          shouldDirty: true,
-          shouldValidate: true,
-          shouldTouch: true
-        });
-        
-        console.log('✅ Multi-select updated:', newSelectedCategories);
+      if (isCategorySelected(categoryId)) {
+        newSelectedCategories = selectedCategories.filter(id => id !== categoryId);
       } else {
-        // Single-select: Update form immediately
-        form.setValue(name, categoryId, {
-          shouldDirty: true,
-          shouldValidate: true,
-          shouldTouch: true
-        });
+        newSelectedCategories = [...selectedCategories, categoryId];
       }
       
-    } catch (error) {
-      console.error("❌ Error selecting category:", error);
+      setSelectedCategories(newSelectedCategories);
+      form.setValue(name, newSelectedCategories, {
+        shouldDirty: true,
+        shouldValidate: true,
+        shouldTouch: true
+      });
+    } else {
+      form.setValue(name, categoryId, {
+        shouldDirty: true,
+        shouldValidate: true,
+        shouldTouch: true
+      });
+      setIsOpen(false);
     }
   };
   
@@ -460,33 +483,10 @@ const HierarchicalCategorySelector: React.FC<HierarchicalCategorySelectorProps> 
     });
   };
   
-  // ✅ CHANGE 2: Get only category name (not full path)
+  // Get category name
   const getCategoryName = (categoryId: string): string => {
     const category = structure.allCategories.get(categoryId);
     return category ? category.name : '';
-  };
-  
-  // Get category full path (for debugging or other uses)
-  const getCategoryPath = (categoryId: string): string => {
-    const path: string[] = [];
-    let current: Category | undefined = structure.allCategories.get(categoryId);
-    
-    while (current) {
-      path.unshift(current.name);
-      if (current.parent_category_id) {
-        current = structure.allCategories.get(current.parent_category_id);
-      } else {
-        break;
-      }
-    }
-    
-    return path.join(' > ');
-  };
-  
-  // Get current category at level
-  const getCurrentCategoryAtLevel = (level: number): Category | undefined => {
-    const categoryId = selections[level];
-    return categoryId ? structure.allCategories.get(categoryId) : undefined;
   };
   
   return (
@@ -499,7 +499,7 @@ const HierarchicalCategorySelector: React.FC<HierarchicalCategorySelectorProps> 
             Product {isMultiSelect ? 'Categories' : 'Category'}
           </FormLabel>
           
-          {/* ✅ CHANGE 2: Display only category names in badges */}
+          {/* Display selected categories as badges */}
           {isMultiSelect && selectedCategories.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
               {selectedCategories.map((categoryId) => {
@@ -509,7 +509,6 @@ const HierarchicalCategorySelector: React.FC<HierarchicalCategorySelectorProps> 
                     key={categoryId}
                     variant="outline"
                     className="text-[#e65100] border-[#e65100] bg-white pr-1 hover:bg-orange-100 transition-colors"
-                    title={getCategoryPath(categoryId)} // Show full path on hover
                   >
                     <span className="text-xs">{getCategoryName(categoryId)}</span>
                     <button
@@ -529,176 +528,88 @@ const HierarchicalCategorySelector: React.FC<HierarchicalCategorySelectorProps> 
             </div>
           )}
           
-          {/* Show reset button when navigation is active */}
-          {selections.length > 0 && (
-            <div className="mb-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleResetNavigation}
-                className="text-gray-600 border-gray-300 hover:bg-gray-50"
-              >
-                <IconRefresh size={16} className="mr-1" />
-                Reset & Select Other Categories
-              </Button>
-            </div>
-          )}
-          
-          <div className="space-y-3">
-            {/* ✅ CHANGE 1: Removed + buttons, click on dropdown auto-selects */}
-            
-            {/* Level 0: Root categories */}
-            <Select
-              value={selections[0] || ''}
-              onValueChange={(value) => handleSelect(0, value)}
+          {/* Custom Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsOpen(!isOpen)}
+              className="w-full flex items-center justify-between px-3 py-2 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#e65100] focus:border-[#e65100]"
             >
-              <SelectTrigger className="w-full border-gray-300 focus:ring-[#e65100]">
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {structure.rootCategories.map(category => {
+              <span className="text-gray-700">
+                {isMultiSelect && selectedCategories.length > 0
+                  ? `${selectedCategories.length} selected`
+                  : "Select categories..."}
+              </span>
+              <svg
+                className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {/* Dropdown Content */}
+            {isOpen && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-[300px] overflow-y-auto">
+                {/* Back button if not at root */}
+                {navigationStack.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={navigateBack}
+                    className="w-full flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 border-b border-gray-200"
+                  >
+                    <IconArrowBack size={16} className="mr-2" />
+                    <span className="font-medium">{getCurrentParentCategory()?.name}</span>
+                  </button>
+                )}
+                
+                {/* Category list */}
+                <div>
+                  {getCurrentLevelCategories().map((category) => {
                     const isSelected = isCategorySelected(category.id);
+                    const categoryHasChildren = hasChildren(category.id);
+                    
                     return (
-                      <SelectItem 
-                        key={category.id} 
-                        value={category.id}
-                        className={isSelected ? "bg-orange-50 font-medium" : ""}
+                      <div
+                        key={category.id}
+                        className={`flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
+                          isSelected ? 'bg-orange-50' : ''
+                        }`}
+                        onClick={() => toggleCategorySelection(category.id)}
                       >
-                        <div className="flex items-center justify-between w-full">
-                          <span>{category.name}</span>
+                        <div className="flex items-center flex-1">
                           {isMultiSelect && isSelected && (
-                            <IconCheck size={16} className="ml-2 text-[#e65100]" />
+                            <IconCheck size={16} className="mr-2 text-[#e65100]" />
                           )}
+                          <span className={isSelected ? 'font-medium text-[#e65100]' : 'text-gray-700'}>
+                            {category.name}
+                          </span>
                         </div>
-                      </SelectItem>
+                        
+                        {/* Arrow button for navigation */}
+                        {categoryHasChildren && (
+                          <button
+                            type="button"
+                            onClick={(e) => navigateInto(category.id, e)}
+                            className="p-1 hover:bg-gray-200 rounded transition-colors"
+                          >
+                            <IconChevronRight size={16} className="text-gray-500" />
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            
-            {/* Level 1: Children of selected root */}
-            {selections[0] && structure.childrenMap.has(selections[0]) && (
-              <div className="ml-4">
-                <Select
-                  value={selections[1] || ''}
-                  onValueChange={(value) => handleSelect(1, value)}
-                >
-                  <SelectTrigger className="w-full border-gray-300 focus:ring-[#e65100]">
-                    <SelectValue placeholder="Select a subcategory" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel className="text-gray-500">
-                        {getCurrentCategoryAtLevel(0)?.name}
-                      </SelectLabel>
-                      {structure.childrenMap.get(selections[0])?.map(category => {
-                        const isSelected = isCategorySelected(category.id);
-                        return (
-                          <SelectItem 
-                            key={category.id} 
-                            value={category.id}
-                            className={isSelected ? "bg-orange-50 font-medium" : ""}
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <span>{category.name}</span>
-                              {isMultiSelect && isSelected && (
-                                <IconCheck size={16} className="ml-2 text-[#e65100]" />
-                              )}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            
-            {/* Level 2: Children of level 1 selection */}
-            {selections[1] && structure.childrenMap.has(selections[1]) && (
-              <div className="ml-8">
-                <Select
-                  value={selections[2] || ''}
-                  onValueChange={(value) => handleSelect(2, value)}
-                >
-                  <SelectTrigger className="w-full border-gray-300 focus:ring-[#e65100]">
-                    <SelectValue placeholder="Select sub-subcategory" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel className="text-gray-500">
-                        {getCurrentCategoryAtLevel(1)?.name}
-                      </SelectLabel>
-                      {structure.childrenMap.get(selections[1])?.map(category => {
-                        const isSelected = isCategorySelected(category.id);
-                        return (
-                          <SelectItem 
-                            key={category.id} 
-                            value={category.id}
-                            className={isSelected ? "bg-orange-50 font-medium" : ""}
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <span>{category.name}</span>
-                              {isMultiSelect && isSelected && (
-                                <IconCheck size={16} className="ml-2 text-[#e65100]" />
-                              )}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            
-            {/* Level 3: Children of level 2 selection */}
-            {selections[2] && structure.childrenMap.has(selections[2]) && (
-              <div className="ml-12">
-                <Select
-                  value={selections[3] || ''}
-                  onValueChange={(value) => handleSelect(3, value)}
-                >
-                  <SelectTrigger className="w-full border-gray-300 focus:ring-[#e65100]">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel className="text-gray-500">
-                        {getCurrentCategoryAtLevel(2)?.name}
-                      </SelectLabel>
-                      {structure.childrenMap.get(selections[2])?.map(category => {
-                        const isSelected = isCategorySelected(category.id);
-                        return (
-                          <SelectItem 
-                            key={category.id} 
-                            value={category.id}
-                            className={isSelected ? "bg-orange-50 font-medium" : ""}
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <span>{category.name}</span>
-                              {isMultiSelect && isSelected && (
-                                <IconCheck size={16} className="ml-2 text-[#e65100]" />
-                              )}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                </div>
               </div>
             )}
           </div>
           
           <FormDescription className="text-gray-500 text-sm mt-2">
             {isMultiSelect 
-              ? "Click on categories to select them. Click 'Reset' to select from other parent categories."
-              : "Categorize your product to help customers find it"
-            }
+              ? "Click on a category to select it. Click the arrow to navigate into subcategories."
+              : "Select a category for your product"}
           </FormDescription>
           <FormMessage className="text-red-500" />
         </FormItem>

@@ -67,7 +67,8 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
     const response = await axios.get(`${API_BASE_URL}/vendors/products/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        'x-publishable-api-key': `${API_KEY}`
+        'x-publishable-api-key': `${API_KEY}`,
+
       }
     });
     //console.log("Product fetched:", response.data.product);
@@ -240,6 +241,7 @@ export async function fetchCategories() {
       headers: {
         'x-publishable-api-key': `${API_KEY}`
       },
+
     });
     
     return response;
@@ -283,6 +285,7 @@ export async function batchUpdateVariants({
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
+      withCredentials: true, 
     }
   );
 
@@ -315,6 +318,7 @@ export async function updateProduct({ product }: { product: Product }): Promise<
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
+      withCredentials: true,
     }
   );
 
@@ -363,6 +367,7 @@ export async function uploadProductImage({
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         },
+        withCredentials: true,
       });
       
       //console.log("Image upload response:", response.data);
@@ -380,6 +385,7 @@ export async function uploadProductImage({
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
+          withCredentials: true,
         }
       );
       
@@ -408,6 +414,7 @@ export async function fetchInventoryLevels({ inventoryItemId }: { inventoryItemI
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        withCredentials: true,
       }
     );
     
@@ -432,6 +439,7 @@ export async function fetchAllInventoryItems(): Promise<InventoryItem[]> {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        withCredentials: true,
       }
     );
     
@@ -472,6 +480,7 @@ export async function updateInventoryLevel({
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        withCredentials: true,
       }
     );
     
@@ -496,7 +505,8 @@ export async function fetchProducts(): Promise<Product[]> {
       },
       params: {
         currency_code: 'inr' // Add currency_code to params to avoid pricing context issues
-      }
+      },
+      withCredentials: true,
     });
     return response.data.products || response.data;
   } catch (error) {
@@ -524,6 +534,7 @@ export async function createProduct({ product }: { product: Product }): Promise<
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        withCredentials: true,
       }
     );
     
@@ -554,6 +565,7 @@ export async function uploadArtworkFile(file: File) {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
+        withCredentials: true,
       }
     )
 
@@ -612,6 +624,7 @@ export async function createArtworkPayload(artworkPayload: any) {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        withCredentials: true,
       }
     )
 
@@ -699,6 +712,7 @@ export async function batchUpdateInventoryLevels(payload: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        withCredentials: true,
       }
     );
     
@@ -722,6 +736,7 @@ export async function deleteProduct({ id }: { id: string }): Promise<void> {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      withCredentials: true,
     });
   } catch (error) {
     //console.error('Error deleting product:', error);

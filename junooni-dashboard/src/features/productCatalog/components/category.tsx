@@ -826,18 +826,11 @@ useEffect(() => {
   const fetchCategories = async () => {
     //console.log("📡 Starting API fetch...");
     try {
-      const response = await fetch(`${vite_payload}/api/categories?limit=0`);
+      const response = await fetch(`${vite_payload}/api/categories?limit=0`, {
+        credentials: 'include'
+      });
       const data = await response.json();
       setCategories(data.docs);
-      //console.log("📦 category response:", data);
-      
-      //console.log("🔍 Looking for slug:", slug);
-      // console.log("🔍 Available categories:", data.docs.map((cat: Category) => ({ 
-      //   id: cat.id, 
-      //   slug: cat.slug, 
-      //   title: cat.title,
-      //   hasDescription: !!cat.description 
-      // })));
       
       // Find the category matching the current slug
       const matchedCategory = data.docs.find((item: Category) => {

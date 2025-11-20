@@ -2229,6 +2229,7 @@ if (result && result.id) {
                     form={form} 
                     categories={productCategories} 
                     name="category_id" 
+                    isMultiSelect={true}
                   />
                 )}
 
@@ -2340,7 +2341,7 @@ if (result && result.id) {
                 </div>
                 
                 {/* Stock Management Info */}
-                <div className="mt-6">
+                {/* <div className="mt-6">
                   <h3 className="mb-2 font-medium text-gray-700">Stock Information</h3>
                   <p className="text-sm text-gray-600">
                     Stock levels you set for each variant will be tracked with each order.
@@ -2353,7 +2354,7 @@ if (result && result.id) {
                       Inventory will be managed automatically based on the stock levels you set for each variant.
                     </AlertDescription>
                   </Alert>
-                </div>
+                </div> */}
               </section>
               
               {/* Physical Details Card */}

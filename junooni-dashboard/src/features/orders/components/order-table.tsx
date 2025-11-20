@@ -98,6 +98,7 @@ export const OrderTable: React.FC = () => {
       // ✅ Use the new vendor-filtered API endpoint
      const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/api/vendors/orders`, {
         method: "GET",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`

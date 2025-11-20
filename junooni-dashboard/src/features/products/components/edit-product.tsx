@@ -4537,20 +4537,43 @@ const handleApiError = (apiError: any) => {
   </div>
   
   {/* Stock Management Info */}
-  <div className="mt-6">
-    <h3 className="mb-2 font-medium text-gray-700">Stock Information</h3>
-    <p className="text-sm text-gray-600">
-      Track inventory for each variant using the "Manage Stock" button in the variants section.
-      Changes to inventory are only saved when you save the product.
-    </p>
-    
-    <Alert className="mt-4">
-      <IconInfoCircle className="w-4 h-4" />
-      <AlertDescription>
-        To update stock levels after making variant changes, first save the product and then use the "Manage Stock" button.
-      </AlertDescription>
-    </Alert>
-  </div>
+  {/* Stock Information - Updated for Junooni Fulfillment */}
+{/* <div className="mt-6">
+  <h3 className="mb-2 font-medium text-gray-700">Stock Information</h3>
+
+  {fulfillmentData?.type === "JUNOONI-fulfillment" ? (
+    <>
+      <p className="text-sm text-gray-600">
+        This product is fulfilled by <span className="font-medium">Junooni Fulfillment</span>.
+        You <span className="font-semibold text-[#e65100]">cannot manually change stock</span>.
+        Inventory is managed automatically based on the blank product availability in CMS.
+      </p>
+
+      <Alert className="mt-4 bg-orange-50 border-orange-200">
+        <IconInfoCircle className="w-4 h-4 text-[#e65100]" />
+        <AlertDescription className="text-[#e65100]">
+          Stock levels are synced from the blank product SKU in Payload CMS.
+          If stock looks incorrect, update the blank product inventory in CMS.
+        </AlertDescription>
+      </Alert>
+    </>
+  ) : (
+    <>
+      <p className="text-sm text-gray-600">
+        Track inventory for each variant using the "Manage Stock" button in the variants section.
+        Changes to inventory are only saved when you save the product.
+      </p>
+
+      <Alert className="mt-4">
+        <IconInfoCircle className="w-4 h-4" />
+        <AlertDescription>
+          To update stock levels after making variant changes, first save the product and then use the "Manage Stock" button.
+        </AlertDescription>
+      </Alert>
+    </>
+  )}
+</div> */}
+
 </section>
                 
                 {/* Physical Details Card */}

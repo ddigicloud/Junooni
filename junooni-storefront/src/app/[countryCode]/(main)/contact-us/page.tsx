@@ -94,10 +94,11 @@ ${formData.message}
       `.trim();
 
       // Option 1: Send to your backend API endpoint that forwards to Chatwoot
-      const response = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/api/store/chat-support`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/chat-support`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || '', // Add this
         },
         body: JSON.stringify({
           name: formData.name,

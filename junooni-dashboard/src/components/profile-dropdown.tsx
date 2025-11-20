@@ -229,7 +229,6 @@ export function ProfileDropdown() {
           const response = await fetch(
             `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`,
             {
-              method: 'GET',
               headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json',
