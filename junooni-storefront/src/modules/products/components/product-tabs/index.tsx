@@ -292,9 +292,10 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
                   Returns Policy
                 </h3>
                 <div className="p-3 space-y-3 rounded-md bg-gray-50 sm:p-4 sm:space-y-4">
-                  <p className="mb-3 text-xs text-gray-700 sm:text-sm">
-                    We want you to be completely satisfied with your purchase. View our complete refund and exchange policy for details.
-                  </p>
+                  <ul className="mb-3 space-y-2 text-xs text-gray-700 list-disc list-inside sm:text-sm">
+                    <li>Quality is guaranteed. If there is a print error or visible quality issue, we'll replace or refund it.</li>
+                    <li>Because the products are made to order, we do not accept general returns or sizing-related returns.</li>
+                  </ul>
                   <LocalizedClientLink
                     href="/refund-exchange"
                     className="inline-flex items-center px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[#e65100] rounded-md hover:bg-[#d84e00] transition-colors"

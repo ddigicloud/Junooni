@@ -217,7 +217,7 @@ export default function NotFound() {
           </div>
 
           {/* Enhanced Categories */}
-          <div className="space-y-6">
+          {/* <div className="space-y-6">
             <Text className="text-lg font-semibold text-gray-700">
               Explore Popular Categories
             </Text>
@@ -241,7 +241,7 @@ export default function NotFound() {
                 </Link>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Customer Account Links */}
           {customer && (

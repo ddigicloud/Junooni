@@ -6,6 +6,7 @@ import { signup } from "@lib/data/customer"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import Link from "next/link"
+import loginbanner from "@assets/login-banner.png"
 
 type Props = {
   setCurrentView: (view: string) => void
@@ -16,28 +17,34 @@ const Register = ({ setCurrentView }: Props) => {
   const [showPassword, setShowPassword] = useState(false)
 
   return (
-    <div className="min-h-screen  flex items-center justify-center px-0 py-6 sm:p-4">
-      <div className="w-full max-w-2xl">
+    <div 
+      className="min-h-screen flex items-center justify-center px-0 py-6 sm:p-4 bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: `url(${loginbanner.src})` }}
+    >
+      {/* Overlay for better contrast */}
+      <div className="absolute inset-0 bg-black/40"></div>
+      
+      <div className="w-full max-w-2xl relative z-10 mt-0 sm:mt-6 md:mt-12">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-[#e65100] rounded-xl mb-3 shadow-lg">
+          {/* <div className="inline-flex items-center justify-center w-12 h-12 bg-[#e65100] rounded-xl mb-3 shadow-lg">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Account</h1>
-          <p className="text-gray-600 text-sm leading-relaxed">
+          </div> */}
+          <h1 className="text-3xl font-bold text-white mb-2">Create Your Account</h1>
+          <p className="text-white/90 text-sm leading-relaxed">
             Join us for an enhanced shopping experience with exclusive benefits
           </p>
         </div>
 
         {/* Registration Form Container */}
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 px-3 py-6 sm:p-6 mb-4 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 px-3 py-6 sm:p-6 mb-4 backdrop-blur-sm md:bg-white/10 md:border-white/30 md:backdrop-blur-lg">
           <div className="w-full space-y-4" role="form">
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label htmlFor="first_name" className="block text-sm font-semibold text-gray-800">
+                <label htmlFor="first_name" className="block text-sm font-semibold text-gray-800 md:text-gray-200">
                   First Name<span className="text-[#e65100] ml-1">*</span>
                 </label>
                 <div className="relative group">
@@ -59,7 +66,7 @@ const Register = ({ setCurrentView }: Props) => {
               </div>
               
               <div className="space-y-1.5">
-                <label htmlFor="last_name" className="block text-sm font-semibold text-gray-800">
+                <label htmlFor="last_name" className="block text-sm font-semibold text-gray-800 md:text-gray-200">
                   Last Name<span className="text-[#e65100] ml-1">*</span>
                 </label>
                 <div className="relative group">
@@ -83,7 +90,7 @@ const Register = ({ setCurrentView }: Props) => {
             
             {/* Email Field */}
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-800">
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-800 md:text-gray-200">
                 Email<span className="text-[#e65100] ml-1">*</span>
               </label>
               <div className="relative group">
@@ -106,7 +113,7 @@ const Register = ({ setCurrentView }: Props) => {
             
             {/* Phone Field */}
             <div className="space-y-1.5">
-              <label htmlFor="phone" className="block text-sm font-semibold text-gray-800">
+              <label htmlFor="phone" className="block text-sm font-semibold text-gray-800 md:text-gray-200">
                 Phone (Optional)
               </label>
               <div className="relative group">
@@ -128,7 +135,7 @@ const Register = ({ setCurrentView }: Props) => {
             
             {/* Password Field */}
             <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-800">
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-800 md:text-gray-200">
                 Password<span className="text-[#e65100] ml-1">*</span>
               </label>
               <div className="relative group">
@@ -165,7 +172,7 @@ const Register = ({ setCurrentView }: Props) => {
                   </button>
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1 md:text-gray-300">
                 Must be at least 8 characters long
               </p>
             </div>
@@ -234,13 +241,13 @@ const Register = ({ setCurrentView }: Props) => {
         </div>
 
         {/* Sign In Prompt */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 text-center backdrop-blur-sm">
-          <p className="text-gray-700 text-sm mb-3 font-medium">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 text-center backdrop-blur-sm md:bg-white/10 md:border-white/30 md:backdrop-blur-lg">
+          <p className="text-gray-700 text-sm mb-3 font-medium md:text-gray-200">
             Already have an account?
           </p>
           <button
             onClick={() => setCurrentView("sign-in")}
-            className="w-full h-10 bg-white border-2 border-gray-300 hover:border-[#e65100] text-gray-700 hover:text-[#e65100] rounded-lg font-semibold text-sm transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-[#e65100]/20 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+            className="w-full h-10 bg-white border-2 border-gray-300  text-gray-700  rounded-lg font-semibold text-sm transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-[#e65100]/20 shadow-md hover:shadow-lg flex items-center justify-center gap-2 md:bg-white/10 md:border-white/30 md:text-gray-200"
           >
             Sign In Instead
           </button>
@@ -248,7 +255,7 @@ const Register = ({ setCurrentView }: Props) => {
 
         {/* Trust Indicators */}
         <div className="mt-6 text-center">
-          <div className="flex items-center justify-center gap-6 text-xs text-gray-600">
+          <div className="flex items-center justify-center gap-6 text-xs text-white">
             <div className="flex items-center gap-1">
               <svg className="w-3 h-3 text-[#e65100]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />

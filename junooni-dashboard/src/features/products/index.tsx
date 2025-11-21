@@ -245,41 +245,77 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
   }, []);
 
   // Fetch products
-  useEffect(() => {
-    const fetchProducts = async () => {
-      const token = localStorage.getItem("vendorToken");
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products`, {
+  // Update your fetchProducts function
+useEffect(() => {
+  const fetchProducts = async () => {
+    const token = localStorage.getItem("vendorToken");
+    setLoading(true);
+    setError(null);
+    
+    try {
+      let allProducts: Product[] = [];
+      let offset = 0;
+      const limit = 100;
+      let totalCount = 0;
+
+      // First fetch to get total count
+      const initialResponse = await fetch(
+        `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products?limit=${limit}&offset=${offset}`,
+        {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
           }
-        });
-
-        if (!response.ok) {
-          const responseBody = await response.json();
-          throw new Error(`HTTP error! Status: ${response.status}, Message: ${responseBody.message}`);
         }
+      );
 
-        const responseBody = await response.json();
-        setProducts(responseBody.products || []);
-      } catch (error) {
-        setError(error instanceof Error ? error.message : "Failed to fetch products");
-        toast({
-          title: "Error",
-          description: "Failed to fetch products. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+      if (!initialResponse.ok) {
+        const responseBody = await initialResponse.json();
+        throw new Error(`HTTP error! Status: ${initialResponse.status}, Message: ${responseBody.message}`);
       }
-    };
 
-    fetchProducts();
-  }, []);
+      const initialData = await initialResponse.json();
+      allProducts = initialData.products || [];
+      totalCount = initialData.count || 0;
+
+      // Fetch remaining products if needed
+      if (totalCount > limit) {
+        const remainingFetches = Math.ceil((totalCount - limit) / limit);
+        
+        for (let i = 1; i <= remainingFetches; i++) {
+          offset = i * limit;
+          const response = await fetch(
+            `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products?limit=${limit}&offset=${offset}`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              }
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            allProducts = [...allProducts, ...(data.products || [])];
+          }
+        }
+      }
+
+      setProducts(allProducts);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to fetch products");
+      toast({
+        title: "Error",
+        description: "Failed to fetch products. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchProducts();
+}, []);
 
   const handleDeleteProduct = async (productId: string) => {
   const token = localStorage.getItem("vendorToken");

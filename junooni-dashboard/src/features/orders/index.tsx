@@ -574,7 +574,7 @@ export default function OrdersPage() {
           setLoading(false);
           return;
         }
-        console.log("Fetched Orders Data:", ordersArray);
+        //console.log("Fetched Orders Data:", ordersArray);
         // ✅ FIXED: Enhanced data transformation with better error handling
         const transformedOrders = ordersArray.map((order: any, index: number) => {
           try {

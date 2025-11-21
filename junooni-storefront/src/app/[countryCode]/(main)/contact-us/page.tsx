@@ -10,12 +10,13 @@ import {
   CheckCircle, Info, FileText, Search,
   Plus, Minus, MapPin, Calendar,
   ThumbsUp, Star, Users, Globe,
-  Facebook, Twitter, Instagram, Linkedin
+  Facebook, Twitter, Instagram, Linkedin, X
 } from "lucide-react";
 
 const StillNeedHelpPage = () => {
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState(null); // 'success' or 'error'
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -75,6 +76,7 @@ const StillNeedHelpPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitStatus(null);
 
     try {
       // Format the message for Chatwoot
@@ -93,12 +95,12 @@ ${formData.message}
 *Submitted via Support Request Form*
       `.trim();
 
-      // Option 1: Send to your backend API endpoint that forwards to Chatwoot
+      // Send to your backend API endpoint that forwards to Chatwoot
       const response = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/chat-support`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || '', // Add this
+          'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || '',
         },
         body: JSON.stringify({
           name: formData.name,
@@ -111,7 +113,7 @@ ${formData.message}
       });
 
       if (response.ok) {
-        alert('Thank you! Your request has been submitted. We\'ll get back to you within 24 hours.');
+        setSubmitStatus('success');
         
         // Reset form
         setFormData({
@@ -121,12 +123,22 @@ ${formData.message}
           category: '',
           message: ''
         });
+
+        // Auto-hide success message after 10 seconds
+        setTimeout(() => {
+          setSubmitStatus(null);
+        }, 10000);
       } else {
         throw new Error('Failed to submit request');
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      alert('There was an error submitting your request. Please try again or contact us directly at support@junooni.com');
+      setSubmitStatus('error');
+      
+      // Auto-hide error message after 10 seconds
+      setTimeout(() => {
+        setSubmitStatus(null);
+      }, 10000);
     } finally {
       setIsSubmitting(false);
     }
@@ -394,8 +406,6 @@ ${formData.message}
                   </div>
                 </section>
 
-                {/* Skip other sections for brevity - keeping the important Submit Request section */}
-
                 {/* 4. Submit Support Request */}
                 <section id="submit-request" className="p-6 bg-white rounded-lg shadow-sm md:p-8 scroll-mt-24">
                   <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
@@ -521,9 +531,52 @@ ${formData.message}
                         </>
                       )}
                     </button>
+
+                    {/* Success Message */}
+                    {submitStatus === 'success' && (
+                      <div className="p-4 border border-green-300 rounded-lg bg-green-50 animate-fadeIn">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle size={24} className="text-green-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <h4 className="mb-1 font-semibold text-green-900">Request Submitted Successfully!</h4>
+                            <p className="text-sm text-green-700">
+                              Thank you! Your request has been submitted. We'll get back to you within 24 hours.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setSubmitStatus(null)}
+                            className="text-green-600 hover:text-green-800"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Error Message */}
+                    {submitStatus === 'error' && (
+                      <div className="p-4 border border-red-300 rounded-lg bg-red-50 animate-fadeIn">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle size={24} className="text-red-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <h4 className="mb-1 font-semibold text-red-900">Submission Failed</h4>
+                            <p className="text-sm text-red-700">
+                              There was an error submitting your request. Please try again or contact us directly at <a href="mailto:support@junooni.com" className="underline font-medium">support@junooni.com</a>
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setSubmitStatus(null)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </form>
                 </section>
 
+                {/* Rest of the sections remain the same... */}
                 {/* 5. Support Hours */}
                 <section id="support-hours" className="p-6 bg-white rounded-lg shadow-sm md:p-8 scroll-mt-24">
                   <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
@@ -759,6 +812,23 @@ ${formData.message}
           </div>
         </div>
       </main>
+
+      {/* Add animation style for fade-in */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-in-out;
+        }
+      `}</style>
       
     </div>
   );

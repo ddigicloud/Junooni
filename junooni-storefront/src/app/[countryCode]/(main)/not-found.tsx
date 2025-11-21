@@ -23,7 +23,7 @@
 "use client"
 
 import { Text, Button } from "@medusajs/ui"
-import { User, ShoppingCart, Home, ArrowUpRight } from "lucide-react"
+import { User, ShoppingCart, Home, ArrowUpRight, Package, Heart, Search, Sparkles } from "lucide-react"
 import { Metadata } from "next"
 import Link from "next/link"
 import { retrieveCustomer } from "@lib/data/customer"
@@ -58,52 +58,81 @@ export default function NotFound() {
   // Show loading state to prevent hydration mismatch
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-64px)] w-full text-ui-fg-base">
-        <Spinner size={36} />
+      <div className="flex items-center justify-center min-h-[calc(100vh-64px)] w-full bg-gradient-to-br from-orange-50 via-white to-purple-50">
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size={36} />
+          <p className="text-sm text-gray-600">Loading...</p>
+        </div>
       </div>
     )
   }
   
-  // If user is not logged in, always show login prompt regardless of the page
+  // If user is not logged in, show login prompt
   if (!customer) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4">
-        <div className="w-full max-w-md space-y-6 text-center">
+      <div className="relative flex items-center justify-center min-h-[calc(100vh-64px)] px-4 overflow-hidden bg-gradient-to-br from-orange-50 via-white to-purple-50">
+        {/* Decorative Elements */}
+        <div className="absolute top-0 left-0 w-64 h-64 bg-orange-200 rounded-full opacity-20 -ml-32 -mt-32 blur-3xl"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-200 rounded-full opacity-20 -mr-48 -mb-48 blur-3xl"></div>
+
+        <div className="relative z-10 w-full max-w-md">
           {/* Icon */}
-          <div className="flex justify-center">
-            <div className="flex items-center justify-center w-20 h-20 rounded-full bg-ui-bg-subtle">
-              <User className="w-10 h-10 text-ui-fg-subtle" />
+          <div className="flex justify-center mb-8">
+            <div className="flex items-center justify-center w-24 h-24 bg-gradient-to-br from-[#e65100] to-[#f57c00] rounded-2xl shadow-xl">
+              <User className="w-12 h-12 text-white" />
             </div>
           </div>
           
-          {/* Heading */}
-          <div className="space-y-2">
-            <h1 className="text-3xl font-semibold text-ui-fg-base">
-              Please Sign In
-            </h1>
-            <p className="text-ui-fg-subtle">
-              You need to be logged in to access this page.
-            </p>
-          </div>
+          {/* Content Card */}
+          <div className="p-8 space-y-6 text-center bg-white border border-gray-200 shadow-2xl rounded-2xl">
+            <div className="space-y-3">
+              <h1 className="text-3xl font-bold text-gray-900">
+                Please Sign In
+              </h1>
+              <p className="text-gray-600">
+                You need to be logged in to access this page.
+              </p>
+            </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-3">
-            <Link href="/account" className="w-full">
-              <Button className="w-full" size="large">
+            {/* Action Button */}
+            <Link href="/account" className="block w-full">
+              <button className="w-full h-12 px-6 bg-[#e65100] hover:bg-[#d84315] text-white font-semibold rounded-lg transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2">
                 Sign In to Your Account
-              </Button>
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </Link>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 text-gray-500 bg-white">or</span>
+              </div>
+            </div>
+
+            {/* Additional Link */}
+            <Link
+              href="/"
+              className="flex items-center justify-center gap-2 text-[#e65100] hover:text-[#d84315] font-medium transition-colors"
+            >
+              <Home className="w-4 h-4" />
+              Return to Homepage
             </Link>
           </div>
 
-          {/* Additional Links */}
-          <div className="pt-4 space-y-2">
-            <Link
-              className="flex items-center justify-center transition-colors gap-x-2 text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
-              href="/"
-            >
-              <Home className="w-4 h-4 text-[#e65100]" />
-              <Text className="text-[#e65100]">Return to Homepage</Text>
-            </Link>
+          {/* Trust Indicators */}
+          <div className="flex items-center justify-center gap-6 mt-6 text-xs text-gray-500">
+            <div className="flex items-center gap-1.5">
+              <Sparkles size={14} />
+              <span>Secure</span>
+            </div>
+            <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
+            <div className="flex items-center gap-1.5">
+              <Heart size={14} />
+              <span>Trusted</span>
+            </div>
           </div>
         </div>
       </div>
@@ -112,101 +141,133 @@ export default function NotFound() {
 
   // User is logged in but page doesn't exist - show 404
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4">
-      <div className="w-full max-w-lg mt-12 space-y-8 text-center">
-        {/* 404 Illustration */}
-        <div className="space-y-4">
-          <div className="font-bold opacity-50 text-8xl text-ui-fg-subtle">
-            404
+    <div className="relative flex items-center justify-center min-h-[calc(100vh-64px)] px-4 py-12 overflow-hidden bg-gradient-to-br from-orange-50 via-white to-purple-50">
+      {/* Decorative Elements */}
+      <div className="absolute top-0 left-0 w-64 h-64 bg-orange-200 rounded-full opacity-20 -ml-32 -mt-32 blur-3xl"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-200 rounded-full opacity-20 -mr-48 -mb-48 blur-3xl"></div>
+      <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-pink-200 rounded-full opacity-10 -translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
+
+      <div className="relative z-10 w-full max-w-4xl space-y-8">
+        {/* 404 Header */}
+        <div className="text-center space-y-4">
+          <div className="relative inline-block">
+            <div className="text-[120px] md:text-[180px] font-bold bg-gradient-to-br from-[#e65100] to-[#f57c00] bg-clip-text text-transparent leading-none">
+              404
+            </div>
+            <div className="absolute -top-4 -right-4 w-16 h-16 bg-[#e65100] rounded-full opacity-20 blur-2xl"></div>
+            <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-[#f57c00] rounded-full opacity-20 blur-2xl"></div>
           </div>
-          <h1 className="text-3xl font-semibold text-ui-fg-base">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
             Page Not Found
           </h1>
-          <p className="max-w-md mx-auto text-lg text-ui-fg-subtle">
-            Sorry, we couldn't find the page you're looking for. 
-            It might have been moved, deleted, or you entered the wrong URL.
+          <p className="max-w-2xl mx-auto text-lg text-gray-600">
+            Oops! The page you're looking for seems to have wandered off. 
+            Let's get you back on track.
           </p>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid max-w-md grid-cols-1 gap-4 mx-auto sm:grid-cols-2">
-          <Link href="/" className="w-full">
-            <Button variant="secondary" className="w-full" size="large">
-              <Home className="w-4 h-4 mr-2" />
-              Homepage
-            </Button>
+        <div className="grid max-w-2xl grid-cols-1 gap-4 mx-auto sm:grid-cols-2">
+          <Link href="/" className="group">
+            <div className="p-6 bg-white border border-gray-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:border-[#e65100]">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-lg group-hover:bg-[#e65100] transition-colors duration-200">
+                  <Home className="w-6 h-6 text-[#e65100] group-hover:text-white transition-colors duration-200" />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold text-gray-900">Homepage</h3>
+                  <p className="text-sm text-gray-600">Start fresh from home</p>
+                </div>
+              </div>
+            </div>
           </Link>
           
-          <Link href="/store" className="w-full">
-            <Button variant="secondary" className="w-full" size="large">
-              <ShoppingCart className="w-4 h-4 mr-2" />
-              Shop Now
-            </Button>
+          <Link href="/store" className="group">
+            <div className="p-6 bg-white border border-gray-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:border-[#e65100]">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-lg group-hover:bg-[#e65100] transition-colors duration-200">
+                  <ShoppingCart className="w-6 h-6 text-[#e65100] group-hover:text-white transition-colors duration-200" />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold text-gray-900">Shop Now</h3>
+                  <p className="text-sm text-gray-600">Browse our products</p>
+                </div>
+              </div>
+            </div>
           </Link>
         </div>
 
         {/* Popular Categories */}
-        <div className="space-y-4">
-          <Text className="font-medium text-ui-fg-subtle">
-            Popular Categories
-          </Text>
-          <div className="flex flex-wrap justify-center gap-2">
+        {/* <div className="max-w-2xl p-6 mx-auto bg-white border border-gray-200 shadow-lg md:p-8 rounded-2xl">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <Sparkles className="w-5 h-5 text-[#e65100]" />
+            <h3 className="text-lg font-semibold text-gray-900">
+              Popular Categories
+            </h3>
+          </div>
+          <div className="flex flex-wrap justify-center gap-3">
             <Link href="/collections/men" 
-                  className="px-4 py-2 text-sm transition-colors rounded-full bg-ui-bg-subtle hover:bg-ui-bg-subtle-hover text-ui-fg-base">
+                  className="px-5 py-2.5 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-full hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
               Men
             </Link>
             <Link href="/collections/women" 
-                  className="px-4 py-2 text-sm transition-colors rounded-full bg-ui-bg-subtle hover:bg-ui-bg-subtle-hover text-ui-fg-base">
+                  className="px-5 py-2.5 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-full hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
               Women
             </Link>
             <Link href="/collections/kids" 
-                  className="px-4 py-2 text-sm transition-colors rounded-full bg-ui-bg-subtle hover:bg-ui-bg-subtle-hover text-ui-fg-base">
+                  className="px-5 py-2.5 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-full hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
               Kids
             </Link>
             <Link href="/collections/official-merchandise" 
-                  className="px-4 py-2 text-sm transition-colors rounded-full bg-ui-bg-subtle hover:bg-ui-bg-subtle-hover text-ui-fg-base">
+                  className="px-5 py-2.5 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-full hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
               Official Merchandise
             </Link>
           </div>
-        </div>
+        </div> */}
 
         {/* Customer-specific links if logged in */}
         {customer && (
-          <div className="pt-4 space-y-4 border-t border-ui-border-base">
-            <Text className="font-medium text-ui-fg-subtle">
-              Your Account
-            </Text>
-            <div className="flex flex-wrap justify-center gap-2">
+          <div className="max-w-2xl p-6 mx-auto bg-white border border-gray-200 shadow-lg md:p-8 rounded-2xl">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <User className="w-5 h-5 text-[#e65100]" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                Your Account
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Link href="/account" 
-                    className="px-4 py-2 text-sm transition-colors rounded-full bg-ui-bg-subtle hover:bg-ui-bg-subtle-hover text-ui-fg-base">
-                Account Dashboard
+                    className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-xl hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
+                <Home className="w-4 h-4" />
+                Dashboard
               </Link>
               <Link href="/account/orders" 
-                    className="px-4 py-2 text-sm transition-colors rounded-full bg-ui-bg-subtle hover:bg-ui-bg-subtle-hover text-ui-fg-base">
-                Order History
+                    className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-xl hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
+                <Package className="w-4 h-4" />
+                Orders
               </Link>
               <Link href="/account/profile" 
-                    className="px-4 py-2 text-sm transition-colors rounded-full bg-ui-bg-subtle hover:bg-ui-bg-subtle-hover text-ui-fg-base">
-                Profile Settings
+                    className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-xl hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
+                <User className="w-4 h-4" />
+                Profile
               </Link>
             </div>
           </div>
         )}
 
         {/* Help Section */}
-        <div className="pt-6 border-t border-ui-border-base">
-          <Text className="mb-3 text-ui-fg-subtle">
-            Need help? Contact our support team
-          </Text>
-          <div className="flex justify-center gap-4">
-            <Link href="/contact" 
-                  className="flex items-center gap-1 transition-colors text-ui-fg-interactive hover:text-ui-fg-interactive-hover">
+        <div className="pt-6 text-center border-t border-gray-200">
+          <p className="mb-4 text-gray-600">
+            Need help? Our support team is here for you
+          </p>
+          <div className="flex items-center justify-center gap-6">
+            <Link href="/contact-us" 
+                  className="flex items-center gap-2 text-[#e65100] hover:text-[#d84315] font-medium transition-colors">
               Contact Us
               <ArrowUpRight className="w-4 h-4" />
             </Link>
-            <span className="text-ui-fg-subtle">•</span>
-            <Link href="/help" 
-                  className="flex items-center gap-1 transition-colors text-ui-fg-interactive hover:text-ui-fg-interactive-hover">
+            <span className="text-gray-300">•</span>
+            <Link href="/support" 
+                  className="flex items-center gap-2 text-[#e65100] hover:text-[#d84315] font-medium transition-colors">
               Help Center
               <ArrowUpRight className="w-4 h-4" />
             </Link>

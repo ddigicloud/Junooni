@@ -359,7 +359,7 @@ const handleSignOut = async () => {
   }
 
   return (
-    <div className="flex-1 small:py-12" data-testid="account-page">
+    <div className="flex-1 small:py-0" data-testid="account-page">
       {/* Mobile Layout - Only show for logged-in users (account pages) */}
       <div className={isAuthPage ? "hidden" : "md:hidden"}>
         {customer && (
@@ -527,13 +527,13 @@ const handleSignOut = async () => {
       </div>
 
       {/* Desktop Layout - Show for ALL auth pages on mobile, normal behavior on desktop */}
-      <div className={`flex-col flex-1 h-full pt-4 mx-auto bg-white content-container ${
+      {/* Desktop Layout - Show for ALL auth pages on mobile, normal behavior on desktop */}
+      <div className={`flex-col flex-1 h-full pt-4 md:pt-4 mx-auto bg-white ${
         isAuthPage ? "flex" : "hidden md:flex"
-       }`}>
-        <div className="grid grid-cols-1 small:grid-cols-[240px_1fr] py-12">
-          <div>
-            {/* Only show sidebar for logged-in users */}
-            {customer && (
+      }`}>
+        <div className={`${isAuthPage ? 'py-0' : 'py-12'} ${customer ? 'grid grid-cols-1 small:grid-cols-[240px_1fr]' : ''}`}>
+          {customer && (
+            <div>
               <AccountSidebar
                 customer={customer}
                 user={user}
@@ -542,9 +542,9 @@ const handleSignOut = async () => {
                 ordersCount={orders?.length}
                 wishlistCount={wishlistData?.length}
               />
-            )}
-          </div>
-          <div className="flex-1 px-0 md:px-4">
+            </div>
+          )}
+          <div className={`flex-1 px-0 ${!isAuthPage ? 'md:px-4' : ''}`}>
             {/* Render children (login, register, forgot-password, or account pages) */}
             {React.isValidElement(children) &&
               React.cloneElement(children, commonProps)}

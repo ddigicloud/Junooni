@@ -1776,7 +1776,7 @@ const CreatorDiscoveryPage = () => {
               <img
                 src={safeString(vendor.coverphoto)}
                 alt={`${safeString(vendor.name)} banner`}
-                className="object-cover"
+                className="object-cover w-full h-full"
               />
             ) : (
               <div className="flex items-center justify-center h-full">
@@ -1887,12 +1887,12 @@ const CreatorDiscoveryPage = () => {
           whileHover={{ y: -4 }}
         >
           {/* Banner Image */}
-          <div className="relative h-32 bg-gradient-to-r from-[#e65100] to-[#ff6d00] flex-shrink-0">
+          <div className="relative h-32 bg-gradient-to-r from-[#e65100] to-[#ff6d00] flex-shrink-0 overflow-hidden">
             {vendor.coverphoto ? (
               <img
                 src={safeString(vendor.coverphoto)}
                 alt={`${safeString(vendor.name)} banner`}
-                className="object-cover"
+                className="object-cover w-full h-full"
               />
             ) : (
               <div className="flex items-center justify-center h-full">
