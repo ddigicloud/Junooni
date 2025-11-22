@@ -2753,18 +2753,22 @@ const processColorSpecificImages = async (
 const getLocationId = (enhancedProductData?: PayloadProductData): string => {
   // First, try to get from PayloadCMS data (nested in shippingInfo)
   if (enhancedProductData?.shippingInfo?.shippingLocationID) {
+    //console.log('✅ Using PayloadCMS shippingLocationID:', enhancedProductData.shippingInfo.shippingLocationID);
     return enhancedProductData.shippingInfo.shippingLocationID;
   }
   
   // Fallback to environment variable
   const envLocationId = import.meta.env.VITE_STORE_LOCATION_ID;
   if (envLocationId) {
+    //console.log('✅ Using environment VITE_STORE_LOCATION_ID:', envLocationId);
     return envLocationId;
   }
   
-  // Final fallback (should not happen in production)
-  return 'sloc_01JKWDDGKGCQFJANXV0CVJN2QW';
+  // ❌ REMOVED: No hardcoded fallback for production
+  //console.error('❌ CRITICAL: No location ID found. Set shippingLocationID in PayloadCMS or VITE_STORE_LOCATION_ID in environment');
+  return ''; // Return empty string to trigger error handling
 };
+
   const validateColorExists = (colorName: string, designData: DesignData): boolean => {
     const colorMatcher = createColorMatcher(designData);
     return colorMatcher.getAllColorNames().includes(colorName);
@@ -5803,20 +5807,24 @@ if (!printTechId || !printTechName) {
           if (completeProduct && completeProduct.variants) {
             const inventoryCreations = [];
 
-             const locationIdToUse = dynamicLocationId || getLocationId(enhancedProductData);
-              
+            const locationIdToUse = getLocationId(enhancedProductData);
+            
+            // ✅ NEW: Validate location ID exists
+            if (!locationIdToUse || locationIdToUse.trim() === '') {
+              //console.error('❌ CRITICAL ERROR: No location ID available for inventory creation');
+              setError('Location ID not configured. Contact administrator.');
+              return;
+            }
+            
             for (const variant of completeProduct.variants) {
               if (variant.inventory_items && Array.isArray(variant.inventory_items) && variant.inventory_items.length > 0) {
                 const inventoryItemId = variant.inventory_items[0].inventory_item_id;
                 
                 if (inventoryItemId) {
-                  const formVariant = variants.find(v => v.title === variant.title) || variants[0];
-                  const stockQuantity = parseInt(String(formVariant?.stock || '0'));
-                  
                   inventoryCreations.push({
                     inventory_item_id: inventoryItemId,
                     location_id: locationIdToUse,
-                    stocked_quantity: stockQuantity,
+                    stocked_quantity: 10,
                     incoming_quantity: 0
                   });
                 }
@@ -5824,11 +5832,13 @@ if (!printTechId || !printTechName) {
             }
             
             if (inventoryCreations.length > 0) {
+              //console.log('📦 Creating inventory at location:', locationIdToUse, 'Variants:', inventoryCreations.length);
               await batchUpdateInventoryLevels({ create: inventoryCreations });
-               }
+            }
           }
         } catch (inventoryError) {
-           }
+          //console.error('Inventory creation error:', inventoryError);
+        }
       }, 2000);
       
       setShowSuccess(true);

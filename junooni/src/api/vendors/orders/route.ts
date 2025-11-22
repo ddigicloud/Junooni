@@ -822,16 +822,48 @@ import { getOrdersListWorkflow } from "@medusajs/medusa/core-flows";
 import MarketplaceModuleService from "../../../modules/marketplace/service";
 import { MARKETPLACE_MODULE } from "../../../modules/marketplace";
 
-// ✅ ADDED: Calculate vendor-specific fulfillment status
+// Cache for product metadata
+const productMetadataCache = new Map<string, any>();
+const cacheTimestamps = new Map<string, number>();
+const CACHE_TTL = 5 * 60 * 1000;
+
+const batchFetchProductMetadata = async (productIds: string[], scope: any) => {
+  const uniqueIds = [...new Set(productIds)];
+  const now = Date.now();
+  
+  const uncachedIds = uniqueIds.filter(id => {
+    const timestamp = cacheTimestamps.get(id);
+    return !timestamp || now - timestamp > CACHE_TTL;
+  });
+  
+  if (uncachedIds.length > 0) {
+    console.log(`🔍 Batch fetching metadata for ${uncachedIds.length} products`);
+    
+    try {
+      const query = scope.resolve(ContainerRegistrationKeys.QUERY);
+      const { data: products } = await query.graph({
+        entity: "product",
+        fields: ["id", "title", "handle", "metadata"],
+        filters: { id: uncachedIds },
+      });
+      
+      products.forEach((product: any) => {
+        productMetadataCache.set(product.id, product.metadata || {});
+        cacheTimestamps.set(product.id, now);
+      });
+    } catch (error) {
+      console.error(`❌ Batch fetch error:`, error);
+    }
+  }
+  
+  return new Map(uniqueIds.map(id => [id, productMetadataCache.get(id) || {}]));
+};
+
 const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
   console.log(`📦 Calculating vendor fulfillment status for ${vendorItems.length} items...`);
   
   if (vendorItems.length === 0) {
-    return {
-      status: 'not_fulfilled',
-      breakdown: {},
-      item_statuses: {}
-    };
+    return { status: 'not_fulfilled', breakdown: {}, item_statuses: {} };
   }
 
   const vendorItemIds = new Set(vendorItems.map(item => item.id));
@@ -839,7 +871,6 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
   const itemFulfillmentStatus = new Map();
   let totalVendorQuantity = 0;
   
-  // Initialize tracking
   vendorItems.forEach(item => {
     itemFulfillmentStatus.set(item.id, {
       status: 'not_fulfilled',
@@ -852,7 +883,6 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
     totalVendorQuantity += item.quantity;
   });
 
-  // Process fulfillments
   fulfillments.forEach((fulfillment) => {
     if (fulfillment.canceled_at || !fulfillment.items) return;
     
@@ -895,10 +925,7 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
     });
   });
 
-  // Calculate overall status
-  let deliveredQuantity = 0;
-  let shippedQuantity = 0;
-  let fulfilledQuantity = 0;
+  let deliveredQuantity = 0, shippedQuantity = 0, fulfilledQuantity = 0;
   
   itemFulfillmentStatus.forEach((status) => {
     fulfilledQuantity += status.fulfilled_quantity;
@@ -908,19 +935,12 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
 
   let vendorFulfillmentStatus = 'not_fulfilled';
   
-  if (deliveredQuantity === totalVendorQuantity) {
-    vendorFulfillmentStatus = 'delivered';
-  } else if (deliveredQuantity > 0) {
-    vendorFulfillmentStatus = 'partially_delivered';
-  } else if (shippedQuantity === totalVendorQuantity) {
-    vendorFulfillmentStatus = 'shipped';
-  } else if (shippedQuantity > 0) {
-    vendorFulfillmentStatus = 'partially_shipped';
-  } else if (fulfilledQuantity === totalVendorQuantity) {
-    vendorFulfillmentStatus = 'fulfilled';
-  } else if (fulfilledQuantity > 0) {
-    vendorFulfillmentStatus = 'partially_fulfilled';
-  }
+  if (deliveredQuantity === totalVendorQuantity) vendorFulfillmentStatus = 'delivered';
+  else if (deliveredQuantity > 0) vendorFulfillmentStatus = 'partially_delivered';
+  else if (shippedQuantity === totalVendorQuantity) vendorFulfillmentStatus = 'shipped';
+  else if (shippedQuantity > 0) vendorFulfillmentStatus = 'partially_shipped';
+  else if (fulfilledQuantity === totalVendorQuantity) vendorFulfillmentStatus = 'fulfilled';
+  else if (fulfilledQuantity > 0) vendorFulfillmentStatus = 'partially_fulfilled';
 
   return {
     status: vendorFulfillmentStatus,
@@ -935,289 +955,15 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
   };
 };
 
-// ✅ ADDED: Calculate payment processing fee (2% + 18% GST)
 const calculatePaymentProcessingFee = (totalAmount: number) => {
-  const gatewayFee = totalAmount * 0.02; // 2% of total
-  const gstOnFee = gatewayFee * 0.18; // 18% GST on gateway fee
+  const gatewayFee = totalAmount * 0.02;
+  const gstOnFee = gatewayFee * 0.18;
   const totalProcessingFee = gatewayFee + gstOnFee;
-  
-  return {
-    gatewayFee,
-    gstOnFee,
-    totalProcessingFee
-  };
+  return { gatewayFee, gstOnFee, totalProcessingFee };
 };
 
-// ✅ ADDED: Fetch original product metadata from database
-const fetchProductMetadata = async (productId: string, scope: any) => {
-  try {
-    console.log(`🔍 Fetching original product metadata for product: ${productId}`);
-    
-    const query = scope.resolve(ContainerRegistrationKeys.QUERY);
-    
-    try {
-      const { data: products } = await query.graph({
-        entity: "product",
-        fields: ["id", "title", "handle", "metadata"],
-        filters: {
-          id: productId,
-        },
-      });
-      
-      if (products && products.length > 0) {
-        const product = products[0];
-        console.log(`✅ Found product: ${product.title}`);
-        if (product.metadata?.cost_price !== undefined) {
-          console.log(`💰 Found cost_price in metadata: ${product.metadata.cost_price}`);
-        }
-        return product.metadata;
-      }
-    } catch (queryError) {
-      console.log(`⚠️ Query method failed`);
-    }
-    
-    return null;
-  } catch (error) {
-    console.error(`❌ Error fetching product metadata:`, error);
-    return null;
-  }
-};
-
-// ✅ ADDED: Fetch variant details
-const fetchVariantDetails = async (variantId: string, scope: any) => {
-  try {
-    console.log(`🔍 Fetching variant details: ${variantId}`);
-    
-    const query = scope.resolve(ContainerRegistrationKeys.QUERY);
-    
-    try {
-      const { data: variants } = await query.graph({
-        entity: "product_variant",
-        fields: [
-          "id", 
-          "title", 
-          "sku",
-          "prices.*",
-          "product_id",
-          "product.id",
-          "product.title",
-          "product.metadata"
-        ],
-        filters: {
-          id: variantId,
-        },
-      });
-      
-      if (variants && variants.length > 0) {
-        return variants[0];
-      }
-    } catch (queryError) {
-      console.log(`⚠️ Variant query failed`);
-    }
-    
-    return null;
-  } catch (error) {
-    console.error(`❌ Error fetching variant:`, error);
-    return null;
-  }
-};
-
-// ✅ ADDED: Search product by title
-const searchProductByTitle = async (title: string, scope: any) => {
-  try {
-    console.log(`🔍 Searching for product: "${title}"`);
-    
-    const query = scope.resolve(ContainerRegistrationKeys.QUERY);
-    
-    const { data: products } = await query.graph({
-      entity: "product",
-      fields: [
-        "id", 
-        "title",
-        "metadata",
-        "variants.*",
-        "variants.sku",
-        "variants.prices.*"
-      ],
-      filters: {
-        title: {
-          $ilike: `%${title}%`
-        }
-      },
-    });
-    
-    if (products && products.length > 0) {
-      return products[0];
-    }
-    
-    return null;
-  } catch (error) {
-    console.error(`❌ Error searching product:`, error);
-    return null;
-  }
-};
-
-// ✅ ADDED: Enhance replacement item with missing data
-const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems: any[], scope: any) => {
-  console.log(`🔧 Enhancing replacement item: ${replacementItem.title}`);
-  
-  let enhanced = { ...replacementItem };
-  let enhancements = [];
-  
-  // Try to fetch variant details
-  if (enhanced.variant_id && (!enhanced.unit_price || !enhanced.variant_sku)) {
-    const variantDetails = await fetchVariantDetails(enhanced.variant_id, scope);
-    if (variantDetails) {
-      if (!enhanced.title && variantDetails.product?.title) {
-        enhanced.title = variantDetails.product.title;
-        enhanced.subtitle = variantDetails.title || 'Variant';
-        enhancements.push('title_from_variant');
-      }
-      
-      if (!enhanced.unit_price && variantDetails.prices?.[0]?.amount) {
-        enhanced.unit_price = variantDetails.prices[0].amount / 100;
-        enhanced.total = enhanced.unit_price * enhanced.quantity;
-        enhancements.push('price_from_variant');
-      }
-      
-      if (!enhanced.variant_sku && variantDetails.sku) {
-        enhanced.variant_sku = variantDetails.sku;
-        enhancements.push('sku_from_variant');
-      }
-    }
-  }
-  
-  // Try to search by title if still missing data
-  if ((!enhanced.unit_price || !enhanced.variant_sku) && enhanced.title && enhanced.title !== 'Replacement Item') {
-    const productDetails = await searchProductByTitle(enhanced.title, scope);
-    if (productDetails?.variants?.[0]) {
-      const bestVariant = productDetails.variants[0];
-      
-      if (!enhanced.unit_price && bestVariant.prices?.[0]?.amount) {
-        enhanced.unit_price = bestVariant.prices[0].amount / 100;
-        enhanced.total = enhanced.unit_price * enhanced.quantity;
-        enhancements.push('price_from_search');
-      }
-      
-      if (!enhanced.variant_sku && bestVariant.sku) {
-        enhanced.variant_sku = bestVariant.sku;
-        enhancements.push('sku_from_search');
-      }
-    }
-  }
-  
-  // Try to inherit from original claimed item
-  if (!enhanced.unit_price && originalClaimedItems.length > 0) {
-    const matchingClaimedItem = originalClaimedItems.find(claimedItem => {
-      if (enhanced.product_id && claimedItem.product_id === enhanced.product_id) return true;
-      if (enhanced.title && claimedItem.title) {
-        const replacementTitle = enhanced.title.toLowerCase();
-        const claimedTitle = claimedItem.title.toLowerCase();
-        return replacementTitle.includes(claimedTitle) || claimedTitle.includes(replacementTitle);
-      }
-      return false;
-    });
-    
-    if (matchingClaimedItem?.unit_price) {
-      enhanced.unit_price = matchingClaimedItem.unit_price;
-      enhanced.total = enhanced.unit_price * enhanced.quantity;
-      enhancements.push('price_from_claimed');
-      
-      if (!enhanced.variant_sku && matchingClaimedItem.variant_sku) {
-        enhanced.variant_sku = matchingClaimedItem.variant_sku;
-        enhancements.push('sku_from_claimed');
-      }
-    }
-  }
-  
-  // Set defaults if still missing
-  if (!enhanced.unit_price) {
-    enhanced.unit_price = 0;
-    enhanced.total = 0;
-    enhancements.push('price_default_zero');
-  }
-  
-  if (!enhanced.variant_sku) {
-    enhanced.variant_sku = `REPLACEMENT-${enhanced.id || 'UNKNOWN'}`;
-    enhancements.push('sku_default_generated');
-  }
-  
-  enhanced.enhancement_applied = enhancements.length > 0;
-  enhanced.enhancement_methods = enhancements;
-  
-  return enhanced;
-};
-
-// ✅ ADDED: Fetch claims and returns with proper field expansion
-const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
-  console.log(`🔍 Fetching claims and returns for order: ${orderId}`);
-  
-  try {
-    const query = scope.resolve(ContainerRegistrationKeys.QUERY);
-    let claims = [];
-    let returns = [];
-    
-    // Try to fetch claims
-    try {
-      const claimFieldPatterns = [
-        ["*", "claim_items.*", "additional_items.*"],
-        ["id", "type", "order_id", "claim_items.*", "additional_items.*"],
-        ["*"]
-      ];
-      
-      for (let i = 0; i < claimFieldPatterns.length; i++) {
-        try {
-          const claimsResult = await query.graph({
-            entity: "order_claim",
-            fields: claimFieldPatterns[i],
-            filters: { order_id: orderId },
-          });
-          
-          claims = claimsResult.data || [];
-          if (claims.length > 0) break;
-        } catch (patternError) {
-          continue;
-        }
-      }
-    } catch (claimsError) {
-      console.log(`⚠️ Could not fetch claims`);
-    }
-    
-    // Try to fetch returns
-    try {
-      const returnFieldPatterns = [
-        ["*", "items.*"],
-        ["id", "order_id", "status", "items.*"],
-        ["*"]
-      ];
-      
-      for (let i = 0; i < returnFieldPatterns.length; i++) {
-        try {
-          const returnsResult = await query.graph({
-            entity: "return",
-            fields: returnFieldPatterns[i],
-            filters: { order_id: orderId },
-          });
-          
-          returns = returnsResult.data || [];
-          if (returns.length > 0) break;
-        } catch (patternError) {
-          continue;
-        }
-      }
-    } catch (returnsError) {
-      console.log(`⚠️ Could not fetch returns`);
-    }
-    
-    return { claims, returns };
-  } catch (error) {
-    console.error(`❌ Error fetching claims/returns:`, error);
-    return { claims: [], returns: [] };
-  }
-};
-
-// ✅ UPDATED: Enhanced vendor revenue calculation with metadata fetching
-const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) => {
+// ✅ FIXED: Enhanced revenue calculation with return/refund handling
+const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, productMetadataMap: Map<string, any>) => {
   console.log(`💰 Calculating revenue for item ${item.id} (${item.title})`);
   
   const itemTotal = item.unit_price * item.quantity;
@@ -1226,6 +972,31 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
   let productCost = 0;
   let fulfillmentType = "unknown";
   let metadataSource = "none";
+  
+  // ✅ FIX 1: Check for returns/refunds FIRST
+  const returnRequestedTotal = item.return_requested_total || item.refunded_total || 0;
+  const isFullyReturned = returnRequestedTotal >= itemTotal;
+  
+  if (isFullyReturned) {
+    console.log(`🔴 Item fully returned/refunded - ₹0 revenue`);
+    return {
+      item_total: itemTotal,
+      vendor_revenue: 0,
+      product_cost: 0,
+      total_product_cost: 0,
+      quantity: item.quantity,
+      fulfillment_type: "returned",
+      calculation_type: "fully_returned",
+      platform_commission: 0,
+      metadata_source: "returned",
+      has_original_product_metadata: false,
+      is_returned: true,
+      return_amount: returnRequestedTotal
+    };
+  }
+  
+  // Adjust item total if partially returned
+  const adjustedItemTotal = itemTotal - returnRequestedTotal;
   
   // STEP 1: Get order item metadata
   let orderMetadata = null;
@@ -1247,20 +1018,18 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
     }
   }
   
-  // STEP 2: Always fetch original product metadata
+  // STEP 2: Get original product metadata
   let originalProductMetadata = null;
   let productId = item.product_id || item.variant?.product_id || item.variant?.product?.id || item.product?.id;
   
   if (productId) {
-    console.log(`🔍 Fetching original product metadata for: ${productId}`);
-    originalProductMetadata = await fetchProductMetadata(productId, scope);
-    
-    if (originalProductMetadata) {
-      console.log(`✅ Got original product metadata`);
+    originalProductMetadata = productMetadataMap.get(productId);
+    if (originalProductMetadata && Object.keys(originalProductMetadata).length > 0) {
+      console.log(`✅ Got original product metadata from cache`);
     }
   }
   
-  // STEP 3: Merge metadata intelligently
+  // STEP 3: Merge metadata
   let mergedMetadata = {};
   
   if (orderMetadata) {
@@ -1273,14 +1042,13 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
       mergedMetadata.fulfillment_type = originalProductMetadata.fulfillment_type;
       metadataSource += " + original_product(fulfillment_type)";
     }
-    
     if (originalProductMetadata.cost_price !== undefined) {
       mergedMetadata.cost_price = originalProductMetadata.cost_price;
       metadataSource += " + original_product(cost_price)";
     }
   }
   
-  // STEP 4: Process merged metadata
+  // STEP 4: Process metadata and calculate revenue
   if (Object.keys(mergedMetadata).length > 0) {
     let fulfillmentTypeData = mergedMetadata.fulfillment_type;
     
@@ -1290,49 +1058,49 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
           fulfillmentTypeData = JSON.parse(fulfillmentTypeData);
         } catch (e) {
           const typeMatch = fulfillmentTypeData.match(/"type":"([^"]+)"/);
-          if (typeMatch) {
-            fulfillmentType = typeMatch[1];
-          }
+          if (typeMatch) fulfillmentType = typeMatch[1];
         }
       }
-      
       if (fulfillmentTypeData && typeof fulfillmentTypeData === 'object' && fulfillmentTypeData.type) {
         fulfillmentType = fulfillmentTypeData.type;
       }
     }
     
     if (mergedMetadata.cost_price !== undefined && mergedMetadata.cost_price !== null) {
-      if (typeof mergedMetadata.cost_price === 'string') {
-        productCost = parseFloat(mergedMetadata.cost_price) || 0;
-      } else if (typeof mergedMetadata.cost_price === 'number') {
-        productCost = mergedMetadata.cost_price;
-      }
+      productCost = typeof mergedMetadata.cost_price === 'string' 
+        ? parseFloat(mergedMetadata.cost_price) || 0
+        : mergedMetadata.cost_price;
     }
     
-    // Revenue calculation logic
+    // ✅ FIX 2: Ensure Creator fulfillment is calculated correctly
     switch (fulfillmentType) {
       case "Junooni-fulfilment":
         const totalProductCost = productCost * item.quantity;
-        vendorRevenue = Math.max(0, itemTotal - totalProductCost);
+        vendorRevenue = Math.max(0, adjustedItemTotal - totalProductCost);
         revenueCalculationType = "cost_deduction";
-        console.log(`💰 Junooni: ${itemTotal} - (${productCost} × ${item.quantity}) = ${vendorRevenue}`);
+        console.log(`💰 Junooni: ${adjustedItemTotal} - (${productCost} × ${item.quantity}) = ${vendorRevenue}`);
         break;
         
       case "Creator-fulfilment":
-        vendorRevenue = itemTotal * 0.90;
+        vendorRevenue = adjustedItemTotal * 0.90;
         revenueCalculationType = "percentage_split";
-        console.log(`💰 Creator: ${itemTotal} × 90% = ${vendorRevenue}`);
+        console.log(`💰 Creator: ${adjustedItemTotal} × 90% = ${vendorRevenue}`);
         break;
         
       default:
-        vendorRevenue = itemTotal * 0.90;
+        vendorRevenue = adjustedItemTotal * 0.90;
         revenueCalculationType = "default_percentage";
-        console.log(`💰 Default: ${itemTotal} × 90% = ${vendorRevenue}`);
+        console.log(`💰 Default: ${adjustedItemTotal} × 90% = ${vendorRevenue}`);
         break;
     }
   } else {
-    vendorRevenue = itemTotal * 0.90;
+    vendorRevenue = adjustedItemTotal * 0.90;
     revenueCalculationType = "no_metadata";
+  }
+  
+  // Adjust for partial returns
+  if (returnRequestedTotal > 0 && returnRequestedTotal < itemTotal) {
+    console.log(`⚠️ Partial return: Original ₹${itemTotal} - Returned ₹${returnRequestedTotal} = ₹${adjustedItemTotal}`);
   }
   
   return {
@@ -1343,13 +1111,15 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
     quantity: item.quantity,
     fulfillment_type: fulfillmentType,
     calculation_type: revenueCalculationType,
-    platform_commission: itemTotal - vendorRevenue,
+    platform_commission: adjustedItemTotal - vendorRevenue,
     metadata_source: metadataSource,
-    has_original_product_metadata: !!originalProductMetadata
+    has_original_product_metadata: !!originalProductMetadata,
+    is_returned: returnRequestedTotal > 0,
+    return_amount: returnRequestedTotal,
+    adjusted_item_total: adjustedItemTotal
   };
 };
 
-// ✅ ADDED: Calculate vendor tax and shipping with proper separation
 const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
   console.log(`💰 Calculating vendor tax and shipping...`);
   
@@ -1357,8 +1127,12 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
   let vendorShippingTax = 0;
   let vendorShippingAmount = 0;
   
-  // Calculate product tax from items
   vendorItems.forEach(item => {
+    // Skip returned items for tax calculation
+    if (item.is_returned && item.return_amount >= item.item_total) {
+      return;
+    }
+    
     if (item.tax_lines && item.tax_lines.length > 0) {
       const itemTax = item.tax_lines.reduce((sum, taxLine) => {
         const taxAmount = typeof taxLine.amount === 'number' ? taxLine.amount : parseFloat(taxLine.amount) || 0;
@@ -1371,7 +1145,6 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
     }
   });
   
-  // Calculate proportional product tax if not available
   if (vendorProductTax === 0 && order.tax_total && order.subtotal && vendorSubtotal > 0) {
     const orderTaxTotal = typeof order.tax_total === 'number' ? order.tax_total : parseFloat(order.tax_total) || 0;
     const orderSubtotal = typeof order.subtotal === 'number' ? order.subtotal : parseFloat(order.subtotal) || 0;
@@ -1390,7 +1163,6 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
     vendorProductTax = orderProductTax * vendorProportion;
   }
   
-  // Calculate shipping amount
   if (order.shipping_total && vendorItems.length > 0) {
     const orderShippingTotal = typeof order.shipping_total === 'number' ? order.shipping_total : parseFloat(order.shipping_total) || 0;
     const isMultiVendor = order.metadata?.vendor_orders?.length > 1;
@@ -1406,13 +1178,12 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
     }
   }
   
-  // Calculate shipping tax
   if (order.shipping_methods && order.shipping_methods.length > 0) {
     order.shipping_methods.forEach(method => {
       if (method.tax_total) {
         const shippingMethodTax = typeof method.tax_total === 'number' ? method.tax_total : parseFloat(method.tax_total) || 0;
-        
         const isMultiVendor = order.metadata?.vendor_orders?.length > 1;
+        
         if (!isMultiVendor) {
           vendorShippingTax += shippingMethodTax;
         } else {
@@ -1426,7 +1197,6 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
     });
   }
   
-  // Estimate shipping tax if still 0
   if (vendorShippingTax === 0 && vendorShippingAmount > 0 && vendorProductTax > 0 && vendorSubtotal > 0) {
     const productTaxRate = vendorProductTax / vendorSubtotal;
     vendorShippingTax = vendorShippingAmount * productTaxRate;
@@ -1442,307 +1212,16 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
   };
 };
 
-// ✅ UPDATED: Enhanced claims and returns analysis
-const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItems: any[], vendorId: string, scope: any, order: any) => {
-  console.log(`🔍 Analyzing ${claims.length} claims and ${returns.length} returns for vendor ${vendorId}`);
+const filterOrderForVendor = async (order: any, vendorId: string, scope: any, productMetadataMap: Map<string, any>) => {
+  console.log(`🔍 Filtering order ${order.id} for vendor ${vendorId}`);
   
-  const itemStatuses = new Map();
-  const claimItems = [];
-  const returnItems = [];
-  const newReplacementItems = [];
-  const replacedItemIds = new Set();
-  
-  // Process returns
-  returns.forEach((returnOrder: any) => {
-    if (returnOrder.items) {
-      returnOrder.items.forEach((returnItem: any) => {
-        const isVendorItem = vendorItems.some(vi => 
-          vi.id === returnItem.item_id || 
-          vi.id === returnItem.id ||
-          vi.title === returnItem.title
-        );
-        
-        if (isVendorItem) {
-          itemStatuses.set(returnItem.item_id || returnItem.id, {
-            status: 'returned',
-            return_id: returnOrder.id,
-            return_reason: returnItem.reason || 'Customer request',
-            returned_quantity: returnItem.quantity,
-            received_quantity: returnItem.received_quantity || 0,
-            created_at: returnOrder.created_at
-          });
-          
-          returnItems.push({
-            id: returnItem.id,
-            item_id: returnItem.item_id,
-            return_id: returnOrder.id,
-            quantity: returnItem.quantity,
-            reason: returnItem.reason,
-            received_quantity: returnItem.received_quantity || 0,
-            created_at: returnOrder.created_at
-          });
-        }
-      });
-    }
-  });
-  
-  const originalClaimedItems = [];
-  
-  // Process claims
-  for (const claim of claims) {
-    if (claim.claim_items) {
-      for (const claimItem of claim.claim_items) {
-        const isVendorItem = vendorItems.some(vi => 
-          vi.id === claimItem.item_id ||
-          vi.title === claimItem.item?.title
-        );
-        
-        if (isVendorItem) {
-          const existingStatus = itemStatuses.get(claimItem.item_id);
-          itemStatuses.set(claimItem.item_id, {
-            ...existingStatus,
-            claim_status: 'claimed',
-            claim_id: claim.id,
-            claim_type: claim.type,
-            claim_reason: claimItem.reason || 'Product issue',
-            created_at: claim.created_at
-          });
-          
-          claimItems.push({
-            id: claimItem.id,
-            item_id: claimItem.item_id,
-            claim_id: claim.id,
-            quantity: claimItem.quantity,
-            reason: claimItem.reason,
-            created_at: claim.created_at
-          });
-          
-          const originalItem = vendorItems.find(vi => vi.id === claimItem.item_id) || 
-                              order.items?.find(item => item.id === claimItem.item_id);
-          if (originalItem) {
-            originalClaimedItems.push(originalItem);
-          }
-        }
-      }
-    }
-    
-    // Process replacement items
-    if (claim.additional_items && claim.additional_items.length > 0) {
-      for (let index = 0; index < claim.additional_items.length; index++) {
-        const additionalItem = claim.additional_items[index];
-        
-        let isVendorReplacement = false;
-        let originalItemBelongsToVendor = false;
-        
-        if (additionalItem.item_id) {
-          originalItemBelongsToVendor = vendorItems.some(vi => vi.id === additionalItem.item_id);
-        }
-        
-        let replacementItemBelongsToVendor = false;
-        const referencedOrderItem = order.items?.find(orderItem => orderItem.id === additionalItem.item_id);
-        
-        if (referencedOrderItem) {
-          const productId = referencedOrderItem.product_id || referencedOrderItem.variant?.product_id;
-          
-          if (referencedOrderItem.variant_sku) {
-            if (referencedOrderItem.variant_sku.startsWith('JUNI-')) {
-              const vendorHasJuniProducts = vendorItems.some(vi => 
-                vi.variant_sku && vi.variant_sku.startsWith('JUNI-')
-              );
-              
-              if (vendorHasJuniProducts) {
-                replacementItemBelongsToVendor = true;
-              }
-            }
-          }
-          
-          if (!replacementItemBelongsToVendor && productId) {
-            try {
-              const productMetadata = await fetchProductMetadata(productId, scope);
-              if (productMetadata?.vendor_id === vendorId) {
-                replacementItemBelongsToVendor = true;
-              }
-            } catch (error) {
-              console.log(`⚠️ Could not check replacement product in database`);
-            }
-          }
-        }
-        
-        if (originalItemBelongsToVendor && replacementItemBelongsToVendor) {
-          isVendorReplacement = true;
-          replacedItemIds.add(additionalItem.item_id);
-        }
-        
-        if (isVendorReplacement) {
-          let itemTitle = additionalItem.title || 'Replacement Item';
-          let itemSubtitle = 'Claim Replacement';
-          let itemUnitPrice = additionalItem.unit_price || 0;
-          let itemVariantSku = additionalItem.variant?.sku || additionalItem.sku || '';
-          let itemVariantId = additionalItem.variant_id;
-          let itemProductId = additionalItem.product_id || additionalItem.variant?.product_id;
-          
-          if (referencedOrderItem) {
-            itemTitle = referencedOrderItem.title || itemTitle;
-            itemSubtitle = referencedOrderItem.subtitle || referencedOrderItem.variant_title || itemSubtitle;
-            itemUnitPrice = referencedOrderItem.unit_price || itemUnitPrice;
-            itemVariantSku = referencedOrderItem.variant_sku || itemVariantSku;
-            itemVariantId = referencedOrderItem.variant_id || itemVariantId;
-            itemProductId = referencedOrderItem.product_id || itemProductId;
-          }
-          
-          let replacementItem = {
-            id: additionalItem.id || `replacement_${claim.id}_${index}`,
-            title: itemTitle,
-            subtitle: itemSubtitle,
-            quantity: additionalItem.quantity || 1,
-            unit_price: itemUnitPrice,
-            total: itemUnitPrice * (additionalItem.quantity || 1),
-            variant_id: itemVariantId,
-            product_id: itemProductId,
-            variant_sku: itemVariantSku,
-            is_claim_item: true,
-            claim_id: claim.id,
-            claim_status: 'active',
-            return_status: 'none',
-            metadata: {
-              vendor_id: vendorId,
-              is_claim_replacement: true,
-              original_claim_id: claim.id,
-              referenced_item_id: additionalItem.item_id
-            }
-          };
-          
-          replacementItem = await enhanceReplacementItem(replacementItem, originalClaimedItems, scope);
-          
-          newReplacementItems.push(replacementItem);
-          vendorItems.push(replacementItem);
-        }
-      }
-    }
-  }
-  
-  // Remove original items that have replacements
-  if (replacedItemIds.size > 0) {
-    for (let i = vendorItems.length - 1; i >= 0; i--) {
-      const item = vendorItems[i];
-      if (replacedItemIds.has(item.id) && !item.is_claim_item) {
-        vendorItems.splice(i, 1);
-      }
-    }
-  }
-  
-  return {
-    itemStatuses,
-    claimItems,
-    returnItems,
-    claims,
-    returns,
-    newReplacementItems
-  };
-};
-
-// ✅ UPDATED: Calculate and store vendor payment status
-const calculateAndStoreVendorPaymentStatus = async (order: any) => {
-  console.log(`🔄 INDEX: Calculating vendor payment status for order ${order.id}...`);
-  
-  if (!order.metadata?.vendor_orders || !order.items) {
-    return order;
-  }
-  
-  const updatedVendorOrders = [];
-  
-  for (const vendorOrder of order.metadata.vendor_orders) {
-    const vendorItems = order.items.filter(item => {
-      return vendorOrder.vendor_items?.some(vi => 
-        vi.title === item.title && vi.unit_price === item.unit_price
-      );
-    });
-    
-    if (vendorItems.length > 0) {
-      let totalAmount = 0;
-      let totalRefunded = 0;
-      
-      vendorItems.forEach((item) => {
-        const itemTotal = item.total || (item.unit_price * item.quantity);
-        const itemRefunded = item.return_requested_total || 0;
-        
-        totalAmount += itemTotal;
-        totalRefunded += itemRefunded;
-      });
-      
-      let paymentStatus = 'paid';
-      if (totalRefunded >= totalAmount) {
-        paymentStatus = 'refunded';
-      } else if (totalRefunded > 0) {
-        paymentStatus = 'partially_refunded';
-      }
-      
-      const updatedVendorOrder = {
-        ...vendorOrder,
-        vendor_payment_status: paymentStatus,
-        vendor_payment_details: {
-          total_amount: totalAmount,
-          refunded_amount: totalRefunded,
-          net_amount: totalAmount - totalRefunded,
-          calculation_method: 'item_level_data',
-          calculated_at: new Date().toISOString()
-        }
-      };
-      
-      updatedVendorOrders.push(updatedVendorOrder);
-    } else {
-      updatedVendorOrders.push({
-        ...vendorOrder,
-        vendor_payment_status: 'unknown'
-      });
-    }
-  }
-  
-  return {
-    ...order,
-    metadata: {
-      ...order.metadata,
-      vendor_orders: updatedVendorOrders,
-      vendor_payment_status_calculated: true
-    }
-  };
-};
-
-// ✅ UPDATED: Get vendor payment status from metadata
-const getVendorPaymentStatusFromMetadata = (order: any, vendorId: string) => {
-  const vendorOrders = order.metadata?.vendor_orders || [];
-  const vendorInfo = vendorOrders.find(vo => vo.vendor_id === vendorId);
-  
-  if (vendorInfo?.vendor_payment_status) {
-    return {
-      status: vendorInfo.vendor_payment_status,
-      ...vendorInfo.vendor_payment_details,
-      source: 'metadata'
-    };
-  }
-  
-  return {
-    status: 'unknown',
-    source: 'fallback'
-  };
-};
-
-// ✅ UPDATED: Enhanced filter order for vendor with all improvements
-const filterOrderForVendor = async (order: any, vendorId: string, scope: any) => {
-  console.log(`🔍 INDEX: Filtering order ${order.id} for vendor ${vendorId}`);
-  
-  if (!order || !vendorId) {
-    return null;
-  }
+  if (!order || !vendorId) return null;
 
   const vendorOrders = order.metadata?.vendor_orders || [];
   const vendorInfo = vendorOrders.find((vo: any) => vo.vendor_id === vendorId);
   
-  if (!vendorInfo) {
-    return null;
-  }
+  if (!vendorInfo) return null;
 
-  // Start with vendor metadata items
   const vendorMetadataItems = vendorInfo.vendor_items || [];
   const vendorItems = [];
   
@@ -1754,102 +1233,22 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
     
     if (matchingOrderItem) {
       vendorItems.push(matchingOrderItem);
-    } else {
-      const looseMatch = order.items?.find((item: any) => 
-        item.title && metaItem.title && 
-        item.title.toLowerCase().includes(metaItem.title.toLowerCase())
-      );
-      
-      if (looseMatch) {
-        vendorItems.push(looseMatch);
-      }
     }
   }
 
-  // Check remaining items for vendor ownership
-  for (const orderItem of order.items || []) {
-    const alreadyIncluded = vendorItems.some(vi => vi.id === orderItem.id);
-    if (alreadyIncluded) continue;
+  if (vendorItems.length === 0) return null;
 
-    let belongsToVendor = false;
-    
-    if (orderItem.variant_sku) {
-      const vendorSkuPatterns = vendorItems.map(vi => {
-        if (vi.variant_sku) {
-          if (vi.variant_sku.startsWith('JUNI-')) return 'JUNI';
-          if (vi.variant_sku.startsWith('SKU-')) return 'SKU';
-          return 'OTHER';
-        }
-        return 'NONE';
-      }).filter(pattern => pattern !== 'NONE');
-      
-      if (orderItem.variant_sku.startsWith('JUNI-')) {
-        belongsToVendor = vendorSkuPatterns.includes('JUNI');
-      } else if (orderItem.variant_sku.startsWith('SKU-')) {
-        belongsToVendor = vendorSkuPatterns.includes('SKU');
-      }
-    }
-    
-    if (!belongsToVendor) {
-      const productId = orderItem.product_id || orderItem.variant?.product_id;
-      if (productId) {
-        try {
-          const productMetadata = await fetchProductMetadata(productId, scope);
-          if (productMetadata?.vendor_id === vendorId) {
-            belongsToVendor = true;
-          }
-        } catch (error) {
-          console.log(`⚠️ Database check failed`);
-        }
-      }
-    }
-    
-    if (belongsToVendor) {
-      vendorItems.push(orderItem);
-    }
-  }
-
-  if (vendorItems.length === 0) {
-    return null;
-  }
-
-  // Fetch and analyze claims/returns
-  const { claims, returns } = await fetchOrderClaimsAndReturns(order.id, scope);
-  const claimsAnalysis = await analyzeClaimsAndReturns(claims, returns, vendorItems, vendorId, scope, order);
-
-  // Validate vendor items
-  const validatedVendorItems = [];
-  for (const item of vendorItems) {
-    let isValid = true;
-    
-    if (item.is_claim_item) {
-      const otherVendorItems = vendorItems.filter(vi => !vi.is_claim_item);
-      const hasMatchingSKUPattern = otherVendorItems.some(vi => {
-        if (!vi.variant_sku || !item.variant_sku) return false;
-        
-        const vendorSKUPrefix = vi.variant_sku.split('-')[0];
-        const itemSKUPrefix = item.variant_sku.split('-')[0];
-        
-        return vendorSKUPrefix === itemSKUPrefix;
-      });
-      
-      if (!hasMatchingSKUPattern) {
-        isValid = false;
-      }
-    }
-    
-    if (isValid) {
-      validatedVendorItems.push(item);
-    }
-  }
-
-  // Calculate revenue for each item
+  // ✅ Calculate revenue with return handling
   const itemsWithRevenue = [];
-  for (const item of validatedVendorItems) {
-    const revenueData = await calculateVendorRevenue(item, vendorId, scope);
-    const itemStatus = claimsAnalysis.itemStatuses.get(item.id) || {};
+  let totalReturnedAmount = 0;
+  
+  for (const item of vendorItems) {
+    const revenueData = await calculateVendorRevenue(item, vendorId, scope, productMetadataMap);
     
-    // Extract tracking data
+    if (revenueData.is_returned) {
+      totalReturnedAmount += revenueData.return_amount;
+    }
+    
     const trackingNumbers = [];
     const trackingUrls = [];
     let fulfillmentStatus = 'pending';
@@ -1866,12 +1265,8 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
     itemFulfillments.forEach((fulfillment) => {
       if (fulfillment.labels && fulfillment.labels.length > 0) {
         fulfillment.labels.forEach((label) => {
-          if (label.tracking_number) {
-            trackingNumbers.push(label.tracking_number);
-          }
-          if (label.tracking_url) {
-            trackingUrls.push(label.tracking_url);
-          }
+          if (label.tracking_number) trackingNumbers.push(label.tracking_number);
+          if (label.tracking_url) trackingUrls.push(label.tracking_url);
         });
       }
 
@@ -1880,13 +1275,9 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
       shippedAt = fulfillment.shipped_at || shippedAt;
       deliveredAt = fulfillment.delivered_at || deliveredAt;
 
-      if (fulfillment.delivered_at) {
-        fulfillmentStatus = 'delivered';
-      } else if (fulfillment.shipped_at) {
-        fulfillmentStatus = 'shipped';
-      } else if (fulfillment.packed_at) {
-        fulfillmentStatus = 'fulfilled';
-      }
+      if (fulfillment.delivered_at) fulfillmentStatus = 'delivered';
+      else if (fulfillment.shipped_at) fulfillmentStatus = 'shipped';
+      else if (fulfillment.packed_at) fulfillmentStatus = 'fulfilled';
     });
 
     canShip = fulfillmentStatus === 'fulfilled' && !shippedAt;
@@ -1898,10 +1289,12 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
       fulfillment_type: revenueData.fulfillment_type,
       calculation_type: revenueData.calculation_type,
       platform_commission: revenueData.platform_commission,
+      is_returned: revenueData.is_returned || false,
+      return_amount: revenueData.return_amount || 0,
       
-      claim_status: item.is_claim_item ? 'active' : (itemStatus.status === 'returned' ? 'returned' : 'active'),
-      return_status: itemStatus.status === 'returned' ? 'requested' : 'none',
-      is_claim_item: item.is_claim_item || false,
+      claim_status: revenueData.is_returned ? 'returned' : 'active',
+      return_status: revenueData.is_returned ? 'returned' : 'none',
+      is_claim_item: false,
       
       subtitle: item.subtitle || item.variant?.title || "Handcrafted Item",
       variant_sku: item.variant_sku || item.sku || "",
@@ -1918,35 +1311,36 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
     });
   }
 
-  // Calculate totals
-  const vendorSubtotal = itemsWithRevenue.reduce((total, item) => total + (item.unit_price * item.quantity), 0);
+  // Calculate subtotal (excluding returned amounts)
+  const vendorSubtotal = itemsWithRevenue.reduce((total, item) => {
+    const itemTotal = item.unit_price * item.quantity;
+    const returnAmount = item.return_amount || 0;
+    return total + (itemTotal - returnAmount);
+  }, 0);
+  
   const calculatedVendorRevenue = itemsWithRevenue.reduce((total, item) => total + item.vendor_revenue, 0);
 
-  // Calculate payment processing fee
   const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(vendorSubtotal);
   const finalVendorRevenue = calculatedVendorRevenue - totalProcessingFee;
 
-  // Calculate vendor-specific fulfillment status
   const vendorFulfillmentData = calculateVendorFulfillmentStatus(itemsWithRevenue, order);
 
-  // Revenue breakdown
   const revenue_breakdown = {
     total_items: itemsWithRevenue.length,
     junooni_fulfillment_items: itemsWithRevenue.filter(item => item.fulfillment_type === "Junooni-fulfilment").length,
     creator_fulfillment_items: itemsWithRevenue.filter(item => item.fulfillment_type === "Creator-fulfilment").length,
     unknown_fulfillment_items: itemsWithRevenue.filter(item => !item.fulfillment_type || item.fulfillment_type === "unknown").length,
+    returned_items: itemsWithRevenue.filter(item => item.is_returned).length,
     revenue_percentage: vendorSubtotal > 0 ? (calculatedVendorRevenue / vendorSubtotal * 100) : 0,
-    returned_items: itemsWithRevenue.filter(item => item.claim_status === 'returned').length,
-    replaced_items: itemsWithRevenue.filter(item => item.claim_status === 'replaced').length,
-    claim_items: itemsWithRevenue.filter(item => item.is_claim_item).length,
-    active_items: itemsWithRevenue.filter(item => item.claim_status === 'active' && !item.is_claim_item).length
   };
 
-  // Get vendor payment status
-  const vendorPaymentData = getVendorPaymentStatusFromMetadata(order, vendorId);
+  const vendorPaymentData = {
+    status: vendorInfo.vendor_payment_status || order.payment_status || 'paid',
+  };
   
-  // Calculate tax and shipping
   const { vendorTaxTotal, vendorShippingTotal } = calculateVendorTaxAndShipping(order, itemsWithRevenue, vendorSubtotal);
+
+  console.log(`✅ Order ${order.display_id}: Subtotal=₹${vendorSubtotal}, Revenue=₹${calculatedVendorRevenue}, Returns=₹${totalReturnedAmount}, Final=₹${finalVendorRevenue}`);
 
   return {
     id: order.id,
@@ -1966,24 +1360,17 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
     vendor_subtotal: vendorSubtotal,
     vendor_shipping_total: vendorShippingTotal,
     vendor_tax_total: vendorTaxTotal,
+    total_returned_amount: totalReturnedAmount,
     
     revenue_breakdown: revenue_breakdown,
     
     vendor_payment_details: {
       status: vendorPaymentData.status,
-      captured_amount: vendorPaymentData.captured_amount,
-      refunded_amount: vendorPaymentData.refunded_amount,
-      net_amount: vendorPaymentData.net_amount,
       gateway_fee: gatewayFee,
       gst_on_fee: gstOnFee,
       total_processing_fee: totalProcessingFee,
       final_vendor_payout: finalVendorRevenue
     },
-    
-    claims: claimsAnalysis.claims,
-    returns: claimsAnalysis.returns,
-    claim_items: claimsAnalysis.claimItems,
-    return_items: claimsAnalysis.returnItems,
     
     shipping_address: order.shipping_address,
     billing_address: order.billing_address,
@@ -2006,145 +1393,79 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
     is_vendor_filtered: true,
     contains_only_vendor_products: true,
     revenue_calculation_applied: true,
-    claims_returns_analyzed: true,
-    has_claims: claimsAnalysis.claims.length > 0,
-    has_returns: claimsAnalysis.returns.length > 0,
-    vendor_fulfillment_calculated: true,
-    vendor_payment_calculated: true
+    has_returns: totalReturnedAmount > 0,
   };
 };
 
-// ✅ MAIN GET HANDLER
 export const GET = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse
 ) => {
   try {
-    console.log("🏪 INDEX: Fetching vendor orders with COMPLETE enhanced calculations...");
+    console.log("🏪 Fetching vendor orders with RETURN HANDLING...");
     
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
-    const marketplaceModuleService: MarketplaceModuleService =
-      req.scope.resolve(MARKETPLACE_MODULE);
+    const marketplaceModuleService: MarketplaceModuleService = req.scope.resolve(MARKETPLACE_MODULE);
 
-    // Get vendor information
     const vendorAdmin = await marketplaceModuleService.retrieveVendorAdmin(
       req.auth_context.actor_id,
-      {
-        relations: ["vendor"],
-      }
+      { relations: ["vendor"] }
     );
 
     const vendorId = vendorAdmin.vendor.id;
-    console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
 
-    // Get vendor orders
-    const {
-      data: [vendor],
-    } = await query.graph({
+    const { data: [vendor] } = await query.graph({
       entity: "vendor",
       fields: ["orders.*", "orders.customer.*"],
-      filters: {
-        id: vendorId,
-      },
+      filters: { id: vendorId },
     });
 
     if (!vendor.orders || vendor.orders.length === 0) {
-      console.log("📭 No orders found for vendor");
-      return res.json({
-        orders: [],
-        count: 0,
-        vendor_id: vendorId
-      });
+      return res.json({ orders: [], count: 0, vendor_id: vendorId });
     }
 
-    console.log(`📋 Found ${vendor.orders.length} linked orders for vendor`);
+    console.log(`📋 Found ${vendor.orders.length} orders`);
 
-    // Get detailed order information
     const { result: detailedOrders } = await getOrdersListWorkflow(req.scope).run({
       input: {
         fields: [
-          "id",
-          "display_id",
-          "metadata",
-          "total",
-          "subtotal", 
-          "shipping_total",
-          "tax_total",
-          "items.*",
-          "items.tax_lines",
-          "items.variant",
-          "items.variant.product",
-          "items.variant.metadata",
-          "items.variant.product.metadata",
-          "items.metadata",
-          "items.product_id",
-          "items.variant_id",
-          "items.return_requested_total",
-          "items.total",
-          "shipping_methods",
-          "shipping_methods.tax_total",
-          "payment_collections",
-          "fulfillments",
-          "fulfillments.items.*",
-          "fulfillments.labels.*",
-          "customer.*",
-          "shipping_address.*",
-          "billing_address.*",
-          "payment_status",
+          "id", "display_id", "metadata", "total", "subtotal", "shipping_total", "tax_total",
+          "items.*", "items.tax_lines", "items.variant", "items.variant.product",
+          "items.variant.metadata", "items.variant.product.metadata", "items.metadata",
+          "items.product_id", "items.variant_id", "items.return_requested_total", "items.total",
+          "items.refunded_total", "items.refundable_total",
+          "shipping_methods", "shipping_methods.tax_total", "payment_collections",
+          "fulfillments", "fulfillments.items.*", "fulfillments.labels.*",
+          "customer.*", "shipping_address.*", "billing_address.*",
+          "payment_status", "status", "email", "created_at", "updated_at", "currency_code"
         ],
         variables: {
-          filters: {
-            id: vendor.orders.map((order) => order.id),
-          },
+          filters: { id: vendor.orders.map((order) => order.id) },
         },
       },
     });
 
-    console.log(`📄 INDEX: Retrieved detailed data for ${detailedOrders.length} orders`);
+    const allProductIds = new Set<string>();
+    detailedOrders.forEach(order => {
+      order.items?.forEach(item => {
+        const productId = item.product_id || item.variant?.product_id;
+        if (productId) allProductIds.add(productId);
+      });
+    });
 
-    // Calculate vendor payment status for each order
-    const ordersWithVendorPaymentStatus = [];
-    for (const order of detailedOrders) {
-      const orderWithPaymentStatus = await calculateAndStoreVendorPaymentStatus(order);
-      ordersWithVendorPaymentStatus.push(orderWithPaymentStatus);
-    }
+    const productMetadataMap = await batchFetchProductMetadata([...allProductIds], req.scope);
 
-    // Filter each order for vendor with all enhancements
     const vendorFilteredOrders = [];
-
-    for (const order of ordersWithVendorPaymentStatus) {
-      console.log(`🔄 INDEX: Processing order ${order.id}...`);
-      
-      const vendorOrderView = await filterOrderForVendor(order, vendorId, req.scope);
-      
-      if (vendorOrderView) {
-        vendorFilteredOrders.push(vendorOrderView);
-        console.log(`✅ INDEX: Added order ${order.id} with ${vendorOrderView.vendor_items.length} items`);
-      }
+    for (const order of detailedOrders) {
+      const filtered = await filterOrderForVendor(order, vendorId, req.scope, productMetadataMap);
+      if (filtered) vendorFilteredOrders.push(filtered);
     }
 
-    // Calculate aggregate statistics
     const totalVendorRevenue = vendorFilteredOrders.reduce((sum, order) => sum + order.vendor_total, 0);
     const totalOrderValue = vendorFilteredOrders.reduce((sum, order) => sum + order.vendor_subtotal, 0);
-    const totalPlatformCommission = totalOrderValue - totalVendorRevenue;
-    const averageRevenuePercentage = totalOrderValue > 0 ? (totalVendorRevenue / totalOrderValue * 100) : 0;
-    
-    const totalClaims = vendorFilteredOrders.reduce((sum, order) => sum + (order.claims?.length || 0), 0);
-    const totalReturns = vendorFilteredOrders.reduce((sum, order) => sum + (order.returns?.length || 0), 0);
-    const ordersWithClaims = vendorFilteredOrders.filter(order => order.has_claims).length;
-    const ordersWithReturns = vendorFilteredOrders.filter(order => order.has_returns).length;
+    const totalReturns = vendorFilteredOrders.reduce((sum, order) => sum + (order.total_returned_amount || 0), 0);
 
-    const paymentStatusCounts = vendorFilteredOrders.reduce((counts, order) => {
-      const status = order.payment_status || 'unknown';
-      counts[status] = (counts[status] || 0) + 1;
-      return counts;
-    }, {});
-
-    const totalProcessingFees = vendorFilteredOrders.reduce((sum, order) => 
-      sum + (order.vendor_payment_details?.total_processing_fee || 0), 0
-    );
-
-    console.log(`✅ INDEX: Returning ${vendorFilteredOrders.length} vendor-filtered orders with COMPLETE enhancements`);
+    console.log(`✅ Total Revenue: ₹${totalVendorRevenue.toFixed(2)} | Returns: ₹${totalReturns.toFixed(2)}`);
 
     res.json({
       orders: vendorFilteredOrders,
@@ -2152,42 +1473,18 @@ export const GET = async (
       vendor_id: vendorId,
       total_linked_orders: vendor.orders.length,
       filtered_orders: vendorFilteredOrders.length,
-      filtering_applied: true,
-      revenue_calculation_applied: true,
-      vendor_payment_calculated: true,
-      claims_returns_analyzed: true,
       
       vendor_analytics: {
         total_vendor_revenue: totalVendorRevenue,
         total_order_value: totalOrderValue,
-        total_platform_commission: totalPlatformCommission,
-        total_processing_fees: totalProcessingFees,
-        net_vendor_payout: totalVendorRevenue - totalProcessingFees,
-        average_revenue_percentage: parseFloat(averageRevenuePercentage.toFixed(2)),
-        currency_code: "INR"
-      },
-      
-      payment_status_analytics: {
-        payment_status_counts: paymentStatusCounts,
-        vendor_specific_calculation: true,
-        orders_with_vendor_payment_status: vendorFilteredOrders.filter(o => o.vendor_payment_calculated).length
-      },
-      
-      claims_returns_analytics: {
-        total_claims: totalClaims,
+        total_platform_commission: totalOrderValue - totalVendorRevenue,
         total_returns: totalReturns,
-        orders_with_claims: ordersWithClaims,
-        orders_with_returns: ordersWithReturns,
-        claim_rate: vendorFilteredOrders.length > 0 ? (ordersWithClaims / vendorFilteredOrders.length * 100) : 0,
-        return_rate: vendorFilteredOrders.length > 0 ? (ordersWithReturns / vendorFilteredOrders.length * 100) : 0
+        currency_code: "INR"
       }
     });
 
   } catch (error: any) {
-    console.error("❌ INDEX: Error in vendor orders endpoint:", error);
-    res.status(500).json({
-      error: "Failed to fetch vendor orders",
-      message: error.message
-    });
+    console.error("❌ Error:", error);
+    res.status(500).json({ error: "Failed to fetch vendor orders", message: error.message });
   }
 };

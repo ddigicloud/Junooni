@@ -105,11 +105,11 @@ export const GET = async (
   }
 
   // Get pagination parameters from query string
-  const limit = parseInt(req.query.limit as string) || 100;
+  const limit = parseInt(req.query.limit as string) || 10;
   const offset = parseInt(req.query.offset as string) || 0;
 
   try {
-    // Fetch vendor admin with products using pagination
+    // Fetch vendor admin with products
     const { data: vendorAdmins } = await query.graph({
       entity: "vendor_admin",
       fields: [
@@ -138,7 +138,9 @@ export const GET = async (
       return res.status(404).json({
         message: "Vendor not found",
         products: [],
-        count: 0
+        count: 0,
+        limit,
+        offset
       });
     }
 
@@ -146,8 +148,15 @@ export const GET = async (
     const allProducts = vendorAdmin.vendor.products || [];
     const totalCount = allProducts.length;
 
+    // Sort by created_at DESC (newest first)
+    const sortedProducts = [...allProducts].sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+
     // Apply pagination manually
-    const paginatedProducts = allProducts.slice(offset, offset + limit);
+    const paginatedProducts = sortedProducts.slice(offset, offset + limit);
 
     res.json({
       products: paginatedProducts,
@@ -162,7 +171,9 @@ export const GET = async (
       message: "Failed to fetch products",
       error: error?.message || "Unknown error",
       products: [],
-      count: 0
+      count: 0,
+      limit,
+      offset
     });
   }
 }
