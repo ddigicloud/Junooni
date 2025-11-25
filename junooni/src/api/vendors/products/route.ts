@@ -96,86 +96,49 @@ export const GET = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse
 ) => {
+  
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   
+ 
   if (!req.auth_context) {
+   
     return res.status(401).json({
       message: "Authentication required"
     });
   }
-
-  // Get pagination parameters from query string
-  const limit = parseInt(req.query.limit as string) || 10;
-  const offset = parseInt(req.query.offset as string) || 0;
-
-  try {
-    // Fetch vendor admin with products
-    const { data: vendorAdmins } = await query.graph({
-      entity: "vendor_admin",
-      fields: [
-        "vendor.products.*",
-        "vendor.products.variants.*",
-        "vendor.products.images.*",
-        "vendor.products.options.*",
-        "vendor.products.options.values.*",
-        "vendor.products.variants.options.*",
-        "vendor.products.variants.inventory_items.*",
-        "vendor.products.variants.inventory_items.inventory.stocked_quantity",
-        "vendor.products.brand.*",
-        "vendor.products.categories.*",
-        "vendor.products.tags.*",
-        "vendor.products.vendor.*",
-        "vendor.products.metadata"
+  
+  const { data: [vendorAdmin] } = await query.graph({
+    entity: "vendor_admin",
+    fields: ["vendor.products.*",
+      // "vendor.products.variants.*",
+      "vendor.products.images.*",
+      // "vendor.products.options.*",
+      // "vendor.products.options.metadata.*",
+      // "vendor.products.variants.options.*",
+      // "vendor.products.options.values.*",
+     
+      // "vendor.products.variants.inventory_items.*",
+      // "vendor.products.description_parts",
+      // "vendor.products.variants.inventory_items.inventory.in_stock",
+      // "vendor.products.brand.*",
+      // "vendor.products.categories.*",
+      // "vendor.products.tags.*",
+      "vendor.products.vendor.*",
+      //"vendor.products.size_chart.*",
+      //"vendor.products.artwork.*",
+      // "vendor.products.metadata"
+    ],
+    filters: {
+      id: [
+        // ID of the authenticated vendor admin
+        req.auth_context.actor_id
       ],
-      filters: {
-        id: [req.auth_context.actor_id]
-      }
-    });
+    },
+  })
+  res.json({
+    products: vendorAdmin.vendor.products
+  })
 
-    const vendorAdmin = vendorAdmins?.[0];
-
-    if (!vendorAdmin || !vendorAdmin.vendor) {
-      return res.status(404).json({
-        message: "Vendor not found",
-        products: [],
-        count: 0,
-        limit,
-        offset
-      });
-    }
-
-    // Get all products
-    const allProducts = vendorAdmin.vendor.products || [];
-    const totalCount = allProducts.length;
-
-    // Sort by created_at DESC (newest first)
-    const sortedProducts = [...allProducts].sort((a, b) => {
-      const dateA = new Date(a.created_at || 0).getTime();
-      const dateB = new Date(b.created_at || 0).getTime();
-      return dateB - dateA;
-    });
-
-    // Apply pagination manually
-    const paginatedProducts = sortedProducts.slice(offset, offset + limit);
-
-    res.json({
-      products: paginatedProducts,
-      count: totalCount,
-      limit,
-      offset
-    });
-
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    res.status(500).json({
-      message: "Failed to fetch products",
-      error: error?.message || "Unknown error",
-      products: [],
-      count: 0,
-      limit,
-      offset
-    });
-  }
 }
 
 export const POST = async (

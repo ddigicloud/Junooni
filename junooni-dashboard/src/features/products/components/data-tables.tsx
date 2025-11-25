@@ -200,7 +200,7 @@ export function DataTable({ data, columns, onDeleteProduct }: DataTableProps) {
                         )}
                   </TableHead>
                 ))}
-                <TableHead className="px-4 py-2 font-semibold text-left">Actions</TableHead>
+                {/* <TableHead className="px-4 py-2 font-semibold text-left">Actions</TableHead> */}
               </TableRow>
             ))}
           </TableHeader>
@@ -228,7 +228,7 @@ export function DataTable({ data, columns, onDeleteProduct }: DataTableProps) {
                       </Link>
                     </TableCell>
                   ))}
-                  <TableCell className="px-4 py-2">
+                  {/* <TableCell className="px-4 py-2">
                     <button
                       onClick={(e) => handleDeleteClick(e, row.original)}
                       className="p-2 text-red-500 transition-colors rounded-full hover:bg-red-50"
@@ -236,7 +236,7 @@ export function DataTable({ data, columns, onDeleteProduct }: DataTableProps) {
                     >
                       <Trash2 size={18} />
                     </button>
-                  </TableCell>
+                  </TableCell> */}
                 </TableRow>
               ))
             ) : (

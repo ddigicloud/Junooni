@@ -17,14 +17,19 @@ interface OrderLineItem {
   product: {
     id: string
     metadata?: {
-      cost_price?: number
-      fulfillment_type?: "creator_fulfillment" | "junooni_fulfillment"
+      fulfillment_type?: string
     }
-    vendor: Array<{  // Changed from 'vendors' to 'vendor'
+    vendor: Array<{
       id: string
       name: string
       metadata?: Record<string, any>
     }>
+  }
+  variant?: {
+    id: string
+    metadata?: {
+      cost_price?: number
+    }
   }
 }
 
@@ -33,6 +38,7 @@ interface EarningsCalculation {
   commissionAmount: number
   taxAmount: number
   tdsAmount: number
+  paymentProcessingFee: number
   netAmount: number
   commissionRate: number
   tdsPercentage: number
@@ -51,6 +57,106 @@ interface VendorEarningsReport {
   }>
 }
 
+/**
+ * Helper function to parse fulfillment type from metadata
+ * Handles various formats:
+ * - {"type":"JUNOONI-fulfillment"} -> junooni_fulfillment
+ * - {"type":"Creator-fulfilment"} -> creator_fulfillment
+ * - String that needs parsing
+ */
+function parseFulfillmentType(metadata?: any): "creator_fulfillment" | "junooni_fulfillment" {
+  let fulfillmentType: "creator_fulfillment" | "junooni_fulfillment" = "creator_fulfillment"
+  
+  if (!metadata?.fulfillment_type) {
+    return fulfillmentType
+  }
+
+  try {
+    let fulfillmentData = metadata.fulfillment_type
+    
+    // If it's a string, try to parse it as JSON
+    if (typeof fulfillmentData === 'string') {
+      try {
+        fulfillmentData = JSON.parse(fulfillmentData)
+      } catch (e) {
+        // If parsing fails, try to extract type using regex
+        const typeMatch = fulfillmentData.match(/"type"\s*:\s*"([^"]+)"/i)
+        if (typeMatch) {
+          fulfillmentData = { type: typeMatch[1] }
+        } else {
+          // Last resort: check if the string itself contains the keywords
+          const lowerStr = fulfillmentData.toLowerCase()
+          if (lowerStr.includes('junooni')) {
+            return "junooni_fulfillment"
+          } else if (lowerStr.includes('creator')) {
+            return "creator_fulfillment"
+          }
+          return fulfillmentType
+        }
+      }
+    }
+    
+    // Check the type field (case-insensitive)
+    if (fulfillmentData && typeof fulfillmentData === 'object' && fulfillmentData.type) {
+      const typeValue = fulfillmentData.type.toLowerCase()
+      
+      if (typeValue.includes('junooni')) {
+        fulfillmentType = "junooni_fulfillment"
+      } else if (typeValue.includes('creator')) {
+        fulfillmentType = "creator_fulfillment"
+      }
+    }
+  } catch (parseError) {
+    // Silent fail
+  }
+  
+  return fulfillmentType
+}
+
+/**
+ * Helper function to extract cost price from variant metadata
+ * Checks variant metadata first, then product metadata as fallback
+ */
+function extractCostPrice(variantMetadata?: any, productMetadata?: any): number {
+  // PRIORITY 1: Check variant metadata for cost_price (this is where it should be!)
+  if (variantMetadata?.cost_price !== undefined && variantMetadata?.cost_price !== null) {
+    const costPrice = Number(variantMetadata.cost_price)
+    if (!isNaN(costPrice) && costPrice >= 0) {
+      return costPrice
+    }
+  }
+  
+  // PRIORITY 2: Check product metadata as fallback
+  if (productMetadata?.cost_price !== undefined && productMetadata?.cost_price !== null) {
+    const costPrice = Number(productMetadata.cost_price)
+    if (!isNaN(costPrice) && costPrice >= 0) {
+      return costPrice
+    }
+  }
+  
+  // PRIORITY 3: Try payload_integration in product metadata
+  if (productMetadata?.payload_integration) {
+    try {
+      let payloadData = productMetadata.payload_integration
+      
+      if (typeof payloadData === 'string') {
+        payloadData = JSON.parse(payloadData)
+      }
+      
+      if (payloadData.base_cost !== undefined && payloadData.base_cost !== null) {
+        const baseCost = Number(payloadData.base_cost)
+        if (!isNaN(baseCost) && baseCost >= 0) {
+          return baseCost
+        }
+      }
+    } catch (e) {
+      // Silent fail
+    }
+  }
+  
+  return 0
+}
+
 class PayoutModuleService extends MedusaService({
   Payout,
   PayoutDetails,
@@ -62,39 +168,26 @@ class PayoutModuleService extends MedusaService({
    * Processes each item individually without grouping
    */
   async processOrderEarnings(orderId: string, lineItems: OrderLineItem[]): Promise<void> {
-    console.log(`🔄 Processing earnings for order ${orderId} with ${lineItems.length} items`)
-    
     // Check if this order has already been processed
     const existingDetails = await this.listPayoutDetails({
       order_id: orderId
     })
     
     if (existingDetails.length > 0) {
-      console.log(`⚠️ Order ${orderId} already has ${existingDetails.length} payout details. Skipping to prevent duplicates.`)
-      console.log(`Existing payout details:`, existingDetails.map(d => ({ id: d.id, order_item_id: d.order_item_id, vendor_id: d.payout })))
       return
     }
     
     // Process each item individually
     for (const item of lineItems) {
-      console.log(`📦 Processing item ${item.id} for product ${item.product_id}`)
-      console.log(`📦 Item vendor data:`, JSON.stringify(item.product.vendor, null, 2))
-      
       if (!item.product.vendor || !Array.isArray(item.product.vendor) || item.product.vendor.length === 0) {
-        console.warn(`⚠️ Item ${item.id} has no vendors, skipping`)
         continue
       }
 
-      console.log(`📦 Item ${item.id} has ${item.product.vendor.length} vendor(s)`)
-
       // Process each vendor for this item
-      for (const [vendorIndex, vendor] of item.product.vendor.entries()) {
+      for (const vendor of item.product.vendor) {
         if (!vendor || !vendor.id) {
-          console.warn(`⚠️ Invalid vendor data for item ${item.id} at index ${vendorIndex}, skipping`)
           continue
         }
-
-        console.log(`💰 Processing earnings for vendor ${vendor.id} on item ${item.id} (vendor ${vendorIndex + 1}/${item.product.vendor.length})`)
 
         // Check if this specific item-vendor combination already exists
         const existingItemDetail = await this.listPayoutDetails({
@@ -103,39 +196,17 @@ class PayoutModuleService extends MedusaService({
         })
 
         if (existingItemDetail.length > 0) {
-          console.log(`⚠️ Payout detail already exists for order ${orderId}, item ${item.id}. Skipping.`)
           continue
         }
 
         try {
-          // Parse fulfillment type from JSON string in metadata
-          let fulfillmentType: "creator_fulfillment" | "junooni_fulfillment" = "creator_fulfillment"
+          // ✅ FIX: Parse fulfillment type from PRODUCT metadata
+          const fulfillmentType = parseFulfillmentType(item.product.metadata)
           
-          if (item.product.metadata?.fulfillment_type) {
-            try {
-              const fulfillmentData = JSON.parse(item.product.metadata.fulfillment_type)
-              if (fulfillmentData.type === "Junooni-fulfillment") {
-                fulfillmentType = "junooni_fulfillment"
-              } else if (fulfillmentData.type === "Creator-fulfilment") {
-                fulfillmentType = "creator_fulfillment"
-              }
-            } catch (parseError) {
-              console.warn(`Failed to parse fulfillment_type for item ${item.id}:`, parseError)
-              // Use default fulfillmentType
-            }
-          }
+          // ✅ FIX: Extract cost price from VARIANT metadata (with product fallback)
+          const costPrice = extractCostPrice(item.variant?.metadata, item.product.metadata)
           
-          const costPrice = Number(item.product.metadata?.cost_price) || 0
           const itemTotal = item.unit_price * item.quantity
-          
-          console.log(`📋 Item details:`, {
-            itemId: item.id,
-            vendorId: vendor.id,
-            fulfillmentType,
-            costPrice,
-            itemTotal,
-            metadata: item.product.metadata
-          })
           
           // Calculate earnings for this specific item
           const earnings = await this.calculateEarningsFromOrder(
@@ -143,13 +214,6 @@ class PayoutModuleService extends MedusaService({
             fulfillmentType, 
             costPrice
           )
-          
-          console.log(`📊 Calculated earnings for item ${item.id}:`, {
-            itemTotal,
-            fulfillmentType,
-            netAmount: earnings.netAmount,
-            commissionRate: earnings.commissionRate
-          })
           
           // Create individual payout detail record for this item
           const payoutDetail = await this.createPayoutDetailForProduct({
@@ -164,15 +228,10 @@ class PayoutModuleService extends MedusaService({
             quantity: item.quantity,
           })
           
-          console.log(`📝 Created payout detail ${payoutDetail.id} for vendor ${vendor.id}, item ${item.id}`)
-          
           // Update vendor account balance for this item
           await this.addEarningsToVendorAccount(vendor.id, earnings.netAmount)
           
-          console.log(`✅ Successfully processed earnings for vendor ${vendor.id} on item ${item.id}`)
-          
         } catch (error) {
-          console.error(`❌ Error processing earnings for vendor ${vendor.id} on item ${item.id}:`, error)
           throw new MedusaError(
             MedusaError.Types.INVALID_DATA,
             `Failed to process earnings for vendor ${vendor.id} on item ${item.id}: ${error.message}`
@@ -180,8 +239,6 @@ class PayoutModuleService extends MedusaService({
         }
       }
     }
-    
-    console.log(`🎉 Successfully processed all earnings for order ${orderId}`)
   }
 
   /**
@@ -198,8 +255,6 @@ class PayoutModuleService extends MedusaService({
     sellingPrice: number
     quantity: number
   }): Promise<PayoutDetails> {
-    console.log(`🔨 Creating payout detail for vendor ${params.vendorId}, item ${params.orderItemId}`)
-    
     // Get or create vendor payout account
     const vendorPayout = await this.getOrCreateVendorPayout(params.vendorId)
     
@@ -236,8 +291,6 @@ class PayoutModuleService extends MedusaService({
 
     const vendorPayout = await this.getOrCreateVendorPayout(vendorId)
 
-    console.log(`💳 Updating balance for vendor ${vendorId}: ${vendorPayout.current_balance} + ${amount}`)
-
     return await this.updatePayouts({
       id: vendorPayout.id,
       current_balance: vendorPayout.current_balance + amount,
@@ -255,11 +308,9 @@ class PayoutModuleService extends MedusaService({
     const existingPayout = await this.getVendorPayout(vendorId)
     
     if (existingPayout) {
-      console.log(`📋 Found existing payout account for vendor ${vendorId}`)
       return existingPayout
     }
 
-    console.log(`🆕 Creating new payout account for vendor ${vendorId}`)
     return await this.createPayouts({
       vendor_id: vendorId,
       current_balance: 0,
@@ -269,7 +320,7 @@ class PayoutModuleService extends MedusaService({
       total_pending_payout: 0,
       total_orders: 0,
       avg_order_value: 0,
-      minimum_payout_amount: 1000, // ₹10.00
+      minimum_payout_amount: 1000,
       payout_schedule: "weekly",
       is_payout_enabled: true,
       hold_payouts: false,
@@ -285,7 +336,6 @@ class PayoutModuleService extends MedusaService({
       vendor_id: vendorId,
     })
 
-    // Return the account record (should be only one per vendor)
     return payouts[0] || null
   }
 
@@ -299,6 +349,49 @@ class PayoutModuleService extends MedusaService({
 
   /**
    * Calculate earnings from order item
+   * 
+   * CORRECT CALCULATION LOGIC:
+   * 
+   * ═══════════════════════════════════════════════════════════════════
+   * JUNOONI FULFILLMENT (Creator pays Junooni for blank + printing)
+   * ═══════════════════════════════════════════════════════════════════
+   * Example: Product listed for ₹700 (tax inclusive), Creator cost = ₹400
+   * 
+   * Step 1: Extract GST (5% for apparel < ₹1000)
+   *   GST = ₹700 × 5/105 = ₹33.33
+   *   Net Revenue (ex-GST) = ₹700 - ₹33.33 = ₹666.67
+   * 
+   * Step 2: Deduct Razorpay fee (2% + 18% GST on fee = 2.36% total)
+   *   Razorpay Fee = ₹700 × 0.0236 = ₹16.52
+   *   Net after gateway = ₹666.67 - ₹16.52 = ₹650.15
+   * 
+   * Step 3: Deduct creator cost (what creator pays Junooni)
+   *   Creator Profit = ₹650.15 - ₹400 = ₹250.15
+   * 
+   * Step 4: Deduct TDS (1% of creator profit)
+   *   TDS = ₹250.15 × 0.01 = ₹2.50
+   *   Final Payout = ₹250.15 - ₹2.50 = ₹247.65
+   * 
+   * ═══════════════════════════════════════════════════════════════════
+   * CREATOR FULFILLMENT (Creator handles everything, Junooni takes 10%)
+   * ═══════════════════════════════════════════════════════════════════
+   * Example: Product listed for ₹700 (tax inclusive)
+   * 
+   * Step 1: Deduct Razorpay fee (2% + 18% GST = 2.36% total)
+   *   Razorpay Fee = ₹700 × 0.0236 = ₹16.52
+   *   After gateway = ₹700 - ₹16.52 = ₹683.48
+   * 
+   * Step 2: Creator gets 90% of amount after gateway
+   *   Creator Share = ₹683.48 × 0.90 = ₹615.13
+   * 
+   * Step 3: Deduct TDS (1% of creator share)
+   *   TDS = ₹615.13 × 0.01 = ₹6.15
+   *   Final Payout = ₹615.13 - ₹6.15 = ₹608.98
+   * 
+   * Note: GST is NOT deducted separately in creator fulfillment as
+   * creator handles their own tax compliance.
+   * 
+   * All amounts are kept to 2 decimal places for accurate accounting.
    */
   async calculateEarningsFromOrder(
     orderTotal: number, 
@@ -312,57 +405,84 @@ class PayoutModuleService extends MedusaService({
       )
     }
 
-    let commissionAmount = 0
+    let vendorShare = 0
     let commissionRate = 0
+    let paymentProcessingFee = 0
+    let taxAmount = 0
+
+    // Helper to round to 2 decimal places
+    const round2 = (num: number) => Math.round(num * 100) / 100
+
+    // Razorpay fee: 2% + 18% GST on fee = 2.36% of gross amount
+    const RAZORPAY_FEE_RATE = 0.0236
+    paymentProcessingFee = round2(orderTotal * RAZORPAY_FEE_RATE)
 
     switch (fulfillmentType) {
       case "creator_fulfillment":
-        commissionRate = 70 // 70%
-        commissionAmount = Math.floor(orderTotal * 0.70)
+        // Creator Fulfillment: ₹700 → Razorpay ₹16.52 → ₹683.48 → 90% = ₹615.13
+        const afterGatewayCreator = orderTotal - paymentProcessingFee
+        vendorShare = round2(afterGatewayCreator * 0.90)
+        commissionRate = 90
+        
+        // GST not separately extracted for creator fulfillment
+        taxAmount = 0
         break
 
       case "junooni_fulfillment":
-        if (!costPrice) {
+        if (costPrice === undefined || costPrice === null) {
           throw new MedusaError(
             MedusaError.Types.INVALID_DATA,
             "Cost price is required for Junooni fulfillment"
           )
         }
-        if (costPrice > orderTotal) {
+
+        // Step 1: Extract GST (5% for apparel < ₹1000, adjust as needed)
+        // GST = orderTotal × 5/105 (GST included in selling price)
+        taxAmount = round2(orderTotal * 5 / 105)
+        const netRevenue = orderTotal - taxAmount  // Ex-GST amount
+        
+        // Step 2: Net after gateway fee
+        const netAfterGateway = netRevenue - paymentProcessingFee
+        
+        if (costPrice > netAfterGateway) {
           throw new MedusaError(
             MedusaError.Types.INVALID_DATA,
-            "Cost price cannot exceed order total"
+            `Cost price (₹${costPrice}) cannot exceed net amount after fees (₹${round2(netAfterGateway)})`
           )
         }
-        commissionAmount = orderTotal - costPrice
-        commissionRate = Math.round(((orderTotal - costPrice) / orderTotal) * 100)
+        
+        // Step 3: Creator profit = Net after gateway - Cost price
+        vendorShare = round2(netAfterGateway - costPrice)
+        
+        // Calculate commission rate for reporting purposes
+        commissionRate = orderTotal > 0 
+          ? Math.round((vendorShare / orderTotal) * 100) 
+          : 0
         break
 
       default:
         throw new MedusaError(
           MedusaError.Types.INVALID_DATA,
-          "Invalid fulfillment type"
+          `Invalid fulfillment type: ${fulfillmentType}`
         )
     }
 
-    // Calculate tax (18% GST on commission)
-    const taxAmount = Math.floor(commissionAmount * 0.18)
-    
-    // Calculate TDS (1% on commission)
+    // Calculate TDS (1% of vendor share/profit)
     const tdsPercentage = 1
-    const tdsAmount = Math.floor(commissionAmount * 0.01)
+    const tdsAmount = round2(vendorShare * 0.01)
     
-    // Net amount after TDS deduction
-    const netAmount = commissionAmount - tdsAmount
+    // Net amount = Vendor share - TDS
+    const netAmount = round2(vendorShare - tdsAmount)
 
     return {
-      grossAmount: orderTotal,
-      commissionAmount,
-      taxAmount,
-      tdsAmount,
-      netAmount,
-      commissionRate,
-      tdsPercentage,
+      grossAmount: orderTotal,           // Total amount customer paid
+      commissionAmount: vendorShare,     // Creator profit/share before TDS
+      taxAmount,                         // GST extracted (only for Junooni fulfillment)
+      tdsAmount,                         // TDS deducted from creator
+      paymentProcessingFee,              // Razorpay gateway fee
+      netAmount,                         // Final payout to creator
+      commissionRate,                    // Percentage for reference
+      tdsPercentage,                     // TDS rate (1%)
     }
   }
 
@@ -412,16 +532,14 @@ class PayoutModuleService extends MedusaService({
       )
     }
 
-    // Create payout transaction record
     const payoutTransaction = await this.createPayoutDetails({
-      amount: -amount, // Negative for payout
+      amount: -amount,
       type: "payout",
       status: "processing",
       reason: reason,
       payout: vendorPayout.id,
     })
 
-    // Update vendor account balance
     await this.updatePayouts({
       id: vendorPayout.id,
       current_balance: vendorPayout.current_balance - amount,
@@ -454,7 +572,6 @@ class PayoutModuleService extends MedusaService({
       )
     }
 
-    // Create adjustment transaction record
     const adjustmentTransaction = await this.createPayoutDetails({
       amount: amount,
       type: "adjustment",
@@ -463,7 +580,6 @@ class PayoutModuleService extends MedusaService({
       payout: vendorPayout.id,
     })
 
-    // Update vendor account balance
     await this.updatePayouts({
       id: vendorPayout.id,
       current_balance: newBalance,
@@ -498,9 +614,12 @@ class PayoutModuleService extends MedusaService({
       updateData.notes = processorResponse
     }
 
-    // If payout failed, restore balance to vendor account
     if (status === "failed" && payoutDetail.type === "payout") {
-      const vendorPayout = await this.retrievePayouts(payoutDetail.payout)
+      const payoutId = typeof payoutDetail.payout === "string"
+        ? payoutDetail.payout
+        : (payoutDetail.payout && (payoutDetail.payout as any).id);
+
+      const vendorPayout = payoutId ? await this.retrievePayout(payoutId) : null;
       if (vendorPayout) {
         await this.updatePayouts({
           id: vendorPayout.id,
@@ -548,7 +667,6 @@ class PayoutModuleService extends MedusaService({
       }
     }
 
-    // Build filters for transaction details
     const filters: any = { payout: vendorPayout.id }
     if (options.orderId) filters.order_id = options.orderId
     if (options.type) filters.type = options.type
@@ -559,7 +677,6 @@ class PayoutModuleService extends MedusaService({
         take: options.limit || 50,
         skip: options.offset || 0,
         order: { created_at: "DESC" },
-        // Only select the fields defined in your model
         select: [
           "id",
           "order_id", 
@@ -621,7 +738,6 @@ class PayoutModuleService extends MedusaService({
 
     const transactions = await this.listPayoutDetails(filters)
 
-    // Group by product
     const productMap = new Map()
     
     transactions.forEach(transaction => {
@@ -700,7 +816,7 @@ class PayoutModuleService extends MedusaService({
     failed: number
     results: Array<{ vendorId: string, success: boolean, error?: string }>
   }> {
-    const batch = await this.retrievePayoutBatches(batchId)
+    const batch = await this.retrievePayoutBatch(batchId)
     if (!batch) {
       throw new MedusaError(
         MedusaError.Types.NOT_FOUND,
@@ -719,7 +835,6 @@ class PayoutModuleService extends MedusaService({
     let failedCount = 0
     const results: Array<{ vendorId: string, success: boolean, error?: string }> = []
 
-    // Map payment methods between batch and payout models
     const paymentMethodMap: Record<string, "bank_transfer" | "paypal" | "razorpay" | "manual"> = {
       "stripe": "razorpay",
       "bank_transfer": "bank_transfer",
@@ -769,247 +884,240 @@ class PayoutModuleService extends MedusaService({
   }
 
   /**
- * Process order refund - creates negative payout details to offset original earnings
- */
-async processOrderRefund(
-  orderId: string, 
-  refundReason: string = "Order refunded",
-  partialRefundItems?: Array<{
-    order_item_id: string
-    refund_amount?: number
-  }>
-): Promise<{
-  refundDetails: PayoutDetails[]
-  vendorsAffected: number
-  totalRefundAmount: number
-}> {
-  console.log(`🔄 Processing refund for order ${orderId}`)
-
-  // Find existing earnings for this order
-  let existingEarnings = await this.listPayoutDetails({
-    order_id: orderId,
-    type: "earning",
-    status: "completed",
-  })
-
-  if (existingEarnings.length === 0) {
-    throw new MedusaError(
-      MedusaError.Types.NOT_FOUND,
-      `No completed earnings found for order ${orderId}`
-    )
-  }
-
-  // Filter for partial refunds if specified
-  if (partialRefundItems && partialRefundItems.length > 0) {
-    const itemIdsToRefund = partialRefundItems.map(item => item.order_item_id)
-    existingEarnings = existingEarnings.filter(earning => 
-      earning.order_item_id && itemIdsToRefund.includes(earning.order_item_id)
-    )
-  }
-
-  // Check for existing refunds to avoid duplicates
-  const existingRefunds = await this.listPayoutDetails({
-    order_id: orderId,
-    type: "refund",
-  })
-
-  if (existingRefunds.length > 0) {
-    const refundedItemIds = existingRefunds
-      .map(refund => refund.order_item_id)
-      .filter(Boolean)
-
-    existingEarnings = existingEarnings.filter(earning => 
-      !earning.order_item_id || !refundedItemIds.includes(earning.order_item_id)
-    )
-  }
-
-  if (existingEarnings.length === 0) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      `No earnings available to refund for order ${orderId}`
-    )
-  }
-
-  const refundDetails: PayoutDetails[] = []
-  let totalRefundAmount = 0
-  const vendorBalanceUpdates = new Map<string, number>()
-
-  // Create refund details for each earning
-  for (const earning of existingEarnings) {
-    console.log(`💸 Creating refund for earning ${earning.id}`)
-
-    const refundDetail = await this.createPayoutDetails({
-      order_id: earning.order_id,
-      order_item_id: earning.order_item_id,
-      product_id: earning.product_id,
-      amount: -earning.amount, // Negative amount
-      tax_amount: -earning.tax_amount,
-      tax_type: earning.tax_type,
-      tds_percentage: earning.tds_percentage,
-      tds_amount: -earning.tds_amount,
-      type: "refund",
-      fulfillment_type: earning.fulfillment_type,
-      cost_price: earning.cost_price,
-      commission_rate: earning.commission_rate,
-      selling_price: earning.selling_price,
+   * Process order refund - creates negative payout details to offset original earnings
+   */
+  async processOrderRefund(
+    orderId: string, 
+    refundReason: string = "Order refunded",
+    partialRefundItems?: Array<{
+      order_item_id: string
+      refund_amount?: number
+    }>
+  ): Promise<{
+    refundDetails: PayoutDetails[]
+    vendorsAffected: number
+    totalRefundAmount: number
+  }> {
+    let existingEarnings = await this.listPayoutDetails({
+      order_id: orderId,
+      type: "earning",
       status: "completed",
-      reason: `${refundReason} - Offsetting earning ${earning.id}`,
-      notes: JSON.stringify({
-        original_earning_id: earning.id,
-        refund_type: partialRefundItems ? "partial" : "full",
-        original_amount: earning.amount,
-        refunded_at: new Date().toISOString(),
-      }),
-      payout: earning.payout,
     })
 
-    refundDetails.push(refundDetail)
-    totalRefundAmount += Math.abs(earning.amount)
-
-    // Track balance updates per vendor
-    const currentUpdate = vendorBalanceUpdates.get(earning.payout) || 0
-    vendorBalanceUpdates.set(earning.payout, currentUpdate + Math.abs(earning.amount))
-  }
-
-  // Update vendor account balances
-  for (const [payoutId, refundAmount] of vendorBalanceUpdates.entries()) {
-    const vendorPayout = await this.retrievePayout(payoutId)
-    if (vendorPayout) {
-      await this.updatePayouts({
-        id: payoutId,
-        current_balance: vendorPayout.current_balance - refundAmount,
-        total_earned: vendorPayout.total_earned - refundAmount,
-        avg_order_value: vendorPayout.total_orders > 0 
-          ? (vendorPayout.total_earned - refundAmount) / vendorPayout.total_orders 
-          : 0,
-      })
-      console.log(`💳 Updated vendor balance for ${payoutId}: -${refundAmount}`)
+    if (existingEarnings.length === 0) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `No completed earnings found for order ${orderId}`
+      )
     }
-  }
 
-  console.log(`✅ Processed refund for order ${orderId}: ${refundDetails.length} details, ${totalRefundAmount} total`)
+    if (partialRefundItems && partialRefundItems.length > 0) {
+      const itemIdsToRefund = partialRefundItems.map(item => item.order_item_id)
+      existingEarnings = existingEarnings.filter(earning => 
+        earning.order_item_id && itemIdsToRefund.includes(earning.order_item_id)
+      )
+    }
 
-  return {
-    refundDetails,
-    vendorsAffected: vendorBalanceUpdates.size,
-    totalRefundAmount,
-  }
-}
+    const existingRefunds = await this.listPayoutDetails({
+      order_id: orderId,
+      type: "refund",
+    })
 
-/**
- * Check if an order has already been refunded
- */
-async isOrderRefunded(orderId: string): Promise<{
-  isRefunded: boolean
-  hasPartialRefunds: boolean
-  refundDetails: PayoutDetails[]
-  totalRefundAmount: number
-}> {
-  const refundDetails = await this.listPayoutDetails({
-    order_id: orderId,
-    type: "refund",
-  })
+    if (existingRefunds.length > 0) {
+      const refundedItemIds = existingRefunds
+        .map(refund => refund.order_item_id)
+        .filter(Boolean)
 
-  const totalRefundAmount = refundDetails.reduce((sum, detail) => 
-    sum + Math.abs(detail.amount), 0
-  )
+      existingEarnings = existingEarnings.filter(earning => 
+        !earning.order_item_id || !refundedItemIds.includes(earning.order_item_id)
+      )
+    }
 
-  // Check if there are also earnings for comparison
-  const earnings = await this.listPayoutDetails({
-    order_id: orderId,
-    type: "earning",
-  })
+    if (existingEarnings.length === 0) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        `No earnings available to refund for order ${orderId}`
+      )
+    }
 
-  const totalEarningsAmount = earnings.reduce((sum, detail) => sum + detail.amount, 0)
+    const refundDetails: PayoutDetails[] = []
+    let totalRefundAmount = 0
+    const vendorBalanceUpdates = new Map<string, number>()
 
-  return {
-    isRefunded: refundDetails.length > 0,
-    hasPartialRefunds: totalRefundAmount > 0 && totalRefundAmount < totalEarningsAmount,
-    refundDetails,
-    totalRefundAmount,
-  }
-}
+    for (const earning of existingEarnings) {
+      // Resolve payout id if earning.payout is an object (some relations may populate the full object)
+      const payoutRef = typeof earning.payout === "string"
+        ? earning.payout
+        : (earning.payout && (earning.payout as any).id) || undefined
 
-/**
- * Get refund summary for a vendor
- */
-async getVendorRefundSummary(vendorId: string, options: {
-  startDate?: Date
-  endDate?: Date
-  orderId?: string
-} = {}): Promise<{
-  totalRefunds: number
-  totalRefundAmount: number
-  refundsByOrder: Array<{
-    orderId: string
-    refundAmount: number
-    refundCount: number
-    refundDate: Date
-  }>
-}> {
-  const vendorPayout = await this.getVendorPayout(vendorId)
-  if (!vendorPayout) {
+      const refundDetail = await this.createPayoutDetails({
+        order_id: earning.order_id,
+        order_item_id: earning.order_item_id,
+        product_id: earning.product_id,
+        amount: -earning.amount,
+        tax_amount: -earning.tax_amount,
+        tax_type: earning.tax_type,
+        tds_percentage: earning.tds_percentage,
+        tds_amount: -earning.tds_amount,
+        type: "refund",
+        fulfillment_type: earning.fulfillment_type,
+        cost_price: earning.cost_price,
+        commission_rate: earning.commission_rate,
+        selling_price: earning.selling_price,
+        status: "completed",
+        reason: `${refundReason} - Offsetting earning ${earning.id}`,
+        notes: JSON.stringify({
+          original_earning_id: earning.id,
+          refund_type: partialRefundItems ? "partial" : "full",
+          original_amount: earning.amount,
+          refunded_at: new Date().toISOString(),
+        }),
+        payout: payoutRef,
+      })
+
+      refundDetails.push(refundDetail)
+      totalRefundAmount += Math.abs(earning.amount)
+
+      const payoutId = payoutRef
+      if (!payoutId) {
+        // If we don't have a payout id, skip updating balances for this entry
+      } else {
+        const currentUpdate = vendorBalanceUpdates.get(payoutId) || 0
+        vendorBalanceUpdates.set(payoutId, currentUpdate + Math.abs(earning.amount))
+      }
+    }
+
+    for (const [payoutId, refundAmount] of vendorBalanceUpdates.entries()) {
+      const vendorPayout = await this.retrievePayout(payoutId)
+      if (vendorPayout) {
+        await this.updatePayouts({
+          id: payoutId,
+          current_balance: vendorPayout.current_balance - refundAmount,
+          total_earned: vendorPayout.total_earned - refundAmount,
+          avg_order_value: vendorPayout.total_orders > 0 
+            ? (vendorPayout.total_earned - refundAmount) / vendorPayout.total_orders 
+            : 0,
+        })
+      }
+    }
+
     return {
-      totalRefunds: 0,
-      totalRefundAmount: 0,
-      refundsByOrder: [],
+      refundDetails,
+      vendorsAffected: vendorBalanceUpdates.size,
+      totalRefundAmount,
     }
   }
 
-  const filters: any = { 
-    payout: vendorPayout.id,
-    type: "refund"
-  }
-  
-  if (options.orderId) filters.order_id = options.orderId
-
-  const refundDetails = await this.listPayoutDetails(filters)
-
-  // Filter by date range if specified
-  let filteredRefunds = refundDetails
-  if (options.startDate || options.endDate) {
-    filteredRefunds = refundDetails.filter(refund => {
-      const refundDate = new Date(refund.created_at)
-      if (options.startDate && refundDate < options.startDate) return false
-      if (options.endDate && refundDate > options.endDate) return false
-      return true
+  /**
+   * Check if an order has already been refunded
+   */
+  async isOrderRefunded(orderId: string): Promise<{
+    isRefunded: boolean
+    hasPartialRefunds: boolean
+    refundDetails: PayoutDetails[]
+    totalRefundAmount: number
+  }> {
+    const refundDetails = await this.listPayoutDetails({
+      order_id: orderId,
+      type: "refund",
     })
+
+    const totalRefundAmount = refundDetails.reduce((sum, detail) => 
+      sum + Math.abs(detail.amount), 0
+    )
+
+    const earnings = await this.listPayoutDetails({
+      order_id: orderId,
+      type: "earning",
+    })
+
+    const totalEarningsAmount = earnings.reduce((sum, detail) => sum + detail.amount, 0)
+
+    return {
+      isRefunded: refundDetails.length > 0,
+      hasPartialRefunds: totalRefundAmount > 0 && totalRefundAmount < totalEarningsAmount,
+      refundDetails,
+      totalRefundAmount,
+    }
   }
 
-  // Group by order
-  const refundsByOrder = new Map()
-  
-  filteredRefunds.forEach(refund => {
-    const orderId = refund.order_id
-    if (!refundsByOrder.has(orderId)) {
-      refundsByOrder.set(orderId, {
-        orderId,
-        refundAmount: 0,
-        refundCount: 0,
-        refundDate: refund.created_at,
+  /**
+   * Get refund summary for a vendor
+   */
+  async getVendorRefundSummary(vendorId: string, options: {
+    startDate?: Date
+    endDate?: Date
+    orderId?: string
+  } = {}): Promise<{
+    totalRefunds: number
+    totalRefundAmount: number
+    refundsByOrder: Array<{
+      orderId: string
+      refundAmount: number
+      refundCount: number
+      refundDate: Date
+    }>
+  }> {
+    const vendorPayout = await this.getVendorPayout(vendorId)
+    if (!vendorPayout) {
+      return {
+        totalRefunds: 0,
+        totalRefundAmount: 0,
+        refundsByOrder: [],
+      }
+    }
+
+    const filters: any = { 
+      payout: vendorPayout.id,
+      type: "refund"
+    }
+    
+    if (options.orderId) filters.order_id = options.orderId
+
+    const refundDetails = await this.listPayoutDetails(filters)
+
+    let filteredRefunds = refundDetails
+    if (options.startDate || options.endDate) {
+      filteredRefunds = refundDetails.filter(refund => {
+        const refundDate = new Date(refund.created_at)
+        if (options.startDate && refundDate < options.startDate) return false
+        if (options.endDate && refundDate > options.endDate) return false
+        return true
       })
     }
+
+    const refundsByOrder = new Map()
     
-    const orderRefund = refundsByOrder.get(orderId)
-    orderRefund.refundAmount += Math.abs(refund.amount)
-    orderRefund.refundCount += 1
-    
-    // Use the latest refund date
-    if (refund.created_at > orderRefund.refundDate) {
-      orderRefund.refundDate = refund.created_at
+    filteredRefunds.forEach(refund => {
+      const orderId = refund.order_id
+      if (!refundsByOrder.has(orderId)) {
+        refundsByOrder.set(orderId, {
+          orderId,
+          refundAmount: 0,
+          refundCount: 0,
+          refundDate: refund.created_at,
+        })
+      }
+      
+      const orderRefund = refundsByOrder.get(orderId)
+      orderRefund.refundAmount += Math.abs(refund.amount)
+      orderRefund.refundCount += 1
+      
+      if (refund.created_at > orderRefund.refundDate) {
+        orderRefund.refundDate = refund.created_at
+      }
+    })
+
+    const totalRefundAmount = filteredRefunds.reduce((sum, detail) => 
+      sum + Math.abs(detail.amount), 0
+    )
+
+    return {
+      totalRefunds: filteredRefunds.length,
+      totalRefundAmount,
+      refundsByOrder: Array.from(refundsByOrder.values()),
     }
-  })
-
-  const totalRefundAmount = filteredRefunds.reduce((sum, detail) => 
-    sum + Math.abs(detail.amount), 0
-  )
-
-  return {
-    totalRefunds: filteredRefunds.length,
-    totalRefundAmount,
-    refundsByOrder: Array.from(refundsByOrder.values()),
   }
-}
 
   /**
    * Hold or release vendor payouts
@@ -1048,7 +1156,6 @@ async getVendorRefundSummary(vendorId: string, options: {
       )
     }
 
-    // Filter by date range
     let filteredTransactions = transactions
     if (options.startDate || options.endDate) {
       filteredTransactions = transactions.filter(transaction => {
@@ -1059,7 +1166,6 @@ async getVendorRefundSummary(vendorId: string, options: {
       })
     }
 
-    // Product breakdown
     const productMap = new Map()
     filteredTransactions
       .filter(t => t.type === "earning" && t.product_id)
@@ -1088,7 +1194,6 @@ async getVendorRefundSummary(vendorId: string, options: {
     }
   }
 
-  // Private helper methods
   private getCurrentPayoutPeriod(): string {
     const now = new Date()
     const year = now.getFullYear()
@@ -1104,19 +1209,16 @@ async getVendorRefundSummary(vendorId: string, options: {
 
     switch (schedule) {
       case "weekly":
-        // Next Friday
         const daysUntilFriday = (5 - now.getDay() + 7) % 7 || 7
         nextPayout.setDate(now.getDate() + daysUntilFriday)
         break
       
       case "biweekly":
-        // Every other Friday
         const daysUntilFridayBi = (5 - now.getDay() + 7) % 7 || 7
         nextPayout.setDate(now.getDate() + daysUntilFridayBi + 7)
         break
       
       case "monthly":
-        // Last Friday of next month
         const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
         const lastDayOfNextMonth = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0)
         const lastFridayOfNextMonth = new Date(lastDayOfNextMonth)
@@ -1124,7 +1226,7 @@ async getVendorRefundSummary(vendorId: string, options: {
         return lastFridayOfNextMonth
     }
 
-    nextPayout.setHours(17, 0, 0, 0) // 5 PM
+    nextPayout.setHours(17, 0, 0, 0)
     return nextPayout
   }
 }

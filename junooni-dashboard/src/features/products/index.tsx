@@ -11,7 +11,7 @@ import ChatwootWidget from '@/components/ChatwootWidget'
 import { ProductsPrimaryButtons, ProductsPrimaryButtonsHandle } from './components/ProductsPrimaryButtons'
 import ProductsProvider from './context/products-context'
 import { Product } from './context/product-modules/types'
-import Junoonilogo from '../../assets/junooni_logo_brand_color.png'
+import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 import { useEffect, useState, useRef } from 'react'
 import { Package, Plus, AlertTriangle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -46,8 +46,9 @@ const validateToken = (): boolean => {
   
   const now = Date.now();
   const tokenAge = now - parseInt(tokenTimestamp);
-  const ONE_HOUR = 60 * 60 * 1000;
+  const ONE_HOUR = 60 * 60 * 1000; // 1 hour in milliseconds
   
+  // If token is older than 1 hour, clear it
   if (tokenAge > ONE_HOUR) {
     localStorage.removeItem("vendorToken");
     localStorage.removeItem("vendorTokenTimestamp");
@@ -82,7 +83,8 @@ const Pagination = ({
   const getPageNumbers = (): (number | string)[] => {
     const pages: (number | string)[] = [];
     
-    const isMobile = window.innerWidth < 640;
+    // For mobile screens, show fewer pages
+    const isMobile = window.innerWidth < 640; // sm breakpoint
     const maxVisiblePages = isMobile ? 3 : 5;
     
     if (totalPages <= maxVisiblePages) {
@@ -91,6 +93,7 @@ const Pagination = ({
       }
     } else {
       if (isMobile) {
+        // Mobile: Show current page and adjacent pages only
         if (currentPage <= 2) {
           pages.push(1, 2);
           if (totalPages > 2) pages.push('...');
@@ -103,6 +106,7 @@ const Pagination = ({
           pages.push('...');
         }
       } else {
+        // Desktop: Show more pages
         if (currentPage <= 3) {
           for (let i = 1; i <= 4; i++) {
             pages.push(i);
@@ -132,8 +136,27 @@ const Pagination = ({
 
   return (
     <div className="w-full border-t" style={{ borderColor: `${BRAND.primary}11` }}>
+      {/* Mobile-first responsive layout */}
       <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-4">
         
+        {/* Items per page selector - Full width on mobile */}
+        {/* <div className="flex items-center justify-center gap-2 text-xs sm:justify-start sm:text-sm">
+          <span className="text-gray-600 whitespace-nowrap">Show</span>
+          <Select value={itemsPerPage.toString()} onValueChange={(value) => onItemsPerPageChange(parseInt(value))}>
+            <SelectTrigger className="w-16 text-xs h-7 sm:w-20 sm:h-8 sm:text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-gray-600 whitespace-nowrap">per page</span>
+        </div> */}
+
         {/* Page info - Center on mobile */}
         <div className="text-xs text-center text-gray-600 sm:text-sm">
           <span className="inline sm:hidden">
@@ -156,6 +179,7 @@ const Pagination = ({
             <ChevronLeft className="w-3 h-3 sm:h-4 sm:w-4" />
           </Button>
 
+          {/* Page numbers with mobile-optimized display */}
           <div className="flex items-center gap-1 max-w-[200px] overflow-hidden">
             {getPageNumbers().map((page, index) => (
               page === '...' ? (
@@ -196,17 +220,11 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [totalCount, setTotalCount] = useState(0)
-  const [statusCounts, setStatusCounts] = useState({
-    published: 0,
-    draft: 0,
-    categories: 0
-  })
   const popupButtonsRef = useRef<ProductsPrimaryButtonsHandle>(null);
   
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+ const [currentPage, setCurrentPage] = useState(1)
+const [itemsPerPage, setItemsPerPage] = useState(10)
   
   const { toast } = useToast();
 
@@ -226,7 +244,7 @@ export default function Products() {
     }
   }, []);
 
-  // Fetch products with server-side pagination
+  // Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       const token = localStorage.getItem("vendorToken");
@@ -234,27 +252,20 @@ export default function Products() {
       setError(null);
       
       try {
-        const offset = (currentPage - 1) * itemsPerPage;
-        
-        const response = await fetch(
-          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products?limit=${itemsPerPage}&offset=${offset}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            }
-          }
-        );
+        const response = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         if (!response.ok) {
           const responseBody = await response.json();
           throw new Error(`HTTP error! Status: ${response.status}, Message: ${responseBody.message}`);
         }
 
-        const data = await response.json();
-        setProducts(data.products || []);
-        setTotalCount(data.count || 0);
-        
+        const responseBody = await response.json();
+        setProducts(responseBody.products || []);
       } catch (error) {
         setError(error instanceof Error ? error.message : "Failed to fetch products");
         toast({
@@ -268,94 +279,53 @@ export default function Products() {
     };
 
     fetchProducts();
-  }, [currentPage, itemsPerPage]); // Refetch when page changes
-
-  // Fetch stats separately (only once)
-  useEffect(() => {
-    const fetchStats = async () => {
-      const token = localStorage.getItem("vendorToken");
-      
-      try {
-        // Fetch all products just for stats calculation
-        // You could also create a dedicated backend endpoint for stats
-        const response = await fetch(
-          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products?limit=1000`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            }
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          const allProducts = data.products || [];
-          
-          setStatusCounts({
-            published: allProducts.filter((p: Product) => p.status === "published").length,
-            draft: allProducts.filter((p: Product) => p.status === "draft").length,
-            categories: new Set(allProducts.map((p: Product) => p.category)).size || 0
-          });
-        }
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-      }
-    };
-
-    fetchStats();
-  }, []); // Only fetch once on mount
+  }, []);
 
   const handleDeleteProduct = async (productId: string) => {
-    const token = localStorage.getItem("vendorToken");
-    
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products/${productId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          }
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to delete product");
+  const token = localStorage.getItem("vendorToken");
+  
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products/${productId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       }
+    );
 
-      // Remove the product from state
-      setProducts((prevProducts) => 
-        prevProducts.filter((product) => product.id !== productId)
-      );
-      
-      // Update total count
-      setTotalCount(prev => prev - 1);
-
-      toast({
-        title: "Success",
-        description: "Product deleted successfully",
-        variant: "default",
-      });
-
-      // If we deleted the last item on the current page and we're not on page 1
-      if (products.length === 1 && currentPage > 1) {
-        setCurrentPage(currentPage - 1);
-      } else {
-        // Refetch current page to fill the gap
-        window.location.reload(); // Or implement a better refetch
-      }
-    } catch (error) {
-      console.error("Error deleting product:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete product",
-        variant: "destructive",
-      });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to delete product");
     }
-  };
+
+    // Remove the product from state
+    setProducts((prevProducts) => 
+      prevProducts.filter((product) => product.id !== productId)
+    );
+
+    // Show success message
+    toast({
+      title: "Success",
+      description: "Product deleted successfully",
+      variant: "default",
+    });
+
+    // If we deleted the last item on the current page, go to previous page
+    if (paginatedProducts.length === 1 && currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to delete product",
+      variant: "destructive",
+    });
+  }
+};
 
   // Reset to first page when items per page changes
   useEffect(() => {
@@ -363,7 +333,10 @@ export default function Products() {
   }, [itemsPerPage]);
 
   // Calculate pagination values
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProducts = products.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -376,341 +349,369 @@ export default function Products() {
   };
 
   return (
-    <div
-      className="flex flex-col min-h-screen overflow-x-hidden"
-      style={{
-        background: `radial-gradient(circle at 15% 50%, ${BRAND.background}44, transparent 25%), 
-                     radial-gradient(circle at 85% 30%, ${BRAND.light}22, transparent 25%)`,
-        backgroundColor: "white",
-        color: BRAND.textPrimary,
-      }}
-    >
-      <ProductsProvider>
-        <div className="flex flex-1 overflow-x-hidden">
-          <div className="flex flex-col flex-1 min-w-0 overflow-x-hidden">
-            <Header
-              className="flex-shrink-0 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90"
-            >
-              <div className="flex items-center justify-between w-full min-w-0 px-2 py-2 sm:px-4">
-                <div className="flex items-center min-w-0">
-                  <div className="justify-center flex-1 hidden max-w-2xl mx-4 md:flex">
-                    <div className="w-full max-w-md">
-                      {/* <Search /> */}
-                    </div>
+  <div
+    className="flex flex-col min-h-screen overflow-x-hidden"
+    style={{
+      background: `radial-gradient(circle at 15% 50%, ${BRAND.background}44, transparent 25%), 
+                   radial-gradient(circle at 85% 30%, ${BRAND.light}22, transparent 25%)`,
+      backgroundColor: "white",
+      color: BRAND.textPrimary,
+    }}
+  >
+    <ProductsProvider>
+      <div className="flex flex-1 overflow-x-hidden">
+        {/* Sidebar is inside ProductsProvider (assumed handled there) */}
+
+        {/* Main content area */}
+        <div className="flex flex-col flex-1 min-w-0 overflow-x-hidden">
+          {/* Fixed Header aligned with content, not full screen */}
+
+          <Header
+            className="flex-shrink-0 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90"
+          >
+            <div className="flex items-center justify-between w-full min-w-0 px-2 py-2 sm:px-4">
+              {/* Left section - Empty for mobile, search for desktop */}
+              <div className="flex items-center min-w-0">
+                <div className="justify-center flex-1 hidden max-w-2xl mx-4 md:flex">
+                  <div className="w-full max-w-md">
+                    {/* <Search /> */}
+                  </div>
+                </div>
+              </div>
+
+              {/* Center section - Mobile Logo */}
+              <div className="flex-shrink-0 mt-2 md:hidden">
+                <Link to="/dashboard" className="flex items-center">
+                  <img src={Junoonilogo} alt="Junooni Logo" className="h-8 sm:h-10" />      
+                </Link>
+              </div>
+
+              {/* Right section - Navigation + Profile */}
+              <div className="flex items-center flex-shrink-0 space-x-1 sm:space-x-2">
+                <Link to="/dashboard">
+                  <Button variant="ghost" className="hidden text-sm md:flex">
+                    Dashboard
+                  </Button>
+                </Link>
+                <Link to="/products">
+                  <Button variant="ghost" className="hidden text-sm md:flex" style={{ color: BRAND.primary }}>
+                    Products
+                  </Button>
+                </Link>
+                <Link to="/orders">
+                  <Button variant="ghost" className="hidden text-sm md:flex">
+                    Orders
+                  </Button>
+                </Link>
+                <Link to="/help-center">
+                  <Button variant="ghost" className="hidden text-sm md:flex">
+                    Help
+                  </Button>
+                </Link>
+                <ProfileDropdown />
+              </div>
+            </div>
+          </Header>
+
+          {/* Main Page Content */}
+          <Main className="flex-1 w-full max-w-full px-2 py-4 mx-auto overflow-x-hidden sm:px-4 sm:py-6">
+            {/* Page Header with Enhanced Styling */}
+            <div className="mt-2 mb-6 sm:mt-4 sm:mb-8">
+              <div className="flex flex-col justify-between mb-4 space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:mb-6">
+                <div className="flex items-center min-w-0 space-x-3">
+                  {/* Mobile brand indicator */}
+                  <div
+                    className="flex-shrink-0 p-2 rounded-lg sm:hidden sm:p-3"
+                    style={{
+                      background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
+                    }}
+                  >
+                    <Package className="w-5 h-5 text-white sm:w-6 sm:h-6" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <h2
+                      className="text-xl font-bold tracking-tight truncate sm:text-2xl lg:text-3xl"
+                      style={{ color: BRAND.textPrimary }}
+                    >
+                      Your Products
+                    </h2>
+                    <p
+                      className="mt-1 text-sm truncate sm:text-base lg:text-lg"
+                      style={{ color: BRAND.textSecondary }}
+                    >
+                      Manage your product inventory and listings
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex-shrink-0 mt-2 md:hidden">
-                  <Link to="/dashboard" className="flex items-center">
-                    <img src={Junoonilogo} alt="Junooni Logo" className="h-8 sm:h-10" />      
-                  </Link>
-                </div>
-
-                <div className="flex items-center flex-shrink-0 space-x-1 sm:space-x-2">
-                  <Link to="/dashboard">
-                    <Button variant="ghost" className="hidden text-sm md:flex">
-                      Dashboard
-                    </Button>
-                  </Link>
-                  <Link to="/products">
-                    <Button variant="ghost" className="hidden text-sm md:flex" style={{ color: BRAND.primary }}>
-                      Products
-                    </Button>
-                  </Link>
-                  <Link to="/orders">
-                    <Button variant="ghost" className="hidden text-sm md:flex">
-                      Orders
-                    </Button>
-                  </Link>
-                  <Link to="/help-center">
-                    <Button variant="ghost" className="hidden text-sm md:flex">
-                      Help
-                    </Button>
-                  </Link>
-                  <ProfileDropdown />
+                <div className="flex items-center flex-shrink-0 space-x-2 sm:space-x-3">
+                  <ProductsPrimaryButtons />
                 </div>
               </div>
-            </Header>
 
-            <Main className="flex-1 w-full max-w-full px-2 py-4 mx-auto overflow-x-hidden sm:px-4 sm:py-6">
-              <div className="mt-2 mb-6 sm:mt-4 sm:mb-8">
-                <div className="flex flex-col justify-between mb-4 space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:mb-6">
-                  <div className="flex items-center min-w-0 space-x-3">
+              {/* Stats Cards */}
+              {!loading && !error && (
+                <div className="grid grid-cols-2 gap-2 mb-6 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+                  <Card
+                    className="border-l-4 shadow-md"
+                    style={{ borderLeftColor: BRAND.primary }}
+                  >
+                    <CardContent className="p-2 sm:p-3 lg:p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 truncate sm:text-sm">Total Products</p>
+                          <h3
+                            className="text-lg font-bold sm:text-xl lg:text-2xl"
+                            style={{ color: BRAND.primary }}
+                          >
+                            {products.length}
+                          </h3>
+                        </div>
+                        <div
+                          className="flex-shrink-0 p-1 rounded-lg sm:p-2 lg:p-3"
+                          style={{ backgroundColor: `${BRAND.primary}22` }}
+                        >
+                          <Package
+                            className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6"
+                            style={{ color: BRAND.primary }}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 shadow-md border-l-green-500">
+                    <CardContent className="p-2 sm:p-3 lg:p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 truncate sm:text-sm">Published</p>
+                          <h3 className="text-lg font-bold text-green-600 sm:text-xl lg:text-2xl">
+                            {products.filter((p) => p.status === "published").length}
+                          </h3>
+                        </div>
+                        <div className="flex-shrink-0 p-1 bg-green-100 rounded-lg sm:p-2 lg:p-3">
+                          <Package className="w-4 h-4 text-green-600 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 shadow-md border-l-amber-500">
+                    <CardContent className="p-2 sm:p-3 lg:p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 truncate sm:text-sm">Draft</p>
+                          <h3 className="text-lg font-bold text-amber-600 sm:text-xl lg:text-2xl">
+                            {products.filter((p) => p.status === "draft").length}
+                          </h3>
+                        </div>
+                        <div className="flex-shrink-0 p-1 rounded-lg bg-amber-100 sm:p-2 lg:p-3">
+                          <Package className="w-4 h-4 text-amber-600 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 shadow-md border-l-blue-500">
+                    <CardContent className="p-2 sm:p-3 lg:p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 truncate sm:text-sm">Categories</p>
+                          <h3 className="text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
+                            {new Set(products.map((p) => p.category)).size || 0}
+                          </h3>
+                        </div>
+                        <div className="flex-shrink-0 p-1 bg-blue-100 rounded-lg sm:p-2 lg:p-3">
+                          <Package className="w-4 h-4 text-blue-600 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+
+            {/* Main Content Area */}
+            <Card className="w-full overflow-hidden shadow-xl" data-table-container>
+              <CardHeader
+                className="border-b"
+                style={{ borderColor: `${BRAND.primary}11` }}
+              >
+                <div className="flex items-center justify-between min-w-0">
+                  <div className="flex items-center flex-1 min-w-0 space-x-2">
                     <div
-                      className="flex-shrink-0 p-2 rounded-lg sm:hidden sm:p-3"
+                      className="flex-shrink-0 p-2 rounded-lg"
                       style={{
                         background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
                       }}
                     >
-                      <Package className="w-5 h-5 text-white sm:w-6 sm:h-6" />
+                      <Package className="w-4 h-4 text-white sm:w-5 sm:h-5" />
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle
+                        className="text-sm font-bold truncate sm:text-base lg:text-lg"
+                        style={{ color: BRAND.secondary }}
+                      >
+                        Product Management
+                      </CardTitle>
+                      <CardDescription className="text-xs truncate sm:text-sm" style={{ color: BRAND.textSecondary }}>
+                        {loading
+                          ? "Loading..."
+                          : products.length > 0
+                          ? `Manage ${products.length} products`
+                          : ""}
+                      </CardDescription>
 
-                    <div className="min-w-0">
-                      <h2
-                        className="text-xl font-bold tracking-tight truncate sm:text-2xl lg:text-3xl"
-                        style={{ color: BRAND.textPrimary }}
-                      >
-                        Your Products
-                      </h2>
-                      <p
-                        className="mt-1 text-sm truncate sm:text-base lg:text-lg"
-                        style={{ color: BRAND.textSecondary }}
-                      >
-                        Manage your product inventory and listings
-                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center flex-shrink-0 space-x-2 sm:space-x-3">
-                    <ProductsPrimaryButtons />
-                  </div>
-                </div>
-
-                {/* Stats Cards */}
-                {!loading && !error && (
-                  <div className="grid grid-cols-2 gap-2 mb-6 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-                    <Card
-                      className="border-l-4 shadow-md"
-                      style={{ borderLeftColor: BRAND.primary }}
-                    >
-                      <CardContent className="p-2 sm:p-3 lg:p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="min-w-0">
-                            <p className="text-xs text-gray-500 truncate sm:text-sm">Total Products</p>
-                            <h3
-                              className="text-lg font-bold sm:text-xl lg:text-2xl"
-                              style={{ color: BRAND.primary }}
-                            >
-                              {totalCount}
-                            </h3>
-                          </div>
-                          <div
-                            className="flex-shrink-0 p-1 rounded-lg sm:p-2 lg:p-3"
-                            style={{ backgroundColor: `${BRAND.primary}22` }}
-                          >
-                            <Package
-                              className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6"
-                              style={{ color: BRAND.primary }}
-                            />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-l-4 shadow-md border-l-green-500">
-                      <CardContent className="p-2 sm:p-3 lg:p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="min-w-0">
-                            <p className="text-xs text-gray-500 truncate sm:text-sm">Published</p>
-                            <h3 className="text-lg font-bold text-green-600 sm:text-xl lg:text-2xl">
-                              {statusCounts.published}
-                            </h3>
-                          </div>
-                          <div className="flex-shrink-0 p-1 bg-green-100 rounded-lg sm:p-2 lg:p-3">
-                            <Package className="w-4 h-4 text-green-600 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-l-4 shadow-md border-l-amber-500">
-                      <CardContent className="p-2 sm:p-3 lg:p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="min-w-0">
-                            <p className="text-xs text-gray-500 truncate sm:text-sm">Draft</p>
-                            <h3 className="text-lg font-bold text-amber-600 sm:text-xl lg:text-2xl">
-                              {statusCounts.draft}
-                            </h3>
-                          </div>
-                          <div className="flex-shrink-0 p-1 rounded-lg bg-amber-100 sm:p-2 lg:p-3">
-                            <Package className="w-4 h-4 text-amber-600 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-l-4 shadow-md border-l-blue-500">
-                      <CardContent className="p-2 sm:p-3 lg:p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="min-w-0">
-                            <p className="text-xs text-gray-500 truncate sm:text-sm">Categories</p>
-                            <h3 className="text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
-                              {statusCounts.categories}
-                            </h3>
-                          </div>
-                          <div className="flex-shrink-0 p-1 bg-blue-100 rounded-lg sm:p-2 lg:p-3">
-                            <Package className="w-4 h-4 text-blue-600 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-              </div>
-
-              {/* Main Content Area */}
-              <Card className="w-full overflow-hidden shadow-xl" data-table-container>
-                <CardHeader
-                  className="border-b"
-                  style={{ borderColor: `${BRAND.primary}11` }}
-                >
-                  <div className="flex items-center justify-between min-w-0">
-                    <div className="flex items-center flex-1 min-w-0 space-x-2">
-                      <div
-                        className="flex-shrink-0 p-2 rounded-lg"
-                        style={{
-                          background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
-                        }}
-                      >
-                        <Package className="w-4 h-4 text-white sm:w-5 sm:h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <CardTitle
-                          className="text-sm font-bold truncate sm:text-base lg:text-lg"
-                          style={{ color: BRAND.secondary }}
-                        >
-                          Product Management
-                        </CardTitle>
-                        <CardDescription className="text-xs truncate sm:text-sm" style={{ color: BRAND.textSecondary }}>
-                          {loading
-                            ? "Loading..."
-                            : totalCount > 0
-                            ? `Manage ${totalCount} products`
-                            : ""}
-                        </CardDescription>
-                      </div>
-                    </div>
-
-                    {!loading && !error && totalCount > 0 && (
-                      <div className="flex-shrink-0 ml-2 text-xs text-gray-500 sm:text-sm">
-                        {currentPage}/{totalPages}
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="p-0">
-                  {loading ? (
-                    <div className="flex items-center justify-center py-16">
-                      <div className="text-center">
-                        <Loader2
-                          className="w-8 h-8 mx-auto mb-4 animate-spin"
-                          style={{ color: BRAND.primary }}
-                        />
-                        <p className="text-gray-600">Loading your products...</p>
-                      </div>
-                    </div>
-                  ) : error ? (
-                    <div className="py-16 text-center">
-                      <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-400" />
-                      <h3 className="mb-2 text-lg font-medium text-red-600">
-                        Error Loading Products
-                      </h3>
-                      <p className="mb-4 text-red-500">{error}</p>
-                      <Button
-                        variant="outline"
-                        onClick={() => window.location.reload()}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        Try Again
-                      </Button>
-                    </div>
-                  ) : totalCount === 0 ? (
-                    <div className="px-4 py-16 text-center">
-                      <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                      <h3 className="mb-2 text-lg font-medium text-gray-600">
-                        No Products Yet
-                      </h3>
-                      <p className="mb-6 text-gray-500">
-                        Start by adding your first product to your store
-                      </p>
-                      <Button
-                        style={{ backgroundColor: BRAND.primary }}
-                        onClick={() => popupButtonsRef.current?.openPopup()}
-                        className="px-6 py-3"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Your First Product
-                      </Button>
-                      <div
-                        style={{ position: "absolute", top: "-9999px", left: "-9999px" }}
-                      >
-                        <ProductsPrimaryButtons ref={popupButtonsRef} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full">
-                      <div className="p-2 overflow-x-auto sm:p-3 lg:p-6">
-                        <div className="min-w-[600px]">
-                          <DataTable data={products} columns={columns} onDeleteProduct={handleDeleteProduct}/>
-                        </div>
-                      </div>
-
-                      {/* Pagination Controls */}
-                      <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        totalItems={totalCount}
-                        itemsPerPage={itemsPerPage}
-                        onPageChange={handlePageChange}
-                        onItemsPerPageChange={handleItemsPerPageChange}
-                      />
+                  {!loading && !error && products.length > 0 && (
+                    <div className="flex-shrink-0 ml-2 text-xs text-gray-500 sm:text-sm">
+                      {currentPage}/{totalPages}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </CardHeader>
 
-              {/* Help Section */}
-              {!loading && totalCount > 0 && (
-                <Card className="mt-6 shadow-md">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-start space-x-3 sm:space-x-4">
-                      <div
-                        className="flex-shrink-0 p-2 rounded-lg sm:p-3"
-                        style={{ backgroundColor: `${BRAND.primary}22` }}
-                      >
-                        <Package className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: BRAND.primary }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3
-                          className="mb-2 text-base font-semibold sm:text-lg"
-                          style={{ color: BRAND.secondary }}
-                        >
-                          Need Help Managing Products?
-                        </h3>
-                        <p className="mb-4 text-sm text-gray-600 sm:text-base">
-                          Learn how to optimize your product listings, manage inventory, and
-                          boost sales with our comprehensive guides.
-                        </p>
-                        <Link href="/help-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            style={{ borderColor: BRAND.primary, color: BRAND.primary }}
-                            className="hover:bg-orange-50"
-                          >
-                            View Product Guides
-                          </Button>
-                        </Link>
+              <CardContent className="p-0">
+                {loading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <div className="text-center">
+                      <Loader2
+                        className="w-8 h-8 mx-auto mb-4 animate-spin"
+                        style={{ color: BRAND.primary }}
+                      />
+                      <p className="text-gray-600">Loading your products...</p>
+                    </div>
+                  </div>
+                ) : error ? (
+                  <div className="py-16 text-center">
+                    <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-400" />
+                    <h3 className="mb-2 text-lg font-medium text-red-600">
+                      Error Loading Products
+                    </h3>
+                    <p className="mb-4 text-red-500">{error}</p>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.location.reload()}
+                      className="text-red-600 border-red-300 hover:bg-red-50"
+                    >
+                      Try Again
+                    </Button>
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="px-4 py-16 text-center">
+                    <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <h3 className="mb-2 text-lg font-medium text-gray-600">
+                      No Products Yet
+                    </h3>
+                    <p className="mb-6 text-gray-500">
+                      Start by adding your first product to your store
+                    </p>
+                    <Button
+                      style={{ backgroundColor: BRAND.primary }}
+                      onClick={() => popupButtonsRef.current?.openPopup()}
+                      className="px-6 py-3"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Your First Product
+                    </Button>
+                    <div
+                      style={{ position: "absolute", top: "-9999px", left: "-9999px" }}
+                    >
+                      <ProductsPrimaryButtons ref={popupButtonsRef} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full">
+                    <div className="p-2 overflow-x-auto sm:p-3 lg:p-6">
+                      <div className="min-w-[600px]">
+                         <DataTable
+                      data={paginatedProducts.map(product => ({
+                        ...product,
+                        title: typeof product.title === "string" ? product.title : (product.name ?? "Untitled Product"),
+                        status: (["published", "draft", "archived", "proposed", "rejected"].includes(product.status ?? "") ? product.status : "draft") as "published" | "draft" | "archived" | "proposed" | "rejected",
+                        discountable: typeof product.discountable === "boolean" ? product.discountable : false,
+                        variants: Array.isArray(product.variants)
+                          ? product.variants.map(variant => ({
+                              ...variant,
+                              allowBackorder: typeof variant.allowBackorder === "boolean" ? variant.allowBackorder : false,
+                              manageInventory: typeof variant.manageInventory === "boolean" ? variant.manageInventory : false,
+                            }))
+                          : [],
+                      }))}
+                      columns={columns}
+                    />
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
 
-              {/* Footer */}
-              <div className="py-6 mt-4 border-t border-gray-200">
-                <div className="container px-4 mx-auto text-center">
-                  <p className="text-sm" style={{ color: BRAND.textLight }}>
-                    &copy; {new Date().getFullYear()} Junooni. All rights reserved.
-                  </p>
-                </div>
+                    {/* Pagination Controls */}
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={products.length}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={handlePageChange}
+                      onItemsPerPageChange={handleItemsPerPageChange}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Help Section */}
+            {!loading && products.length > 0 && (
+              <Card className="mt-6 shadow-md">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-start space-x-3 sm:space-x-4">
+                    <div
+                      className="flex-shrink-0 p-2 rounded-lg sm:p-3"
+                      style={{ backgroundColor: `${BRAND.primary}22` }}
+                    >
+                      <Package className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: BRAND.primary }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className="mb-2 text-base font-semibold sm:text-lg"
+                        style={{ color: BRAND.secondary }}
+                      >
+                        Need Help Managing Products?
+                      </h3>
+                      <p className="mb-4 text-sm text-gray-600 sm:text-base">
+                        Learn how to optimize your product listings, manage inventory, and
+                        boost sales with our comprehensive guides.
+                      </p>
+                      <Link href="/help-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          style={{ borderColor: BRAND.primary, color: BRAND.primary }}
+                          className="hover:bg-orange-50"
+                        >
+                          View Product Guides
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {/* Footer */}
+            <div className="py-6 mt-4 border-t border-gray-200">
+              <div className="container px-4 mx-auto text-center">
+                <p className="text-sm" style={{ color: BRAND.textLight }}>
+                  &copy; {new Date().getFullYear()} Junooni. All rights reserved.
+                </p>
               </div>
-            </Main>
-          </div>
+            </div>
+          </Main>
+          {/* Footer */}
         </div>
-        <ChatwootWidget />
-      </ProductsProvider>
-    </div>
-  )
+      </div>
+      <ChatwootWidget />
+    </ProductsProvider>
+  </div>
+)
+
 }

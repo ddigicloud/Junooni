@@ -100,6 +100,18 @@ const formatDate = (dateString: string) => {
   }).format(date);
 };
 
+// ✅ NEW: Helper function to extract tax from item
+const getItemTaxTotal = (item: OrderItem) => {
+  if (!item.tax_lines || item.tax_lines.length === 0) return 0;
+  
+  return item.tax_lines.reduce((sum, taxLine) => {
+    const taxAmount = typeof taxLine.subtotal === 'number' 
+      ? taxLine.subtotal 
+      : parseFloat(taxLine.subtotal) || 0;
+    return sum + taxAmount;
+  }, 0);
+};
+
 // Calculate payment processing fee
 const calculatePaymentProcessingFee = (totalAmount: number) => {
   const gatewayFee = totalAmount * 0.02; // 2% of total
@@ -372,6 +384,26 @@ const MarkAsShippedModal = ({
 };
 
 // ✅ Updated interfaces for vendor-specific order data with tracking and images
+// ✅ NEW: Tax line interface
+interface TaxLine {
+  id: string
+  description: string
+  tax_rate_id?: string
+  code?: string
+  provider_id?: string
+  item_id?: string
+  rate: number
+  total: number
+  subtotal: number
+  raw_rate?: any
+  raw_total?: any
+  raw_subtotal?: any
+  created_at?: string
+  updated_at?: string
+  deleted_at?: string | null
+}
+
+// ✅ Updated interfaces for vendor-specific order data with tracking and images
 interface OrderItem {
   id: string
   title: string
@@ -409,6 +441,8 @@ interface OrderItem {
   fulfillment_status?: 'pending' | 'fulfilled' | 'shipped' | 'delivered'
   shipment_id?: string
   can_ship?: boolean
+  // ✅ NEW: Tax lines
+  tax_lines?: TaxLine[]
 }
 
 interface ClaimItem {
@@ -578,15 +612,22 @@ const calculateFinalVendorProfit = (order: VendorOrder) => {
   const { originalItems, returnedItems, replacementItems } = categorizeOrderItems(order.vendor_items);
   
   // Calculate vendor payout amounts
-  const calculateVendorPayoutTotals = (items: OrderItem[]) => {
-    return items.reduce((total, item) => {
-      const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
-        ? item.unit_price - item.product_cost 
-        : item.unit_price * 0.9;
-      
-      return total + (vendorPayoutPerItem * item.quantity);
-    }, 0);
-  };
+ const calculateVendorPayoutTotals = (items: OrderItem[]) => {
+  return items.reduce((total, item) => {
+    let vendorPayoutPerItem;
+    
+    if (item.product_cost && item.product_cost > 0) {
+      // ✅ JUNOONI FULFILLMENT: Deduct tax first, then product cost
+      const itemTaxTotal = getItemTaxTotal(item);
+      vendorPayoutPerItem = (item.unit_price - itemTaxTotal) - item.product_cost;
+    } else {
+      // ✅ CREATOR FULFILLMENT: Just 90%, NO tax deduction
+      vendorPayoutPerItem = item.unit_price * 0.9;
+    }
+    
+    return total + (vendorPayoutPerItem * item.quantity);
+  }, 0);
+};
 
   const originalVendorPayout = calculateVendorPayoutTotals(originalItems);
   const returnedVendorPayout = calculateVendorPayoutTotals(returnedItems);
@@ -1013,15 +1054,22 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
   const replacementTotals = calculateCategoryTotals(replacementItems, order.currency_code);
   
   // ✅ Calculate vendor payout amounts (not just product prices)
-  const calculateVendorPayoutTotals = (items: OrderItem[]) => {
-    return items.reduce((total, item) => {
-      const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
-        ? item.unit_price - item.product_cost 
-        : item.unit_price * 0.9;
-      
-      return total + (vendorPayoutPerItem * item.quantity);
-    }, 0);
-  };
+const calculateVendorPayoutTotals = (items: OrderItem[]) => {
+  return items.reduce((total, item) => {
+    let vendorPayoutPerItem;
+    
+    if (item.product_cost && item.product_cost > 0) {
+      // ✅ JUNOONI FULFILLMENT: Deduct tax first, then product cost
+      const itemTaxTotal = getItemTaxTotal(item);
+      vendorPayoutPerItem = (item.unit_price - itemTaxTotal) - item.product_cost;
+    } else {
+      // ✅ CREATOR FULFILLMENT: Just 90%, NO tax deduction
+      vendorPayoutPerItem = item.unit_price * 0.9;
+    }
+    
+    return total + (vendorPayoutPerItem * item.quantity);
+  }, 0);
+};
 
   const originalVendorPayout = calculateVendorPayoutTotals(originalItems);
   const returnedVendorPayout = calculateVendorPayoutTotals(returnedItems);
@@ -1089,18 +1137,20 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
   
   // Helper function to generate tooltip content
   const getTooltipContent = (item: OrderItem) => {
-  const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
-    ? item.unit_price - item.product_cost 
-    : item.unit_price * 0.9;
+  let vendorPayoutPerItem;
+  let totalVendorPayout;
   
-  const totalVendorPayout = vendorPayoutPerItem * item.quantity;
-
   if (item.product_cost && item.product_cost > 0) {
+    // ✅ JUNOONI FULFILLMENT: Deduct tax first, then product cost
+    const itemTaxTotal = getItemTaxTotal(item);
+    vendorPayoutPerItem = (item.unit_price - itemTaxTotal) - item.product_cost;
+    totalVendorPayout = vendorPayoutPerItem * item.quantity;
+    
     return (
       <div className="space-y-1 text-xs">
-        <div>Product price - Product cost = Your payout per unit</div>
+        <div>Product price - Tax - Product cost = Your earnings per unit</div>
         <div className="font-medium">
-          {formatPrice(item.unit_price, order.currency_code)} - {formatPrice(item.product_cost, order.currency_code)} = {formatPrice(vendorPayoutPerItem, order.currency_code)}
+          {formatPrice(item.unit_price, order.currency_code)} - {formatPrice(itemTaxTotal, order.currency_code)} - {formatPrice(item.product_cost, order.currency_code)} = {formatPrice(vendorPayoutPerItem, order.currency_code)}
         </div>
         {item.quantity > 1 && (
           <>
@@ -1112,12 +1162,14 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
       </div>
     );
   } else {
-    // ✅ UPDATED: Show 10% deduction instead of 90% commission
+    // ✅ CREATOR FULFILLMENT: Just 90%, NO tax deduction
+    vendorPayoutPerItem = item.unit_price * 0.9;
+    totalVendorPayout = vendorPayoutPerItem * item.quantity;
     const commission = item.unit_price * 0.1; // 10% commission
     
     return (
       <div className="space-y-1 text-xs">
-        <div>Product price - 10% commission = Your payout per unit</div>
+        <div>Product price - 10% commission = Your earnings per unit</div>
         <div className="font-medium">
           {formatPrice(item.unit_price, order.currency_code)} - {formatPrice(commission, order.currency_code)} = {formatPrice(vendorPayoutPerItem, order.currency_code)}
         </div>
@@ -1141,12 +1193,19 @@ const CostBreakdownModal = ({ order, isOpen, onClose }: {
         {title}
       </h4>
       <div className="space-y-3">
-        {items.map((item, index) => {
-          const vendorPayoutPerItem = item.product_cost && item.product_cost > 0 
-            ? item.unit_price - item.product_cost 
-            : item.unit_price * 0.9;
-          
-          const totalVendorPayout = vendorPayoutPerItem * item.quantity;
+       {items.map((item, index) => {
+        let vendorPayoutPerItem;
+        
+        if (item.product_cost && item.product_cost > 0) {
+          // ✅ JUNOONI FULFILLMENT: Deduct tax first, then product cost
+          const itemTaxTotal = getItemTaxTotal(item);
+          vendorPayoutPerItem = (item.unit_price - itemTaxTotal) - item.product_cost;
+        } else {
+          // ✅ CREATOR FULFILLMENT: Just 90%, NO tax deduction
+          vendorPayoutPerItem = item.unit_price * 0.9;
+        }
+        
+        const totalVendorPayout = vendorPayoutPerItem * item.quantity;
           
           return (
             <div key={item.id} className="space-y-1.5">
@@ -2081,6 +2140,7 @@ if (itemFulfillment) {
       shipping_provider: item.shipping_provider,
       has_tracking: item.has_tracking || false,
       // ✅ NEW: Fulfillment and shipment data
+      tax_lines: item.tax_lines || [],
       fulfillment_id: fulfillmentId,
       fulfillment_status: fulfillmentStatus,
       packed_at: packedAt,

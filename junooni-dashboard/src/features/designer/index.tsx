@@ -5,9 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import TShirtDesigner from "./components/DataLoader";
 import { useParams } from "@tanstack/react-router";
 
-
-
-
 const Designer: React.FC = () => {
 
   const {id} = useParams({strict : false});

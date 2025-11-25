@@ -625,23 +625,57 @@ const createVendorOrdersStep = createStep(
     
     // Create vendor information for metadata
     const vendorOrderInfo = vendors.map(vendor => {
-      const vendorAmount = vendorAmounts[vendor.id] || 0
-      const vendorItems = vendorsItems[vendor.id] || []
-      
-      return {
-        vendor_id: vendor.id,
-        vendor_handle: vendor.handle,
-        vendor_name: vendor.company_name || vendor.handle,
-        vendor_amount: vendorAmount,
-        vendor_items: vendorItems.map(item => ({
-          id: item.id,
-          title: item.title,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total: item.unit_price * item.quantity
-        }))
-      }
-    })
+  const vendorAmount = vendorAmounts[vendor.id] || 0
+  const vendorItems = vendorsItems[vendor.id] || []
+  
+  // Calculate refund totals for this vendor
+  const vendorRefundedTotal = vendorItems.reduce((sum, item) => {
+    return sum + ((item as any).refunded_total || 0)
+  }, 0)
+  
+  const allItemsRefunded = vendorItems.every(item => 
+    ((item as any).refunded_quantity || 0) >= item.quantity
+  )
+  
+  const someItemsRefunded = vendorItems.some(item => 
+    ((item as any).refunded_quantity || 0) > 0
+  )
+  
+  // Determine vendor-level payment status
+  const vendorPaymentStatus = allItemsRefunded 
+    ? "refunded" 
+    : someItemsRefunded 
+      ? "partially_refunded" 
+      : "captured"
+  
+  return {
+    vendor_id: vendor.id,
+    vendor_handle: vendor.handle,
+    vendor_name: vendor.company_name || vendor.handle,
+    vendor_amount: vendorAmount,
+    vendor_refunded_amount: vendorRefundedTotal,
+    vendor_net_amount: vendorAmount - vendorRefundedTotal,
+    vendor_payment_status: vendorPaymentStatus,
+    vendor_payout_amount: vendorPaymentStatus === "refunded" ? 0 : vendorAmount - vendorRefundedTotal,
+    vendor_items: vendorItems.map(item => ({
+      id: item.id,
+      title: item.title,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      total: item.unit_price * item.quantity,
+      refunded_quantity: (item as any).refunded_quantity || 0,
+      refunded_total: (item as any).refunded_total || 0,
+      is_refunded: ((item as any).refunded_quantity || 0) >= item.quantity,
+      is_partially_refunded: ((item as any).refunded_quantity || 0) > 0 && ((item as any).refunded_quantity || 0) < item.quantity,
+      payment_status: ((item as any).refunded_quantity || 0) >= item.quantity 
+        ? "refunded" 
+        : ((item as any).refunded_quantity || 0) > 0 
+          ? "partially_refunded" 
+          : "captured",
+      net_amount: (item.unit_price * item.quantity) - ((item as any).refunded_total || 0)
+    }))
+  }
+})
     
     // Update parent order with comprehensive vendor and payment metadata
     const vendorMetadata = {

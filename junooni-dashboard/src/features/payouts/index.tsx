@@ -117,20 +117,24 @@ interface VendorPayout {
 const getVendorInfoFromToken = () => {
   try {
     const token = localStorage.getItem('vendorToken');
+    console.log("🔍 [DEBUG getVendorInfoFromToken] Token exists:", !!token);
+    
     if (!token) return { vendorId: null, isAuthenticated: false };
 
     // Decode JWT token
     const payload = JSON.parse(atob(token.split('.')[1]));
+    console.log("🔍 [DEBUG getVendorInfoFromToken] Token payload:", payload);
     
     // Try different possible vendor ID fields
     const vendorId = payload.vendor_id || payload.actor_id || payload.sub || payload.id;
+    console.log("🔍 [DEBUG getVendorInfoFromToken] Extracted vendorId:", vendorId);
     
     return { 
       vendorId, 
       isAuthenticated: !!token 
     };
   } catch (error) {
-    console.error('Error decoding token:', error);
+    console.error('❌ [DEBUG getVendorInfoFromToken] Error decoding token:', error);
     return { vendorId: null, isAuthenticated: false };
   }
 };
@@ -501,182 +505,200 @@ export default function PayoutPage() {
   const [currentTab, setCurrentTab] = useState("all");
   
   // Fetch payout data
-  useEffect(() => {
-    const fetchPayoutData = async () => {
-      setLoading(true);
-      setError(null);
+  // Fetch payout data
+useEffect(() => {
+  const fetchPayoutData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    console.log("🔍 [DEBUG] Starting fetchPayoutData...");
+    
+    try {
+      const token = localStorage.getItem("vendorToken");
+      
+      if (!token) {
+        console.log("❌ [DEBUG] No token found");
+        setAuthError(true);
+        setError("Authentication required. Please log in.");
+        setLoading(false);
+        return;
+      }
+
+      // Always fetch vendor ID from /vendors/me endpoint
+      // Token contains actor_id (vendor admin ID), NOT the vendor ID
+      let finalVendorId: string | null = null;
       
       try {
-        const token = localStorage.getItem("vendorToken");
-        
-        if (!token) {
-          setAuthError(true);
-          setError("Authentication required. Please log in.");
-          setLoading(false);
-          return;
-        }
-
-        // Get vendor ID from token
-        const { vendorId: tokenVendorId, isAuthenticated } = getVendorInfoFromToken();
-        
-        if (!isAuthenticated) {
-          setAuthError(true);
-          setError("Invalid authentication. Please log in again.");
-          setLoading(false);
-          return;
-        }
-
-        if (!tokenVendorId) {
-          // If no vendor ID in token, try to get it from /vendors/me endpoint
-          try {
-            const vendorResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-              }
-            });
-
-            if (vendorResponse.ok) {
-              const vendorData = await vendorResponse.json();
-              const extractedVendorId = vendorData.vendor?.id;
-              
-              if (extractedVendorId) {
-                setVendorId(extractedVendorId);
-              } else {
-                // No vendor account found - show empty state instead of error
-                setHasPayoutAccount(false);
-                setLoading(false);
-                return;
-              }
-            } else {
-              // Failed to get vendor info - show empty state
-              setHasPayoutAccount(false);
-              setLoading(false);
-              return;
-            }
-          } catch (vendorError) {
-            // Error getting vendor info - show empty state
-            setHasPayoutAccount(false);
-            setLoading(false);
-            return;
-          }
-        } else {
-          setVendorId(tokenVendorId);
-        }
-        
-        const finalVendorId = tokenVendorId || vendorId;
-        
-        if (!finalVendorId) {
-          setHasPayoutAccount(false);
-          setLoading(false);
-          return;
-        }
-        
-        // First fetch the payout summary
-        const payoutResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${finalVendorId}/payout`, {
+        console.log("🔍 [DEBUG] Fetching vendor ID from /vendors/me...");
+        const vendorResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
           }
         });
+
+        console.log("🔍 [DEBUG] /vendors/me response status:", vendorResponse.status);
         
-        if (!payoutResponse.ok) {
-          if (payoutResponse.status === 401) {
-            setAuthError(true);
-            setError("Your session has expired. Please log in again.");
-          } else if (payoutResponse.status === 404) {
-            // No payout account found - show empty state
-            setHasPayoutAccount(false);
+        if (vendorResponse.ok) {
+          const vendorData = await vendorResponse.json();
+          console.log("🔍 [DEBUG] /vendors/me response data:", vendorData);
+          
+          // Try different possible paths for vendor ID
+          finalVendorId = vendorData.vendor?.id || vendorData.id || null;
+          console.log("🔍 [DEBUG] Extracted vendor ID:", finalVendorId);
+          
+          if (finalVendorId) {
+            setVendorId(finalVendorId);
           } else {
-            // Other errors - show empty state instead of error
+            console.log("❌ [DEBUG] No vendor ID in /vendors/me response");
             setHasPayoutAccount(false);
+            setLoading(false);
+            return;
           }
+        } else if (vendorResponse.status === 401) {
+          console.log("❌ [DEBUG] 401 Unauthorized from /vendors/me");
+          setAuthError(true);
+          setError("Your session has expired. Please log in again.");
           setLoading(false);
           return;
-        }
-
-        const payoutData = await payoutResponse.json();
-        const payoutInfo = payoutData.payout;
-        
-        if (!payoutInfo) {
+        } else {
+          console.log("❌ [DEBUG] /vendors/me failed with status:", vendorResponse.status);
           setHasPayoutAccount(false);
           setLoading(false);
           return;
         }
-
-        setHasPayoutAccount(true);
-
-        // Now fetch payout details if we have a payout ID
-        let payoutDetailsData: PayoutDetail[] = [];
-        
-        if (payoutInfo.id) {
-          try {
-            const detailsResponse = await fetch(
-              `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${finalVendorId}/payout/${payoutInfo.id}/payout-details?limit=100&offset=0`, 
-              {
-                method: "GET",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${token}`
-                }
-              }
-            );
-            
-            if (detailsResponse.ok) {
-              const detailsData = await detailsResponse.json();
-              const transactionsArray = detailsData.payout_details?.transactions || [];
-              payoutDetailsData = transactionsArray;
-            }
-          } catch (detailsError) {
-            // Continue without details rather than failing completely
-            console.warn("Could not fetch payout details:", detailsError);
-          }
-        }
-
-        // Transform the API response to match our interface
-        const transformedPayout: VendorPayout = {
-          id: payoutInfo.id || `payout_${Date.now()}`,
-          vendor_id: payoutInfo.vendor_id || finalVendorId,
-          total_earnings: payoutInfo.total_earned || 0,
-          pending_amount: payoutInfo.total_pending_payout || 0,
-          paid_amount: payoutInfo.total_paid || 0,
-          available_for_payout: payoutInfo.current_balance || 0,
-          last_payout_date: payoutInfo.last_payout_at,
-          next_payout_date: payoutInfo.next_payout_date,
-          created_at: payoutInfo.created_at || new Date().toISOString(),
-          updated_at: payoutInfo.updated_at || new Date().toISOString(),
-          status: payoutInfo.is_payout_enabled ? "active" : "inactive",
-          payout_details: payoutDetailsData.map((transaction: any) => ({
-            id: transaction.id || `detail_${Date.now()}_${Math.random()}`,
-            type: transaction.type || "earning",
-            amount: transaction.amount || 0,
-            reason: transaction.reason || "No description",
-            notes: transaction.notes || undefined,
-            order_id: transaction.order_id || undefined,
-            order_item_id: transaction.order_item_id || undefined,
-            product_id: transaction.product_id || undefined,
-            created_at: transaction.created_at || new Date().toISOString(),
-            status: transaction.status || "confirmed",
-            reference_id: transaction.id
-          }))
-        };
-
-        setPayout(transformedPayout);
-        setPayoutDetails(transformedPayout.payout_details);
-        
-      } catch (err: any) {
-        console.error("Error fetching payout data:", err);
-        // Show empty state instead of error for better UX
+      } catch (vendorError) {
+        console.log("❌ [DEBUG] /vendors/me error:", vendorError);
         setHasPayoutAccount(false);
-      } finally {
         setLoading(false);
+        return;
       }
-    };
-    
-    fetchPayoutData();
-  }, []);
+      
+      if (!finalVendorId) {
+        console.log("❌ [DEBUG] No vendor ID available");
+        setHasPayoutAccount(false);
+        setLoading(false);
+        return;
+      }
+      
+      // Now fetch the payout using the correct vendor ID
+      const payoutUrl = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${finalVendorId}/payout`;
+      console.log("🔍 [DEBUG] Fetching payout from:", payoutUrl);
+      
+      const payoutResponse = await fetch(payoutUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      
+      console.log("🔍 [DEBUG] Payout response status:", payoutResponse.status);
+      
+      if (!payoutResponse.ok) {
+        if (payoutResponse.status === 401) {
+          setAuthError(true);
+          setError("Your session has expired. Please log in again.");
+        } else if (payoutResponse.status === 404) {
+          console.log("❌ [DEBUG] 404 - No payout account found");
+          setHasPayoutAccount(false);
+        } else {
+          console.log("❌ [DEBUG] Payout fetch failed with status:", payoutResponse.status);
+          setHasPayoutAccount(false);
+        }
+        setLoading(false);
+        return;
+      }
+
+      const payoutData = await payoutResponse.json();
+      console.log("🔍 [DEBUG] Payout API response:", payoutData);
+      
+      const payoutInfo = payoutData.payout;
+      console.log("🔍 [DEBUG] Extracted payoutInfo:", payoutInfo);
+      
+      if (!payoutInfo) {
+        console.log("❌ [DEBUG] No payoutInfo in response - showing empty state");
+        setHasPayoutAccount(false);
+        setLoading(false);
+        return;
+      }
+
+      console.log("✅ [DEBUG] Has payout account - setting hasPayoutAccount to true");
+      setHasPayoutAccount(true);
+
+      // Now fetch payout details if we have a payout ID
+      let payoutDetailsData: PayoutDetail[] = [];
+      
+      if (payoutInfo.id) {
+        try {
+          const detailsUrl = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/${finalVendorId}/payout/${payoutInfo.id}/payout-details?limit=100&offset=0`;
+          console.log("🔍 [DEBUG] Fetching payout details from:", detailsUrl);
+          
+          const detailsResponse = await fetch(detailsUrl, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            }
+          });
+          
+          console.log("🔍 [DEBUG] Payout details response status:", detailsResponse.status);
+          
+          if (detailsResponse.ok) {
+            const detailsData = await detailsResponse.json();
+            console.log("🔍 [DEBUG] Payout details response:", detailsData);
+            const transactionsArray = detailsData.payout_details?.transactions || [];
+            payoutDetailsData = transactionsArray;
+            console.log("🔍 [DEBUG] Extracted transactions:", payoutDetailsData.length);
+          }
+        } catch (detailsError) {
+          console.warn("⚠️ [DEBUG] Could not fetch payout details:", detailsError);
+        }
+      }
+
+      // Transform the API response to match our interface
+      const transformedPayout: VendorPayout = {
+        id: payoutInfo.id || `payout_${Date.now()}`,
+        vendor_id: payoutInfo.vendor_id || finalVendorId,
+        total_earnings: payoutInfo.total_earned || 0,
+        pending_amount: payoutInfo.total_pending_payout || 0,
+        paid_amount: payoutInfo.total_paid || 0,
+        available_for_payout: payoutInfo.current_balance || 0,
+        last_payout_date: payoutInfo.last_payout_at,
+        next_payout_date: payoutInfo.next_payout_date,
+        created_at: payoutInfo.created_at || new Date().toISOString(),
+        updated_at: payoutInfo.updated_at || new Date().toISOString(),
+        status: payoutInfo.is_payout_enabled ? "active" : "inactive",
+        payout_details: payoutDetailsData.map((transaction: any) => ({
+          id: transaction.id || `detail_${Date.now()}_${Math.random()}`,
+          type: transaction.type || "earning",
+          amount: transaction.amount || 0,
+          reason: transaction.reason || "No description",
+          notes: transaction.notes || undefined,
+          order_id: transaction.order_id || undefined,
+          order_item_id: transaction.order_item_id || undefined,
+          product_id: transaction.product_id || undefined,
+          created_at: transaction.created_at || new Date().toISOString(),
+          status: transaction.status || "confirmed",
+          reference_id: transaction.id
+        }))
+      };
+
+      console.log("✅ [DEBUG] Transformed payout:", transformedPayout);
+      setPayout(transformedPayout);
+      setPayoutDetails(transformedPayout.payout_details);
+      
+    } catch (err: any) {
+      console.error("❌ [DEBUG] Error fetching payout data:", err);
+      setHasPayoutAccount(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchPayoutData();
+}, []);
   
   // Filter and paginate data
   const filteredDetails = payoutDetails.filter(detail => {

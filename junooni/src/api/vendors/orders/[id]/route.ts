@@ -1,5 +1,7 @@
 // Complete fixed route.ts - /vendors/orders/[id]
 // Enhanced with proper claims, returns, replacement item handling, and VENDOR-SPECIFIC fulfillment status
+// FIXED: Proper vendor ID retrieval using listVendorAdmins
+// FIXED: Junooni fulfillment payout calculation now deducts tax_total
 
 import {
   AuthenticatedMedusaRequest,
@@ -297,16 +299,21 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
 };
 
 // ✅ NEW: Calculate payment processing fee (2% + 18% GST)
-const calculatePaymentProcessingFee = (totalAmount: number) => {
-  const gatewayFee = totalAmount * 0.02; // 2% of total
-  const gstOnFee = gatewayFee * 0.18; // 18% GST on gateway fee
+const calculatePaymentProcessingFee = (totalAmount: number, paymentStatus: string = 'paid') => {
+  // If payment is refunded, no processing fees apply
+  if (paymentStatus === 'refunded') {
+    return {
+      gatewayFee: 0,
+      gstOnFee: 0,
+      totalProcessingFee: 0
+    };
+  }
+  
+  const gatewayFee = totalAmount * 0.02;
+  const gstOnFee = gatewayFee * 0.18;
   const totalProcessingFee = gatewayFee + gstOnFee;
   
-  return {
-    gatewayFee,
-    gstOnFee,
-    totalProcessingFee
-  };
+  return { gatewayFee, gstOnFee, totalProcessingFee };
 };
 
 // ✅ NEW: Fetch claims and returns separately to avoid field expansion issues
@@ -817,10 +824,41 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
 };
 
 // ✅ ENHANCED: Calculate vendor revenue by merging order metadata + original product metadata
-const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) => {
-  console.log(`💰 Calculating revenue for item ${item.id} (${item.title})`);
-  
+// ✅ FIXED: Junooni fulfillment now deducts tax_total from item_total before calculating vendor revenue
+const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, paymentStatus: string = 'paid') => {  console.log(`💰 Calculating revenue for item ${item.id} (${item.title})`);
+// If payment is refunded, vendor gets nothing
+if (paymentStatus === 'refunded') {
+  return {
+    item_total: item.unit_price * item.quantity,
+    vendor_revenue: 0,
+    product_cost: 0,
+    total_product_cost: 0,
+    quantity: item.quantity,
+    fulfillment_type: 'unknown',
+    calculation_type: 'refunded_payment',
+    platform_commission: 0,
+    metadata_source: 'none',
+    has_original_product_metadata: false,
+    payment_refunded: true
+  };
+}  
+
+
   const itemTotal = item.unit_price * item.quantity;
+  
+  // ✅ FIXED: Get item tax total for Junooni fulfillment calculation
+  let itemTaxTotal = 0;
+  if (item.tax_total !== undefined && item.tax_total !== null) {
+    itemTaxTotal = typeof item.tax_total === 'number' ? item.tax_total : parseFloat(item.tax_total) || 0;
+  } else if (item.tax_lines && item.tax_lines.length > 0) {
+    // ✅ FIXED - Uses "subtotal" as per order JSON structure
+    itemTaxTotal = item.tax_lines.reduce((sum, taxLine) => {
+      const taxAmount = typeof taxLine.subtotal === 'number' ? taxLine.subtotal : parseFloat(taxLine.subtotal) || 0;
+      return sum + taxAmount;
+    }, 0);
+  }
+  console.log(`💰 Item tax total: ${itemTaxTotal}`);
+  
   let vendorRevenue = itemTotal;
   let revenueCalculationType = "default";
   let productCost = 0;
@@ -958,29 +996,33 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
     console.log(`📍 Sources: ${metadataSource}`);
     
     // ✅ REVENUE CALCULATION LOGIC (with quantity handling)
+    // ✅ FIXED: For Junooni fulfillment, deduct tax_total from item_total first
     switch (fulfillmentType) {
       case "Junooni-fulfilment":
-        // ✅ FIXED: Vendor gets: (Quantity × Unit Price) - (Quantity × Product Cost)
+        // ✅ FIXED: Vendor gets: ((Quantity × Unit Price) - Tax Total) - (Quantity × Product Cost)
         const totalProductCost = productCost * item.quantity; // ✅ Multiply cost by quantity
-        vendorRevenue = Math.max(0, itemTotal - totalProductCost);
-        revenueCalculationType = "cost_deduction";
-        console.log(`💰 Junooni fulfillment calculation:`);
+        const itemTotalWithoutTax = itemTotal - itemTaxTotal; // ✅ Deduct tax from item total
+        vendorRevenue = Math.max(0, itemTotalWithoutTax - totalProductCost);
+        revenueCalculationType = "cost_deduction_minus_tax";
+        console.log(`💰 Junooni fulfillment calculation (FIXED - tax deducted):`);
         console.log(`   📦 Quantity: ${item.quantity}`);
         console.log(`   💵 Unit Price: ${item.unit_price}`);
-        console.log(`   💰 Total Price: ${item.quantity} × ${item.unit_price} = ${itemTotal}`);
+        console.log(`   💰 Total Price (with tax): ${item.quantity} × ${item.unit_price} = ${itemTotal}`);
+        console.log(`   🧾 Item Tax Total: ${itemTaxTotal}`);
+        console.log(`   💰 Total Price (without tax): ${itemTotal} - ${itemTaxTotal} = ${itemTotalWithoutTax}`);
         console.log(`   🏭 Unit Product Cost: ${productCost}`);
         console.log(`   🏭 Total Product Cost: ${item.quantity} × ${productCost} = ${totalProductCost}`);
-        console.log(`   ✅ Vendor Revenue: ${itemTotal} - ${totalProductCost} = ${vendorRevenue}`);
+        console.log(`   ✅ Vendor Revenue: ${itemTotalWithoutTax} - ${totalProductCost} = ${vendorRevenue}`);
         break;
         
       case "Creator-fulfilment":
-        // Vendor gets: 70% of Total (quantity already included in itemTotal)
+        // Vendor gets: 90% of Total (quantity already included in itemTotal)
         vendorRevenue = itemTotal * 0.90;
         revenueCalculationType = "percentage_split";
         console.log(`💰 Creator fulfillment calculation:`);
         console.log(`   📦 Quantity: ${item.quantity}`);
         console.log(`   💵 Total Price: ${itemTotal}`);
-        console.log(`   ✅ Vendor Revenue: ${itemTotal} × 70% = ${vendorRevenue}`);
+        console.log(`   ✅ Vendor Revenue: ${itemTotal} × 90% = ${vendorRevenue}`);
         break;
         
       default:
@@ -990,18 +1032,20 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any) =
         console.log(`💰 Default calculation (${fulfillmentType}):`);
         console.log(`   📦 Quantity: ${item.quantity}`);
         console.log(`   💵 Total Price: ${itemTotal}`);
-        console.log(`   ✅ Vendor Revenue: ${itemTotal} × 70% = ${vendorRevenue}`);
+        console.log(`   ✅ Vendor Revenue: ${itemTotal} × 90% = ${vendorRevenue}`);
         break;
     }
   } else {
-    // No metadata found anywhere, use default 70%
+    // No metadata found anywhere, use default 90%
     vendorRevenue = itemTotal * 0.90;
     revenueCalculationType = "no_metadata";
-    console.log(`💰 No metadata found anywhere, using default: ${itemTotal} × 70% = ${vendorRevenue}`);
+    console.log(`💰 No metadata found anywhere, using default: ${itemTotal} × 90% = ${vendorRevenue}`);
   }
   
   const result = {
     item_total: itemTotal,
+    item_tax_total: itemTaxTotal, // ✅ NEW: Include item tax total for reference
+    item_total_without_tax: itemTotal - itemTaxTotal, // ✅ NEW: Include item total without tax
     vendor_revenue: vendorRevenue,
     product_cost: productCost, // ✅ Unit product cost
     total_product_cost: fulfillmentType === "Junooni-fulfilment" ? productCost * item.quantity : 0, // ✅ Total cost for quantity
@@ -1522,118 +1566,83 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
 
   console.log(`✅ Found vendor info for ${vendorId}:`, vendorInfo);
 
-  // ✅ STEP 1: Start with vendor metadata items and find matching order items
-  const vendorMetadataItems = vendorInfo.vendor_items || [];
-  const vendorItems = [];
-  
-  console.log(`📦 Vendor metadata items for ${vendorId}:`, vendorMetadataItems);
-
-  // Add items from metadata first using enhanced matching
-  for (const metaItem of vendorMetadataItems) {
-    console.log(`🔍 Looking for metadata item: ${metaItem.title} - ₹${metaItem.unit_price}`);
+  // ✅ CRITICAL: Get vendor-specific payment status from metadata EARLY
+  const getVendorPaymentStatusFromMetadata = (order: any, vendorId: string) => {
+    const vendorOrders = order.metadata?.vendor_orders || [];
+    const vendorInfo = vendorOrders.find(vo => vo.vendor_id === vendorId);
     
-    // Find matching order item by title and price
-    const matchingOrderItem = order.items?.find((item: any) => 
-      (item.title && metaItem.title && item.title.toLowerCase().trim() === metaItem.title.toLowerCase().trim()) &&
-      (item.unit_price === metaItem.unit_price)
-    );
-    
-    if (matchingOrderItem) {
-      console.log(`✅ Found exact match: ${matchingOrderItem.title} - ₹${matchingOrderItem.unit_price} - SKU: ${matchingOrderItem.variant_sku}`);
-      vendorItems.push(matchingOrderItem);
-    } else {
-      console.log(`⚠️ No exact match found for metadata item: ${metaItem.title} - ₹${metaItem.unit_price}`);
-      
-      // Try looser matching by title only
-      const looseMatch = order.items?.find((item: any) => 
-        item.title && metaItem.title && 
-        item.title.toLowerCase().includes(metaItem.title.toLowerCase())
-      );
-      
-      if (looseMatch) {
-        console.log(`✅ Found loose match: ${looseMatch.title} - ₹${looseMatch.unit_price} - SKU: ${looseMatch.variant_sku}`);
-        vendorItems.push(looseMatch);
-      } else {
-        console.log(`❌ No match found for: ${metaItem.title}`);
-      }
+    if (vendorInfo?.vendor_payment_status) {
+      return {
+        status: vendorInfo.vendor_payment_status,
+        ...vendorInfo.vendor_payment_details,
+        source: 'metadata'
+      };
     }
+    
+    return {
+      status: 'unknown',
+      source: 'fallback'
+    };
+  };
+
+  const vendorPaymentData = getVendorPaymentStatusFromMetadata(order, vendorId);
+  const paymentStatus = vendorPaymentData.status;
+  //console.log(`💳 Vendor Payment Status: ${paymentStatus} (source: ${vendorPaymentData.source})`);
+
+// ===== DEBUG: VENDOR IDENTIFICATION =====
+console.log('\n🔐 ===== VENDOR AUTHENTICATION CHECK =====');
+console.log('🆔 Logged-in Vendor ID:', vendorId);
+console.log('📋 Available vendor_orders in metadata:', 
+  order.metadata?.vendor_orders?.map(vo => ({
+    vendor_id: vo.vendor_id,
+    vendor_handle: vo.vendor_handle,
+    items_count: vo.vendor_items?.length || 0
+  }))
+);
+console.log('🎯 Selected vendorInfo:', {
+  vendor_id: vendorInfo?.vendor_id,
+  vendor_handle: vendorInfo?.vendor_handle,
+  items_count: vendorInfo?.vendor_items?.length || 0
+});
+console.log('✅ Vendor ID match:', vendorInfo?.vendor_id === vendorId);
+console.log('============================================\n');
+  // ✅ STEP 1: Start with vendor metadata items and find matching order items
+  // ✅ STEP 1: Match vendor metadata items to order items using multiple strategies
+// ✅ STEP 1: Trust the vendor metadata (it's already correct)
+const vendorMetadataItems = vendorInfo.vendor_items || [];
+const vendorItems = [];
+  
+console.log(`📦 Vendor metadata claims ${vendorMetadataItems.length} items for ${vendorId}`);
+console.log(`📦 Order has ${order.items?.length || 0} total items`);
+
+// ✅ TRUST THE METADATA: Match order items to metadata items by title + price
+for (const metaItem of vendorMetadataItems) {
+  console.log(`\n🔍 Looking for metadata item: "${metaItem.title}" @ ₹${metaItem.unit_price}`);
+  
+  // Find matching order item by exact title and price
+  const matchingOrderItem = order.items?.find((orderItem: any) => {
+    const titleMatch = orderItem.title && metaItem.title && 
+                      orderItem.title.toLowerCase().trim() === metaItem.title.toLowerCase().trim();
+    const priceMatch = orderItem.unit_price === metaItem.unit_price;
+    
+    return titleMatch && priceMatch;
+  });
+  
+  if (matchingOrderItem) {
+    console.log(`✅ FOUND & ADDING: ${matchingOrderItem.title} - SKU: ${matchingOrderItem.variant_sku}`);
+    vendorItems.push(matchingOrderItem);
+  } else {
+    console.log(`❌ No matching order item found`);
   }
+}
+
+console.log(`\n📦 STEP 1 complete: ${vendorItems.length} items added for vendor ${vendorId}`);
+console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: item.variant_sku })));
 
   // ✅ STEP 2: STRICT vendor validation - only check database for items NOT already found
-  console.log(`🔍 Checking remaining order items for potential vendor matches...`);
+  //console.log(`🔍 Checking remaining order items for potential vendor matches...`);
   
-  for (const orderItem of order.items || []) {
-    const alreadyIncluded = vendorItems.some(vi => vi.id === orderItem.id);
-    if (alreadyIncluded) {
-      console.log(`⏭️ Skipping ${orderItem.title} - already included`);
-      continue;
-    }
-
-    console.log(`🔍 Checking if ${orderItem.title} (SKU: ${orderItem.variant_sku}) belongs to vendor ${vendorId}...`);
-    
-    // ✅ ENHANCED: Check vendor ownership by SKU pattern AND database
-    let belongsToVendor = false;
-    
-    // Method 1: Check SKU pattern consistency with existing vendor items
-    if (orderItem.variant_sku) {
-      const vendorSkuPatterns = vendorItems.map(vi => {
-        if (vi.variant_sku) {
-          if (vi.variant_sku.startsWith('JUNI-')) return 'JUNI';
-          if (vi.variant_sku.startsWith('SKU-')) return 'SKU';
-          return 'OTHER';
-        }
-        return 'NONE';
-      }).filter(pattern => pattern !== 'NONE');
-      
-      console.log(`   📋 Vendor ${vendorId} SKU patterns:`, vendorSkuPatterns);
-      
-      if (orderItem.variant_sku.startsWith('JUNI-')) {
-        belongsToVendor = vendorSkuPatterns.includes('JUNI');
-        console.log(`   🔍 Item has JUNI SKU, vendor has JUNI products: ${belongsToVendor}`);
-      } else if (orderItem.variant_sku.startsWith('SKU-')) {
-        belongsToVendor = vendorSkuPatterns.includes('SKU');
-        console.log(`   🔍 Item has SKU SKU, vendor has SKU products: ${belongsToVendor}`);
-      }
-    }
-    
-    // Method 2: Database check as fallback
-    if (!belongsToVendor) {
-      const productId = orderItem.product_id || orderItem.variant?.product_id;
-      if (productId) {
-        try {
-          const productMetadata = await fetchProductMetadata(productId, scope);
-          console.log(`   📋 Database check for ${productId}: vendor_id = ${productMetadata?.vendor_id}`);
-          
-          if (productMetadata?.vendor_id === vendorId) {
-            belongsToVendor = true;
-            console.log(`   ✅ Confirmed via database: belongs to vendor ${vendorId}`);
-          } else {
-            console.log(`   ❌ Database shows different/no vendor: ${productMetadata?.vendor_id}`);
-          }
-        } catch (error) {
-          console.log(`   ⚠️ Database check failed: ${error.message}`);
-        }
-      }
-    }
-    
-    if (belongsToVendor) {
-      console.log(`✅ Adding item to vendor ${vendorId}: ${orderItem.title}`);
-      vendorItems.push(orderItem);
-    } else {
-      console.log(`❌ Item does NOT belong to vendor ${vendorId}: ${orderItem.title}`);
-    }
-  }
-
-  console.log(`📦 Final vendor items for ${vendorId} (${vendorItems.length} items):`);
-  vendorItems.forEach((item, index) => {
-    console.log(`   ${index + 1}. ${item.title} - SKU: ${item.variant_sku || 'N/A'} - Price: ₹${item.unit_price}`);
-  });
-
-  if (vendorItems.length === 0) {
-    console.log(`❌ No vendor items found for vendor ${vendorId}`);
-    return null;
-  }
-
+  
   // ✅ STEP 3: Process claims and returns (this will ONLY add replacements that belong to THIS vendor)
   const { claims, returns } = await fetchOrderClaimsAndReturns(order.id, scope);
   console.log(`🔍 Processing claims for vendor ${vendorId}...`);
@@ -1684,7 +1693,7 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
   // ✅ STEP 5: Process all validated items for revenue calculation
   const itemsWithRevenue = [];
   for (const item of validatedVendorItems) {
-    const revenueData = await calculateVendorRevenue(item, vendorId, scope);
+    const revenueData = await calculateVendorRevenue(item, vendorId, scope, paymentStatus);
     const itemStatus = claimsAnalysis.itemStatuses.get(item.id) || {};
     
     itemsWithRevenue.push({
@@ -1704,10 +1713,6 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
       subtitle: item.subtitle || item.variant?.title || "Handcrafted Item",
       variant_sku: item.variant_sku || item.sku || "",
       
-      // // Tracking placeholders
-      // tracking_numbers: [],
-      // tracking_urls: [],
-      // has_tracking: false
       // ✅ EXTRACT REAL TRACKING DATA from fulfillments
 ...(() => {
   const trackingNumbers = [];
@@ -1797,10 +1802,17 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
   const calculatedVendorRevenue = itemsWithRevenue.reduce((total, item) => total + item.vendor_revenue, 0);
 
   // ✅ NEW: Calculate payment processing fee
-const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(vendorSubtotal);
+// ✅ NEW: Calculate payment processing fee - pass vendor-specific payment status
+  const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(vendorSubtotal, paymentStatus);
 
-// ✅ NEW: Calculate final vendor revenue after processing fee
-const finalVendorRevenue = calculatedVendorRevenue - totalProcessingFee;
+  // If payment is refunded, vendor payout is zero
+  let finalVendorRevenue = 0;
+  if (paymentStatus === 'refunded') {
+    finalVendorRevenue = 0;
+    console.log(`⚠️ Payment refunded - Vendor payout set to 0`);
+  } else {
+    finalVendorRevenue = calculatedVendorRevenue - totalProcessingFee;
+  }
 
   // ✅ DEBUG: Log vendor items before fulfillment calculation
   console.log(`🔍 DEBUG: Vendor items going into fulfillment calculation (${itemsWithRevenue.length}):`);
@@ -1842,33 +1854,9 @@ const finalVendorRevenue = calculatedVendorRevenue - totalProcessingFee;
 
 
 //const vendorPaymentData = calculateVendorPaymentStatus(order, itemsWithRevenue, calculatedVendorRevenue, vendorId);
-const getVendorPaymentStatusFromMetadata = (order: any, vendorId: string) => {
-  console.log(`🔍 Getting vendor payment status from metadata...`);
-  
-  const vendorOrders = order.metadata?.vendor_orders || [];
-  const vendorInfo = vendorOrders.find(vo => vo.vendor_id === vendorId);
-  
-  if (vendorInfo?.vendor_payment_status) {
-    console.log(`✅ Found vendor payment status in metadata: ${vendorInfo.vendor_payment_status}`);
-    return {
-      status: vendorInfo.vendor_payment_status,
-      ...vendorInfo.vendor_payment_details,
-      source: 'metadata'
-    };
-  }
-  
-  console.log(`⚠️ No payment status in metadata, using fallback`);
-  return {
-    status: 'unknown',
-    source: 'fallback'
-  };
-};
-
-// Use this instead of calculateVendorPaymentStatus:
-const vendorPaymentData = getVendorPaymentStatusFromMetadata(order, vendorId);
 
 
-console.log(`💳 Vendor payment status for ${vendorId}:`, vendorPaymentData);
+//console.log(`💳 Vendor payment status for ${vendorId}:`, vendorPaymentData);
   console.log(`✅ FINAL RESULT for vendor ${vendorId}: ${itemsWithRevenue.length} items`);
   const { vendorTaxTotal, vendorShippingTotal } = calculateVendorTaxAndShipping(order, itemsWithRevenue, vendorSubtotal);
   const ensureVendorPaymentStatus = (vendorPaymentData: any, globalOrderStatus: string) => {
@@ -2045,16 +2033,28 @@ export const GET = async (
     const marketplaceModuleService: MarketplaceModuleService =
       req.scope.resolve(MARKETPLACE_MODULE);
 
-    // Get vendor information
-    const vendorAdmin = await marketplaceModuleService.retrieveVendorAdmin(
-      req.auth_context.actor_id,
-      {
-        relations: ["vendor"],
-      }
-    );
+    // ✅ FIXED: Get vendor information using listVendorAdmins with filter on admin_id (user ID)
+    // The actor_id is the user ID, not the vendor admin ID
+    // ✅ FIXED: Get vendor ID from order metadata instead of looking up by user
+// First, fetch the order to get vendor information from metadata
+// ✅ CORRECT: Get logged-in vendor ID from authentication
+console.log(`🔍 DEBUG: Attempting to fetch vendor admins...`);
+console.log(`🔍 DEBUG: Actor ID from auth context: ${req.auth_context.actor_id}`);
+// Get the logged-in user's vendor admin record
+const vendorAdmins = await marketplaceModuleService.listVendorAdmins({
+  id: req.auth_context.actor_id
+});
 
-    const vendorId = vendorAdmin.vendor.id;
-    console.log(`🔍 Fetching order ${orderId} for vendor: ${vendorId}`);
+if (!vendorAdmins || vendorAdmins.length === 0) {
+  console.log(`❌ No vendor admin found for user: ${req.auth_context.actor_id}`);
+  return res.status(403).json({
+    error: "Not authorized as vendor"
+  });
+}
+
+const vendorId = vendorAdmins[0].vendor_id;
+console.log(`✅ Logged-in vendor ID: ${vendorId}`);
+console.log(`🔍 Fetching order ${orderId} for vendor: ${vendorId}`);
 
     // Get order data with enhanced fulfillment fields
     const { result: orders } = await getOrdersListWorkflow(req.scope).run({
