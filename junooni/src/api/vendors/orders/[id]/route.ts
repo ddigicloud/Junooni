@@ -15,23 +15,23 @@ import { MARKETPLACE_MODULE } from "../../../../modules/marketplace";
 // ✅ FIXED: Calculate vendor-specific fulfillment status with proper delivered/shipped handling
 // ✅ CRITICAL FIX: Enhanced vendor item filtering for calculateVendorFulfillmentStatus
 const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
-  console.log(`📦 ===========================================`);
-  console.log(`📦 VENDOR FULFILLMENT STATUS CALCULATION`);
-  console.log(`📦 ===========================================`);
-  console.log(`📦 Calculating vendor-specific fulfillment status for ${vendorItems.length} vendor items...`);
+  // //console.log(`📦 ===========================================`);
+  // //console.log(`📦 VENDOR FULFILLMENT STATUS CALCULATION`);
+  // //console.log(`📦 ===========================================`);
+  // //console.log(`📦 Calculating vendor-specific fulfillment status for ${vendorItems.length} vendor items...`);
   
   // ✅ ENHANCED: Log all vendor items with IDs for debugging
-  console.log(`📋 VENDOR ITEMS (${vendorItems.length}):`);
+  ////console.log(`📋 VENDOR ITEMS (${vendorItems.length}):`);
   vendorItems.forEach((item, index) => {
-    console.log(`  ${index + 1}. ID: ${item.id}`);
-    console.log(`     Title: ${item.title}`);
-    console.log(`     Quantity: ${item.quantity}`);
-    console.log(`     SKU: ${item.variant_sku || 'N/A'}`);
-    console.log(`     Is Claim Item: ${item.is_claim_item || false}`);
-  });
+  //   //console.log(`  ${index + 1}. ID: ${item.id}`);
+  //   //console.log(`     Title: ${item.title}`);
+  //   //console.log(`     Quantity: ${item.quantity}`);
+  //   //console.log(`     SKU: ${item.variant_sku || 'N/A'}`);
+  //   //console.log(`     Is Claim Item: ${item.is_claim_item || false}`);
+   });
   
   if (vendorItems.length === 0) {
-    console.log(`❌ No vendor items found, returning 'not_fulfilled'`);
+    ////console.log(`❌ No vendor items found, returning 'not_fulfilled'`);
     return {
       status: 'not_fulfilled',
       breakdown: {},
@@ -41,30 +41,30 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
 
   // ✅ CRITICAL: Create a Set of vendor item IDs for fast lookup
   const vendorItemIds = new Set(vendorItems.map(item => item.id));
-  console.log(`📋 VENDOR ITEM IDS SET:`, Array.from(vendorItemIds));
+  ////console.log(`📋 VENDOR ITEM IDS SET:`, Array.from(vendorItemIds));
 
   // Get all fulfillments from the order
   const fulfillments = order.fulfillments || [];
-  console.log(`📋 Order has ${fulfillments.length} fulfillments`);
+  ////console.log(`📋 Order has ${fulfillments.length} fulfillments`);
   
   // ✅ ENHANCED: Log all fulfillments and their items in detail
   fulfillments.forEach((fulfillment, index) => {
-    console.log(`\n📦 FULFILLMENT ${index + 1} (${fulfillment.id}):`);
-    console.log(`     Status: ${fulfillment.status}`);
-    console.log(`     Shipped: ${fulfillment.shipped_at}`);
-    console.log(`     Delivered: ${fulfillment.delivered_at}`);
-    console.log(`     Canceled: ${fulfillment.canceled_at}`);
-    console.log(`     Items: ${fulfillment.items?.length || 0}`);
+    ////console.log(`\n📦 FULFILLMENT ${index + 1} (${fulfillment.id}):`);
+    ////console.log(`     Status: ${fulfillment.status}`);
+    ////console.log(`     Shipped: ${fulfillment.shipped_at}`);
+    ////console.log(`     Delivered: ${fulfillment.delivered_at}`);
+    ////console.log(`     Canceled: ${fulfillment.canceled_at}`);
+    ////console.log(`     Items: ${fulfillment.items?.length || 0}`);
     
     if (fulfillment.items && fulfillment.items.length > 0) {
       fulfillment.items.forEach((item, itemIndex) => {
         const belongsToVendor = vendorItemIds.has(item.line_item_id) || vendorItemIds.has(item.item_id);
-        console.log(`       Item ${itemIndex + 1}:`);
-        console.log(`         line_item_id: ${item.line_item_id}`);
-        console.log(`         item_id: ${item.item_id || 'N/A'}`);
-        console.log(`         title: ${item.title}`);
-        console.log(`         quantity: ${item.quantity}`);
-        console.log(`         BELONGS TO VENDOR: ${belongsToVendor ? '✅ YES' : '❌ NO'}`);
+        ////console.log(`       Item ${itemIndex + 1}:`);
+        ////console.log(`         line_item_id: ${item.line_item_id}`);
+        ////console.log(`         item_id: ${item.item_id || 'N/A'}`);
+        ////console.log(`         title: ${item.title}`);
+        ////console.log(`         quantity: ${item.quantity}`);
+        ////console.log(`         BELONGS TO VENDOR: ${belongsToVendor ? '✅ YES' : '❌ NO'}`);
       });
     }
   });
@@ -87,67 +87,67 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
     totalVendorQuantity += item.quantity;
   });
 
-  console.log(`\n📊 Initialized tracking for ${vendorItems.length} vendor items (total quantity: ${totalVendorQuantity})`);
+  ////console.log(`\n📊 Initialized tracking for ${vendorItems.length} vendor items (total quantity: ${totalVendorQuantity})`);
 
   // ✅ CRITICAL: Process each fulfillment but ONLY count vendor items
   fulfillments.forEach((fulfillment, fulfillmentIndex) => {
-    console.log(`\n🔍 PROCESSING FULFILLMENT ${fulfillmentIndex + 1}/${fulfillments.length} (${fulfillment.id})`);
+    ////console.log(`\n🔍 PROCESSING FULFILLMENT ${fulfillmentIndex + 1}/${fulfillments.length} (${fulfillment.id})`);
     
     // Skip canceled fulfillments
     if (fulfillment.canceled_at) {
-      console.log(`   ⏭️ SKIPPING: Fulfillment is canceled`);
+      ////console.log(`   ⏭️ SKIPPING: Fulfillment is canceled`);
       return;
     }
     
     if (!fulfillment.items || fulfillment.items.length === 0) {
-      console.log(`   ⏭️ SKIPPING: Fulfillment has no items`);
+      ////console.log(`   ⏭️ SKIPPING: Fulfillment has no items`);
       return;
     }
     
-    console.log(`   📦 Fulfillment has ${fulfillment.items.length} total items`);
+    ////console.log(`   📦 Fulfillment has ${fulfillment.items.length} total items`);
     
     // ✅ CRITICAL: Filter fulfillment items to only include vendor's items
     const vendorFulfillmentItems = fulfillment.items.filter(fulfillmentItem => {
       const belongsToVendor = vendorItemIds.has(fulfillmentItem.line_item_id) || 
                              vendorItemIds.has(fulfillmentItem.item_id);
       
-      console.log(`   🔍 Checking item: ${fulfillmentItem.title} (${fulfillmentItem.line_item_id})`);
-      console.log(`       Belongs to vendor: ${belongsToVendor ? '✅ YES' : '❌ NO'}`);
+      // //console.log(`   🔍 Checking item: ${fulfillmentItem.title} (${fulfillmentItem.line_item_id})`);
+      // //console.log(`       Belongs to vendor: ${belongsToVendor ? '✅ YES' : '❌ NO'}`);
       
       return belongsToVendor;
     });
     
-    console.log(`   ✅ VENDOR ITEMS IN THIS FULFILLMENT: ${vendorFulfillmentItems.length} out of ${fulfillment.items.length}`);
+    ////console.log(`   ✅ VENDOR ITEMS IN THIS FULFILLMENT: ${vendorFulfillmentItems.length} out of ${fulfillment.items.length}`);
     
     if (vendorFulfillmentItems.length === 0) {
-      console.log(`   ⏭️ SKIPPING: No vendor items in this fulfillment`);
+      ////console.log(`   ⏭️ SKIPPING: No vendor items in this fulfillment`);
       return;
     }
     
     // Process only the vendor's items in this fulfillment
     vendorFulfillmentItems.forEach((fulfillmentItem, itemIndex) => {
-      console.log(`\n   📋 PROCESSING VENDOR ITEM ${itemIndex + 1}/${vendorFulfillmentItems.length}:`);
+      ////console.log(`\n   📋 PROCESSING VENDOR ITEM ${itemIndex + 1}/${vendorFulfillmentItems.length}:`);
       
       // ✅ FIXED: Match by both line_item_id and item_id
       const vendorItemId = fulfillmentItem.line_item_id || fulfillmentItem.item_id;
       const vendorItem = vendorItems.find(vi => vi.id === vendorItemId);
       
       if (!vendorItem) {
-        console.log(`       ❌ ERROR: Could not find vendor item with ID ${vendorItemId}`);
+        ////console.log(`       ❌ ERROR: Could not find vendor item with ID ${vendorItemId}`);
         return;
       }
       
-      console.log(`       ✅ MATCHED VENDOR ITEM: ${vendorItem.title} (${vendorItem.id})`);
+      ////console.log(`       ✅ MATCHED VENDOR ITEM: ${vendorItem.title} (${vendorItem.id})`);
       
       const currentStatus = itemFulfillmentStatus.get(vendorItem.id);
       const fulfilledQty = fulfillmentItem.quantity || 0;
       
-      console.log(`       📊 Status update for ${vendorItem.title}:`);
-      console.log(`          Current status: ${currentStatus.status}`);
-      console.log(`          Item total quantity: ${vendorItem.quantity}`);
-      console.log(`          Fulfillment quantity: ${fulfilledQty}`);
-      console.log(`          Fulfillment delivered_at: ${fulfillment.delivered_at}`);
-      console.log(`          Fulfillment shipped_at: ${fulfillment.shipped_at}`);
+      // //console.log(`       📊 Status update for ${vendorItem.title}:`);
+      // //console.log(`          Current status: ${currentStatus.status}`);
+      // //console.log(`          Item total quantity: ${vendorItem.quantity}`);
+      // //console.log(`          Fulfillment quantity: ${fulfilledQty}`);
+      // //console.log(`          Fulfillment delivered_at: ${fulfillment.delivered_at}`);
+      // //console.log(`          Fulfillment shipped_at: ${fulfillment.shipped_at}`);
       
       // Update fulfillment tracking
       currentStatus.fulfilled_quantity += fulfilledQty;
@@ -172,7 +172,7 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
         } else {
           newStatus = 'partially_delivered';
         }
-        console.log(`       🚚 Item marked as DELIVERED: ${fulfilledQty} units`);
+        ////console.log(`       🚚 Item marked as DELIVERED: ${fulfilledQty} units`);
       } else if (fulfillment.shipped_at) {
         // SHIPPED but not delivered
         currentStatus.shipped_quantity += fulfilledQty;
@@ -181,7 +181,7 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
         } else {
           newStatus = 'partially_shipped';
         }
-        console.log(`       📦 Item marked as SHIPPED: ${fulfilledQty} units`);
+        ////console.log(`       📦 Item marked as SHIPPED: ${fulfilledQty} units`);
       } else if (fulfillment.status === 'fulfilled') {
         // FULFILLED but not shipped
         if (currentStatus.fulfilled_quantity >= currentStatus.quantity) {
@@ -189,16 +189,16 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
         } else {
           newStatus = 'partially_fulfilled';
         }
-        console.log(`       ✅ Item marked as FULFILLED: ${fulfilledQty} units`);
+        //console.log(`       ✅ Item marked as FULFILLED: ${fulfilledQty} units`);
       }
       
       // Only update if new status is "higher" than current
       const statusHierarchy = ['not_fulfilled', 'partially_fulfilled', 'fulfilled', 'partially_shipped', 'shipped', 'partially_delivered', 'delivered'];
       if (statusHierarchy.indexOf(newStatus) > statusHierarchy.indexOf(currentStatus.status)) {
         currentStatus.status = newStatus;
-        console.log(`       ⬆️ STATUS UPGRADED: ${currentStatus.status} → ${newStatus}`);
+        //console.log(`       ⬆️ STATUS UPGRADED: ${currentStatus.status} → ${newStatus}`);
       } else {
-        console.log(`       ➡️ STATUS UNCHANGED: ${currentStatus.status}`);
+        //console.log(`       ➡️ STATUS UNCHANGED: ${currentStatus.status}`);
       }
       
       itemFulfillmentStatus.set(vendorItem.id, currentStatus);
@@ -214,17 +214,17 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
   let fulfilledItems = 0;
   let notFulfilledItems = 0;
 
-  console.log(`\n📊 FINAL ITEM STATUS SUMMARY:`);
+  //console.log(`\n📊 FINAL ITEM STATUS SUMMARY:`);
   itemFulfillmentStatus.forEach((status, itemId) => {
     const item = vendorItems.find(vi => vi.id === itemId);
     fulfilledQuantity += status.fulfilled_quantity;
     shippedQuantity += status.shipped_quantity;
     deliveredQuantity += status.delivered_quantity;
     
-    console.log(`   📋 ${item?.title} (${itemId}):`);
-    console.log(`      Status: ${status.status}`);
-    console.log(`      Quantities: delivered(${status.delivered_quantity})/${status.quantity}, shipped(${status.shipped_quantity})/${status.quantity}, fulfilled(${status.fulfilled_quantity})/${status.quantity}`);
-    console.log(`      Fulfillments: ${status.fulfillment_ids.length}`);
+    //console.log(`   📋 ${item?.title} (${itemId}):`);
+    //console.log(`      Status: ${status.status}`);
+    //console.log(`      Quantities: delivered(${status.delivered_quantity})/${status.quantity}, shipped(${status.shipped_quantity})/${status.quantity}, fulfilled(${status.fulfilled_quantity})/${status.quantity}`);
+    //console.log(`      Fulfillments: ${status.fulfillment_ids.length}`);
     
     // Count items by final status
     if (status.status.includes('delivered')) deliveredItems++;
@@ -236,32 +236,32 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
   // ✅ ENHANCED: Determine overall vendor fulfillment status
   let vendorFulfillmentStatus = 'not_fulfilled';
   
-  console.log(`\n📊 OVERALL STATUS CALCULATION:`);
-  console.log(`   Total vendor quantity: ${totalVendorQuantity}`);
-  console.log(`   Delivered quantity: ${deliveredQuantity}`);
-  console.log(`   Shipped quantity: ${shippedQuantity}`);
-  console.log(`   Fulfilled quantity: ${fulfilledQuantity}`);
+  //console.log(`\n📊 OVERALL STATUS CALCULATION:`);
+  //console.log(`   Total vendor quantity: ${totalVendorQuantity}`);
+  //console.log(`   Delivered quantity: ${deliveredQuantity}`);
+  //console.log(`   Shipped quantity: ${shippedQuantity}`);
+  //console.log(`   Fulfilled quantity: ${fulfilledQuantity}`);
   
   if (deliveredQuantity === totalVendorQuantity) {
     vendorFulfillmentStatus = 'delivered';
-    console.log(`   ✅ STATUS: DELIVERED (all ${deliveredQuantity}/${totalVendorQuantity} delivered)`);
+    //console.log(`   ✅ STATUS: DELIVERED (all ${deliveredQuantity}/${totalVendorQuantity} delivered)`);
   } else if (deliveredQuantity > 0) {
     vendorFulfillmentStatus = 'partially_delivered';
-    console.log(`   ⚠️ STATUS: PARTIALLY_DELIVERED (${deliveredQuantity}/${totalVendorQuantity} delivered)`);
+    //console.log(`   ⚠️ STATUS: PARTIALLY_DELIVERED (${deliveredQuantity}/${totalVendorQuantity} delivered)`);
   } else if (shippedQuantity === totalVendorQuantity) {
     vendorFulfillmentStatus = 'shipped';
-    console.log(`   ✅ STATUS: SHIPPED (all ${shippedQuantity}/${totalVendorQuantity} shipped)`);
+    //console.log(`   ✅ STATUS: SHIPPED (all ${shippedQuantity}/${totalVendorQuantity} shipped)`);
   } else if (shippedQuantity > 0) {
     vendorFulfillmentStatus = 'partially_shipped';
-    console.log(`   ⚠️ STATUS: PARTIALLY_SHIPPED (${shippedQuantity}/${totalVendorQuantity} shipped)`);
+    //console.log(`   ⚠️ STATUS: PARTIALLY_SHIPPED (${shippedQuantity}/${totalVendorQuantity} shipped)`);
   } else if (fulfilledQuantity === totalVendorQuantity) {
     vendorFulfillmentStatus = 'fulfilled';
-    console.log(`   ✅ STATUS: FULFILLED (all ${fulfilledQuantity}/${totalVendorQuantity} fulfilled)`);
+    //console.log(`   ✅ STATUS: FULFILLED (all ${fulfilledQuantity}/${totalVendorQuantity} fulfilled)`);
   } else if (fulfilledQuantity > 0) {
     vendorFulfillmentStatus = 'partially_fulfilled';
-    console.log(`   ⚠️ STATUS: PARTIALLY_FULFILLED (${fulfilledQuantity}/${totalVendorQuantity} fulfilled)`);
+    //console.log(`   ⚠️ STATUS: PARTIALLY_FULFILLED (${fulfilledQuantity}/${totalVendorQuantity} fulfilled)`);
   } else {
-    console.log(`   ❌ STATUS: NOT_FULFILLED`);
+    //console.log(`   ❌ STATUS: NOT_FULFILLED`);
   }
 
   // Create detailed fulfillment breakdown
@@ -286,10 +286,10 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
     partially_delivered_quantity: 0
   };
 
-  console.log(`\n📦 ==========================================`);
-  console.log(`📦 FINAL VENDOR FULFILLMENT STATUS: ${vendorFulfillmentStatus}`);
-  console.log(`📦 ==========================================`);
-  console.log(`📦 Breakdown:`, fulfillmentBreakdown);
+  //console.log(`\n📦 ==========================================`);
+  //console.log(`📦 FINAL VENDOR FULFILLMENT STATUS: ${vendorFulfillmentStatus}`);
+  //console.log(`📦 ==========================================`);
+  //console.log(`📦 Breakdown:`, fulfillmentBreakdown);
 
   return {
     status: vendorFulfillmentStatus,
@@ -318,7 +318,7 @@ const calculatePaymentProcessingFee = (totalAmount: number, paymentStatus: strin
 
 // ✅ NEW: Fetch claims and returns separately to avoid field expansion issues
 const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
-  console.log(`🔍 Fetching claims and returns for order: ${orderId}`);
+  //console.log(`🔍 Fetching claims and returns for order: ${orderId}`);
   
   try {
     const query = scope.resolve(ContainerRegistrationKeys.QUERY);
@@ -329,7 +329,7 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
     
     // ✅ ENHANCED: Try multiple approaches to fetch claims with expanded fields
     try {
-      console.log(`🔍 Attempting to fetch claims with expanded fields for order ${orderId}...`);
+      //console.log(`🔍 Attempting to fetch claims with expanded fields for order ${orderId}...`);
       
       // Try different field expansion patterns
       const claimFieldPatterns = [
@@ -357,7 +357,7 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
       
       for (let i = 0; i < claimFieldPatterns.length; i++) {
         try {
-          console.log(`🔍 Trying claims pattern ${i + 1}:`, claimFieldPatterns[i]);
+          //console.log(`🔍 Trying claims pattern ${i + 1}:`, claimFieldPatterns[i]);
           
           const claimsResult = await query.graph({
             entity: "order_claim", // Use order_claim since "claim" didn't work
@@ -368,35 +368,35 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
           });
           
           claims = claimsResult.data || [];
-          console.log(`✅ Found ${claims.length} claims using pattern ${i + 1}`);
+          //console.log(`✅ Found ${claims.length} claims using pattern ${i + 1}`);
           
           if (claims.length > 0) {
-            console.log(`📋 First claim structure:`, {
-              id: claims[0].id,
-              type: claims[0].type,
-              claim_items_count: claims[0].claim_items?.length || 0,
-              additional_items_count: claims[0].additional_items?.length || 0,
-              fulfillments_count: claims[0].fulfillments?.length || 0
-            });
+            // console.log(`📋 First claim structure:`, {
+            //   id: claims[0].id,
+            //   type: claims[0].type,
+            //   claim_items_count: claims[0].claim_items?.length || 0,
+            //   additional_items_count: claims[0].additional_items?.length || 0,
+            //   fulfillments_count: claims[0].fulfillments?.length || 0
+            // });
             break; // Success, stop trying patterns
           }
         } catch (patternError) {
-          console.log(`⚠️ Pattern ${i + 1} failed:`, patternError.message);
+          //console.log(`⚠️ Pattern ${i + 1} failed:`, patternError.message);
           continue;
         }
       }
       
       if (claims.length === 0) {
-        console.log(`⚠️ No claims found with any expansion pattern`);
+        //console.log(`⚠️ No claims found with any expansion pattern`);
       }
       
     } catch (claimsError) {
-      console.log(`⚠️ Could not fetch claims:`, claimsError.message);
+      //console.log(`⚠️ Could not fetch claims:`, claimsError.message);
     }
     
     // ✅ ENHANCED: Try multiple approaches to fetch returns with expanded fields
     try {
-      console.log(`🔍 Attempting to fetch returns with expanded fields for order ${orderId}...`);
+      //console.log(`🔍 Attempting to fetch returns with expanded fields for order ${orderId}...`);
       
       const returnFieldPatterns = [
         // Pattern 1: Full expansion
@@ -419,7 +419,7 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
       
       for (let i = 0; i < returnFieldPatterns.length; i++) {
         try {
-          console.log(`🔍 Trying returns pattern ${i + 1}:`, returnFieldPatterns[i]);
+          //console.log(`🔍 Trying returns pattern ${i + 1}:`, returnFieldPatterns[i]);
           
           const returnsResult = await query.graph({
             entity: "return",
@@ -430,29 +430,29 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
           });
           
           returns = returnsResult.data || [];
-          console.log(`✅ Found ${returns.length} returns using pattern ${i + 1}`);
+          //console.log(`✅ Found ${returns.length} returns using pattern ${i + 1}`);
           
           if (returns.length > 0) {
-            console.log(`📋 First return structure:`, {
-              id: returns[0].id,
-              status: returns[0].status,
-              items_count: returns[0].items?.length || 0
-            });
+            // console.log(`📋 First return structure:`, {
+            //   id: returns[0].id,
+            //   status: returns[0].status,
+            //   items_count: returns[0].items?.length || 0
+            // });
             break;
           }
         } catch (patternError) {
-          console.log(`⚠️ Returns pattern ${i + 1} failed:`, patternError.message);
+          //console.log(`⚠️ Returns pattern ${i + 1} failed:`, patternError.message);
           continue;
         }
       }
       
     } catch (returnsError) {
-      console.log(`⚠️ Could not fetch returns:`, returnsError.message);
+      //console.log(`⚠️ Could not fetch returns:`, returnsError.message);
     }
     
     // ✅ NEW: If we have claims but no claim_items/additional_items, try to fetch them separately
     if (claims.length > 0 && claims.every(claim => !claim.claim_items?.length && !claim.additional_items?.length)) {
-      console.log(`🔍 Claims found but missing details, attempting separate queries...`);
+      //console.log(`🔍 Claims found but missing details, attempting separate queries...`);
       
       for (const claim of claims) {
         try {
@@ -466,9 +466,9 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
           });
           
           claim.claim_items = claimItemsResult.data || [];
-          console.log(`✅ Found ${claim.claim_items.length} claim items for claim ${claim.id}`);
+          //console.log(`✅ Found ${claim.claim_items.length} claim items for claim ${claim.id}`);
         } catch (claimItemsError) {
-          console.log(`⚠️ Could not fetch claim items separately:`, claimItemsError.message);
+          //console.log(`⚠️ Could not fetch claim items separately:`, claimItemsError.message);
         }
         
         try {
@@ -482,9 +482,9 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
           });
           
           claim.additional_items = additionalItemsResult.data || [];
-          console.log(`✅ Found ${claim.additional_items.length} additional items for claim ${claim.id}`);
+          //console.log(`✅ Found ${claim.additional_items.length} additional items for claim ${claim.id}`);
         } catch (additionalItemsError) {
-          console.log(`⚠️ Could not fetch additional items separately:`, additionalItemsError.message);
+          //console.log(`⚠️ Could not fetch additional items separately:`, additionalItemsError.message);
         }
       }
     }
@@ -492,7 +492,7 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
     return { claims, returns };
     
   } catch (error) {
-    console.error(`❌ Error fetching claims and returns:`, error);
+    //console.error(`❌ Error fetching claims and returns:`, error);
     return { claims: [], returns: [] };
   }
 };
@@ -500,7 +500,7 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
 // ✅ NEW: Fetch original product metadata using product service
 const fetchProductMetadata = async (productId: string, scope: any) => {
   try {
-    console.log(`🔍 Fetching original product metadata for product: ${productId}`);
+    //console.log(`🔍 Fetching original product metadata for product: ${productId}`);
     
     const query = scope.resolve(ContainerRegistrationKeys.QUERY);
     
@@ -516,23 +516,23 @@ const fetchProductMetadata = async (productId: string, scope: any) => {
       
       if (products && products.length > 0) {
         const product = products[0];
-        console.log(`✅ Found product via query: ${product.title}`);
-        console.log(`📋 Product metadata:`, product.metadata);
+        //console.log(`✅ Found product via query: ${product.title}`);
+        //console.log(`📋 Product metadata:`, product.metadata);
          // ✅ If metadata has cost_price, log it specifically
         if (product.metadata?.cost_price !== undefined) {
-          console.log(`💰 Found cost_price in product metadata: ${product.metadata.cost_price}`);
+          //console.log(`💰 Found cost_price in product metadata: ${product.metadata.cost_price}`);
         }
         return product.metadata;
       }
     } catch (queryError) {
-      console.log(`⚠️ Query method failed, trying alternative...`);
+      //console.log(`⚠️ Query method failed, trying alternative...`);
     }
     
-    console.log(`❌ Could not fetch product ${productId} using query method`);
+    //console.log(`❌ Could not fetch product ${productId} using query method`);
     return null;
     
   } catch (error) {
-    console.error(`❌ Error fetching product metadata for ${productId}:`, error);
+    //console.error(`❌ Error fetching product metadata for ${productId}:`, error);
     return null;
   }
 };
@@ -540,7 +540,7 @@ const fetchProductMetadata = async (productId: string, scope: any) => {
 // ✅ NEW: Fetch variant details including price and SKU
 const fetchVariantDetails = async (variantId: string, scope: any) => {
   try {
-    console.log(`🔍 Fetching variant details for variant: ${variantId}`);
+    //console.log(`🔍 Fetching variant details for variant: ${variantId}`);
     
     const query = scope.resolve(ContainerRegistrationKeys.QUERY);
     
@@ -569,23 +569,23 @@ const fetchVariantDetails = async (variantId: string, scope: any) => {
       
       if (variants && variants.length > 0) {
         const variant = variants[0];
-        console.log(`✅ Found variant via query: ${variant.title || variant.id}`);
-        console.log(`📋 Variant details:`, {
-          sku: variant.sku,
-          prices: variant.prices?.length || 0,
-          product_id: variant.product_id
-        });
+        //console.log(`✅ Found variant via query: ${variant.title || variant.id}`);
+        // console.log(`📋 Variant details:`, {
+        //   sku: variant.sku,
+        //   prices: variant.prices?.length || 0,
+        //   product_id: variant.product_id
+        // });
         return variant;
       }
     } catch (queryError) {
-      console.log(`⚠️ Variant query failed:`, queryError.message);
+      //console.log(`⚠️ Variant query failed:`, queryError.message);
     }
     
-    console.log(`❌ Could not fetch variant ${variantId}`);
+    //console.log(`❌ Could not fetch variant ${variantId}`);
     return null;
     
   } catch (error) {
-    console.error(`❌ Error fetching variant details for ${variantId}:`, error);
+    //console.error(`❌ Error fetching variant details for ${variantId}:`, error);
     return null;
   }
 };
@@ -593,7 +593,7 @@ const fetchVariantDetails = async (variantId: string, scope: any) => {
 // ✅ NEW: Search for product by title to find missing replacement item details
 const searchProductByTitle = async (title: string, scope: any) => {
   try {
-    console.log(`🔍 Searching for product by title: "${title}"`);
+    //console.log(`🔍 Searching for product by title: "${title}"`);
     
     const query = scope.resolve(ContainerRegistrationKeys.QUERY);
     
@@ -622,38 +622,38 @@ const searchProductByTitle = async (title: string, scope: any) => {
     
     if (products && products.length > 0) {
       const product = products[0];
-      console.log(`✅ Found product by title: ${product.title}`);
-      console.log(`📋 Product variants:`, product.variants?.length || 0);
+      //console.log(`✅ Found product by title: ${product.title}`);
+      //console.log(`📋 Product variants:`, product.variants?.length || 0);
       return product;
     }
     
-    console.log(`❌ No product found with title: ${title}`);
+    //console.log(`❌ No product found with title: ${title}`);
     return null;
     
   } catch (error) {
-    console.error(`❌ Error searching product by title:`, error);
+    //console.error(`❌ Error searching product by title:`, error);
     return null;
   }
 };
 
 // ✅ NEW: Enhanced replacement item enhancement with better product/variant detection
 const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems: any[], scope: any) => {
-  console.log(`🔧 Enhancing replacement item: ${replacementItem.title}`);
-  console.log(`📋 Current replacement item data:`, {
-    id: replacementItem.id,
-    title: replacementItem.title,
-    unit_price: replacementItem.unit_price,
-    variant_sku: replacementItem.variant_sku,
-    variant_id: replacementItem.variant_id,
-    product_id: replacementItem.product_id
-  });
+  //console.log(`🔧 Enhancing replacement item: ${replacementItem.title}`);
+  // console.log(`📋 Current replacement item data:`, {
+  //   id: replacementItem.id,
+  //   title: replacementItem.title,
+  //   unit_price: replacementItem.unit_price,
+  //   variant_sku: replacementItem.variant_sku,
+  //   variant_id: replacementItem.variant_id,
+  //   product_id: replacementItem.product_id
+  // });
   
   let enhanced = { ...replacementItem };
   let enhancements = [];
   
   // ✅ STEP 1: Try to fetch variant details if variant_id is available
   if (enhanced.variant_id && (!enhanced.unit_price || !enhanced.variant_sku || !enhanced.title || enhanced.title === 'Replacement Item')) {
-    console.log(`🔍 Fetching variant details for replacement item...`);
+    //console.log(`🔍 Fetching variant details for replacement item...`);
     
     const variantDetails = await fetchVariantDetails(enhanced.variant_id, scope);
     if (variantDetails) {
@@ -663,7 +663,7 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
           enhanced.title = variantDetails.product.title;
           enhanced.subtitle = variantDetails.title || variantDetails.variant_title || 'Variant';
           enhancements.push(`title_from_variant_product(${enhanced.title})`);
-          console.log(`✅ Got title from variant product: ${enhanced.title}`);
+          //console.log(`✅ Got title from variant product: ${enhanced.title}`);
         }
       }
       
@@ -675,7 +675,7 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
           enhanced.unit_price = price.amount / 100; // Convert from cents
           enhanced.total = enhanced.unit_price * enhanced.quantity;
           enhancements.push(`price_from_variant(${enhanced.unit_price})`);
-          console.log(`✅ Got price from variant: ${enhanced.unit_price}`);
+          //console.log(`✅ Got price from variant: ${enhanced.unit_price}`);
         }
       }
       
@@ -683,7 +683,7 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
       if (!enhanced.variant_sku && variantDetails.sku) {
         enhanced.variant_sku = variantDetails.sku;
         enhancements.push(`sku_from_variant(${enhanced.variant_sku})`);
-        console.log(`✅ Got SKU from variant: ${enhanced.variant_sku}`);
+        //console.log(`✅ Got SKU from variant: ${enhanced.variant_sku}`);
       }
       
       // Update product info if available
@@ -696,7 +696,7 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
   
   // ✅ STEP 2: If we still don't have complete data and have a title, try to search for the product
   if ((!enhanced.unit_price || !enhanced.variant_sku) && enhanced.title && enhanced.title !== 'Replacement Item') {
-    console.log(`🔍 Searching for product by title to get missing details...`);
+    //console.log(`🔍 Searching for product by title to get missing details...`);
     
     const productDetails = await searchProductByTitle(enhanced.title, scope);
     if (productDetails && productDetails.variants && productDetails.variants.length > 0) {
@@ -721,7 +721,7 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
       }
       
       if (bestVariant) {
-        console.log(`✅ Found matching variant:`, bestVariant.title || bestVariant.id);
+        //console.log(`✅ Found matching variant:`, bestVariant.title || bestVariant.id);
         
         // Update missing price
         if (!enhanced.unit_price && bestVariant.prices && bestVariant.prices.length > 0) {
@@ -730,7 +730,7 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
             enhanced.unit_price = price.amount / 100;
             enhanced.total = enhanced.unit_price * enhanced.quantity;
             enhancements.push(`price_from_product_search(${enhanced.unit_price})`);
-            console.log(`✅ Got price from product search: ${enhanced.unit_price}`);
+            //console.log(`✅ Got price from product search: ${enhanced.unit_price}`);
           }
         }
         
@@ -738,7 +738,7 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
         if (!enhanced.variant_sku && bestVariant.sku) {
           enhanced.variant_sku = bestVariant.sku;
           enhancements.push(`sku_from_product_search(${enhanced.variant_sku})`);
-          console.log(`✅ Got SKU from product search: ${enhanced.variant_sku}`);
+          //console.log(`✅ Got SKU from product search: ${enhanced.variant_sku}`);
         }
         
         // Update variant_id if needed
@@ -760,7 +760,7 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
   
   // ✅ STEP 3: If still missing price, try to inherit from original claimed item
   if (!enhanced.unit_price && originalClaimedItems.length > 0) {
-    console.log(`🔍 Trying to inherit price from original claimed item...`);
+    //console.log(`🔍 Trying to inherit price from original claimed item...`);
     
     // Try to find a matching claimed item (by title similarity or product relation)
     const matchingClaimedItem = originalClaimedItems.find(claimedItem => {
@@ -783,27 +783,27 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
       enhanced.unit_price = matchingClaimedItem.unit_price;
       enhanced.total = enhanced.unit_price * enhanced.quantity;
       enhancements.push(`price_from_claimed_item(${enhanced.unit_price})`);
-      console.log(`✅ Inherited price from claimed item: ${enhanced.unit_price}`);
+      //console.log(`✅ Inherited price from claimed item: ${enhanced.unit_price}`);
       
       // Also try to inherit SKU if still missing
       if (!enhanced.variant_sku && matchingClaimedItem.variant_sku) {
         enhanced.variant_sku = matchingClaimedItem.variant_sku;
         enhancements.push(`sku_from_claimed_item(${enhanced.variant_sku})`);
-        console.log(`✅ Inherited SKU from claimed item: ${enhanced.variant_sku}`);
+        //console.log(`✅ Inherited SKU from claimed item: ${enhanced.variant_sku}`);
       }
     }
   }
   
   // ✅ STEP 4: If still missing data, set reasonable defaults
   if (!enhanced.unit_price) {
-    console.log(`⚠️ Could not determine price for replacement item, setting to 0`);
+    //console.log(`⚠️ Could not determine price for replacement item, setting to 0`);
     enhanced.unit_price = 0;
     enhanced.total = 0;
     enhancements.push('price_default_zero');
   }
   
   if (!enhanced.variant_sku) {
-    console.log(`⚠️ Could not determine SKU for replacement item, setting default`);
+    //console.log(`⚠️ Could not determine SKU for replacement item, setting default`);
     enhanced.variant_sku = `REPLACEMENT-${enhanced.id || 'UNKNOWN'}`;
     enhancements.push('sku_default_generated');
   }
@@ -812,20 +812,20 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
   enhanced.enhancement_applied = enhancements.length > 0;
   enhanced.enhancement_methods = enhancements;
   
-  console.log(`✅ Enhanced replacement item:`, {
-    title: enhanced.title,
-    subtitle: enhanced.subtitle,
-    unit_price: enhanced.unit_price,
-    variant_sku: enhanced.variant_sku,
-    enhancements: enhancements
-  });
+  // console.log(`✅ Enhanced replacement item:`, {
+  //   title: enhanced.title,
+  //   subtitle: enhanced.subtitle,
+  //   unit_price: enhanced.unit_price,
+  //   variant_sku: enhanced.variant_sku,
+  //   enhancements: enhancements
+  // });
   
   return enhanced;
 };
 
 // ✅ ENHANCED: Calculate vendor revenue by merging order metadata + original product metadata
 // ✅ FIXED: Junooni fulfillment now deducts tax_total from item_total before calculating vendor revenue
-const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, paymentStatus: string = 'paid') => {  console.log(`💰 Calculating revenue for item ${item.id} (${item.title})`);
+const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, paymentStatus: string = 'paid') => {  //console.log(`💰 Calculating revenue for item ${item.id} (${item.title})`);
 // If payment is refunded, vendor gets nothing
 if (paymentStatus === 'refunded') {
   return {
@@ -857,7 +857,7 @@ if (paymentStatus === 'refunded') {
       return sum + taxAmount;
     }, 0);
   }
-  console.log(`💰 Item tax total: ${itemTaxTotal}`);
+  //console.log(`💰 Item tax total: ${itemTaxTotal}`);
   
   let vendorRevenue = itemTotal;
   let revenueCalculationType = "default";
@@ -869,7 +869,7 @@ if (paymentStatus === 'refunded') {
   let orderMetadata = null;
   let orderMetadataSource = "none";
   
-  console.log(`🔍 Step 1: Checking order item metadata sources:`);
+  //console.log(`🔍 Step 1: Checking order item metadata sources:`);
   
   const orderMetadataSources = [
     { name: "item", data: item.metadata },
@@ -883,13 +883,13 @@ if (paymentStatus === 'refunded') {
     if (source.data && typeof source.data === 'object' && Object.keys(source.data).length > 0) {
       orderMetadata = source.data;
       orderMetadataSource = `order_${source.name}`;
-      console.log(`✅ Found order metadata in ${source.name}:`, Object.keys(orderMetadata));
+      //console.log(`✅ Found order metadata in ${source.name}:`, Object.keys(orderMetadata));
       break;
     }
   }
   
   // ✅ STEP 2: Always fetch original product metadata (for fulfillment_type & product_cost)
-  console.log(`🔍 Step 2: Fetching original product metadata for business rules...`);
+  //console.log(`🔍 Step 2: Fetching original product metadata for business rules...`);
   
   let originalProductMetadata = null;
   
@@ -906,22 +906,22 @@ if (paymentStatus === 'refunded') {
   }
   
   if (productId) {
-    console.log(`🔍 Found product ID: ${productId}, fetching current metadata...`);
+    //console.log(`🔍 Found product ID: ${productId}, fetching current metadata...`);
     originalProductMetadata = await fetchProductMetadata(productId, scope);
     
     if (originalProductMetadata && Object.keys(originalProductMetadata).length > 0) {
-      console.log(`✅ Got original product metadata:`, Object.keys(originalProductMetadata));
-      console.log(`📋 fulfillment_type:`, originalProductMetadata.fulfillment_type);
-      console.log(`📋 product_cost:`, originalProductMetadata.product_cost);
+      //console.log(`✅ Got original product metadata:`, Object.keys(originalProductMetadata));
+      //console.log(`📋 fulfillment_type:`, originalProductMetadata.fulfillment_type);
+      //console.log(`📋 product_cost:`, originalProductMetadata.product_cost);
     } else {
-      console.log(`❌ Could not fetch original product metadata`);
+      //console.log(`❌ Could not fetch original product metadata`);
     }
   } else {
-    console.log(`❌ No product ID found in item`);
+    //console.log(`❌ No product ID found in item`);
   }
   
   // ✅ STEP 3: Merge metadata sources intelligently
-  console.log(`🔄 Step 3: Merging metadata from both sources...`);
+  //console.log(`🔄 Step 3: Merging metadata from both sources...`);
   
   let mergedMetadata = {};
   
@@ -929,7 +929,7 @@ if (paymentStatus === 'refunded') {
   if (orderMetadata) {
     mergedMetadata = { ...orderMetadata };
     metadataSource = orderMetadataSource;
-    console.log(`✅ Base metadata from ${orderMetadataSource}`);
+    //console.log(`✅ Base metadata from ${orderMetadataSource}`);
   }
   
   // Override with original product metadata for business rules
@@ -938,18 +938,18 @@ if (paymentStatus === 'refunded') {
     if (originalProductMetadata.fulfillment_type !== undefined) {
       mergedMetadata.fulfillment_type = originalProductMetadata.fulfillment_type;
       metadataSource += " + original_product(fulfillment_type)";
-      console.log(`✅ Using original fulfillment_type:`, originalProductMetadata.fulfillment_type);
+      //console.log(`✅ Using original fulfillment_type:`, originalProductMetadata.fulfillment_type);
     }
     
     if (originalProductMetadata.cost_price !== undefined) {
       mergedMetadata.cost_price = originalProductMetadata.cost_price;
       metadataSource += " + original_product(product_cost)";
-      console.log(`✅ Using original product_cost:`, originalProductMetadata.cost_price);
+      //console.log(`✅ Using original product_cost:`, originalProductMetadata.cost_price);
     }
   }
   
-  console.log(`📋 Final merged metadata:`, mergedMetadata);
-  console.log(`📍 Metadata sources: ${metadataSource}`);
+  //console.log(`📋 Final merged metadata:`, mergedMetadata);
+  //console.log(`📍 Metadata sources: ${metadataSource}`);
   
   // ✅ STEP 4: Process merged metadata
   if (Object.keys(mergedMetadata).length > 0) {
@@ -957,20 +957,20 @@ if (paymentStatus === 'refunded') {
     let fulfillmentTypeData = mergedMetadata.fulfillment_type;
     
     if (fulfillmentTypeData) {
-      console.log(`🔍 Processing fulfillment_type:`, fulfillmentTypeData, typeof fulfillmentTypeData);
+      //console.log(`🔍 Processing fulfillment_type:`, fulfillmentTypeData, typeof fulfillmentTypeData);
       
       // If it's a string, try to parse it as JSON
       if (typeof fulfillmentTypeData === 'string') {
         try {
           fulfillmentTypeData = JSON.parse(fulfillmentTypeData);
-          console.log(`✅ Parsed fulfillment_type from JSON:`, fulfillmentTypeData);
+          //console.log(`✅ Parsed fulfillment_type from JSON:`, fulfillmentTypeData);
         } catch (e) {
-          console.log(`⚠️ Could not parse as JSON, trying regex extraction...`);
+          //console.log(`⚠️ Could not parse as JSON, trying regex extraction...`);
           // Try to extract type from partial JSON string using regex
           const typeMatch = fulfillmentTypeData.match(/"type":"([^"]+)"/);
           if (typeMatch) {
             fulfillmentType = typeMatch[1];
-            console.log(`✅ Extracted type via regex: ${fulfillmentType}`);
+            //console.log(`✅ Extracted type via regex: ${fulfillmentType}`);
           }
         }
       }
@@ -978,7 +978,7 @@ if (paymentStatus === 'refunded') {
       // Extract type from object (if successfully parsed or was already an object)
       if (fulfillmentTypeData && typeof fulfillmentTypeData === 'object' && fulfillmentTypeData.type) {
         fulfillmentType = fulfillmentTypeData.type;
-        console.log(`✅ Extracted type from object: ${fulfillmentType}`);
+        //console.log(`✅ Extracted type from object: ${fulfillmentType}`);
       }
     }
     
@@ -989,57 +989,57 @@ if (paymentStatus === 'refunded') {
       } else if (typeof mergedMetadata.cost_price === 'number') {
         productCost = mergedMetadata.cost_price;
       }
-      console.log(`✅ Extracted product cost: ${productCost}`);
+      //console.log(`✅ Extracted product cost: ${productCost}`);
     }
     
-    console.log(`🏷️ Item ${item.id} - Fulfillment: "${fulfillmentType}", Cost: ${productCost}`);
-    console.log(`📍 Sources: ${metadataSource}`);
+    //console.log(`🏷️ Item ${item.id} - Fulfillment: "${fulfillmentType}", Cost: ${productCost}`);
+    //console.log(`📍 Sources: ${metadataSource}`);
     
     // ✅ REVENUE CALCULATION LOGIC (with quantity handling)
     // ✅ FIXED: For Junooni fulfillment, deduct tax_total from item_total first
     switch (fulfillmentType) {
-      case "Junooni-fulfilment":
+      case "JUNOONI-fulfillment":
         // ✅ FIXED: Vendor gets: ((Quantity × Unit Price) - Tax Total) - (Quantity × Product Cost)
         const totalProductCost = productCost * item.quantity; // ✅ Multiply cost by quantity
         const itemTotalWithoutTax = itemTotal - itemTaxTotal; // ✅ Deduct tax from item total
         vendorRevenue = Math.max(0, itemTotalWithoutTax - totalProductCost);
         revenueCalculationType = "cost_deduction_minus_tax";
-        console.log(`💰 Junooni fulfillment calculation (FIXED - tax deducted):`);
-        console.log(`   📦 Quantity: ${item.quantity}`);
-        console.log(`   💵 Unit Price: ${item.unit_price}`);
-        console.log(`   💰 Total Price (with tax): ${item.quantity} × ${item.unit_price} = ${itemTotal}`);
-        console.log(`   🧾 Item Tax Total: ${itemTaxTotal}`);
-        console.log(`   💰 Total Price (without tax): ${itemTotal} - ${itemTaxTotal} = ${itemTotalWithoutTax}`);
-        console.log(`   🏭 Unit Product Cost: ${productCost}`);
-        console.log(`   🏭 Total Product Cost: ${item.quantity} × ${productCost} = ${totalProductCost}`);
-        console.log(`   ✅ Vendor Revenue: ${itemTotalWithoutTax} - ${totalProductCost} = ${vendorRevenue}`);
+        //console.log(`💰 Junooni fulfillment calculation (FIXED - tax deducted):`);
+        //console.log(`   📦 Quantity: ${item.quantity}`);
+        //console.log(`   💵 Unit Price: ${item.unit_price}`);
+        //console.log(`   💰 Total Price (with tax): ${item.quantity} × ${item.unit_price} = ${itemTotal}`);
+        //console.log(`   🧾 Item Tax Total: ${itemTaxTotal}`);
+        //console.log(`   💰 Total Price (without tax): ${itemTotal} - ${itemTaxTotal} = ${itemTotalWithoutTax}`);
+        //console.log(`   🏭 Unit Product Cost: ${productCost}`);
+        //console.log(`   🏭 Total Product Cost: ${item.quantity} × ${productCost} = ${totalProductCost}`);
+        //console.log(`   ✅ Vendor Revenue: ${itemTotalWithoutTax} - ${totalProductCost} = ${vendorRevenue}`);
         break;
         
       case "Creator-fulfilment":
         // Vendor gets: 90% of Total (quantity already included in itemTotal)
         vendorRevenue = itemTotal * 0.90;
         revenueCalculationType = "percentage_split";
-        console.log(`💰 Creator fulfillment calculation:`);
-        console.log(`   📦 Quantity: ${item.quantity}`);
-        console.log(`   💵 Total Price: ${itemTotal}`);
-        console.log(`   ✅ Vendor Revenue: ${itemTotal} × 90% = ${vendorRevenue}`);
+        //console.log(`💰 Creator fulfillment calculation:`);
+        //console.log(`   📦 Quantity: ${item.quantity}`);
+        //console.log(`   💵 Total Price: ${itemTotal}`);
+        //console.log(`   ✅ Vendor Revenue: ${itemTotal} × 90% = ${vendorRevenue}`);
         break;
         
       default:
         // Default: 90% of total (safe fallback)
         vendorRevenue = itemTotal * 0.90;
         revenueCalculationType = "default_percentage";
-        console.log(`💰 Default calculation (${fulfillmentType}):`);
-        console.log(`   📦 Quantity: ${item.quantity}`);
-        console.log(`   💵 Total Price: ${itemTotal}`);
-        console.log(`   ✅ Vendor Revenue: ${itemTotal} × 90% = ${vendorRevenue}`);
+        //console.log(`💰 Default calculation (${fulfillmentType}):`);
+        //console.log(`   📦 Quantity: ${item.quantity}`);
+        //console.log(`   💵 Total Price: ${itemTotal}`);
+        //console.log(`   ✅ Vendor Revenue: ${itemTotal} × 90% = ${vendorRevenue}`);
         break;
     }
   } else {
     // No metadata found anywhere, use default 90%
     vendorRevenue = itemTotal * 0.90;
     revenueCalculationType = "no_metadata";
-    console.log(`💰 No metadata found anywhere, using default: ${itemTotal} × 90% = ${vendorRevenue}`);
+    //console.log(`💰 No metadata found anywhere, using default: ${itemTotal} × 90% = ${vendorRevenue}`);
   }
   
   const result = {
@@ -1048,7 +1048,7 @@ if (paymentStatus === 'refunded') {
     item_total_without_tax: itemTotal - itemTaxTotal, // ✅ NEW: Include item total without tax
     vendor_revenue: vendorRevenue,
     product_cost: productCost, // ✅ Unit product cost
-    total_product_cost: fulfillmentType === "Junooni-fulfilment" ? productCost * item.quantity : 0, // ✅ Total cost for quantity
+    total_product_cost: fulfillmentType === "JUNOONI-fulfillment" ? productCost * item.quantity : 0, // ✅ Total cost for quantity
     quantity: item.quantity, // ✅ Add quantity for reference
     fulfillment_type: fulfillmentType,
     calculation_type: revenueCalculationType,
@@ -1066,7 +1066,7 @@ if (paymentStatus === 'refunded') {
 // ✅ FIXED: Enhanced claims analysis to remove original items that have replacements
 // ✅ FIXED: Enhanced replacement item detection to prevent cross-vendor assignments
 const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItems: any[], vendorId: string, scope: any, order: any) => {
-  console.log(`🔍 Analyzing ${claims.length} claims and ${returns.length} returns for vendor ${vendorId}`);
+  //console.log(`🔍 Analyzing ${claims.length} claims and ${returns.length} returns for vendor ${vendorId}`);
   
   // Track item statuses and replacement relationships
   const itemStatuses = new Map();
@@ -1077,7 +1077,7 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
   
   // Process returns
   returns.forEach((returnOrder: any) => {
-    console.log(`🔄 Processing return ${returnOrder.id}:`, returnOrder);
+    //console.log(`🔄 Processing return ${returnOrder.id}:`, returnOrder);
     
     if (returnOrder.items) {
       returnOrder.items.forEach((returnItem: any) => {
@@ -1108,7 +1108,7 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
             created_at: returnOrder.created_at
           });
           
-          console.log(`   ✅ Added vendor return item: ${returnItem.item_id}`);
+          //console.log(`   ✅ Added vendor return item: ${returnItem.item_id}`);
         }
       });
     }
@@ -1119,13 +1119,13 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
   
   // Process claims
   for (const claim of claims) {
-    console.log(`🔄 Processing claim ${claim.id}:`, claim);
-    console.log(`📋 Claim type: ${claim.type}`);
+    //console.log(`🔄 Processing claim ${claim.id}:`, claim);
+    //console.log(`📋 Claim type: ${claim.type}`);
     
     // Check claim items (items being returned/replaced)
     if (claim.claim_items) {
       for (const claimItem of claim.claim_items) {
-        console.log(`   📦 Claim item (being returned):`, claimItem);
+        //console.log(`   📦 Claim item (being returned):`, claimItem);
         
         const isVendorItem = vendorItems.some(vi => 
           vi.id === claimItem.item_id ||
@@ -1157,27 +1157,27 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
                               order.items?.find(item => item.id === claimItem.item_id);
           if (originalItem) {
             originalClaimedItems.push(originalItem);
-            console.log(`   📋 Stored original item for inheritance: ${originalItem.title} (${originalItem.unit_price})`);
+            //console.log(`   📋 Stored original item for inheritance: ${originalItem.title} (${originalItem.unit_price})`);
           }
           
-          console.log(`   ✅ Added vendor claim item: ${claimItem.item_id}`);
+          //console.log(`   ✅ Added vendor claim item: ${claimItem.item_id}`);
         }
       }
     }
     
     // ✅ ENHANCED: Check additional items (replacement items) with strict vendor verification
     if (claim.additional_items && claim.additional_items.length > 0) {
-      console.log(`🔍 Processing ${claim.additional_items.length} additional items (replacements):`);
+      //console.log(`🔍 Processing ${claim.additional_items.length} additional items (replacements):`);
       
       for (let index = 0; index < claim.additional_items.length; index++) {
         const additionalItem = claim.additional_items[index];
-        console.log(`   🆕 Additional item ${index + 1}:`, {
-          id: additionalItem.id,
-          title: additionalItem.title,
-          item_id: additionalItem.item_id,
-          variant_id: additionalItem.variant_id,
-          product_id: additionalItem.product_id
-        });
+        // console.log(`   🆕 Additional item ${index + 1}:`, {
+        //   id: additionalItem.id,
+        //   title: additionalItem.title,
+        //   item_id: additionalItem.item_id,
+        //   variant_id: additionalItem.variant_id,
+        //   product_id: additionalItem.product_id
+        // });
         
         let isVendorReplacement = false;
         let matchMethod = '';
@@ -1186,7 +1186,7 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
         let originalItemBelongsToVendor = false;
         if (additionalItem.item_id) {
           originalItemBelongsToVendor = vendorItems.some(vi => vi.id === additionalItem.item_id);
-          console.log(`   🔍 Original item ${additionalItem.item_id} belongs to vendor: ${originalItemBelongsToVendor}`);
+          //console.log(`   🔍 Original item ${additionalItem.item_id} belongs to vendor: ${originalItemBelongsToVendor}`);
         }
         
         // ✅ STEP 2: Check if the REPLACEMENT item itself belongs to this vendor
@@ -1195,13 +1195,13 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
         // Method 1: Check the referenced order item (the actual replacement in the order)
         const referencedOrderItem = order.items?.find(orderItem => orderItem.id === additionalItem.item_id);
         if (referencedOrderItem) {
-          console.log(`   📦 Found referenced order item for replacement check: ${referencedOrderItem.title}`);
-          console.log(`   📋 Referenced item details:`, {
-            id: referencedOrderItem.id,
-            title: referencedOrderItem.title,
-            variant_sku: referencedOrderItem.variant_sku,
-            product_id: referencedOrderItem.product_id
-          });
+          //console.log(`   📦 Found referenced order item for replacement check: ${referencedOrderItem.title}`);
+          // console.log(`   📋 Referenced item details:`, {
+          //   id: referencedOrderItem.id,
+          //   title: referencedOrderItem.title,
+          //   variant_sku: referencedOrderItem.variant_sku,
+          //   product_id: referencedOrderItem.product_id
+          // });
           
           // ✅ CRITICAL: Check if replacement item belongs to vendor by SKU pattern or database lookup
           const productId = referencedOrderItem.product_id || referencedOrderItem.variant?.product_id;
@@ -1216,12 +1216,12 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
               
               if (vendorHasJuniProducts) {
                 replacementItemBelongsToVendor = true;
-                console.log(`   ✅ Replacement belongs to vendor via JUNI SKU pattern match`);
+                //console.log(`   ✅ Replacement belongs to vendor via JUNI SKU pattern match`);
               } else {
-                console.log(`   ❌ Replacement has JUNI SKU but vendor doesn't have other JUNI products`);
+                //console.log(`   ❌ Replacement has JUNI SKU but vendor doesn't have other JUNI products`);
               }
             } else {
-              console.log(`   📋 Replacement has non-JUNI SKU: ${referencedOrderItem.variant_sku}`);
+              //console.log(`   📋 Replacement has non-JUNI SKU: ${referencedOrderItem.variant_sku}`);
             }
           }
           
@@ -1231,12 +1231,12 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
               const productMetadata = await fetchProductMetadata(productId, scope);
               if (productMetadata?.vendor_id === vendorId) {
                 replacementItemBelongsToVendor = true;
-                console.log(`   ✅ Replacement belongs to vendor via database metadata`);
+                //console.log(`   ✅ Replacement belongs to vendor via database metadata`);
               } else {
-                console.log(`   ❌ Database shows replacement belongs to different vendor: ${productMetadata?.vendor_id}`);
+                //console.log(`   ❌ Database shows replacement belongs to different vendor: ${productMetadata?.vendor_id}`);
               }
             } catch (error) {
-              console.log(`   ⚠️ Could not check replacement product in database:`, error.message);
+              //console.log(`   ⚠️ Could not check replacement product in database:`, error.message);
             }
           }
         }
@@ -1246,11 +1246,11 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
           isVendorReplacement = true;
           matchMethod = 'both_original_and_replacement_belong_to_vendor';
           replacedItemIds.add(additionalItem.item_id);
-          console.log(`   ✅ VALID REPLACEMENT: Both original and replacement belong to vendor ${vendorId}`);
+          //console.log(`   ✅ VALID REPLACEMENT: Both original and replacement belong to vendor ${vendorId}`);
         } else {
-          console.log(`   ❌ INVALID REPLACEMENT for vendor ${vendorId}:`);
-          console.log(`      - Original belongs to vendor: ${originalItemBelongsToVendor}`);
-          console.log(`      - Replacement belongs to vendor: ${replacementItemBelongsToVendor}`);
+          //console.log(`   ❌ INVALID REPLACEMENT for vendor ${vendorId}:`);
+          //console.log(`      - Original belongs to vendor: ${originalItemBelongsToVendor}`);
+          //console.log(`      - Replacement belongs to vendor: ${replacementItemBelongsToVendor}`);
         }
         
         if (isVendorReplacement) {
@@ -1270,10 +1270,10 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
             itemVariantSku = referencedOrderItem.variant_sku || itemVariantSku;
             itemVariantId = referencedOrderItem.variant_id || itemVariantId;
             itemProductId = referencedOrderItem.product_id || itemProductId;
-            console.log(`   ✅ Got complete data from referenced order item: ${itemTitle} - ₹${itemUnitPrice} - ${itemVariantSku}`);
+            //console.log(`   ✅ Got complete data from referenced order item: ${itemTitle} - ₹${itemUnitPrice} - ${itemVariantSku}`);
           }
           
-          console.log(`   📝 Final replacement item data: "${itemTitle}" - ₹${itemUnitPrice} - ${itemVariantSku}`);
+          //console.log(`   📝 Final replacement item data: "${itemTitle}" - ₹${itemUnitPrice} - ${itemVariantSku}`);
           
           // Create replacement item
           let replacementItem = {
@@ -1301,16 +1301,16 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
           };
           
           // Enhance replacement item
-          console.log(`🔧 Enhancing replacement item...`);
+          //console.log(`🔧 Enhancing replacement item...`);
           replacementItem = await enhanceReplacementItem(replacementItem, originalClaimedItems, scope);
           
           // Add to arrays
           newReplacementItems.push(replacementItem);
           vendorItems.push(replacementItem);
           
-          console.log(`   ✅ Added valid vendor replacement item: "${replacementItem.title}" (${matchMethod})`);
+          //console.log(`   ✅ Added valid vendor replacement item: "${replacementItem.title}" (${matchMethod})`);
         } else {
-          console.log(`   ❌ Replacement item SKIPPED - does not belong to vendor ${vendorId}`);
+          //console.log(`   ❌ Replacement item SKIPPED - does not belong to vendor ${vendorId}`);
         }
       }
     }
@@ -1318,7 +1318,7 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
   
   // ✅ Remove original items that have been replaced
   if (replacedItemIds.size > 0) {
-    console.log(`🗑️ Removing ${replacedItemIds.size} original items that have replacements:`, Array.from(replacedItemIds));
+    //console.log(`🗑️ Removing ${replacedItemIds.size} original items that have replacements:`, Array.from(replacedItemIds));
     
     const originalVendorItemsCount = vendorItems.length;
     
@@ -1328,28 +1328,28 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
       
       // Remove if: item ID is in replaced list AND it's not a replacement item itself
       if (replacedItemIds.has(item.id) && !item.is_claim_item) {
-        console.log(`   🗑️ Removing original item: ${item.title} (${item.id}) - has replacement`);
+        //console.log(`   🗑️ Removing original item: ${item.title} (${item.id}) - has replacement`);
         vendorItems.splice(i, 1);
       }
     }
     
-    console.log(`✅ Vendor items after removing replaced originals: ${vendorItems.length} (was ${originalVendorItemsCount})`);
+    //console.log(`✅ Vendor items after removing replaced originals: ${vendorItems.length} (was ${originalVendorItemsCount})`);
     
     // ✅ DEBUG: Log final vendor items
-    console.log(`📋 Final vendor items list:`);
+    //console.log(`📋 Final vendor items list:`);
     vendorItems.forEach((item, index) => {
-      console.log(`   ${index + 1}. ${item.title} (${item.id}) ${item.is_claim_item ? '[REPLACEMENT]' : '[ORIGINAL]'} - SKU: ${item.variant_sku || 'N/A'}`);
+      //console.log(`   ${index + 1}. ${item.title} (${item.id}) ${item.is_claim_item ? '[REPLACEMENT]' : '[ORIGINAL]'} - SKU: ${item.variant_sku || 'N/A'}`);
     });
   }
   
-  console.log(`📊 Claims analysis summary:`);
-  console.log(`   - Claims processed: ${claims.length}`);
-  console.log(`   - Returns processed: ${returns.length}`);
-  console.log(`   - Claim items: ${claimItems.length}`);
-  console.log(`   - Return items: ${returnItems.length}`);
-  console.log(`   - New replacement items added: ${newReplacementItems.length}`);
-  console.log(`   - Original items removed: ${replacedItemIds.size}`);
-  console.log(`   - Total vendor items after processing: ${vendorItems.length}`);
+  //console.log(`📊 Claims analysis summary:`);
+  //console.log(`   - Claims processed: ${claims.length}`);
+  //console.log(`   - Returns processed: ${returns.length}`);
+  //console.log(`   - Claim items: ${claimItems.length}`);
+  //console.log(`   - Return items: ${returnItems.length}`);
+  //console.log(`   - New replacement items added: ${newReplacementItems.length}`);
+  //console.log(`   - Original items removed: ${replacedItemIds.size}`);
+  //console.log(`   - Total vendor items after processing: ${vendorItems.length}`);
   
   return {
     itemStatuses,
@@ -1364,11 +1364,11 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
 
 // ✅ FIXED: Separate shipping amount from shipping tax to prevent double counting
 const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
-  console.log(`💰 Calculating vendor tax and shipping (with proper separation)...`);
-  console.log(`📋 Order tax_total: ${order.tax_total}`);
-  console.log(`📋 Order shipping_total: ${order.shipping_total}`);
-  console.log(`📋 Order subtotal: ${order.subtotal}`);
-  console.log(`📋 Vendor subtotal: ${vendorSubtotal}`);
+  //console.log(`💰 Calculating vendor tax and shipping (with proper separation)...`);
+  //console.log(`📋 Order tax_total: ${order.tax_total}`);
+  //console.log(`📋 Order shipping_total: ${order.shipping_total}`);
+  //console.log(`📋 Order subtotal: ${order.subtotal}`);
+  //console.log(`📋 Vendor subtotal: ${vendorSubtotal}`);
   
   let vendorProductTax = 0;        // Tax on vendor products only
   let vendorShippingTax = 0;       // Tax on shipping only
@@ -1380,7 +1380,7 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
     if (item.tax_lines && item.tax_lines.length > 0) {
       const itemTax = item.tax_lines.reduce((sum, taxLine) => {
         const taxAmount = typeof taxLine.amount === 'number' ? taxLine.amount : parseFloat(taxLine.amount) || 0;
-        console.log(`   📋 Item ${item.title} tax line: ${taxAmount}`);
+        //console.log(`   📋 Item ${item.title} tax line: ${taxAmount}`);
         return sum + taxAmount;
       }, 0);
       vendorProductTax += itemTax;
@@ -1389,7 +1389,7 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
     else if (item.tax_total) {
       const itemTax = typeof item.tax_total === 'number' ? item.tax_total : parseFloat(item.tax_total) || 0;
       vendorProductTax += itemTax;
-      console.log(`   📋 Item ${item.title} direct tax: ${itemTax}`);
+      //console.log(`   📋 Item ${item.title} direct tax: ${itemTax}`);
     }
   });
   
@@ -1432,8 +1432,8 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
         if (totalOrderAmount > 0) {
           const estimatedTaxRate = orderTaxTotal / totalOrderAmount;
           orderShippingTax = orderShippingTotal * estimatedTaxRate;
-          console.log(`📋 Estimated shipping tax rate: ${(estimatedTaxRate * 100).toFixed(2)}%`);
-          console.log(`📋 Estimated shipping tax: ${orderShippingTax}`);
+          //console.log(`📋 Estimated shipping tax rate: ${(estimatedTaxRate * 100).toFixed(2)}%`);
+          //console.log(`📋 Estimated shipping tax: ${orderShippingTax}`);
         }
       }
       
@@ -1444,14 +1444,14 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
       const vendorProportion = vendorSubtotal / orderSubtotal;
       vendorProductTax = orderProductTax * vendorProportion;
       
-      console.log(`💰 Proportional PRODUCT tax calculation:`);
-      console.log(`   📋 Order total tax: ${orderTaxTotal}`);
-      console.log(`   📋 Order shipping tax: ${orderShippingTax}`);
-      console.log(`   📋 Order product tax: ${orderProductTax}`);
-      console.log(`   📋 Order subtotal: ${orderSubtotal}`);
-      console.log(`   📋 Vendor subtotal: ${vendorSubtotal}`);
-      console.log(`   📋 Vendor proportion: ${(vendorProportion * 100).toFixed(2)}%`);
-      console.log(`   📋 Vendor product tax: ${vendorProductTax}`);
+      //console.log(`💰 Proportional PRODUCT tax calculation:`);
+      //console.log(`   📋 Order total tax: ${orderTaxTotal}`);
+      //console.log(`   📋 Order shipping tax: ${orderShippingTax}`);
+      //console.log(`   📋 Order product tax: ${orderProductTax}`);
+      //console.log(`   📋 Order subtotal: ${orderSubtotal}`);
+      //console.log(`   📋 Vendor subtotal: ${vendorSubtotal}`);
+      //console.log(`   📋 Vendor proportion: ${(vendorProportion * 100).toFixed(2)}%`);
+      //console.log(`   📋 Vendor product tax: ${vendorProductTax}`);
     }
   }
   
@@ -1465,14 +1465,14 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
     if (!isMultiVendor) {
       // Single vendor gets full shipping amount (without tax)
       vendorShippingAmount = orderShippingTotal;
-      console.log(`📦 Single vendor order: full shipping amount (${vendorShippingAmount}) to vendor`);
+      //console.log(`📦 Single vendor order: full shipping amount (${vendorShippingAmount}) to vendor`);
     } else {
       // Multi-vendor: split shipping proportionally
       const orderSubtotal = typeof order.subtotal === 'number' ? order.subtotal : parseFloat(order.subtotal) || 0;
       if (orderSubtotal > 0) {
         const vendorProportion = vendorSubtotal / orderSubtotal;
         vendorShippingAmount = orderShippingTotal * vendorProportion;
-        console.log(`📦 Multi-vendor order: proportional shipping amount (${vendorShippingAmount}) to vendor`);
+        //console.log(`📦 Multi-vendor order: proportional shipping amount (${vendorShippingAmount}) to vendor`);
       }
     }
   }
@@ -1496,7 +1496,7 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
           }
         }
         
-        console.log(`📦 Shipping method ${method.name} tax: ${shippingMethodTax}`);
+        //console.log(`📦 Shipping method ${method.name} tax: ${shippingMethodTax}`);
       }
       // Alternative: check tax_lines on shipping method
       else if (method.tax_lines && method.tax_lines.length > 0) {
@@ -1517,7 +1517,7 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
           }
         }
         
-        console.log(`📦 Shipping method ${method.name} tax from tax_lines: ${methodTax}`);
+        //console.log(`📦 Shipping method ${method.name} tax from tax_lines: ${methodTax}`);
       }
     });
   }
@@ -1527,18 +1527,18 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
     // Estimate shipping tax using the same rate as product tax
     const productTaxRate = vendorProductTax / vendorSubtotal;
     vendorShippingTax = vendorShippingAmount * productTaxRate;
-    console.log(`📋 Estimated shipping tax using product tax rate (${(productTaxRate * 100).toFixed(2)}%): ${vendorShippingTax}`);
+    //console.log(`📋 Estimated shipping tax using product tax rate (${(productTaxRate * 100).toFixed(2)}%): ${vendorShippingTax}`);
   }
   
   // ✅ FINAL CALCULATION: Total tax = Product tax + Shipping tax
   const vendorTaxTotal = vendorProductTax + vendorShippingTax;
   
-  console.log(`✅ Final vendor tax and shipping (SEPARATED):`);
-  console.log(`   💰 Vendor product tax: ${vendorProductTax}`);
-  console.log(`   📦 Vendor shipping tax: ${vendorShippingTax}`);
-  console.log(`   💰 Vendor total tax: ${vendorTaxTotal}`);
-  console.log(`   📦 Vendor shipping amount (no tax): ${vendorShippingAmount}`);
-  console.log(`   ✅ VERIFICATION: Shipping amount + shipping tax = ${vendorShippingAmount + vendorShippingTax}`);
+  //console.log(`✅ Final vendor tax and shipping (SEPARATED):`);
+  //console.log(`   💰 Vendor product tax: ${vendorProductTax}`);
+  //console.log(`   📦 Vendor shipping tax: ${vendorShippingTax}`);
+  //console.log(`   💰 Vendor total tax: ${vendorTaxTotal}`);
+  //console.log(`   📦 Vendor shipping amount (no tax): ${vendorShippingAmount}`);
+  //console.log(`   ✅ VERIFICATION: Shipping amount + shipping tax = ${vendorShippingAmount + vendorShippingTax}`);
   
   return {
     vendorTaxTotal: Math.round(vendorTaxTotal * 100) / 100,           // Product tax + Shipping tax
@@ -1551,7 +1551,7 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
 // ✅ ENHANCED: Complete vendor item filtering with database lookup and replacement detection
 // ✅ CRITICAL FIX: Enhanced vendor filtering to prevent cross-vendor replacement items
 const filterOrderForVendor = async (order: any, vendorId: string, scope: any) => {
-  console.log(`🔍 Enhanced filtering for order ${order.id} and vendor ${vendorId}`);
+  //console.log(`🔍 Enhanced filtering for order ${order.id} and vendor ${vendorId}`);
   
   if (!order || !vendorId) {
     return null;
@@ -1564,7 +1564,7 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
     return null;
   }
 
-  console.log(`✅ Found vendor info for ${vendorId}:`, vendorInfo);
+  //console.log(`✅ Found vendor info for ${vendorId}:`, vendorInfo);
 
   // ✅ CRITICAL: Get vendor-specific payment status from metadata EARLY
   const getVendorPaymentStatusFromMetadata = (order: any, vendorId: string) => {
@@ -1587,37 +1587,37 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
 
   const vendorPaymentData = getVendorPaymentStatusFromMetadata(order, vendorId);
   const paymentStatus = vendorPaymentData.status;
-  //console.log(`💳 Vendor Payment Status: ${paymentStatus} (source: ${vendorPaymentData.source})`);
+  ////console.log(`💳 Vendor Payment Status: ${paymentStatus} (source: ${vendorPaymentData.source})`);
 
 // ===== DEBUG: VENDOR IDENTIFICATION =====
-console.log('\n🔐 ===== VENDOR AUTHENTICATION CHECK =====');
-console.log('🆔 Logged-in Vendor ID:', vendorId);
-console.log('📋 Available vendor_orders in metadata:', 
-  order.metadata?.vendor_orders?.map(vo => ({
-    vendor_id: vo.vendor_id,
-    vendor_handle: vo.vendor_handle,
-    items_count: vo.vendor_items?.length || 0
-  }))
-);
-console.log('🎯 Selected vendorInfo:', {
-  vendor_id: vendorInfo?.vendor_id,
-  vendor_handle: vendorInfo?.vendor_handle,
-  items_count: vendorInfo?.vendor_items?.length || 0
-});
-console.log('✅ Vendor ID match:', vendorInfo?.vendor_id === vendorId);
-console.log('============================================\n');
+//console.log('\n🔐 ===== VENDOR AUTHENTICATION CHECK =====');
+//console.log('🆔 Logged-in Vendor ID:', vendorId);
+// console.log('📋 Available vendor_orders in metadata:', 
+//   order.metadata?.vendor_orders?.map(vo => ({
+//     vendor_id: vo.vendor_id,
+//     vendor_handle: vo.vendor_handle,
+//     items_count: vo.vendor_items?.length || 0
+//   }))
+// );
+// console.log('🎯 Selected vendorInfo:', {
+//   vendor_id: vendorInfo?.vendor_id,
+//   vendor_handle: vendorInfo?.vendor_handle,
+//   items_count: vendorInfo?.vendor_items?.length || 0
+// });
+//console.log('✅ Vendor ID match:', vendorInfo?.vendor_id === vendorId);
+//console.log('============================================\n');
   // ✅ STEP 1: Start with vendor metadata items and find matching order items
   // ✅ STEP 1: Match vendor metadata items to order items using multiple strategies
 // ✅ STEP 1: Trust the vendor metadata (it's already correct)
 const vendorMetadataItems = vendorInfo.vendor_items || [];
 const vendorItems = [];
   
-console.log(`📦 Vendor metadata claims ${vendorMetadataItems.length} items for ${vendorId}`);
-console.log(`📦 Order has ${order.items?.length || 0} total items`);
+//console.log(`📦 Vendor metadata claims ${vendorMetadataItems.length} items for ${vendorId}`);
+//console.log(`📦 Order has ${order.items?.length || 0} total items`);
 
 // ✅ TRUST THE METADATA: Match order items to metadata items by title + price
 for (const metaItem of vendorMetadataItems) {
-  console.log(`\n🔍 Looking for metadata item: "${metaItem.title}" @ ₹${metaItem.unit_price}`);
+  //console.log(`\n🔍 Looking for metadata item: "${metaItem.title}" @ ₹${metaItem.unit_price}`);
   
   // Find matching order item by exact title and price
   const matchingOrderItem = order.items?.find((orderItem: any) => {
@@ -1629,29 +1629,29 @@ for (const metaItem of vendorMetadataItems) {
   });
   
   if (matchingOrderItem) {
-    console.log(`✅ FOUND & ADDING: ${matchingOrderItem.title} - SKU: ${matchingOrderItem.variant_sku}`);
+    //console.log(`✅ FOUND & ADDING: ${matchingOrderItem.title} - SKU: ${matchingOrderItem.variant_sku}`);
     vendorItems.push(matchingOrderItem);
   } else {
-    console.log(`❌ No matching order item found`);
+    //console.log(`❌ No matching order item found`);
   }
 }
 
-console.log(`\n📦 STEP 1 complete: ${vendorItems.length} items added for vendor ${vendorId}`);
-console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: item.variant_sku })));
+//console.log(`\n📦 STEP 1 complete: ${vendorItems.length} items added for vendor ${vendorId}`);
+//console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: item.variant_sku })));
 
   // ✅ STEP 2: STRICT vendor validation - only check database for items NOT already found
-  //console.log(`🔍 Checking remaining order items for potential vendor matches...`);
+  ////console.log(`🔍 Checking remaining order items for potential vendor matches...`);
   
   
   // ✅ STEP 3: Process claims and returns (this will ONLY add replacements that belong to THIS vendor)
   const { claims, returns } = await fetchOrderClaimsAndReturns(order.id, scope);
-  console.log(`🔍 Processing claims for vendor ${vendorId}...`);
+  //console.log(`🔍 Processing claims for vendor ${vendorId}...`);
   
   // ✅ CRITICAL: The claimsAnalysis will now use our strict vendor filtering
   const claimsAnalysis = await analyzeClaimsAndReturns(claims, returns, vendorItems, vendorId, scope, order);
 
   // ✅ STEP 4: Final validation - remove any items that shouldn't be here
-  console.log(`🔍 Final validation of vendor items for ${vendorId}...`);
+  //console.log(`🔍 Final validation of vendor items for ${vendorId}...`);
   
   const validatedVendorItems = [];
   for (const item of vendorItems) {
@@ -1659,7 +1659,7 @@ console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: it
     
     // For replacement items, do extra validation
     if (item.is_claim_item) {
-      console.log(`🔍 Validating replacement item: ${item.title} - SKU: ${item.variant_sku}`);
+      //console.log(`🔍 Validating replacement item: ${item.title} - SKU: ${item.variant_sku}`);
       
       // Check if this vendor has other items with the same SKU pattern
       const otherVendorItems = vendorItems.filter(vi => !vi.is_claim_item);
@@ -1673,10 +1673,10 @@ console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: it
       });
       
       if (!hasMatchingSKUPattern) {
-        console.log(`   ❌ Replacement item ${item.title} doesn't match vendor SKU pattern - REMOVING`);
+        //console.log(`   ❌ Replacement item ${item.title} doesn't match vendor SKU pattern - REMOVING`);
         isValid = false;
       } else {
-        console.log(`   ✅ Replacement item ${item.title} matches vendor SKU pattern - KEEPING`);
+        //console.log(`   ✅ Replacement item ${item.title} matches vendor SKU pattern - KEEPING`);
       }
     }
     
@@ -1685,9 +1685,9 @@ console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: it
     }
   }
 
-  console.log(`📦 Validated vendor items for ${vendorId}: ${validatedVendorItems.length}`);
+  //console.log(`📦 Validated vendor items for ${vendorId}: ${validatedVendorItems.length}`);
   validatedVendorItems.forEach((item, index) => {
-    console.log(`   ${index + 1}. ${item.title} ${item.is_claim_item ? '[REPLACEMENT]' : '[ORIGINAL]'} - SKU: ${item.variant_sku || 'N/A'}`);
+    //console.log(`   ${index + 1}. ${item.title} ${item.is_claim_item ? '[REPLACEMENT]' : '[ORIGINAL]'} - SKU: ${item.variant_sku || 'N/A'}`);
   });
 
   // ✅ STEP 5: Process all validated items for revenue calculation
@@ -1729,22 +1729,22 @@ console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: it
     fulfillment.items?.some(fulItem => fulItem.line_item_id === item.id)
   ) || [];
 
-  console.log(`🔍 Found ${itemFulfillments.length} fulfillments for item ${item.title} (${item.id})`);
+  //console.log(`🔍 Found ${itemFulfillments.length} fulfillments for item ${item.title} (${item.id})`);
 
   itemFulfillments.forEach((fulfillment, index) => {
-    console.log(`  📦 Fulfillment ${index + 1}: ${fulfillment.id}`);
-    console.log(`     Status: ${fulfillment.status}`);
-    console.log(`     Shipped: ${fulfillment.shipped_at}`);
-    console.log(`     Delivered: ${fulfillment.delivered_at}`);
-    console.log(`     Labels: ${fulfillment.labels?.length || 0}`);
+    //console.log(`  📦 Fulfillment ${index + 1}: ${fulfillment.id}`);
+    //console.log(`     Status: ${fulfillment.status}`);
+    //console.log(`     Shipped: ${fulfillment.shipped_at}`);
+    //console.log(`     Delivered: ${fulfillment.delivered_at}`);
+    //console.log(`     Labels: ${fulfillment.labels?.length || 0}`);
 
     // Extract tracking from labels
     if (fulfillment.labels && fulfillment.labels.length > 0) {
       fulfillment.labels.forEach((label, labelIndex) => {
-        console.log(`     Label ${labelIndex + 1}:`, {
-          tracking_number: label.tracking_number,
-          tracking_url: label.tracking_url
-        });
+        // console.log(`     Label ${labelIndex + 1}:`, {
+        //   tracking_number: label.tracking_number,
+        //   tracking_url: label.tracking_url
+        // });
         
         if (label.tracking_number) {
           trackingNumbers.push(label.tracking_number);
@@ -1774,12 +1774,12 @@ console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: it
   // Determine if item can be shipped
   canShip = fulfillmentStatus === 'fulfilled' && !shippedAt;
 
-  console.log(`✅ Final tracking data for ${item.title}:`, {
-    tracking_numbers: trackingNumbers,
-    tracking_urls: trackingUrls,
-    fulfillment_status: fulfillmentStatus,
-    can_ship: canShip
-  });
+  // console.log(`✅ Final tracking data for ${item.title}:`, {
+  //   tracking_numbers: trackingNumbers,
+  //   tracking_urls: trackingUrls,
+  //   fulfillment_status: fulfillmentStatus,
+  //   can_ship: canShip
+  // });
 
   return {
     tracking_numbers: trackingNumbers,
@@ -1809,37 +1809,37 @@ console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: it
   let finalVendorRevenue = 0;
   if (paymentStatus === 'refunded') {
     finalVendorRevenue = 0;
-    console.log(`⚠️ Payment refunded - Vendor payout set to 0`);
+    //console.log(`⚠️ Payment refunded - Vendor payout set to 0`);
   } else {
     finalVendorRevenue = calculatedVendorRevenue - totalProcessingFee;
   }
 
   // ✅ DEBUG: Log vendor items before fulfillment calculation
-  console.log(`🔍 DEBUG: Vendor items going into fulfillment calculation (${itemsWithRevenue.length}):`);
+  //console.log(`🔍 DEBUG: Vendor items going into fulfillment calculation (${itemsWithRevenue.length}):`);
   itemsWithRevenue.forEach((item, index) => {
-    console.log(`  Vendor Item ${index + 1}:`, {
-      id: item.id,
-      title: item.title,
-      quantity: item.quantity,
-      variant_sku: item.variant_sku,
-      is_claim_item: item.is_claim_item || false
-    });
+    // console.log(`  Vendor Item ${index + 1}:`, {
+    //   id: item.id,
+    //   title: item.title,
+    //   quantity: item.quantity,
+    //   variant_sku: item.variant_sku,
+    //   is_claim_item: item.is_claim_item || false
+    // });
   });
 
   // ✅ NEW: Calculate vendor-specific fulfillment status
   const vendorFulfillmentData = calculateVendorFulfillmentStatus(itemsWithRevenue, order);
   
   // ✅ DEBUG: Log fulfillment calculation result
-  console.log(`🔍 DEBUG: Fulfillment calculation result:`, {
-    calculated_status: vendorFulfillmentData.status,
-    breakdown: vendorFulfillmentData.breakdown,
-    item_statuses_count: Object.keys(vendorFulfillmentData.item_statuses || {}).length
-  });
+  // console.log(`🔍 DEBUG: Fulfillment calculation result:`, {
+  //   calculated_status: vendorFulfillmentData.status,
+  //   breakdown: vendorFulfillmentData.breakdown,
+  //   item_statuses_count: Object.keys(vendorFulfillmentData.item_statuses || {}).length
+  // });
 
   // Create revenue breakdown
   const revenue_breakdown = {
     total_items: itemsWithRevenue.length,
-    junooni_fulfillment_items: itemsWithRevenue.filter(item => item.fulfillment_type === "Junooni-fulfilment").length,
+    junooni_fulfillment_items: itemsWithRevenue.filter(item => item.fulfillment_type === "JUNOONI-fulfillment").length,
     creator_fulfillment_items: itemsWithRevenue.filter(item => item.fulfillment_type === "Creator-fulfilment").length,
     unknown_fulfillment_items: itemsWithRevenue.filter(item => !item.fulfillment_type || item.fulfillment_type === "unknown").length,
     revenue_percentage: vendorSubtotal > 0 ? (calculatedVendorRevenue / vendorSubtotal * 100) : 0,
@@ -1856,15 +1856,15 @@ console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: it
 //const vendorPaymentData = calculateVendorPaymentStatus(order, itemsWithRevenue, calculatedVendorRevenue, vendorId);
 
 
-//console.log(`💳 Vendor payment status for ${vendorId}:`, vendorPaymentData);
-  console.log(`✅ FINAL RESULT for vendor ${vendorId}: ${itemsWithRevenue.length} items`);
+////console.log(`💳 Vendor payment status for ${vendorId}:`, vendorPaymentData);
+  //console.log(`✅ FINAL RESULT for vendor ${vendorId}: ${itemsWithRevenue.length} items`);
   const { vendorTaxTotal, vendorShippingTotal } = calculateVendorTaxAndShipping(order, itemsWithRevenue, vendorSubtotal);
   const ensureVendorPaymentStatus = (vendorPaymentData: any, globalOrderStatus: string) => {
-  console.log(`🔒 PAYMENT STATUS ISOLATION CHECK:`);
-  console.log(`   Global order status: ${globalOrderStatus}`);
-  console.log(`   Vendor calculated status: ${vendorPaymentData.status}`);
-  console.log(`   Isolation applied: ${vendorPaymentData.isolation_applied}`);
-  console.log(`   Using vendor status: ${vendorPaymentData.status} (global ignored)`);
+  //console.log(`🔒 PAYMENT STATUS ISOLATION CHECK:`);
+  //console.log(`   Global order status: ${globalOrderStatus}`);
+  //console.log(`   Vendor calculated status: ${vendorPaymentData.status}`);
+  //console.log(`   Isolation applied: ${vendorPaymentData.isolation_applied}`);
+  //console.log(`   Using vendor status: ${vendorPaymentData.status} (global ignored)`);
   
   return vendorPaymentData.status;
 };
@@ -1940,7 +1940,7 @@ console.log(`📋 Items:`, vendorItems.map(item => ({ title: item.title, sku: it
 };
 
 const calculateAndStoreVendorPaymentStatus = async (order: any) => {
-  console.log(`🔄 Calculating vendor payment status using item-level data...`);
+  //console.log(`🔄 Calculating vendor payment status using item-level data...`);
   
   if (!order.metadata?.vendor_orders || !order.items) {
     return order;
@@ -1949,7 +1949,7 @@ const calculateAndStoreVendorPaymentStatus = async (order: any) => {
   const updatedVendorOrders = [];
   
   for (const vendorOrder of order.metadata.vendor_orders) {
-    console.log(`\n💳 Processing vendor: ${vendorOrder.vendor_id}`);
+    //console.log(`\n💳 Processing vendor: ${vendorOrder.vendor_id}`);
     
     // Find this vendor's items in the order
     const vendorItems = order.items.filter(item => {
@@ -1959,7 +1959,7 @@ const calculateAndStoreVendorPaymentStatus = async (order: any) => {
       );
     });
     
-    console.log(`   Found ${vendorItems.length} items for this vendor`);
+    //console.log(`   Found ${vendorItems.length} items for this vendor`);
     
     if (vendorItems.length > 0) {
       let totalAmount = 0;
@@ -1973,8 +1973,8 @@ const calculateAndStoreVendorPaymentStatus = async (order: any) => {
         totalAmount += itemTotal;
         totalRefunded += itemRefunded;
         
-        console.log(`   Item ${index + 1}: ${item.title}`);
-        console.log(`     Total: ${itemTotal}, Refunded: ${itemRefunded}`);
+        //console.log(`   Item ${index + 1}: ${item.title}`);
+        //console.log(`     Total: ${itemTotal}, Refunded: ${itemRefunded}`);
       });
       
       // Determine payment status
@@ -1985,8 +1985,8 @@ const calculateAndStoreVendorPaymentStatus = async (order: any) => {
         paymentStatus = 'partially_refunded';
       }
       
-      console.log(`   📊 Vendor totals: ${totalAmount} total, ${totalRefunded} refunded`);
-      console.log(`   ✅ Payment status: ${paymentStatus}`);
+      //console.log(`   📊 Vendor totals: ${totalAmount} total, ${totalRefunded} refunded`);
+      //console.log(`   ✅ Payment status: ${paymentStatus}`);
       
       // ✅ ADD: Payment status to vendor metadata
       const updatedVendorOrder = {
@@ -2028,45 +2028,132 @@ export const GET = async (
 ) => {
   try {
     const { id: orderId } = req.params;
-    console.log(`🏪 Fetching individual vendor order: ${orderId}`);
     
-    const marketplaceModuleService: MarketplaceModuleService =
-      req.scope.resolve(MARKETPLACE_MODULE);
+    //console.log(`🏪 Fetching vendor order: ${orderId}`);
+    // console.log(`🔐 Auth context:`, {
+    //   actor_id: req.auth_context.actor_id,
+    //   actor_type: req.auth_context.actor_type,
+    //   app_metadata: req.auth_context.app_metadata
+    // });
 
-    // ✅ FIXED: Get vendor information using listVendorAdmins with filter on admin_id (user ID)
-    // The actor_id is the user ID, not the vendor admin ID
-    // ✅ FIXED: Get vendor ID from order metadata instead of looking up by user
-// First, fetch the order to get vendor information from metadata
-// ✅ CORRECT: Get logged-in vendor ID from authentication
-console.log(`🔍 DEBUG: Attempting to fetch vendor admins...`);
-console.log(`🔍 DEBUG: Actor ID from auth context: ${req.auth_context.actor_id}`);
-// Get the logged-in user's vendor admin record
-const vendorAdmins = await marketplaceModuleService.listVendorAdmins({
-  id: req.auth_context.actor_id
-});
+    // ✅ Get admin ID from token
+    const adminId = req.auth_context?.actor_id;
 
-if (!vendorAdmins || vendorAdmins.length === 0) {
-  console.log(`❌ No vendor admin found for user: ${req.auth_context.actor_id}`);
-  return res.status(403).json({
-    error: "Not authorized as vendor"
-  });
-}
+    if (!adminId) {
+      //console.error('❌ No admin ID in auth token');
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "No vendor admin ID found in token"
+      });
+    }
 
-const vendorId = vendorAdmins[0].vendor_id;
-console.log(`✅ Logged-in vendor ID: ${vendorId}`);
-console.log(`🔍 Fetching order ${orderId} for vendor: ${vendorId}`);
+    //console.log(`🔍 Admin ID: ${adminId}`);
 
-    // Get order data with enhanced fulfillment fields
+    // ✅ Look up vendor_id using the admin ID
+    let vendorId = null;
+    const maxRetries = 3;
+    let retryCount = 0;
+
+    // ✅ METHOD 1: Try marketplace module service first (most reliable)
+    while (!vendorId && retryCount < maxRetries) {
+      try {
+        const marketplaceModuleService: MarketplaceModuleService =
+          req.scope.resolve(MARKETPLACE_MODULE);
+        
+        //console.log(`🔍 Attempt ${retryCount + 1}/${maxRetries}: Querying listVendorAdmins with id: ${adminId}`);
+        
+        const vendorAdmins = await marketplaceModuleService.listVendorAdmins({
+          id: adminId
+        });
+
+        if (vendorAdmins && vendorAdmins.length > 0) {
+          vendorId = vendorAdmins[0].vendor_id;
+          //console.log(`✅ Found vendor_id via listVendorAdmins: ${vendorId} (attempt ${retryCount + 1})`);
+          break;
+        } else {
+          //console.log(`⚠️ listVendorAdmins returned empty for id: ${adminId} (attempt ${retryCount + 1})`);
+        }
+      } catch (serviceError) {
+        //console.error(`❌ listVendorAdmins attempt ${retryCount + 1} failed:`, serviceError.message);
+      }
+      
+      retryCount++;
+      
+      // Small delay before retry to allow for any async operations to complete
+      if (retryCount < maxRetries && !vendorId) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // ✅ METHOD 2: Fallback to query.graph if service method failed
+    if (!vendorId) {
+      retryCount = 0;
+      
+      while (!vendorId && retryCount < maxRetries) {
+        try {
+          const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
+          
+          //console.log(`🔍 Fallback attempt ${retryCount + 1}/${maxRetries}: Querying vendor_admin via graph`);
+          
+          const { data: adminRecords } = await query.graph({
+            entity: "vendor_admin",
+            fields: ["id", "vendor_id"],
+            filters: {
+              id: adminId
+            }
+          });
+
+          if (adminRecords && adminRecords.length > 0) {
+            vendorId = adminRecords[0].vendor_id;
+            //console.log(`✅ Found vendor_id via query.graph: ${vendorId} (attempt ${retryCount + 1})`);
+            break;
+          } else {
+            //console.log(`⚠️ query.graph returned empty for id: ${adminId} (attempt ${retryCount + 1})`);
+          }
+        } catch (queryError) {
+          //console.error(`❌ query.graph attempt ${retryCount + 1} failed:`, queryError.message);
+        }
+        
+        retryCount++;
+        
+        if (retryCount < maxRetries && !vendorId) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+    }
+
+    // ✅ Final validation with detailed error
+    if (!vendorId) {
+      //console.error(`❌ CRITICAL: Could not find vendor_id for admin ${adminId} after all attempts`);
+      //console.error(`   - listVendorAdmins attempts: ${maxRetries}`);
+      //console.error(`   - query.graph attempts: ${maxRetries}`);
+      
+      return res.status(403).json({
+        error: "Access denied",
+        message: "Could not determine your vendor account. Please try logging out and logging back in.",
+        debug: {
+          admin_id: adminId,
+          reason: "vendor_lookup_failed_all_methods",
+          attempts: maxRetries * 2
+        }
+      });
+    }
+    //console.log(`✅ Vendor ID resolved: ${vendorId}`);
+
+    // ==========================================
+    // Get order data
+    // ==========================================
+
     const { result: orders } = await getOrdersListWorkflow(req.scope).run({
       input: {
         fields: [
-          "id",           // ✅ ADD: Explicitly request id
-           "display_id",
+          "id",
+          "display_id",
           "metadata",
           "created_at",
           "total",
           "subtotal",
-          "shipping_total", 
+          "shipping_total",
           "tax_total",
           "items.*",
           "items.id",
@@ -2076,7 +2163,6 @@ console.log(`🔍 Fetching order ${orderId} for vendor: ${vendorId}`);
           "items.total",
           "items.product_id",
           "items.variant_id",
-          "items.cart_id",
           "items.metadata",
           "items.variant",
           "items.variant.product_id",
@@ -2085,22 +2171,22 @@ console.log(`🔍 Fetching order ${orderId} for vendor: ${vendorId}`);
           "items.variant.sku",
           "items.product",
           "items.product.id",
-          "items.variant.metadata",  // ✅ ADD THIS LINE - this will fetch cost_price
+          "items.variant.metadata",
           "shipping_methods",
           "payment_collections",
           "fulfillments",
           "fulfillments.id",
           "fulfillments.status",
           "fulfillments.shipped_at",
-          "fulfillments.delivered_at", // ✅ CRITICAL: Include delivered_at
+          "fulfillments.delivered_at",
           "fulfillments.canceled_at",
           "fulfillments.created_at",
-          "fulfillments.items", // ✅ Include fulfillment items
-          "fulfillments.items.*", // ✅ FIXED: Get all fulfillment item fields
+          "fulfillments.items",
+          "fulfillments.items.*",
           "fulfillments.labels.*",
-          "fulfillments.labels.id", 
+          "fulfillments.labels.id",
           "fulfillments.labels.tracking_number",
-          "fulfillments.labels.tracking_url", 
+          "fulfillments.labels.tracking_url",
           "fulfillments.labels.label_url",
           "fulfillments.labels.created_at",
           "customer.*",
@@ -2116,157 +2202,109 @@ console.log(`🔍 Fetching order ${orderId} for vendor: ${vendorId}`);
     });
 
     if (!orders || orders.length === 0) {
-      console.log(`❌ No orders found with ID: ${orderId}`);
+      //console.log(`❌ Order not found: ${orderId}`);
       return res.status(404).json({
         error: "Order not found"
       });
     }
 
     const order = orders[0];
-    console.log(`📄 Found order ${orderId} with ${order.items?.length || 0} items`);
-    console.log(`🔄 Step 1: Calculating vendor payment status...`);
+    //console.log(`📄 Found order ${orderId}`);
+
+    // ✅ Verify vendor has access to this order
+    const vendorHasAccess = order.metadata?.vendor_orders?.some(
+      vo => vo.vendor_id === vendorId
+    );
+
+    if (!vendorHasAccess) {
+      //console.log(`❌ Vendor ${vendorId} does not have access to order ${orderId}`);
+      // console.log(`   Available vendors:`, 
+      //   order.metadata?.vendor_orders?.map(vo => vo.vendor_id) || []
+      // );
+      
+      return res.status(403).json({
+        error: "Access denied",
+        message: `This order does not contain products from your vendor account`,
+        debug: {
+          your_vendor_id: vendorId,
+          order_vendors: order.metadata?.vendor_orders?.map(vo => vo.vendor_id) || []
+        }
+      });
+    }
+
+    //console.log(`✅ Vendor ${vendorId} verified for order ${orderId}`);
+
+    // ==========================================
+    // Calculate vendor payment status
+    // ==========================================
+    //console.log(`🔄 Processing order for vendor ${vendorId}...`);
+
     const orderWithVendorPaymentStatus = await calculateAndStoreVendorPaymentStatus(order);
-    
-    // ✅ LOG: Show what was calculated
-    console.log(`📋 Vendor payment status results:`);
-    orderWithVendorPaymentStatus.metadata?.vendor_orders?.forEach(vo => {
-      console.log(`   Vendor ${vo.vendor_id}: ${vo.vendor_payment_status}`);
-    });
 
-    console.log(`🔍 DEBUG - Order fulfillments passed to filter:`, order.fulfillments?.length || 0);
-//console.log(`🔍 DEBUG - Vendor order fulfillments after filter:`, vendorOrderView.fulfillments?.length || 0);
-    
-    // ✅ MODIFY: Use updated order for vendor filtering
-    console.log(`🔄 Step 2: Filtering for vendor ${vendorId}...`);
-    const vendorOrderView = await filterOrderForVendor(orderWithVendorPaymentStatus, vendorId, req.scope);
-    
-    // 🚨 CRITICAL DEBUG: Verify fulfillments in vendorOrderView
-    console.log(`\n🚨 CRITICAL - vendorOrderView.fulfillments:`, vendorOrderView?.fulfillments?.length || 'UNDEFINED/NULL');
-    console.log(`🚨 Has fulfillments property:`, 'fulfillments' in (vendorOrderView || {}));
-    console.log(`🚨 vendorOrderView keys:`, Object.keys(vendorOrderView || {}).sort());
-    if (vendorOrderView?.fulfillments && vendorOrderView.fulfillments.length > 0) {
-      console.log(`✅ First fulfillment ID:`, vendorOrderView.fulfillments[0].id);
-      console.log(`✅ First fulfillment has labels:`, vendorOrderView.fulfillments[0].labels?.length || 0);
-    } else {
-      console.log(`❌ WARNING: vendorOrderView.fulfillments is MISSING or EMPTY!`);
-      console.log(`❌ This is why frontend shows no tracking info!`);
-    }
+    // ==========================================
+    // Filter order for vendor
+    // ==========================================
+    const vendorOrderView = await filterOrderForVendor(
+      orderWithVendorPaymentStatus, 
+      vendorId, 
+      req.scope
+    );
 
-// ✅ DEBUG: Log fulfillments before processing
-console.log(`\n🔍 DEBUG: Order fulfillments (${order.fulfillments?.length || 0}):`);
-    // ✅ DEBUG: Log fulfillments before processing
-    //console.log(`🔍 DEBUG: Order fulfillments (${order.fulfillments?.length || 0}):`);
-    order.fulfillments?.forEach((fulfillment, index) => {
-      console.log(`  Fulfillment ${index + 1}:`, {
-        id: fulfillment.id,
-        status: fulfillment.status,
-        shipped_at: fulfillment.shipped_at,
-        delivered_at: fulfillment.delivered_at,
-        canceled_at: fulfillment.canceled_at,
-        items_count: fulfillment.items?.length || 0,
-        items: fulfillment.items?.map(item => ({
-          item_id: item.item_id,
-          quantity: item.quantity,
-          title: item.title
-        })) || []
-      });
-    });
-    
-    // ✅ DEBUG: Log all order items
-    console.log(`🔍 DEBUG: All order items (${order.items?.length || 0}):`);
-    order.items?.forEach((item, index) => {
-      console.log(`  Item ${index + 1}:`, {
-        id: item.id,
-        title: item.title,
-        quantity: item.quantity,
-        variant_sku: item.variant_sku
-      });
-    });
-    
-    // Filter order for vendor with enhanced logic
-    //const vendorOrderView = await filterOrderForVendor(order, vendorId, req.scope);
-    
     if (!vendorOrderView) {
-      console.log(`❌ No vendor-specific data found for vendor ${vendorId} in order ${orderId}`);
+      //console.log(`❌ Failed to filter order for vendor ${vendorId}`);
       return res.status(404).json({
-        error: "Order not found for this vendor",
-        message: `Order ${orderId} does not contain products from vendor ${vendorId}`
+        error: "Order not found for this vendor"
       });
     }
 
-    // ✅ SAFE: Ensure revenue_breakdown exists before accessing properties
-    const revenueBreakdown = vendorOrderView.revenue_breakdown || {
-      total_items: 0,
-      junooni_fulfillment_items: 0,
-      creator_fulfillment_items: 0,
-      unknown_fulfillment_items: 0,
-      revenue_percentage: 0,
-      returned_items: 0,
-      replaced_items: 0,
-      claim_items: 0,
-      active_items: 0
-    };
+    // ==========================================
+    // Prepare response
+    // ==========================================
+    const revenueBreakdown = vendorOrderView.revenue_breakdown || {};
 
-    console.log(`✅ Successfully processed vendor order ${orderId}:`, {
-      vendor_id: vendorId,
-      items_found: vendorOrderView.vendor_items.length,
-      vendor_revenue: vendorOrderView.vendor_total,
-      revenue_percentage: revenueBreakdown.revenue_percentage.toFixed(1) + '%',
-      fulfillment_status: vendorOrderView.fulfillment_status, // ✅ Now vendor-specific
-      has_claims: vendorOrderView.has_claims,
-      has_returns: vendorOrderView.has_returns
-    });
+    // console.log(`✅ Successfully processed vendor order ${orderId}:`, {
+    //   vendor_id: vendorId,
+    //   admin_id: adminId,
+    //   items_found: vendorOrderView.vendor_items.length,
+    //   vendor_revenue: vendorOrderView.vendor_total,
+    //   fulfillment_status: vendorOrderView.fulfillment_status
+    // });
 
-    // Return detailed order with vendor-specific fulfillment status
     res.json({
       order: vendorOrderView,
       vendor_id: vendorId,
+      admin_id: adminId,
       revenue_calculation_applied: true,
       claims_returns_analyzed: true,
-      vendor_fulfillment_calculated: true, // ✅ NEW: Indicates vendor-specific fulfillment
+      vendor_fulfillment_calculated: true,
       payment_status_info: {
         vendor_payment_status: vendorOrderView.payment_status,
         global_payment_status: order.payment_status,
-        status_source: 'vendor_metadata',
-        calculated_from: 'item_level_refunds',
-        differs_from_global: vendorOrderView.payment_status !== order.payment_status
+        status_source: 'vendor_metadata'
       },
-      
       revenue_insights: {
         total_items: revenueBreakdown.total_items,
         junooni_fulfillment_items: revenueBreakdown.junooni_fulfillment_items,
         creator_fulfillment_items: revenueBreakdown.creator_fulfillment_items,
-        unknown_fulfillment_items: revenueBreakdown.unknown_fulfillment_items,
-        has_mixed_fulfillment: revenueBreakdown.junooni_fulfillment_items > 0 && revenueBreakdown.creator_fulfillment_items > 0,
         revenue_percentage: revenueBreakdown.revenue_percentage,
         currency_code: vendorOrderView.currency_code
       },
-      
       claims_returns_insights: {
         has_claims: vendorOrderView.has_claims,
         has_returns: vendorOrderView.has_returns,
         total_claims: vendorOrderView.claims?.length || 0,
-        total_returns: vendorOrderView.returns?.length || 0,
-        returned_items: revenueBreakdown.returned_items,
-        replaced_items: revenueBreakdown.replaced_items,
-        claim_items: revenueBreakdown.claim_items,
-        active_items: revenueBreakdown.active_items
+        total_returns: vendorOrderView.returns?.length || 0
       },
-
-      // ✅ NEW: Fulfillment insights with vendor-specific data
       fulfillment_insights: {
         vendor_fulfillment_status: vendorOrderView.fulfillment_status,
-        global_fulfillment_status: order.fulfillment_status, // For comparison
-        fulfillment_breakdown: vendorOrderView.fulfillment_breakdown,
-        fulfillment_differs_from_global: vendorOrderView.fulfillment_status !== order.fulfillment_status,
-        total_fulfillments: order.fulfillments?.length || 0,
-        vendor_specific_calculation: true
+        global_fulfillment_status: order.fulfillment_status,
+        fulfillment_breakdown: vendorOrderView.fulfillment_breakdown
       }
     });
 
   } catch (error: any) {
-    console.error("❌ Error fetching vendor order:", error);
-    console.error("Stack trace:", error.stack);
+    //console.error("❌ Error fetching vendor order:", error);
+    //console.error("Stack trace:", error.stack);
     res.status(500).json({
       error: "Failed to fetch vendor order details",
       message: error.message,

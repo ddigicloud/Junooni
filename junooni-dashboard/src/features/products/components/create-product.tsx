@@ -1107,7 +1107,12 @@ return {
         } : {}),
         
         // Include category if selected
-        categories: formValues.category_id ? [{ id: formValues.category_id }] : [],
+        // categories: formValues.category_id ? [{ id: formValues.category_id }] : [],
+        categories: formValues.category_id 
+          ? (Array.isArray(formValues.category_id) 
+              ? formValues.category_id.map(id => ({ id }))
+              : [{ id: formValues.category_id }])
+          : [],
           
         weight: formValues.weight ? parseInt(formValues.weight) || 0 : 0,
         length: formValues.length ? parseInt(formValues.length) || 0 : 0,

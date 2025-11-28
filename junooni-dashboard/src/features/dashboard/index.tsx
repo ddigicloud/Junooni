@@ -1402,103 +1402,162 @@ const DashboardPage = () => {
 
         <div className="grid gap-6 md:grid-cols-2">
          {/* Recent Orders Card */}
-<Card className="shadow-md">
-  <CardHeader className="pb-3">
-    <div className="flex items-center justify-between">
-      <CardTitle className="flex items-center text-lg">
-        <Package className="w-5 h-5 mr-2 text-gray-500" />
-        Recent Orders
-      </CardTitle>
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="h-8"
-        asChild
-      >
-        <Link to="/orders">View All</Link>
-      </Button>
-    </div>
-    <CardDescription>
-      Latest orders containing your products
-    </CardDescription>
-  </CardHeader>
-  <CardContent className="pb-2">
-    {orders && orders.length > 0 ? (
-      <div className="space-y-4">
-        {orders.slice(0, 5).map((order) => {
-          // Additional safety check in render
-          if (!order || typeof order.vendor_total !== 'number') {
-            return null;
-          }
-          
-          return (
-            <div key={order.id} className="flex items-start space-x-3">
-              <div className="hidden p-1.5 rounded-full bg-gray-100 sm:block">
-                <Package className="w-4 h-4 text-gray-600" />
+          <Card className="shadow-md">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                  <Package className="w-4 h-4 mr-2 text-gray-500 sm:w-5 sm:h-5" />
+                  Recent Orders
+                </CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 text-xs sm:text-sm"
+                  asChild
+                >
+                  <Link to="/orders">View All</Link>
+                </Button>
               </div>
-              <div className="flex-1 min-w-0">
-                {/* Order Header - Responsive */}
-                <div className="flex flex-col gap-2 mb-2 md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      <Link 
-                        to={`/orders/${order.id}`}
-                        className="hover:underline"
-                        style={{ color: BRAND.primary }}
-                      >
-                        #{order.display_id}
-                      </Link>
-                      <span className="hidden md:inline"> - </span>
-                      <span className="block md:inline">{order.customer.first_name} {order.customer.last_name}</span>
-                    </p>
-                  </div>
-                  <p className="text-xs text-gray-500 whitespace-nowrap">{formatDate(order.created_at)}</p>
-                </div>
-                
-                {/* Status and Price - Responsive Layout */}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  {/* Left side - Badges */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge status={order.fulfillment_status} />
-                    <PaymentBadge status={order.payment_status} />
+              <CardDescription className="text-xs sm:text-sm">
+                Latest orders containing your products
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-6">
+              {orders && orders.length > 0 ? (
+                <div className="space-y-3 sm:space-y-4">
+                  {orders.slice(0, 5).map((order) => {
+                    if (!order || typeof order.vendor_total !== 'number') {
+                      return null;
+                    }
                     
-                    {/* Show claim/return indicators inline on tablet */}
-                    {order.has_returns && (
-                      <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50">
-                        Return
-                      </Badge>
-                    )}
-                    {order.has_claims && (
-                      <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50">
-                        Claim
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {/* Right side - Price info */}
-                  <div className="flex items-center gap-3 sm:text-right">
-                    <div>
-                      <p className="text-sm font-semibold">{formatPrice(order.vendor_total)}</p>
-                      <p className="text-xs text-gray-500">
-                        {order.vendor_items.reduce((acc, item) => acc + item.quantity, 0)} item{order.vendor_items.reduce((acc, item) => acc + item.quantity, 0) !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  </div>
+                    return (
+                      <Link 
+                        key={order.id}
+                        to={`/orders/${order.id}`}
+                        className="block"
+                      >
+                        <div 
+                          className="p-3 transition-all border border-gray-100 rounded-lg cursor-pointer sm:p-4 bg-white hover:shadow-md hover:border-[#e65100]"
+                        >
+                          {/* Mobile Layout (< 640px) */}
+                          <div className="sm:hidden">
+                            {/* Row 1: Order # and Date */}
+                            <div className="flex items-center justify-between mb-2.5">
+                              <span 
+                                className="text-sm font-semibold"
+                                style={{ color: BRAND.primary }}
+                              >
+                                Order #{order.display_id}
+                              </span>
+                              <span className="text-xs text-gray-500">{formatDate(order.created_at)}</span>
+                            </div>
+                            
+                            {/* Row 2: Customer Name and Items */}
+                            <div className="mb-2.5">
+                              <p className="text-sm font-medium text-gray-700">
+                                {order.customer.first_name} {order.customer.last_name}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {order.vendor_items.reduce((acc, item) => acc + item.quantity, 0)} item{order.vendor_items.reduce((acc, item) => acc + item.quantity, 0) !== 1 ? 's' : ''}
+                              </p>
+                            </div>
+                            
+                            {/* Row 3: Status Badges */}
+                            <div className="flex flex-wrap gap-1.5 mb-2.5">
+                              <StatusBadge status={order.fulfillment_status} />
+                              <PaymentBadge status={order.payment_status} />
+                              {order.has_returns && (
+                                <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50 border-orange-200">
+                                  Return
+                                </Badge>
+                              )}
+                              {order.has_claims && (
+                                <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50 border-blue-200">
+                                  Claim
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {/* Row 4: Price (prominent) */}
+                            <div className="flex items-center justify-between pt-2.5 border-t border-gray-100">
+                              <span className="text-xs font-medium text-gray-500">Total Amount</span>
+                              <span className="text-base font-bold" style={{ color: BRAND.primary }}>
+                                {formatPrice(order.vendor_total)}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Desktop Layout (>= 640px) */}
+                          <div className="hidden sm:flex sm:items-start sm:space-x-3">
+                            <div className="hidden p-1.5 rounded-full bg-gray-100 md:block">
+                              <Package className="w-4 h-4 text-gray-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {/* Order Header - Desktop */}
+                              <div className="flex flex-col gap-2 mb-2 md:flex-row md:items-center md:justify-between">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <p className="text-sm font-medium">
+                                    <span 
+                                      className="font-semibold"
+                                      style={{ color: BRAND.primary }}
+                                    >
+                                      #{order.display_id}
+                                    </span>
+                                    <span className="mx-1">-</span>
+                                    <span>{order.customer.first_name} {order.customer.last_name}</span>
+                                  </p>
+                                </div>
+                                <p className="text-xs text-gray-500 whitespace-nowrap">{formatDate(order.created_at)}</p>
+                              </div>
+                              
+                              {/* Status and Price - Desktop */}
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <StatusBadge status={order.fulfillment_status} />
+                                  <PaymentBadge status={order.payment_status} />
+                                  {order.has_returns && (
+                                    <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50 border-orange-200">
+                                      Return
+                                    </Badge>
+                                  )}
+                                  {order.has_claims && (
+                                    <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50 border-blue-200">
+                                      Claim
+                                    </Badge>
+                                  )}
+                                </div>
+                                
+                                <div className="flex items-center gap-3 sm:text-right">
+                                  <div>
+                                    <p className="text-sm font-semibold">
+                                      {formatPrice(order.vendor_total)}
+                                    </p>
+
+                                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                                      {order.vendor_items.reduce((acc, item) => acc + item.quantity, 0)}
+                                      <span>
+                                        item{order.vendor_items.reduce((acc, item) => acc + item.quantity, 0) !== 1 ? 's' : ''}
+                                      </span>
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  }).filter(Boolean)}
                 </div>
-              </div>
-            </div>
-          );
-        }).filter(Boolean)} {/* Remove any null renders */}
-      </div>
-    ) : (
-      <div className="py-12 text-center">
-        <Package className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-        <h3 className="text-base font-medium text-gray-600">No orders yet</h3>
-        <p className="mt-1 text-sm text-gray-500">Orders will appear here once customers place them</p>
-      </div>
-    )}
-  </CardContent>
-</Card>
+              ) : (
+                <div className="py-12 text-center">
+                  <Package className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                  <h3 className="text-sm font-medium text-gray-600 sm:text-base">No orders yet</h3>
+                  <p className="mt-1 text-xs text-gray-500 sm:text-sm">Orders will appear here once customers place them</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           
           {/* Recent Products & Quick Actions */}
           <div className="space-y-6">
@@ -1506,56 +1565,60 @@ const DashboardPage = () => {
             <Card className="shadow-md">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center text-lg">
-                    <ShoppingBag className="w-5 h-5 mr-2 text-gray-500" />
+                  <CardTitle className="flex items-center text-base sm:text-lg">
+                    <ShoppingBag className="w-4 h-4 mr-2 text-gray-500 sm:w-5 sm:h-5" />
                     Your Products
                   </CardTitle>
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="h-8"
+                    className="h-8 text-xs sm:text-sm"
                     asChild
                   >
                     <Link to="/products">View All</Link>
                   </Button>
                 </div>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Recently added products to your store
                 </CardDescription>
               </CardHeader>
-              <CardContent className="pb-2">
+              <CardContent className="pb-4">
                 {products.length > 0 ? (
                   <div className="space-y-3">
                     {products.slice(0, 3).map((product) => (
-                      <div key={product.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                        <div className="flex items-center">
-                          <div className="flex items-center justify-center w-10 h-10 mr-3 overflow-hidden bg-gray-200 rounded-md">
-                            {product.image_url ? (
-                              <img 
-                                src={product.image_url} 
-                                alt={product.title} 
-                                className="object-cover w-full h-full"
-                              />
-                            ) : (
-                              <ShoppingBag className="w-5 h-5 text-gray-400" />
-                            )}
+                      <Link 
+                        key={product.id}
+                        to={`/products/${product.id}`}
+                        className="block"
+                      >
+                        <div className="flex items-center justify-between p-3 transition-all border border-gray-100 rounded-lg cursor-pointer bg-gray-50 hover:bg-white hover:shadow-md hover:border-[#e65100]">
+                          <div className="flex items-center flex-1 min-w-0">
+                            <div className="flex items-center justify-center flex-shrink-0 w-10 h-10 mr-3 overflow-hidden bg-gray-200 rounded-md">
+                              {product.image_url ? (
+                                <img 
+                                  src={product.image_url} 
+                                  alt={product.title} 
+                                  className="object-cover w-full h-full"
+                                />
+                              ) : (
+                                <ShoppingBag className="w-5 h-5 text-gray-400" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate">{product.title}</div>
+                              <StatusBadge status={product.status} />
+                            </div>
                           </div>
-                          <div>
-                            <div className="text-sm font-medium">{product.title}</div>
-                            <StatusBadge status={product.status} />
-                          </div>
+                          <ArrowRight className="flex-shrink-0 w-4 h-4 ml-2 text-gray-400" />
                         </div>
-                        {/* <div className="text-sm font-medium">
-                          {formatPrice(product.price)}
-                        </div> */}
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 ) : (
                   <div className="py-8 text-center">
                     <ShoppingBag className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                    <h3 className="text-base font-medium text-gray-600">No products yet</h3>
-                    <p className="mt-1 mb-4 text-sm text-gray-500">Add your first product to get started</p>
+                    <h3 className="text-sm font-medium text-gray-600 sm:text-base">No products yet</h3>
+                    <p className="mt-1 mb-4 text-xs text-gray-500 sm:text-sm">Add your first product to get started</p>
                     <Button 
                       size="sm"
                       onClick={() => popupButtonsRef.current?.openPopup()}
@@ -1577,11 +1640,11 @@ const DashboardPage = () => {
                   Common tasks to manage your store
                 </CardDescription>
               </CardHeader>
-              <CardContent className="pb-2">
+              <CardContent className="pb-6">
                 <div className="grid grid-cols-2 gap-3">
                   <Button 
                     variant="outline" 
-                    className="flex flex-col items-center justify-center h-auto py-4"
+                    className="flex flex-col items-center justify-center h-auto py-4 hover:border-[#e65100]"
                     onClick={() => popupButtonsRef.current?.openPopup()}
                   >
                     <PlusSquare className="w-6 h-6 mb-2" style={{ color: BRAND.primary }} />
@@ -1590,7 +1653,7 @@ const DashboardPage = () => {
                   
                   <Button 
                     variant="outline" 
-                    className="flex flex-col items-center justify-center h-auto py-4"
+                    className="flex flex-col items-center justify-center h-auto py-4 hover:border-[#e65100]"
                     asChild
                   >
                     <Link to="/orders">
@@ -1601,7 +1664,7 @@ const DashboardPage = () => {
                   
                   <Button 
                     variant="outline" 
-                    className="flex flex-col items-center justify-center h-auto py-4"
+                    className="flex flex-col items-center justify-center h-auto py-4 hover:border-[#e65100]"
                     asChild
                   >
                     <Link to="/help-center">
@@ -1612,7 +1675,7 @@ const DashboardPage = () => {
                   
                   <Button 
                     variant="outline" 
-                    className="flex flex-col items-center justify-center h-auto py-4"
+                    className="flex flex-col items-center justify-center h-auto py-4 hover:border-[#e65100]"
                     asChild
                   >
                     <Link to="/profile">
@@ -1626,93 +1689,6 @@ const DashboardPage = () => {
           </div>
         </div>
         
-        {/* Order Distribution Stats */}
-        {/* {orders.length > 0 && (
-          <Card className="mt-6 shadow-md">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center text-lg">
-                <BarChart className="w-5 h-5 mr-2 text-gray-500" />
-                Order Status Distribution
-              </CardTitle>
-              <CardDescription>
-                Overview of your orders by fulfillment status
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pb-2">
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                <div className="p-4 rounded-lg bg-amber-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-amber-700">Pending</p>
-                      <p className="text-2xl font-bold text-amber-800">{stats.pendingOrders}</p>
-                    </div>
-                    <Clock className="w-8 h-8 text-amber-600" />
-                  </div>
-                </div>
-                
-                <div className="p-4 rounded-lg bg-blue-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-blue-700">Processing</p>
-                      <p className="text-2xl font-bold text-blue-800">{stats.processingOrders}</p>
-                    </div>
-                    <RefreshCw className="w-8 h-8 text-blue-600" />
-                  </div>
-                </div>
-                
-                <div className="p-4 rounded-lg bg-purple-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-purple-700">Shipped</p>
-                      <p className="text-2xl font-bold text-purple-800">{stats.shippedOrders}</p>
-                    </div>
-                    <Truck className="w-8 h-8 text-purple-600" />
-                  </div>
-                </div>
-                
-                <div className="p-4 rounded-lg bg-green-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-green-700">Completed</p>
-                      <p className="text-2xl font-bold text-green-800">{stats.completedOrders}</p>
-                    </div>
-                    <CircleCheck className="w-8 h-8 text-green-600" />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )} */}
-        
-        {/* Help Section */}
-        {/* <Card className="mt-6 shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <HelpCircle className="w-5 h-5 mr-2" style={{ color: BRAND.primary }} />
-              Need Help Getting Started?
-            </CardTitle>
-            <CardDescription>
-              Check out our guides and resources to help you grow your Junooni store
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-3">
-            <div className="p-4 rounded-lg bg-gray-50">
-              <h3 className="mb-2 font-medium">Junooni Creator Getting Started</h3>
-              <p className="mb-4 text-sm text-gray-600">
-                We have prepared helpful resources to guide you through setting up your products and managing your store.
-              </p>
-              <Button 
-                className="w-full sm:w-auto"
-                asChild
-                style={{ backgroundColor: BRAND.primary }}
-              >
-                <Link to="/help-center">
-                  Visit Help Center
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card> */}
         {/* Footer */}
         <div className="py-6 mt-12 border-t border-gray-200">
           <div className="container px-4 mx-auto text-center">

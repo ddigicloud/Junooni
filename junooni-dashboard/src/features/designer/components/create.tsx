@@ -3313,7 +3313,13 @@ if (existingProductDetails.length > 0) {
   }));
 
   // ✅ Replace the entire field at once (no duplicates possible)
-  form.setValue("productDetails", replaced, { shouldDirty: true, shouldTouch: true });
+  form.setValue("productDetails", replaced, { shouldDirty: true, shouldTouch: true,  shouldValidate: true });
+
+  // ✅ CRITICAL: Force a re-render by updating state
+  setTimeout(() => {
+    form.trigger('productDetails'); // Force validation
+    //console.log("✅ Product details set and validated:", form.getValues('productDetails'));
+  }, 100);
 
   //console.log("✅ Product details populated successfully", replaced);
 } else {

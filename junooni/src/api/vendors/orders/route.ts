@@ -12,7 +12,7 @@
 
 // // ✅ ENHANCED: Calculate vendor revenue based on fulfillment type
 // const calculateVendorRevenue = (item: any, vendorId: string) => {
-//   console.log(`💰 Calculating revenue for item ${item.id}`);
+//   //console.log(`💰 Calculating revenue for item ${item.id}`);
   
 //   const itemTotal = item.unit_price * item.quantity;
 //   let vendorRevenue = itemTotal;
@@ -37,7 +37,7 @@
 //   }
   
 //   if (metadata) {
-//     console.log(`📋 Found metadata for item ${item.id}:`, metadata);
+//     //console.log(`📋 Found metadata for item ${item.id}:`, metadata);
     
 //     // Parse fulfillment_type (could be string or object)
 //     let fulfillmentTypeData = metadata.fulfillment_type;
@@ -47,7 +47,7 @@
 //       try {
 //         fulfillmentTypeData = JSON.parse(fulfillmentTypeData);
 //       } catch (e) {
-//         console.log(`⚠️ Could not parse fulfillment_type as JSON: ${fulfillmentTypeData}`);
+//         //console.log(`⚠️ Could not parse fulfillment_type as JSON: ${fulfillmentTypeData}`);
 //       }
 //     }
     
@@ -59,7 +59,7 @@
 //     // Extract product cost
 //     productCost = parseFloat(metadata.product_cost) || 0;
     
-//     console.log(`🏷️ Item ${item.id} - Fulfillment: ${fulfillmentType}, Cost: ${productCost}`);
+//     //console.log(`🏷️ Item ${item.id} - Fulfillment: ${fulfillmentType}, Cost: ${productCost}`);
     
 //     // ✅ REVENUE CALCULATION LOGIC
 //     switch (fulfillmentType) {
@@ -67,28 +67,28 @@
 //         // Vendor gets: Total - Fixed Product Cost
 //         vendorRevenue = Math.max(0, itemTotal - productCost);
 //         revenueCalculationType = "cost_deduction";
-//         console.log(`💰 Junooni fulfillment: ${itemTotal} - ${productCost} = ${vendorRevenue}`);
+//         //console.log(`💰 Junooni fulfillment: ${itemTotal} - ${productCost} = ${vendorRevenue}`);
 //         break;
         
 //       case "Creator-fulfilment":
 //         // Vendor gets: 70% of Total
 //         vendorRevenue = itemTotal * 0.70;
 //         revenueCalculationType = "percentage_split";
-//         console.log(`💰 Creator fulfillment: ${itemTotal} × 70% = ${vendorRevenue}`);
+//         //console.log(`💰 Creator fulfillment: ${itemTotal} × 70% = ${vendorRevenue}`);
 //         break;
         
 //       default:
 //         // Default: 70% of total (safe fallback)
 //         vendorRevenue = itemTotal * 0.70;
 //         revenueCalculationType = "default_percentage";
-//         console.log(`💰 Default calculation: ${itemTotal} × 70% = ${vendorRevenue}`);
+//         //console.log(`💰 Default calculation: ${itemTotal} × 70% = ${vendorRevenue}`);
 //         break;
 //     }
 //   } else {
 //     // No metadata found, use default 70%
 //     vendorRevenue = itemTotal * 0.70;
 //     revenueCalculationType = "no_metadata";
-//     console.log(`💰 No metadata found, using default: ${itemTotal} × 70% = ${vendorRevenue}`);
+//     //console.log(`💰 No metadata found, using default: ${itemTotal} × 70% = ${vendorRevenue}`);
 //   }
   
 //   return {
@@ -103,7 +103,7 @@
 
 // // ✅ NEW: Calculate vendor payment status using item-level data (same as single order page)
 // const calculateAndStoreVendorPaymentStatus = async (order: any) => {
-//   console.log(`🔄 INDEX: Calculating vendor payment status using item-level data for order ${order.id}...`);
+//   //console.log(`🔄 INDEX: Calculating vendor payment status using item-level data for order ${order.id}...`);
   
 //   if (!order.metadata?.vendor_orders || !order.items) {
 //     return order;
@@ -112,7 +112,7 @@
 //   const updatedVendorOrders = [];
   
 //   for (const vendorOrder of order.metadata.vendor_orders) {
-//     console.log(`\n💳 INDEX: Processing vendor: ${vendorOrder.vendor_id}`);
+//     //console.log(`\n💳 INDEX: Processing vendor: ${vendorOrder.vendor_id}`);
     
 //     // Find this vendor's items in the order
 //     const vendorItems = order.items.filter(item => {
@@ -122,7 +122,7 @@
 //       );
 //     });
     
-//     console.log(`   Found ${vendorItems.length} items for this vendor`);
+//     //console.log(`   Found ${vendorItems.length} items for this vendor`);
     
 //     if (vendorItems.length > 0) {
 //       let totalAmount = 0;
@@ -136,8 +136,8 @@
 //         totalAmount += itemTotal;
 //         totalRefunded += itemRefunded;
         
-//         console.log(`   Item ${index + 1}: ${item.title}`);
-//         console.log(`     Total: ${itemTotal}, Refunded: ${itemRefunded}`);
+//         //console.log(`   Item ${index + 1}: ${item.title}`);
+//         //console.log(`     Total: ${itemTotal}, Refunded: ${itemRefunded}`);
 //       });
       
 //       // Determine payment status
@@ -148,8 +148,8 @@
 //         paymentStatus = 'partially_refunded';
 //       }
       
-//       console.log(`   📊 Vendor totals: ${totalAmount} total, ${totalRefunded} refunded`);
-//       console.log(`   ✅ Payment status: ${paymentStatus}`);
+//       //console.log(`   📊 Vendor totals: ${totalAmount} total, ${totalRefunded} refunded`);
+//       //console.log(`   ✅ Payment status: ${paymentStatus}`);
       
 //       // ✅ ADD: Payment status to vendor metadata
 //       const updatedVendorOrder = {
@@ -187,13 +187,13 @@
 
 // // ✅ NEW: Get vendor payment status from metadata (same as single order page)
 // const getVendorPaymentStatusFromMetadata = (order: any, vendorId: string) => {
-//   console.log(`🔍 INDEX: Getting vendor payment status from metadata...`);
+//   //console.log(`🔍 INDEX: Getting vendor payment status from metadata...`);
   
 //   const vendorOrders = order.metadata?.vendor_orders || [];
 //   const vendorInfo = vendorOrders.find(vo => vo.vendor_id === vendorId);
   
 //   if (vendorInfo?.vendor_payment_status) {
-//     console.log(`✅ Found vendor payment status in metadata: ${vendorInfo.vendor_payment_status}`);
+//     //console.log(`✅ Found vendor payment status in metadata: ${vendorInfo.vendor_payment_status}`);
 //     return {
 //       status: vendorInfo.vendor_payment_status,
 //       ...vendorInfo.vendor_payment_details,
@@ -201,7 +201,7 @@
 //     };
 //   }
   
-//   console.log(`⚠️ No payment status in metadata, using fallback`);
+//   //console.log(`⚠️ No payment status in metadata, using fallback`);
 //   return {
 //     status: 'unknown',
 //     source: 'fallback'
@@ -210,12 +210,12 @@
 
 // // ✅ NEW: Analyze claims and returns for vendor items
 // const analyzeClaimsAndReturns = (order: any, vendorItems: any[], vendorId: string) => {
-//   console.log(`🔍 Analyzing claims and returns for vendor ${vendorId} in order ${order.id}`);
+//   //console.log(`🔍 Analyzing claims and returns for vendor ${vendorId} in order ${order.id}`);
   
 //   const claims = order.claims || [];
 //   const returns = order.returns || [];
   
-//   console.log(`📋 Found ${claims.length} claims and ${returns.length} returns`);
+//   //console.log(`📋 Found ${claims.length} claims and ${returns.length} returns`);
   
 //   // Track item statuses
 //   const itemStatuses = new Map();
@@ -224,11 +224,11 @@
   
 //   // Process returns
 //   returns.forEach((returnOrder: any) => {
-//     console.log(`🔄 Processing return ${returnOrder.id}:`, returnOrder);
+//     //console.log(`🔄 Processing return ${returnOrder.id}:`, returnOrder);
     
 //     if (returnOrder.items) {
 //       returnOrder.items.forEach((returnItem: any) => {
-//         console.log(`   📦 Return item:`, returnItem);
+//         //console.log(`   📦 Return item:`, returnItem);
         
 //         // Check if this return item belongs to vendor
 //         const isVendorItem = vendorItems.some(vi => 
@@ -257,7 +257,7 @@
 //             created_at: returnOrder.created_at
 //           });
           
-//           console.log(`   ✅ Added vendor return item: ${returnItem.item_id}`);
+//           //console.log(`   ✅ Added vendor return item: ${returnItem.item_id}`);
 //         }
 //       });
 //     }
@@ -265,12 +265,12 @@
   
 //   // Process claims
 //   claims.forEach((claim: any) => {
-//     console.log(`🔄 Processing claim ${claim.id}:`, claim);
+//     //console.log(`🔄 Processing claim ${claim.id}:`, claim);
     
 //     // Check claim items (items being returned/replaced)
 //     if (claim.claim_items) {
 //       claim.claim_items.forEach((claimItem: any) => {
-//         console.log(`   📦 Claim item:`, claimItem);
+//         //console.log(`   📦 Claim item:`, claimItem);
         
 //         // Check if this claim item belongs to vendor
 //         const isVendorItem = vendorItems.some(vi => 
@@ -298,7 +298,7 @@
 //             created_at: claim.created_at
 //           });
           
-//           console.log(`   ✅ Added vendor claim item: ${claimItem.item_id}`);
+//           //console.log(`   ✅ Added vendor claim item: ${claimItem.item_id}`);
 //         }
 //       });
 //     }
@@ -306,7 +306,7 @@
 //     // Check additional items (replacement items)
 //     if (claim.additional_items) {
 //       claim.additional_items.forEach((additionalItem: any) => {
-//         console.log(`   🆕 Additional item:`, additionalItem);
+//         //console.log(`   🆕 Additional item:`, additionalItem);
         
 //         // Check if this replacement item belongs to vendor
 //         // This is trickier as we need to check product/variant ownership
@@ -344,7 +344,7 @@
 //             }
 //           });
           
-//           console.log(`   ✅ Added vendor replacement item: ${additionalItem.title}`);
+//           //console.log(`   ✅ Added vendor replacement item: ${additionalItem.title}`);
 //         }
 //       });
 //     }
@@ -361,7 +361,7 @@
 
 // // ✅ ENHANCED: Improved filtering function with vendor-specific payment status
 // const filterOrderForVendor = (order: any, vendorId: string) => {
-//   console.log(`🔍 INDEX: Filtering order ${order.id} for vendor ${vendorId}`);
+//   //console.log(`🔍 INDEX: Filtering order ${order.id} for vendor ${vendorId}`);
   
 //   if (!order || !vendorId) {
 //     return null;
@@ -372,31 +372,31 @@
 //   const vendorInfo = vendorOrders.find((vo: any) => vo.vendor_id === vendorId);
   
 //   if (!vendorInfo) {
-//     console.log(`❌ Vendor ${vendorId} not found in order ${order.id}`);
+//     //console.log(`❌ Vendor ${vendorId} not found in order ${order.id}`);
 //     return null;
 //   }
 
-//   console.log(`✅ Found vendor info for ${vendorId}:`, vendorInfo);
+//   //console.log(`✅ Found vendor info for ${vendorId}:`, vendorInfo);
 
 //   // Enhanced item filtering logic
 //   const vendorItems = order.items?.filter((item: any) => {
-//     console.log(`🔍 Checking item ${item.id} for vendor ${vendorId}`);
+//     //console.log(`🔍 Checking item ${item.id} for vendor ${vendorId}`);
     
 //     // Method 1: Check item metadata for vendor_id
 //     if (item.metadata?.vendor_id === vendorId) {
-//       console.log(`✅ Item ${item.id} matches via item metadata`);
+//       //console.log(`✅ Item ${item.id} matches via item metadata`);
 //       return true;
 //     }
     
 //     // Method 2: Check variant metadata for vendor_id
 //     if (item.variant?.metadata?.vendor_id === vendorId) {
-//       console.log(`✅ Item ${item.id} matches via variant metadata`);
+//       //console.log(`✅ Item ${item.id} matches via variant metadata`);
 //       return true;
 //     }
     
 //     // Method 3: Check product metadata for vendor_id
 //     if (item.variant?.product?.metadata?.vendor_id === vendorId) {
-//       console.log(`✅ Item ${item.id} matches via product metadata`);
+//       //console.log(`✅ Item ${item.id} matches via product metadata`);
 //       return true;
 //     }
     
@@ -411,7 +411,7 @@
 //     });
     
 //     if (foundInMetadata) {
-//       console.log(`✅ Item ${item.id} matches via vendor metadata items`);
+//       //console.log(`✅ Item ${item.id} matches via vendor metadata items`);
 //       return true;
 //     }
     
@@ -421,20 +421,20 @@
 //     );
     
 //     if (titleMatch) {
-//       console.log(`✅ Item ${item.id} matches via title comparison`);
+//       //console.log(`✅ Item ${item.id} matches via title comparison`);
 //       return true;
 //     }
     
-//     console.log(`❌ Item ${item.id} does not match vendor ${vendorId}`);
+//     //console.log(`❌ Item ${item.id} does not match vendor ${vendorId}`);
 //     return false;
 //   }) || [];
 
-//   console.log(`📦 Filtered ${vendorItems.length} items for vendor ${vendorId}`);
+//   //console.log(`📦 Filtered ${vendorItems.length} items for vendor ${vendorId}`);
 
 //   // Fallback: If no items filtered but vendor_items exist in metadata, use metadata items
 //   let finalVendorItems = vendorItems;
 //   if (vendorItems.length === 0 && vendorInfo.vendor_items && vendorInfo.vendor_items.length > 0) {
-//     console.log(`🔄 Using fallback: creating items from vendor metadata`);
+//     //console.log(`🔄 Using fallback: creating items from vendor metadata`);
     
 //     finalVendorItems = vendorInfo.vendor_items.map((metaItem: any) => ({
 //       id: metaItem.id,
@@ -456,7 +456,7 @@
 //       }
 //     }));
     
-//     console.log(`✅ Created ${finalVendorItems.length} items from metadata`);
+//     //console.log(`✅ Created ${finalVendorItems.length} items from metadata`);
 //   }
 
 //   // ✅ NEW: Analyze claims and returns to update item statuses
@@ -517,7 +517,7 @@
 //   // ✅ NEW: Get vendor-specific payment status from metadata
 //   const vendorPaymentData = getVendorPaymentStatusFromMetadata(order, vendorId);
   
-//   console.log(`💳 INDEX: Vendor payment status for ${vendorId}:`, vendorPaymentData);
+//   //console.log(`💳 INDEX: Vendor payment status for ${vendorId}:`, vendorPaymentData);
 
 //   // ✅ ENHANCED: Revenue breakdown summary with claims/returns
 //   const revenueBreakdown = {
@@ -542,7 +542,7 @@
 //     active_items: itemsWithRevenue.filter(item => item.claim_status === 'active' && !item.is_claim_item).length
 //   };
 
-//   console.log(`💰 Enhanced vendor totals calculated:`, {
+//   //console.log(`💰 Enhanced vendor totals calculated:`, {
 //     subtotal: vendorSubtotal,
 //     calculated_revenue: calculatedVendorRevenue,
 //     platform_commission: totalPlatformCommission,
@@ -622,7 +622,7 @@
 //   res: MedusaResponse
 // ) => {
 //   try {
-//     console.log("🏪 INDEX: Fetching vendor-specific orders with ENHANCED revenue calculation + VENDOR PAYMENT STATUS + claims/returns...");
+//     //console.log("🏪 INDEX: Fetching vendor-specific orders with ENHANCED revenue calculation + VENDOR PAYMENT STATUS + claims/returns...");
     
 //     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
 //     const marketplaceModuleService: MarketplaceModuleService =
@@ -637,7 +637,7 @@
 //     );
 
 //     const vendorId = vendorAdmin.vendor.id;
-//     console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
+//     //console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
 
 //     // Get vendor orders
 //     const {
@@ -651,7 +651,7 @@
 //     });
 
 //     if (!vendor.orders || vendor.orders.length === 0) {
-//       console.log("📭 No orders found for vendor");
+//       //console.log("📭 No orders found for vendor");
 //       return res.json({
 //         orders: [],
 //         count: 0,
@@ -659,7 +659,7 @@
 //       });
 //     }
 
-//     console.log(`📋 Found ${vendor.orders.length} linked orders for vendor`);
+//     //console.log(`📋 Found ${vendor.orders.length} linked orders for vendor`);
 
 //     // ✅ ENHANCED: Get detailed order information including claims and returns + payment data
 //     const { result: detailedOrders } = await getOrdersListWorkflow(req.scope).run({
@@ -702,19 +702,19 @@
 //       },
 //     });
 
-//     console.log(`📄 INDEX: Retrieved detailed data for ${detailedOrders.length} orders`);
+//     //console.log(`📄 INDEX: Retrieved detailed data for ${detailedOrders.length} orders`);
 
 //     // ✅ NEW: Calculate vendor payment status for each order before filtering
 //     const ordersWithVendorPaymentStatus = [];
 //     for (const order of detailedOrders) {
-//       console.log(`🔄 INDEX: Calculating vendor payment status for order ${order.id}...`);
+//       //console.log(`🔄 INDEX: Calculating vendor payment status for order ${order.id}...`);
 //       const orderWithPaymentStatus = await calculateAndStoreVendorPaymentStatus(order);
 //       ordersWithVendorPaymentStatus.push(orderWithPaymentStatus);
       
 //       // ✅ LOG: Show what was calculated
-//       console.log(`📋 INDEX: Vendor payment status results for order ${order.id}:`);
+//       //console.log(`📋 INDEX: Vendor payment status results for order ${order.id}:`);
 //       orderWithPaymentStatus.metadata?.vendor_orders?.forEach(vo => {
-//         console.log(`   Vendor ${vo.vendor_id}: ${vo.vendor_payment_status}`);
+//         //console.log(`   Vendor ${vo.vendor_id}: ${vo.vendor_payment_status}`);
 //       });
 //     }
 
@@ -722,20 +722,20 @@
 //     const vendorFilteredOrders = [];
 
 //     for (const order of ordersWithVendorPaymentStatus) {
-//       console.log(`🔄 INDEX: Processing order ${order.id} for vendor filtering, revenue calculation, payment status, and claims/returns analysis...`);
+//       //console.log(`🔄 INDEX: Processing order ${order.id} for vendor filtering, revenue calculation, payment status, and claims/returns analysis...`);
       
 //       const vendorOrderView = filterOrderForVendor(order, vendorId);
       
 //       if (vendorOrderView) {
 //         vendorFilteredOrders.push(vendorOrderView);
-//         console.log(`✅ INDEX: Added filtered order ${order.id} with ${vendorOrderView.vendor_items.length} items (Revenue: ${vendorOrderView.vendor_total})`);
-//         console.log(`💰 Revenue breakdown: ${vendorOrderView.revenue_breakdown.revenue_percentage.toFixed(1)}% of subtotal`);
-//         console.log(`💳 Payment status: ${vendorOrderView.payment_status} (global: ${order.payment_status})`);
+//         //console.log(`✅ INDEX: Added filtered order ${order.id} with ${vendorOrderView.vendor_items.length} items (Revenue: ${vendorOrderView.vendor_total})`);
+//         //console.log(`💰 Revenue breakdown: ${vendorOrderView.revenue_breakdown.revenue_percentage.toFixed(1)}% of subtotal`);
+//         //console.log(`💳 Payment status: ${vendorOrderView.payment_status} (global: ${order.payment_status})`);
 //         if (vendorOrderView.has_claims || vendorOrderView.has_returns) {
-//           console.log(`🔄 Claims/Returns: ${vendorOrderView.claims?.length || 0} claims, ${vendorOrderView.returns?.length || 0} returns`);
+//           //console.log(`🔄 Claims/Returns: ${vendorOrderView.claims?.length || 0} claims, ${vendorOrderView.returns?.length || 0} returns`);
 //         }
 //       } else {
-//         console.log(`⚠️ Order ${order.id} skipped - no products for vendor ${vendorId}`);
+//         //console.log(`⚠️ Order ${order.id} skipped - no products for vendor ${vendorId}`);
 //       }
 //     }
 
@@ -758,7 +758,7 @@
 //       return counts;
 //     }, {});
 
-//     console.log(`✅ INDEX: Returning ${vendorFilteredOrders.length} vendor-filtered orders with enhanced revenue calculation + VENDOR PAYMENT STATUS + claims/returns`);
+//     //console.log(`✅ INDEX: Returning ${vendorFilteredOrders.length} vendor-filtered orders with enhanced revenue calculation + VENDOR PAYMENT STATUS + claims/returns`);
 
 //     // ✅ ENHANCED: Return vendor-specific filtered data with revenue analytics + payment status + claims/returns
 //     res.json({
@@ -800,7 +800,7 @@
 //     });
 
 //   } catch (error: any) {
-//     console.error("❌ INDEX: Error in enhanced vendor orders endpoint:", error);
+//     //console.error("❌ INDEX: Error in enhanced vendor orders endpoint:", error);
 //     res.status(500).json({
 //       error: "Failed to fetch vendor orders",
 //       message: error.message
@@ -824,7 +824,7 @@ import { MARKETPLACE_MODULE } from "../../../modules/marketplace";
 
 // ✅ ADDED: Calculate vendor-specific fulfillment status
 const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
-  console.log(`📦 Calculating vendor fulfillment status for ${vendorItems.length} items...`);
+  //console.log(`📦 Calculating vendor fulfillment status for ${vendorItems.length} items...`);
   
   if (vendorItems.length === 0) {
     return {
@@ -956,7 +956,7 @@ const calculatePaymentProcessingFee = (totalAmount: number, paymentStatus: strin
 // ✅ ADDED: Fetch original product metadata from database
 const fetchProductMetadata = async (productId: string, scope: any) => {
   try {
-    console.log(`🔍 Fetching original product metadata for product: ${productId}`);
+    //console.log(`🔍 Fetching original product metadata for product: ${productId}`);
     
     const query = scope.resolve(ContainerRegistrationKeys.QUERY);
     
@@ -971,19 +971,19 @@ const fetchProductMetadata = async (productId: string, scope: any) => {
       
       if (products && products.length > 0) {
         const product = products[0];
-        console.log(`✅ Found product: ${product.title}`);
+        //console.log(`✅ Found product: ${product.title}`);
         if (product.metadata?.cost_price !== undefined) {
-          console.log(`💰 Found cost_price in metadata: ${product.metadata.cost_price}`);
+          //console.log(`💰 Found cost_price in metadata: ${product.metadata.cost_price}`);
         }
         return product.metadata;
       }
     } catch (queryError) {
-      console.log(`⚠️ Query method failed`);
+      //console.log(`⚠️ Query method failed`);
     }
     
     return null;
   } catch (error) {
-    console.error(`❌ Error fetching product metadata:`, error);
+    //console.error(`❌ Error fetching product metadata:`, error);
     return null;
   }
 };
@@ -991,7 +991,7 @@ const fetchProductMetadata = async (productId: string, scope: any) => {
 // ✅ ADDED: Fetch variant details
 const fetchVariantDetails = async (variantId: string, scope: any) => {
   try {
-    console.log(`🔍 Fetching variant details: ${variantId}`);
+    //console.log(`🔍 Fetching variant details: ${variantId}`);
     
     const query = scope.resolve(ContainerRegistrationKeys.QUERY);
     
@@ -1017,12 +1017,12 @@ const fetchVariantDetails = async (variantId: string, scope: any) => {
         return variants[0];
       }
     } catch (queryError) {
-      console.log(`⚠️ Variant query failed`);
+      //console.log(`⚠️ Variant query failed`);
     }
     
     return null;
   } catch (error) {
-    console.error(`❌ Error fetching variant:`, error);
+    //console.error(`❌ Error fetching variant:`, error);
     return null;
   }
 };
@@ -1030,7 +1030,7 @@ const fetchVariantDetails = async (variantId: string, scope: any) => {
 // ✅ ADDED: Search product by title
 const searchProductByTitle = async (title: string, scope: any) => {
   try {
-    console.log(`🔍 Searching for product: "${title}"`);
+    //console.log(`🔍 Searching for product: "${title}"`);
     
     const query = scope.resolve(ContainerRegistrationKeys.QUERY);
     
@@ -1057,14 +1057,14 @@ const searchProductByTitle = async (title: string, scope: any) => {
     
     return null;
   } catch (error) {
-    console.error(`❌ Error searching product:`, error);
+    //console.error(`❌ Error searching product:`, error);
     return null;
   }
 };
 
 // ✅ ADDED: Enhance replacement item with missing data
 const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems: any[], scope: any) => {
-  console.log(`🔧 Enhancing replacement item: ${replacementItem.title}`);
+  //console.log(`🔧 Enhancing replacement item: ${replacementItem.title}`);
   
   let enhanced = { ...replacementItem };
   let enhancements = [];
@@ -1155,7 +1155,7 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
 
 // ✅ ADDED: Fetch claims and returns with proper field expansion
 const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
-  console.log(`🔍 Fetching claims and returns for order: ${orderId}`);
+  //console.log(`🔍 Fetching claims and returns for order: ${orderId}`);
   
   try {
     const query = scope.resolve(ContainerRegistrationKeys.QUERY);
@@ -1185,7 +1185,7 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
         }
       }
     } catch (claimsError) {
-      console.log(`⚠️ Could not fetch claims`);
+      //console.log(`⚠️ Could not fetch claims`);
     }
     
     // Try to fetch returns
@@ -1211,19 +1211,19 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
         }
       }
     } catch (returnsError) {
-      console.log(`⚠️ Could not fetch returns`);
+      //console.log(`⚠️ Could not fetch returns`);
     }
     
     return { claims, returns };
   } catch (error) {
-    console.error(`❌ Error fetching claims/returns:`, error);
+    //console.error(`❌ Error fetching claims/returns:`, error);
     return { claims: [], returns: [] };
   }
 };
 
 // ✅ UPDATED: Enhanced vendor revenue calculation with metadata fetching
 const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, paymentStatus: string = 'paid') => {
-  console.log(`💰 Calculating revenue for item ${item.id} (${item.title})`);
+  //console.log(`💰 Calculating revenue for item ${item.id} (${item.title})`);
 
   // If payment is refunded, vendor gets nothing
   if (paymentStatus === 'refunded') {
@@ -1255,7 +1255,7 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, p
       return sum + taxAmount;
     }, 0);
   }
-  console.log(`💰 Item tax total: ${itemTaxTotal}`);
+  //console.log(`💰 Item tax total: ${itemTaxTotal}`);
 
   let vendorRevenue = itemTotal;
   let revenueCalculationType = "default";
@@ -1278,7 +1278,7 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, p
     if (source.data && typeof source.data === 'object' && Object.keys(source.data).length > 0) {
       orderMetadata = source.data;
       orderMetadataSource = `order_${source.name}`;
-      console.log(`✅ Found order metadata in ${source.name}`);
+      //console.log(`✅ Found order metadata in ${source.name}`);
       break;
     }
   }
@@ -1288,11 +1288,11 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, p
   let productId = item.product_id || item.variant?.product_id || item.variant?.product?.id || item.product?.id;
   
   if (productId) {
-    console.log(`🔍 Fetching original product metadata for: ${productId}`);
+    //console.log(`🔍 Fetching original product metadata for: ${productId}`);
     originalProductMetadata = await fetchProductMetadata(productId, scope);
     
     if (originalProductMetadata) {
-      console.log(`✅ Got original product metadata`);
+      //console.log(`✅ Got original product metadata`);
     }
   }
   
@@ -1347,24 +1347,24 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, p
     
     // Revenue calculation logic
     switch (fulfillmentType) {
-      case "Junooni-fulfilment":
+      case "JUNOONI-fulfillment":
         const totalProductCost = productCost * item.quantity;
         const itemTotalWithoutTax = itemTotal - itemTaxTotal; // Deduct tax first
         vendorRevenue = Math.max(0, itemTotalWithoutTax - totalProductCost);
         revenueCalculationType = "cost_deduction_minus_tax";
-        console.log(`💰 Junooni: (${itemTotal} - ${itemTaxTotal}) - (${productCost} × ${item.quantity}) = ${vendorRevenue}`);
+        //console.log(`💰 Junooni: (${itemTotal} - ${itemTaxTotal}) - (${productCost} × ${item.quantity}) = ${vendorRevenue}`);
         break;
         
       case "Creator-fulfilment":
         vendorRevenue = itemTotal * 0.90;
         revenueCalculationType = "percentage_split";
-        console.log(`💰 Creator: ${itemTotal} × 90% = ${vendorRevenue}`);
+        //console.log(`💰 Creator: ${itemTotal} × 90% = ${vendorRevenue}`);
         break;
         
       default:
         vendorRevenue = itemTotal * 0.90;
         revenueCalculationType = "default_percentage";
-        console.log(`💰 Default: ${itemTotal} × 90% = ${vendorRevenue}`);
+        //console.log(`💰 Default: ${itemTotal} × 90% = ${vendorRevenue}`);
         break;
     }
   } else {
@@ -1376,7 +1376,7 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, p
     item_total: itemTotal,
     vendor_revenue: vendorRevenue,
     product_cost: productCost,
-    total_product_cost: fulfillmentType === "Junooni-fulfilment" ? productCost * item.quantity : 0,
+    total_product_cost: fulfillmentType === "JUNOONI-fulfillment" ? productCost * item.quantity : 0,
     quantity: item.quantity,
     fulfillment_type: fulfillmentType,
     calculation_type: revenueCalculationType,
@@ -1388,7 +1388,7 @@ const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, p
 
 // ✅ ADDED: Calculate vendor tax and shipping with proper separation
 const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
-  console.log(`💰 Calculating vendor tax and shipping...`);
+  //console.log(`💰 Calculating vendor tax and shipping...`);
   
   let vendorProductTax = 0;
   let vendorShippingTax = 0;
@@ -1481,7 +1481,7 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
 
 // ✅ UPDATED: Enhanced claims and returns analysis
 const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItems: any[], vendorId: string, scope: any, order: any) => {
-  console.log(`🔍 Analyzing ${claims.length} claims and ${returns.length} returns for vendor ${vendorId}`);
+  //console.log(`🔍 Analyzing ${claims.length} claims and ${returns.length} returns for vendor ${vendorId}`);
   
   const itemStatuses = new Map();
   const claimItems = [];
@@ -1600,7 +1600,7 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
                 replacementItemBelongsToVendor = true;
               }
             } catch (error) {
-              console.log(`⚠️ Could not check replacement product in database`);
+              //console.log(`⚠️ Could not check replacement product in database`);
             }
           }
         }
@@ -1680,7 +1680,7 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
 
 // ✅ UPDATED: Calculate and store vendor payment status
 const calculateAndStoreVendorPaymentStatus = async (order: any) => {
-  console.log(`🔄 INDEX: Calculating vendor payment status for order ${order.id}...`);
+  //console.log(`🔄 INDEX: Calculating vendor payment status for order ${order.id}...`);
   
   if (!order.metadata?.vendor_orders || !order.items) {
     return order;
@@ -1766,7 +1766,7 @@ const getVendorPaymentStatusFromMetadata = (order: any, vendorId: string) => {
 
 // ✅ UPDATED: Enhanced filter order for vendor with all improvements
 const filterOrderForVendor = async (order: any, vendorId: string, scope: any) => {
-  console.log(`🔍 INDEX: Filtering order ${order.id} for vendor ${vendorId}`);
+  //console.log(`🔍 INDEX: Filtering order ${order.id} for vendor ${vendorId}`);
   
   if (!order || !vendorId) {
     return null;
@@ -1843,7 +1843,7 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
   // ✅ CRITICAL FIX: Get vendor-specific payment status from metadata instead of parent order
   const vendorPaymentData = getVendorPaymentStatusFromMetadata(order, vendorId);
   const paymentStatus = vendorPaymentData.status;
-  console.log(`💳 Vendor Payment Status: ${paymentStatus} (source: ${vendorPaymentData.source})`);
+  //console.log(`💳 Vendor Payment Status: ${paymentStatus} (source: ${vendorPaymentData.source})`);
 
   // Calculate revenue for each item
   const itemsWithRevenue = [];
@@ -1931,18 +1931,18 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
   let finalVendorRevenue = 0;
   if (paymentStatus === 'refunded') {
     finalVendorRevenue = 0;
-    console.log(`⚠️ Payment refunded - Vendor payout set to 0`);
+    //console.log(`⚠️ Payment refunded - Vendor payout set to 0`);
   } else {
     finalVendorRevenue = calculatedVendorRevenue - totalProcessingFee;
   }
 
   // Calculate vendor-specific fulfillment status
-  const vendorFulfillmentData = calculateVendorFulfillmentStatus(itemsWithRevenue, order);
+  const vendorFulfillmentData = calculateVendorFulfillmentStatus(itemsWithRevenue, order); 
 
   // Revenue breakdown
   const revenue_breakdown = {
     total_items: itemsWithRevenue.length,
-    junooni_fulfillment_items: itemsWithRevenue.filter(item => item.fulfillment_type === "Junooni-fulfilment").length,
+    junooni_fulfillment_items: itemsWithRevenue.filter(item => item.fulfillment_type === "JUNOONI-fulfillment").length,
     creator_fulfillment_items: itemsWithRevenue.filter(item => item.fulfillment_type === "Creator-fulfilment").length,
     unknown_fulfillment_items: itemsWithRevenue.filter(item => !item.fulfillment_type || item.fulfillment_type === "unknown").length,
     revenue_percentage: vendorSubtotal > 0 ? (calculatedVendorRevenue / vendorSubtotal * 100) : 0,
@@ -2031,7 +2031,7 @@ export const GET = async (
   res: MedusaResponse
 ) => {
   try {
-    console.log("🏪 INDEX: Fetching vendor orders with COMPLETE enhanced calculations...");
+    //console.log("🏪 INDEX: Fetching vendor orders with COMPLETE enhanced calculations...");
     
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
     const marketplaceModuleService: MarketplaceModuleService =
@@ -2044,15 +2044,15 @@ export const GET = async (
     });
 
     if (!vendorAdmins || vendorAdmins.length === 0) {
-      console.log(`❌ INDEX: No vendor admin found for user: ${req.auth_context.actor_id}`);
+      //console.log(`❌ INDEX: No vendor admin found for user: ${req.auth_context.actor_id}`);
       return res.status(403).json({
         error: "Not authorized as vendor"
       });
     }
 
 const vendorId = vendorAdmins[0].vendor_id;
-console.log(`✅ INDEX: Logged-in vendor ID: ${vendorId}`);
-console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
+//console.log(`✅ INDEX: Logged-in vendor ID: ${vendorId}`);
+//console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
 
     // Get vendor orders
     const {
@@ -2066,7 +2066,7 @@ console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
     });
 
     if (!vendor.orders || vendor.orders.length === 0) {
-      console.log("📭 No orders found for vendor");
+      //console.log("📭 No orders found for vendor");
       return res.json({
         orders: [],
         count: 0,
@@ -2074,7 +2074,7 @@ console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
       });
     }
 
-    console.log(`📋 Found ${vendor.orders.length} linked orders for vendor`);
+    //console.log(`📋 Found ${vendor.orders.length} linked orders for vendor`);
 
     // Get detailed order information
     const { result: detailedOrders } = await getOrdersListWorkflow(req.scope).run({
@@ -2117,7 +2117,7 @@ console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
       },
     });
 
-    console.log(`📄 INDEX: Retrieved detailed data for ${detailedOrders.length} orders`);
+    //console.log(`📄 INDEX: Retrieved detailed data for ${detailedOrders.length} orders`);
 
     // Calculate vendor payment status for each order
     const ordersWithVendorPaymentStatus = [];
@@ -2130,13 +2130,13 @@ console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
     const vendorFilteredOrders = [];
 
     for (const order of ordersWithVendorPaymentStatus) {
-      console.log(`🔄 INDEX: Processing order ${order.id}...`);
+      //console.log(`🔄 INDEX: Processing order ${order.id}...`);
       
       const vendorOrderView = await filterOrderForVendor(order, vendorId, req.scope);
       
       if (vendorOrderView) {
         vendorFilteredOrders.push(vendorOrderView);
-        console.log(`✅ INDEX: Added order ${order.id} with ${vendorOrderView.vendor_items.length} items`);
+        //console.log(`✅ INDEX: Added order ${order.id} with ${vendorOrderView.vendor_items.length} items`);
       }
     }
 
@@ -2165,7 +2165,7 @@ console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
       sum + (order.vendor_payment_details?.total_processing_fee || 0), 0
     );
 
-    console.log(`✅ INDEX: Returning ${vendorFilteredOrders.length} vendor-filtered orders with COMPLETE enhancements`);
+    //console.log(`✅ INDEX: Returning ${vendorFilteredOrders.length} vendor-filtered orders with COMPLETE enhancements`);
 
     res.json({
       orders: vendorFilteredOrders,
@@ -2208,7 +2208,7 @@ console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
     });
 
   } catch (error: any) {
-    console.error("❌ INDEX: Error in vendor orders endpoint:", error);
+    //console.error("❌ INDEX: Error in vendor orders endpoint:", error);
     res.status(500).json({
       error: "Failed to fetch vendor orders",
       message: error.message

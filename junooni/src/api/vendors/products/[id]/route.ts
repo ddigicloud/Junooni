@@ -102,7 +102,7 @@ export const GET = async (
 
     res.json({ product: formattedProduct });
   } catch (error) {
-    console.error("Error fetching product:", error);
+    //console.error("Error fetching product:", error);
     res.status(500).json({
       message: "Failed to fetch product",
       error: error instanceof Error ? error.message : "Unknown error",
@@ -234,7 +234,7 @@ export const PUT = async (
 
     res.status(200).json({ product: finalProduct });
   } catch (error) {
-    console.error("Error updating product:", error);
+    //console.error("Error updating product:", error);
     res.status(500).json({
       message: "Failed to update product",
       error: error instanceof Error ? error.message : "Unknown error",
@@ -299,7 +299,7 @@ export const DELETE = async (
     });
 
   } catch (error) {
-    console.error("Error deleting product:", error);
+    //console.error("Error deleting product:", error);
     res.status(500).json({
       message: "Failed to delete product",
       error: error instanceof Error ? error.message : "Unknown error",

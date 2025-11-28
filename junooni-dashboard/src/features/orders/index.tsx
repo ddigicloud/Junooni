@@ -1122,7 +1122,7 @@
 //                 Seller Order Page
 //               </h1> */}
 //             </div>
-//             <div className="absolute left-1/2 -translate-x-1/2 md:hidden">
+//             <div className="absolute -translate-x-1/2 left-1/2 md:hidden">
 //               <Link to="/dashboard" className="flex items-center">
 //                 <img 
 //                   src={Junoonilogo} 
@@ -1225,7 +1225,7 @@
 //         {!loading && (
 //           <div className="mb-4">
 //             {/* Mobile View - Horizontal Scroll */}
-//             <div className="sm:hidden overflow-x-auto pb-2 -mx-4 px-4">
+//             <div className="px-4 pb-2 -mx-4 overflow-x-auto sm:hidden">
 //               <div className="flex gap-2 min-w-max">
 //                 <Button 
 //                   variant={currentTab === "all" ? "default" : "outline"} 
@@ -2262,70 +2262,72 @@ const SummaryCards = ({ data }: { data: VendorOrder[] }) => {
   const todayRevenue = todayOrders.reduce((sum, order) => sum + order.vendor_total, 0);
   
   return (
-    <div className="grid grid-cols-1 gap-3 mb-4 sm:grid-cols-2 lg:grid-cols-4">
-      {/* Today's Orders */}
-      <Card className="shadow-md">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="mb-1 text-sm text-gray-500">Today's Orders</p>
-              <h3 className="text-lg font-bold">{todayOrders.length}</h3>
-              <p className="mt-1 text-sm text-gray-500">Your Revenue today:{formatPrice(todayRevenue)}</p>
+    <div className="mb-4 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-3 pb-2 snap-x snap-mandatory">
+        {/* Today's Orders */}
+        <Card className="shadow-md min-w-[85vw] sm:min-w-0 sm:flex-1 snap-center">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="mb-1 text-sm text-gray-500">Today's Orders</p>
+                <h3 className="text-lg font-bold">{todayOrders.length}</h3>
+                <p className="mt-1 text-sm text-gray-500">Your Revenue today:{formatPrice(todayRevenue)}</p>
+              </div>
+              <div className="p-3 rounded-lg" style={{ backgroundColor: `${BRAND.primary}22` }}>
+                <Package className="w-6 h-6" style={{ color: BRAND.primary }} />
+              </div>
             </div>
-            <div className="p-3 rounded-lg" style={{ backgroundColor: `${BRAND.primary}22` }}>
-              <Package className="w-6 h-6" style={{ color: BRAND.primary }} />
+          </CardContent>
+        </Card>
+        
+        {/* Pending Orders */}
+        <Card className="shadow-md min-w-[85vw] sm:min-w-0 sm:flex-1 snap-center">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="mb-1 text-sm text-gray-500">Pending Orders</p>
+                <h3 className="text-lg font-bold">{pendingOrders}</h3>
+                <p className="mt-1 text-sm text-gray-500">Your products to fulfill</p>
+              </div>
+              <div className="p-3 rounded-lg bg-amber-100">
+                <Clock className="w-6 h-6 text-amber-600" />
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Pending Orders */}
-      <Card className="shadow-md">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="mb-1 text-sm text-gray-500">Pending Orders</p>
-              <h3 className="text-lg font-bold">{pendingOrders}</h3>
-              <p className="mt-1 text-sm text-gray-500">Your products to fulfill</p>
+          </CardContent>
+        </Card>
+        
+        {/* Creator Fulfillment Orders */}
+        <Card className="shadow-md min-w-[85vw] sm:min-w-0 sm:flex-1 snap-center">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="mb-1 text-sm text-gray-500">Creator Fulfillment</p>
+                <h3 className="text-lg font-bold">{processingOrders}</h3>
+                <p className="mt-1 text-sm text-gray-500">Products you need to fulfill</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Truck className="w-6 h-6 text-blue-600" />
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-amber-100">
-              <Clock className="w-6 h-6 text-amber-600" />
+          </CardContent>
+        </Card>
+        
+        {/* Total Revenue */}
+        <Card className="shadow-md min-w-[85vw] sm:min-w-0 sm:flex-1 snap-center">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="mb-1 text-sm text-gray-500">Your Total Revenue</p>
+                <h3 className="text-lg font-bold">{formatPrice(totalRevenue)}</h3>
+                <p className="mt-1 text-sm text-gray-500">From {totalOrders} orders</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-lg">
+                <CreditCard className="w-6 h-6 text-green-600" />
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Creator Fulfillment Orders */}
-      <Card className="shadow-md">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="mb-1 text-sm text-gray-500">Creator Fulfillment</p>
-              <h3 className="text-lg font-bold">{processingOrders}</h3>
-              <p className="mt-1 text-sm text-gray-500">Products you need to fulfill</p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <Truck className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Total Revenue */}
-      <Card className="shadow-md">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="mb-1 text-sm text-gray-500">Your Total Revenue</p>
-              <h3 className="text-lg font-bold">{formatPrice(totalRevenue)}</h3>
-              <p className="mt-1 text-sm text-gray-500">From {totalOrders} orders</p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <CreditCard className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
@@ -3038,7 +3040,7 @@ useEffect(() => {
                 Seller Order Page
               </h1> */}
             </div>
-            <div className="absolute left-1/2 -translate-x-1/2 md:hidden">
+            <div className="absolute -translate-x-1/2 left-1/2 md:hidden">
               <Link to="/dashboard" className="flex items-center">
                 <img 
                   src={Junoonilogo} 
@@ -3141,7 +3143,7 @@ useEffect(() => {
         {!loading && (
           <div className="mb-4">
             {/* Mobile View - Horizontal Scroll */}
-            <div className="sm:hidden overflow-x-auto pb-2 -mx-4 px-4">
+            <div className="px-4 pb-2 -mx-4 overflow-x-auto sm:hidden">
               <div className="flex gap-2 min-w-max">
                 <Button 
                   variant={currentTab === "all" ? "default" : "outline"} 
@@ -3500,41 +3502,16 @@ useEffect(() => {
                       </TableHeader>
                       <TableBody>
                         {paginatedOrders.map((order) => (
-                          <TableRow key={order.id} className=" group hover:bg-gray-50">
+                          <TableRow key={order.id} className=" group hover:bg-gray-50 cursor-pointer"  onClick={() => viewOrderDetails(order.id)}>
                             <TableCell className="text-sm font-medium">
                               <Button 
                                 variant="link" 
                                 className="h-auto p-0 ml-2 font-medium"
                                 style={{ color: BRAND.primary }}
-                                onClick={() => viewOrderDetails(order.id)}
                               >
                                 #{order.display_id}
                               </Button>
-                              {/* ✅ Enhanced: Show claim/return indicators */}
-                              {/* {(order.has_claims || order.has_returns) && (
-                                <div className="flex gap-1 mt-1">
-                                  {order.has_returns && (
-                                    <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50">
-                                      Return
-                                    </Badge>
-                                  )}
-                                  {order.has_claims && (
-                                    <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50">
-                                      Claim
-                                    </Badge>
-                                  )}
-                                </div>
-                              )} */}
-                              {/* ✅ Show fulfillment type indicator for creator fulfillment items */}
-                              {/* {order.vendor_items.some(item => 
-                                item.fulfillment_type === "Creator-fulfilment"
-                              ) && (
-                                <div className="mt-1">
-                                  <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50">
-                                    Creator Fulfillment
-                                  </Badge>
-                                </div>
-                              )} */}
+                             
                             </TableCell>
                             <TableCell>
                               {`${order.customer.first_name} ${order.customer.last_name}`.trim() || 'Guest'}
@@ -3575,7 +3552,7 @@ useEffect(() => {
                                   <DropdownMenuItem asChild>
                                     <Link to={`/orders/${order.id}`} className="flex items-center w-full">
                                       <ExternalLink className="w-4 h-4 mr-2" />
-                                      Open in new tab
+                                      Open in same tab
                                     </Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />

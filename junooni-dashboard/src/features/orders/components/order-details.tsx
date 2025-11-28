@@ -1861,6 +1861,10 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
   useEffect(() => {
   const fetchVendorOrderDetails = async () => {
     try {
+       // ✅ ADD THESE LINES:
+      //console.log('🚀 Starting fetch for order:', id);
+      //console.log('My Vendor ID:', localStorage.getItem("vendorId"));
+
       const token = localStorage.getItem("vendorToken")
       
       if (!token) {
@@ -1874,9 +1878,8 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
-      },
-       credentials: "include"
-    })
+      }
+        })
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -1918,33 +1921,33 @@ const activeFulfillments = useMemo(() => {
 }, [fulfillments]);
 
 // Debug info
-console.log({
-  totalFulfillments: fulfillments.length,        // Should show: 1
-  activeFulfillments: activeFulfillments.length, // Should show: 1
-  fulfillmentStatus: order?.fulfillment_status,  // Should show: "delivered"
-  hasLabels: activeFulfillments[0]?.labels?.length > 0 // Should show: true
-});
+// console.log({
+//   totalFulfillments: fulfillments.length,        // Should show: 1
+//   activeFulfillments: activeFulfillments.length, // Should show: 1
+//   fulfillmentStatus: order?.fulfillment_status,  // Should show: "delivered"
+//   hasLabels: activeFulfillments[0]?.labels?.length > 0 // Should show: true
+// });
 
 // Add this at the very top of your TrackingInformation component
 useEffect(() => {
-  console.log('🔍 RAW ORDER DEBUG:');
-  console.log('1. Full order object:', order);
-  console.log('2. order.fulfillments:', order?.fulfillments);
-  console.log('3. order.fulfillment_status:', order?.fulfillment_status);
-  console.log('4. Type of order.fulfillments:', typeof order?.fulfillments);
-  console.log('5. Is array?:', Array.isArray(order?.fulfillments));
-  console.log('6. Order keys:', order ? Object.keys(order) : 'no order');
+  //console.log('🔍 RAW ORDER DEBUG:');
+  //console.log('1. Full order object:', order);
+  //console.log('2. order.fulfillments:', order?.fulfillments);
+  //console.log('3. order.fulfillment_status:', order?.fulfillment_status);
+  //console.log('4. Type of order.fulfillments:', typeof order?.fulfillments);
+  //console.log('5. Is array?:', Array.isArray(order?.fulfillments));
+  //console.log('6. Order keys:', order ? Object.keys(order) : 'no order');
   
   // Check if fulfillments exist elsewhere
-  console.log('7. Checking alternative paths:');
-  console.log('   - order.fulfillment:', order?.fulfillment);
-  console.log('   - order._fulfillments:', order?._fulfillments);
-  console.log('   - order.data?.fulfillments:', order?.data?.fulfillments);
+  //console.log('7. Checking alternative paths:');
+  //console.log('   - order.fulfillment:', order?.fulfillment);
+  //console.log('   - order._fulfillments:', order?._fulfillments);
+  //console.log('   - order.data?.fulfillments:', order?.data?.fulfillments);
   
   // Raw JSON check
-  console.log('8. Stringified order (first 500 chars):', 
-    JSON.stringify(order).substring(0, 500)
-  );
+  // console.log('8. Stringified order (first 500 chars):', 
+  //   JSON.stringify(order).substring(0, 500)
+  // );
 }, [order]);
 
   const transformVendorOrderDataWithClaims = (orderData: any): VendorOrder => {
@@ -1965,31 +1968,31 @@ useEffect(() => {
     const quantity = item.quantity || 1
 
      // 🔍 DEBUG: Log the entire item to see all available fields
-    //console.log('=== DEBUG: Full Item Data ===', index);
-    //console.log(JSON.stringify(item, null, 2));
+    ////console.log('=== DEBUG: Full Item Data ===', index);
+    ////console.log(JSON.stringify(item, null, 2));
     
     // 🔍 DEBUG: Check specific fields that might contain product_cost
-    //console.log('=== DEBUG: Cost Fields ===');
-    //console.log('item.product_cost:', item.product_cost);
-    //console.log('item.cost:', item.cost);
-    //console.log('item.unit_cost:', item.unit_cost);
-    //console.log('item.vendor_cost:', item.vendor_cost);
-    //console.log('item.item_cost:', item.item_cost);
-    //console.log('item.base_cost:', item.base_cost);
-    //console.log('item.metadata:', item.metadata);
-    //console.log('item.merged_metadata:', item.merged_metadata);
+    ////console.log('=== DEBUG: Cost Fields ===');
+    ////console.log('item.product_cost:', item.product_cost);
+    ////console.log('item.cost:', item.cost);
+    ////console.log('item.unit_cost:', item.unit_cost);
+    ////console.log('item.vendor_cost:', item.vendor_cost);
+    ////console.log('item.item_cost:', item.item_cost);
+    ////console.log('item.base_cost:', item.base_cost);
+    ////console.log('item.metadata:', item.metadata);
+    ////console.log('item.merged_metadata:', item.merged_metadata);
 
     // 🔍 DEBUG: Check nested structures
     if (item.variant) {
-      //console.log('item.variant.product_cost:', item.variant?.product_cost);
-      //console.log('item.variant.cost:', item.variant?.cost);
-      //console.log('item.variant.metadata:', item.variant?.metadata);
+      ////console.log('item.variant.product_cost:', item.variant?.product_cost);
+      ////console.log('item.variant.cost:', item.variant?.cost);
+      ////console.log('item.variant.metadata:', item.variant?.metadata);
     }
     
      if (item.product) {
-      //console.log('item.product.cost:', item.product?.cost);
-      //console.log('item.product.product_cost:', item.product?.product_cost);
-      //console.log('item.product.metadata:', item.product?.metadata);
+      ////console.log('item.product.cost:', item.product?.cost);
+      ////console.log('item.product.product_cost:', item.product?.product_cost);
+      ////console.log('item.product.metadata:', item.product?.metadata);
     }
       
       // ✅ Extract product_cost (enhanced from backend)
@@ -1999,24 +2002,24 @@ if (item.variant?.metadata?.cost_price !== undefined) {
   productCost = typeof item.variant.metadata.cost_price === 'number' 
     ? item.variant.metadata.cost_price 
     : parseFloat(item.variant.metadata.cost_price) || 0;
-  //console.log(`✅ Found cost_price in variant.metadata: ${productCost}`);
+  ////console.log(`✅ Found cost_price in variant.metadata: ${productCost}`);
 } 
 // Fallback to other possible locations
 else if (item.metadata?.cost_price !== undefined) {
   productCost = typeof item.metadata.cost_price === 'number' 
     ? item.metadata.cost_price 
     : parseFloat(item.metadata.cost_price) || 0;
-  //console.log(`✅ Found cost_price in item.metadata: ${productCost}`);
+  ////console.log(`✅ Found cost_price in item.metadata: ${productCost}`);
 }
 // Check merged_metadata as another fallback
 else if (item.merged_metadata?.cost_price !== undefined) {
   productCost = typeof item.merged_metadata.cost_price === 'number' 
     ? item.merged_metadata.cost_price 
     : parseFloat(item.merged_metadata.cost_price) || 0;
-  //console.log(`✅ Found cost_price in merged_metadata: ${productCost}`);
+  ////console.log(`✅ Found cost_price in merged_metadata: ${productCost}`);
 }
 
-//console.log(`✅ Final extracted product_cost for item ${index}: ${productCost}`);
+////console.log(`✅ Final extracted product_cost for item ${index}: ${productCost}`);
       
       // Get subtitle from various fields
       let subtitle = "";
@@ -2910,7 +2913,7 @@ const generateInvoice = () => {
     // Save the PDF
     doc.save(`Junooni_Vendor_Invoice_${order.display_id}_${order.vendor_handle}.pdf`);
   } catch (error) {
-    //console.error("Error generating invoice:", error);
+    ////console.error("Error generating invoice:", error);
     alert("Failed to generate invoice. Please try again.");
   }
 };
@@ -3759,24 +3762,24 @@ const generateInvoice = () => {
                 <div className="space-y-3">
                   {(() => {
                     // ✅ DEBUGGING: Log all the data
-                    console.log('=== ORDER DEBUG START ===');
-                    console.log('1. Order created_at:', order.created_at);
-                    console.log('2. Order display_id:', order.display_id);
-                    console.log('3. Order fulfillment_status:', order.fulfillment_status);
-                    console.log('4. Total fulfillments:', order.fulfillments?.length || 0);
+                    //console.log('=== ORDER DEBUG START ===');
+                    //console.log('1. Order created_at:', order.created_at);
+                    //console.log('2. Order display_id:', order.display_id);
+                    //console.log('3. Order fulfillment_status:', order.fulfillment_status);
+                    //console.log('4. Total fulfillments:', order.fulfillments?.length || 0);
                     
                     // Log each fulfillment
                     if (order.fulfillments) {
                       order.fulfillments.forEach((f, index) => {
-                        console.log(`\nFulfillment ${index}:`, {
-                          id: f.id,
-                          packed_at: f.packed_at,
-                          shipped_at: f.shipped_at,
-                          delivered_at: f.delivered_at,
-                          canceled_at: f.canceled_at,
-                          deleted_at: f.deleted_at,
-                          items_count: f.items?.length || 0
-                        });
+                        // console.log(`\nFulfillment ${index}:`, {
+                        //   id: f.id,
+                        //   packed_at: f.packed_at,
+                        //   shipped_at: f.shipped_at,
+                        //   delivered_at: f.delivered_at,
+                        //   canceled_at: f.canceled_at,
+                        //   deleted_at: f.deleted_at,
+                        //   items_count: f.items?.length || 0
+                        // });
                       });
                     }
                     
@@ -3785,19 +3788,19 @@ const generateInvoice = () => {
                       ? order.fulfillments.filter(f => !f.canceled_at && !f.deleted_at)
                       : [];
                     
-                    console.log('\n5. Active fulfillments count:', activeFulfillments.length);
+                    //console.log('\n5. Active fulfillments count:', activeFulfillments.length);
                     
                     if (activeFulfillments.length > 0) {
-                      console.log('6. Selected fulfillment (last active):', {
-                        id: activeFulfillments[activeFulfillments.length - 1].id,
-                        packed_at: activeFulfillments[activeFulfillments.length - 1].packed_at,
-                        shipped_at: activeFulfillments[activeFulfillments.length - 1].shipped_at,
-                        delivered_at: activeFulfillments[activeFulfillments.length - 1].delivered_at
-                      });
+                      // console.log('6. Selected fulfillment (last active):', {
+                      //   id: activeFulfillments[activeFulfillments.length - 1].id,
+                      //   packed_at: activeFulfillments[activeFulfillments.length - 1].packed_at,
+                      //   shipped_at: activeFulfillments[activeFulfillments.length - 1].shipped_at,
+                      //   delivered_at: activeFulfillments[activeFulfillments.length - 1].delivered_at
+                      // });
                     }
                     
                     // Check formatDate function
-                    console.log('\n7. Formatted order date:', formatDate(order.created_at));
+                    //console.log('\n7. Formatted order date:', formatDate(order.created_at));
                     
                     const {
                       vendorHasClaims,
@@ -3814,26 +3817,26 @@ const generateInvoice = () => {
                       order.return_items
                     );
                     
-                    console.log('\n8. Vendor claims/returns:', {
-                      vendorHasClaims,
-                      vendorHasReturns,
-                      vendorReturnItemCount,
-                      vendorReplacementItemCount
-                    });
+                    // console.log('\n8. Vendor claims/returns:', {
+                    //   vendorHasClaims,
+                    //   vendorHasReturns,
+                    //   vendorReturnItemCount,
+                    //   vendorReplacementItemCount
+                    // });
                     
                     const fulfillment = activeFulfillments.length > 0 
                       ? activeFulfillments[activeFulfillments.length - 1]
                       : null;
                     
-                    console.log('\n9. Final selected fulfillment:', fulfillment ? {
-                      id: fulfillment.id,
-                      has_packed_at: !!fulfillment.packed_at,
-                      has_shipped_at: !!fulfillment.shipped_at,
-                      has_delivered_at: !!fulfillment.delivered_at,
-                      packed_at: fulfillment.packed_at,
-                      shipped_at: fulfillment.shipped_at,
-                      delivered_at: fulfillment.delivered_at
-                    } : 'No fulfillment found');
+                    // console.log('\n9. Final selected fulfillment:', fulfillment ? {
+                    //   id: fulfillment.id,
+                    //   has_packed_at: !!fulfillment.packed_at,
+                    //   has_shipped_at: !!fulfillment.shipped_at,
+                    //   has_delivered_at: !!fulfillment.delivered_at,
+                    //   packed_at: fulfillment.packed_at,
+                    //   shipped_at: fulfillment.shipped_at,
+                    //   delivered_at: fulfillment.delivered_at
+                    // } : 'No fulfillment found');
                     
                     const hasFulfillmentEvents = fulfillment && (
                       fulfillment.packed_at || 
@@ -3841,8 +3844,8 @@ const generateInvoice = () => {
                       fulfillment.delivered_at
                     );
                     
-                    console.log('10. Has fulfillment events:', hasFulfillmentEvents);
-                    console.log('=== ORDER DEBUG END ===\n');
+                    //console.log('10. Has fulfillment events:', hasFulfillmentEvents);
+                    //console.log('=== ORDER DEBUG END ===\n');
                     
                     return (
                       <>
