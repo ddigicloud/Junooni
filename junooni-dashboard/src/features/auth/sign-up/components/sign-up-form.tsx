@@ -334,7 +334,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                     <Input 
                       placeholder='Enter your email address' 
                       {...field} 
-                      className="h-12 px-4 text-base border-2 border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-4 focus:ring-[#e65100]/10 transition-all duration-200 bg-white"
+                      className="h-12 px-4 text-base border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-4 focus:ring-[#e65100]/10 transition-all duration-200 bg-white"
                     />
                   </FormControl>
                   <FormMessage className="text-red-500 text-sm" />
@@ -354,7 +354,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                     <PasswordInput 
                       placeholder='Create a strong password' 
                       {...field} 
-                      className="h-10 px-0 text-base border-2 border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-4 focus:ring-[#e65100]/10 transition-all duration-200 bg-white"
+                      className="h-10 px-0 text-base border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-4 focus:ring-[#e65100]/10 transition-all duration-200 bg-white"
                     />
                   </FormControl>
                   <FormMessage className="text-red-500 text-sm" />
@@ -374,7 +374,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                     <PasswordInput 
                       placeholder='Confirm your password' 
                       {...field} 
-                      className="h-10 px-0 text-base border-2 border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-4 focus:ring-[#e65100]/10 transition-all duration-200 bg-white"
+                      className="h-10 px-0 text-base border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-[#e65100]/10 transition-all duration-200 bg-white"
                     />
                   </FormControl>
                   <FormMessage className="text-red-500 text-sm" />

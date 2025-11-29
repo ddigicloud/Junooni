@@ -7547,7 +7547,6 @@ const handleFileUpload = useCallback(async (files) => {
       if (selectedColors.length === 1) {
         return;
       }
-      
       setSelectedColors(prev => prev.filter(c => c.value !== colorHex));
       
       if (activeColor === colorHex) {
@@ -7558,6 +7557,8 @@ const handleFileUpload = useCallback(async (files) => {
       }
     } else {
       setSelectedColors(prev => [...prev, { name: colorName, value: colorHex }]);
+      // ✅ SET NEWLY SELECTED COLOR AS ACTIVE
+      setActiveColor(colorHex);
     }
   }, [selectedColors, activeColor]);
   
