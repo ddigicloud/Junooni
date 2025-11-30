@@ -45,7 +45,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ChevronsRightLeft, Loader2, AlertTriangle } from 'lucide-react';
+import { ChevronsRightLeft, Loader2, AlertTriangle, X } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -1677,15 +1677,31 @@ loadProduct();
     if (!isStockModalOpen) return null;
     
     return (
-      <Dialog open={isStockModalOpen} onOpenChange={(open) => !open && setIsStockModalOpen(false)}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Inventory Management</DialogTitle>
-            <DialogDescription>
+     <Dialog open={isStockModalOpen} onOpenChange={(open) => !open && setIsStockModalOpen(false)}>
+      <DialogContent className="w-[95vw] max-w-5xl max-h-[90vh] overflow-y-auto p-3 sm:p-6 rounded-lg sm:rounded-xl">
+        <DialogHeader className="flex flex-row items-center justify-between gap-2 pb-4 border-b border-gray-200">
+          <div className="flex-1 min-w-0">
+            <DialogTitle className="text-lg sm:text-xl font-bold text-gray-900">
+              Inventory Management
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm text-gray-600 mt-1">
               Manage stock levels for all variants
             </DialogDescription>
-          </DialogHeader>
+          </div>
           
+          {/* Close button for mobile */}
+          {/* <button
+            onClick={() => setIsStockModalOpen(false)}
+            className="flex-shrink-0 p-1 ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Close inventory modal"
+          >
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button> */}
+        </DialogHeader>
+
+        <div className="overflow-x-auto -mx-3 sm:-mx-6 px-3 sm:px-6 mt-4">
           <InventoryManagementModal
             variants={form.getValues('variants')}
             inventoryLevels={inventoryLevels}
@@ -1698,8 +1714,9 @@ loadProduct();
             inventoryChanges={inventoryChanges}
             onClose={() => setIsStockModalOpen(false)}
           />
-        </DialogContent>
-      </Dialog>
+        </div>
+      </DialogContent>
+    </Dialog>
     );
   };
 
@@ -2426,6 +2443,24 @@ loadProduct();
 // with error trapping at each key section and replacing find() with alternative approaches.
 
 const onSubmit = async (values: ProductFormValues) => {
+
+  // CRITICAL FIX: Get fresh values from form
+  const currentFormValues = form.getValues();
+  
+  // Replace variants with fresh data
+  if (currentFormValues.variants) {
+    values.variants = currentFormValues.variants;
+  }
+  
+  //console.log("First variant cost_price:", values.variants?.[0]?.cost_price);
+
+  // ALSO get fresh options to preserve imageAssociation
+  if (currentFormValues.options) {
+    values.options = currentFormValues.options;
+  }
+  
+  //console.log("Fresh options:", values.options);
+
   // Validate required fields
   if (!values.title.trim()) {
     setError('Product title is required');
@@ -2692,14 +2727,14 @@ const onSubmit = async (values: ProductFormValues) => {
                 }
                 
                 // Add option images to metadata
-                if (optionImagesArray.length > 0) {
-                  metadata.option_images = JSON.stringify(optionImagesArray);
-                }
+                // if (optionImagesArray.length > 0) {
+                //   metadata.option_images = JSON.stringify(optionImagesArray);
+                // }
                 
                 // Add color images for backward compatibility
-                if (colorImagesArray.length > 0) {
-                  metadata.color_images = JSON.stringify(colorImagesArray);
-                }
+                // if (colorImagesArray.length > 0) {
+                //   metadata.color_images = JSON.stringify(colorImagesArray);
+                // }
                 
                 // --- STEP 7: Prepare Variants --- 
                 try {
@@ -2720,6 +2755,11 @@ const onSubmit = async (values: ProductFormValues) => {
                     }
                     
                     const price = typeof variant.price === 'string' ? parseFloat(variant.price) : (variant.price || 0);
+                    // Extract cost_price
+                    const costPrice = typeof variant.cost_price === 'string' 
+                      ? parseFloat(variant.cost_price) || 0 
+                      : (variant.cost_price || 0);
+                      //console.log("Processing variant:", variant.id, "with cost price:", costPrice);
                     
                     // Get associated images - without complex filtering
                     const variantImageIds = [];
@@ -2788,6 +2828,12 @@ const onSubmit = async (values: ProductFormValues) => {
                     const variantMetadata = {
                       ...(variant.metadata || {}) // Preserve existing metadata
                     };
+
+                    // CRITICAL FIX: Preserve cost_price in metadata
+                  // Add cost_price to metadata
+                  if (costPrice !== undefined && costPrice !== null) {
+                    variantMetadata.cost_price = costPrice;
+                  }
                     
                     // Add images to metadata
                     if (variantImageUrls.length > 0) {
@@ -3003,7 +3049,7 @@ const onSubmit = async (values: ProductFormValues) => {
                         // Navigate back to products list
                         setError(null);
                         setProductLoaded(false);
-                        navigate({ to: '/products' });
+                        //navigate({ to: '/products' });
                       } catch (inventoryError) {
                         //console.error("Error handling inventory:", inventoryError);
                         setError(`Failed to update inventory: ${inventoryError?.message || 'Unknown error'}`);
@@ -3445,48 +3491,64 @@ const handleApiError = (apiError: any) => {
 }
   // Main component render
   return (
-    <div className="px-6 py-8 bg-gray-50">
-      {/* Render the Inventory Management Modal */}
-      {renderInventoryManagementModal()}
-      
-      {/* Header Bar with branding */}
-      <div className="flex flex-col justify-between gap-4 p-6 mb-6 bg-white border border-gray-100 rounded-lg shadow-sm md:flex-row md:items-center">
-      <div>
-        <h1 className="text-2xl font-bold text-[#e65100]">Edit Product</h1>
-        <p className="mt-1 text-gray-500">Update product details</p>
-      </div>
+  <div className="px-3 sm:px-6 py-8 bg-gray-50">
+  {/* Render the Inventory Management Modal */}
+  {renderInventoryManagementModal()}
+  
+  {/* Header Bar with branding */}
+  <div className="relative flex flex-col justify-between gap-4 py-6 px-4 sm:p-6 md:p-6 mb-6 bg-white border border-gray-100 rounded-lg shadow-sm md:flex-row md:items-center">
+    
+    {/* Close button for mobile - Top right */}
+    <button
+      onClick={() => navigate({ to: '/products' })}
+      className="absolute top-4 right-4 md:hidden p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+      title="Close"
+      aria-label="Close"
+    >
+      <X size={24} />
+    </button>
 
-      {/* Buttons */}
-      <div className="flex flex-col w-full space-y-2 md:flex-row md:space-y-0 md:space-x-3 md:w-auto">
-        <Button
-          variant="outline"
-          onClick={handleViewProduct}
-          className="w-full md:w-auto border-[#e65100] text-[#e65100] hover:bg-orange-50"
-          disabled={!productViewUrl}
-        >
-          <IconExternalLink size={18} className="mr-2" />
-          View Product
-        </Button>
-
-        <Button
-          variant="outline"
-          onClick={() => navigate({ to: '/products' })}
-          className="w-full text-gray-700 border-gray-300 md:w-auto hover:bg-gray-50"
-        >
-          Cancel
-        </Button>
-
-        <Button
-          type="button"
-          onClick={handleManualSubmit}
-          disabled={isSubmitting}
-          className="w-full md:w-auto bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
-        >
-          {isSubmitting ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </div>
+    {/* Title section */}
+    <div className="pr-8 md:pr-0">
+      <h1 className="text-2xl font-bold text-[#e65100]">Edit Product</h1>
+      <p className="mt-1 text-gray-500">Update product details</p>
     </div>
 
+    {/* Buttons */}
+    <div className="flex flex-row w-full gap-2 md:gap-3 md:w-auto">
+      {/* View Product Button */}
+      <Button
+        variant="outline"
+        onClick={handleViewProduct}
+        className="flex-1 md:flex-none border-[#e65100] text-[#e65100] hover:bg-orange-50"
+        disabled={!productViewUrl}
+      >
+        <IconExternalLink size={18} className="mr-2" />
+        <span className="hidden sm:inline">View Product</span>
+        <span className="sm:hidden">View Product</span>
+      </Button>
+
+      {/* Cancel Button - Hidden on mobile, visible on md and up */}
+      <Button
+        variant="outline"
+        onClick={() => navigate({ to: '/products' })}
+        className="hidden md:flex text-gray-700 border-gray-300 hover:bg-gray-50"
+      >
+        Cancel
+      </Button>
+
+      {/* Save Changes Button */}
+      <Button
+        type="button"
+        onClick={handleManualSubmit}
+        disabled={isSubmitting}
+        className="flex-1 md:flex-none bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
+      >
+        <span className="hidden sm:inline">{isSubmitting ? 'Saving...' : 'Save Changes'}</span>
+        <span className="sm:hidden">{isSubmitting ? 'Saving...' : 'Save Changes'}</span>
+      </Button>
+    </div>
+  </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -3494,8 +3556,8 @@ const handleApiError = (apiError: any) => {
             {/* Left Column */}
             <div className="space-y-6 md:col-span-2">
               {/* Title & Description Section */}
-              <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
-                <div className="mb-6">
+              <section className="sm:p-6 md:p-6 py-6 px-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <div className="sm:mb-6 md:mb-6">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Basic Information</h2>
                   <Separator className="mb-6" />
                   
@@ -3564,7 +3626,7 @@ const handleApiError = (apiError: any) => {
                 </div>
               </section>
       {/* Product Details Section (Bullet Points) */}
-      <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="sm:p-6 md:p-6 py-6 px-4 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Product Details</h2>
                   <Separator className="mb-6" />
                   
@@ -3612,7 +3674,7 @@ const handleApiError = (apiError: any) => {
                 </section>
 
                 {/* Story Behind Design Section */}
-                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <section className="sm:p-6 md:p-6 py-6 px-4 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Story Behind the Design</h2>
                   <Separator className="mb-6" />
                   
@@ -3642,7 +3704,7 @@ const handleApiError = (apiError: any) => {
                   />
                 </section>
       {/* Media Section - IMPROVED VERSION with working variant-specific uploads */}
-      <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="sm:p-6 md:p-6 py-6 px-4 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Product Images</h2>
                   <Separator className="mb-6" />
                   
@@ -3753,7 +3815,7 @@ const handleApiError = (apiError: any) => {
                             key={`${item.url}-${index}`}
                             className="relative flex flex-col overflow-hidden transition-all duration-200 bg-white border rounded-md group hover:shadow-md"
                           >
-                            <div className="relative flex items-center justify-center h-48 overflow-hidden bg-gray-100">
+                            <div className="relative flex items-center justify-center md:h-52 h-72 overflow-hidden bg-gray-100">
                               <img
                                 src={getImageDisplayUrl(item)}
                                 alt={`Product image ${index + 1}`}
@@ -3832,7 +3894,7 @@ const handleApiError = (apiError: any) => {
                   )}
                 </section>
                 {/* Options & Variants Section with styling */}
-                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <section className="px-4 py-6 sm:p-6 md:p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Options & Variants</h2>
                   <Separator className="mb-6" />
                   
@@ -3965,10 +4027,10 @@ const handleApiError = (apiError: any) => {
                       </Button>
                     )}
                   </div>
-     {/* Variants Section with Bulk Editing - MODIFIED to remove stock column and add stock management link */}
-     {variantFields.length > 0 && (
+                  {/* Variants Section with Bulk Editing - MODIFIED to remove stock column and add stock management link */}
+                  {variantFields.length > 0 && (
                     <div>
-                      <div className="flex items-center justify-between mb-5">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 gap-3">
                         <h3 className="font-medium text-gray-700">Product Variants ({variantFields.length})</h3>
                         <div className="flex items-center space-x-2">
                           <Button 
@@ -4124,7 +4186,7 @@ const handleApiError = (apiError: any) => {
                                   ${bulkEditMode && selectedVariants.includes(vf.id) ? "bg-orange-50" : ""}
                                   hover:bg-orange-50 transition-colors duration-150
                                 `}
-                              >
+                                >
                                 {bulkEditMode && (
                                   <td className="p-3 text-center border-r border-gray-200">
                                     <input 
@@ -4165,13 +4227,21 @@ const handleApiError = (apiError: any) => {
                                       type="number"
                                       min="0"
                                       step="0.01"
-                                      readOnly={true} // Make cost price read-only
-                                      disabled={true} // Disable input to prevent editing
-                                      // Replace the current value and onChange with these:
-                                      defaultValue={form.getValues(`variants.${index}.cost_price`) || ''}
-                                      onBlur={(e) => {
+                                      readOnly
+                                      disabled
+                                      value={form.watch(`variants.${index}.cost_price`) || ''}
+                                      onChange={(e) => {
                                         const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                                        handleVariantFieldChange(index, 'cost_price', value);
+                                        
+                                        // Update form directly instead of using handleVariantFieldChange
+                                        form.setValue(`variants.${index}.cost_price`, value, {
+                                          shouldDirty: true,
+                                          shouldTouch: true
+                                        });
+                                        
+                                        setHasUnsavedVariantChanges(true);
+                                        
+                                        console.log("Set cost_price to:", value, "Form has:", form.getValues(`variants.${index}.cost_price`));
                                       }}
                                       className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
                                     />
@@ -4247,10 +4317,10 @@ const handleApiError = (apiError: any) => {
                   )}
                 </section>
               </div>
-    {/* Right Column */}
-    <div className="space-y-6">
+              {/* Right Column */}
+              <div className="space-y-6">
                 {/* Status Card */}
-                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <section className="py-6 px-4 sm:p-6 md:p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-gray-800">Status & Visibility</h2>
                   <Separator className="mb-6" />
                   
@@ -4410,7 +4480,7 @@ const handleApiError = (apiError: any) => {
                 {/* Shipping & Fulfillment Info Card */}
                 {/* Shipping & Fulfillment Info Card */}
                 {/* Shipping & Fulfillment Info Card - UPDATED */}
-<section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+<section className="py-6 px-4 sm:p-6 md:p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
   <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
   <Separator className="mb-4" />
   
@@ -4577,7 +4647,7 @@ const handleApiError = (apiError: any) => {
 </section>
                 
                 {/* Physical Details Card */}
-                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <section className="py-6 px-4 sm:p-6 md:p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-gray-800">Physical Details</h2>
                   <Separator className="mb-6" />
                   
@@ -4661,7 +4731,7 @@ const handleApiError = (apiError: any) => {
                 </section>
                 
                 {/* Additional Info Card */}
-                <section className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <section className="py-6 px-4 sm:p-6 md:p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-gray-800">Additional Info</h2>
                   <Separator className="mb-6" />
                   
@@ -4719,7 +4789,7 @@ const handleApiError = (apiError: any) => {
             </div>
             
             {/* Bottom Action Bar - Fixed to bottom on mobile */}
-            <div className="fixed bottom-0 left-0 right-0 z-10 p-4 bg-white border-t border-gray-200 md:static md:bg-transparent md:border-0 md:p-0 md:mt-6">
+            <div className="fixed bottom-0 left-0 right-0 z-10 sm:p-4 md:p-4 px-4 py-2 bg-white border-t border-gray-200 md:static md:bg-transparent md:border-0 md:p-0 md:mt-6">
               <div className="flex justify-end mx-auto space-x-3 max-w-7xl">
                 <Button 
                   variant="outline" 

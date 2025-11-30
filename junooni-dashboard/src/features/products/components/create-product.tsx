@@ -303,16 +303,25 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
   };
 
   // Update a specific variant field
+  // const handleVariantFieldChange = (variantIndex: number, field: string, value: any) => {
+  //   const currentVariants = form.getValues('variants');
+  //   const currentVariant = currentVariants[variantIndex];
+    
+  //   // Create a deep copy to ensure nested objects are updated properly
+  //   const updatedVariant = JSON.parse(JSON.stringify(currentVariant));
+  //   updatedVariant[field] = value;
+    
+  //   updateVariant(variantIndex, updatedVariant);
+  // };
+  
   const handleVariantFieldChange = (variantIndex: number, field: string, value: any) => {
-    const currentVariants = form.getValues('variants');
-    const currentVariant = currentVariants[variantIndex];
-    
-    // Create a deep copy to ensure nested objects are updated properly
-    const updatedVariant = JSON.parse(JSON.stringify(currentVariant));
-    updatedVariant[field] = value;
-    
-    updateVariant(variantIndex, updatedVariant);
-  };
+  // Use form.setValue directly - more efficient and maintains focus
+  form.setValue(`variants.${variantIndex}.${field}`, value, {
+    shouldValidate: false,  // Don't validate on every keystroke
+    shouldDirty: true,      // Mark as modified
+    shouldTouch: false      // Don't mark as touched (prevents focus loss)
+  });
+};
 
   // Handle bulk edit of variants
   const handleBulkEdit = (field: string, value: any) => {
@@ -583,7 +592,7 @@ const handleFileChange = (
   useEffect(() => {
     const subscription = form.watch((formValues, { name, type }) => {
       // Check if the changed field is an option field
-      if (name && (name.includes('options') || name.includes('title'))) {
+        if (name && name.includes('options')) {
         const currentOptions = form.getValues('options');
         
         // If the last option has values and we have fewer than 3 options

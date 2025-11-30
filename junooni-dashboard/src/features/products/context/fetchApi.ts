@@ -284,8 +284,7 @@ export async function batchUpdateVariants({
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
-      },
-      withCredentials: true, 
+      }
     }
   );
 
@@ -317,8 +316,7 @@ export async function updateProduct({ product }: { product: Product }): Promise<
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
-      },
-      withCredentials: true,
+      }
     }
   );
 

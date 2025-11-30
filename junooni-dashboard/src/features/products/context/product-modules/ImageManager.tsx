@@ -179,7 +179,7 @@ export const StreamlinedImageManager: React.FC<{
     
     if (!fileInputRef.current) return;
     
-    console.log(`Uploading for option: ${optionName}, value: ${value}`);
+    //console.log(`Uploading for option: ${optionName}, value: ${value}`);
     
     // Clear any previous errors
     setError(null);
@@ -359,7 +359,7 @@ export const StreamlinedImageManager: React.FC<{
                     <div 
                       key={index}
                       onClick={() => {
-                        console.log(`Selecting color: ${value}`);
+                        //console.log(`Selecting color: ${value}`);
                         setSelectedOptionValues({
                           ...selectedOptionValues,
                           [option.title]: value
@@ -462,7 +462,7 @@ export const StreamlinedImageManager: React.FC<{
               key={`${item.url}-${index}`}
               className="relative flex flex-col overflow-hidden transition-all duration-200 bg-white border rounded-md group hover:shadow-md"
             >
-              <div className="relative flex items-center justify-center h-48 overflow-hidden bg-gray-100">
+              <div className="relative flex items-center justify-center md:h-52 h-72 overflow-hidden bg-gray-100">
                 <img
                   src={item.url}
                   alt={`Product image ${index + 1}`}
