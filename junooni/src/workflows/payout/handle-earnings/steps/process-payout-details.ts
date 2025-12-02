@@ -66,16 +66,48 @@ const processAllPayoutDetailsStep = createStep(
 
           // Parse fulfillment type
           let fulfillmentType: "creator_fulfillment" | "junooni_fulfillment" = "creator_fulfillment"
-          if (item.product.metadata?.fulfillment_type) {
-            try {
-              const fulfillmentData = JSON.parse(item.product.metadata.fulfillment_type)
-              if (fulfillmentData.type === "Junooni-fulfilment") {
-                fulfillmentType = "junooni_fulfillment"
-              }
-            } catch (e) {
-              console.warn(`Failed to parse fulfillment type for item ${item.id}`)
-            }
-          }
+
+console.log('🔍 Checking product metadata for fulfillment_type...')
+
+if (item.product.metadata?.fulfillment_type) {
+  console.log('🔍 Raw fulfillment_type:', item.product.metadata.fulfillment_type)
+  console.log('🔍 Type:', typeof item.product.metadata.fulfillment_type)
+  
+  try {
+    let fulfillmentData = item.product.metadata.fulfillment_type
+    
+    // If it's a string, parse it as JSON
+    if (typeof fulfillmentData === 'string') {
+      console.log('🔍 Parsing JSON string...')
+      fulfillmentData = JSON.parse(fulfillmentData)
+      console.log('✅ Parsed:', JSON.stringify(fulfillmentData, null, 2))
+    }
+    
+    // ✅ FIX: Use case-insensitive match instead of exact string comparison
+    if (fulfillmentData && typeof fulfillmentData === 'object' && fulfillmentData.type) {
+      const typeValue = fulfillmentData.type.toLowerCase()  // Convert to lowercase
+      console.log('🔍 Type value (lowercase):', typeValue)
+      
+      // Check if it contains "junooni" (case-insensitive, flexible spelling)
+      if (typeValue.includes('junooni')) {
+        fulfillmentType = "junooni_fulfillment"
+        console.log('✅ Detected: JUNOONI fulfillment')
+      } else if (typeValue.includes('creator')) {
+        fulfillmentType = "creator_fulfillment"
+        console.log('✅ Detected: CREATOR fulfillment')
+      } else {
+        console.log('⚠️ Unknown type value:', typeValue, '- defaulting to creator_fulfillment')
+      }
+    }
+    
+  } catch (parseError) {
+    console.error('💥 Failed to parse fulfillment type:', parseError)
+  }
+} else {
+  console.log('⚠️ No fulfillment_type in metadata, using default: creator_fulfillment')
+}
+
+console.log('🎯 FINAL fulfillment type:', fulfillmentType)
 
           // Get cost price (variant priority)
           const costPrice = Number(
@@ -85,6 +117,7 @@ const processAllPayoutDetailsStep = createStep(
           )
 
           const itemTotal = item.unit_price * item.quantity
+          const taxTotal = item.tax_total || 0
 
           // Skip if cost price exceeds total (business logic)
           if (fulfillmentType === "junooni_fulfillment" && costPrice > itemTotal) {
@@ -96,7 +129,9 @@ const processAllPayoutDetailsStep = createStep(
           const earnings = await payoutModuleService.calculateEarningsFromOrder(
             itemTotal,
             fulfillmentType,
-            costPrice
+            costPrice,
+            item.quantity,
+            taxTotal  
           )
 
           // Create payout detail record
@@ -120,6 +155,7 @@ const processAllPayoutDetailsStep = createStep(
             notes: null,
           }
 
+          console.log('📦 FULL PAYOUT DETAIL INPUT:', JSON.stringify(payoutDetailInput, null, 2))
           const payoutDetail = await payoutModuleService.createPayoutDetails(payoutDetailInput)
 
           createdDetails.push({

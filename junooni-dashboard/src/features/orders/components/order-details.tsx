@@ -101,15 +101,30 @@ const formatDate = (dateString: string) => {
 };
 
 // ✅ NEW: Helper function to extract tax from item
-const getItemTaxTotal = (item: OrderItem) => {
+// const getItemTaxTotal = (item: OrderItem) => {
+//   if (!item.tax_lines || item.tax_lines.length === 0) return 0;
+  
+//   return item.tax_lines.reduce((sum, taxLine) => {
+//     const taxAmount = typeof taxLine.subtotal === 'number' 
+//       ? taxLine.subtotal 
+//       : parseFloat(taxLine.subtotal) || 0;
+//     return sum + taxAmount;
+//   }, 0);
+// };
+
+// ✅ FIXED: Helper function to get tax per unit
+const getItemTaxPerUnit = (item: OrderItem) => {
   if (!item.tax_lines || item.tax_lines.length === 0) return 0;
   
-  return item.tax_lines.reduce((sum, taxLine) => {
+  const totalTax = item.tax_lines.reduce((sum, taxLine) => {
     const taxAmount = typeof taxLine.subtotal === 'number' 
       ? taxLine.subtotal 
       : parseFloat(taxLine.subtotal) || 0;
     return sum + taxAmount;
   }, 0);
+  
+  // Return tax per unit, not total tax
+  return item.quantity > 0 ? totalTax / item.quantity : 0;
 };
 
 // Calculate payment processing fee
@@ -616,10 +631,10 @@ const calculateFinalVendorProfit = (order: VendorOrder) => {
   return items.reduce((total, item) => {
     let vendorPayoutPerItem;
     
-    if (item.product_cost && item.product_cost > 0) {
-      // ✅ JUNOONI FULFILLMENT: Deduct tax first, then product cost
-      const itemTaxTotal = getItemTaxTotal(item);
-      vendorPayoutPerItem = (item.unit_price - itemTaxTotal) - item.product_cost;
+   if (item.product_cost && item.product_cost > 0) {
+      // ✅ FIXED: Use tax per unit, not total tax
+      const taxPerUnit = getItemTaxPerUnit(item);
+      vendorPayoutPerItem = (item.unit_price - taxPerUnit) - item.product_cost;
     } else {
       // ✅ CREATOR FULFILLMENT: Just 90%, NO tax deduction
       vendorPayoutPerItem = item.unit_price * 0.9;
@@ -1059,9 +1074,9 @@ const calculateVendorPayoutTotals = (items: OrderItem[]) => {
     let vendorPayoutPerItem;
     
     if (item.product_cost && item.product_cost > 0) {
-      // ✅ JUNOONI FULFILLMENT: Deduct tax first, then product cost
-      const itemTaxTotal = getItemTaxTotal(item);
-      vendorPayoutPerItem = (item.unit_price - itemTaxTotal) - item.product_cost;
+      // ✅ FIXED: Use tax per unit, not total tax
+      const taxPerUnit = getItemTaxPerUnit(item);
+      vendorPayoutPerItem = (item.unit_price - taxPerUnit) - item.product_cost;
     } else {
       // ✅ CREATOR FULFILLMENT: Just 90%, NO tax deduction
       vendorPayoutPerItem = item.unit_price * 0.9;
@@ -1142,15 +1157,15 @@ const calculateVendorPayoutTotals = (items: OrderItem[]) => {
   
   if (item.product_cost && item.product_cost > 0) {
     // ✅ JUNOONI FULFILLMENT: Deduct tax first, then product cost
-    const itemTaxTotal = getItemTaxTotal(item);
-    vendorPayoutPerItem = (item.unit_price - itemTaxTotal) - item.product_cost;
+     const taxPerUnit = getItemTaxPerUnit(item);
+     vendorPayoutPerItem = (item.unit_price - taxPerUnit) - item.product_cost;
     totalVendorPayout = vendorPayoutPerItem * item.quantity;
     
     return (
       <div className="space-y-1 text-xs">
         <div>Product price - Tax - Product cost = Your earnings per unit</div>
-        <div className="font-medium">
-          {formatPrice(item.unit_price, order.currency_code)} - {formatPrice(itemTaxTotal, order.currency_code)} - {formatPrice(item.product_cost, order.currency_code)} = {formatPrice(vendorPayoutPerItem, order.currency_code)}
+       <div className="font-medium">
+          {formatPrice(item.unit_price, order.currency_code)} - {formatPrice(taxPerUnit, order.currency_code)} - {formatPrice(item.product_cost, order.currency_code)} = {formatPrice(vendorPayoutPerItem, order.currency_code)}
         </div>
         {item.quantity > 1 && (
           <>
@@ -1198,8 +1213,8 @@ const calculateVendorPayoutTotals = (items: OrderItem[]) => {
         
         if (item.product_cost && item.product_cost > 0) {
           // ✅ JUNOONI FULFILLMENT: Deduct tax first, then product cost
-          const itemTaxTotal = getItemTaxTotal(item);
-          vendorPayoutPerItem = (item.unit_price - itemTaxTotal) - item.product_cost;
+         const taxPerUnit = getItemTaxPerUnit(item);
+          vendorPayoutPerItem = (item.unit_price - taxPerUnit) - item.product_cost;
         } else {
           // ✅ CREATOR FULFILLMENT: Just 90%, NO tax deduction
           vendorPayoutPerItem = item.unit_price * 0.9;
@@ -1996,28 +2011,58 @@ useEffect(() => {
     }
       
       // ✅ Extract product_cost (enhanced from backend)
-    let productCost = 0;
-   // Check variant metadata for cost_price
-if (item.variant?.metadata?.cost_price !== undefined) {
+    // ✅ Extract product_cost (prefer explicit product_cost fields)
+let productCost = 0;
+
+// 1) Prefer explicit product_cost on variant
+if (item.variant?.product_cost !== undefined) {
+  productCost = Number(item.variant.product_cost) || 0;
+  ////console.log(`✅ Found product_cost in variant: ${productCost}`);
+}
+// 2) Fallback: variant.cost (some APIs use `cost`)
+else if (item.variant?.cost !== undefined) {
+  productCost = Number(item.variant.cost) || 0;
+  ////console.log(`✅ Found cost in variant: ${productCost}`);
+}
+// 3) Prefer explicit product_cost on item
+else if (item.product_cost !== undefined) {
+  productCost = Number(item.product_cost) || 0;
+  ////console.log(`✅ Found product_cost on item: ${productCost}`);
+}
+// 4) Fallback to product-level fields (product.product_cost or product.cost)
+else if (item.product?.product_cost !== undefined) {
+  productCost = Number(item.product.product_cost) || 0;
+  ////console.log(`✅ Found product.product_cost: ${productCost}`);
+} else if (item.product?.cost !== undefined) {
+  productCost = Number(item.product.cost) || 0;
+  ////console.log(`✅ Found product.cost: ${productCost}`);
+}
+// 5) If still not found, check metadata paths for backwards compatibility
+else if (item.metadata?.product_cost !== undefined) {
+  productCost = Number(item.metadata.product_cost) || 0;
+  ////console.log(`✅ Found product_cost in item.metadata: ${productCost}`);
+} else if (item.variant?.metadata?.product_cost !== undefined) {
+  productCost = Number(item.variant.metadata.product_cost) || 0;
+  ////console.log(`✅ Found product_cost in variant.metadata: ${productCost}`);
+}
+// 6) LAST RESORT: keep old cost_price fallback (non-breaking)
+else if (item.variant?.metadata?.cost_price !== undefined) {
   productCost = typeof item.variant.metadata.cost_price === 'number' 
     ? item.variant.metadata.cost_price 
     : parseFloat(item.variant.metadata.cost_price) || 0;
-  ////console.log(`✅ Found cost_price in variant.metadata: ${productCost}`);
-} 
-// Fallback to other possible locations
-else if (item.metadata?.cost_price !== undefined) {
+  ////console.log(`⚠️ Fallback: found cost_price in variant.metadata: ${productCost}`);
+} else if (item.metadata?.cost_price !== undefined) {
   productCost = typeof item.metadata.cost_price === 'number' 
     ? item.metadata.cost_price 
     : parseFloat(item.metadata.cost_price) || 0;
-  ////console.log(`✅ Found cost_price in item.metadata: ${productCost}`);
-}
-// Check merged_metadata as another fallback
-else if (item.merged_metadata?.cost_price !== undefined) {
+  ////console.log(`⚠️ Fallback: found cost_price in item.metadata: ${productCost}`);
+} else if (item.merged_metadata?.cost_price !== undefined) {
   productCost = typeof item.merged_metadata.cost_price === 'number' 
     ? item.merged_metadata.cost_price 
     : parseFloat(item.merged_metadata.cost_price) || 0;
-  ////console.log(`✅ Found cost_price in merged_metadata: ${productCost}`);
+  ////console.log(`⚠️ Fallback: found cost_price in merged_metadata: ${productCost}`);
 }
+
 
 ////console.log(`✅ Final extracted product_cost for item ${index}: ${productCost}`);
       

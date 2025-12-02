@@ -15,8 +15,6 @@ import LineItemPrice from "@modules/common/components/line-item-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Thumbnail from "@modules/products/components/thumbnail"
 import { usePathname } from "next/navigation"
-// import { CiShoppingCart } from "react-icons/ci";
-// import { PiShoppingBagThin } from "react-icons/pi";
 import { ShoppingCart } from "lucide-react"
 import { Fragment, useEffect, useRef, useState } from "react"
 
@@ -88,14 +86,14 @@ const CartDropdown = ({
             className="relative flex hover:text-ui-fg-base"
             href="/cart"
             data-testid="nav-cart-link"
-          ><ShoppingCart className="w-6 h-6"/>
-          {totalItems > 0 && (
-            <span className="absolute -top-2 right-[-12px] bg-[#e65100] text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">
-              {totalItems}
-            </span>
-          )}
-           </LocalizedClientLink>
-          {/* <span className="absolute px-1 text-xs text-white bg-black rounded-full -bottom-1 -right-1"> {totalItems}</span> */}
+          >
+            <ShoppingCart className="w-6 h-6"/>
+            {totalItems > 0 && (
+              <span className="absolute -top-2 right-[-12px] bg-[#e65100] text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">
+                {totalItems}
+              </span>
+            )}
+          </LocalizedClientLink>
         </PopoverButton>
         <Transition
           show={cartDropdownOpen}
@@ -124,65 +122,78 @@ const CartDropdown = ({
                         ? -1
                         : 1
                     })
-                    .map((item) => (
-                      <div
-                        className="grid grid-cols-[122px_1fr] gap-x-4"
-                        key={item.id}
-                        data-testid="cart-item"
-                      >
-                        <LocalizedClientLink
-                          href={`/products/${item.product_handle}`}
-                          className="w-24"
+                    .map((item) => {
+                      // DEBUG: Log each item's data
+                      // console.log(`Item ${item.id}:`, {
+                      //   variant_id: item.variant_id,
+                      //   thumbnail: item.thumbnail,
+                      //   variantProductImages: item.variant?.product?.images,
+                      //   hasVariantProduct: !!item.variant?.product,
+                      // })
+                      
+                      return (
+                        <div
+                          className="grid grid-cols-[122px_1fr] gap-x-4"
+                          key={item.id}
+                          data-testid="cart-item"
                         >
-                          <Thumbnail
-                            thumbnail={item.thumbnail}
-                            images={item.variant?.product?.images}
-                            size="square"
-                          />
-                        </LocalizedClientLink>
-                        <div className="flex flex-col justify-between flex-1">
-                          <div className="flex flex-col flex-1">
-                            <div className="flex items-start justify-between">
-                              <div className="flex flex-col overflow-ellipsis whitespace-nowrap mr-4 w-[180px]">
-                                <h3 className="overflow-hidden text-base-regular text-ellipsis">
-                                  <LocalizedClientLink
-                                    href={`/products/${item.product_handle}`}
-                                    data-testid="product-link"
+                          <LocalizedClientLink
+                            href={`/products/${item.product_handle}`}
+                            className="w-24"
+                          >
+                            <Thumbnail
+                              thumbnail={item.thumbnail}
+                              images={item.variant?.product?.images}
+                              variantId={item.variant_id}
+                              variantMetadata={item.variant?.metadata}
+                              size="square"
+                            />
+
+                          </LocalizedClientLink>
+                          <div className="flex flex-col justify-between flex-1">
+                            <div className="flex flex-col flex-1">
+                              <div className="flex items-start justify-between">
+                                <div className="flex flex-col overflow-ellipsis whitespace-nowrap mr-4 w-[180px]">
+                                  <h3 className="overflow-hidden text-base-regular text-ellipsis">
+                                    <LocalizedClientLink
+                                      href={`/products/${item.product_handle}`}
+                                      data-testid="product-link"
+                                    >
+                                      {item.product_title}
+                                    </LocalizedClientLink>
+                                  </h3>
+                                  <LineItemOptions
+                                    variant={item.variant}
+                                    data-testid="cart-item-variant"
+                                    data-value={item.variant}
+                                  />
+                                  <span
+                                    data-testid="cart-item-quantity"
+                                    data-value={item.quantity}
                                   >
-                                    {item.product_title}
-                                  </LocalizedClientLink>
-                                </h3>
-                                <LineItemOptions
-                                  variant={item.variant}
-                                  data-testid="cart-item-variant"
-                                  data-value={item.variant}
-                                />
-                                <span
-                                  data-testid="cart-item-quantity"
-                                  data-value={item.quantity}
-                                >
-                                  Quantity: {item.quantity}
-                                </span>
-                              </div>
-                              <div className="flex justify-end">
-                                <LineItemPrice
-                                  item={item}
-                                  style="tight"
-                                  currencyCode={cartState.currency_code}
-                                />
+                                    Quantity: {item.quantity}
+                                  </span>
+                                </div>
+                                <div className="flex justify-end">
+                                  <LineItemPrice
+                                    item={item}
+                                    style="tight"
+                                    currencyCode={cartState.currency_code}
+                                  />
+                                </div>
                               </div>
                             </div>
+                            <DeleteButton
+                              id={item.id}
+                              className="mt-1"
+                              data-testid="cart-item-remove-button"
+                            >
+                              Remove
+                            </DeleteButton>
                           </div>
-                          <DeleteButton
-                            id={item.id}
-                            className="mt-1"
-                            data-testid="cart-item-remove-button"
-                          >
-                            Remove
-                          </DeleteButton>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                 </div>
                 <div className="flex flex-col p-4 gap-y-4 text-small-regular">
                   <div className="flex items-center justify-between">

@@ -481,7 +481,7 @@ function calculateVendorAmount(items: CartLineItemDTO[]): number {
 
 // ✅ Helper function to update order payment status
 async function updateOrderPaymentStatus(orderId: string, container: any, metadata: any = {}) {
-  console.log(`🔄 Updating payment status for order: ${orderId}`)
+  //console.log(`🔄 Updating payment status for order: ${orderId}`)
   
   const orderServiceNames = ['orderModuleService', '@medusajs/order', 'order', 'orderService']
   let orderService = null
@@ -491,15 +491,15 @@ async function updateOrderPaymentStatus(orderId: string, container: any, metadat
     try {
       orderService = container.resolve(name)
       serviceName = name
-      console.log(`✅ Found order service: ${name}`)
+      //console.log(`✅ Found order service: ${name}`)
       break
     } catch (e) {
-      console.log(`⚠️ ${name} not available`)
+      //console.log(`⚠️ ${name} not available`)
     }
   }
   
   if (!orderService) {
-    console.log("⚠️ No order service available")
+    //console.log("⚠️ No order service available")
     return false
   }
   
@@ -525,15 +525,15 @@ async function updateOrderPaymentStatus(orderId: string, container: any, metadat
               ...metadata
             }
           })
-          console.log(`✅ Successfully updated order ${orderId} payment status using ${serviceName}.${methodName}`)
+          //console.log(`✅ Successfully updated order ${orderId} payment status using ${serviceName}.${methodName}`)
           return true
         } catch (methodError: any) {
-          console.log(`⚠️ ${methodName} failed: ${methodError.message}`)
+          //console.log(`⚠️ ${methodName} failed: ${methodError.message}`)
         }
       }
     }
   } catch (error: any) {
-    console.log("⚠️ Payment status update failed:", error.message)
+    //console.log("⚠️ Payment status update failed:", error.message)
   }
   
   return false
@@ -545,13 +545,13 @@ const createVendorOrdersStep = createStep(
     { vendorsItems, parentOrder }: StepInput, 
     { container, context }
   ) => {
-    console.log("🛒 Creating vendor orders (NEW APPROACH: Single backend order only)...")
-    console.log("Parent order ID:", parentOrder?.id)
-    console.log("Parent order payment status:", parentOrder?.payment_status)
+    // console.log("🛒 Creating vendor orders (NEW APPROACH: Single backend order only)...")
+    // console.log("Parent order ID:", parentOrder?.id)
+    // console.log("Parent order payment status:", parentOrder?.payment_status)
     
     // Validate input data
     if (!vendorsItems) {
-      console.error("❌ No vendorsItems provided")
+      //console.error("❌ No vendorsItems provided")
       return StepResponse.permanentFailure(
         "No vendor items provided for order creation",
         { created_orders: [] }
@@ -559,7 +559,7 @@ const createVendorOrdersStep = createStep(
     }
     
     if (!parentOrder) {
-      console.error("❌ No parentOrder provided")
+      //console.error("❌ No parentOrder provided")
       return StepResponse.permanentFailure(
         "No parent order provided for vendor order creation",
         { created_orders: [] }
@@ -570,11 +570,11 @@ const createVendorOrdersStep = createStep(
     const createdOrders: VendorOrder[] = []
     const vendorIds = Object.keys(vendorsItems || {})
     
-    console.log("📋 Vendor IDs:", vendorIds)
-    console.log("💰 Parent order total:", parentOrder.total)
+    // console.log("📋 Vendor IDs:", vendorIds)
+    // console.log("💰 Parent order total:", parentOrder.total)
     
     if (vendorIds.length === 0) {
-      console.error("❌ No vendor IDs found")
+      //console.error("❌ No vendor IDs found")
       return StepResponse.permanentFailure(
         "No vendors found in order items", 
         { created_orders: [] }
@@ -590,9 +590,9 @@ const createVendorOrdersStep = createStep(
       vendors = await marketplaceModuleService.listVendors({
         id: vendorIds
       })
-      console.log("✅ Found vendors:", vendors?.length || 0)
+      // console.log("✅ Found vendors:", vendors?.length || 0)
     } catch (vendorError: any) {
-      console.error("❌ Failed to fetch vendors:", vendorError)
+      // console.error("❌ Failed to fetch vendors:", vendorError)
       return StepResponse.permanentFailure(
         `Failed to fetch vendors: ${vendorError.message}`,
         { created_orders: [] }
@@ -600,7 +600,7 @@ const createVendorOrdersStep = createStep(
     }
 
     if (!vendors || vendors.length === 0) {
-      console.error("❌ No vendors found for IDs:", vendorIds)
+      //console.error("❌ No vendors found for IDs:", vendorIds)
       return StepResponse.permanentFailure(
         "No vendors found for the provided vendor IDs",
         { created_orders: [] }
@@ -618,10 +618,10 @@ const createVendorOrdersStep = createStep(
       totalVendorAmount += vendorAmount
     }
     
-    console.log("💰 Vendor amounts:", vendorAmounts)
+    // console.log("💰 Vendor amounts:", vendorAmounts)
 
     // ✅ NEW APPROACH: Always use only the parent order (no vendor sub-orders created)
-    console.log("✅ NEW APPROACH: Using single parent order for ALL scenarios")
+    // console.log("✅ NEW APPROACH: Using single parent order for ALL scenarios")
     
     // Create vendor information for metadata
     const vendorOrderInfo = vendors.map(vendor => {
@@ -662,6 +662,10 @@ const createVendorOrdersStep = createStep(
       title: item.title,
       quantity: item.quantity,
       unit_price: item.unit_price,
+      cost_price: (item as any).variant?.metadata?.cost_price || 0,
+      fulfillment_type: (item as any).variant?.product?.metadata?.fulfillment_type || 
+                       (item as any).product?.metadata?.fulfillment_type || 
+                       null, // ✅ NEW: Add fulfillment_type from product metadata
       total: item.unit_price * item.quantity,
       refunded_quantity: (item as any).refunded_quantity || 0,
       refunded_total: (item as any).refunded_total || 0,
@@ -724,9 +728,9 @@ const createVendorOrdersStep = createStep(
     const updateSuccess = await updateOrderPaymentStatus(parentOrder.id, container, vendorMetadata)
     
     if (updateSuccess) {
-      console.log("✅ Parent order updated with vendor and payment information")
+      //console.log("✅ Parent order updated with vendor and payment information")
     } else {
-      console.log("⚠️ Could not update parent order metadata")
+      //console.log("⚠️ Could not update parent order metadata")
     }
     
     // Create links between vendors and the single parent order
@@ -740,7 +744,7 @@ const createVendorOrdersStep = createStep(
         }
       })
       
-      console.log(`🔗 Created link for vendor ${vendor.handle} to order ${parentOrder.id}`)
+      //console.log(`🔗 Created link for vendor ${vendor.handle} to order ${parentOrder.id}`)
     }
     
     // For compatibility, create vendor order objects (but they're just references to parent order)
@@ -761,10 +765,10 @@ const createVendorOrdersStep = createStep(
       createdOrders.push(vendorOrderRef)
     }
     
-    console.log("✅ SUCCESS: Single order approach implemented")
-    console.log(`   - 1 order in backend: ${parentOrder.id} (PAID)`)
-    console.log(`   - ${vendors.length} vendor links created`)
-    console.log(`   - 0 additional orders created`)
+    // console.log("✅ SUCCESS: Single order approach implemented")
+    // console.log(`   - 1 order in backend: ${parentOrder.id} (PAID)`)
+    // console.log(`   - ${vendors.length} vendor links created`)
+    // console.log(`   - 0 additional orders created`)
     
     return new StepResponse({ 
       orders: createdOrders, 
@@ -774,7 +778,7 @@ const createVendorOrdersStep = createStep(
     })
   },
   async ({ created_orders }, { container, context }) => {
-    console.log("✅ No compensation needed - only one order exists")
+    //console.log("✅ No compensation needed - only one order exists")
     // Since we only use the parent order, no compensation is needed
     return
   }

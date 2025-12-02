@@ -54,9 +54,12 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
             "small:w-24 w-12": type === "full",
           })}
         >
+          {/* Pass variantId and variantMetadata so Thumbnail can prefer variant images */}
           <Thumbnail
             thumbnail={item.thumbnail}
-            images={item.variant?.product?.images}
+            images={item.variant?.product?.images || item.product?.images}
+            variantId={item.variant?.id ?? item.variant_id}
+            variantMetadata={item.variant?.metadata ?? null}
             size="square"
           />
         </LocalizedClientLink>

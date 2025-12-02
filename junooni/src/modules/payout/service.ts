@@ -65,51 +65,76 @@ interface VendorEarningsReport {
  * - String that needs parsing
  */
 function parseFulfillmentType(metadata?: any): "creator_fulfillment" | "junooni_fulfillment" {
+  console.log('🔍 [parseFulfillmentType] Starting with metadata:', JSON.stringify(metadata, null, 2))
+  
   let fulfillmentType: "creator_fulfillment" | "junooni_fulfillment" = "creator_fulfillment"
   
   if (!metadata?.fulfillment_type) {
+    console.log('❌ [parseFulfillmentType] No fulfillment_type found in metadata, returning default:', fulfillmentType)
     return fulfillmentType
   }
+
+  console.log('📦 [parseFulfillmentType] Raw fulfillment_type:', metadata.fulfillment_type)
+  console.log('📦 [parseFulfillmentType] Type of fulfillment_type:', typeof metadata.fulfillment_type)
 
   try {
     let fulfillmentData = metadata.fulfillment_type
     
     // If it's a string, try to parse it as JSON
     if (typeof fulfillmentData === 'string') {
+      console.log('🔤 [parseFulfillmentType] fulfillment_type is a string, attempting to parse...')
       try {
         fulfillmentData = JSON.parse(fulfillmentData)
+        console.log('✅ [parseFulfillmentType] Successfully parsed JSON:', JSON.stringify(fulfillmentData, null, 2))
       } catch (e) {
+        console.log('⚠️ [parseFulfillmentType] JSON parse failed, trying regex extraction')
         // If parsing fails, try to extract type using regex
         const typeMatch = fulfillmentData.match(/"type"\s*:\s*"([^"]+)"/i)
         if (typeMatch) {
+          console.log('✅ [parseFulfillmentType] Regex matched type:', typeMatch[1])
           fulfillmentData = { type: typeMatch[1] }
         } else {
+          console.log('⚠️ [parseFulfillmentType] Regex failed, checking string content directly')
           // Last resort: check if the string itself contains the keywords
           const lowerStr = fulfillmentData.toLowerCase()
+          console.log('🔍 [parseFulfillmentType] Lowercase string:', lowerStr)
           if (lowerStr.includes('junooni')) {
+            console.log('✅ [parseFulfillmentType] Found "junooni" in string, returning junooni_fulfillment')
             return "junooni_fulfillment"
           } else if (lowerStr.includes('creator')) {
+            console.log('✅ [parseFulfillmentType] Found "creator" in string, returning creator_fulfillment')
             return "creator_fulfillment"
           }
+          console.log('❌ [parseFulfillmentType] No keywords found in string, returning default')
           return fulfillmentType
         }
       }
     }
     
+    console.log('🔍 [parseFulfillmentType] Checking fulfillmentData object:', JSON.stringify(fulfillmentData, null, 2))
+    
     // Check the type field (case-insensitive)
     if (fulfillmentData && typeof fulfillmentData === 'object' && fulfillmentData.type) {
       const typeValue = fulfillmentData.type.toLowerCase()
+      console.log('🏷️ [parseFulfillmentType] Type value (lowercase):', typeValue)
       
       if (typeValue.includes('junooni')) {
+        console.log('✅ [parseFulfillmentType] Type includes "junooni", setting to junooni_fulfillment')
         fulfillmentType = "junooni_fulfillment"
       } else if (typeValue.includes('creator')) {
+        console.log('✅ [parseFulfillmentType] Type includes "creator", setting to creator_fulfillment')
         fulfillmentType = "creator_fulfillment"
+      } else {
+        console.log('⚠️ [parseFulfillmentType] Type value does not match any keywords:', typeValue)
       }
+    } else {
+      console.log('❌ [parseFulfillmentType] fulfillmentData is not a valid object or missing type field')
     }
   } catch (parseError) {
-    // Silent fail
+    console.error('💥 [parseFulfillmentType] Unexpected error:', parseError)
   }
   
+  console.log('🎯 [parseFulfillmentType] Final result:', fulfillmentType)
   return fulfillmentType
 }
 
@@ -212,7 +237,8 @@ class PayoutModuleService extends MedusaService({
           const earnings = await this.calculateEarningsFromOrder(
             itemTotal, 
             fulfillmentType, 
-            costPrice
+            costPrice,
+            item.quantity
           )
           
           // Create individual payout detail record for this item
@@ -348,143 +374,150 @@ class PayoutModuleService extends MedusaService({
   }
 
   /**
-   * Calculate earnings from order item
-   * 
-   * CORRECT CALCULATION LOGIC:
-   * 
-   * ═══════════════════════════════════════════════════════════════════
-   * JUNOONI FULFILLMENT (Creator pays Junooni for blank + printing)
-   * ═══════════════════════════════════════════════════════════════════
-   * Example: Product listed for ₹700 (tax inclusive), Creator cost = ₹400
-   * 
-   * Step 1: Extract GST (5% for apparel < ₹1000)
-   *   GST = ₹700 × 5/105 = ₹33.33
-   *   Net Revenue (ex-GST) = ₹700 - ₹33.33 = ₹666.67
-   * 
-   * Step 2: Deduct Razorpay fee (2% + 18% GST on fee = 2.36% total)
-   *   Razorpay Fee = ₹700 × 0.0236 = ₹16.52
-   *   Net after gateway = ₹666.67 - ₹16.52 = ₹650.15
-   * 
-   * Step 3: Deduct creator cost (what creator pays Junooni)
-   *   Creator Profit = ₹650.15 - ₹400 = ₹250.15
-   * 
-   * Step 4: Deduct TDS (1% of creator profit)
-   *   TDS = ₹250.15 × 0.01 = ₹2.50
-   *   Final Payout = ₹250.15 - ₹2.50 = ₹247.65
-   * 
-   * ═══════════════════════════════════════════════════════════════════
-   * CREATOR FULFILLMENT (Creator handles everything, Junooni takes 10%)
-   * ═══════════════════════════════════════════════════════════════════
-   * Example: Product listed for ₹700 (tax inclusive)
-   * 
-   * Step 1: Deduct Razorpay fee (2% + 18% GST = 2.36% total)
-   *   Razorpay Fee = ₹700 × 0.0236 = ₹16.52
-   *   After gateway = ₹700 - ₹16.52 = ₹683.48
-   * 
-   * Step 2: Creator gets 90% of amount after gateway
-   *   Creator Share = ₹683.48 × 0.90 = ₹615.13
-   * 
-   * Step 3: Deduct TDS (1% of creator share)
-   *   TDS = ₹615.13 × 0.01 = ₹6.15
-   *   Final Payout = ₹615.13 - ₹6.15 = ₹608.98
-   * 
-   * Note: GST is NOT deducted separately in creator fulfillment as
-   * creator handles their own tax compliance.
-   * 
-   * All amounts are kept to 2 decimal places for accurate accounting.
-   */
-  async calculateEarningsFromOrder(
-    orderTotal: number, 
-    fulfillmentType: "creator_fulfillment" | "junooni_fulfillment", 
-    costPrice?: number
-  ): Promise<EarningsCalculation> {
-    if (orderTotal < 0) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "Order total cannot be negative"
-      )
-    }
+ * Calculate earnings from order item
+ * 
+ * CORRECT CALCULATION LOGIC:
+ * 
+ * ═══════════════════════════════════════════════════════════════════
+ * JUNOONI FULFILLMENT (Creator pays Junooni for blank + printing)
+ * ═══════════════════════════════════════════════════════════════════
+ * Example: Product listed for ₹700 (tax inclusive), Creator cost = ₹400, Quantity = 2
+ * 
+ * Step 1: Calculate total order value
+ *   Order Total = ₹700 × 2 = ₹1400
+ * 
+ * Step 2: Extract GST (from order item tax_total)
+ *   GST = ₹66.67 (actual tax from order)
+ *   Net Revenue (ex-GST) = ₹1400 - ₹66.67 = ₹1333.33
+ * 
+ * Step 3: Deduct Razorpay fee (2% + 18% GST on fee = 2.36% total)
+ *   Razorpay Fee = ₹1400 × 0.0236 = ₹33.04
+ *   Net after gateway = ₹1333.33 - ₹33.04 = ₹1300.29
+ * 
+ * Step 4: Deduct TOTAL creator cost (unit cost × quantity)
+ *   Total Cost = ₹400 × 2 = ₹800
+ *   Creator Profit = ₹1300.29 - ₹800 = ₹500.29
+ * 
+ * Step 5: Deduct TDS (1% of creator profit)
+ *   TDS = ₹500.29 × 0.01 = ₹5.00
+ *   Final Payout = ₹500.29 - ₹5.00 = ₹495.29
+ */
+async calculateEarningsFromOrder(
+  orderTotal: number, 
+  fulfillmentType: "creator_fulfillment" | "junooni_fulfillment", 
+  costPrice?: number,
+  quantity: number = 1,  // ✅ quantity parameter with default value
+  taxTotal?: number  // ✅ ADD: actual tax amount from order item
+): Promise<EarningsCalculation> {
+  if (orderTotal < 0) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Order total cannot be negative"
+    )
+  }
 
-    let vendorShare = 0
-    let commissionRate = 0
-    let paymentProcessingFee = 0
-    let taxAmount = 0
+  if (quantity <= 0) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Quantity must be positive"
+    )
+  }
 
-    // Helper to round to 2 decimal places
-    const round2 = (num: number) => Math.round(num * 100) / 100
+  let vendorShare = 0
+  let commissionRate = 0
+  let paymentProcessingFee = 0
+  let taxAmount = 0
 
-    // Razorpay fee: 2% + 18% GST on fee = 2.36% of gross amount
-    const RAZORPAY_FEE_RATE = 0.0236
-    paymentProcessingFee = round2(orderTotal * RAZORPAY_FEE_RATE)
+  // Helper to round to 2 decimal places
+  const round2 = (num: number) => Math.round(num * 100) / 100
 
-    switch (fulfillmentType) {
-      case "creator_fulfillment":
-        // Creator Fulfillment: ₹700 → Razorpay ₹16.52 → ₹683.48 → 90% = ₹615.13
-        const afterGatewayCreator = orderTotal - paymentProcessingFee
-        vendorShare = round2(afterGatewayCreator * 0.90)
-        commissionRate = 90
-        
-        // GST not separately extracted for creator fulfillment
-        taxAmount = 0
-        break
+  // Razorpay fee: 2% + 18% GST on fee = 2.36% of gross amount
+  const RAZORPAY_FEE_RATE = 0.0236
+  paymentProcessingFee = round2(orderTotal * RAZORPAY_FEE_RATE)
 
-      case "junooni_fulfillment":
-        if (costPrice === undefined || costPrice === null) {
-          throw new MedusaError(
-            MedusaError.Types.INVALID_DATA,
-            "Cost price is required for Junooni fulfillment"
-          )
-        }
+  switch (fulfillmentType) {
+    case "creator_fulfillment":
+      // Creator Fulfillment: ₹700 → Razorpay ₹16.52 → ₹683.48 → 90% = ₹615.13
+      const afterGatewayCreator = orderTotal - paymentProcessingFee
+      vendorShare = round2(afterGatewayCreator * 0.90)
+      commissionRate = 90
+      
+      // GST not separately extracted for creator fulfillment
+      taxAmount = 0
+      break
 
-        // Step 1: Extract GST (5% for apparel < ₹1000, adjust as needed)
-        // GST = orderTotal × 5/105 (GST included in selling price)
-        taxAmount = round2(orderTotal * 5 / 105)
-        const netRevenue = orderTotal - taxAmount  // Ex-GST amount
-        
-        // Step 2: Net after gateway fee
-        const netAfterGateway = netRevenue - paymentProcessingFee
-        
-        if (costPrice > netAfterGateway) {
-          throw new MedusaError(
-            MedusaError.Types.INVALID_DATA,
-            `Cost price (₹${costPrice}) cannot exceed net amount after fees (₹${round2(netAfterGateway)})`
-          )
-        }
-        
-        // Step 3: Creator profit = Net after gateway - Cost price
-        vendorShare = round2(netAfterGateway - costPrice)
-        
-        // Calculate commission rate for reporting purposes
-        commissionRate = orderTotal > 0 
-          ? Math.round((vendorShare / orderTotal) * 100) 
-          : 0
-        break
-
-      default:
+    case "junooni_fulfillment":
+      if (costPrice === undefined || costPrice === null) {
         throw new MedusaError(
           MedusaError.Types.INVALID_DATA,
-          `Invalid fulfillment type: ${fulfillmentType}`
+          "Cost price is required for Junooni fulfillment"
         )
-    }
+      }
 
-    // Calculate TDS (1% of vendor share/profit)
-    const tdsPercentage = 1
-    const tdsAmount = round2(vendorShare * 0.01)
-    
-    // Net amount = Vendor share - TDS
-    const netAmount = round2(vendorShare - tdsAmount)
+      // ✅ FIX: Calculate total cost by multiplying unit cost by quantity
+      const totalCostPrice = round2(costPrice * quantity)
+      
+      console.log(`🧮 Cost Calculation: Unit Cost = ₹${costPrice}, Quantity = ${quantity}, Total Cost = ₹${totalCostPrice}`)
 
-    return {
-      grossAmount: orderTotal,           // Total amount customer paid
-      commissionAmount: vendorShare,     // Creator profit/share before TDS
-      taxAmount,                         // GST extracted (only for Junooni fulfillment)
-      tdsAmount,                         // TDS deducted from creator
-      paymentProcessingFee,              // Razorpay gateway fee
-      netAmount,                         // Final payout to creator
-      commissionRate,                    // Percentage for reference
-      tdsPercentage,                     // TDS rate (1%)
-    }
+      // ✅ FIX: Use actual tax from order item, or fallback to calculated GST
+      if (taxTotal !== undefined && taxTotal !== null && taxTotal > 0) {
+        taxAmount = round2(taxTotal)
+        console.log(`✅ Using actual tax from order: ₹${taxAmount}`)
+      } else {
+        // Fallback: Calculate GST (5% for apparel < ₹1000)
+        taxAmount = round2(orderTotal * 5 / 105)
+        console.log(`⚠️ No tax provided, calculated fallback GST: ₹${taxAmount}`)
+      }
+      
+      const netRevenue = orderTotal - taxAmount  // Ex-GST amount
+      
+      // Step 2: Net after gateway fee
+      const netAfterGateway = netRevenue - paymentProcessingFee
+      
+      // ✅ FIX: Compare total cost price (not unit cost) against net amount
+      if (totalCostPrice > netAfterGateway) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          `Total cost price (₹${totalCostPrice} = ₹${costPrice} × ${quantity}) cannot exceed net amount after fees (₹${round2(netAfterGateway)})`
+        )
+      }
+      
+      // Step 3: Creator profit = Net after gateway - Total Cost price
+      vendorShare = round2(netAfterGateway - totalCostPrice)
+      
+      console.log(`💰 Vendor Share Calculation: Net After Gateway = ₹${round2(netAfterGateway)}, Total Cost = ₹${totalCostPrice}, Vendor Share = ₹${vendorShare}`)
+      
+      // Calculate commission rate for reporting purposes
+      commissionRate = orderTotal > 0 
+        ? Math.round((vendorShare / orderTotal) * 100) 
+        : 0
+      break
+
+    default:
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        `Invalid fulfillment type: ${fulfillmentType}`
+      )
   }
+
+  // Calculate TDS (1% of vendor share/profit)
+  const tdsPercentage = 1
+  const tdsAmount = round2(vendorShare * 0.01)
+  
+  // Net amount = Vendor share - TDS
+  const netAmount = round2(vendorShare - tdsAmount)
+
+  return {
+    grossAmount: orderTotal,           // Total amount customer paid
+    commissionAmount: vendorShare,     // Creator profit/share before TDS
+    taxAmount,                         // GST extracted (only for Junooni fulfillment)
+    tdsAmount,                         // TDS deducted from creator
+    paymentProcessingFee,              // Razorpay gateway fee
+    netAmount,                         // Final payout to creator
+    commissionRate,                    // Percentage for reference
+    tdsPercentage,                     // TDS rate (1%)
+  }
+}
 
   /**
    * Process individual payout

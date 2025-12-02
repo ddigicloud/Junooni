@@ -497,145 +497,6 @@ const fetchOrderClaimsAndReturns = async (orderId: string, scope: any) => {
   }
 };
 
-// ✅ NEW: Fetch original product metadata using product service
-const fetchProductMetadata = async (productId: string, scope: any) => {
-  try {
-    //console.log(`🔍 Fetching original product metadata for product: ${productId}`);
-    
-    const query = scope.resolve(ContainerRegistrationKeys.QUERY);
-    
-    // Method 1: Try using query to get product with metadata
-    try {
-      const { data: products } = await query.graph({
-        entity: "product",
-        fields: ["id", "title", "handle", "metadata"],
-        filters: {
-          id: productId,
-        },
-      });
-      
-      if (products && products.length > 0) {
-        const product = products[0];
-        //console.log(`✅ Found product via query: ${product.title}`);
-        //console.log(`📋 Product metadata:`, product.metadata);
-         // ✅ If metadata has cost_price, log it specifically
-        if (product.metadata?.cost_price !== undefined) {
-          //console.log(`💰 Found cost_price in product metadata: ${product.metadata.cost_price}`);
-        }
-        return product.metadata;
-      }
-    } catch (queryError) {
-      //console.log(`⚠️ Query method failed, trying alternative...`);
-    }
-    
-    //console.log(`❌ Could not fetch product ${productId} using query method`);
-    return null;
-    
-  } catch (error) {
-    //console.error(`❌ Error fetching product metadata for ${productId}:`, error);
-    return null;
-  }
-};
-
-// ✅ NEW: Fetch variant details including price and SKU
-const fetchVariantDetails = async (variantId: string, scope: any) => {
-  try {
-    //console.log(`🔍 Fetching variant details for variant: ${variantId}`);
-    
-    const query = scope.resolve(ContainerRegistrationKeys.QUERY);
-    
-    try {
-      const { data: variants } = await query.graph({
-        entity: "product_variant",
-        fields: [
-          "id", 
-          "title", 
-          "sku", 
-          "manage_inventory",
-          "allow_backorder",
-          "prices.*",
-          "prices.amount",
-          "prices.currency_code",
-          "product_id",
-          "product.id",
-          "product.title",
-          "product.handle",
-          "product.metadata"
-        ],
-        filters: {
-          id: variantId,
-        },
-      });
-      
-      if (variants && variants.length > 0) {
-        const variant = variants[0];
-        //console.log(`✅ Found variant via query: ${variant.title || variant.id}`);
-        // console.log(`📋 Variant details:`, {
-        //   sku: variant.sku,
-        //   prices: variant.prices?.length || 0,
-        //   product_id: variant.product_id
-        // });
-        return variant;
-      }
-    } catch (queryError) {
-      //console.log(`⚠️ Variant query failed:`, queryError.message);
-    }
-    
-    //console.log(`❌ Could not fetch variant ${variantId}`);
-    return null;
-    
-  } catch (error) {
-    //console.error(`❌ Error fetching variant details for ${variantId}:`, error);
-    return null;
-  }
-};
-
-// ✅ NEW: Search for product by title to find missing replacement item details
-const searchProductByTitle = async (title: string, scope: any) => {
-  try {
-    //console.log(`🔍 Searching for product by title: "${title}"`);
-    
-    const query = scope.resolve(ContainerRegistrationKeys.QUERY);
-    
-    // Try to find product by title
-    const { data: products } = await query.graph({
-      entity: "product",
-      fields: [
-        "id", 
-        "title", 
-        "handle", 
-        "metadata",
-        "variants.*",
-        "variants.id",
-        "variants.title", 
-        "variants.sku",
-        "variants.prices.*",
-        "variants.prices.amount",
-        "variants.prices.currency_code"
-      ],
-      filters: {
-        title: {
-          $ilike: `%${title}%`
-        }
-      },
-    });
-    
-    if (products && products.length > 0) {
-      const product = products[0];
-      //console.log(`✅ Found product by title: ${product.title}`);
-      //console.log(`📋 Product variants:`, product.variants?.length || 0);
-      return product;
-    }
-    
-    //console.log(`❌ No product found with title: ${title}`);
-    return null;
-    
-  } catch (error) {
-    //console.error(`❌ Error searching product by title:`, error);
-    return null;
-  }
-};
-
 // ✅ NEW: Enhanced replacement item enhancement with better product/variant detection
 const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems: any[], scope: any) => {
   //console.log(`🔧 Enhancing replacement item: ${replacementItem.title}`);
@@ -825,241 +686,158 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
 
 // ✅ ENHANCED: Calculate vendor revenue by merging order metadata + original product metadata
 // ✅ FIXED: Junooni fulfillment now deducts tax_total from item_total before calculating vendor revenue
-const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, paymentStatus: string = 'paid') => {  //console.log(`💰 Calculating revenue for item ${item.id} (${item.title})`);
-// If payment is refunded, vendor gets nothing
-if (paymentStatus === 'refunded') {
-  return {
-    item_total: item.unit_price * item.quantity,
-    vendor_revenue: 0,
-    product_cost: 0,
-    total_product_cost: 0,
-    quantity: item.quantity,
-    fulfillment_type: 'unknown',
-    calculation_type: 'refunded_payment',
-    platform_commission: 0,
-    metadata_source: 'none',
-    has_original_product_metadata: false,
-    payment_refunded: true
-  };
-}  
+// ✅ UPDATED: Enhanced vendor revenue calculation with order metadata from vendor_items
+// ✅ FIXED: Junooni fulfillment now deducts tax_total from item_total before calculating vendor revenue
+const calculateVendorRevenue = async (item: any, vendorId: string, scope: any, order: any, paymentStatus: string = 'paid') => {
+  //console.log(`💰 Calculating revenue for item ${item.id} (${item.title})`);
 
-
-  const itemTotal = item.unit_price * item.quantity;
+  // If payment is refunded, vendor gets nothing
+  if (paymentStatus === 'refunded') {
+    return {
+      item_total: item.unit_price * item.quantity,
+      vendor_revenue: 0,
+      product_cost: 0,
+      total_product_cost: 0,
+      quantity: item.quantity,
+      fulfillment_type: 'unknown',
+      calculation_type: 'refunded_payment',
+      platform_commission: 0,
+      metadata_source: 'none',
+      has_original_product_metadata: false,
+      payment_refunded: true
+    };
+  }
   
-  // ✅ FIXED: Get item tax total for Junooni fulfillment calculation
+  const itemTotal = item.unit_price * item.quantity;
+
+  // Get item tax total for Junooni fulfillment calculation
   let itemTaxTotal = 0;
   if (item.tax_total !== undefined && item.tax_total !== null) {
     itemTaxTotal = typeof item.tax_total === 'number' ? item.tax_total : parseFloat(item.tax_total) || 0;
   } else if (item.tax_lines && item.tax_lines.length > 0) {
-    // ✅ FIXED - Uses "subtotal" as per order JSON structure
     itemTaxTotal = item.tax_lines.reduce((sum, taxLine) => {
       const taxAmount = typeof taxLine.subtotal === 'number' ? taxLine.subtotal : parseFloat(taxLine.subtotal) || 0;
       return sum + taxAmount;
     }, 0);
   }
   //console.log(`💰 Item tax total: ${itemTaxTotal}`);
-  
+
   let vendorRevenue = itemTotal;
   let revenueCalculationType = "default";
   let productCost = 0;
   let fulfillmentType = "unknown";
   let metadataSource = "none";
   
-  // ✅ STEP 1: Get order item metadata (for other product details)
-  let orderMetadata = null;
-  let orderMetadataSource = "none";
-  
-  //console.log(`🔍 Step 1: Checking order item metadata sources:`);
-  
-  const orderMetadataSources = [
-    { name: "item", data: item.metadata },
-    { name: "variant", data: item.variant?.metadata },
-    { name: "product_via_variant", data: item.variant?.product?.metadata },
-    { name: "direct_product", data: item.product?.metadata }
-  ];
-  
-  // Get order-stored metadata for other details
-  for (const source of orderMetadataSources) {
-    if (source.data && typeof source.data === 'object' && Object.keys(source.data).length > 0) {
-      orderMetadata = source.data;
-      orderMetadataSource = `order_${source.name}`;
-      //console.log(`✅ Found order metadata in ${source.name}:`, Object.keys(orderMetadata));
-      break;
-    }
-  }
-  
-  // ✅ STEP 2: Always fetch original product metadata (for fulfillment_type & product_cost)
-  //console.log(`🔍 Step 2: Fetching original product metadata for business rules...`);
-  
-  let originalProductMetadata = null;
-  
-  // Get product ID from various sources
-  let productId = null;
-  if (item.product_id) {
-    productId = item.product_id;
-  } else if (item.variant?.product_id) {
-    productId = item.variant.product_id;
-  } else if (item.variant?.product?.id) {
-    productId = item.variant.product.id;
-  } else if (item.product?.id) {
-    productId = item.product.id;
-  }
-  
-  if (productId) {
-    //console.log(`🔍 Found product ID: ${productId}, fetching current metadata...`);
-    originalProductMetadata = await fetchProductMetadata(productId, scope);
+  // ✅ STEP 1: Get cost_price AND fulfillment_type from order metadata vendor_items
+  const vendorOrders = order?.metadata?.vendor_orders || [];
+  const vendorOrder = vendorOrders.find((vo: any) => vo.vendor_id === vendorId);
+
+  if (vendorOrder?.vendor_items) {
+    // Find matching vendor item by comparing title and unit_price
+    const matchingVendorItem = vendorOrder.vendor_items.find((vi: any) => 
+      vi.title === item.title && vi.unit_price === item.unit_price
+    );
     
-    if (originalProductMetadata && Object.keys(originalProductMetadata).length > 0) {
-      //console.log(`✅ Got original product metadata:`, Object.keys(originalProductMetadata));
-      //console.log(`📋 fulfillment_type:`, originalProductMetadata.fulfillment_type);
-      //console.log(`📋 product_cost:`, originalProductMetadata.product_cost);
-    } else {
-      //console.log(`❌ Could not fetch original product metadata`);
-    }
-  } else {
-    //console.log(`❌ No product ID found in item`);
-  }
-  
-  // ✅ STEP 3: Merge metadata sources intelligently
-  //console.log(`🔄 Step 3: Merging metadata from both sources...`);
-  
-  let mergedMetadata = {};
-  
-  // Start with order metadata (for other details)
-  if (orderMetadata) {
-    mergedMetadata = { ...orderMetadata };
-    metadataSource = orderMetadataSource;
-    //console.log(`✅ Base metadata from ${orderMetadataSource}`);
-  }
-  
-  // Override with original product metadata for business rules
-  if (originalProductMetadata) {
-    // ✅ PRIORITY: Use original product metadata for fulfillment_type and product_cost
-    if (originalProductMetadata.fulfillment_type !== undefined) {
-      mergedMetadata.fulfillment_type = originalProductMetadata.fulfillment_type;
-      metadataSource += " + original_product(fulfillment_type)";
-      //console.log(`✅ Using original fulfillment_type:`, originalProductMetadata.fulfillment_type);
-    }
-    
-    if (originalProductMetadata.cost_price !== undefined) {
-      mergedMetadata.cost_price = originalProductMetadata.cost_price;
-      metadataSource += " + original_product(product_cost)";
-      //console.log(`✅ Using original product_cost:`, originalProductMetadata.cost_price);
-    }
-  }
-  
-  //console.log(`📋 Final merged metadata:`, mergedMetadata);
-  //console.log(`📍 Metadata sources: ${metadataSource}`);
-  
-  // ✅ STEP 4: Process merged metadata
-  if (Object.keys(mergedMetadata).length > 0) {
-    // Handle fulfillment_type (should now come from original product)
-    let fulfillmentTypeData = mergedMetadata.fulfillment_type;
-    
-    if (fulfillmentTypeData) {
-      //console.log(`🔍 Processing fulfillment_type:`, fulfillmentTypeData, typeof fulfillmentTypeData);
+    if (matchingVendorItem) {
+      // Get cost_price
+      if (matchingVendorItem.cost_price !== undefined && matchingVendorItem.cost_price !== null) {
+        productCost = typeof matchingVendorItem.cost_price === 'number' 
+          ? matchingVendorItem.cost_price 
+          : parseFloat(matchingVendorItem.cost_price) || 0;
+        metadataSource = "order_metadata_vendor_items(cost_price)";
+        //console.log(`✅ Found cost_price in order metadata: ${productCost}`);
+      }
       
-      // If it's a string, try to parse it as JSON
+      // ✅ NEW: Get fulfillment_type from order metadata
+      if (matchingVendorItem.fulfillment_type) {
+        let fulfillmentTypeData = matchingVendorItem.fulfillment_type;
+        
+        // Parse if it's a string
+        if (typeof fulfillmentTypeData === 'string') {
+          try {
+            fulfillmentTypeData = JSON.parse(fulfillmentTypeData);
+          } catch (e) {
+            const typeMatch = fulfillmentTypeData.match(/"type":"([^"]+)"/);
+            if (typeMatch) {
+              fulfillmentType = typeMatch[1];
+            }
+          }
+        }
+        
+        // Extract type from object
+        if (fulfillmentTypeData && typeof fulfillmentTypeData === 'object' && fulfillmentTypeData.type) {
+          fulfillmentType = fulfillmentTypeData.type;
+        }
+        
+        metadataSource += " + order_metadata_vendor_items(fulfillment_type)";
+        //console.log(`✅ Found fulfillment_type in order metadata: ${fulfillmentType}`);
+      }
+    }
+  }
+  
+  // ✅ FALLBACK: If fulfillment_type not found in order metadata, try product metadata
+  if (fulfillmentType === "unknown") {
+    const productMetadata = item.variant?.product?.metadata || item.product?.metadata || {};
+    let fulfillmentTypeData = productMetadata.fulfillment_type;
+
+    if (fulfillmentTypeData) {
       if (typeof fulfillmentTypeData === 'string') {
         try {
           fulfillmentTypeData = JSON.parse(fulfillmentTypeData);
-          //console.log(`✅ Parsed fulfillment_type from JSON:`, fulfillmentTypeData);
         } catch (e) {
-          //console.log(`⚠️ Could not parse as JSON, trying regex extraction...`);
-          // Try to extract type from partial JSON string using regex
           const typeMatch = fulfillmentTypeData.match(/"type":"([^"]+)"/);
           if (typeMatch) {
             fulfillmentType = typeMatch[1];
-            //console.log(`✅ Extracted type via regex: ${fulfillmentType}`);
           }
         }
       }
       
-      // Extract type from object (if successfully parsed or was already an object)
       if (fulfillmentTypeData && typeof fulfillmentTypeData === 'object' && fulfillmentTypeData.type) {
         fulfillmentType = fulfillmentTypeData.type;
-        //console.log(`✅ Extracted type from object: ${fulfillmentType}`);
       }
+      
+      metadataSource += " + product_metadata_fallback(fulfillment_type)";
+      //console.log(`⚠️ Using fallback fulfillment_type from product metadata: ${fulfillmentType}`);
     }
-    
-    // Handle product_cost (should now come from original product)
-    if (mergedMetadata.cost_price !== undefined && mergedMetadata.cost_price !== null) {
-      if (typeof mergedMetadata.cost_price === 'string') {
-        productCost = parseFloat(mergedMetadata.cost_price) || 0;
-      } else if (typeof mergedMetadata.cost_price === 'number') {
-        productCost = mergedMetadata.cost_price;
-      }
-      //console.log(`✅ Extracted product cost: ${productCost}`);
-    }
-    
-    //console.log(`🏷️ Item ${item.id} - Fulfillment: "${fulfillmentType}", Cost: ${productCost}`);
-    //console.log(`📍 Sources: ${metadataSource}`);
-    
-    // ✅ REVENUE CALCULATION LOGIC (with quantity handling)
-    // ✅ FIXED: For Junooni fulfillment, deduct tax_total from item_total first
-    switch (fulfillmentType) {
-      case "JUNOONI-fulfillment":
-        // ✅ FIXED: Vendor gets: ((Quantity × Unit Price) - Tax Total) - (Quantity × Product Cost)
-        const totalProductCost = productCost * item.quantity; // ✅ Multiply cost by quantity
-        const itemTotalWithoutTax = itemTotal - itemTaxTotal; // ✅ Deduct tax from item total
-        vendorRevenue = Math.max(0, itemTotalWithoutTax - totalProductCost);
-        revenueCalculationType = "cost_deduction_minus_tax";
-        //console.log(`💰 Junooni fulfillment calculation (FIXED - tax deducted):`);
-        //console.log(`   📦 Quantity: ${item.quantity}`);
-        //console.log(`   💵 Unit Price: ${item.unit_price}`);
-        //console.log(`   💰 Total Price (with tax): ${item.quantity} × ${item.unit_price} = ${itemTotal}`);
-        //console.log(`   🧾 Item Tax Total: ${itemTaxTotal}`);
-        //console.log(`   💰 Total Price (without tax): ${itemTotal} - ${itemTaxTotal} = ${itemTotalWithoutTax}`);
-        //console.log(`   🏭 Unit Product Cost: ${productCost}`);
-        //console.log(`   🏭 Total Product Cost: ${item.quantity} × ${productCost} = ${totalProductCost}`);
-        //console.log(`   ✅ Vendor Revenue: ${itemTotalWithoutTax} - ${totalProductCost} = ${vendorRevenue}`);
-        break;
-        
-      case "Creator-fulfilment":
-        // Vendor gets: 90% of Total (quantity already included in itemTotal)
-        vendorRevenue = itemTotal * 0.90;
-        revenueCalculationType = "percentage_split";
-        //console.log(`💰 Creator fulfillment calculation:`);
-        //console.log(`   📦 Quantity: ${item.quantity}`);
-        //console.log(`   💵 Total Price: ${itemTotal}`);
-        //console.log(`   ✅ Vendor Revenue: ${itemTotal} × 90% = ${vendorRevenue}`);
-        break;
-        
-      default:
-        // Default: 90% of total (safe fallback)
-        vendorRevenue = itemTotal * 0.90;
-        revenueCalculationType = "default_percentage";
-        //console.log(`💰 Default calculation (${fulfillmentType}):`);
-        //console.log(`   📦 Quantity: ${item.quantity}`);
-        //console.log(`   💵 Total Price: ${itemTotal}`);
-        //console.log(`   ✅ Vendor Revenue: ${itemTotal} × 90% = ${vendorRevenue}`);
-        break;
-    }
-  } else {
-    // No metadata found anywhere, use default 90%
-    vendorRevenue = itemTotal * 0.90;
-    revenueCalculationType = "no_metadata";
-    //console.log(`💰 No metadata found anywhere, using default: ${itemTotal} × 90% = ${vendorRevenue}`);
   }
   
-  const result = {
+  // Revenue calculation logic
+  switch (fulfillmentType) {
+    case "JUNOONI-fulfillment":
+      const totalProductCost = productCost * item.quantity;
+      const itemTotalWithoutTax = itemTotal - itemTaxTotal;
+      vendorRevenue = Math.max(0, itemTotalWithoutTax - totalProductCost);
+      revenueCalculationType = "cost_deduction_minus_tax";
+      //console.log(`💰 Junooni: (${itemTotal} - ${itemTaxTotal}) - (${productCost} × ${item.quantity}) = ${vendorRevenue}`);
+      break;
+      
+    case "Creator-fulfilment":
+      vendorRevenue = itemTotal * 0.90;
+      revenueCalculationType = "percentage_split";
+      //console.log(`💰 Creator: ${itemTotal} × 90% = ${vendorRevenue}`);
+      break;
+      
+    default:
+      vendorRevenue = itemTotal * 0.90;
+      revenueCalculationType = "default_percentage";
+      //console.log(`💰 Default: ${itemTotal} × 90% = ${vendorRevenue}`);
+      break;
+  }
+  
+  return {
     item_total: itemTotal,
-    item_tax_total: itemTaxTotal, // ✅ NEW: Include item tax total for reference
-    item_total_without_tax: itemTotal - itemTaxTotal, // ✅ NEW: Include item total without tax
+    item_tax_total: itemTaxTotal,
+    item_total_without_tax: itemTotal - itemTaxTotal,
     vendor_revenue: vendorRevenue,
-    product_cost: productCost, // ✅ Unit product cost
-    total_product_cost: fulfillmentType === "JUNOONI-fulfillment" ? productCost * item.quantity : 0, // ✅ Total cost for quantity
-    quantity: item.quantity, // ✅ Add quantity for reference
+    product_cost: productCost,
+    total_product_cost: fulfillmentType === "JUNOONI-fulfillment" ? productCost * item.quantity : 0,
+    quantity: item.quantity,
     fulfillment_type: fulfillmentType,
     calculation_type: revenueCalculationType,
     platform_commission: itemTotal - vendorRevenue,
     metadata_source: metadataSource,
-    merged_metadata: mergedMetadata, // ✅ Include full merged metadata for debugging
-    order_metadata_source: orderMetadataSource,
-    has_original_product_metadata: !!originalProductMetadata
+    has_original_product_metadata: metadataSource.includes("order_metadata_vendor_items")
   };
-  
-  return result;
 };
 
 // ✅ FIXED: Enhanced vendor detection for replacement items - checks full order + database
@@ -1693,7 +1471,8 @@ for (const metaItem of vendorMetadataItems) {
   // ✅ STEP 5: Process all validated items for revenue calculation
   const itemsWithRevenue = [];
   for (const item of validatedVendorItems) {
-    const revenueData = await calculateVendorRevenue(item, vendorId, scope, paymentStatus);
+    // const revenueData = await calculateVendorRevenue(item, vendorId, scope, paymentStatus);
+    const revenueData = await calculateVendorRevenue(item, vendorId, scope, order, paymentStatus);
     const itemStatus = claimsAnalysis.itemStatuses.get(item.id) || {};
     
     itemsWithRevenue.push({
@@ -1703,6 +1482,8 @@ for (const metaItem of vendorMetadataItems) {
       fulfillment_type: revenueData.fulfillment_type,
       calculation_type: revenueData.calculation_type,
       platform_commission: revenueData.platform_commission,
+
+      
       
       // Status
       claim_status: item.is_claim_item ? 'active' : (itemStatus.status === 'returned' ? 'returned' : 'active'),

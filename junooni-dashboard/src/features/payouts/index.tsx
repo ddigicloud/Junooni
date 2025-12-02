@@ -12,7 +12,7 @@ import {
   DollarSign, TrendingUp, Wallet,
   Plus, FileText, ArrowUpRight,
   ArrowDownRight, Minus, CalendarDays,
-  Building2, Receipt, ChartPie
+  Building2, Receipt, ChartPie, IndianRupee
 } from "lucide-react"
 import { Link } from '@tanstack/react-router'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -387,6 +387,7 @@ const RequestPayoutDialog = ({
       }
 
       const responseData = await response.json();
+      console.log("🔍 [DEBUG] Payout request response data:", responseData);
       
       if (responseData.Payout) {
         setOpen(false);
@@ -1417,7 +1418,7 @@ useEffect(() => {
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-center">
                     <div className="p-3 mr-4 rounded-lg" style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
-                      <DollarSign className="w-6 h-6 text-white" />
+                      <IndianRupee className="w-6 h-6 text-white" />
                     </div>
                     <div>
                       <CardTitle className="text-lg font-bold" style={{ color: BRAND.secondary }}>
@@ -1788,122 +1789,93 @@ Thank you for using Junooni!
       </div>
       
       {/* Transaction Details Modal */}
+      {/* Transaction Details Modal */}
       <Dialog open={transactionModalOpen} onOpenChange={setTransactionModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[650px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <div 
-                className="p-2 rounded-lg"
+                className="p-2.5 rounded-lg shadow-lg"
                 style={{ 
                   background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` 
                 }}
               >
-                <DollarSign className="w-5 h-5 text-white" />
+                <IndianRupee className="w-6 h-6 text-white" />
               </div>
-              Transaction Details
+              <div>
+                <h2 className="text-xl font-bold" style={{ color: BRAND.secondary }}>Transaction Details</h2>
+                <p className="text-sm font-normal text-gray-500">Complete transaction information</p>
+              </div>
             </DialogTitle>
-            <DialogDescription>
-              Complete information about this payout transaction
-            </DialogDescription>
           </DialogHeader>
           
           {selectedTransaction && (
-            <div className="space-y-6">
-              {/* Transaction Header */}
-              <div className="flex items-start justify-between p-4 border rounded-lg bg-gray-50">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <PayoutTypeBadge type={selectedTransaction.type} />
-                    <Badge 
-                      variant="outline" 
-                      className={
-                        selectedTransaction.status === 'completed' || selectedTransaction.status === 'confirmed' ? 
-                        'text-green-700 bg-green-50 border-green-200' :
-                        selectedTransaction.status === 'pending' || selectedTransaction.status === 'processing' ?
-                        'text-amber-700 bg-amber-50 border-amber-200' :
-                        'text-gray-700 bg-gray-50 border-gray-200'
-                      }
-                    >
-                      {selectedTransaction.status || 'Unknown'}
-                    </Badge>
-                  </div>
-                  <h3 className="text-lg font-semibold" style={{ color: BRAND.secondary }}>
-                    {selectedTransaction.reason || 'Transaction'}
-                  </h3>
-                </div>
-                <div className="text-right">
-                  <div className={`text-2xl font-bold ${
-                    selectedTransaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {selectedTransaction.amount >= 0 ? '+' : ''}{formatPrice(selectedTransaction.amount)}
-                  </div>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {formatDate(selectedTransaction.created_at)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Transaction Details Grid */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Transaction ID</label>
-                    <div className="p-2 mt-1 border rounded-md bg-gray-50">
-                      <code className="text-sm text-gray-900">{selectedTransaction.id}</code>
+            <div className="space-y-5">
+              {/* TDS Information Banner - Only show for earnings */}
+              {selectedTransaction.type === 'earning' && (
+                <div className="p-4 border-l-4 rounded-lg bg-orange-50" style={{ borderLeftColor: BRAND.primary }}>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-orange-100">
+                      <Info className="w-5 h-5" style={{ color: BRAND.primary }} />
                     </div>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Transaction Type</label>
-                    <div className="mt-1">
-                      <PayoutTypeBadge type={selectedTransaction.type} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Status</label>
-                    <div className="mt-1">
-                      <Badge 
-                        variant="outline" 
-                        className={
-                          selectedTransaction.status === 'completed' || selectedTransaction.status === 'confirmed' ? 
-                          'text-green-700 bg-green-50 border-green-200' :
-                          selectedTransaction.status === 'pending' || selectedTransaction.status === 'processing' ?
-                          'text-amber-700 bg-amber-50 border-amber-200' :
-                          'text-gray-700 bg-gray-50 border-gray-200'
-                        }
-                      >
-                        {selectedTransaction.status || 'Unknown'}
-                      </Badge>
+                    <div className="flex-1">
+                      <h4 className="mb-2 text-sm font-semibold text-gray-900">Tax Deduction at Source (TDS)</h4>
+                      <p className="mb-2 text-sm text-gray-700">
+                        The amount displayed below is the <span className="font-semibold">net earning after deducting 1% TDS</span> as per Indian Income Tax regulations.
+                      </p>
+                      {/* <div className="flex items-center gap-2 p-2 mt-2 rounded-md bg-blue-100/50">
+                        <Receipt className="w-4 h-4 text-blue-700" />
+                        <span className="text-xs text-blue-800">
+                          TDS certificates will be provided during tax filing season
+                        </span>
+                      </div> */}
                     </div>
                   </div>
                 </div>
+              )}
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Amount</label>
-                    <div className={`mt-1 text-lg font-bold ${
-                      selectedTransaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {selectedTransaction.amount >= 0 ? '+' : ''}{formatPrice(selectedTransaction.amount)}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Created Date</label>
-                    <div className="mt-1 text-sm text-gray-900">
-                      {formatDate(selectedTransaction.created_at)}
-                    </div>
-                  </div>
-
-                  {selectedTransaction.reference_id && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Reference ID</label>
-                      <div className="p-2 mt-1 border rounded-md bg-gray-50">
-                        <code className="text-sm text-gray-900">{selectedTransaction.reference_id}</code>
+              {/* Transaction Header Card */}
+              <div className="overflow-hidden border rounded-lg shadow-sm">
+                <div className="p-4" style={{ background: `linear-gradient(to right, ${BRAND.background}33, white)` }}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-3">
+                        <PayoutTypeBadge type={selectedTransaction.type} />
+                        <Badge 
+                          variant="outline" 
+                          className={
+                            selectedTransaction.status === 'completed' || selectedTransaction.status === 'confirmed' ? 
+                            'text-green-700 bg-green-50 border-green-200 font-medium' :
+                            selectedTransaction.status === 'pending' || selectedTransaction.status === 'processing' ?
+                            'text-amber-700 bg-amber-50 border-amber-200 font-medium' :
+                            'text-gray-700 bg-gray-50 border-gray-200 font-medium'
+                          }
+                        >
+                          <CircleCheck className="w-3 h-3 mr-1" />
+                          {selectedTransaction.status || 'Unknown'}
+                        </Badge>
                       </div>
+                      <h3 className="text-base font-semibold text-gray-900">
+                        {getTransactionDisplayText(selectedTransaction)}
+                      </h3>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {formatDate(selectedTransaction.created_at)}
+                      </p>
                     </div>
-                  )}
+                    <div className="text-right">
+                      <p className="mb-1 text-xs font-medium text-gray-500">
+                        {selectedTransaction.type === 'earning' ? 'Net Amount' : 'Amount'}
+                      </p>
+                      <div className={`text-3xl font-bold ${
+                        selectedTransaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {selectedTransaction.amount >= 0 ? '+' : ''}{formatPrice(selectedTransaction.amount)}
+                      </div>
+                      {selectedTransaction.type === 'earning' && (
+                        <p className="mt-1 text-xs text-gray-500">After 1% TDS</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
