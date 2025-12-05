@@ -666,7 +666,7 @@ async refundPayment(paymentSessionData: any, refundAmount: number) {
       amount: refundAmountInPaise, // Amount in paise
       speed: 'optimum', // For faster refunds
       notes: {
-        refund_source: 'medusa_admin',
+        refund_source: 'JUNOONI',
         processed_via: 'payment_provider',
         original_amount_rupees: actualRefundAmount
       }

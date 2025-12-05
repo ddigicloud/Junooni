@@ -139,6 +139,10 @@ export const BlankProducts: CollectionConfig = {
               required: true,
               unique: true,
             },
+            { 
+              name: 'Manufacturer sku', 
+              type: 'text', 
+            },
             {
               name: 'vendorInfo',
               type: 'group',
@@ -597,6 +601,11 @@ export const BlankProducts: CollectionConfig = {
                   required: true,
                 },
                 {
+                  name: 'colorSku',
+                  type: 'text',
+                  //dbName: 'color_hex',
+                },
+                {
                   name: 'isPrimary',
                   type: 'checkbox',
                   //dbName: 'is_primary_color',
@@ -686,6 +695,16 @@ export const BlankProducts: CollectionConfig = {
                   type: 'text',
                   //dbName: 'size_name',
                   required: true,
+                },
+                {
+                  name: 'sizeSku',
+                  type: 'text',
+                  //dbName: 'size_sku',
+                },
+                {
+                  name: 'ExtraCost',
+                  type: 'text',
+                  //dbName: 'size_name',
                 },
                 {
                   name: 'sizeDescription',

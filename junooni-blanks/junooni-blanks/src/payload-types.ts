@@ -434,6 +434,7 @@ export interface BlankProduct {
   brand: string;
   brandSku?: string | null;
   sku: string;
+  'Manufacturer sku'?: string | null;
   vendorInfo?: {
     supplier?: ('printful' | 'printify' | 'gooten' | 'qikink' | 'local' | 'direct' | 'other') | null;
     supplierProductId?: string | null;
@@ -567,6 +568,7 @@ export interface BlankProduct {
     | {
         colorName: string;
         colorHex: string;
+        colorSku?: string | null;
         isPrimary?: boolean | null;
         fabricInteraction?: {
           /**
@@ -587,6 +589,8 @@ export interface BlankProduct {
   sizeOptions?:
     | {
         sizeName: string;
+        sizeSku?: string | null;
+        ExtraCost?: string | null;
         sizeDescription?: string | null;
         dimensions?: {
           width?: number | null;
@@ -2241,6 +2245,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
   brand?: T;
   brandSku?: T;
   sku?: T;
+  'Manufacturer sku'?: T;
   vendorInfo?:
     | T
     | {
@@ -2330,6 +2335,7 @@ export interface BlankProductsSelect<T extends boolean = true> {
     | {
         colorName?: T;
         colorHex?: T;
+        colorSku?: T;
         isPrimary?: T;
         fabricInteraction?:
           | T
@@ -2351,6 +2357,8 @@ export interface BlankProductsSelect<T extends boolean = true> {
     | T
     | {
         sizeName?: T;
+        sizeSku?: T;
+        ExtraCost?: T;
         sizeDescription?: T;
         dimensions?:
           | T

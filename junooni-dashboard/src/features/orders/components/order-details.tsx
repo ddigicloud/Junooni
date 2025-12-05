@@ -316,6 +316,7 @@ const MarkAsShippedModal = ({
                 onChange={(e) => setTrackingUrl(e.target.value)}
                 className="mt-1"
                 placeholder="https://carrier.com/track/123456789"
+                required
               />
               <p className="mt-1 text-xs text-gray-500">
                 Direct URL to track this shipment (leave empty to auto-generate)
@@ -2472,8 +2473,20 @@ const handleOpenShipmentModal = (item: OrderItem) => {
 
 // ✅ UPDATED: Handle mark as shipped functionality
 const handleMarkAsShipped = async () => {
-  if (!selectedShipmentItem || !order || !trackingNumber.trim() || !carrier) {
-    setShipmentError('Please fill in all required fields');
+  if (!selectedShipmentItem || !order || !trackingNumber.trim() || !carrier || !trackingUrl.trim()) {
+    setShipmentError('Please fill in all required fields including tracking URL');
+    return;
+  }
+  
+  // ✅ VALIDATE URL FORMAT
+  const urlToSend = trackingUrl.trim();
+  if (!urlToSend.startsWith('http://') && !urlToSend.startsWith('https://')) {
+    setShipmentError('Tracking URL must start with http:// or https://');
+    return;
+  }
+  
+  if (urlToSend === '#' || urlToSend.length < 10) {
+    setShipmentError('Please enter a valid tracking URL');
     return;
   }
   
@@ -2488,25 +2501,20 @@ const handleMarkAsShipped = async () => {
       throw new Error("Authentication required. Please log in again.");
     }
   
-    // ✅ FIXED: Create shipment payload matching backend API
-// ✅ FIXED: Create shipment payload with proper label_url handling
+    const updatePayload = {
+      labels: [
+        {
+          tracking_number: trackingNumber.trim(),
+          tracking_url: urlToSend, // Already validated
+          label_url: labelUrl.trim() || undefined,
+          carrier: carrier
+        }
+      ]
+    };
 
-// ✅ FIXED: Only include label_url if it has a value, don't send undefined
-// ✅ SIMPLE FIX: Build the label object conditionally
-const updatePayload = {
-  labels: [
-    {
-      tracking_number: trackingNumber.trim(),
-      tracking_url: trackingUrl.trim() || '', // Let backend generate if empty
-      label_url: labelUrl.trim() || '', // Let backend generate if empty
-      carrier: carrier // ✅ NEW: Pass carrier for better tracking URL generation
-    }
-  ]
-};
-
-   
-    // ✅ Update fulfillment status to shipped with tracking info
-        const updateResponse = await fetch(
+    console.log('📦 Sending shipment data:', updatePayload);
+    
+    const updateResponse = await fetch(
       `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders/${order.original_order_id}/fulfillments/${selectedShipmentItem.fulfillment_id}/shipment`, 
       {
         method: "POST",
@@ -2580,23 +2588,23 @@ const updatePayload = {
 };
 
 // ✅ UPDATED: Generate tracking URL based on carrier (simplified)
-const generateTrackingUrl = (carrier: string, trackingNumber: string): string => {
-  // Basic tracking URL generation - vendors can override with custom URLs
-  const trackingUrls = {
-    'fedex': `https://www.fedex.com/fedextrack/?tracknumbers=${trackingNumber}`,
-    'ups': `https://www.ups.com/track?tracknum=${trackingNumber}`,
-    'dhl': `https://www.dhl.com/global-en/home/tracking.html?tracking-id=${trackingNumber}`,
-    'usps': `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${trackingNumber}`,
-    'bluedart': `https://www.bluedart.com/web/guest/trackdart?trackFor=0&trackNo=${trackingNumber}`,
-    'dtdc': `https://www.dtdc.in/tracking/tracking_results.asp?Ttype=awb_no&strTnumber=${trackingNumber}`,
-    'aramex': `https://www.aramex.com/track/results?ShipmentNumber=${trackingNumber}`,
-    'ecom': `https://ecomexpress.in/tracking/?awb_field=${trackingNumber}`,
-    'delhivery': `https://www.delhivery.com/track/package/${trackingNumber}`
-  };
+// const generateTrackingUrl = (carrier: string, trackingNumber: string): string => {
+//   // Basic tracking URL generation - vendors can override with custom URLs
+//   const trackingUrls = {
+//     'fedex': `https://www.fedex.com/fedextrack/?tracknumbers=${trackingNumber}`,
+//     'ups': `https://www.ups.com/track?tracknum=${trackingNumber}`,
+//     'dhl': `https://www.dhl.com/global-en/home/tracking.html?tracking-id=${trackingNumber}`,
+//     'usps': `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${trackingNumber}`,
+//     'bluedart': `https://www.bluedart.com/web/guest/trackdart?trackFor=0&trackNo=${trackingNumber}`,
+//     'dtdc': `https://www.dtdc.in/tracking/tracking_results.asp?Ttype=awb_no&strTnumber=${trackingNumber}`,
+//     'aramex': `https://www.aramex.com/track/results?ShipmentNumber=${trackingNumber}`,
+//     'ecom': `https://ecomexpress.in/tracking/?awb_field=${trackingNumber}`,
+//     'delhivery': `https://www.delhivery.com/track/package/${trackingNumber}`
+//   };
   
-  // Return carrier-specific URL or a generic format
-  return trackingUrls[carrier] || `https://track.aftership.com/${trackingNumber}`;
-};
+//   // Return carrier-specific URL or a generic format
+//   return trackingUrls[carrier] || `https://track.aftership.com/${trackingNumber}`;
+// };
 
   // ✅ Updated invoice generation for vendor-specific data
 
@@ -3249,9 +3257,9 @@ const generateInvoice = () => {
                                 </div>
                               </div>
                             </div>
-                            {item.tracking_urls?.[0] && (
+                            {/* {item.tracking_urls?.[0] && (
                               <a
-                                href={item.tracking_urls[0]}
+                                href={item.tracking_numbers?.[0]}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center text-sm text-blue-600 hover:text-blue-800"
@@ -3259,7 +3267,18 @@ const generateInvoice = () => {
                                 Track Package
                                 <ExternalLink className="w-3 h-3 ml-1" />
                               </a>
-                            )}
+                            )} */}
+                           {item.tracking_numbers?.[0] && (
+                            <a
+                              href={item.tracking_numbers[0]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              Track Package
+                              <ExternalLink className="w-3 h-3 ml-1" />
+                            </a>
+                          )}
                           </div>
                         ))}
                     </div>

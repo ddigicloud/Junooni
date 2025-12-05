@@ -531,8 +531,7 @@ export async function createProduct({ product }: { product: Product }): Promise<
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
-        },
-        withCredentials: true,
+        }
       }
     );
     

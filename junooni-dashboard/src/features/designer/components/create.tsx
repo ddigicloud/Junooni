@@ -88,6 +88,7 @@ interface PayloadProductData {
   id?: string;
   name?: string;
   HSNCode?: string;
+  'Manufacturer sku'?: string; // 🔥 ADD THIS LINE
   cost?: number;
   dimensions?: {
     weight?: number;
@@ -168,6 +169,7 @@ interface PayloadCMSProduct {
   name: string;
   slug: string;
   status: string;
+  'Manufacturer sku': string; // Should already exist, verify it's there
   productType: string;
   brand: string;
   brandSku: string;
@@ -284,6 +286,7 @@ interface PayloadCMSProduct {
     id: string;
     colorName: string;
     colorHex: string;
+    colorSku: string | null; // 🔥 VERIFY this exists
     isPrimary?: boolean;
     fabricInteraction?: {
       absorptionRate?: number;
@@ -300,6 +303,8 @@ interface PayloadCMSProduct {
   sizeOptions: Array<{
     id: string;
     sizeName: string;
+    sizeSku: string | null; // 🔥 VERIFY this exists
+    ExtraCost?: string;  // ADD THIS - stored as string in PayloadCMS
     sizeDescription?: string;
     dimensions?: {
       width: number;
@@ -3111,6 +3116,7 @@ useEffect(() => {
     const enhancedProductData: PayloadProductData = {
       id: payloadProduct.id.toString(),
       cost: payloadProduct.cost,
+      'Manufacturer sku': payloadProduct['Manufacturer sku'], // 🔥 ADD THIS
       dimensions: {
         weight: payloadProduct.shippingInfo.weight,
         length: payloadProduct.physicalDimensions.widthInches * 2.54,
@@ -5358,12 +5364,88 @@ const combinedArtworkPayload = {
         // CREATE VARIANT METADATA WITH IMAGE ASSOCIATIONS
         const variantMetadata: Record<string, any> = {};
         
-        const costPrice = canvasPricingData?.final_price_per_unit || 
-                   enhancedProductData?.cost || 
-                   0;
+        // const costPrice = canvasPricingData?.final_price_per_unit || 
+        //            enhancedProductData?.cost || 
+        //            0;
   
-        if (costPrice > 0) {
-          variantMetadata.cost_price = costPrice;
+        // if (costPrice > 0) {
+        //   variantMetadata.cost_price = costPrice;
+        // Enhanced cost_price calculation with ExtraCost
+        const baseCostPrice = canvasPricingData?.final_price_per_unit || 
+                              enhancedProductData?.cost || 
+                              0;
+
+        let finalCostPrice = baseCostPrice;
+
+        if (baseCostPrice > 0) {
+          // Add ExtraCost if size variant has it
+          if (variant.optionValues && enhancedProductData?.sizeOptions) {
+            const sizeOptionValue = variant.optionValues.find(
+              opt => opt.optionName.toLowerCase() === 'size'
+            );
+            
+            if (sizeOptionValue) {
+              const matchingSize = enhancedProductData.sizeOptions.find(
+                size => size.sizeName.toLowerCase() === sizeOptionValue.value.toLowerCase()
+              );
+              
+              if (matchingSize?.ExtraCost) {
+                const extraCost = parseFloat(matchingSize.ExtraCost);
+                if (!isNaN(extraCost) && extraCost > 0) {
+                  finalCostPrice += extraCost;
+                  console.log(`Added ExtraCost ${extraCost} to variant ${variant.title}, new cost: ${finalCostPrice}`);
+                }
+              }
+            }
+          }
+          
+          variantMetadata.cost_price = finalCostPrice;
+        }
+      
+        // 🔥 ADD: Construct manufacturer_sku from PayloadCMS data
+        if (enhancedProductData) {
+          const baseSku = enhancedProductData['Manufacturer sku'] || '';
+          let manufacturerSku = baseSku;
+          
+          // Extract color SKU for this variant
+          if (variant.optionValues && enhancedProductData.colorOptions) {
+            const colorOptionValue = variant.optionValues.find(
+              opt => opt.optionName.toLowerCase() === 'color'
+            );
+            
+            if (colorOptionValue) {
+              const matchingColor = enhancedProductData.colorOptions.find(
+                color => color.colorName.toLowerCase() === colorOptionValue.value.toLowerCase()
+              );
+              
+              if (matchingColor?.colorSku) {
+                manufacturerSku += matchingColor.colorSku;
+              }
+            }
+          }
+          
+          // Extract size SKU for this variant
+          if (variant.optionValues && enhancedProductData.sizeOptions) {
+            const sizeOptionValue = variant.optionValues.find(
+              opt => opt.optionName.toLowerCase() === 'size'
+            );
+            
+            if (sizeOptionValue) {
+              const matchingSize = enhancedProductData.sizeOptions.find(
+                size => size.sizeName.toLowerCase() === sizeOptionValue.value.toLowerCase()
+              );
+              
+              if (matchingSize?.sizeSku) {
+                manufacturerSku += matchingSize.sizeSku;
+              }
+            }
+          }
+          
+          // Add to metadata if we have a valid SKU
+          if (manufacturerSku) {
+            variantMetadata.manufacturer_sku = manufacturerSku;
+            console.log(`✅ Variant ${variant.title} manufacturer_sku:`, manufacturerSku);
+          }
         }
 
         // Get ALL images associated with this variant
