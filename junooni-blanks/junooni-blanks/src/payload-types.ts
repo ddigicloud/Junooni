@@ -370,6 +370,15 @@ export interface Category {
     };
     [k: string]: unknown;
   } | null;
+  heroImage?: (number | null) | Media;
+  /**
+   * Mark this category as featured to display it on the homepage of catalog
+   */
+  featuredCategory?: boolean | null;
+  /**
+   * Mark this category to show on the studio navigation
+   */
+  StudioCategory?: boolean | null;
   products?: (number | BlankProduct)[] | null;
   slug?: string | null;
   slugLock?: boolean | null;
@@ -2188,6 +2197,9 @@ export interface MediaSelect<T extends boolean = true> {
 export interface CategoriesSelect<T extends boolean = true> {
   title?: T;
   description?: T;
+  heroImage?: T;
+  featuredCategory?: T;
+  StudioCategory?: T;
   products?: T;
   slug?: T;
   slugLock?: T;

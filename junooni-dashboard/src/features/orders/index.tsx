@@ -2045,6 +2045,10 @@ interface VendorOrder {
   vendor_items: VendorOrderItem[]
   
   payment_status: string
+  vendor_payment_status: string
+  payment_collections?: any[] // ✅ Added payment_collections for payment method detection
+  vendor_payment_details?: any // ✅ Added vendor_payment_details for additional payment info
+  // payment_collection?: any // ✅ REMOVED: Deprecated in favor of payment_collections
   fulfillment_status: string
   currency_code: string
   
@@ -2150,25 +2154,100 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 // Payment badge component with icons
-const PaymentBadge = ({ status }: { status: string }) => {
+const PaymentBadge = ({ status, paymentCollections, vendorPaymentDetails }: { 
+  status: string
+  paymentCollections?: any[]
+  vendorPaymentDetails?: any
+}) => {
   const normalizedStatus = status.toLowerCase();
   
+  // ✅ Helper function to detect if payment is COD/Manual
+  const isCODPayment = () => {
+    // Check payment_collections array
+    if (paymentCollections && Array.isArray(paymentCollections) && paymentCollections.length > 0) {
+      const paymentCollection = paymentCollections[0];
+      
+      // ✅ CRITICAL: Check payments array for provider_id
+      if (paymentCollection.payments && Array.isArray(paymentCollection.payments) && paymentCollection.payments.length > 0) {
+        const payment = paymentCollection.payments[0];
+        const providerId = payment.provider_id?.toLowerCase() || '';
+        
+        // ✅ COD Detection Logic:
+        // 1. Check if provider is system_default (COD)
+        if (providerId.includes('system_default') || providerId.includes('pp_system')) {
+          //console.log("✅ COD Payment Detected - Provider:", providerId);
+          return true;
+        }
+        
+        // 2. Check if provider explicitly mentions manual/cod/cash
+        if (providerId.includes('manual') || providerId.includes('cod') || providerId.includes('cash')) {
+          //console.log("✅ COD Payment Detected - Provider:", providerId);
+          return true;
+        }
+        
+        // 3. Check if it's Razorpay
+        if (providerId.includes('razorpay')) {
+          //console.log("✅ Razorpay Payment Detected - Provider:", providerId);
+          return false;
+        }
+        
+        // 4. Additional check: If payment is authorized but not captured (typical for COD)
+        if (paymentCollection.status === 'authorized' && 
+            payment.captured_at === null && 
+            paymentCollection.captured_amount === 0) {
+          //console.log("✅ COD Payment Detected - Authorized but not captured");
+          return true;
+        }
+        
+        //console.log("⚠️ Unknown provider:", providerId);
+      }
+      
+      // Fallback: Check payment_providers array
+      if (paymentCollection.payment_providers && Array.isArray(paymentCollection.payment_providers) && paymentCollection.payment_providers.length > 0) {
+        const provider = paymentCollection.payment_providers[0];
+        const providerType = provider?.id?.toLowerCase() || '';
+        
+        if (providerType.includes('manual') || providerType.includes('cod') || providerType.includes('cash') || providerType.includes('system_default')) {
+          //console.log("✅ COD Payment Detected via payment_providers");
+          return true;
+        }
+      }
+    }
+    
+    //console.log("❌ Not COD - defaulting to Razorpay");
+    return false;
+  };
+  
   const getStatusProps = (status: string) => {
+    const isCOD = isCODPayment();
+    
     switch (status) {
       case "captured":
       case "paid":
-        return { 
-          variant: "outline" as const, 
-          className: "text-green-700 bg-green-50 border-green-200 font-medium",
-          icon: <CreditCard className="w-3 h-3 mr-1" />
-        };
+        // ✅ Check if it's COD or Razorpay
+        if (isCOD) {
+          return { 
+            variant: "outline" as const, 
+            className: "text-orange-700 bg-orange-50 border-orange-200 font-medium",
+            icon: <Package className="w-3 h-3 mr-1" />,
+            text: "COD"
+          };
+        } else {
+          return { 
+            variant: "outline" as const, 
+            className: "text-green-700 bg-green-50 border-green-200 font-medium",
+            icon: <CreditCard className="w-3 h-3 mr-1" />,
+            text: "Paid"
+          };
+        }
       case "awaiting":
       case "pending":
       case "requires_action":
         return { 
           variant: "outline" as const, 
           className: "text-amber-700 bg-amber-50 border-amber-200 font-medium",
-          icon: <Clock className="w-3 h-3 mr-1" />
+          icon: <Clock className="w-3 h-3 mr-1" />,
+          text: status === "requires_action" ? "Action Required" : status.charAt(0).toUpperCase() + status.slice(1)
         };
       case "failed":
       case "canceled":
@@ -2176,53 +2255,44 @@ const PaymentBadge = ({ status }: { status: string }) => {
         return { 
           variant: "outline" as const, 
           className: "text-red-700 bg-red-50 border-red-200 font-medium",
-          icon: <AlertTriangle className="w-3 h-3 mr-1" />
+          icon: <AlertTriangle className="w-3 h-3 mr-1" />,
+          text: status === "not_paid" ? "Unpaid" : status.charAt(0).toUpperCase() + status.slice(1)
         };
       case "refunded":
         return { 
           variant: "outline" as const, 
           className: "text-blue-700 bg-blue-50 border-blue-200 font-medium",
-          icon: <RefreshCw className="w-3 h-3 mr-1" />
+          icon: <RefreshCw className="w-3 h-3 mr-1" />,
+          text: "Refunded"
         };
       default:
         return { 
           variant: "outline" as const, 
           className: "text-gray-700 bg-gray-50 border-gray-200 font-medium",
-          icon: null
+          icon: null,
+          text: status.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
         };
     }
   };
 
-  const { variant, className, icon } = getStatusProps(normalizedStatus);
-
-  // Format payment status text for display
-  const formatPaymentStatus = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "captured":
-        return "Paid";
-      case "not_paid":
-        return "Unpaid";
-      case "requires_action":
-        return "Action Required";
-      default:
-        return status.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
-    }
-  };
+  const { variant, className, icon, text } = getStatusProps(normalizedStatus);
 
   return (
     <Badge variant={variant} className={className}>
       {icon}
-      {formatPaymentStatus(status)}
+      {text}
     </Badge>
   );
 };
+
 
 // Format price based on currency
 const formatPrice = (amount: number, currencyCode: string = "INR") => {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: currencyCode,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 2,  // ✅ Show 2 decimal places
+    minimumFractionDigits: 2   // ✅ Always show 2 decimals
   }).format(amount);
 };
 
@@ -2486,6 +2556,29 @@ export default function OrdersPage() {
         
         // Handle different response formats
         const ordersArray = data.orders || data.data || (Array.isArray(data) ? data : []);
+
+        // ✅ DEBUG: Log payment information from first order
+        // ✅ DEBUG: Log payment information from first order
+        if (ordersArray.length > 0) {
+          console.log("Sample Order Payment Info:", {
+            payment_status: ordersArray[0].payment_status,
+            payment_collections: ordersArray[0].payment_collections,
+            vendor_payment_details: ordersArray[0].vendor_payment_details,
+          });
+          
+          // Log payment collections details with ALL properties
+          if (ordersArray[0].payment_collections && ordersArray[0].payment_collections.length > 0) {
+            console.log("Full Payment Collection Object:", JSON.stringify(ordersArray[0].payment_collections[0], null, 2));
+          }
+          
+          // Also check if there's payment info elsewhere in the order
+          console.log("Checking for payment info in other fields:", {
+            payments: ordersArray[0].payments,
+            payment_session: ordersArray[0].payment_session,
+            payment_sessions: ordersArray[0].payment_sessions,
+            payment: ordersArray[0].payment,
+          });
+        }
         
         if (!Array.isArray(ordersArray)) {
           setError("Invalid orders data format");
@@ -2587,41 +2680,45 @@ export default function OrdersPage() {
             });
             
             const transformedOrder: VendorOrder = {
-              id: order.id || `order_${index}`,
-              display_id: display_id,
-              customer: customer,
-              created_at: created_at,
-              
-              // ✅ Use vendor-specific totals with safe fallbacks
-              vendor_total: safeNumber(order.vendor_total || order.vendor_payment_amount),
-              vendor_subtotal: safeNumber(order.vendor_subtotal),
-              vendor_shipping_total: safeNumber(order.vendor_shipping_total),
-              vendor_tax_total: safeNumber(order.vendor_tax_total),
-              
-              vendor_items: vendor_items,
-              
-              payment_status: order.payment_status || "pending",
-              fulfillment_status: order.fulfillment_status || "not_fulfilled",
-              currency_code: "INR",
-              
-              // Vendor information
-              vendor_id: order.vendor_id || "",
-              vendor_handle: order.vendor_handle || "unknown",
-              vendor_payment_amount: safeNumber(order.vendor_payment_amount || order.vendor_total),
-              
-              // Additional fields
-              shipping_address: order.shipping_address,
-              billing_address: order.billing_address,
-              is_vendor_filtered: order.is_vendor_filtered || true,
-              
-              // Claims and returns
-              claims: order.claims || [],
-              returns: order.returns || [],
-              claim_items: order.claim_items || [],
-              return_items: order.return_items || [],
-              has_claims: order.has_claims || false,
-              has_returns: order.has_returns || false
-            };
+            id: order.id || `order_${index}`,
+            display_id: display_id,
+            customer: customer,
+            created_at: created_at,
+            
+            // ✅ Use vendor-specific totals with safe fallbacks
+            vendor_total: safeNumber(order.vendor_total || order.vendor_payment_amount),
+            vendor_subtotal: safeNumber(order.vendor_subtotal),
+            vendor_shipping_total: safeNumber(order.vendor_shipping_total),
+            vendor_tax_total: safeNumber(order.vendor_tax_total),
+            
+            vendor_items: vendor_items,
+            
+            payment_status: order.payment_status || "pending",
+            fulfillment_status: order.fulfillment_status || "not_fulfilled",
+            currency_code: "INR",
+            
+            // Vendor information
+            vendor_id: order.vendor_id || "",
+            vendor_handle: order.vendor_handle || "unknown",
+            vendor_payment_amount: safeNumber(order.vendor_payment_amount || order.vendor_total),
+            
+            // ✅ CRITICAL: Add these lines if they're missing
+            payment_collections: order.payment_collections || [],
+            vendor_payment_details: order.vendor_payment_details || {},
+            
+            // Additional fields
+            shipping_address: order.shipping_address,
+            billing_address: order.billing_address,
+            is_vendor_filtered: order.is_vendor_filtered || true,
+            
+            // Claims and returns
+            claims: order.claims || [],
+            returns: order.returns || [],
+            claim_items: order.claim_items || [],
+            return_items: order.return_items || [],
+            has_claims: order.has_claims || false,
+            has_returns: order.has_returns || false
+          };
             
             return transformedOrder;
             
@@ -3534,7 +3631,11 @@ useEffect(() => {
                               <StatusBadge status={order.fulfillment_status} />
                             </TableCell>
                             <TableCell className="text-center">
-                              <PaymentBadge status={order.payment_status} />
+                              <PaymentBadge 
+                                status={order.payment_status} 
+                                paymentCollections={order.payment_collections}
+                                vendorPaymentDetails={order.vendor_payment_details}
+                              />
                             </TableCell>
                             <TableCell>
                               <DropdownMenu>

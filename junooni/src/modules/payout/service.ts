@@ -429,17 +429,17 @@ async calculateEarningsFromOrder(
   let taxAmount = 0
 
   // Helper to round to 2 decimal places
-  const round2 = (num: number) => Math.round(num * 100) / 100
+  //const round2 = (num: number) => Math.round(num * 100) / 100
 
   // Razorpay fee: 2% + 18% GST on fee = 2.36% of gross amount
   const RAZORPAY_FEE_RATE = 0.0236
-  paymentProcessingFee = round2(orderTotal * RAZORPAY_FEE_RATE)
+  paymentProcessingFee = orderTotal * RAZORPAY_FEE_RATE
 
   switch (fulfillmentType) {
     case "creator_fulfillment":
       // Creator Fulfillment: ₹700 → Razorpay ₹16.52 → ₹683.48 → 90% = ₹615.13
       const afterGatewayCreator = orderTotal - paymentProcessingFee
-      vendorShare = round2(afterGatewayCreator * 0.90)
+      vendorShare = afterGatewayCreator * 0.90
       commissionRate = 90
       
       // GST not separately extracted for creator fulfillment
@@ -455,17 +455,17 @@ async calculateEarningsFromOrder(
       }
 
       // ✅ FIX: Calculate total cost by multiplying unit cost by quantity
-      const totalCostPrice = round2(costPrice * quantity)
+      const totalCostPrice = costPrice * quantity
       
       console.log(`🧮 Cost Calculation: Unit Cost = ₹${costPrice}, Quantity = ${quantity}, Total Cost = ₹${totalCostPrice}`)
 
       // ✅ FIX: Use actual tax from order item, or fallback to calculated GST
       if (taxTotal !== undefined && taxTotal !== null && taxTotal > 0) {
-        taxAmount = round2(taxTotal)
+        taxAmount = taxTotal
         console.log(`✅ Using actual tax from order: ₹${taxAmount}`)
       } else {
         // Fallback: Calculate GST (5% for apparel < ₹1000)
-        taxAmount = round2(orderTotal * 5 / 105)
+        taxAmount = orderTotal * 5 / 105
         console.log(`⚠️ No tax provided, calculated fallback GST: ₹${taxAmount}`)
       }
       
@@ -478,18 +478,18 @@ async calculateEarningsFromOrder(
       if (totalCostPrice > netAfterGateway) {
         throw new MedusaError(
           MedusaError.Types.INVALID_DATA,
-          `Total cost price (₹${totalCostPrice} = ₹${costPrice} × ${quantity}) cannot exceed net amount after fees (₹${round2(netAfterGateway)})`
+          `Total cost price (₹${totalCostPrice} = ₹${costPrice} × ${quantity}) cannot exceed net amount after fees (₹${netAfterGateway})`
         )
       }
       
       // Step 3: Creator profit = Net after gateway - Total Cost price
-      vendorShare = round2(netAfterGateway - totalCostPrice)
+      vendorShare = netAfterGateway - totalCostPrice
       
-      console.log(`💰 Vendor Share Calculation: Net After Gateway = ₹${round2(netAfterGateway)}, Total Cost = ₹${totalCostPrice}, Vendor Share = ₹${vendorShare}`)
+      console.log(`💰 Vendor Share Calculation: Net After Gateway = ₹${netAfterGateway}, Total Cost = ₹${totalCostPrice}, Vendor Share = ₹${vendorShare}`)
       
       // Calculate commission rate for reporting purposes
       commissionRate = orderTotal > 0 
-        ? Math.round((vendorShare / orderTotal) * 100) 
+        ? (vendorShare / orderTotal) * 100
         : 0
       break
 
@@ -502,10 +502,10 @@ async calculateEarningsFromOrder(
 
   // Calculate TDS (1% of vendor share/profit)
   const tdsPercentage = 1
-  const tdsAmount = round2(vendorShare * 0.01)
+  const tdsAmount = vendorShare * 0.01
   
   // Net amount = Vendor share - TDS
-  const netAmount = round2(vendorShare - tdsAmount)
+  const netAmount = vendorShare - tdsAmount
 
   return {
     grossAmount: orderTotal,           // Total amount customer paid

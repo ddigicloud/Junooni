@@ -206,7 +206,8 @@ const formatPrice = (amount: number, currencyCode: string = "INR") => {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: currencyCode,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 2,  // ✅ Show 2 decimal places
+    minimumFractionDigits: 2   // ✅ Always show 2 decimals
   }).format(amount);
 };
 
@@ -652,6 +653,17 @@ useEffect(() => {
             const transactionsArray = detailsData.payout_details?.transactions || [];
             payoutDetailsData = transactionsArray;
             console.log("🔍 [DEBUG] Extracted transactions:", payoutDetailsData.length);
+            // ✅ ADD THIS CONSOLE LOG HERE 👇
+            payoutDetailsData.forEach((transaction: any, index: number) => {
+              console.log(`💰 [TRANSACTION ${index}]`, {
+                id: transaction.id,
+                type: transaction.type,
+                amount: transaction.amount,
+                amountType: typeof transaction.amount,
+                rawAmount: JSON.stringify(transaction.amount)
+              });
+            });
+
           }
         } catch (detailsError) {
           console.warn("⚠️ [DEBUG] Could not fetch payout details:", detailsError);

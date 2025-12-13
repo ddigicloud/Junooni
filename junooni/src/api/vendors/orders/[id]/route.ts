@@ -1955,6 +1955,23 @@ export const GET = async (
           "items.variant.metadata",
           "shipping_methods",
           "payment_collections",
+          "payment_collections",
+          "payment_collections.*",
+          "payment_collections.id",
+          "payment_collections.status",
+          "payment_collections.amount",
+          "payment_collections.authorized_amount",
+          "payment_collections.captured_amount",
+          "payment_collections.refunded_amount",
+          "payment_collections.payment_providers",
+          "payment_collections.payment_providers.*",
+          "payment_collections.payments",
+          "payment_collections.payments.*",
+          "payment_collections.payments.id",
+          "payment_collections.payments.amount",
+          "payment_collections.payments.provider_id",
+          "payment_collections.payments.captured_at",
+          "payment_collections.payments.captured_amount",
           "fulfillments",
           "fulfillments.id",
           "fulfillments.status",
@@ -1991,6 +2008,71 @@ export const GET = async (
 
     const order = orders[0];
     //console.log(`📄 Found order ${orderId}`);
+    // ✅ NEW: Enrich payment collections with full details
+if (order.payment_collections && order.payment_collections.length > 0) {
+  console.log(`🔄 Checking payment collections for enrichment...`);
+  console.log(`   Payment collections count: ${order.payment_collections.length}`);
+  
+  // Check if payments array is missing or empty
+  const needsEnrichment = order.payment_collections.some(pc => {
+    const hasPayments = pc.payments && Array.isArray(pc.payments) && pc.payments.length > 0;
+    console.log(`   Payment collection ${pc.id}: has payments = ${hasPayments}`);
+    return !hasPayments;
+  });
+  
+  if (needsEnrichment) {
+    console.log(`🔄 Enriching payment collections...`);
+    
+    const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
+    const paymentCollectionIds = order.payment_collections.map(pc => pc.id);
+    
+    try {
+      const { data: enrichedPaymentCollections } = await query.graph({
+        entity: "payment_collection",
+        fields: [
+          "id",
+          "status",
+          "amount",
+          "authorized_amount",
+          "captured_amount",
+          "refunded_amount",
+          "payment_providers",
+          "payment_providers.*",
+          "payments",
+          "payments.*",
+          "payments.id",
+          "payments.amount",
+          "payments.provider_id",
+          "payments.captured_at",
+          "payments.captured_amount"
+        ],
+        filters: {
+          id: paymentCollectionIds
+        }
+      });
+      
+      if (enrichedPaymentCollections && enrichedPaymentCollections.length > 0) {
+        order.payment_collections = enrichedPaymentCollections;
+        console.log(`✅ Payment collections enriched with provider details`);
+        console.log(`   First payment collection:`, {
+          id: enrichedPaymentCollections[0].id,
+          status: enrichedPaymentCollections[0].status,
+          payments_count: enrichedPaymentCollections[0].payments?.length || 0,
+          first_payment_provider: enrichedPaymentCollections[0].payments?.[0]?.provider_id
+        });
+      } else {
+        console.log(`⚠️ Enrichment query returned empty`);
+      }
+    } catch (error) {
+      console.error(`❌ Error enriching payment collections:`, error.message);
+    }
+  } else {
+    console.log(`✅ Payment collections already have complete data`);
+    console.log(`   First payment provider_id:`, order.payment_collections[0].payments?.[0]?.provider_id);
+  }
+} else {
+  console.log(`⚠️ No payment collections found on order`);
+}
 
     // ✅ Verify vendor has access to this order
     const vendorHasAccess = order.metadata?.vendor_orders?.some(

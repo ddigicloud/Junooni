@@ -62,6 +62,34 @@ export const Categories: CollectionConfig = {
       editor: lexicalEditor(),
     },
     {
+              name: 'heroImage',
+              type: 'upload',
+              relationTo: 'media',
+               
+            },
+     {
+                      name: 'featuredCategory',
+                      type: 'checkbox',
+                      //dbName: 'not_mockup_compatible',
+                      defaultValue: false,
+                      admin: {
+        position: 'sidebar',
+        description: 'Mark this category as featured to display it on the homepage of catalog',
+       
+      },
+                    },    
+                    {
+                      name: 'StudioCategory',
+                      type: 'checkbox',
+                      //dbName: 'not_mockup_compatible',
+                      defaultValue: true,
+                      admin: {
+        position: 'sidebar',
+        description: 'Mark this category to show on the studio navigation',
+       
+      },
+                    },     
+    {
       name: 'products',
       type: 'relationship',
       relationTo: 'blank-products',

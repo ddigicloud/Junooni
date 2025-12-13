@@ -739,12 +739,12 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
               
               {/* Enhanced Thumbnail navigation */}
               {product.displayImages && product.displayImages.length > 1 && (
-                <div className="flex items-center justify-center gap-3 py-4 overflow-x-auto md:hidden hide-scrollbar">
+                <div className="flex items-center justify-start gap-3 py-4 overflow-x-auto md:hidden hide-scrollbar">
                   {product.displayImages.map((img: DisplayImage, index: number) => (
                     <div 
                       key={`thumb-${img.id}`}
                       className={`
-                        cursor-pointer bg-white rounded-lg overflow-hidden flex-shrink-0 transition-all duration-200 shadow-md
+                        cursor-pointer bg-white rounded-lg overflow-hidden ml-2 md:ml-0 flex-shrink-0 transition-all duration-200 shadow-md
                         ${selectedImage === index ? 'ring-2 ring-[#e65100] scale-110' : 'hover:scale-105'}
                       `}
                       onClick={() => setSelectedImage(index)}

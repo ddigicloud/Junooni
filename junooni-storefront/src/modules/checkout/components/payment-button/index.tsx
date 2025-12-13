@@ -411,55 +411,6 @@ import React, { useState, useEffect } from "react"
 import ErrorMessage from "../error-message"
 import junoonilogo from "@assets/JUNOONI_logo.ico"
 
-// Qikink Configuration
-const QIKINK_CONFIG = {
-  apiUrl: `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/qikink`
-}
-
-/* ============================
-   Simplified Qikink Integration
-   ============================ */
-
-// Function to send cart to server-side Qikink handler
-const sendOrderToQikink = async (cart: HttpTypes.StoreCart, orderId: string) => {
-  try {
-    console.log("📦 === QIKINK INTEGRATION START (CLIENT) ===")
-    console.log("📦 Original Order ID:", orderId)
-    console.log("📦 Sending cart to server...")
-
-    const response = await fetch(QIKINK_CONFIG.apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
-      },
-      body: JSON.stringify(cart)
-    })
-
-    const result = await response.json()
-    console.log("📦 Server Response Status:", response.status)
-    console.log("📦 Server Response:", result)
-
-    if (!response.ok) {
-      console.error("❌ Qikink Server Error:", result)
-      throw new Error(`Qikink order creation failed: ${result.error || response.statusText}`)
-    }
-
-    console.log("✅ ✅ ✅ QIKINK ORDER CREATED SUCCESSFULLY ✅ ✅ ✅")
-    console.log("📦 === QIKINK INTEGRATION END ===")
-    return result
-  } catch (error) {
-    console.error("❌ ❌ ❌ QIKINK ERROR:", error)
-    console.error("Error details:", error instanceof Error ? error.message : error)
-    console.log("📦 === QIKINK INTEGRATION END (WITH ERROR) ===")
-    throw error
-  }
-}
-
-/* ============================
-   Razorpay / Stripe / Manual Buttons
-   ============================ */
-
 const loadRazorpayScript = () =>
   new Promise((resolve) => {
     const script = document.createElement("script")
@@ -546,9 +497,6 @@ const StripePaymentButton = ({
 
   const onPaymentCompleted = async () => {
     try {
-      const orderId = cart?.id || `order_${Date.now()}`
-      console.log("📦 Stripe: Sending to Qikink with ID:", orderId)
-      await sendOrderToQikink(cart, orderId)
       await placeOrder()
     } catch (err: any) {
       setErrorMessage(err.message)
@@ -657,9 +605,6 @@ const ManualTestPaymentButton = ({
 
   const onPaymentCompleted = async () => {
     try {
-      const orderId = cart?.id || `order_${Date.now()}`
-      console.log("📦 Manual: Sending to Qikink with ID:", orderId)
-      await sendOrderToQikink(cart, orderId)
       await placeOrder()
     } catch (err: any) {
       setErrorMessage(err.message)
@@ -780,12 +725,6 @@ const RazorpayPaymentButton = ({
           console.log("🔐 Authorizing payment...")
           await authorizePayment(response)
           console.log("✅ Payment authorized")
-          
-          console.log("📦 Sending to Qikink BEFORE order placement...")
-          const orderId = cart?.id || response.razorpay_order_id || `order_${Date.now()}`
-          console.log("🚀 Using order/cart ID:", orderId)
-          
-          await sendOrderToQikink(cart, orderId)
           
           console.log("📦 Placing order (will redirect)...")
           await placeOrder()

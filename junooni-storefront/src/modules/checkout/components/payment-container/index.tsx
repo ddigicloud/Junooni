@@ -169,7 +169,6 @@
 import { Radio as RadioGroupOption } from "@headlessui/react"
 import { Text, clx } from "@medusajs/ui"
 import React, { useContext, useMemo, useEffect, useState, type JSX } from "react"
-
 import Radio from "@modules/common/components/radio"
 import googlepay from "@assets/google-pay.png"
 import phonepe from "@assets/phonepe.png"
@@ -192,28 +191,44 @@ type PaymentContainerProps = {
 
 // Helper function to get display title without provider branding
 const getDisplayTitle = (paymentProviderId: string, paymentInfoMap: Record<string, { title: string; icon: JSX.Element }>) => {
+  // DEBUG: Log the inputs
+  // console.log('🔍 getDisplayTitle DEBUG:', {
+  //   paymentProviderId,
+  //   customTitle: paymentInfoMap[paymentProviderId]?.title,
+  //   isManualProvider: isManual(paymentProviderId),
+  //   isRazorpayProvider: isRazorpay(paymentProviderId),
+  //   includesStripe: paymentProviderId.includes('stripe')
+  // })
+  
+  // Check if this is a manual payment provider
+  if (isManual(paymentProviderId)) {
+    //console.log('✅ Manual payment detected, returning "Cash on Delivery"')
+    return 'Cash on Delivery'
+  }
+  
+  // Check if this is a Razorpay provider
+  if (isRazorpay(paymentProviderId)) {
+    //console.log('✅ Razorpay detected, returning "Card / UPI / Netbanking"')
+    return 'Card / UPI / Netbanking'
+  }
+  
+  // Check if this is a Stripe provider
+  if (paymentProviderId.includes('stripe')) {
+    //console.log('✅ Stripe detected, returning "Credit or Debit Card"')
+    return 'Credit or Debit Card'
+  }
+  
   // Check if custom title is provided in paymentInfoMap
   const customTitle = paymentInfoMap[paymentProviderId]?.title
   
   // If custom title exists and is not a provider name, use it
-  if (customTitle && customTitle !== 'Razorpay' && customTitle !== 'Stripe') {
+  if (customTitle && customTitle !== 'Razorpay' && customTitle !== 'Stripe' && customTitle !== 'Manual') {
+    //console.log('✅ Using custom title:', customTitle)
     return customTitle
   }
   
-  // Otherwise, return generic title based on provider type
-  if (isRazorpay(paymentProviderId)) {
-    return 'Card / UPI / Netbanking'
-  }
-  
-  if (paymentProviderId.includes('stripe')) {
-    return 'Credit or Debit Card'
-  }
-  
-  if (isManual(paymentProviderId)) {
-    return 'Cash on Delivery'
-  }
-  
   // Default fallback
+  //console.log('⚠️ Using fallback: "Online Payment"')
   return 'Online Payment'
 }
 
@@ -227,6 +242,9 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
   const isDevelopment = process.env.NODE_ENV === "development"
   const isSelected = selectedPaymentOptionId === paymentProviderId
   const displayTitle = getDisplayTitle(paymentProviderId, paymentInfoMap)
+
+  // DEBUG: Log the final display title
+  //console.log('📝 Final displayTitle for', paymentProviderId, ':', displayTitle)
 
   return (
     <RadioGroupOption
@@ -268,9 +286,9 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
             {displayTitle}
           </Text>
           
-          {isManual(paymentProviderId) && isDevelopment && (
+          {/* {isManual(paymentProviderId) && isDevelopment && (
             <PaymentTest className="hidden small:block" />
-          )}
+          )} */}
         </div>
         
         {/* Payment Icon or Payment Method Icons */}
@@ -338,9 +356,9 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
         )}
       </div>
       
-      {isManual(paymentProviderId) && isDevelopment && (
+      {/* {isManual(paymentProviderId) && isDevelopment && (
         <PaymentTest className="small:hidden text-[10px]" />
-      )}
+      )} */}
       
       {children}
     </RadioGroupOption>

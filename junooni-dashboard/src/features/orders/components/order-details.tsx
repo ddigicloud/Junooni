@@ -532,6 +532,8 @@ interface VendorOrder {
   currency_code: string
   shipping_methods: ShippingMethod[]
   payment_collections: PaymentCollection[]
+
+   vendor_payment_details?: any
   
   // ✅ Vendor information
   vendor_id: string
@@ -1028,6 +1030,75 @@ const StatusBadge = ({ status }: { status: string }) => {
       {formatStatus(status)}
     </Badge>
   );
+};
+
+// ✅ NEW: Payment Status Badge component (separate from fulfillment StatusBadge)
+// ✅ NEW: Payment Status Badge component with DEBUG LOGGING
+// ✅ FIXED: Payment Status Badge component with correct data path
+// ✅ FIXED: Simple Payment Status Badge - checks provider_id only
+const PaymentStatusBadge = ({ status, paymentCollections, vendorPaymentDetails }: { 
+  status: string
+  paymentCollections?: any[]
+  vendorPaymentDetails?: any
+}) => {
+  
+  // ✅ Helper function to detect if payment is COD/Manual
+  const isCODPayment = () => {
+    // Check payment_collections array
+    if (paymentCollections && Array.isArray(paymentCollections) && paymentCollections.length > 0) {
+      const paymentCollection = paymentCollections[0];
+      
+      // Check payments array for provider_id
+      if (paymentCollection.payments && Array.isArray(paymentCollection.payments) && paymentCollection.payments.length > 0) {
+        const payment = paymentCollection.payments[0];
+        const providerId = payment.provider_id?.toLowerCase() || '';
+        
+        // Check for COD indicators
+        const hasSystemDefault = providerId.includes('system_default') || 
+                                 providerId.includes('pp_system');
+        const hasManualCodCash = providerId.includes('manual') || 
+                                 providerId.includes('cod') || 
+                                 providerId.includes('cash');
+        const hasRazorpay = providerId.includes('razorpay');
+        
+        if (hasSystemDefault || hasManualCodCash) {
+          return true;  // COD
+        }
+        
+        if (hasRazorpay) {
+          return false;  // Online payment
+        }
+        
+        // Check for authorized but not captured pattern
+        if (paymentCollection.status === 'authorized' && 
+            payment.captured_at === null && 
+            paymentCollection.captured_amount === 0) {
+          return true;  // COD
+        }
+      }
+    }
+    
+    return false;  // Default to online payment
+  };
+  
+  const isCOD = isCODPayment();
+  
+  // ✅ SIMPLE LOGIC: Check provider_id only
+  if (isCOD) {
+    return (
+      <Badge variant="outline" className="text-orange-700 bg-orange-50 border-orange-200 font-medium">
+        <Package className="w-3 h-3 mr-1" />
+        COD
+      </Badge>
+    );
+  } else {
+    return (
+      <Badge variant="outline" className="text-green-700 bg-green-50 border-green-200 font-medium">
+        <CreditCard className="w-3 h-3 mr-1" />
+        Paid
+      </Badge>
+    );
+  }
 };
 
 // ✅ Cost Breakdown Modal Component
@@ -1906,6 +1977,19 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
       
       const data = await response.json()
     
+      // ✅ DEBUG: Check what the API returns
+      // console.log('🔍 ========================================');
+      // console.log('🔍 FRONTEND API RESPONSE DEBUG');
+      // console.log('🔍 ========================================');
+      // console.log('Raw API response:', data);
+      // console.log('data.order exists:', !!data.order);
+      // console.log('data.order.payment_collections:', data.order?.payment_collections);
+      // console.log('payment_collections length:', data.order?.payment_collections?.length || 0);
+
+      if (data.order?.payment_collections && data.order.payment_collections.length > 0) {
+        //console.log('First payment collection in raw data:', data.order.payment_collections[0]);
+      }
+      //console.log('🔍 ========================================\n');
       
       if (!data.order) {
         throw new Error(`No order data returned for order ${id}`)
@@ -1913,6 +1997,12 @@ const { creatorItems, junooniFulfillmentItems } = order ? categorizeItemsByFulfi
       
       // ✅ Transform the vendor-filtered order data with claims/returns
       const transformedOrder = transformVendorOrderDataWithClaims(data.order)
+      // ✅ DEBUG: Check transformed order
+
+      if (transformedOrder.payment_collections && transformedOrder.payment_collections.length > 0) {
+        //console.log('First payment collection after transform:', transformedOrder.payment_collections[0]);
+      }
+      //console.log('🔍 ========================================\n');
       setOrder(transformedOrder)
       
     } catch (err: any) {
@@ -1967,6 +2057,11 @@ useEffect(() => {
 }, [order]);
 
   const transformVendorOrderDataWithClaims = (orderData: any): VendorOrder => {
+
+      if (orderData.payment_collections && orderData.payment_collections.length > 0) {
+      //console.log('First payment collection in orderData:', orderData.payment_collections[0]);
+    }
+    //console.log('🔍 ========================================\n');
     
     // Use vendor-specific totals from filtered data
     const vendorTotal = orderData.vendor_total || 0
@@ -2192,6 +2287,8 @@ if (itemFulfillment) {
       tax_lines: item.tax_lines || [],
       fulfillment_id: fulfillmentId,
       fulfillment_status: fulfillmentStatus,
+      payment_collections: orderData.payment_collections || [],
+      vendor_payment_details: orderData.vendor_payment_details || {},  // ✅ ADD THIS
       packed_at: packedAt,
       shipped_at: shippedAt,
       can_ship: fulfillmentStatus === 'fulfilled' && !shippedAt,
@@ -2248,7 +2345,7 @@ if (itemFulfillment) {
     fulfillment_status: orderData.fulfillment_status || "not_fulfilled",
     currency_code: "INR",
     shipping_methods: [],
-    payment_collections: [],
+    payment_collections: orderData.payment_collections || [],  // ✅ ADD THIS LINE
     
     fulfillments: orderData.fulfillments || [],
     vendor_id: orderData.vendor_id || "",
@@ -2512,7 +2609,7 @@ const handleMarkAsShipped = async () => {
       ]
     };
 
-    console.log('📦 Sending shipment data:', updatePayload);
+    //console.log('📦 Sending shipment data:', updatePayload);
     
     const updateResponse = await fetch(
       `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders/${order.original_order_id}/fulfillments/${selectedShipmentItem.fulfillment_id}/shipment`, 
@@ -3107,7 +3204,12 @@ const generateInvoice = () => {
                 </div>
                 <div>
                   <span className="mr-2 text-sm text-gray-500">Payment:</span>
-                  <StatusBadge status={order.payment_status} />
+                  {/* <StatusBadge status={order.payment_status} /> */}
+                  <PaymentStatusBadge 
+                    status={order.payment_status} 
+                    paymentCollections={order.payment_collections}
+                    vendorPaymentDetails={order.vendor_payment_details}
+                  />
                 </div>
               </div>
               {/* <div className="text-lg font-bold" style={{ color: BRAND.primary }}>
@@ -4404,7 +4506,12 @@ const generateInvoice = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Payment Status</span>
-                    <StatusBadge status={order.payment_status} />
+                    {/* <StatusBadge status={order.payment_status} /> */}
+                    <PaymentStatusBadge 
+                      status={order.payment_status} 
+                      paymentCollections={order.payment_collections}
+                      vendorPaymentDetails={order.vendor_payment_details}
+                    />
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Your Amount</span>

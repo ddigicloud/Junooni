@@ -17,15 +17,12 @@ const Payout = model.define("payout", {
   processor_response: model.text().nullable(), // JSON response from payment processor
   
   // Financial details for earnings
-  payout_total: model.number().nullable(),
-
-  current_balance: model.number().default(0), // Available for payout
-  pending_balance: model.number().default(0), // Earnings not yet available for payout
-  
-  // Lifetime totals
-  total_earned: model.number().default(0),
-  total_paid: model.number().default(0),
-  total_pending_payout: model.number().default(0),
+  payout_total: model.bigNumber().default(0).nullable(),
+  current_balance: model.bigNumber().default(0).nullable(),
+  pending_balance: model.bigNumber().default(0).nullable(),
+  total_earned: model.bigNumber().default(0).nullable(),
+  total_paid: model.bigNumber().default(0).nullable(),
+  total_pending_payout: model.bigNumber().default(0).nullable(),
   
   // Statistics
   total_orders: model.number().default(0),
@@ -33,7 +30,7 @@ const Payout = model.define("payout", {
   
   // Payout settings
   minimum_payout_amount: model.number().default(1000), 
-  payout_schedule: model.enum(["weekly", "biweekly", "monthly"]).default("weekly"),
+  payout_schedule: model.enum(["weekly", "biweekly", "monthly"]).default("biweekly"),
   //preferred_payment_method: model.enum(["bank_transfer", "paypal", "razorpay"]).default("bank_transfer"),
   
   // Timestamps

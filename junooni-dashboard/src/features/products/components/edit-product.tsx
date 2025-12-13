@@ -4160,23 +4160,25 @@ const handleApiError = (apiError: any) => {
                       </Card>
                    
                       {/* Variants Table - MODIFIED to remove stock column */}
-                      <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr className="border-b border-gray-200 bg-gray-50">
-                              {bulkEditMode && (
-                                <th className="p-3 text-left border-r border-gray-200">
-                                  <span className="sr-only">Select</span>
-                                </th>
-                              )}
-                              <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Variant</th>
-                              <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">SKU</th>
-                              <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Cost Price</th>
-                              <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Price</th>
-                              <th className="p-3 font-medium text-left text-gray-700 border-r border-gray-200">Profit</th>
-                              <th className="p-3 font-medium text-center text-gray-700">Actions</th>
-                            </tr>
-                          </thead>
+                      {/* Variants Table - MOBILE RESPONSIVE */}
+                      <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm -mx-4 sm:mx-0">
+                        <div className="inline-block min-w-full align-middle">
+                          <table className="min-w-full border-collapse">
+                            <thead>
+                              <tr className="border-b border-gray-200 bg-gray-50">
+                                {bulkEditMode && (
+                                  <th className="p-2 sm:p-3 text-left border-r border-gray-200 w-10">
+                                    <span className="sr-only">Select</span>
+                                  </th>
+                                )}
+                                <th className="p-2 sm:p-3 font-medium text-left text-gray-700 border-r border-gray-200 text-xs sm:text-sm min-w-[140px]">Variant</th>
+                                <th className="p-2 sm:p-3 font-medium text-left text-gray-700 border-r border-gray-200 text-xs sm:text-sm min-w-[100px]">SKU</th>
+                                <th className="p-2 sm:p-3 font-medium text-left text-gray-700 border-r border-gray-200 text-xs sm:text-sm min-w-[110px]">Cost Price</th>
+                                <th className="p-2 sm:p-3 font-medium text-left text-gray-700 border-r border-gray-200 text-xs sm:text-sm min-w-[110px]">Price</th>
+                                <th className="p-2 sm:p-3 font-medium text-left text-gray-700 border-r border-gray-200 text-xs sm:text-sm min-w-[100px]">Profit</th>
+                                <th className="p-2 sm:p-3 font-medium text-center text-gray-700 text-xs sm:text-sm min-w-[80px]">Actions</th>
+                              </tr>
+                            </thead>
                           <tbody>
                             {variantFields.map((vf, index) => (
                               <tr 
@@ -4312,6 +4314,7 @@ const handleApiError = (apiError: any) => {
                             ))}
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     </div>
                   )}

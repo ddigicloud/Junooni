@@ -1352,10 +1352,10 @@ const calculateVendorTaxAndShipping = (order, vendorItems, vendorSubtotal) => {
   const vendorTaxTotal = vendorProductTax + vendorShippingTax;
   
   return {
-    vendorTaxTotal: Math.round(vendorTaxTotal * 100) / 100,
-    vendorShippingTotal: Math.round(vendorShippingAmount * 100) / 100,
-    vendorProductTax: Math.round(vendorProductTax * 100) / 100,
-    vendorShippingTax: Math.round(vendorShippingTax * 100) / 100
+    vendorTaxTotal: vendorTaxTotal,
+    vendorShippingTotal: vendorShippingAmount,
+    vendorProductTax: vendorProductTax,
+    vendorShippingTax: vendorShippingTax
   };
 };
 
@@ -1556,6 +1556,38 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
     returns,
     newReplacementItems
   };
+};
+
+const fetchPaymentCollectionDetails = async (paymentCollectionIds: string[], scope: any) => {
+  if (!paymentCollectionIds || paymentCollectionIds.length === 0) {
+    return [];
+  }
+  
+  try {
+    const query = scope.resolve(ContainerRegistrationKeys.QUERY);
+    
+    const { data: paymentCollections } = await query.graph({
+      entity: "payment_collection",
+      fields: [
+        "id",
+        "status",
+        "amount",
+        "captured_amount",
+        "refunded_amount",
+        "payment_providers.*",
+        "payments.*",
+        "payments.provider_id"
+      ],
+      filters: {
+        id: paymentCollectionIds
+      }
+    });
+    
+    return paymentCollections || [];
+  } catch (error) {
+    console.log("⚠️ Could not fetch payment collection details:", error);
+    return [];
+  }
 };
 
 // ✅ UPDATED: Calculate and store vendor payment status
@@ -1958,45 +1990,66 @@ const vendorId = vendorAdmins[0].vendor_id;
     //console.log(`📋 Found ${vendor.orders.length} linked orders for vendor`);
 
     // Get detailed order information
-    const { result: detailedOrders } = await getOrdersListWorkflow(req.scope).run({
-      input: {
-        fields: [
-          "id",
-          "display_id",
-          "metadata",
-          "total",
-          "subtotal", 
-          "shipping_total",
-          "tax_total",
-          "items.*",
-          "items.tax_lines",
-          "items.variant",
-          "items.variant.product",
-          "items.variant.metadata",
-          "items.variant.product.metadata",
-          "items.metadata",
-          "items.product_id",
-          "items.variant_id",
-          "items.return_requested_total",
-          "items.total",
-          "shipping_methods",
-          "shipping_methods.tax_total",
-          "payment_collections",
-          "fulfillments",
-          "fulfillments.items.*",
-          "fulfillments.labels.*",
-          "customer.*",
-          "shipping_address.*",
-          "billing_address.*",
-          "payment_status",
-        ],
-        variables: {
-          filters: {
-            id: vendor.orders.map((order) => order.id),
-          },
-        },
+const { result: detailedOrders } = await getOrdersListWorkflow(req.scope).run({
+  input: {
+    fields: [
+      "id",
+      "display_id",
+      "metadata",
+      "total",
+      "subtotal", 
+      "shipping_total",
+      "tax_total",
+      "items.*",
+      "items.tax_lines",
+      "items.variant",
+      "items.variant.product",
+      "items.variant.metadata",
+      "items.variant.product.metadata",
+      "items.metadata",
+      "items.product_id",
+      "items.variant_id",
+      "items.return_requested_total",
+      "items.total",
+      "shipping_methods",
+      "shipping_methods.tax_total",
+      "payment_collections",
+      "payment_collections.payment_providers.*",  // ✅ ADD THIS LINE
+      "payment_collections.payments.*",           // ✅ ADD THIS LINE
+      "fulfillments",
+      "fulfillments.items.*",
+      "fulfillments.labels.*",
+      "customer.*",
+      "shipping_address.*",
+      "billing_address.*",
+      "payment_status",
+    ],
+    variables: {
+      filters: {
+        id: vendor.orders.map((order) => order.id),
       },
-    });
+    },
+  },
+});
+
+//console.log(`📄 INDEX: Retrieved detailed data for ${detailedOrders.length} orders`);
+
+// ✅ ADD THIS ENTIRE SECTION HERE 👇👇👇
+// Enrich orders with complete payment collection data
+for (const order of detailedOrders) {
+  if (order.payment_collections && order.payment_collections.length > 0) {
+    const paymentCollectionIds = order.payment_collections.map(pc => pc.id);
+    const detailedPaymentCollections = await fetchPaymentCollectionDetails(paymentCollectionIds, req.scope);
+    
+    if (detailedPaymentCollections.length > 0) {
+      order.payment_collections = detailedPaymentCollections;
+      console.log(`💳 Enriched payment collections for order ${order.id}:`, {
+        payment_providers: detailedPaymentCollections[0]?.payment_providers,
+        payments: detailedPaymentCollections[0]?.payments
+      });
+    }
+  }
+}
 
     //console.log(`📄 INDEX: Retrieved detailed data for ${detailedOrders.length} orders`);
 
