@@ -140,7 +140,9 @@ async function getApparelsProducts() {
     //console.log('✅ Apparels products found:', products.length, 'total')
     
     // Return only the first 8 products
-    return products.slice(0, 8)
+    return products
+    .filter(product => product.status?.toLowerCase() !== 'draft')
+    .slice(0, 8)
     
   } catch (error) {
     //console.error('❌ Error fetching apparels products:', error)
@@ -180,7 +182,9 @@ async function getFeaturedBlankProducts() {
     //console.log('✅ Featured products found:', products.length, 'total')
     
     // Return only the first 6 products
-    return products.slice(0, 6)
+    return products
+  .filter(product => product.status?.toLowerCase() !== 'draft')
+  .slice(0, 6)
     
   } catch (error) {
     //console.error('❌ Error fetching featured products:', error)
@@ -220,7 +224,9 @@ async function getDrinkwareProducts() {
     //console.log('✅ Drinkware products found:', products.length, 'total')
     
     // Return only the first 8 products
-    return products.slice(0, 8)
+    return products
+    .filter(product => product.status?.toLowerCase() !== 'draft')
+    .slice(0, 8)
     
   } catch (error) {
     //console.error('❌ Error fetching drinkware products:', error)
@@ -690,7 +696,7 @@ export default async function LandingPage() {
               Start Shopping
             </Link>
             <a
-              href="https://www.studio.junooni.com"
+              href="https://studio.junooni.com"
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-3 text-base font-semibold text-white transition-all border-2 border-white shadow-lg sm:px-8 sm:py-4 sm:text-lg rounded-xl hover:bg-white/10 active:scale-95"
@@ -815,34 +821,34 @@ function StudioStyleProductCard({ product }: { product: any }) {
     
     if (statusLower === 'coming soon' || statusLower === 'coming_soon') {
       return {
-        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+        background: '#e65100',
         shadow: '0 4px 12px rgba(59, 130, 246, 0.4)'
       }
     }
     
     if (statusLower === 'draft') {
       return {
-        background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+       background: '#e65100',
         shadow: '0 4px 12px rgba(139, 92, 246, 0.4)'
       }
     }
     
     if (statusLower === 'discontinued') {
       return {
-        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        background: '#e65100',
         shadow: '0 4px 12px rgba(239, 68, 68, 0.4)'
       }
     }
     
     if (statusLower === 'out of stock' || statusLower === 'out_of_stock') {
       return {
-        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        background: '#e65100',
         shadow: '0 4px 12px rgba(245, 158, 11, 0.4)'
       }
     }
     
     return {
-      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+      background: '#e65100',
       shadow: '0 4px 12px rgba(16, 185, 129, 0.4)'
     }
   }
@@ -877,7 +883,7 @@ function StudioStyleProductCard({ product }: { product: any }) {
                   boxShadow: statusStyle.shadow
                 }}
               >
-                {status}
+                 {status.toLowerCase() === 'coming_soon' ? 'Coming Soon' : status}
               </div>
             </div>
           )}
@@ -889,8 +895,31 @@ function StudioStyleProductCard({ product }: { product: any }) {
           </h3>
 
           {product.printT && product.printT.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-2 sm:gap-2 sm:mb-3">
-              {product.printT.map((tech: any, index: number) => (
+          <div className="flex flex-wrap gap-1.5 mb-2 sm:gap-2 sm:mb-3">
+            {product.printT.map((tech: any, index: number) => {
+              // Get the technology name - check if it's a nested object or direct value
+              const techName = typeof tech === 'object' 
+                ? (tech.technologyName || tech.name || tech.title || tech)
+                : tech;
+              
+              // Format the technology name
+              const formatTechName = (name: string) => {
+                const upperName = String(name).toUpperCase();
+                
+                // Keep DTG and DTF in all caps
+                if (upperName === 'DTG' || upperName === 'DTF') {
+                  return upperName;
+                }
+                
+                // Capitalize first letter of each word
+                return String(name)
+                  .toLowerCase()
+                  .split(' ')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+              };
+              
+              return (
                 <span
                   key={tech.id || index}
                   className="px-2 py-0.5 text-xs font-medium rounded sm:py-1"
@@ -899,13 +928,12 @@ function StudioStyleProductCard({ product }: { product: any }) {
                     color: index === 0 ? '#E65100' : '#1976D2'
                   }}
                 >
-                  {tech.technologyName === 'dtf' ? 'Direct to Film' : 
-                   tech.technologyName === 'sublimation' ? 'Direct to Garment' : 
-                   tech.technologyName}
+                  {formatTechName(techName)}
                 </span>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
+        )}
 
           {colorOptions.length > 0 && (
             <div className="mb-2 sm:mb-3">

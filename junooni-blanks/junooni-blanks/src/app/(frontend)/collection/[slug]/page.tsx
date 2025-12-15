@@ -35,7 +35,7 @@ function CategoryProductCard({ product }: { product: any }) {
             <img
               src={imageUrl}
               alt={productName}
-              className="absolute inset-0 object-contain w-full h-full transition-transform duration-300 group-hover:scale-105"
+              className="absolute inset-0 object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-4xl font-bold" style={{ color: '#e65100' }}>

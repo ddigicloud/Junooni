@@ -78,9 +78,9 @@ export default async function CollectionsPage() {
             >
               {/* Image */}
               <div className="relative aspect-square bg-gradient-to-br from-orange-100 to-orange-200 dark:from-gray-700 dark:to-gray-600">
-                {category.image?.url ? (
+                {category.heroImage?.url ? (
                   <img
-                    src={category.image.url}
+                    src={category.heroImage.url}
                     alt={category.title}
                     className="object-cover w-full h-full"
                   />

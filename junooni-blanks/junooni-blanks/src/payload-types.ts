@@ -180,6 +180,10 @@ export interface Page {
               | ({
                   relationTo: 'posts';
                   value: number | Post;
+                } | null)
+              | ({
+                  relationTo: 'categories';
+                  value: number | Category;
                 } | null);
             url?: string | null;
             label: string;
@@ -1363,6 +1367,10 @@ export interface CallToActionBlock {
             | ({
                 relationTo: 'posts';
                 value: number | Post;
+              } | null)
+            | ({
+                relationTo: 'categories';
+                value: number | Category;
               } | null);
           url?: string | null;
           label: string;
@@ -1413,6 +1421,10 @@ export interface ContentBlock {
             | ({
                 relationTo: 'posts';
                 value: number | Post;
+              } | null)
+            | ({
+                relationTo: 'categories';
+                value: number | Category;
               } | null);
           url?: string | null;
           label: string;
@@ -3168,10 +3180,68 @@ export interface Header {
             | ({
                 relationTo: 'posts';
                 value: number | Post;
+              } | null)
+            | ({
+                relationTo: 'categories';
+                value: number | Category;
               } | null);
           url?: string | null;
           label: string;
         };
+        /**
+         * Add child navigation items that will appear in the dropdown
+         */
+        children?:
+          | {
+              link: {
+                type?: ('reference' | 'custom') | null;
+                newTab?: boolean | null;
+                reference?:
+                  | ({
+                      relationTo: 'pages';
+                      value: number | Page;
+                    } | null)
+                  | ({
+                      relationTo: 'posts';
+                      value: number | Post;
+                    } | null)
+                  | ({
+                      relationTo: 'categories';
+                      value: number | Category;
+                    } | null);
+                url?: string | null;
+                label: string;
+              };
+              /**
+               * Add sub-items (third level navigation)
+               */
+              subChildren?:
+                | {
+                    link: {
+                      type?: ('reference' | 'custom') | null;
+                      newTab?: boolean | null;
+                      reference?:
+                        | ({
+                            relationTo: 'pages';
+                            value: number | Page;
+                          } | null)
+                        | ({
+                            relationTo: 'posts';
+                            value: number | Post;
+                          } | null)
+                        | ({
+                            relationTo: 'categories';
+                            value: number | Category;
+                          } | null);
+                      url?: string | null;
+                      label: string;
+                    };
+                    id?: string | null;
+                  }[]
+                | null;
+              id?: string | null;
+            }[]
+          | null;
         id?: string | null;
       }[]
     | null;
@@ -3197,6 +3267,10 @@ export interface Footer {
             | ({
                 relationTo: 'posts';
                 value: number | Post;
+              } | null)
+            | ({
+                relationTo: 'categories';
+                value: number | Category;
               } | null);
           url?: string | null;
           label: string;
@@ -3223,6 +3297,34 @@ export interface HeaderSelect<T extends boolean = true> {
               reference?: T;
               url?: T;
               label?: T;
+            };
+        children?:
+          | T
+          | {
+              link?:
+                | T
+                | {
+                    type?: T;
+                    newTab?: T;
+                    reference?: T;
+                    url?: T;
+                    label?: T;
+                  };
+              subChildren?:
+                | T
+                | {
+                    link?:
+                      | T
+                      | {
+                          type?: T;
+                          newTab?: T;
+                          reference?: T;
+                          url?: T;
+                          label?: T;
+                        };
+                    id?: T;
+                  };
+              id?: T;
             };
         id?: T;
       };
