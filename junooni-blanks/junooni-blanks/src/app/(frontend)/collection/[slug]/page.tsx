@@ -4,24 +4,59 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import ProductImage from './ProductImage'
 
 // Studio Style Product Card Component
 function CategoryProductCard({ product }: { product: any }) {
   const productName = product.name || product.title || 'Untitled Product'
   const productSlug = product.slug || ''
   
-  // Get image from displayImages
-  let imageUrl = null
-  if (product.displayImages && product.displayImages.length > 0) {
-    const displayImg = product.displayImages[0]
-    imageUrl = displayImg.image?.sizes?.medium?.url 
-      || displayImg.image?.sizes?.small?.url 
-      || displayImg.image?.url
+  // OPTIMIZED: Get smallest available image first for faster loading
+  const getOptimizedImageUrl = () => {
+    if (product.displayImages && product.displayImages.length > 0) {
+      const displayImg = product.displayImages[0]
+      // Priority: thumbnail → small → medium → original
+      return displayImg.image?.sizes?.thumbnail?.url 
+        || displayImg.image?.sizes?.small?.url 
+        || displayImg.image?.sizes?.medium?.url 
+        || displayImg.image?.url
+        || null
+    }
+    
+    // Fallback to printT images
+    if (product.printT && product.printT.length > 0) {
+      const printTech = product.printT[0]
+      if (printTech.custAreas && printTech.custAreas.length > 0) {
+        const custArea = printTech.custAreas[0]
+        if (custArea.designCanvasPhotos && custArea.designCanvasPhotos.length > 0) {
+          const photo = custArea.designCanvasPhotos[0].photo
+          return photo?.sizes?.thumbnail?.url 
+            || photo?.sizes?.small?.url 
+            || photo?.url 
+            || null
+        }
+      }
+    }
+    
+    return null
   }
   
+  const imageUrl = getOptimizedImageUrl()
   const suggestedPrice = product.pricing?.suggestedRetail || product.price
   const cost = product.cost
   const colorOptions = product.colorOptions || []
+  const status = product.status
+  const shouldShowStatus = status && status.toLowerCase() !== 'active'
+
+  // Status badge styling
+  const getStatusStyle = (status: string) => {
+    return {
+      background: '#e65100',
+      shadow: '0 4px 12px rgba(230, 81, 0, 0.4)'
+    }
+  }
+
+  const statusStyle = shouldShowStatus ? getStatusStyle(status) : null
 
   return (
     <Link
@@ -31,15 +66,27 @@ function CategoryProductCard({ product }: { product: any }) {
       <div className="overflow-hidden transition-all duration-300 bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 rounded-xl hover:shadow-xl">
         {/* Image Container */}
         <div className="relative w-full overflow-hidden bg-gray-50 dark:bg-gray-700" style={{ paddingBottom: '125%' }}>
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={productName}
-              className="absolute inset-0 object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-4xl font-bold" style={{ color: '#e65100' }}>
-              {productName.charAt(0).toUpperCase()}
+          <ProductImage 
+            imageUrl={imageUrl}
+            productName={productName}
+            className="absolute inset-0 object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+          />
+          
+          {/* Status Badge - for non-active products */}
+          {shouldShowStatus && statusStyle && (
+            <div className="absolute top-2 right-2 z-10">
+              <div 
+                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white rounded-lg backdrop-blur-sm"
+                style={{ 
+                  background: statusStyle.background,
+                  boxShadow: statusStyle.shadow
+                }}
+              >
+                {status.toLowerCase() === 'coming_soon' ? 'Coming Soon' : 
+                 status.toLowerCase() === 'out_of_stock' ? 'Out of Stock' : 
+                 status.toLowerCase() === 'discontinued' ? 'Discontinued' : 
+                 status}
+              </div>
             </div>
           )}
         </div>
@@ -53,20 +100,38 @@ function CategoryProductCard({ product }: { product: any }) {
           {/* Print Technology Tags */}
           {product.printT && product.printT.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">
-              {product.printT.map((tech: any, index: number) => (
-                <span
-                  key={tech.id || index}
-                  className="px-2 py-1 text-xs font-medium rounded"
-                  style={{ 
-                    backgroundColor: index === 0 ? '#FFF4E6' : '#E3F2FD',
-                    color: index === 0 ? '#E65100' : '#1976D2'
-                  }}
-                >
-                  {tech.technologyName === 'dtf' ? 'Direct to Film' : 
-                   tech.technologyName === 'sublimation' ? 'Direct to Garment' : 
-                   tech.technologyName}
-                </span>
-              ))}
+              {product.printT.map((tech: any, index: number) => {
+                const techName = typeof tech === 'object' 
+                  ? (tech.technologyName || tech.name || tech.title || tech)
+                  : tech;
+                
+                const formatTechName = (name: string) => {
+                  const upperName = String(name).toUpperCase();
+                  
+                  if (upperName === 'DTG' || upperName === 'DTF') {
+                    return upperName;
+                  }
+                  
+                  return String(name)
+                    .toLowerCase()
+                    .split(' ')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+                };
+                
+                return (
+                  <span
+                    key={tech.id || index}
+                    className="px-2 py-1 text-xs font-medium rounded"
+                    style={{ 
+                      backgroundColor: index === 0 ? '#FFF4E6' : '#E3F2FD',
+                      color: index === 0 ? '#E65100' : '#1976D2'
+                    }}
+                  >
+                    {formatTechName(techName)}
+                  </span>
+                );
+              })}
             </div>
           )}
 
@@ -85,7 +150,7 @@ function CategoryProductCard({ product }: { product: any }) {
                     />
                   ))}
                   {colorOptions.length > 6 && (
-                    <div className="flex items-center justify-center w-6 h-6 text-xs font-semibold text-gray-600 bg-gray-200 border-2 border-gray-300 rounded-full">
+                    <div className="flex items-center justify-center w-6 h-6 text-xs font-semibold text-gray-600 bg-gray-200 border-2 border-gray-300 rounded-full dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
                       +{colorOptions.length - 6}
                     </div>
                   )}
@@ -104,13 +169,13 @@ function CategoryProductCard({ product }: { product: any }) {
                   </span>
                 </div>
               ) : (
-                <span className="text-sm text-gray-500">Price on request</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Price on request</span>
               )}
-              <p className="text-xs text-gray-500">no minimum</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">no minimum</p>
             </div>
             
             {product.status === 'active' && (
-              <div className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-green-700 bg-green-50 rounded-full">
+              <div className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-green-700 bg-green-50 rounded-full dark:text-green-400 dark:bg-green-900/30">
                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
@@ -138,7 +203,7 @@ async function getCategoryData(slug: string) {
         },
       },
       limit: 1,
-      depth: 1,
+      depth: 0,
     })
 
     if (!categoryResult.docs[0]) {
@@ -151,11 +216,7 @@ async function getCategoryData(slug: string) {
     console.log('Category ID:', category.id)
     console.log('Category Title:', category.title)
 
-    // Get products directly from the category's products field
-    // The category already has products attached to it
-    let products = []
-    
-    // Re-fetch category with depth to get full product details
+    // Re-fetch category with optimized depth to get product details
     const categoryWithProducts = await payload.find({
       collection: 'categories',
       where: {
@@ -164,16 +225,22 @@ async function getCategoryData(slug: string) {
         },
       },
       limit: 1,
-      depth: 3, // Increased depth to get full product details
+      depth: 2, // Changed from 3 to 2 for better performance
     })
 
+    let products = []
     if (categoryWithProducts.docs[0]?.products) {
-      products = Array.isArray(categoryWithProducts.docs[0].products) 
+      const allProducts = Array.isArray(categoryWithProducts.docs[0].products) 
         ? categoryWithProducts.docs[0].products 
         : []
+      
+      // FILTER OUT DRAFT PRODUCTS
+      products = allProducts.filter(product => 
+        product.status && product.status.toLowerCase() !== 'draft'
+      )
     }
 
-    console.log(`✅ Found ${products.length} products attached to category "${category.title}"`)
+    console.log(`✅ Found ${products.length} active products in category "${category.title}"`)
 
     return {
       category,
@@ -186,7 +253,6 @@ async function getCategoryData(slug: string) {
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
-  // Await params before accessing properties
   const { slug } = await params
   const data = await getCategoryData(slug)
 
@@ -199,6 +265,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   let description = ''
   if (typeof category.description === 'string') {
     description = category.description
+  } else if (category.description?.root?.children?.[0]?.children?.[0]?.text) {
+    description = category.description.root.children[0].children[0].text
   }
 
   return (
@@ -208,11 +276,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         <div className="px-4 py-8 mx-auto max-w-7xl sm:px-6 lg:px-8">
           {/* Breadcrumb */}
           <nav className="mb-4 text-sm">
-            <Link href="/" className="text-gray-500 hover:text-gray-700 dark:text-gray-400">
+            <Link href="/" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
               Home
             </Link>
             <span className="mx-2 text-gray-400">/</span>
-            <Link href="/collection" className="text-gray-500 hover:text-gray-700 dark:text-gray-400">
+            <Link href="/collection" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
               Collections
             </Link>
             <span className="mx-2 text-gray-400">/</span>
@@ -226,7 +294,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
             <p className="mt-2 text-gray-600 dark:text-gray-400">{description}</p>
           )}
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {products.length} products available
+            {products.length} {products.length === 1 ? 'product' : 'products'} available
           </p>
         </div>
       </header>
@@ -241,12 +309,20 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           </div>
         ) : (
           <div className="py-12 text-center">
-            <p className="text-lg text-gray-600 dark:text-gray-300">
-              No products found in this collection yet.
+            <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full dark:bg-gray-800">
+              <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+            </div>
+            <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              No products found in this collection yet
+            </p>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Check back soon for new products!
             </p>
             <Link
               href="/collection"
-              className="inline-block px-6 py-3 mt-4 text-white transition-all rounded-lg"
+              className="inline-flex items-center gap-2 px-6 py-3 text-white transition-all rounded-lg hover:opacity-90 active:scale-95"
               style={{ backgroundColor: '#e65100' }}
             >
               Browse All Collections
@@ -258,10 +334,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   )
 }
 
-// Note: Remove this function if you have a static metadata export in this file
 // Generate metadata dynamically
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  // Await params before accessing properties
   const { slug } = await params
   const data = await getCategoryData(slug)
   
@@ -271,9 +345,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     }
   }
 
+  let description = `Shop ${data.category.title} products at Junooni`
+  if (typeof data.category.description === 'string') {
+    description = data.category.description
+  } else if (data.category.description?.root?.children?.[0]?.children?.[0]?.text) {
+    description = data.category.description.root.children[0].children[0].text
+  }
+
   return {
     title: `${data.category.title} - Junooni`,
-    description: data.category.description || `Shop ${data.category.title} products at Junooni`,
+    description,
   }
 }
 

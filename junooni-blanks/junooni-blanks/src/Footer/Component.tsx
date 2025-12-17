@@ -15,7 +15,7 @@ export async function Footer() {
 
   return (
     <footer className="mt-auto border-t border-border bg-black dark:bg-card text-white">
-      <div className="container py-8 gap-8 flex flex-col md:flex-row md:justify-between">
+      <div className="container py-6 gap-8 flex flex-col md:flex-row md:justify-between">
         <Link className="flex items-center" href="/">
           <Logo />
         </Link>
@@ -28,6 +28,11 @@ export async function Footer() {
             })}
           </nav>
         </div>
+      </div>
+      <div className="px-4 py-3 text-center bg-black sm:py-8 md:py-8">
+        <p className="text-xs text-gray-400 sm:text-sm md:text-base">
+          © {new Date().getFullYear()} Junooni. India's #1 Marketplace For Merch. All rights reserved.
+        </p>
       </div>
     </footer>
   )

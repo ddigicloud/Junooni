@@ -1,4 +1,4 @@
-// import { useEffect, useState } from "react";
+// import React, { useEffect, useState } from "react";
 // import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 
 // const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
@@ -204,7 +204,7 @@
 //   };
 
 //   const renderPaginationButtons = () => {
-//     const buttons = [];
+//     const buttons: React.JSX.Element[] = [];
 //     const maxVisibleButtons = 5;
 //     let startPage = Math.max(1, currentPage - Math.floor(maxVisibleButtons / 2));
 //     let endPage = Math.min(totalPages, startPage + maxVisibleButtons - 1);
@@ -458,7 +458,11 @@ import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
 
-// Define interfaces
+// Cache key for localStorage
+const CACHE_KEY = 'junooni_products_cache';
+const CATEGORIES_CACHE_KEY = 'junooni_categories_cache';
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
 interface Image {
   id: number;
   alt: string;
@@ -535,6 +539,13 @@ interface ProductMetadata {
 }
 
 type ProductMetadataMap = Record<number, ProductMetadata>;
+// Define interfaces (keep your existing interfaces)
+// ... [all your existing interfaces]
+
+interface CacheData<T> {
+  data: T;
+  timestamp: number;
+}
 
 const PRODUCTS_PER_PAGE = 12;
 
@@ -548,18 +559,87 @@ const Catalog = () => {
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
+  // Cache helper functions
+  const getCachedData = <T,>(key: string): T | null => {
+    try {
+      const cached = localStorage.getItem(key);
+      if (!cached) return null;
+
+      const { data, timestamp }: CacheData<T> = JSON.parse(cached);
+      const now = Date.now();
+
+      // Check if cache is still valid
+      if (now - timestamp < CACHE_DURATION) {
+        return data;
+      }
+
+      // Cache expired, remove it
+      localStorage.removeItem(key);
+      return null;
+    } catch (error) {
+      console.error('Error reading cache:', error);
+      return null;
+    }
+  };
+
+  const setCachedData = <T,>(key: string, data: T): void => {
+    try {
+      const cacheData: CacheData<T> = {
+        data,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(key, JSON.stringify(cacheData));
+    } catch (error) {
+      console.error('Error setting cache:', error);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch all products and categories
+        // Try to get cached data first
+        const cachedProducts = getCachedData<Product[]>(CACHE_KEY);
+        const cachedCategories = getCachedData<Category[]>(CATEGORIES_CACHE_KEY);
+
+        // If we have cached data, use it immediately
+        if (cachedProducts) {
+          setProducts(cachedProducts);
+          setLoading(false);
+          
+          // Generate metadata for cached products
+          const metadata: ProductMetadataMap = {};
+          cachedProducts.forEach((product: Product) => {
+            metadata[product.id] = {
+              isBestSeller: Math.random() > 0.3,
+              isStaffPick: Math.random() > 0.6,
+              rating: 3.5 + Math.random() * 1.5,
+              reviewCount: Math.floor(10 + Math.random() * 140)
+            };
+          });
+          setProductMetadata(metadata);
+        }
+
+        if (cachedCategories) {
+          const categoryOptions = [
+            { slug: "all", title: "All" },
+            ...cachedCategories.map((cat: Category) => ({
+              slug: cat.slug,
+              title: cat.title
+            }))
+          ];
+          setCategories(categoryOptions);
+          setCategoriesLoading(false);
+        }
+
+        // Fetch fresh data in the background
         const [productsResponse, categoriesResponse] = await Promise.all([
-          fetch(`${vite_payload}/api/blank-products?limit=1000&depth=1`, {
+          fetch(`${vite_payload}/api/blank-products?limit=50&depth=1`, {
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
             },
           }),
-          fetch(`${vite_payload}/api/categories?limit=100`, {
+          fetch(`${vite_payload}/api/categories?limit=100&depth=0`, {
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
@@ -568,14 +648,34 @@ const Catalog = () => {
         ]);
 
         // Handle products
-        const productsData = await productsResponse.json();
-        const fetchedProducts: Product[] = productsData.docs || productsData;
-        setProducts(fetchedProducts);
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          const fetchedProducts: Product[] = productsData.docs || productsData;
+          
+          // Update cache
+          setCachedData(CACHE_KEY, fetchedProducts);
+          setProducts(fetchedProducts);
+
+          // Generate metadata
+          const metadata: ProductMetadataMap = {};
+          fetchedProducts.forEach((product: Product) => {
+            metadata[product.id] = {
+              isBestSeller: Math.random() > 0.3,
+              isStaffPick: Math.random() > 0.6,
+              rating: 3.5 + Math.random() * 1.5,
+              reviewCount: Math.floor(10 + Math.random() * 140)
+            };
+          });
+          setProductMetadata(metadata);
+        }
 
         // Handle categories
         if (categoriesResponse.ok) {
           const categoriesData = await categoriesResponse.json();
           const fetchedCategories: Category[] = categoriesData.docs || categoriesData;
+          
+          // Update cache
+          setCachedData(CATEGORIES_CACHE_KEY, fetchedCategories);
           
           const categoryOptions = [
             { slug: "all", title: "All" },
@@ -586,7 +686,13 @@ const Catalog = () => {
           ];
           
           setCategories(categoryOptions);
-        } else {
+        }
+
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        
+        // If fetch fails and we have no cached data, use fallback
+        if (products.length === 0) {
           setCategories([
             { slug: "all", title: "All" },
             { slug: "women-tee", title: "Women Tee" },
@@ -596,29 +702,6 @@ const Catalog = () => {
             { slug: "promotional", title: "Promotional" }
           ]);
         }
-        
-        // Generate metadata
-        const metadata: ProductMetadataMap = {};
-        fetchedProducts.forEach((product: Product) => {
-          metadata[product.id] = {
-            isBestSeller: Math.random() > 0.3,
-            isStaffPick: Math.random() > 0.6,
-            rating: 3.5 + Math.random() * 1.5,
-            reviewCount: Math.floor(10 + Math.random() * 140)
-          };
-        });
-        
-        setProductMetadata(metadata);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setCategories([
-          { slug: "all", title: "All" },
-          { slug: "women-tee", title: "Women Tee" },
-          { slug: "apparel", title: "Apparel" },
-          { slug: "accessories", title: "Accessories" },
-          { slug: "home", title: "Home" },
-          { slug: "promotional", title: "Promotional" }
-        ]);
       } finally {
         setLoading(false);
         setCategoriesLoading(false);
@@ -632,6 +715,15 @@ const Catalog = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedCategory]);
+
+  // In your Catalog component, after fetching products
+// useEffect(() => {
+//   if (products.length > 0) {
+//     console.log('First product:', products[0]);
+//     console.log('First product images:', products[0].displayImages);
+//     console.log('Image URL:', products[0].displayImages?.[0]?.image?.url);
+//   }
+// }, [products]);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -746,6 +838,7 @@ const Catalog = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+      {/* Rest of your JSX remains the same */}
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-[#e65100] to-[#ff9800] opacity-5"></div>

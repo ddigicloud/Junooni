@@ -18,11 +18,46 @@ interface Category {
   id: number
   title: string
   slug: string
-  parent: Category | null
-  breadcrumbs: Breadcrumb[]
+  parent: Category | null | number
+  breadcrumbs?: Breadcrumb[]
   updatedAt: string
   createdAt: string
   children?: Category[]
+}
+
+interface NavLink {
+  type: 'reference' | 'custom'
+  label: string
+  reference?: {
+    relationTo: string
+    value: Category | number
+  }
+  url?: string | null
+  newTab?: boolean | null
+}
+
+interface SubChildNavItem {
+  id: string
+  link: NavLink
+}
+
+interface ChildNavItem {
+  id: string
+  link: NavLink
+  subChildren?: SubChildNavItem[]
+}
+
+interface HeaderNavItem {
+  id: string
+  link: NavLink
+  children?: ChildNavItem[]
+}
+
+interface Header {
+  id: number
+  navItems: HeaderNavItem[]
+  updatedAt: string
+  createdAt: string
 }
 
 const BRAND = {
@@ -46,17 +81,91 @@ const Navbar = () => {
 
   useEffect(() => {
     const fetchCategories = async () => {
-      const response = await fetch(`${vite_payload}/api/categories?limit=0`, {
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      })
-      const data = await response.json()
-      const fetchedCategories = data.docs || data
-      organizeCategories(fetchedCategories)
+      try {
+        // Fetch from /api/headers with proper depth
+        const response = await fetch(`${vite_payload}/api/globals/header?limit=1&depth=3`, {
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        })
+        const data = await response.json()
+        
+        //console.log('API Response:', data)
+        
+        // Get the first (or latest) header
+        const header = data.docs?.[0] || data
+        
+        if (!header || !header.navItems) {
+          //console.warn('No header or navItems found')
+          return
+        }
+
+        //console.log('Header navItems:', header.navItems)
+
+        // Parse the header structure and build category hierarchy
+        const categories = parseHeaderNavItems(header.navItems)
+        
+        //console.log('Parsed categories:', categories)
+        setOrganizedCategories(categories)
+      } catch (error) {
+        //console.error('Error fetching header categories:', error)
+      }
     }
     fetchCategories()
   }, [])
 
+  // Parse header navItems structure into category hierarchy
+  const parseHeaderNavItems = (navItems: HeaderNavItem[]): Category[] => {
+    const categories: Category[] = []
+
+    navItems.forEach((navItem) => {
+      // Get the parent category
+      if (navItem.link.type === 'reference' && 
+          navItem.link.reference?.relationTo === 'categories' &&
+          typeof navItem.link.reference.value === 'object') {
+        
+        const parentCategory = { ...navItem.link.reference.value } as Category
+        parentCategory.children = []
+
+        //console.log('Parent category:', parentCategory.title)
+
+        // Process children if they exist
+        if (navItem.children && navItem.children.length > 0) {
+          navItem.children.forEach((child) => {
+            if (child.link.type === 'reference' &&
+                child.link.reference?.relationTo === 'categories' &&
+                typeof child.link.reference.value === 'object') {
+              
+              const childCategory = { ...child.link.reference.value } as Category
+              childCategory.children = []
+
+              //console.log('  Child category:', childCategory.title)
+
+              // Process subChildren if they exist
+              if (child.subChildren && child.subChildren.length > 0) {
+                child.subChildren.forEach((subChild) => {
+                  if (subChild.link.type === 'reference' &&
+                      subChild.link.reference?.relationTo === 'categories' &&
+                      typeof subChild.link.reference.value === 'object') {
+                    
+                    const subChildCategory = { ...subChild.link.reference.value } as Category
+                    //console.log('    SubChild category:', subChildCategory.title)
+                    
+                    childCategory.children!.push(subChildCategory)
+                  }
+                })
+              }
+
+              parentCategory.children!.push(childCategory)
+            }
+          })
+        }
+
+        categories.push(parentCategory)
+      }
+    })
+
+    return categories
+  }
 
   // Lock scroll when mobile menu is open
   useEffect(() => {
@@ -70,32 +179,6 @@ const Navbar = () => {
     }
   }, [mobileOpen])
 
-  // Organize categories hierarchically
-  const organizeCategories = (flatCategories: Category[]) => {
-    const cats = [...flatCategories]
-    const categoryMap = cats.reduce((map, category) => {
-      map[category.id] = { ...category, children: [] }
-      return map
-    }, {} as Record<number, Category>)
-
-    const rootCategories: Category[] = []
-    cats.forEach((category) => {
-      const mappedCategory = categoryMap[category.id]
-      if (!category.parent) {
-        rootCategories.push(mappedCategory)
-      } else {
-        const parentId = category.parent.id
-        if (categoryMap[parentId]) {
-          categoryMap[parentId].children =
-            categoryMap[parentId].children || []
-          categoryMap[parentId].children.push(mappedCategory)
-        }
-      }
-    })
-
-    setOrganizedCategories(rootCategories)
-  }
-
   const groupChildrenIntoColumns = (children?: Category[], columnsCount = 3) => {
     if (!children || children.length === 0) return []
     const result: Category[][] = []
@@ -108,54 +191,47 @@ const Navbar = () => {
     return result
   }
 
-  // const getCategoryPath = (category: Category, parentPath = ""): string =>
-  //   parentPath ? `${parentPath}/${category.slug}` : category.slug
+  const renderSubcategoryWithChildren = (subcategory: Category, parentPath: string = "") => {
+    const hasChildren = subcategory.children && subcategory.children.length > 0
+    
+    // Build the full path
+    const fullPath = parentPath 
+      ? `${parentPath}/${subcategory.slug}` 
+      : subcategory.slug
 
-  const getCategoryPath = (category: Category): string => category.slug
-
- const renderSubcategoryWithChildren = (subcategory: Category, parentPath: string = "") => {
-  const hasChildren = subcategory.children && subcategory.children.length > 0
-  
-  // Build the full path
-  const fullPath = parentPath 
-    ? `${parentPath}/${subcategory.slug}` 
-    : subcategory.slug
-
-  return (
-    <div key={subcategory.id} className="mb-4">
-      <Link
-        to={`/productCatalog/category/${fullPath}`}  // ← USE FULL PATH
-        className="block mb-2 font-medium text-gray-900 dark:text-gray-100 hover:text-[#e65100] dark:hover:text-[#ff6f00]"
-        onClick={() => setMobileOpen(false)}
-      >
-        {subcategory.title}
-      </Link>
-      {hasChildren && (
-        <ul className="ml-3 space-y-1">
-          {subcategory.children?.map((childCategory) => (
-            <li key={childCategory.id}>
-              {childCategory.children && childCategory.children.length > 0 ? (
-                // If child has its own children, recursively render them
-                <div className="mb-2">
-                  {renderSubcategoryWithChildren(childCategory, subcategory.slug)}
-                </div>
-              ) : (
-                // If child has no children, just render the link
-                <Link
-                  to={`/productCatalog/category/${childCategory.slug}`}
-                  className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#e65100] dark:hover:text-[#ff6f00] block py-1"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {childCategory.title}
-                </Link>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
+    return (
+      <div key={subcategory.id} className="mb-4">
+        <Link
+          to={`/productCatalog/category/${fullPath}`}
+          className="block mb-2 font-medium text-gray-900 dark:text-gray-100 hover:text-[#e65100] dark:hover:text-[#ff6f00]"
+          onClick={() => setMobileOpen(false)}
+        >
+          {subcategory.title}
+        </Link>
+        {hasChildren && (
+          <ul className="ml-3 space-y-1">
+            {subcategory.children?.map((childCategory) => (
+              <li key={childCategory.id}>
+                {childCategory.children && childCategory.children.length > 0 ? (
+                  <div className="mb-2">
+                    {renderSubcategoryWithChildren(childCategory, fullPath)}
+                  </div>
+                ) : (
+                  <Link
+                    to={`/productCatalog/category/${fullPath}/${childCategory.slug}`}
+                    className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#e65100] dark:hover:text-[#ff6f00] block py-1"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {childCategory.title}
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="fixed z-50 w-full bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
@@ -195,15 +271,15 @@ const Navbar = () => {
           
           {/* Scrollable container */}
           <div 
-            className="flex items-center gap-4 px-2 overflow-x-auto scroll-smooth"
+            className="flex items-center gap-4 px-2 overflow-x-auto scroll-smooth scrollable-categories"
             style={{
-              scrollbarWidth: 'none', /* Firefox */
-              msOverflowStyle: 'none',  /* IE and Edge */
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
             }}
           >
             <style>{`
               .scrollable-categories::-webkit-scrollbar {
-                display: none; /* Chrome, Safari, Opera */
+                display: none;
               }
             `}</style>
             
@@ -216,7 +292,6 @@ const Navbar = () => {
 
             {organizedCategories.map((category) => {
               const hasChildren = category.children && category.children.length > 0
-              //console.log("category slug", category.slug)
               return (
                 <div
                   key={category.id}
@@ -259,7 +334,7 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Menu Overlay and Off-Canvas - FIXED SECTION */}
+      {/* Mobile Menu Overlay and Off-Canvas */}
       {mobileOpen && (
         <>
           {/* Backdrop */}
@@ -274,9 +349,6 @@ const Navbar = () => {
             <div className="flex items-center justify-between px-4 py-4 bg-white border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
               <div className="flex items-center gap-3">
                 <img src={JunooniLogo} alt="Junooni" className="w-auto h-7" />
-                {/* <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Junooni
-                </span> */}
               </div>
               <button
                 aria-label="Close menu"
@@ -364,7 +436,7 @@ const Navbar = () => {
                 </p>
                 <Link
                   to={`/productCatalog/category/${category.slug}`}
-                  className="inline-block px-3 py-1 text-sm text-[#e65100] border border-[#e65100] rounded hover:bg-[#e65100] hover:text-white"
+                  className="inline-block px-3 py-1 text-sm text-[#e65100] border border-[#e65100] rounded hover:bg-[#e65100] hover:text-white transition-colors"
                 >
                   View All
                 </Link>

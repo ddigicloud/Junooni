@@ -273,7 +273,7 @@ export default async function LandingPage() {
               Your Gateway to Passionate Commerce
             </p>
             <p className="max-w-2xl mx-auto px-4 text-base text-gray-600 sm:text-lg md:text-xl dark:text-gray-300">
-              Discover amazing products from creators you love or start your own merch empire
+              Build your personal merch brand, customize products, manage orders, and grow your business — all from one platform
             </p>
           </div>
 
@@ -708,11 +708,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="px-4 py-6 text-center bg-gray-900 sm:py-8 md:py-12">
-        <p className="text-xs text-gray-400 sm:text-sm md:text-base">
-          © 2024 Junooni. India's #1 Marketplace For Merch. All rights reserved.
-        </p>
-      </footer>
+
     </div>
   )
 }
@@ -722,15 +718,17 @@ function CollectionCard({ collection }: { collection: any }) {
   const collectionName = collection.title || 'Untitled Collection'
   const collectionSlug = collection.slug || ''
   
-  // Get hero image URL
-  let imageUrl = null
-  if (collection.heroImage) {
-    imageUrl = collection.heroImage.sizes?.medium?.url 
+  // OPTIMIZED: Use smaller image sizes first
+  const getOptimizedImageUrl = () => {
+    if (!collection.heroImage) return null
+    
+    return collection.heroImage.sizes?.thumbnail?.url 
       || collection.heroImage.sizes?.small?.url 
+      || collection.heroImage.sizes?.medium?.url 
       || collection.heroImage.url
   }
   
-  // Get product count
+  const imageUrl = getOptimizedImageUrl()
   const productCount = collection.productCount || 0
 
   return (
@@ -738,11 +736,13 @@ function CollectionCard({ collection }: { collection: any }) {
       href={`/collection/${collectionSlug}`}
       className="group relative overflow-hidden transition-all duration-300 transform bg-white shadow-lg dark:bg-gray-800 rounded-xl hover:shadow-2xl hover:-translate-y-1 active:scale-95 md:active:scale-100 md:hover:-translate-y-2"
     >
-      <div className="relative w-full h-32 overflow-hidden rounded-md sm:h-48 md:h-64">
+      <div className="relative w-full h-48 overflow-hidden rounded-md sm:h-48 md:h-64">
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={collectionName}
+            loading="lazy" // Add lazy loading
+            decoding="async" // Add async decoding
             className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
           />
         ) : (
@@ -789,27 +789,37 @@ function StudioStyleProductCard({ product }: { product: any }) {
   const productName = product.name || product.title || 'Untitled Product'
   const productSlug = product.slug || ''
   
-  // Extract image URL with the same logic as blank products
-  let imageUrl = null
-  if (product.displayImages && product.displayImages.length > 0) {
-    const displayImg = product.displayImages[0]
-    imageUrl = displayImg.image?.sizes?.medium?.url 
-      || displayImg.image?.sizes?.small?.url 
-      || displayImg.image?.url
-  }
-  
-  // Fallback to printT images if no display images
-  if (!imageUrl && product.printT && product.printT.length > 0) {
-    const printTech = product.printT[0]
-    if (printTech.custAreas && printTech.custAreas.length > 0) {
-      const custArea = printTech.custAreas[0]
-      if (custArea.designCanvasPhotos && custArea.designCanvasPhotos.length > 0) {
-        const photo = custArea.designCanvasPhotos[0].photo
-        imageUrl = photo?.url || photo?.sizes?.medium?.url || photo?.sizes?.small?.url
+   // OPTIMIZED: Extract image URL with proper fallback hierarchy
+  const getOptimizedImageUrl = () => {
+    if (product.displayImages && product.displayImages.length > 0) {
+      const displayImg = product.displayImages[0]
+      // Use thumbnail or small size first for faster loading
+      return displayImg.image?.sizes?.thumbnail?.url 
+        || displayImg.image?.sizes?.small?.url 
+        || displayImg.image?.sizes?.medium?.url 
+        || displayImg.image?.url
+        || null
+    }
+    
+    // Fallback to printT images
+    if (product.printT && product.printT.length > 0) {
+      const printTech = product.printT[0]
+      if (printTech.custAreas && printTech.custAreas.length > 0) {
+        const custArea = printTech.custAreas[0]
+        if (custArea.designCanvasPhotos && custArea.designCanvasPhotos.length > 0) {
+          const photo = custArea.designCanvasPhotos[0].photo
+          return photo?.sizes?.thumbnail?.url 
+            || photo?.sizes?.small?.url 
+            || photo?.url 
+            || null
+        }
       }
     }
+    
+    return null
   }
   
+  const imageUrl = getOptimizedImageUrl()
   const suggestedPrice = product.pricing?.suggestedRetail || product.price
   const cost = product.cost
   const colorOptions = product.colorOptions || []
@@ -866,6 +876,8 @@ function StudioStyleProductCard({ product }: { product: any }) {
             <img
               src={imageUrl}
               alt={productName}
+              loading="lazy" // Add lazy loading
+              decoding="async" // Add async decoding
               className="absolute inset-0 object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
