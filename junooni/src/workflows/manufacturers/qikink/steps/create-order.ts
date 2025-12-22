@@ -175,17 +175,56 @@ export const createQikinkOrderStep = createStep(
       //console.log(`📋 Order number: ${shortOrderId}`)
 
       // Determine payment gateway
-      const paymentSession = input.order.payment_collection?.payment_sessions?.[0]
-      const providerId = paymentSession?.provider_id?.toLowerCase() || ""
-      let gateway = "COD"
+     const paymentCollections = input.order.payment_collections || []
+        let gateway = "COD"
 
-      if (providerId.includes("razorpay") || providerId === "razorpay") {
-        gateway = "Prepaid"
-      } else if (providerId.includes("stripe")) {
-        gateway = "PREPAID"
-      }
+        //console.log(`📦 Payment collections count: ${paymentCollections.length}`)
 
-      //console.log(`💳 Gateway: ${gateway}`)
+        if (paymentCollections.length > 0) {
+          const paymentCollection = paymentCollections[0] // Get first collection
+          
+          // console.log(`✓ Payment collection found: ${paymentCollection.id}`)
+          // console.log(`✓ Status: ${paymentCollection.status}`)
+          
+          // Check completed payments first (most reliable)
+          const completedPayments = paymentCollection.payments || []
+          const paymentSessions = paymentCollection.payment_sessions || []
+          
+          // console.log(`✓ Completed payments: ${completedPayments.length}`)
+          // console.log(`✓ Payment sessions: ${paymentSessions.length}`)
+          
+          // Combine and check all payments
+          const allPayments = [...completedPayments, ...paymentSessions]
+          
+          for (const payment of allPayments) {
+            const providerId = (payment?.provider_id || "").toLowerCase()
+            
+            // console.log(`  🔍 Checking provider: "${providerId}"`)
+            
+            // Check for Razorpay (can be "razorpay" or "pp_razorpay_razorpay")
+            if (providerId.includes("razorpay")) {
+              gateway = "Prepaid"
+             // console.log(`  ✅ Razorpay detected -> Gateway: ${gateway}`)
+              break
+            } 
+            // Check for Stripe
+            else if (providerId.includes("stripe")) {
+              gateway = "PREPAID"
+              //console.log(`  ✅ Stripe detected -> Gateway: ${gateway}`)
+              break
+            }
+          }
+          
+          if (gateway === "COD" && allPayments.length > 0) {
+            // console.log(`  ⚠️ Unknown payment provider: ${allPayments[0]?.provider_id}`)
+            // console.log(`  ⚠️ Defaulting to COD`)
+          }
+        } else {
+          //console.log("  ⚠️ No payment collections found - defaulting to COD")
+        }
+
+        // console.log(`\n💳 FINAL Gateway: ${gateway}`)
+        // console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 
       // Build line items with proper artwork resolution
       const query = container.resolve(ContainerRegistrationKeys.QUERY)
@@ -196,8 +235,7 @@ export const createQikinkOrderStep = createStep(
         //console.log(`\n🎨 Item ${index + 1}: ${item.variant?.title || item.title}`)
 
         // Get SKU
-        const sku = item.variant?.sku || 
-                   item.variant?.metadata?.manufacturer_sku ||
+        const sku = item.variant?.metadata?.manufacturer_sku ||
                    item.metadata?.manufacturer_sku ||
                    "MVnHs-Wh-S"
 
@@ -241,7 +279,7 @@ export const createQikinkOrderStep = createStep(
         order_number: shortOrderId,
         qikink_shipping: "1",
         gateway: gateway,
-        total_order_value: ((input.order.total || 0) / 100).toFixed(2),
+        total_order_value: ((input.order.total || 0)).toFixed(2),
         line_items: lineItems,
         shipping_address: shippingAddress,
       }
@@ -251,10 +289,8 @@ export const createQikinkOrderStep = createStep(
       // console.log(`   Total: ₹${payload.total_order_value}`)
       // console.log(`   Shipping: ${shippingAddress.city}, ${shippingAddress.country_code}`)
 
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // SUBMIT TO QIKINK
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      //console.log(`\n📤 Submitting to Qikink...`)
+      
+      // console.log(`\n📤 Submitting to Qikink...`)
       // console.log(`🔗 URL: ${QIKINK_API_URL}`)
       // console.log(`🔑 Client ID: ${QIKINK_CLIENT_ID}`)
       // console.log(`🔑 Token preview: ${token ? token.substring(0, 20) + '...' : 'MISSING'}`)
@@ -502,12 +538,12 @@ async function determinePrintTypeId(item: any, product: any): Promise<string> {
   // Check product metadata
   const productPrintType = product?.metadata?.qikink_print_type_id
   if (productPrintType) {
-    console.log(`   ✅ Using print_type_id from product: ${productPrintType}`)
+    //console.log(`   ✅ Using print_type_id from product: ${productPrintType}`)
     return String(productPrintType)
   }
 
   // Default to DTG
-  console.log("   ⚠️ No print type found, defaulting to DTG (1)")
+  //console.log("   ⚠️ No print type found, defaulting to DTG (1)")
   return "1"
 }
 
@@ -518,7 +554,7 @@ async function buildDesignsForItem(query: any, item: any): Promise<any[]> {
   const product = item.product
 
   if (!product) {
-    console.log(`   ⚠️ No product data, using fallback design`)
+    //console.log(`   ⚠️ No product data, using fallback design`)
     return buildFallbackDesign(item)
   }
 
@@ -526,7 +562,7 @@ async function buildDesignsForItem(query: any, item: any): Promise<any[]> {
   const artworkData = await fetchArtworkForProduct(query, product.id, item.metadata || {})
 
   if (!artworkData?.mediaFiles || artworkData.mediaFiles.length === 0) {
-    console.log("   ⚠️ No artwork found, using fallback design")
+    //console.log("   ⚠️ No artwork found, using fallback design")
     return buildFallbackDesign(item)
   }
 
@@ -579,12 +615,12 @@ async function buildDesignsForItem(query: any, item: any): Promise<any[]> {
         design_link: element.url,
       })
 
-      console.log(`   ✅ Added ${area} design: ${element.url}`)
+      //console.log(`   ✅ Added ${area} design: ${element.url}`)
     })
   })
 
   if (designs.length === 0) {
-    console.log("   ⚠️ No valid designs found in artwork, using fallback")
+    //console.log("   ⚠️ No valid designs found in artwork, using fallback")
     return buildFallbackDesign(item)
   }
 
@@ -603,7 +639,7 @@ async function fetchArtworkForProduct(
   const artworkId = await resolveArtworkId(query, productId, itemMetadata)
 
   if (!artworkId) {
-    console.log(`   ℹ️ No artwork ID found for product ${productId}`)
+    //console.log(`   ℹ️ No artwork ID found for product ${productId}`)
     return null
   }
 
@@ -625,7 +661,7 @@ async function fetchArtworkForProduct(
     const artworkData = artwork[0]
     const mediaFiles = artworkData?.medias || []
 
-    console.log(`   ✅ Found artwork with ${mediaFiles.length} media files`)
+    //console.log(`   ✅ Found artwork with ${mediaFiles.length} media files`)
 
     return {
       artworkData,
