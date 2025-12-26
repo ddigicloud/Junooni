@@ -143,11 +143,11 @@ type CreateQikinkOrderOutput = {
 export const createQikinkOrderStep = createStep(
   "create-qikink-order-step",
   async (input: CreateQikinkOrderInput, { container }) => {
-    // console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    // console.log("🎯 Starting Qikink Order Creation")
-    // console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    // console.log(`📦 Order: ${input.order.display_id}`)
-    // console.log(`📦 Items: ${input.items.length}`)
+    console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    console.log("🎯 Starting Qikink Order Creation")
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    console.log(`📦 Order: ${input.order.display_id}`)
+    console.log(`📦 Items: ${input.items.length}`)
 
     try {
       const token = input.token
@@ -156,7 +156,7 @@ export const createQikinkOrderStep = createStep(
         throw new Error("Qikink access token not provided")
       }
 
-      //console.log("✅ Token validated")
+      console.log("✅ Token validated")
 
       // Environment variables
       const QIKINK_CLIENT_ID = process.env.QIKINK_CLIENT_ID || "739060471115980"
@@ -165,70 +165,70 @@ export const createQikinkOrderStep = createStep(
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // BUILD PAYLOAD
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      //console.log("\n📦 Building Qikink payload...")
+      console.log("\n📦 Building Qikink payload...")
 
       // Generate short order ID
       const timestamp = Date.now().toString().slice(-9)
       const random = Math.random().toString(36).substring(2, 5).toUpperCase()
       const shortOrderId = `ORD${timestamp}${random}`
 
-      //console.log(`📋 Order number: ${shortOrderId}`)
+      console.log(`📋 Order number: ${shortOrderId}`)
 
       // Determine payment gateway
-     const paymentCollections = input.order.payment_collections || []
-        let gateway = "COD"
+      const paymentCollections = input.order.payment_collections || []
+      let gateway = "COD"
 
-        //console.log(`📦 Payment collections count: ${paymentCollections.length}`)
+      console.log(`📦 Payment collections count: ${paymentCollections.length}`)
 
-        if (paymentCollections.length > 0) {
-          const paymentCollection = paymentCollections[0] // Get first collection
+      if (paymentCollections.length > 0) {
+        const paymentCollection = paymentCollections[0] // Get first collection
+        
+        console.log(`✓ Payment collection found: ${paymentCollection.id}`)
+        console.log(`✓ Status: ${paymentCollection.status}`)
+        
+        // Check completed payments first (most reliable)
+        const completedPayments = paymentCollection.payments || []
+        const paymentSessions = paymentCollection.payment_sessions || []
+        
+        console.log(`✓ Completed payments: ${completedPayments.length}`)
+        console.log(`✓ Payment sessions: ${paymentSessions.length}`)
+        
+        // Combine and check all payments
+        const allPayments = [...completedPayments, ...paymentSessions]
+        
+        for (const payment of allPayments) {
+          const providerId = (payment?.provider_id || "").toLowerCase()
           
-          // console.log(`✓ Payment collection found: ${paymentCollection.id}`)
-          // console.log(`✓ Status: ${paymentCollection.status}`)
+          console.log(`  🔍 Checking provider: "${providerId}"`)
           
-          // Check completed payments first (most reliable)
-          const completedPayments = paymentCollection.payments || []
-          const paymentSessions = paymentCollection.payment_sessions || []
-          
-          // console.log(`✓ Completed payments: ${completedPayments.length}`)
-          // console.log(`✓ Payment sessions: ${paymentSessions.length}`)
-          
-          // Combine and check all payments
-          const allPayments = [...completedPayments, ...paymentSessions]
-          
-          for (const payment of allPayments) {
-            const providerId = (payment?.provider_id || "").toLowerCase()
-            
-            // console.log(`  🔍 Checking provider: "${providerId}"`)
-            
-            // Check for Razorpay (can be "razorpay" or "pp_razorpay_razorpay")
-            if (providerId.includes("razorpay")) {
-              gateway = "Prepaid"
-             // console.log(`  ✅ Razorpay detected -> Gateway: ${gateway}`)
-              break
-            } 
-            // Check for Stripe
-            else if (providerId.includes("stripe")) {
-              gateway = "PREPAID"
-              //console.log(`  ✅ Stripe detected -> Gateway: ${gateway}`)
-              break
-            }
+          // Check for Razorpay (can be "razorpay" or "pp_razorpay_razorpay")
+          if (providerId.includes("razorpay")) {
+            gateway = "Prepaid"
+            console.log(`  ✅ Razorpay detected -> Gateway: ${gateway}`)
+            break
+          } 
+          // Check for Stripe
+          else if (providerId.includes("stripe")) {
+            gateway = "PREPAID"
+            console.log(`  ✅ Stripe detected -> Gateway: ${gateway}`)
+            break
           }
-          
-          if (gateway === "COD" && allPayments.length > 0) {
-            // console.log(`  ⚠️ Unknown payment provider: ${allPayments[0]?.provider_id}`)
-            // console.log(`  ⚠️ Defaulting to COD`)
-          }
-        } else {
-          //console.log("  ⚠️ No payment collections found - defaulting to COD")
         }
+        
+        if (gateway === "COD" && allPayments.length > 0) {
+          console.log(`  ⚠️ Unknown payment provider: ${allPayments[0]?.provider_id}`)
+          console.log(`  ⚠️ Defaulting to COD`)
+        }
+      } else {
+        console.log("  ⚠️ No payment collections found - defaulting to COD")
+      }
 
-        // console.log(`\n💳 FINAL Gateway: ${gateway}`)
-        // console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+      console.log(`\n💳 FINAL Gateway: ${gateway}`)
 
       // Build line items with proper artwork resolution
       const query = container.resolve(ContainerRegistrationKeys.QUERY)
       const lineItems = []
+      let junooniTotal = 0 // Track Junooni fulfillment items total
 
       for (let index = 0; index < input.items.length; index++) {
         const item = input.items[index]
@@ -249,10 +249,14 @@ export const createQikinkOrderStep = createStep(
         const designs = await buildDesignsForItem(query, item)
         //console.log(`   Designs: ${designs.length}`)
 
+        // Calculate item total (unit_price * quantity)
+        const itemTotal = (item.unit_price || 0) * item.quantity
+        junooniTotal += itemTotal // Add to Junooni total
+
         const lineItem = {
           search_from_my_products: 0,
           quantity: item.quantity.toString(),
-          price: ((item.unit_price || 0) / 100).toFixed(2),
+          price: ((item.unit_price || 0)).toFixed(2),
           sku: sku,
           print_type_id: printTypeId,
           designs,
@@ -274,20 +278,30 @@ export const createQikinkOrderStep = createStep(
         country_code: (input.order.shipping_address?.country_code || "IN").toUpperCase(),
       }
 
+      console.log("\n✅ Shipping address:")
+      console.log(`   ${shippingAddress.first_name} ${shippingAddress.last_name}`)
+      console.log(`   ${shippingAddress.address1}`)
+      console.log(`   ${shippingAddress.city}, ${shippingAddress.province}, ${shippingAddress.country_code} - ${shippingAddress.zip}`)
+      console.log(`   Phone: ${shippingAddress.phone}`)
+      console.log(`   Email: ${shippingAddress.email}`)
+
       // Build complete payload
       const payload = {
         order_number: shortOrderId,
         qikink_shipping: "1",
         gateway: gateway,
-        total_order_value: ((input.order.total || 0)).toFixed(2),
+        total_order_value: (junooniTotal).toFixed(2), // Use Junooni items total only
         line_items: lineItems,
         shipping_address: shippingAddress,
       }
 
-      // console.log(`\n✅ Payload ready:`)
-      // console.log(`   Items: ${lineItems.length}`)
-      // console.log(`   Total: ₹${payload.total_order_value}`)
-      // console.log(`   Shipping: ${shippingAddress.city}, ${shippingAddress.country_code}`)
+      console.log(`\n✅ Payload ready:`)
+      console.log(`Payload Summary: `)
+      console.log(`   Items: ${lineItems.length}`)
+      console.log(`   Junooni Fulfillment Total: ₹${payload.total_order_value}`)
+      console.log(`   Original Order Total: ₹${((input.order.total || 0)).toFixed(2)}`)
+      console.log(`   Shipping: ${shippingAddress.city}, ${shippingAddress.country_code}`)
+      console.log("Total payload", payload)
 
       
       // console.log(`\n📤 Submitting to Qikink...`)
@@ -307,8 +321,8 @@ export const createQikinkOrderStep = createStep(
 
       const responseData = await response.json()
 
-      // console.log(`📥 Response status: ${response.status}`)
-      // console.log(`📦 Response:`, JSON.stringify(responseData, null, 2))
+      console.log(`📥 Response status: ${response.status}`)
+      console.log(`📦 Response:`, JSON.stringify(responseData, null, 2))
 
       if (!response.ok) {
         throw new Error(
@@ -319,9 +333,9 @@ export const createQikinkOrderStep = createStep(
       const qikinkOrderId = responseData.order_id
       const qikinkOrderNumber = responseData.number || shortOrderId
 
-      // console.log(`\n✅ Order created in Qikink!`)
-      // console.log(`   ID: ${qikinkOrderId}`)
-      // console.log(`   Number: ${qikinkOrderNumber}`)
+      console.log(`\n✅ Order created in Qikink!`)
+      console.log(`   ID: ${qikinkOrderId}`)
+      console.log(`   Number: ${qikinkOrderNumber}`)
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // FETCH TRACKING (optional)

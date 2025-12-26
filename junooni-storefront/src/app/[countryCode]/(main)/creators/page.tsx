@@ -414,7 +414,7 @@ const VendorCard = ({ vendor }: { vendor: Vendor }) => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="sticky top-0 z-40 mt-16 bg-white shadow-sm">
-        <div className="container px-4 py-4 mx-auto">
+        <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Link href="/">
@@ -510,13 +510,13 @@ const VendorCard = ({ vendor }: { vendor: Vendor }) => {
       )}
 
       {/* Main Content */}
-      <main className="container px-4 py-6 mx-auto">
+      <main className="py-6 px-1 sm:px-4">
         {isLoading ? (
           <SkeletonGrid />
         ) : filteredVendors.length > 0 ? (
           <>
             {/* Vendors Grid */}
-            <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-1 sm:gap-4 mb-8 md:grid-cols-2 lg:grid-cols-4">
               {currentVendors.map((vendor) => (
                 <VendorCard key={vendor.id} vendor={vendor} />
               ))}

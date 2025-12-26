@@ -16,6 +16,9 @@ export const getQikinkTokenStep = createStep(
     const clientId = process.env.QIKINK_CLIENT_ID
     const clientSecret = process.env.QIKINK_CLIENT_SECRET
 
+    console.log("🔧 Using Qikink client ID:", clientId)
+    console.log("🔧 Using Qikink client secret:", clientSecret)
+
     if (!clientId || !clientSecret) {
       throw new Error("Missing Qikink credentials in environment variables")
     }
@@ -30,6 +33,15 @@ export const getQikinkTokenStep = createStep(
         },
         body: `ClientId=${clientId}&client_secret=${clientSecret}`,
       })
+
+      console.log(`🔔 Qikink token response status: ${response.status}`)
+      console.log(`🔔 Qikink token response headers: ${JSON.stringify(response.headers)}`)
+      console.log("🔔 Qikink token response ok:", response.ok)
+      console.log("🔔 Qikink token response statusText:", response.statusText)
+      console.log("🔔 Reading Qikink token response body...")
+      console.log("🔔 Qikink token response body type:", typeof response.body)
+      console.log("🔔 Qikink token response body used:", response.bodyUsed)
+      console.log(" Qikink response", response)
 
       if (!response.ok) {
         const errorText = await response.text()

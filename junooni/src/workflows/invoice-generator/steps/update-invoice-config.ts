@@ -7,6 +7,7 @@ type StepInput = {
   company_address?: string
   company_phone?: string
   company_email?: string
+  company_gst?: string // Added GST number field
   company_logo?: string
   notes?: string
 }
@@ -26,6 +27,7 @@ export const updateInvoiceConfigStep = createStep(
       company_address = undefined,
       company_phone = undefined,
       company_email = undefined,
+      company_gst = undefined, // Added GST number field
       company_logo = undefined,
       notes = undefined
     } = input as StepInput
@@ -54,6 +56,7 @@ export const updateInvoiceConfigStep = createStep(
       company_address,
       company_phone,
       company_email,
+      company_gst, // Added GST number field
       company_logo,
       notes
     })
@@ -73,6 +76,7 @@ export const updateInvoiceConfigStep = createStep(
       company_address: prevInvoiceConfig.company_address,
       company_phone: prevInvoiceConfig.company_phone,
       company_email: prevInvoiceConfig.company_email,
+      company_gst: prevInvoiceConfig.company_gst, // Added GST number field for rollback
       company_logo: prevInvoiceConfig.company_logo,
       notes: prevInvoiceConfig.notes
     })

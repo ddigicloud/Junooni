@@ -7,6 +7,7 @@ type WorkflowInput = {
   company_address?: string
   company_phone?: string
   company_email?: string
+  company_gst?: string
   company_logo?: string
   notes?: string
 }

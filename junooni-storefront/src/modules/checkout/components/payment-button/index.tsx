@@ -779,10 +779,10 @@ const RazorpayPaymentButton = ({
       >
         {submitting ? "Processing Payment..." : "Pay Now"}
       </Button>
-      <ErrorMessage
+      {/* <ErrorMessage
         error={errorMessage}
         data-testid="razorpay-payment-error-message"
-      />
+      /> */}
     </>
   )
 }

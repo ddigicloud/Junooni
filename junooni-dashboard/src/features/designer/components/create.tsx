@@ -5300,13 +5300,18 @@ const combinedArtworkPayload = {
    }
     
     // ✅ STEP 3: Continue with product creation (rest of your existing code)
-    const timestamp = Date.now();
-    const handle = values.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .substring(0, 50)
-      + `-${timestamp}`;
+   const timestamp = Date.now();
+   const random = Math.random().toString(36).slice(2, 8);
+
+    const handle =
+      values.title
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 40)
+      + `-${timestamp}-${random}`;
+
 
     // Get form values
     const formValues = form.getValues();

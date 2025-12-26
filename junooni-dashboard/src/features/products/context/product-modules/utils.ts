@@ -24,7 +24,12 @@ export function generateUniqueSku(baseName: string): string {
   const timestamp = new Date().getTime();
 
   // Replace non-alphanumeric chars with hyphens and make lowercase
-  const cleanName = baseName.replace(/[^A-Z0-9]/ig, '-').toLowerCase();
+  // const cleanName = baseName.replace(/[^A-Z0-9]/ig, '-').toLowerCase();
+  const cleanName = baseName
+    .replace(/[^A-Z0-9]/ig, '-')
+    .replace(/-+/g, '-')  // ← ADD THIS LINE: Replace multiple consecutive hyphens with single hyphen
+    .replace(/^-|-$/g, '') // ← ADD THIS LINE: Remove leading/trailing hyphens
+    .toLowerCase();
 
   // Add timestamp to ensure uniqueness
   return `JUNI-${cleanName}-${timestamp}`;

@@ -67,79 +67,7 @@ export default function NotFound() {
     )
   }
   
-  // If user is not logged in, show login prompt
-  if (!customer) {
-    return (
-      <div className="relative flex items-center justify-center min-h-[calc(100vh-64px)] px-4 overflow-hidden bg-gradient-to-br from-orange-50 via-white to-purple-50">
-        {/* Decorative Elements */}
-        <div className="absolute top-0 left-0 w-64 h-64 bg-orange-200 rounded-full opacity-20 -ml-32 -mt-32 blur-3xl"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-200 rounded-full opacity-20 -mr-48 -mb-48 blur-3xl"></div>
-
-        <div className="relative z-10 w-full max-w-md">
-          {/* Icon */}
-          <div className="flex justify-center mb-8">
-            <div className="flex items-center justify-center w-24 h-24 bg-gradient-to-br from-[#e65100] to-[#f57c00] rounded-2xl shadow-xl">
-              <User className="w-12 h-12 text-white" />
-            </div>
-          </div>
-          
-          {/* Content Card */}
-          <div className="p-8 space-y-6 text-center bg-white border border-gray-200 shadow-2xl rounded-2xl">
-            <div className="space-y-3">
-              <h1 className="text-3xl font-bold text-gray-900">
-                Please Sign In
-              </h1>
-              <p className="text-gray-600">
-                You need to be logged in to access this page.
-              </p>
-            </div>
-
-            {/* Action Button */}
-            <Link href="/account" className="block w-full">
-              <button className="w-full h-12 px-6 bg-[#e65100] hover:bg-[#d84315] text-white font-semibold rounded-lg transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2">
-                Sign In to Your Account
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-            </Link>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 text-gray-500 bg-white">or</span>
-              </div>
-            </div>
-
-            {/* Additional Link */}
-            <Link
-              href="/"
-              className="flex items-center justify-center gap-2 text-[#e65100] hover:text-[#d84315] font-medium transition-colors"
-            >
-              <Home className="w-4 h-4" />
-              Return to Homepage
-            </Link>
-          </div>
-
-          {/* Trust Indicators */}
-          <div className="flex items-center justify-center gap-6 mt-6 text-xs text-gray-500">
-            <div className="flex items-center gap-1.5">
-              <Sparkles size={14} />
-              <span>Secure</span>
-            </div>
-            <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
-            <div className="flex items-center gap-1.5">
-              <Heart size={14} />
-              <span>Trusted</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // User is logged in but page doesn't exist - show 404
+  // ✅ ALWAYS show 404 page not found - regardless of login status
   return (
     <div className="relative flex items-center justify-center min-h-[calc(100vh-64px)] px-4 py-12 overflow-hidden bg-gradient-to-br from-orange-50 via-white to-purple-50">
       {/* Decorative Elements */}
@@ -196,34 +124,6 @@ export default function NotFound() {
             </div>
           </Link>
         </div>
-
-        {/* Popular Categories */}
-        {/* <div className="max-w-2xl p-6 mx-auto bg-white border border-gray-200 shadow-lg md:p-8 rounded-2xl">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <Sparkles className="w-5 h-5 text-[#e65100]" />
-            <h3 className="text-lg font-semibold text-gray-900">
-              Popular Categories
-            </h3>
-          </div>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link href="/collections/men" 
-                  className="px-5 py-2.5 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-full hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
-              Men
-            </Link>
-            <Link href="/collections/women" 
-                  className="px-5 py-2.5 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-full hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
-              Women
-            </Link>
-            <Link href="/collections/kids" 
-                  className="px-5 py-2.5 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-full hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
-              Kids
-            </Link>
-            <Link href="/collections/official-merchandise" 
-                  className="px-5 py-2.5 text-sm font-medium transition-all duration-200 border-2 border-gray-200 rounded-full hover:border-[#e65100] hover:bg-orange-50 text-gray-700 hover:text-[#e65100]">
-              Official Merchandise
-            </Link>
-          </div>
-        </div> */}
 
         {/* Customer-specific links if logged in */}
         {customer && (

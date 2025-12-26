@@ -302,6 +302,7 @@ interface Product {
   cost: number;
   sku: string;
   brand: string;
+  status?: string; // Add status field
   displayImages: DisplayImage[];
   colorOptions: ColorOption[];
   sizeOptions: SizeOption[];
@@ -323,6 +324,11 @@ interface ProductCardProps {
 
 const ProductCard = ({ product, metadata }: ProductCardProps) => {
   const router = useRouter();
+
+   // Hide draft products
+  if (product.status?.toLowerCase() === 'draft') {
+    return null;
+  }
   
   // Function to handle product click - intelligently determines proper route based on current path
   const handleProductClick = () => {
@@ -411,21 +417,6 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-[#e65100]/10 hover:border-[#e65100]/20 group">
-      {/* Product badges */}
-      {/* <div className="absolute z-10 flex gap-2 top-4 left-4">
-        {metadata.isBestSeller && (
-          // <span className="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-[#e65100] to-[#ff7043] rounded-full shadow-lg">
-          //   🏆 Best Seller
-          // </span>
-          <span className="px-2 py-0.5 text-xs font-medium text-white bg-black rounded-full">
-          </span>
-        )}
-        {metadata.isStaffPick && (
-          <span className="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-gray-700 to-gray-800 rounded-full shadow-lg">
-            ⭐ Staff Pick
-          </span>
-        )}
-      </div> */}
 
       {/* Product Image with enhanced styling */}
       <div 

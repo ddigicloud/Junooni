@@ -7,14 +7,6 @@ import { sendOrderConfirmationWorkflow } from "../workflows/resend/send-order-co
 import { handleOrderPayoutsWorkflow } from "../workflows/payout/handle-earnings/handle-add-earnings-payout"
 import { checkManufacturerFulfillmentWorkflow } from "../workflows/manufacturers/check-manufacturer-fulfillment"
 
-/**
- * Subscriber for order.placed event
- * Handles multiple workflows concurrently:
- * 1. Order payouts calculation
- * 2. Loyalty points assignment
- * 3. Order confirmation email
- * 4. Manufacturer fulfillment sync (Qikink, etc.)
- */
 export default async function orderPlacedHandler({
   event: { data },
   container,
