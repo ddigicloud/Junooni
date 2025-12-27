@@ -614,11 +614,39 @@ async function buildDesignsForItem(query: any, item: any): Promise<any[]> {
   Object.entries(designsByArea).forEach(([area, elements]) => {
     elements.forEach((element) => {
       const placementSku = getPlacementSku(area)
-      const variantTitle = item.variant?.title || "default"
-      const designCode =
-        variantTitle.length > 17
-          ? `${variantTitle.substring(0, 17)}-${placementSku}`
-          : `${variantTitle}-${placementSku}`
+      
+      // Extract date and random part from variant SKU
+      // Expected format: JUNI-golden-yellow-x-271225-MJNYKZ9N
+      const variantSku = item?.variant?.sku || ""
+      
+      console.log("🔍 Debug SKU extraction:")
+      console.log("   variant SKU:", variantSku)
+      
+      let designCode = ""
+      
+      // Split by dash and get the last two parts (date and random)
+      const skuParts = variantSku.split("-")
+      
+      if (skuParts.length >= 2) {
+        // Get last two parts: date (271225) and random (MJNYKZ9N)
+        const datePart = skuParts[skuParts.length - 2]
+        const randomPart = skuParts[skuParts.length - 1]
+        
+        // Check if datePart looks like a date (6 digits: DDMMYY)
+        if (datePart && /^\d{6}$/.test(datePart)) {
+          designCode = `${datePart}-${randomPart}`
+          console.log("   ✅ Extracted design code:", designCode)
+        } else {
+          // Fallback: use just the last part
+          designCode = randomPart || "default"
+          console.log("   ⚠️ Date format not found, using last part:", designCode)
+        }
+      } else {
+        // Fallback for unexpected format
+        const randomSuffix = Math.floor(Math.random() * 9000) + 1000
+        designCode = `default-${randomSuffix}-${placementSku}`
+        console.log("   ⚠️ SKU format unexpected, using random:", designCode)
+      }
 
       designs.push({
         design_code: designCode,
@@ -629,7 +657,7 @@ async function buildDesignsForItem(query: any, item: any): Promise<any[]> {
         design_link: element.url,
       })
 
-      //console.log(`   ✅ Added ${area} design: ${element.url}`)
+      console.log(`   ✅ Added ${area} design with code ${designCode}: ${element.url}`)
     })
   })
 

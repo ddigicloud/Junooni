@@ -20,20 +20,23 @@ export const generateUUID = (): string => {
 
 // Generate a unique SKU with timestamp to avoid duplicates
 export function generateUniqueSku(baseName: string): string {
-  // Get current timestamp in milliseconds
-  const timestamp = new Date().getTime();
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = String(now.getFullYear()).slice(-2); // Last 2 digits of year
+  
+  // 8-character unique ID
+  const uniqueId = `${now.getTime().toString(36)}${Math.random().toString(36).substring(2, 5)}`.toUpperCase().substring(0, 8);
 
-  // Replace non-alphanumeric chars with hyphens and make lowercase
-  // const cleanName = baseName.replace(/[^A-Z0-9]/ig, '-').toLowerCase();
   const cleanName = baseName
     .replace(/[^A-Z0-9]/ig, '-')
-    .replace(/-+/g, '-')  // ← ADD THIS LINE: Replace multiple consecutive hyphens with single hyphen
-    .replace(/^-|-$/g, '') // ← ADD THIS LINE: Remove leading/trailing hyphens
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
     .toLowerCase();
 
-  // Add timestamp to ensure uniqueness
-  return `JUNI-${cleanName}-${timestamp}`;
+  return `JUNI-${cleanName}-${day}${month}${year}-${uniqueId}`;
 }
+// Example: JUNI-product-name-271225-L8K9P2X4mple: JUNI-product-name-27122025-1735315200000
 
 // Generate all possible variant combinations (Cartesian product) from options
 export function generateVariantsFromOptions(options: any[]): Variant[] {
