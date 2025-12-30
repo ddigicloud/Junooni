@@ -429,9 +429,9 @@ export const NonColorButtonSelector = ({
               }`}
             >
               {value}
-              {imageCount > 0 && (
+              {/* {imageCount > 0 && (
                 <span className="ml-1 text-[#e65100]">({imageCount})</span>
-              )}
+              )} */}
             </button>
           );
         })}

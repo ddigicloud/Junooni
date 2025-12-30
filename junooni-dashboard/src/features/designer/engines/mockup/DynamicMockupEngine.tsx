@@ -222,7 +222,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
     const icon = type === 'error' ? '❌' : type === 'warn' ? '⚠️' : '✅';
     const logMessage = `${timestamp} ${icon} ${message}`;
     
-    console.log(logMessage, data || '');
+    //console.log(logMessage, data || '');
     
     setDebugLog(prev => {
       const newLog = [...prev.slice(-15), logMessage];

@@ -2203,7 +2203,7 @@ const handleMockupImagesEnhanced = async (
     designData: DesignData,
     imageSettings: ImageAssociationSettings
   ) => {
-    
+
     const processedImages: MediaItem[] = [];
     let currentRank = 1000; // Start after design images
     let reuseCount = 0;
@@ -2296,7 +2296,7 @@ const handleMockupImagesEnhanced = async (
                   allCoveredKeys: sizes.map(size => `${colorDetail.name}_${size}`)
                 }
               };
-              
+
               processedImages.push(mediaItem);
               reuseCount++;
             }
@@ -2700,55 +2700,307 @@ const processColorSpecificImages = async (
     const processedImages: MediaItem[] = [];
     let currentRank = 1000;
     
+    // Get all available sizes
+    const sizeOption = designData.options?.find(opt => 
+      opt.title.toLowerCase().includes('size')
+    );
+    const allSizes = sizeOption?.optionValues || [];
+    
+    // console.log('🔍 SIZE DEBUG: Processing with settings:', {
+    //   size_Images: imageSettings.size_Images,
+    //   color_Images: imageSettings.color_Images,
+    //   availableSizes: allSizes
+    // });
+    
     // Iterate through each color group
     for (const [colorHex, mockups] of Object.entries(colorSpecificImages)) {
-      // Find the color name
       const colorDetail = designData.colorDetails?.find(c => c.value.toLowerCase() === colorHex.toLowerCase());
       const colorName = colorDetail?.name || colorHex;
       
-      // Process each mockup in this color group
-      for (const mockup of mockups) {
-        const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.png`;
-        
-        const processedImage = await processBase64ToFile(
-          mockup.imageData,
-          fileName,
-          colorName
+      //console.log(`\n🎨 Processing color: ${colorName} (${mockups.length} mockups)`);
+      
+      // 🔥 CASE 1: size_Images TRUE, color_Images FALSE - Size-specific images
+      // 🔥 CASE 1: size_Images TRUE, color_Images FALSE - Size-specific images
+if (imageSettings.size_Images && !imageSettings.color_Images && allSizes.length > 0) {
+  // console.log(`🔧 SIZE MODE: Creating entries for color ${colorName}`);
+  // console.log(`  Available mockups:`, mockups.length);
+  // console.log(`  Available sizes:`, allSizes);
+  
+  // 🔥 CRITICAL FIX: Each mockup is ALREADY size-specific!
+  // Extract size from mockupTitle or storageKey
+  for (const mockup of mockups) {
+    // console.log(`\n  📸 Processing mockup:`, {
+    //   mockupTitle: mockup.mockupTitle,
+    //   storageKey: mockup.storageKey
+    // });
+    
+    // Extract size from mockupTitle: "Front (Galaxy 5)" -> "Galaxy 5"
+    let extractedSize: string | null = null;
+    
+    // Method 1: Extract from mockupTitle
+    const titleMatch = mockup.mockupTitle?.match(/\(([^)]+)\)/);
+    if (titleMatch && titleMatch[1]) {
+      extractedSize = titleMatch[1];
+      //console.log(`    ✅ Extracted size from mockupTitle: "${extractedSize}"`);
+    }
+    
+    // Method 2: Fallback - Extract from storageKey
+    if (!extractedSize && mockup.storageKey) {
+      // storageKey format: "68e215378637855a3783bbd5_front_ffffff_galaxy_5"
+      const keyParts = mockup.storageKey.split('_');
+      // Find which part matches a size
+      for (const part of keyParts) {
+        const matchingSize = allSizes.find(size => 
+          size.toLowerCase().replace(/\s+/g, '_') === part.toLowerCase()
         );
-        
-        if (processedImage) {
-          const mediaItem: MediaItem = {
-            file: processedImage.file,
-            url: processedImage.url,
-            rank: currentRank++,
-            isNew: true,
-            variantInfo: {
-              optionName: 'Color',
-              optionValues: [colorName],
-              isSharedAcrossSizes: !imageSettings.size_Images
-            },
-            colorValue: colorName,
-            metadata: {
-              mockupId: mockup.mockupId,
-              viewAngle: mockup.viewAngle,
-              hasDesign: mockup.hasDesign,
-              extractedColorName: colorName,
-              payloadSettings: { ...imageSettings }
-            }
-          };
-          
-          processedImages.push(mediaItem);
+        if (matchingSize) {
+          extractedSize = matchingSize;
+          //console.log(`    ✅ Extracted size from storageKey: "${extractedSize}"`);
+          break;
+        }
+      }
+      
+      // Try multi-part match (e.g., "galaxy_5" -> "Galaxy 5")
+      if (!extractedSize) {
+        for (let i = 0; i < keyParts.length - 1; i++) {
+          const combined = `${keyParts[i]}_${keyParts[i + 1]}`;
+          const matchingSize = allSizes.find(size => 
+            size.toLowerCase().replace(/\s+/g, '_') === combined.toLowerCase()
+          );
+          if (matchingSize) {
+            extractedSize = matchingSize;
+            //console.log(`    ✅ Extracted size from storageKey (combined): "${extractedSize}"`);
+            break;
+          }
         }
       }
     }
     
+    // If we couldn't extract size, log warning and skip
+    if (!extractedSize) {
+      //console.log(`    ⚠️ WARNING: Could not extract size from mockup, skipping!`);
+      continue;
+    }
+    
+    // Verify extracted size is in allSizes
+    if (!allSizes.includes(extractedSize)) {
+      //console.log(`    ⚠️ WARNING: Extracted size "${extractedSize}" not in allSizes:`, allSizes);
+      continue;
+    }
+    
+    const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-${extractedSize.toLowerCase().replace(/\s+/g, '_')}.png`;
+    
+    //console.log(`    🔧 Creating entry for extracted size: ${extractedSize}`);
+    
+    const processedImage = await processBase64ToFile(
+      mockup.imageData,
+      fileName,
+      colorName
+    );
+    
+    if (processedImage) {
+      // 🔥 FIX: Use the EXTRACTED size, not loop through all sizes
+      const variantInfo = {
+        optionName: 'Size',
+        optionValues: [extractedSize],  // ✅ Use extracted size
+        secondaryOptionName: 'Color',
+        secondaryOptionValues: [colorName]
+      };
+      
+      const mediaItem: MediaItem = {
+        file: processedImage.file,
+        url: processedImage.url,
+        rank: currentRank++,
+        isNew: true,
+        variantInfo: variantInfo,
+        colorValue: colorName,
+        metadata: {
+          mockupId: mockup.mockupId,
+          viewAngle: mockup.viewAngle,
+          hasDesign: mockup.hasDesign,
+          extractedColorName: colorName,
+          extractedSizeName: extractedSize,  // ✅ Use extracted size
+          originalMockupTitle: mockup.mockupTitle,
+          originalStorageKey: mockup.storageKey,
+          payloadSettings: { ...imageSettings }
+        }
+      };
+      
+      processedImages.push(mediaItem);
+      
+      // console.log('    ✅ SIZE DEBUG: Created size-specific media item:', {
+      //   size: extractedSize,
+      //   colorName,
+      //   viewAngle: mockup.viewAngle,
+      //   mockupTitle: mockup.mockupTitle,
+      //   primaryOption: mediaItem.variantInfo.optionName,
+      //   primaryValue: mediaItem.variantInfo.optionValues[0],
+      //   fileName: mediaItem.file?.name
+      // });
+    } else {
+      //console.log('    ❌ Failed to process image for size:', extractedSize);
+    }
+  }
+
+      } 
+      // 🔥 CASE 2: color_Images TRUE, size_Images FALSE - Color-specific, size-shared images
+      else if (imageSettings.color_Images && !imageSettings.size_Images) {
+        //console.log(`🎨 COLOR MODE: Creating color-specific images for ${colorName}`);
+        
+        for (const mockup of mockups) {
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.png`;
+          
+          const processedImage = await processBase64ToFile(
+            mockup.imageData,
+            fileName,
+            colorName
+          );
+          
+          if (processedImage) {
+            const variantInfo = {
+              optionName: 'Color',
+              optionValues: [colorName],
+              isSharedAcrossSizes: true,
+              coversSizes: allSizes
+            };
+            
+            const mediaItem: MediaItem = {
+              file: processedImage.file,
+              url: processedImage.url,
+              rank: currentRank++,
+              isNew: true,
+              variantInfo: variantInfo,
+              colorValue: colorName,
+              metadata: {
+                mockupId: mockup.mockupId,
+                viewAngle: mockup.viewAngle,
+                hasDesign: mockup.hasDesign,
+                extractedColorName: colorName,
+                extractedSizeNames: allSizes,
+                coversAllSizes: true,
+                payloadSettings: { ...imageSettings }
+              }
+            };
+            
+            processedImages.push(mediaItem);
+            
+            // console.log('✅ COLOR DEBUG: Created color-specific media item:', {
+            //   colorName,
+            //   viewAngle: mockup.viewAngle,
+            //   primaryOption: mediaItem.variantInfo.optionName,
+            //   coversSizes: mediaItem.variantInfo.coversSizes
+            // });
+          }
+        }
+      }
+      // 🔥 CASE 3: BOTH color_Images and size_Images TRUE
+      else if (imageSettings.color_Images && imageSettings.size_Images) {
+        //console.log(`🔄 BOTH MODE: Creating color+size specific images for ${colorName}`);
+        
+        // In this mode, we'd ideally need separate images per color-size combination
+        // For now, we'll create entries covering all sizes per color
+        for (const mockup of mockups) {
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-all-sizes.png`;
+          
+          const processedImage = await processBase64ToFile(
+            mockup.imageData,
+            fileName,
+            colorName
+          );
+          
+          if (processedImage) {
+            const variantInfo = {
+              optionName: 'Color',
+              optionValues: [colorName],
+              secondaryOptionName: 'Size',
+              secondaryOptionValues: allSizes,
+              coversSizes: allSizes
+            };
+            
+            const mediaItem: MediaItem = {
+              file: processedImage.file,
+              url: processedImage.url,
+              rank: currentRank++,
+              isNew: true,
+              variantInfo: variantInfo,
+              colorValue: colorName,
+              metadata: {
+                mockupId: mockup.mockupId,
+                viewAngle: mockup.viewAngle,
+                hasDesign: mockup.hasDesign,
+                extractedColorName: colorName,
+                extractedSizeNames: allSizes,
+                coversAllSizes: true,
+                payloadSettings: { ...imageSettings }
+              }
+            };
+            
+            processedImages.push(mediaItem);
+            
+            // console.log('✅ BOTH DEBUG: Created color+size media item:', {
+            //   colorName,
+            //   viewAngle: mockup.viewAngle,
+            //   primaryOption: mediaItem.variantInfo.optionName,
+            //   coversSizes: mediaItem.variantInfo.coversSizes
+            // });
+          }
+        }
+      }
+      // 🔥 CASE 4: Neither enabled (default/fallback)
+      else {
+        //console.log(`⚙️ DEFAULT MODE: Creating basic images for ${colorName}`);
+        
+        for (const mockup of mockups) {
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.png`;
+          
+          const processedImage = await processBase64ToFile(
+            mockup.imageData,
+            fileName,
+            colorName
+          );
+          
+          if (processedImage) {
+            const variantInfo = {
+              optionName: 'Color',
+              optionValues: [colorName],
+              isSharedAcrossSizes: true
+            };
+            
+            const mediaItem: MediaItem = {
+              file: processedImage.file,
+              url: processedImage.url,
+              rank: currentRank++,
+              isNew: true,
+              variantInfo: variantInfo,
+              colorValue: colorName,
+              metadata: {
+                mockupId: mockup.mockupId,
+                viewAngle: mockup.viewAngle,
+                hasDesign: mockup.hasDesign,
+                extractedColorName: colorName,
+                payloadSettings: { ...imageSettings }
+              }
+            };
+            
+            processedImages.push(mediaItem);
+          }
+        }
+      }
+    }
+    
+    //console.log(`\n📦 SIZE DEBUG: Total processed images: ${processedImages.length}`);
+    
     if (processedImages.length > 0) {
       setMediaItems(prev => [...prev, ...processedImages]);
       setTimeout(() => setActiveImageTab('upload'), 100);
+      
+      //console.log('✅ Images added to mediaItems state');
+    } else {
+      //console.log('⚠️ No images were processed');
     }
     
   } catch (error) {
-    //console.error('Error processing color-specific images:', error);
+    //console.error('❌ Error processing color-specific images:', error);
     setError('Failed to process mockup images');
   }
 };
@@ -2837,160 +3089,251 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
     }
   };
 
-  // Replace your existing getImagesForOptionValue function with this:
-  // REPLACE your existing getImagesForOptionValue function with this enhanced version
-// REPLACE your getImagesForOptionValue function with this version
-// REPLACE the entire getImagesForOptionValue function
-// REPLACE the entire getImagesForOptionValue function
+  // REPLACE the entire getImagesForOptionValue function
 const getImagesForOptionValue = (optionName: string, optionValue: string): MediaItem[] => {
-  //console.log('🔍 FILTER: Getting images for', optionName, ':', optionValue);
+  // console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  // console.log('🔍 FILTER: getImagesForOptionValue called');
+  // console.log('  optionName:', optionName);
+  // console.log('  optionValue:', optionValue);
+  // console.log('  payloadImageSettings:', payloadImageSettings);
+  // console.log('  Total mediaItems:', mediaItems.length);
   
   const filteredImages = mediaItems.filter(item => {
     // Skip design images
     const isDesign = item.metadata?.isRawDesignImage === true || 
-                   item.variantInfo?.isRawDesignImage === true ||
+                   item.variantInfo?.isRawDesignImage === true||
                    item.metadata?.debugInfo?.source === 'canvas_design_element';
     if (isDesign) return false;
     
     const isColorOption = optionName.toLowerCase() === 'color';
     const isSizeOption = optionName.toLowerCase() === 'size';
-    
     const optionValueLower = optionValue.toLowerCase();
-    const normalizedOptionValue = optionValueLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
     
-    // console.log('🔍 FILTER: Checking image:', {
-    //   fileName: item.file?.name,
-    //   colorValue: item.colorValue,
-    //   extractedColor: item.metadata?.extractedColorName,
-    //   isShared: item.metadata?.isSharedImage,
-    //   primaryOption: item.variantInfo?.optionName,
-    //   primaryValues: item.variantInfo?.optionValues
+    // console.log('\n🔍 FILTER: Checking image:', item.file?.name);
+    // console.log('  variantInfo:', {
+    //   optionName: item.variantInfo?.optionName,
+    //   optionValues: item.variantInfo?.optionValues,
+    //   secondaryOptionName: item.variantInfo?.secondaryOptionName,
+    //   secondaryOptionValues: item.variantInfo?.secondaryOptionValues
+    // });
+    // console.log('  metadata:', {
+    //   extractedSizeName: item.metadata?.extractedSizeName,
+    //   extractedColorName: item.metadata?.extractedColorName
     // });
     
-    // CASE 1: color_Images is TRUE and size_Images is FALSE
+    // CASE 1: color_Images TRUE, size_Images FALSE
     if (payloadImageSettings.color_Images && !payloadImageSettings.size_Images) {
       if (!isColorOption) {
-        //console.log('❌ FILTER: Not a color option, skipping');
+        //console.log('  ❌ FILTER: Not a color option, skipping');
         return false;
       }
       
-      // Helper function for flexible color matching
+      //console.log('  🎨 COLOR MODE: Checking color match');
+      
       const matchesColor = (colorToCheck: string | undefined): boolean => {
         if (!colorToCheck) return false;
         
         const colorLower = colorToCheck.toLowerCase();
         const normalizedColor = colorLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+        const normalizedOptionValue = optionValueLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
         
-        // Exact match (case-insensitive)
         if (colorLower === optionValueLower) return true;
-        
-        // Normalized match (no spaces/hyphens/underscores)
         if (normalizedColor === normalizedOptionValue) return true;
-        
-        // Partial match (for compound names like "sky blue" vs "skyblue")
         if (colorLower.includes(optionValueLower) || optionValueLower.includes(colorLower)) return true;
         
         return false;
       };
       
-      // Check all possible color fields
       if (matchesColor(item.variantInfo?.optionValues?.[0])) {
-        //console.log('✅ FILTER: Matched via primary optionValues');
+        //console.log('  ✅ FILTER: Matched via primary optionValues');
         return true;
       }
       
       if (matchesColor(item.variantInfo?.secondaryOptionValues?.[0])) {
-        //console.log('✅ FILTER: Matched via secondary optionValues');
+        //console.log('  ✅ FILTER: Matched via secondary optionValues');
         return true;
       }
       
       if (matchesColor(item.metadata?.extractedColorName)) {
-        //console.log('✅ FILTER: Matched via extractedColorName');
+        //console.log('  ✅ FILTER: Matched via extractedColorName');
         return true;
       }
       
       if (matchesColor(item.colorValue)) {
-        //console.log('✅ FILTER: Matched via colorValue');
+        //console.log('  ✅ FILTER: Matched via colorValue');
         return true;
       }
       
-      // **CRITICAL: For shared images, check if they match ANY of the above**
       if (item.metadata?.isSharedImage) {
         const sharedImageColor = item.colorValue || item.metadata?.extractedColorName;
         if (matchesColor(sharedImageColor)) {
-          //console.log('✅ FILTER: Matched shared image for color:', sharedImageColor);
+          //console.log('  ✅ FILTER: Matched shared image for color:', sharedImageColor);
           return true;
-        } else {
-          //console.log('❌ FILTER: Shared image but wrong color:', sharedImageColor, 'vs', optionValue);
-          return false;
         }
       }
       
-      //console.log('❌ FILTER: No color match found');
+      //console.log('  ❌ FILTER: No color match found');
       return false;
     }
     
-    // CASE 2: color_Images is FALSE and size_Images is TRUE
+    // CASE 2: color_Images FALSE, size_Images TRUE
     if (!payloadImageSettings.color_Images && payloadImageSettings.size_Images) {
-      if (!isSizeOption) return false;
-      
-      const optionValueLower = optionValue.toLowerCase();
-      
-      if (item.variantInfo?.optionName?.toLowerCase() === 'size' &&
-          item.variantInfo?.optionValues?.some(val => val.toLowerCase() === optionValueLower)) {
-        return true;
+      if (!isSizeOption) {
+        //console.log('  ❌ FILTER: Not a size option, skipping');
+        return false;
       }
       
-      if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'size' &&
-          item.variantInfo?.secondaryOptionValues?.some(val => val.toLowerCase() === optionValueLower)) {
-        return true;
+      // console.log('  📏 SIZE MODE: Checking size match');
+      // console.log('    Looking for:', optionValueLower);
+      // console.log('    Image primary option:', item.variantInfo?.optionName?.toLowerCase());
+      // console.log('    Image primary values:', item.variantInfo?.optionValues?.map(v => v.toLowerCase()));
+      
+      // Helper function for flexible size matching
+      const matchesSize = (sizeToCheck: string | undefined): boolean => {
+        if (!sizeToCheck) return false;
+        
+        const sizeLower = sizeToCheck.toLowerCase();
+        const normalizedSize = sizeLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+        const normalizedOptionValue = optionValueLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+        
+        // Exact match
+        if (sizeLower === optionValueLower) return true;
+        
+        // Normalized match (no spaces/hyphens/underscores)
+        if (normalizedSize === normalizedOptionValue) return true;
+        
+        // Partial match for compound names
+        if (sizeLower.includes(optionValueLower) || optionValueLower.includes(sizeLower)) return true;
+        
+        return false;
+      };
+      
+      // Check primary option (Size)
+      if (item.variantInfo?.optionName?.toLowerCase() === 'size') {
+        //console.log('    ✓ Primary option IS size');
+        
+        const primaryMatch = item.variantInfo?.optionValues?.some(val => {
+          const match = matchesSize(val);
+          //console.log(`      Comparing "${val.toLowerCase()}" with "${optionValueLower}": ${match}`);
+          return match;
+        });
+        
+        if (primaryMatch) {
+          //console.log('  ✅ FILTER: MATCH via primary size option');
+          return true;
+        } else {
+          //console.log('  ❌ NO MATCH in primary values');
+        }
+      } else {
+        //console.log('    ✗ Primary option is NOT size, it is:', item.variantInfo?.optionName);
       }
       
-      if (item.metadata?.extractedSizeName?.toLowerCase() === optionValueLower) {
-        return true;
+      // Check secondary option (Size)
+      if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'size') {
+        //console.log('    ✓ Secondary option IS size');
+        
+        const secondaryMatch = item.variantInfo?.secondaryOptionValues?.some(val => {
+          const match = matchesSize(val);
+          //console.log(`      Comparing "${val.toLowerCase()}" with "${optionValueLower}": ${match}`);
+          return match;
+        });
+        
+        if (secondaryMatch) {
+          //console.log('  ✅ FILTER: MATCH via secondary size option');
+          return true;
+        } else {
+          //console.log('  ❌ NO MATCH in secondary values');
+        }
+      } else {
+        //console.log('    ✗ Secondary option is NOT size, it is:', item.variantInfo?.secondaryOptionName);
       }
       
+      // Check extracted size metadata
+      if (item.metadata?.extractedSizeName) {
+        const metadataMatch = matchesSize(item.metadata.extractedSizeName);
+        //console.log(`    Checking metadata: "${item.metadata.extractedSizeName.toLowerCase()}" with "${optionValueLower}": ${metadataMatch}`);
+        
+        if (metadataMatch) {
+          //console.log('  ✅ FILTER: MATCH via extractedSizeName');
+          return true;
+        }
+      } else {
+        //console.log('    ✗ No extractedSizeName in metadata');
+      }
+      
+      //console.log('  ❌ FILTER: NO MATCH FOUND');
       return false;
     }
     
     // CASE 3: BOTH color_Images and size_Images are TRUE
     if (payloadImageSettings.color_Images && payloadImageSettings.size_Images) {
-      const optionValueLower = optionValue.toLowerCase();
+      //console.log('  🔄 BOTH MODE: Checking for color+size combination');
+      
+      const matchesColor = (colorToCheck: string | undefined): boolean => {
+        if (!colorToCheck) return false;
+        const colorLower = colorToCheck.toLowerCase();
+        return colorLower === optionValueLower || 
+               colorLower.includes(optionValueLower) || 
+               optionValueLower.includes(colorLower);
+      };
+      
+      const matchesSize = (sizeToCheck: string | undefined): boolean => {
+        if (!sizeToCheck) return false;
+        const sizeLower = sizeToCheck.toLowerCase();
+        const normalizedSize = sizeLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+        const normalizedOptionValue = optionValueLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+        
+        return sizeLower === optionValueLower || 
+               normalizedSize === normalizedOptionValue ||
+               sizeLower.includes(optionValueLower) || 
+               optionValueLower.includes(sizeLower);
+      };
       
       if (isColorOption) {
         if (item.variantInfo?.optionName?.toLowerCase() === 'color' &&
-            item.variantInfo?.optionValues?.some(val => val.toLowerCase() === optionValueLower)) {
+            item.variantInfo?.optionValues?.some(val => matchesColor(val))) {
+          //console.log('  ✅ FILTER: MATCH via primary color');
           return true;
         }
         
         if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'color' &&
-            item.variantInfo?.secondaryOptionValues?.some(val => val.toLowerCase() === optionValueLower)) {
+            item.variantInfo?.secondaryOptionValues?.some(val => matchesColor(val))) {
+          //console.log('  ✅ FILTER: MATCH via secondary color');
           return true;
         }
         
-        if (item.metadata?.extractedColorName?.toLowerCase() === optionValueLower ||
-            item.colorValue?.toLowerCase() === optionValueLower) {
+        if (matchesColor(item.metadata?.extractedColorName) ||
+            matchesColor(item.colorValue)) {
+          //console.log('  ✅ FILTER: MATCH via color metadata');
           return true;
         }
       }
       
       if (isSizeOption) {
         if (item.variantInfo?.optionName?.toLowerCase() === 'size' &&
-            item.variantInfo?.optionValues?.some(val => val.toLowerCase() === optionValueLower)) {
+            item.variantInfo?.optionValues?.some(val => matchesSize(val))) {
+          //console.log('  ✅ FILTER: MATCH via primary size');
           return true;
         }
         
         if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'size' &&
-            item.variantInfo?.secondaryOptionValues?.some(val => val.toLowerCase() === optionValueLower)) {
+            item.variantInfo?.secondaryOptionValues?.some(val => matchesSize(val))) {
+          //console.log('  ✅ FILTER: MATCH via secondary size');
           return true;
         }
         
-        if (item.metadata?.extractedSizeName?.toLowerCase() === optionValueLower) {
+        if (matchesSize(item.metadata?.extractedSizeName)) {
+          //console.log('  ✅ FILTER: MATCH via size metadata');
           return true;
         }
       }
+      
+      //console.log('  ❌ FILTER: NO MATCH in both mode');
+      return false;
     }
     
+    // No specific image association settings enabled
+    //console.log('  ⚠️ FILTER: No image association settings enabled');
     return false;
   });
   
@@ -2999,7 +3342,14 @@ const getImagesForOptionValue = (optionName: string, optionValue: string): Media
     return self.findIndex(img => img.url === item.url) === index;
   });
   
-  //console.log('🎯 FILTER: Found', uniqueImages.length, 'images for', optionName, ':', optionValue);
+  //console.log('\n🎯 FILTER: Result:', uniqueImages.length, 'images matched (after deduplication)');
+  // uniqueImages.forEach((img, i) => {
+  //   console.log(`  ${i + 1}. ${img.file?.name}`, {
+  //     primaryOption: img.variantInfo?.optionName,
+  //     primaryValue: img.variantInfo?.optionValues?.[0]
+  //   });
+  // });
+  // console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   
   return uniqueImages;
 };
@@ -3852,11 +4202,11 @@ const processIndividualImages = async (
    try {
       // 🔥 PASS the extracted areas
       const parsedInfo = parseVariantKeyEnhanced(variantKey, designData, areasToUse);
-  //   console.log('🔍 Parsing result for', variantKey, ':', {
-  //   extracted: parsedInfo,
-  //   availableSizes: isSizeOption?.optionValues,
-  //   keyParts: variantKey.split(/[-_]+/)
-  // });
+    console.log('🔍 Parsing result for', variantKey, ':', {
+    extracted: parsedInfo,
+    availableSizes: isSizeOption?.optionValues,
+    keyParts: variantKey.split(/[-_]+/)
+  });
       
       //console.log(`🔍 Processing ${variantKey}:`, parsedInfo);
       
@@ -3881,34 +4231,34 @@ const processIndividualImages = async (
       // );
 
       const variantInfo = (() => {
-        // Determine primary tag based on settings AND what data we have
-        if (imageSettings.size_Images && parsedInfo.sizeName) {
-          // Size images enabled and we have size data - make Size primary
-          return {
-            optionName: 'Size',
-            optionValues: [parsedInfo.sizeName],
-            secondaryOptionName: 'Color',
-            secondaryOptionValues: [parsedInfo.colorName]
-          };
-        } else if (imageSettings.color_Images && parsedInfo.colorName) {
-           //console.warn(`⚠️ Missing size for image: ${fileName}, falling back to Color primary`);
-          // Color images enabled and we have color data - make Color primary
-          return {
-            optionName: 'Color',
-            optionValues: [parsedInfo.colorName],
-            ...(parsedInfo.sizeName ? {
-              secondaryOptionName: 'Size',
-              secondaryOptionValues: [parsedInfo.sizeName]
-            } : {})
-          };
-        } else {
-          // Fallback to existing logic
-          return createVariantInfoStructure(
-            { colorName: parsedInfo.colorName, sizeName: parsedInfo.sizeName },
-            imageSettings
-          );
-        }
-      })();
+      // Determine primary tag based on settings AND what data we have
+      if (imageSettings.size_Images && parsedInfo.sizeName) {
+        // Size images enabled and we have size data - make Size primary
+        return {
+          optionName: 'Size',
+          optionValues: [parsedInfo.sizeName],
+          secondaryOptionName: 'Color',
+          secondaryOptionValues: [parsedInfo.colorName]
+        };
+      } else if (imageSettings.color_Images && parsedInfo.colorName) {
+        console.warn(`⚠️ Missing size for image: ${fileName}, falling back to Color primary`);
+        // Color images enabled and we have color data - make Color primary
+        return {
+          optionName: 'Color',
+          optionValues: [parsedInfo.colorName],
+          ...(parsedInfo.sizeName ? {
+            secondaryOptionName: 'Size',
+            secondaryOptionValues: [parsedInfo.sizeName]
+          } : {})
+        };
+      } else {
+        // Fallback to existing logic
+        return createVariantInfoStructure(
+          { colorName: parsedInfo.colorName, sizeName: parsedInfo.sizeName },
+          imageSettings
+        );
+      }
+    })();
       
       const mediaItem: MediaItem = {
         file: processedImage.file,
@@ -3961,11 +4311,11 @@ const processIndividualImages = async (
 // REPLACE the parseVariantKeyEnhanced function with this dynamic version
 // REPLACE the parseVariantKeyEnhanced function with this improved version:
 const parseVariantKeyEnhanced = (variantKey: string, designData: DesignData, dynamicAreas: string[] = []) => {
-  //console.log('🔍 Parsing variant key:', variantKey);
+  console.log('🔍 Parsing variant key:', variantKey);
   
   // Split by both underscores AND hyphens
   const parts = variantKey.split(/[-_]+/).filter(part => part.length > 0);  
-  //console.log('🔍 Key parts:', parts);
+  console.log('🔍 Key parts:', parts);
   
   let colorName = 'Unknown';
   let sizeName: string | undefined = undefined;
@@ -3977,9 +4327,9 @@ const parseVariantKeyEnhanced = (variantKey: string, designData: DesignData, dyn
     opt.title.toLowerCase().includes('size')
   );
   
-  // console.log('🔍 Available sizes:', sizeOption?.optionValues);
-  // console.log('🔍 Available colors:', colorMatcher.getAllColorNames());
-  // console.log('🔍 Available areas:', dynamicAreas);
+  console.log('🔍 Available sizes:', sizeOption?.optionValues);
+  console.log('🔍 Available colors:', colorMatcher.getAllColorNames());
+  console.log('🔍 Available areas:', dynamicAreas);
   
   const availableAreasLower = dynamicAreas.map(area => area.toLowerCase());
   
@@ -5398,7 +5748,7 @@ const combinedArtworkPayload = {
                 const extraCost = parseFloat(matchingSize.ExtraCost);
                 if (!isNaN(extraCost) && extraCost > 0) {
                   finalCostPrice += extraCost;
-                  console.log(`Added ExtraCost ${extraCost} to variant ${variant.title}, new cost: ${finalCostPrice}`);
+                  //console.log(`Added ExtraCost ${extraCost} to variant ${variant.title}, new cost: ${finalCostPrice}`);
                 }
               }
             }
@@ -5449,7 +5799,7 @@ const combinedArtworkPayload = {
           // Add to metadata if we have a valid SKU
           if (manufacturerSku) {
             variantMetadata.manufacturer_sku = manufacturerSku;
-            console.log(`✅ Variant ${variant.title} manufacturer_sku:`, manufacturerSku);
+            //console.log(`✅ Variant ${variant.title} manufacturer_sku:`, manufacturerSku);
           }
         }
 
@@ -6139,72 +6489,6 @@ if (!printTechId || !printTechName) {
                   />
                 </div>
               </section>
-
-              {/* Canvas Mockup Information Section */}
-              {/* {canvasMockupData && (
-                <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
-                  <h2 className="mb-4 text-xl font-semibold text-gray-800">Available Mockups from Canvas</h2>
-                  <Separator className="mb-6" />
-                  
-                  <div className="mb-6">
-                    <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-3">
-                      <div className="p-3 text-center border border-blue-200 rounded-lg bg-blue-50">
-                        <p className="text-sm text-blue-600">Technology</p>
-                        <p className="font-bold text-blue-900">{canvasMockupData.technology_name}</p>
-                      </div>
-                      <div className="p-3 text-center border border-green-200 rounded-lg bg-green-50">
-                        <p className="text-sm text-green-600">Total Mockups</p>
-                        <p className="font-bold text-green-900">{canvasMockupData.total_available_mockups}</p>
-                      </div>
-                      <div className="p-3 text-center border border-purple-200 rounded-lg bg-purple-50">
-                        <p className="text-sm text-purple-600">Selected Colors</p>
-                        <p className="font-bold text-purple-900">{canvasMockupData.selected_colors?.length || 0}</p>
-                      </div>
-                    </div>
-
-                    
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-gray-800">Mockups by Color</h3>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {canvasMockupData.mockups_by_color?.map((colorGroup, index) => (
-                          <div key={index} className="p-4 border border-gray-200 rounded-lg">
-                            <div className="flex items-center mb-3">
-                              <div 
-                                className="w-4 h-4 mr-2 border border-gray-300 rounded-full"
-                                style={{ backgroundColor: colorGroup.color_hex }}
-                              ></div>
-                              <span className="font-medium text-gray-800">{colorGroup.color_name}</span>
-                              <span className="ml-auto text-sm text-gray-600">{colorGroup.mockup_count} mockups</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              {colorGroup.mockups?.slice(0, 4).map((mockup, mockupIndex) => (
-                                <div key={mockupIndex} className="relative">
-                                  <img
-                                    src={mockup.mockup_photo_url}
-                                    alt={mockup.mockup_title}
-                                    className="object-cover w-full h-16 border rounded"
-                                    onError={(e) => {
-                                      e.target.src = '/api/placeholder/64/64';
-                                    }}
-                                  />
-                                  <div className="absolute bottom-0 left-0 right-0 p-1 text-xs text-white truncate bg-black bg-opacity-60">
-                                    {mockup.view_angle}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                            {colorGroup.mockup_count > 4 && (
-                              <p className="mt-2 text-xs text-center text-gray-500">
-                                +{colorGroup.mockup_count - 4} more mockups
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              )} */}
 
               {/* Product Details Section (Bullet Points) */}
               <section className="px-3 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6">
@@ -7153,7 +7437,14 @@ if (!printTechId || !printTechName) {
                     </div>
                   </div>
                   
-                  {(designData?.printingTechnology || enhancedProductData?.printT?.[0]?.technologyName) && (
+                 {(() => {
+                  // Get the CANVAS-SELECTED technology from filteredProductData
+                  const locationState = location.state as LocationState;
+                  const canvasSelectedTech = locationState?.filteredProductData?.printT?.[0]?.technologyName;
+                  const payloadBaseTech = designData?.printingTechnology || enhancedProductData?.printT?.[0]?.technologyName;
+                  const displayTech = canvasSelectedTech || payloadBaseTech;
+                  
+                  return displayTech && (
                     <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
                       <div className="flex items-start">
                         <div className="p-2 mr-3 bg-orange-100 rounded-full text-orange-600">
@@ -7162,14 +7453,20 @@ if (!printTechId || !printTechName) {
                         <div className="flex-1">
                           <p className="text-sm font-medium text-orange-800">Print Technology</p>
                           <p className="mt-1 text-base font-semibold text-orange-900 uppercase">
-                            {designData?.printingTechnology || 
-                            enhancedProductData?.printT?.[0]?.technologyName || 
-                            'Not specified'}
+                            {displayTech || 'Not specified'}
                           </p>
+                          {/* Debug info - remove this after testing */}
+                          {/* {canvasSelectedTech && canvasSelectedTech !== payloadBaseTech && (
+                            <p className="mt-1 text-xs text-orange-600">
+                              ✓ Canvas-selected (Base product: {payloadBaseTech})
+                            </p>
+                          )} */}
                         </div>
                       </div>
                     </div>
-                  )}
+                  );
+                })()}
+
                 </div>
                 
                 <Separator className="mb-4" />
