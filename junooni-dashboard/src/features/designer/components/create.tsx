@@ -1011,6 +1011,9 @@ const convertLexicalToHtml = (content: RichTextContent | string): string => {
  * 
  */
 
+// Add this helper function before the onSubmit function (around line 2800)
+
+
 // Add this function to extract areas from location state
 // Replace the extractAvailableAreas function with this corrected version
 /**
@@ -4311,11 +4314,11 @@ const processIndividualImages = async (
 // REPLACE the parseVariantKeyEnhanced function with this dynamic version
 // REPLACE the parseVariantKeyEnhanced function with this improved version:
 const parseVariantKeyEnhanced = (variantKey: string, designData: DesignData, dynamicAreas: string[] = []) => {
-  console.log('🔍 Parsing variant key:', variantKey);
+  //console.log('🔍 Parsing variant key:', variantKey);
   
   // Split by both underscores AND hyphens
   const parts = variantKey.split(/[-_]+/).filter(part => part.length > 0);  
-  console.log('🔍 Key parts:', parts);
+  //console.log('🔍 Key parts:', parts);
   
   let colorName = 'Unknown';
   let sizeName: string | undefined = undefined;
@@ -4327,9 +4330,9 @@ const parseVariantKeyEnhanced = (variantKey: string, designData: DesignData, dyn
     opt.title.toLowerCase().includes('size')
   );
   
-  console.log('🔍 Available sizes:', sizeOption?.optionValues);
-  console.log('🔍 Available colors:', colorMatcher.getAllColorNames());
-  console.log('🔍 Available areas:', dynamicAreas);
+  // console.log('🔍 Available sizes:', sizeOption?.optionValues);
+  // console.log('🔍 Available colors:', colorMatcher.getAllColorNames());
+  // console.log('🔍 Available areas:', dynamicAreas);
   
   const availableAreasLower = dynamicAreas.map(area => area.toLowerCase());
   
@@ -5341,6 +5344,42 @@ const processCanvasImagesForArtwork = async (canvasImages: Array<{
   return processedCanvasImages;
 };
 
+//Helper function to display correct cost price with extra cost for size
+const getVariantCostPrice = useCallback((variantIndex: number): number => {
+  const baseCostPrice = canvasPricingData?.final_price_per_unit || 
+                        enhancedProductData?.cost || 
+                        0;
+  
+  if (baseCostPrice === 0) return 0;
+  
+  let finalCostPrice = baseCostPrice;
+  
+  // Get the variant's size option
+  const variant = form.watch(`variants.${variantIndex}`);
+  
+  if (variant?.optionValues && enhancedProductData?.sizeOptions) {
+    const sizeOptionValue = variant.optionValues.find(
+      opt => opt.optionName.toLowerCase() === 'size'
+    );
+    
+    if (sizeOptionValue) {
+      const matchingSize = enhancedProductData.sizeOptions.find(
+        size => size.sizeName.toLowerCase() === sizeOptionValue.value.toLowerCase()
+      );
+      
+      if (matchingSize?.ExtraCost) {
+        const extraCost = parseFloat(matchingSize.ExtraCost);
+        if (!isNaN(extraCost) && extraCost > 0) {
+          finalCostPrice += extraCost;
+          //console.log(`Variant ${variantIndex}: Added ExtraCost ${extraCost} for size ${sizeOptionValue.value}`);
+        }
+      }
+    }
+  }
+  
+  return finalCostPrice;
+}, [canvasPricingData, enhancedProductData, form]);
+
 
 const onSubmit = async (values: ProductFormValues) => {
   
@@ -5748,7 +5787,7 @@ const combinedArtworkPayload = {
                 const extraCost = parseFloat(matchingSize.ExtraCost);
                 if (!isNaN(extraCost) && extraCost > 0) {
                   finalCostPrice += extraCost;
-                  //console.log(`Added ExtraCost ${extraCost} to variant ${variant.title}, new cost: ${finalCostPrice}`);
+                  console.log(`Added ExtraCost ${extraCost} to variant ${variant.title}, new cost: ${finalCostPrice}`);
                 }
               }
             }
@@ -7145,15 +7184,33 @@ if (!printTechId || !printTechName) {
                               </td>
                               <td className="p-3 border-r border-gray-200">
                                 <div className="text-center">
-                                  <span className="font-medium text-orange-600">
-                                    ₹{canvasPricingData?.final_price_per_unit || '--'}
-                                  </span>
-                                  {/* {canvasPricingData?.final_price_per_unit && (
-                                    <div className="mt-1 text-xs text-gray-500">
-                                      Canvas Cost
-                                    </div>
-                                  )} */}
-                                </div>
+                                  {(() => {
+                                    const costPrice = getVariantCostPrice(index);
+                                    return (
+                                      <>
+                                        <span className="font-medium text-orange-600">
+                                          ₹{costPrice > 0 ? costPrice.toFixed(2) : '--'}
+                                        </span>
+                                        {/* {costPrice > 0 && (
+                                          <div className="mt-1 text-xs text-gray-500">
+                                            {(() => {
+                                              const baseCost = canvasPricingData?.final_price_per_unit || 
+                                                              enhancedProductData?.cost || 
+                                                              0;
+                                              const extraCost = costPrice - baseCost;
+                                              console.log('Base Cost:', baseCost, 'Extra Cost:', extraCost);
+                                              
+                                              if (extraCost > 0) {
+                                                  return `Base: ₹${baseCost.toFixed(2)} + ₹${extraCost.toFixed(2)}`;
+                                                }
+                                                return 'Base Cost';
+                                              })()}
+                                            </div>
+                                          )} */}
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
                               </td>
                              <td className="p-3 border-r border-gray-200">
                                 <div className="relative">
@@ -7184,13 +7241,20 @@ if (!printTechId || !printTechName) {
                                 <div className="text-center">
                                   {(() => {
                                     const price = form.watch(`variants.${index}.price`) || 0;
-                                    const costPrice = canvasPricingData?.final_price_per_unit || 0;
+                                    const costPrice = getVariantCostPrice(index);
                                     const profit = price - costPrice;
                                     
                                     return (
-                                      <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                        ₹{profit.toFixed(2)}
-                                      </span>
+                                      <>
+                                        <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                          ₹{profit.toFixed(2)}
+                                        </span>
+                                        {/* {costPrice > 0 && (
+                                          <div className="mt-1 text-xs text-gray-500">
+                                            Margin: {price > 0 ? ((profit / price) * 100).toFixed(1) : '0'}%
+                                          </div>
+                                        )} */}
+                                      </>
                                     );
                                   })()}
                                 </div>
