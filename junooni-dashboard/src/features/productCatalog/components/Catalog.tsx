@@ -453,15 +453,15 @@
 
 // export default Catalog;
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
 
-// Cache key for localStorage
+// Cache keys
 const CACHE_KEY = 'junooni_products_cache';
 const CATEGORIES_CACHE_KEY = 'junooni_categories_cache';
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (increased from 10)
 
 interface Image {
   id: number;
@@ -539,8 +539,6 @@ interface ProductMetadata {
 }
 
 type ProductMetadataMap = Record<number, ProductMetadata>;
-// Define interfaces (keep your existing interfaces)
-// ... [all your existing interfaces]
 
 interface CacheData<T> {
   data: T;
@@ -551,16 +549,17 @@ const PRODUCTS_PER_PAGE = 12;
 
 const Catalog = () => {
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false); // Changed default to false
+  const [initialLoad, setInitialLoad] = useState<boolean>(true); // Track first load
   const [productMetadata, setProductMetadata] = useState<ProductMetadataMap>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [categories, setCategories] = useState<CategoryOption[]>([{ slug: "all", title: "All" }]);
-  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
+  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // Cache helper functions
-  const getCachedData = <T,>(key: string): T | null => {
+  // Optimized cache helper functions
+  const getCachedData = useCallback(<T,>(key: string): T | null => {
     try {
       const cached = localStorage.getItem(key);
       if (!cached) return null;
@@ -568,21 +567,19 @@ const Catalog = () => {
       const { data, timestamp }: CacheData<T> = JSON.parse(cached);
       const now = Date.now();
 
-      // Check if cache is still valid
       if (now - timestamp < CACHE_DURATION) {
         return data;
       }
 
-      // Cache expired, remove it
       localStorage.removeItem(key);
       return null;
     } catch (error) {
-      console.error('Error reading cache:', error);
+      console.error('Cache read error:', error);
       return null;
     }
-  };
+  }, []);
 
-  const setCachedData = <T,>(key: string, data: T): void => {
+  const setCachedData = useCallback(<T,>(key: string, data: T): void => {
     try {
       const cacheData: CacheData<T> = {
         data,
@@ -590,50 +587,65 @@ const Catalog = () => {
       };
       localStorage.setItem(key, JSON.stringify(cacheData));
     } catch (error) {
-      console.error('Error setting cache:', error);
+      console.error('Cache write error:', error);
     }
-  };
+  }, []);
+
+  // Generate metadata once
+  const generateMetadata = useCallback((productList: Product[]): ProductMetadataMap => {
+    const metadata: ProductMetadataMap = {};
+    productList.forEach((product: Product) => {
+      metadata[product.id] = {
+        isBestSeller: Math.random() > 0.3,
+        isStaffPick: Math.random() > 0.6,
+        rating: 3.5 + Math.random() * 1.5,
+        reviewCount: Math.floor(10 + Math.random() * 140)
+      };
+    });
+    return metadata;
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
+      // Check cache first
+      const cachedProducts = getCachedData<Product[]>(CACHE_KEY);
+      const cachedCategories = getCachedData<Category[]>(CATEGORIES_CACHE_KEY);
+
+      // If we have cache, show it immediately
+      if (cachedProducts && cachedProducts.length > 0) {
+        setProducts(cachedProducts);
+        setProductMetadata(generateMetadata(cachedProducts));
+        setInitialLoad(false);
+        
+        // Still fetch fresh data in background but don't show loading
+        fetchFreshData(false);
+      } else {
+        // No cache, show loading and fetch
+        setLoading(true);
+        setInitialLoad(true);
+        await fetchFreshData(true);
+      }
+
+      // Handle categories from cache
+      if (cachedCategories && cachedCategories.length > 0) {
+        const categoryOptions = [
+          { slug: "all", title: "All" },
+          ...cachedCategories.map((cat: Category) => ({
+            slug: cat.slug,
+            title: cat.title
+          }))
+        ];
+        setCategories(categoryOptions);
+      }
+    };
+
+    const fetchFreshData = async (showLoading: boolean) => {
       try {
-        // Try to get cached data first
-        const cachedProducts = getCachedData<Product[]>(CACHE_KEY);
-        const cachedCategories = getCachedData<Category[]>(CATEGORIES_CACHE_KEY);
+        if (showLoading) setLoading(true);
 
-        // If we have cached data, use it immediately
-        if (cachedProducts) {
-          setProducts(cachedProducts);
-          setLoading(false);
-          
-          // Generate metadata for cached products
-          const metadata: ProductMetadataMap = {};
-          cachedProducts.forEach((product: Product) => {
-            metadata[product.id] = {
-              isBestSeller: Math.random() > 0.3,
-              isStaffPick: Math.random() > 0.6,
-              rating: 3.5 + Math.random() * 1.5,
-              reviewCount: Math.floor(10 + Math.random() * 140)
-            };
-          });
-          setProductMetadata(metadata);
-        }
-
-        if (cachedCategories) {
-          const categoryOptions = [
-            { slug: "all", title: "All" },
-            ...cachedCategories.map((cat: Category) => ({
-              slug: cat.slug,
-              title: cat.title
-            }))
-          ];
-          setCategories(categoryOptions);
-          setCategoriesLoading(false);
-        }
-
-        // Fetch fresh data in the background
+        // Parallel fetch for speed
         const [productsResponse, categoriesResponse] = await Promise.all([
-          fetch(`${vite_payload}/api/blank-products?limit=50&depth=1`, {
+          fetch(`${vite_payload}/api/blank-products?limit=100&depth=1&where[status][equals]=active`, {
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
@@ -647,34 +659,23 @@ const Catalog = () => {
           })
         ]);
 
-        // Handle products
         if (productsResponse.ok) {
           const productsData = await productsResponse.json();
-          const fetchedProducts: Product[] = productsData.docs || productsData;
+          let fetchedProducts: Product[] = productsData.docs || productsData;
+          
+          // Safety filter
+          fetchedProducts = fetchedProducts.filter(product => product.status === 'active');
           
           // Update cache
           setCachedData(CACHE_KEY, fetchedProducts);
           setProducts(fetchedProducts);
-
-          // Generate metadata
-          const metadata: ProductMetadataMap = {};
-          fetchedProducts.forEach((product: Product) => {
-            metadata[product.id] = {
-              isBestSeller: Math.random() > 0.3,
-              isStaffPick: Math.random() > 0.6,
-              rating: 3.5 + Math.random() * 1.5,
-              reviewCount: Math.floor(10 + Math.random() * 140)
-            };
-          });
-          setProductMetadata(metadata);
+          setProductMetadata(generateMetadata(fetchedProducts));
         }
 
-        // Handle categories
         if (categoriesResponse.ok) {
           const categoriesData = await categoriesResponse.json();
           const fetchedCategories: Category[] = categoriesData.docs || categoriesData;
           
-          // Update cache
           setCachedData(CATEGORIES_CACHE_KEY, fetchedCategories);
           
           const categoryOptions = [
@@ -689,68 +690,55 @@ const Catalog = () => {
         }
 
       } catch (error) {
-        console.error("Error fetching data:", error);
-        
-        // If fetch fails and we have no cached data, use fallback
-        if (products.length === 0) {
-          setCategories([
-            { slug: "all", title: "All" },
-            { slug: "women-tee", title: "Women Tee" },
-            { slug: "apparel", title: "Apparel" },
-            { slug: "accessories", title: "Accessories" },
-            { slug: "home", title: "Home" },
-            { slug: "promotional", title: "Promotional" }
-          ]);
-        }
+        console.error("Fetch error:", error);
       } finally {
         setLoading(false);
+        setInitialLoad(false);
         setCategoriesLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [getCachedData, setCachedData, generateMetadata]);
 
-  // Reset to page 1 when search or category changes
+  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedCategory]);
 
-  // In your Catalog component, after fetching products
-// useEffect(() => {
-//   if (products.length > 0) {
-//     console.log('First product:', products[0]);
-//     console.log('First product images:', products[0].displayImages);
-//     console.log('Image URL:', products[0].displayImages?.[0]?.image?.url);
-//   }
-// }, [products]);
+  // Memoize filtered products for performance
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      if (selectedCategory === "all") {
+        return matchesSearch;
+      }
+      
+      const matchesCategory = product.categories && product.categories.some(category => 
+        category.slug === selectedCategory
+      );
+      
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchQuery, selectedCategory]);
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+  // Memoize pagination calculations
+  const { totalPages, currentProducts } = useMemo(() => {
+    const total = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
+    const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    const endIndex = startIndex + PRODUCTS_PER_PAGE;
+    const current = filteredProducts.slice(startIndex, endIndex);
     
-    if (selectedCategory === "all") {
-      return matchesSearch;
-    }
-    
-    const matchesCategory = product.categories && product.categories.some(category => 
-      category.slug === selectedCategory
-    );
-    
-    return matchesSearch && matchesCategory;
-  });
+    return { totalPages: total, currentProducts: current };
+  }, [filteredProducts, currentPage]);
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
-  const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
-  const endIndex = startIndex + PRODUCTS_PER_PAGE;
-  const currentProducts = filteredProducts.slice(startIndex, endIndex);
-
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
-  const renderPaginationButtons = () => {
+  const renderPaginationButtons = useMemo(() => {
     const buttons: React.JSX.Element[] = [];
     const maxVisibleButtons = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisibleButtons / 2));
@@ -760,7 +748,6 @@ const Catalog = () => {
       startPage = Math.max(1, endPage - maxVisibleButtons + 1);
     }
 
-    // Previous button
     buttons.push(
       <button
         key="prev"
@@ -772,7 +759,6 @@ const Catalog = () => {
       </button>
     );
 
-    // First page
     if (startPage > 1) {
       buttons.push(
         <button
@@ -788,7 +774,6 @@ const Catalog = () => {
       }
     }
 
-    // Page numbers
     for (let i = startPage; i <= endPage; i++) {
       buttons.push(
         <button
@@ -805,7 +790,6 @@ const Catalog = () => {
       );
     }
 
-    // Last page
     if (endPage < totalPages) {
       if (endPage < totalPages - 1) {
         buttons.push(<span key="dots2" className="px-2">...</span>);
@@ -821,7 +805,6 @@ const Catalog = () => {
       );
     }
 
-    // Next button
     buttons.push(
       <button
         key="next"
@@ -834,11 +817,10 @@ const Catalog = () => {
     );
 
     return buttons;
-  };
+  }, [currentPage, totalPages, handlePageChange]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-      {/* Rest of your JSX remains the same */}
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-[#e65100] to-[#ff9800] opacity-5"></div>
@@ -884,15 +866,11 @@ const Catalog = () => {
                     disabled={categoriesLoading}
                     className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e65100] focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition-colors disabled:opacity-50"
                   >
-                    {categoriesLoading ? (
-                      <option>Loading categories...</option>
-                    ) : (
-                      categories.map((category) => (
-                        <option key={category.slug} value={category.slug}>
-                          {category.title}
-                        </option>
-                      ))
-                    )}
+                    {categories.map((category) => (
+                      <option key={category.slug} value={category.slug}>
+                        {category.title}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -910,10 +888,10 @@ const Catalog = () => {
               Product Catalog
             </h2>
             <p className="text-gray-600 dark:text-gray-300">
-              {loading ? 'Loading...' : `${filteredProducts.length} products available`}
-              {!loading && filteredProducts.length > PRODUCTS_PER_PAGE && (
+              {initialLoad ? 'Loading...' : `${filteredProducts.length} products available`}
+              {!initialLoad && filteredProducts.length > 0 && (
                 <span className="ml-2 text-sm">
-                  (Showing {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)})
+                  (Showing {currentProducts.length} products on page {currentPage} of {totalPages})
                 </span>
               )}
             </p>
@@ -921,9 +899,10 @@ const Catalog = () => {
         </div>
 
         {/* Products Grid */}
-        {loading ? (
+        {initialLoad ? (
+          // Only show skeleton on very first load
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {[...Array(12)].map((_, i) => (
+            {[...Array(8)].map((_, i) => (
               <div key={i} className="animate-pulse">
                 <div className="overflow-hidden bg-white shadow-md dark:bg-gray-800 rounded-xl">
                   <div className="w-full h-64 bg-gray-200 dark:bg-gray-700"></div>
@@ -962,7 +941,7 @@ const Catalog = () => {
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2 mt-12">
-                    {renderPaginationButtons()}
+                    {renderPaginationButtons}
                   </div>
                 )}
               </>

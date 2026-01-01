@@ -1,4 +1,4 @@
-// src/components/Designer/engines/DynamicMockupEngine.tsx - COMPLETE FIX
+// src/components/Designer/engines/DynamicMockupEngine.tsx - PROFESSIONAL CYLINDRICAL WRAP FIX
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as PIXI from 'pixi.js';
 
@@ -449,7 +449,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
   const renderMockup = useCallback(async (app: PIXI.Application) => {
     if (!mountedRef.current || !renderingRef.current) return;
     
-    console.log('\n🎬 ===== RENDERING MOCKUP =====\n');
+    console.log('\n🎬 ===== RENDERING MOCKUP WITH PROFESSIONAL CYLINDRICAL WRAP =====\n');
     updateProgress(25);
 
     try {
@@ -598,9 +598,11 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
           const scaleX = uvAreaWidth / printableWidth;
           const scaleY = uvAreaHeight / printableHeight;
           
-          console.log(`⚖️ Canvas→UV Scale: X=${scaleX.toFixed(4)}, Y=${scaleY.toFixed(4)}`);
+          console.log(`⚖️ Scale: X=${scaleX.toFixed(4)}, Y=${scaleY.toFixed(4)}`);
           
-          // Render design elements
+          // 🎯 PROFESSIONAL CYLINDRICAL WRAP - STEP 1: Render design elements
+          console.log(`\n🎨 STEP 1: Rendering design elements`);
+          
           for (const [elemIndex, element] of areaDesignElements.entries()) {
             if (!mountedRef.current || !renderingRef.current) break;
             
@@ -611,11 +613,10 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
                 if (designTexture && mountedRef.current) {
                   const designSprite = new PIXI.Sprite(designTexture);
                   
-                  // Transform from canvas coordinates to UV container coordinates
+                  // Transform from canvas coordinates to container coordinates
                   const relativeX = (element.x || 0) - printableX;
                   const relativeY = (element.y || 0) - printableY;
 
-                  // Scale elements from canvas space to UV space
                   designSprite.x = relativeX * scaleX;
                   designSprite.y = relativeY * scaleY;
                   designSprite.width = (element.width || 100) * scaleX;
@@ -635,7 +636,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
                   if (element.scaleY !== undefined) designSprite.scale.y *= element.scaleY;
                   
                   designContainer.addChild(designSprite);
-                  console.log(`  ✅ Added image at (${designSprite.x.toFixed(0)}, ${designSprite.y.toFixed(0)}) size=${designSprite.width.toFixed(0)}x${designSprite.height.toFixed(0)}`);
+                  console.log(`  ✅ Added image at (${designSprite.x.toFixed(0)}, ${designSprite.y.toFixed(0)}) size ${designSprite.width.toFixed(0)}x${designSprite.height.toFixed(0)}`);
                 }
               }
             } catch (elementError) {
@@ -644,9 +645,101 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
             }
           }
           
-          // NOW position container at UV coordinates using mockupDimensions
-          designContainer.x = mockupDimensions.x + uvAreaX;
-          designContainer.y = mockupDimensions.y + uvAreaY;
+          // 🎯 PROFESSIONAL CYLINDRICAL WRAP - STEP 2: Apply displacement
+          const displacementMap = mockup.dispMaps?.find(dm => 
+            dm.disarea?.toLowerCase() === areaName.toLowerCase()
+          );
+          
+          if (displacementMap?.dispImg?.url) {
+            console.log(`\n🔄 STEP 2: APPLYING PROFESSIONAL CYLINDRICAL WRAP`);
+            
+            try {
+              const dispTexture = await loadImageSafely(displacementMap.dispImg.url, `displacement for ${areaName}`);
+              
+              if (dispTexture && mountedRef.current) {
+                // Create displacement sprite matching the container bounds
+                const displacementSprite = new PIXI.Sprite(dispTexture);
+                displacementSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+                
+                // Size displacement map to match UV area
+                displacementSprite.width = uvAreaWidth;
+                displacementSprite.height = uvAreaHeight;
+                displacementSprite.x = 0;
+                displacementSprite.y = 0;
+                
+                // Add displacement sprite to container (won't be visible)
+                designContainer.addChild(displacementSprite);
+                
+                const intensity = displacementMap.disint || 1.0;
+                const surfaceType = displacementMap.dsrfaceTy || uvSettings.srfc;
+                
+                // 🎯 CRITICAL: Professional cylindrical wrap formula
+                // The secret is in the displacement scale relative to the surface curvature
+                let wrapFactorX = 0.5;  // Default 50% for strong cylindrical wrap
+                let wrapFactorY = 0.05; // Minimal vertical
+                
+                // Adjust based on surface type
+                if (surfaceType === 'cylindrical' || surfaceType === 'cylinder') {
+                  // Mugs need STRONG horizontal displacement (40-60% of width)
+                  wrapFactorX = 0.6;  // 60% for pronounced wrap
+                  wrapFactorY = 0.03; // Very minimal vertical
+                  
+                  console.log(`🏺 CYLINDRICAL SURFACE DETECTED`);
+                } else if (surfaceType === 'spherical' || surfaceType === 'sphere') {
+                  wrapFactorX = 0.4;
+                  wrapFactorY = 0.4;  // Spheres need both directions
+                } else if (surfaceType === 'conical' || surfaceType === 'cone') {
+                  wrapFactorX = 0.45;
+                  wrapFactorY = 0.15;
+                }
+                
+                // Apply surface wrap settings if available
+                const wrapSettings = visibleArea.surfaceWrapSettings;
+                if (wrapSettings?.enableWrap) {
+                  const customIntensity = wrapSettings.wrapIntensity || 1.0;
+                  wrapFactorX *= customIntensity;
+                  wrapFactorY *= customIntensity;
+                  
+                  console.log(`⚙️ Custom wrap settings applied: ${customIntensity}x`);
+                }
+                
+                // Calculate final displacement scales
+                const professionalDisplacement = {
+                  x: uvAreaWidth * wrapFactorX * intensity,
+                  y: uvAreaHeight * wrapFactorY * intensity
+                };
+                
+                console.log(`\n🎯 PROFESSIONAL WRAP CONFIGURATION:`);
+                console.log(`   Surface: ${surfaceType}`);
+                console.log(`   UV Area: ${uvAreaWidth.toFixed(0)}w × ${uvAreaHeight.toFixed(0)}h px`);
+                console.log(`   Wrap Factors: X=${(wrapFactorX * 100).toFixed(0)}% Y=${(wrapFactorY * 100).toFixed(0)}%`);
+                console.log(`   Displacement: X=${professionalDisplacement.x.toFixed(1)}px Y=${professionalDisplacement.y.toFixed(1)}px`);
+                console.log(`   Intensity: ${intensity}`);
+                
+                // Create and apply displacement filter
+                const displacementFilter = new PIXI.DisplacementFilter({
+                  sprite: displacementSprite,
+                  scale: professionalDisplacement
+                });
+                
+                designContainer.filters = [displacementFilter];
+                
+                console.log(`✅ Professional cylindrical wrap applied!`);
+                console.log(`🔍 VERIFICATION:`);
+                console.log(`   Filter scale: X=${displacementFilter.scale.x.toFixed(1)}px Y=${displacementFilter.scale.y.toFixed(1)}px`);
+                console.log(`   Horizontal wrap: ${((displacementFilter.scale.x / uvAreaWidth) * 100).toFixed(1)}% of width`);
+                console.log(`   Vertical variation: ${((displacementFilter.scale.y / uvAreaHeight) * 100).toFixed(1)}% of height\n`);
+              }
+            } catch (dispError) {
+              console.error(`❌ Displacement error:`, dispError);
+            }
+          } else {
+            console.log(`⚠️ No displacement map found for ${areaName}`);
+          }
+          
+          // Position container at UV coordinates
+          designContainer.x = mockupSprite.x + uvAreaX;
+          designContainer.y = mockupSprite.y + uvAreaY;
           
           console.log(`📍 Container position: (${designContainer.x.toFixed(0)}, ${designContainer.y.toFixed(0)})`);
           
@@ -661,21 +754,19 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
             
             console.log(`📍 Design coords: (${designAreaX.toFixed(0)}, ${designAreaY.toFixed(0)}) ${designAreaWidth.toFixed(0)}x${designAreaHeight.toFixed(0)}`);
             
-            // 🎯 FILL ENTIRE DESIGN AREA with non-uniform scaling
-            // For mug wraps, we want to stretch the design to fill the entire printable area
+            // Scale container to match design area
             const designScaleX = designAreaWidth / uvAreaWidth;
             const designScaleY = designAreaHeight / uvAreaHeight;
             
-            // Apply FULL scaling to fill entire area (stretch to fit)
             designContainer.scale.x *= designScaleX;
             designContainer.scale.y *= designScaleY;
             
-            // Position at design coordinates using mockupDimensions (no centering - fill entire area)
-            designContainer.x = mockupDimensions.x + designAreaX;
-            designContainer.y = mockupDimensions.y + designAreaY;
+            // Position at design coordinates
+            designContainer.x = mockupSprite.x + designAreaX;
+            designContainer.y = mockupSprite.y + designAreaY;
             
-            console.log(`✅ Applied FILL scale: X=${designScaleX.toFixed(4)}, Y=${designScaleY.toFixed(4)} (stretches to fill)`);
-            console.log(`✅ Final position: (${designContainer.x.toFixed(0)}, ${designContainer.y.toFixed(0)}) size=${designAreaWidth.toFixed(0)}x${designAreaHeight.toFixed(0)}`);
+            console.log(`✅ Applied design scale: (${designScaleX.toFixed(4)}, ${designScaleY.toFixed(4)})`);
+            console.log(`✅ Final position: (${designContainer.x.toFixed(0)}, ${designContainer.y.toFixed(0)})`);
             
             if (placement.blend) {
               designContainer.blendMode = getPixiBlend(placement.blend);
@@ -683,62 +774,6 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
             
             if (placement.opacity !== null && placement.opacity !== undefined && placement.opacity !== 1) {
               designContainer.alpha = Math.max(0, Math.min(1, placement.opacity));
-            }
-          }
-          
-          // ⭐ APPLY DISPLACEMENT (if available) ⭐
-          // Apply AFTER all scaling/positioning but BEFORE adding to stage
-          const displacementMap = mockup.dispMaps?.find(dm => 
-            dm.disarea?.toLowerCase() === areaName.toLowerCase()
-          );
-          
-          if (displacementMap?.dispImg?.url && placement) {
-            try {
-              const dispTexture = await loadImageSafely(displacementMap.dispImg.url, `displacement for ${areaName}`);
-              
-              if (dispTexture && mountedRef.current) {
-                // Create displacement sprite
-                const displacementSprite = new PIXI.Sprite(dispTexture);
-                
-                // Get current container bounds (after all scaling/positioning)
-                const containerBounds = designContainer.getBounds();
-                
-                // Position and size displacement sprite to match the actual rendered container
-                displacementSprite.x = containerBounds.x;
-                displacementSprite.y = containerBounds.y;
-                displacementSprite.width = containerBounds.width;
-                displacementSprite.height = containerBounds.height;
-                
-                console.log(`🔄 Displacement sprite: pos=(${displacementSprite.x.toFixed(0)},${displacementSprite.y.toFixed(0)}) size=${displacementSprite.width.toFixed(0)}x${displacementSprite.height.toFixed(0)}`);
-                
-                // Calculate displacement strength based on design area
-                const designAreaWidth = placement.coordinateWidth * mockupDisplayWidth;
-                const intensity = displacementMap.disint || 0.8;
-                
-                // Use negative X for cylindrical wrap (edges curve inward)
-                const displacementScale = {
-                  x: -(designAreaWidth * intensity * 0.2),  // Negative for inward curve, 20% strength
-                  y: 0  // No vertical displacement
-                };
-                
-                console.log(`🔥 Applying displacement: X=${displacementScale.x.toFixed(1)}, Y=${displacementScale.y.toFixed(1)}`);
-                
-                // Create displacement filter
-                const displacementFilter = new PIXI.DisplacementFilter({
-                  sprite: displacementSprite,
-                  scale: displacementScale
-                });
-                
-                // Apply filter to container
-                designContainer.filters = [displacementFilter];
-                
-                // Add displacement sprite to stage (required for filter to work)
-                app.stage.addChild(displacementSprite);
-                
-                console.log(`✅ Displacement filter applied`);
-              }
-            } catch (dispError) {
-              console.warn(`⚠️ Displacement error:`, dispError);
             }
           }
           
@@ -778,7 +813,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
         }
       }
 
-      console.log('\n✅ ===== RENDER COMPLETE =====\n');
+      console.log('\n✅ ===== RENDER COMPLETE WITH PROFESSIONAL WRAP =====\n');
 
     } catch (error) {
       console.error('❌ Render failed:', error);

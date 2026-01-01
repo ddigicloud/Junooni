@@ -572,7 +572,13 @@ interface AreaSelectionThumbnailProps {
   canvasImage: HTMLImageElement | null;
   activeColor: string;
   elementCount: number;
+  // 🔥 NEW: Add these props
+  productData: PayloadProductData;
+  activeSize: string;
+  allCanvasImages: Record<string, HTMLImageElement | null>;
 }
+
+// Replace the AreaSelectionThumbnail component with this fixed version:
 
 // Replace the AreaSelectionThumbnail component with this fixed version:
 
@@ -583,13 +589,51 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
   onSelect,
   canvasImage,
   activeColor,
-  elementCount
+  elementCount,
+  productData,
+  activeSize,
+  allCanvasImages
 }) => {
   const [isImageLoading, setIsImageLoading] = useState(!canvasImage);
   
   useEffect(() => {
     setIsImageLoading(!canvasImage);
   }, [canvasImage]);
+
+  // Inside AreaSelectionThumbnail component
+const getSizeAwareImage = () => {
+  // 🔥 FIXED: Match based on product flags
+  if (productData?.size_Images && activeSize) {
+    // For size-specific products
+    const sizeKey = `${areaId}_${activeSize}`;
+    const sizeImage = allCanvasImages[sizeKey];
+    
+    if (sizeImage) {
+      return sizeImage;
+    }
+  }
+  
+  if (productData?.color_Images && activeColor) {
+    // For color-specific products
+    const colorKey = `${areaId}_${activeColor}`;
+    const colorImage = allCanvasImages[colorKey];
+    
+    if (colorImage) {
+      return colorImage;
+    }
+  }
+  
+  // Fallback to area-only key
+  const areaImage = allCanvasImages[areaId];
+  if (areaImage) {
+    return areaImage;
+  }
+  
+  // Final fallback to provided prop
+  return canvasImage;
+};
+
+  const displayImage = getSizeAwareImage();
 
   return (
     <button
@@ -601,7 +645,7 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
       }`}
     >
       <div className="relative mb-2 overflow-hidden bg-gray-100 rounded aspect-square">
-        {canvasImage ? (
+        {displayImage ? (
           <div className="relative w-full h-full">
             {/* LAYER 1: Base color background */}
             <div 
@@ -613,15 +657,17 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
             
             {/* LAYER 2: Canvas template image - overlay with proper visibility */}
             <img
-              src={canvasImage.src}
+              src={displayImage.src}
               alt={areaName}
               className="absolute inset-0 object-cover w-full h-full"
               style={{ mixBlendMode: 'normal' }}
+              onLoad={() => setIsImageLoading(false)}
+              onError={() => setIsImageLoading(false)}
             />
             
             {/* LAYER 3: Subtle texture overlay for depth - optional */}
             <img
-              src={canvasImage.src}
+              src={displayImage.src}
               alt={areaName}
               className="absolute inset-0 object-cover w-full h-full opacity-5"
               style={{ mixBlendMode: 'multiply' }}
@@ -632,6 +678,15 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
               <div className="absolute top-1 right-1">
                 <div className="flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-orange-500 rounded-full sm:w-5 sm:h-5">
                   {elementCount}
+                </div>
+              </div>
+            )}
+
+            {/* 🔥 NEW: Size indicator badge (optional - shows when size_Images is true) */}
+            {productData?.size_Images && activeSize && (
+              <div className="absolute bottom-1 left-1">
+                <div className="px-1.5 py-0.5 text-xs font-medium text-white bg-blue-500 rounded">
+                  {activeSize}
                 </div>
               </div>
             )}
@@ -651,6 +706,11 @@ const AreaSelectionThumbnail: React.FC<AreaSelectionThumbnailProps> = ({
       </div>
       
       <p className="text-xs font-medium text-center sm:text-sm">{areaName}</p>
+      
+      {/* 🔥 NEW: Show size info below area name if size_Images is true */}
+      {productData?.size_Images && activeSize && (
+        <p className="text-xs text-center text-gray-500">{activeSize}</p>
+      )}
     </button>
   );
 };
@@ -3996,38 +4056,51 @@ const getAreaDisplayData = useCallback((areaId: string) => {
     return needsOverlay;
   }, [getCustomizationAreaByName]);
   
-  const getPrintableAreaFromPhoto = useCallback((areaId: string, colorHex?: string) => {
+  const getPrintableAreaFromPhoto = useCallback((areaId: string, colorHex?: string, sizeId?: string) => {
   try {
     const area = getCustomizationAreaByName(areaId);
     if (!area?.designCanvasPhotos?.length) {
       const canvasConfig = getCanvasConfig(areaId);
-      // âœ… CORRECT: Use entire design area when no printAreaCoord is defined
       return { 
-        x: 0,                      // Start from origin
-        y: 0,                      // Start from origin  
-        width: canvasConfig.width, // Full canvas width (represents full design area)
-        height: canvasConfig.height // Full canvas height (represents full design area)
+        x: 0,
+        y: 0,
+        width: canvasConfig.width,
+        height: canvasConfig.height
       };
     }
     
-    // When printAreaCoord exists, use it
+    const targetSize = sizeId || activeSize;
     const targetColor = colorHex || activeColor;
-    let canvasPhoto = area.designCanvasPhotos.find((p: any) => 
-      p?.photoColor?.toLowerCase() === targetColor?.toLowerCase()
-    );
     
+    // 🔥 FIXED: Match based on product type
+    let canvasPhoto = area.designCanvasPhotos.find((p: any) => {
+      if (productData?.size_Images && targetSize) {
+        // For size_Images products, photoColor stores SIZE
+        return p?.photoColor?.toLowerCase() === targetSize?.toLowerCase();
+      }
+      
+      if (productData?.color_Images && targetColor) {
+        // For color_Images products, photoColor stores COLOR
+        return p?.photoColor?.toLowerCase() === targetColor?.toLowerCase();
+      }
+      
+      return false;
+    });
+    
+    // Fallback to white/default
     if (!canvasPhoto) {
       canvasPhoto = area.designCanvasPhotos.find((p: any) => 
-        p?.photoColor?.toLowerCase() === '#ffffff'
+        p?.photoColor?.toLowerCase() === '#ffffff' ||
+        p?.photoColor?.toLowerCase() === 'white'
       );
     }
     
+    // Fallback to first photo
     if (!canvasPhoto) {
       canvasPhoto = area.designCanvasPhotos[0];
     }
     
     if (!canvasPhoto?.printAreaCoord) {
-      // âœ… FIXED: Even when photo exists but no printAreaCoord, use full area
       const canvasConfig = getCanvasConfig(areaId);
       return { 
         x: 0, 
@@ -4037,8 +4110,7 @@ const getAreaDisplayData = useCallback((areaId: string) => {
       };
     }
 
-    // Use the defined printAreaCoord
-  const canvasConfig = getCanvasConfig(areaId, colorHex);
+    const canvasConfig = getCanvasConfig(areaId, colorHex);
     const printArea = {
       x: canvasPhoto.printAreaCoord.x * canvasConfig.width,
       y: canvasPhoto.printAreaCoord.y * canvasConfig.height, 
@@ -4049,7 +4121,6 @@ const getAreaDisplayData = useCallback((areaId: string) => {
     return printArea;
   } catch (error) {
     const canvasConfig = getCanvasConfig(areaId);
-    // âœ… FIXED: Fallback also uses full design area
     return { 
       x: 0, 
       y: 0, 
@@ -4057,7 +4128,7 @@ const getAreaDisplayData = useCallback((areaId: string) => {
       height: canvasConfig.height 
     };
   }
-}, [getCustomizationAreaByName, activeColor, getCanvasConfig]);
+}, [getCustomizationAreaByName, activeColor, activeSize, productData, getCanvasConfig]);
 
 
   // Filter out hidden design elements for mockup rendering
@@ -7578,18 +7649,32 @@ const handleFileUpload = useCallback(async (files) => {
   }, [selectedColors, activeColor]);
   
   const toggleSizeSelection = useCallback((sizeName: string) => {
-    const isSelected = selectedSizes.includes(sizeName);
-    
-    if (isSelected) {
-      if (selectedSizes.length === 1) {
-        return;
-      }
-      
-      setSelectedSizes(prev => prev.filter(s => s !== sizeName));
-    } else {
-      setSelectedSizes(prev => [...prev, sizeName]);
+  const isSelected = selectedSizes.includes(sizeName);
+  
+  if (isSelected) {
+    // Prevent removing the last size
+    if (selectedSizes.length === 1) {
+      return;
     }
-  }, [selectedSizes]);
+    
+    // Remove the size
+    setSelectedSizes(prev => prev.filter(s => s !== sizeName));
+    
+    // If removing the active size, set a new active size
+    if (activeSize === sizeName) {
+      const remainingSizes = selectedSizes.filter(s => s !== sizeName);
+      if (remainingSizes.length > 0) {
+        setActiveSize(remainingSizes[0]);
+      }
+    }
+  } else {
+    // Add the size
+    setSelectedSizes(prev => [...prev, sizeName]);
+    
+    // Auto-activate newly selected size
+    setActiveSize(sizeName);
+  }
+}, [selectedSizes, activeSize]);
   
   // =====================================
   // LAYER MANAGEMENT
@@ -8692,10 +8777,31 @@ const renderPreview = useCallback(() => {
 }, [designElements, selectedId, updatePricingData]);
   
   const renderCanvas = useCallback(() => {
- const canvasConfig = getCanvasConfig(activeArea, activeColor);
- const printableArea = getPrintableAreaFromPhoto(activeArea, activeColor);
- const canvasImage = canvasImages[`${activeArea}_${activeColor}`] || canvasImages[activeArea];
- const surfaceConfig = getSurfaceConfiguration();
+  const canvasConfig = getCanvasConfig(activeArea, activeColor);
+  const printableArea = getPrintableAreaFromPhoto(activeArea, activeColor, activeSize);
+  
+  // 🔥 FIXED: Get canvas image with correct cache key based on product type
+  let cacheKey: string;
+  
+  if (productData?.size_Images) {
+    // For size-specific products, key by size only
+    cacheKey = `${activeArea}_${activeSize}`;
+  } else if (productData?.color_Images) {
+    // For color-specific products, key by color only
+    cacheKey = `${activeArea}_${activeColor}`;
+  } else {
+    // For shared products, just use area
+    cacheKey = activeArea;
+  }
+  
+  const canvasImage = canvasImages[cacheKey] || canvasImages[activeArea];
+  
+  console.log(`🎨 Rendering canvas with key: ${cacheKey}`, {
+    hasImage: !!canvasImage,
+    availableKeys: Object.keys(canvasImages)
+  });
+  
+  const surfaceConfig = getSurfaceConfiguration();
 
  const baseWidth = canvasConfig.width;
  const baseHeight = canvasConfig.height;
@@ -9043,7 +9149,7 @@ const renderPreview = useCallback(() => {
       )}
       </div>
       );
-}, [getCanvasConfig, getPrintableAreaFromPhoto, activeArea, activeColor, canvasImages, handleStageClick, brandColor, renderDesignElements, selectedId, centerElement, deleteSelectedElement, getSurfaceConfiguration, isMobile, handlePanelMouseDown, isDraggingPanel, alignmentPanelPos]);
+}, [getCanvasConfig, getPrintableAreaFromPhoto, activeArea, activeColor, canvasImages, handleStageClick, brandColor, renderDesignElements, selectedId, centerElement, deleteSelectedElement, getSurfaceConfiguration, isMobile, handlePanelMouseDown, isDraggingPanel, alignmentPanelPos, productData]);
 
     // =====================================
     // SETTINGS PANELS
@@ -9172,35 +9278,113 @@ const renderPreview = useCallback(() => {
             </div>
           );
 
-        case 'sizes':
+        // In the renderSettingsPanel function, update the 'sizes' case:
+
+case 'sizes':
+  return (
+    <div className="space-y-4">
+      <h3 className="font-medium">Size Selection</h3>
+      
+      {/* Active Size Indicator - Only show when size_Images is true */}
+      {productData?.size_Images && activeSize && (
+        <div className="flex items-center justify-between p-2 rounded-lg bg-orange-50 border border-orange-200">
+          <span className="text-sm font-medium text-gray-700">Active Size</span>
+          <span className="text-sm font-bold text-orange-600">{activeSize}</span>
+        </div>
+      )}
+      
+      {/* Enhanced Size Selection - Grid like colors */}
+      <div className={`flex flex-wrap gap-2 mb-4`}>
+        {productData?.sizeOptions?.map((size: any) => {
+          const isSelected = selectedSizes.includes(size.sizeName);
+          const isActive = activeSize === size.sizeName;
+          
           return (
-            <div className="space-y-4">
-              <h3 className="font-medium">Size Selection</h3>
-              <div className={`grid ${isMobile ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
-                {productData?.sizeOptions?.map((size: any) => (
-                  <button
-                    key={size.sizeName}
-                    onClick={() => toggleSizeSelection(size.sizeName)}
-                    className={`px-3 py-2 text-sm border rounded touch-manipulation ${
-                      selectedSizes.includes(size.sizeName)
-                        ? 'text-white border-red-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-                    }`}
-                    style={{
-                      backgroundColor: selectedSizes.includes(size.sizeName) ? brandColor : '',
-                      borderColor: selectedSizes.includes(size.sizeName) ? brandColor : ''
-                    }}
-                  >
-                    {size.sizeName}
-                  </button>
-                ))}
-              </div>
-              <div className="text-sm text-gray-600">
-                Selected: {selectedSizes.join(', ') || 'None'}
-              </div>
-              
-            </div>
+            <button
+              key={size.sizeName}
+              onClick={() => {
+                toggleSizeSelection(size.sizeName);
+                if (!isSelected) {
+                  setActiveSize(size.sizeName);
+                }
+              }}
+              className={`relative px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center touch-manipulation min-w-[70px] ${
+                isSelected
+                  ? 'bg-orange-500 text-white border-orange-500 ring-2 ring-orange-200 scale-110' 
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+              }`}
+              title={size.sizeName}
+            >
+              {isSelected && (
+                <svg 
+                  className="absolute w-4 h-4 text-white top-1 right-1"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  style={{ 
+                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
+                  }}
+                >
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                </svg>
+              )}
+              <span>{size.sizeName}</span>
+            </button>
           );
+        })}
+      </div>
+      
+      {/* Selected Sizes List - Simple like colors */}
+      <div className="space-y-2">
+        <h4 className="text-sm font-medium">Selected Sizes</h4>
+        {selectedSizes.map(size => (
+          <div 
+            key={size} 
+            className="flex items-center justify-between p-2 transition-colors rounded-md bg-gray-50 hover:bg-gray-100"
+          >
+            <div className="flex items-center">
+              <span className="text-sm font-medium">{size}</span>
+            </div>
+            <div className="flex gap-2">
+              {/* Eye icon - Only show when size_Images is true */}
+              {productData?.size_Images && (
+                <button 
+                  onClick={() => setActiveSize(size)}
+                  className={`p-1 rounded transition-colors touch-manipulation ${
+                    activeSize === size 
+                      ? 'text-orange-600 bg-orange-50' 
+                      : 'text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title="Set as active size"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+              )}
+              {selectedSizes.length > 1 && (
+                <button 
+                  onClick={() => {
+                    setSelectedSizes(prev => prev.filter(s => s !== size));
+                    if (activeSize === size && selectedSizes.length > 1) {
+                      const remaining = selectedSizes.filter(s => s !== size);
+                      setActiveSize(remaining[0]);
+                    }
+                  }}
+                  className="p-1 text-red-600 transition-colors rounded hover:bg-red-50 touch-manipulation"
+                  title="Remove size"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
         case 'upload':
           return renderUploadPanel();
@@ -9455,69 +9639,89 @@ useEffect(() => {
     }, [selectedId, designElements, activeArea, isMobile]);
     
     // ðŸ”¥ FIX: Load canvas images for ALL areas, not just the active one
-  useEffect(() => {
-    const loadAllAreaImages = async () => {
-      const technology = getCurrentTechnology();
-      if (!technology?.custAreas?.length) return;
-      
-      // Load images for ALL available areas
-      for (const area of availableAreas) {
-        try {
-          const custArea = getCustomizationAreaByName(area);
-          if (!custArea?.designCanvasPhotos?.length) {
-            ////console.log(`No designCanvasPhotos for area: ${area}`);
-            continue;
-          }
-          
-          // Find the best photo for this area
-          let photo = custArea.designCanvasPhotos.find((p: any) => 
-            p?.photoColor?.toLowerCase() === activeColor?.toLowerCase()
-          );
-          
-          if (!photo) {
-            photo = custArea.designCanvasPhotos.find((p: any) => 
-              p?.photoColor?.toLowerCase() === '#ffffff'
-            );
-          }
-          
-          if (!photo && custArea.designCanvasPhotos.length > 0) {
-            photo = custArea.designCanvasPhotos[0];
-          }
-          
-          if (!photo?.photo?.url) continue;
-          
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          const resolvedUrl = resolveImageUrl(photo.photo.url);
-          
-          // Use Promise to handle async loading
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => {
-              const key = `${area}_${activeColor}`;
-              setCanvasImages(prev => ({ 
-                ...prev, 
-                [key]: img, 
-                [area]: img
-              }));
-              ////console.log(`Preloaded image for area: ${area}`);
-              resolve();
-            };
-            
-            img.onerror = (error) => {
-              ////console.error(`Failed to preload image for area: ${area}`, error);
-              reject(error);
-            };
-            
-            img.src = resolvedUrl;
-          });
-        } catch (error) {
-          ////console.error(`Error preloading image for area: ${area}:`, error);
-        }
-      }
-    };
+ useEffect(() => {
+  const loadAllAreaImages = async () => {
+    const technology = getCurrentTechnology();
+    if (!technology?.custAreas?.length) return;
     
-    loadAllAreaImages();
-  }, [activeColor, activeTechnology, availableAreas, getCurrentTechnology, getCustomizationAreaByName]);
+    for (const area of availableAreas) {
+      try {
+        const custArea = getCustomizationAreaByName(area);
+        if (!custArea?.designCanvasPhotos?.length) {
+          continue;
+        }
+        
+        // 🔥 FIXED: Find photo matching BOTH color AND size
+        let photo = custArea.designCanvasPhotos.find((p: any) => {
+          // For size_Images products, photoColor field stores the SIZE identifier
+          if (productData?.size_Images && activeSize) {
+            return p?.photoColor?.toLowerCase() === activeSize?.toLowerCase();
+          }
+          
+          // For color_Images products, photoColor stores the COLOR
+          return p?.photoColor?.toLowerCase() === activeColor?.toLowerCase();
+        });
+        
+        // Fallback to white/default
+        if (!photo) {
+          photo = custArea.designCanvasPhotos.find((p: any) => 
+            p?.photoColor?.toLowerCase() === '#ffffff' || 
+            p?.photoColor?.toLowerCase() === 'white'
+          );
+        }
+        
+        // Fallback to first photo
+        if (!photo && custArea.designCanvasPhotos.length > 0) {
+          photo = custArea.designCanvasPhotos[0];
+        }
+        
+        if (!photo?.photo?.url) continue;
+        
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        const resolvedUrl = resolveImageUrl(photo.photo.url);
+        
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            // 🔥 FIXED: Create proper cache key based on product flags
+            let cacheKey: string;
+            
+            if (productData?.size_Images) {
+              // For size-specific products, key by size
+              cacheKey = `${area}_${activeSize}`;
+            } else if (productData?.color_Images) {
+              // For color-specific products, key by color
+              cacheKey = `${area}_${activeColor}`;
+            } else {
+              // For shared products, just use area
+              cacheKey = area;
+            }
+            
+            setCanvasImages(prev => ({ 
+              ...prev, 
+              [cacheKey]: img,
+              [area]: img  // Keep fallback key
+            }));
+            
+            console.log(`✅ Loaded image for ${area} with key: ${cacheKey}`);
+            resolve();
+          };
+          
+          img.onerror = (error) => {
+            console.error(`Failed to load image for area: ${area}`, error);
+            reject(error);
+          };
+          
+          img.src = resolvedUrl;
+        });
+      } catch (error) {
+        console.error(`Error preloading image for area: ${area}:`, error);
+      }
+    }
+  };
+  
+  loadAllAreaImages();
+}, [activeColor, activeSize, activeTechnology, availableAreas, productData, getCurrentTechnology, getCustomizationAreaByName]);
 
   // ðŸ”¥ ADD: Separate effect for active area changes
   useEffect(() => {
@@ -9938,80 +10142,78 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Mobile Area Thumbnails - Horizontal Scrollable */}
-          {activeView === 'design' && isMobile && availableAreas.length > 1 && (
-            <div className="w-full bg-white">
-              <div className="px-4 pt-2 pb-0">
-                <div className="flex pb-0 space-x-3 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                  {availableAreas.map(area => {
-                    const areaData = getAreaDisplayData(area);
-                    const elementCount = designElements[area]?.length || 0;
-                    const canvasImage = canvasImages[`${area}_${activeColor}`] || canvasImages[area];
-                  
-                    return (
-                      <div key={area} className="flex-shrink-0">
-                        <button
-                          onClick={() => setActiveArea(area)}
-                          className={`flex flex-col items-center p-2 rounded-lg transition-all touch-manipulation min-w-[80px] ${
-                            activeArea === area
-                              ? 'border-orange-500 border-2 bg-orange-50'
-                              : 'bg-white border-none'
-                          }`}
-                        >
-                          <div className="relative w-16 h-16 mb-0 overflow-hidden bg-white border-none rounded">
-                            {canvasImage ? (
-                              <div className="relative w-full h-full border-none">
-                                {/* LAYER 1: Base color background */}
-                                <div
-                                  className="absolute inset-0 w-full h-full"
-                                  style={{
-                                    backgroundColor: activeColor
-                                  }}
-                                />
-                              
-                                {/* LAYER 2: Canvas template image - overlay on top */}
-                                <img
-                                  src={canvasImage.src}
-                                  alt={areaData.displayName}
-                                  className="absolute inset-0 object-cover w-full h-full"
-                                  style={{ mixBlendMode: 'normal' }}
-                                />
-                              
-                                {/* LAYER 3: Subtle texture overlay for depth */}
-                                <img
-                                  src={canvasImage.src}
-                                  alt={areaData.displayName}
-                                  className="absolute inset-0 object-cover w-full h-full opacity-5"
-                                  style={{ mixBlendMode: 'multiply' }}
-                                />
-                              
-                                {/* Element count badge */}
-                                {elementCount > 0 && (
-                                  <div className="absolute top-1 right-1">
-                                    <div className="flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-orange-500 rounded-full">
-                                      {elementCount}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-center w-full h-full text-gray-400">
-                                <span className="text-xs">Loading...</span>
-                              </div>
-                            )}
+          {/* Mobile Area Thumbnails */}
+{activeView === 'design' && isMobile && availableAreas.length > 1 && (
+  <div className="w-full bg-white">
+    <div className="px-4 pt-2 pb-0">
+      <div className="flex pb-0 space-x-3 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+        {availableAreas.map(area => {
+          const areaData = getAreaDisplayData(area);
+          const elementCount = designElements[area]?.length || 0;
+          const canvasImage = canvasImages[`${area}_${activeColor}`] || canvasImages[area];
+        
+          return (
+            <div key={area} className="flex-shrink-0">
+              <button
+                onClick={() => setActiveArea(area)}
+                className={`flex flex-col items-center p-2 rounded-lg transition-all touch-manipulation min-w-[80px] ${
+                  activeArea === area
+                    ? 'border-orange-500 border-2 bg-orange-50'
+                    : 'bg-white border-none'
+                }`}
+              >
+                <div className="relative w-16 h-16 mb-0 overflow-hidden bg-white border-none rounded">
+                  {canvasImage ? (
+                    <div className="relative w-full h-full border-none">
+                      {/* Color layer */}
+                      <div
+                        className="absolute inset-0 w-full h-full"
+                        style={{ backgroundColor: activeColor }}
+                      />
+                      
+                      {/* Template image */}
+                      <img
+                        src={canvasImage.src}
+                        alt={areaData.displayName}
+                        className="absolute inset-0 object-cover w-full h-full"
+                        style={{ mixBlendMode: 'normal' }}
+                      />
+                      
+                      {/* Texture overlay */}
+                      <img
+                        src={canvasImage.src}
+                        alt={areaData.displayName}
+                        className="absolute inset-0 object-cover w-full h-full opacity-5"
+                        style={{ mixBlendMode: 'multiply' }}
+                      />
+                      
+                      {/* Element count badge */}
+                      {elementCount > 0 && (
+                        <div className="absolute top-1 right-1">
+                          <div className="flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-orange-500 rounded-full">
+                            {elementCount}
                           </div>
-                        
-                          <p className="text-xs font-medium leading-tight text-center text-gray-700">
-                            {areaData.displayName}
-                          </p>
-                        </button>
-                      </div>
-                    );
-                  })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center w-full h-full text-gray-400">
+                      <span className="text-xs">Loading...</span>
+                    </div>
+                  )}
                 </div>
-              </div>
+              
+                <p className="text-xs font-medium leading-tight text-center text-gray-700">
+                  {areaData.displayName}
+                </p>
+              </button>
             </div>
-          )}
+          );
+        })}
+      </div>
+    </div>
+  </div>
+)}
 
 
         {/* Main Content Container */}
@@ -10181,10 +10383,9 @@ useEffect(() => {
                 : 'md:w-[calc(100%-20rem)] lg:w-[calc(100%-24rem)]'
               : ''
           }`}>
-            {/* Add Area Thumbnails for Design Mode - Desktop Only */}
+            {/* Desktop Area Thumbnails */}
             {activeView === 'design' && !isMobile && availableAreas.length > 1 && (
               <div className="w-32 p-2 overflow-y-auto bg-white md:w-32 lg:w-44 md:p-3">
-                
                 <div className="space-y-2">
                   {availableAreas.map(area => {
                     const areaData = getAreaDisplayData(area);
@@ -10201,12 +10402,17 @@ useEffect(() => {
                         canvasImage={canvasImage}
                         activeColor={activeColor}
                         elementCount={elementCount}
+                        // 🔥 NEW: Pass the required props
+                        productData={productData}
+                        activeSize={activeSize}
+                        allCanvasImages={canvasImages}
                       />
                     );
                   })}
                 </div>
               </div>
             )}
+
             
             <div className="flex-1 px-2 pt-0 pb-2 overflow-y-auto bg-white sm:p-2">
              {activeView === 'design' ? (
