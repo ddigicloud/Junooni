@@ -169,26 +169,27 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ product }) => {
               </div>
 
               {/* Care Instructions Column */}
-              <div>
-                <h2 className="mb-2 text-base font-semibold sm:mb-4 sm:text-lg">Care Instructions</h2>
-                
-               {/* Care Instructions - only show if exists */}
-                {careInstructions && Array.isArray(careInstructions) && careInstructions.length > 0 ? (
+              {careInstructions?.length > 0 && (
+                <div>
+                  <h2 className="mb-2 text-base font-semibold sm:mb-4 sm:text-lg">
+                    Care Instructions
+                  </h2>
+
                   <div className="space-y-3">
                     {careInstructions.map((instruction, index) => {
                       const IconComponent = careIconMap[instruction.icon] || Shield
                       return (
                         <div key={index} className="flex items-start">
-                          <IconComponent size={16} className="text-[#e65100] mr-2 mt-0.5 flex-shrink-0" />
-                          <span className="text-xs text-gray-700 sm:text-sm">{instruction.instruction}</span>
+                          <IconComponent size={16} className="mr-2 mt-0.5 text-[#e65100]" />
+                          <span className="text-xs text-gray-700 sm:text-sm">
+                            {instruction.instruction}
+                          </span>
                         </div>
                       )
                     })}
                   </div>
-                ) : (
-                  <p className="text-sm italic text-gray-500">Care instructions not available for this product.</p>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -372,7 +372,7 @@ const JunooniLandingPage = () => {
                 <img 
                   src={gallery4} 
                   alt="Crafted for creators" 
-                  className="relative object-cover w-full shadow-xl sm:shadow-2xl rounded-xl sm:rounded-2xl h-48 sm:h-64 lg:h-84" 
+                  className="relative object-cover w-full h-48 shadow-xl sm:shadow-2xl rounded-xl sm:rounded-2xl sm:h-64 lg:h-84" 
                 />
               </div>
             </div>
@@ -671,8 +671,8 @@ const JunooniLandingPage = () => {
       {/* FOOTER - Mobile Optimized */}
       <footer className="py-8 text-white bg-gray-900 sm:py-10">
         <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 md:grid-cols-4">
-            <div className="sm:col-span-2 md:col-span-1">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-5">
+            <div className="sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-2 sm:gap-3">
                 <img src={junoonilogo} alt="Junooni logo" className="h-6 sm:h-8" />
                 <span className="text-xs text-gray-300 sm:text-sm">Creator Studio</span>
@@ -683,27 +683,38 @@ const JunooniLandingPage = () => {
             <div>
               <h4 className="mb-2 text-sm font-semibold sm:mb-3 sm:text-base">Platform</h4>
               <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white">Product Catalog</a></li>
-                <li><a href="#" className="hover:text-white">Upload Designs</a></li>
-                <li><a href="https://junooni.com" className="hover:text-white">Marketplace</a></li>
+                <li><a href="https://cms.junooni.com"  target="_blank" rel="noopener noreferrer" className="hover:text-white">Product Catalog</a></li>
+                <li><a href="/pages/fulfillment-page" className="hover:text-white">Fulfillments</a></li>
+                <li><a href="/pages/creator-store" className="hover:text-white">Creator Store</a></li>
+                <li><a href="https://junooni.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">Marketplace</a></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="mb-2 text-sm font-semibold sm:mb-3 sm:text-base">Support</h4>
+              <h4 className="mb-2 text-sm font-semibold sm:mb-3 sm:text-base">Guide</h4>
               <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white">Help Center</a></li>
-                <li><a href="#" className="hover:text-white">Creator Guide</a></li>
-                <li><a href="#" className="hover:text-white">Contact</a></li>
+                <li><a href="/pages/getting-started" className="hover:text-white">Getting started</a></li>
+                <li><a href="/pages/creating-products" className="hover:text-white">Creating products</a></li>
+                <li><a href="/pages/make_your_brand" className="hover:text-white">Make your brand</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="mb-2 text-sm font-semibold sm:mb-3 sm:text-base">Social</h4>
+              <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-400">
+                <li><a href="#" className="hover:text-white">Instagram</a></li>
+                <li><a href="#" className="hover:text-white">Facebook</a></li>
+                <li><a href="https://youtube.com/@bejunooni?si=p96lWYtfDUMhsII3" className="hover:text-white">Youtube</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="mb-2 text-sm font-semibold sm:mb-3 sm:text-base">Company</h4>
               <ul className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white">About</a></li>
-                <li><a href="#" className="hover:text-white">Careers</a></li>
-                <li><a href="#" className="hover:text-white">Privacy</a></li>
+                <li><a href="/pages/about-us" className="hover:text-white">About us</a></li>
+                <li><a href="#" className="hover:text-white">Career</a></li>
+                <li><a href="/pages/privacy" className="hover:text-white">Privacy</a></li>
+                <li><a href="/pages/for-creators" className="hover:text-white">For Creators</a></li>
               </ul>
             </div>
           </div>

@@ -1939,12 +1939,20 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
 };
 
 // ✅ MAIN GET HANDLER
+// MINIMAL CHANGES TO YOUR EXISTING GET HANDLER
+// Only add these lines - don't change anything else!
+
 export const GET = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse
 ) => {
   try {
     //console.log("🏪 INDEX: Fetching vendor orders with COMPLETE enhanced calculations...");
+    
+    // ✅ ADD THIS: Get limit and offset from query params
+    const limit = parseInt(req.query.limit as string) || undefined;
+    const offset = parseInt(req.query.offset as string) || 0;
+    console.log(`📊 Query params - Limit: ${limit}, Offset: ${offset}`);
     
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
     const marketplaceModuleService: MarketplaceModuleService =
@@ -1963,9 +1971,9 @@ export const GET = async (
       });
     }
 
-const vendorId = vendorAdmins[0].vendor_id;
-//console.log(`✅ INDEX: Logged-in vendor ID: ${vendorId}`);
-//console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
+    const vendorId = vendorAdmins[0].vendor_id;
+    //console.log(`✅ INDEX: Logged-in vendor ID: ${vendorId}`);
+    //console.log(`🔍 INDEX: Processing orders for vendor: ${vendorId}`);
 
     // Get vendor orders
     const {
@@ -1988,68 +1996,84 @@ const vendorId = vendorAdmins[0].vendor_id;
     }
 
     //console.log(`📋 Found ${vendor.orders.length} linked orders for vendor`);
-
-    // Get detailed order information
-const { result: detailedOrders } = await getOrdersListWorkflow(req.scope).run({
-  input: {
-    fields: [
-      "id",
-      "display_id",
-      "metadata",
-      "total",
-      "subtotal", 
-      "shipping_total",
-      "tax_total",
-      "items.*",
-      "items.tax_lines",
-      "items.variant",
-      "items.variant.product",
-      "items.variant.metadata",
-      "items.variant.product.metadata",
-      "items.metadata",
-      "items.product_id",
-      "items.variant_id",
-      "items.return_requested_total",
-      "items.total",
-      "shipping_methods",
-      "shipping_methods.tax_total",
-      "payment_collections",
-      "payment_collections.payment_providers.*",  // ✅ ADD THIS LINE
-      "payment_collections.payments.*",           // ✅ ADD THIS LINE
-      "fulfillments",
-      "fulfillments.items.*",
-      "fulfillments.labels.*",
-      "customer.*",
-      "shipping_address.*",
-      "billing_address.*",
-      "payment_status",
-    ],
-    variables: {
-      filters: {
-        id: vendor.orders.map((order) => order.id),
-      },
-    },
-  },
-});
-
-//console.log(`📄 INDEX: Retrieved detailed data for ${detailedOrders.length} orders`);
-
-// ✅ ADD THIS ENTIRE SECTION HERE 👇👇👇
-// Enrich orders with complete payment collection data
-for (const order of detailedOrders) {
-  if (order.payment_collections && order.payment_collections.length > 0) {
-    const paymentCollectionIds = order.payment_collections.map(pc => pc.id);
-    const detailedPaymentCollections = await fetchPaymentCollectionDetails(paymentCollectionIds, req.scope);
     
-    if (detailedPaymentCollections.length > 0) {
-      order.payment_collections = detailedPaymentCollections;
-      console.log(`💳 Enriched payment collections for order ${order.id}:`, {
-        payment_providers: detailedPaymentCollections[0]?.payment_providers,
-        payments: detailedPaymentCollections[0]?.payments
-      });
+    // ✅ ADD THIS: Sort orders by date (newest first)
+    const sortedOrders = [...vendor.orders].sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+    
+    // ✅ ADD THIS: Slice orders based on limit/offset
+    const ordersToProcess = limit 
+      ? sortedOrders.slice(offset, offset + limit)
+      : sortedOrders;
+    
+    const orderIdsToFetch = ordersToProcess.map(order => order.id);
+    console.log(`📄 Will process ${orderIdsToFetch.length} orders (from total ${vendor.orders.length})`);
+
+    // ✅ CHANGE THIS LINE ONLY: Use orderIdsToFetch instead of vendor.orders
+    // Get detailed order information
+    const { result: detailedOrders } = await getOrdersListWorkflow(req.scope).run({
+      input: {
+        fields: [
+          "id",
+          "display_id",
+          "metadata",
+          "total",
+          "subtotal", 
+          "shipping_total",
+          "tax_total",
+          "items.*",
+          "items.tax_lines",
+          "items.variant",
+          "items.variant.product",
+          "items.variant.metadata",
+          "items.variant.product.metadata",
+          "items.metadata",
+          "items.product_id",
+          "items.variant_id",
+          "items.return_requested_total",
+          "items.total",
+          "shipping_methods",
+          "shipping_methods.tax_total",
+          "payment_collections",
+          "payment_collections.payment_providers.*",
+          "payment_collections.payments.*",
+          "fulfillments",
+          "fulfillments.items.*",
+          "fulfillments.labels.*",
+          "customer.*",
+          "shipping_address.*",
+          "billing_address.*",
+          "payment_status",
+        ],
+        variables: {
+          filters: {
+            id: orderIdsToFetch, // ✅ CHANGED: Was vendor.orders.map((order) => order.id)
+          },
+        },
+      },
+    });
+
+    //console.log(`📄 INDEX: Retrieved detailed data for ${detailedOrders.length} orders`);
+
+    // ✅ EVERYTHING BELOW THIS LINE STAYS EXACTLY THE SAME
+    // Enrich orders with complete payment collection data
+    for (const order of detailedOrders) {
+      if (order.payment_collections && order.payment_collections.length > 0) {
+        const paymentCollectionIds = order.payment_collections.map(pc => pc.id);
+        const detailedPaymentCollections = await fetchPaymentCollectionDetails(paymentCollectionIds, req.scope);
+        
+        if (detailedPaymentCollections.length > 0) {
+          order.payment_collections = detailedPaymentCollections;
+          console.log(`💳 Enriched payment collections for order ${order.id}:`, {
+            payment_providers: detailedPaymentCollections[0]?.payment_providers,
+            payments: detailedPaymentCollections[0]?.payments
+          });
+        }
+      }
     }
-  }
-}
 
     //console.log(`📄 INDEX: Retrieved detailed data for ${detailedOrders.length} orders`);
 
@@ -2101,9 +2125,14 @@ for (const order of detailedOrders) {
 
     //console.log(`✅ INDEX: Returning ${vendorFilteredOrders.length} vendor-filtered orders with COMPLETE enhancements`);
 
+    // ✅ ADD THIS: Include pagination info in response
     res.json({
       orders: vendorFilteredOrders,
       count: vendorFilteredOrders.length,
+      total_count: vendor.orders.length, // ✅ ADDED: Total available orders
+      limit: limit, // ✅ ADDED
+      offset: offset, // ✅ ADDED
+      has_more: limit ? (offset + limit) < vendor.orders.length : false, // ✅ ADDED
       vendor_id: vendorId,
       total_linked_orders: vendor.orders.length,
       filtered_orders: vendorFilteredOrders.length,

@@ -821,47 +821,59 @@ const CategoryPage: React.FC = () => {
 
   // Fetch categories and products from API
 useEffect(() => {
- //console.log("🚀 useEffect triggered with slug:", slug);
+  console.log("=== CATEGORY PAGE DEBUG START ===");
+  console.log("🔗 Current URL:", window.location.pathname);
   
   const fetchCategories = async () => {
-    //console.log("📡 Starting API fetch...");
+    console.log("📡 Starting API fetch...");
     try {
-      const response = await fetch(`${vite_payload}/api/categories?limit=0`, {
+      // Fetch categories
+      const response = await fetch(`${vite_payload}/api/categories?limit=0&depth=2`, {
         credentials: 'include'
       });
       const data = await response.json();
+      console.log("📦 Categories fetched:", data.docs?.length);
+      
       setCategories(data.docs);
       
-      // Find the category matching the current slug
+      // Parse URL to get the correct slug
+      const pathParts = window.location.pathname.split('/');
+      console.log("🔗 Path parts:", pathParts);
+      
+      const categoryIndex = pathParts.indexOf('category');
+      const slugParts = pathParts.slice(categoryIndex + 1).filter(Boolean);
+      console.log("🔍 Slug parts:", slugParts);
+      
+      // CRITICAL: Use the LAST segment as the category slug
+      const targetSlug = slugParts[slugParts.length - 1];
+      console.log("🎯 Target slug to match:", targetSlug);
+      
+      // Find matching category
       const matchedCategory = data.docs.find((item: Category) => {
-        //console.log(`🔍 Comparing "${item.slug}" with "${slug}"`);
-        return item.slug === slug;
+        console.log(`🔍 Comparing "${item.slug}" with "${targetSlug}"`);
+        return item.slug === targetSlug;
       });
       
-      ////console.log("✅ Matched category:", matchedCategory);
+      console.log("✅ Matched category:", matchedCategory ? matchedCategory.title : "NONE");
       
       if (matchedCategory) {
-        // Always set the current category for description/hero section
-        //console.log("🎯 Setting currentCategory to:", matchedCategory.title);
+        console.log("📊 Category details:", matchedCategory);
         setCurrentCategory(matchedCategory);
-        //console.log("✅ setCurrentCategory called");
-        //console.log("✅ Category description exists:", !!matchedCategory.description);
         
-        // Only process products if they exist
+        // Process products
         if (matchedCategory.products && matchedCategory.products.length > 0) {
-          //console.log("Found category with products:", matchedCategory.title);
+          console.log("✅ Products found:", matchedCategory.products.length);
           
-          // Store the original API products
+          // Store API products
           setApiProducts(matchedCategory.products);
           
-          // Extract all available filter options
+          // Extract filter options
           const colors: ColorOption[] = [];
           const sizes: SizeOption[] = [];
           const technologies: PrintingTechnology[] = [];
           
           matchedCategory.products.forEach((product: APIProduct) => {
-            // Add colors
-            if (product.colorOptions && product.colorOptions.length > 0) {
+            if (product.colorOptions) {
               product.colorOptions.forEach((color: ColorOption) => {
                 if (!colors.some((c) => c.id === color.id)) {
                   colors.push(color);
@@ -869,8 +881,7 @@ useEffect(() => {
               });
             }
             
-            // Add sizes
-            if (product.sizeOptions && product.sizeOptions.length > 0) {
+            if (product.sizeOptions) {
               product.sizeOptions.forEach((size: SizeOption) => {
                 if (!sizes.some((s) => s.id === size.id)) {
                   sizes.push(size);
@@ -878,8 +889,7 @@ useEffect(() => {
               });
             }
             
-            // Add printing technologies
-            if (product.printingTechnologies && product.printingTechnologies.length > 0) {
+            if (product.printingTechnologies) {
               product.printingTechnologies.forEach((tech: PrintingTechnology) => {
                 if (!technologies.some((t) => t.id === tech.id)) {
                   technologies.push(tech);
@@ -892,7 +902,7 @@ useEffect(() => {
           setAvailableSizes(sizes);
           setAvailableTechnologies(technologies);
           
-          // Convert API products to the simplified Product type for internal state
+          // Format products
           const formattedProducts: SimplifiedProduct[] = matchedCategory.products.map((apiProduct: APIProduct) => {
             const productColors = apiProduct.colorOptions?.map((color: ColorOption) => color.colorHex) || [];
             
@@ -915,19 +925,25 @@ useEffect(() => {
             };
           });
           
+          console.log("📦 Formatted products:", formattedProducts.length);
+          
           const sortedProducts = formattedProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+          
+          console.log("✅ Setting products state...");
           setSimplifiedProducts(sortedProducts);
           setFilteredProducts(sortedProducts);
           
-          //console.log("Set products:", formattedProducts.length);
+          console.log("✅ Products state set!");
+          console.log("📦 simplifiedProducts:", sortedProducts.length);
+          console.log("📦 filteredProducts:", sortedProducts.length);
         } else {
-          //console.log("Category found but no products directly attached");
+          console.log("⚠️ No products in category");
           setSimplifiedProducts([]);
           setApiProducts([]);
           setFilteredProducts([]);
         }
       } else {
-        //console.log("No matching category found for slug:", slug);
+        console.log("❌ No matching category");
         setCurrentCategory(null);
         setSimplifiedProducts([]);
         setApiProducts([]);
@@ -936,15 +952,23 @@ useEffect(() => {
       
       setLoadingCategories(false);
       setLoading(false);
+      
+      console.log("=== CATEGORY PAGE DEBUG END ===");
     } catch (error) {
-      //console.error('Error fetching categories:', error);
+      console.error('❌ Error:', error);
       setLoadingCategories(false);
       setLoading(false);
     }
   };
 
   fetchCategories();
-}, [slug, vite_payload]);
+}, [vite_payload]); // ✅ ONLY vite_payload in dependencies, NOT slug!
+
+// Add this RIGHT AFTER your existing fetchCategories code:
+console.log("🔍 CHECKING STATE:");
+console.log("  - simplifiedProducts length:", simplifiedProducts.length);
+console.log("  - filteredProducts length:", filteredProducts.length);
+console.log("  - loading:", loading);
 
   // Apply filters when filter selections change
   useEffect(() => {
@@ -1107,7 +1131,7 @@ useEffect(() => {
           {/* Category Pill Navigation */}
           <div className="flex gap-3 pb-2 mb-6 overflow-x-auto md:hidden flex-nowrap">
             {categories.map((item) => (
-              //console.log("item slug", item.slug),
+              console.log("item slug", item.slug),
               <div 
                 key={item.id}
                 className={`category-pill rounded-full px-6 py-3 whitespace-nowrap text-sm font-medium cursor-pointer ${

@@ -291,9 +291,24 @@ const ProductPage = () => {
   
   // Load product data
   useEffect(() => {
+  //    console.log("=== PRODUCT PAGE DEBUG ===");
+  // console.log("Current URL:", window.location.href);
+  // console.log("Current pathname:", window.location.pathname);
+  // console.log("Route params:", params);
+  // console.log("Product ID from params:", productId);
+  // console.log("Expected: Should be a NUMBER for product ID");
+  // console.log("Actual type:", typeof productId);
+  
+  // // If productId looks like a slug (contains hyphens), we're on wrong page
+  // if (productId && productId.includes('-')) {
+  //   console.error("❌ ERROR: Product ID looks like a category slug!");
+  //   console.error("This suggests the router is sending category URLs to ProductPage");
+  //   console.error("Check your route configuration!");
+  // }
+
     const loadProduct = async () => {
       if (!productId) {
-        //console.error("Product ID not found in URL parameters");
+        console.error("Product ID not found in URL parameters");
         router.navigate({ to: '/productCatalog' });
         return;
       }
@@ -564,6 +579,7 @@ const getPrimaryCategoryPath = (): { url: string, label: string }[] => {
         const urlPath = crumb.url.replace(/^\//, ''); // Remove leading slash
         const segments = urlPath.split('/');
         const slug = segments[segments.length - 1]; // Get the last segment
+        console.log('=== BREADCRUMB SLUG ===', slug);
         
         return {
           url: `/productCatalog/category/${slug}`,

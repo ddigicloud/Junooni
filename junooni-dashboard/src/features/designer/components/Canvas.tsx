@@ -9294,7 +9294,7 @@ case 'sizes':
       )}
       
       {/* Enhanced Size Selection - Grid like colors */}
-      <div className={`flex flex-wrap gap-2 mb-4`}>
+      <div className={`flex flex-wrap gap-4 mb-4`}>
         {productData?.sizeOptions?.map((size: any) => {
           const isSelected = selectedSizes.includes(size.sizeName);
           const isActive = activeSize === size.sizeName;

@@ -47,6 +47,7 @@ interface Product {
   cost: number;
   sku: string;
   brand: string;
+  status?: string;
   displayImages: DisplayImage[];
   colorOptions: ColorOption[];
   sizeOptions: SizeOption[];
@@ -168,19 +169,33 @@ const Products = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch(`${vite_payload}/api/blank-products?limit=1000&depth=1`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        // OPTION 1: Filter in the API call (BEST - most efficient)
+        // Use PayloadCMS query parameters to only fetch active products
+        const response = await fetch(
+          `${vite_payload}/api/blank-products?where[status][equals]=active&limit=1000&depth=1`,
+          {
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        
         const data = await response.json();
         const fetchedProducts: Product[] = data.docs || data;
-        setProducts(fetchedProducts);
         
+        // OPTION 2: Filter after fetching (fallback if API filtering doesn't work)
+        // Filter out draft products immediately after fetching
+        const activeProducts = fetchedProducts.filter(
+          (product) => product.status?.toLowerCase() !== 'draft'
+        );
+        
+        // Set only active products to state
+        setProducts(activeProducts);
+        
+        // Generate metadata only for active products
         const metadata: ProductMetadataMap = {};
-        
-        fetchedProducts.forEach((product: Product) => {
+        activeProducts.forEach((product: Product) => {
           metadata[product.id] = {
             isBestSeller: Math.random() > 0.3,
             isStaffPick: Math.random() > 0.6,

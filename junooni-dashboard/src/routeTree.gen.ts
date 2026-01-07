@@ -38,6 +38,27 @@ const authForgotPasswordLazyImport = createFileRoute(
 const AuthenticatedSettingsRouteLazyImport = createFileRoute(
   '/_authenticated/settings',
 )()
+const PagesPrivacyIndexLazyImport = createFileRoute('/pages/privacy/')()
+const PagesMakeyourbrandIndexLazyImport = createFileRoute(
+  '/pages/make_your_brand/',
+)()
+const PagesGettingStartedIndexLazyImport = createFileRoute(
+  '/pages/getting-started/',
+)()
+const PagesFulfillmentPageIndexLazyImport = createFileRoute(
+  '/pages/fulfillment-page/',
+)()
+const PagesForCreatorsIndexLazyImport = createFileRoute(
+  '/pages/for-creators/',
+)()
+const PagesCreatorStoreIndexLazyImport = createFileRoute(
+  '/pages/creator-store/',
+)()
+const PagesCreatingProductsIndexLazyImport = createFileRoute(
+  '/pages/creating-products/',
+)()
+const PagesCareersIndexLazyImport = createFileRoute('/pages/careers/')()
+const PagesAboutUsIndexLazyImport = createFileRoute('/pages/about-us/')()
 const AuthenticatedSettingsIndexLazyImport = createFileRoute(
   '/_authenticated/settings/',
 )()
@@ -247,6 +268,84 @@ const auth500Route = auth500Import.update({
   path: '/500',
   getParentRoute: () => rootRoute,
 } as any)
+
+const PagesPrivacyIndexLazyRoute = PagesPrivacyIndexLazyImport.update({
+  id: '/pages/privacy/',
+  path: '/pages/privacy/',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/pages/privacy/index.lazy').then((d) => d.Route),
+)
+
+const PagesMakeyourbrandIndexLazyRoute =
+  PagesMakeyourbrandIndexLazyImport.update({
+    id: '/pages/make_your_brand/',
+    path: '/pages/make_your_brand/',
+    getParentRoute: () => rootRoute,
+  } as any).lazy(() =>
+    import('./routes/pages/make_your_brand/index.lazy').then((d) => d.Route),
+  )
+
+const PagesGettingStartedIndexLazyRoute =
+  PagesGettingStartedIndexLazyImport.update({
+    id: '/pages/getting-started/',
+    path: '/pages/getting-started/',
+    getParentRoute: () => rootRoute,
+  } as any).lazy(() =>
+    import('./routes/pages/getting-started/index.lazy').then((d) => d.Route),
+  )
+
+const PagesFulfillmentPageIndexLazyRoute =
+  PagesFulfillmentPageIndexLazyImport.update({
+    id: '/pages/fulfillment-page/',
+    path: '/pages/fulfillment-page/',
+    getParentRoute: () => rootRoute,
+  } as any).lazy(() =>
+    import('./routes/pages/fulfillment-page/index.lazy').then((d) => d.Route),
+  )
+
+const PagesForCreatorsIndexLazyRoute = PagesForCreatorsIndexLazyImport.update({
+  id: '/pages/for-creators/',
+  path: '/pages/for-creators/',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/pages/for-creators/index.lazy').then((d) => d.Route),
+)
+
+const PagesCreatorStoreIndexLazyRoute = PagesCreatorStoreIndexLazyImport.update(
+  {
+    id: '/pages/creator-store/',
+    path: '/pages/creator-store/',
+    getParentRoute: () => rootRoute,
+  } as any,
+).lazy(() =>
+  import('./routes/pages/creator-store/index.lazy').then((d) => d.Route),
+)
+
+const PagesCreatingProductsIndexLazyRoute =
+  PagesCreatingProductsIndexLazyImport.update({
+    id: '/pages/creating-products/',
+    path: '/pages/creating-products/',
+    getParentRoute: () => rootRoute,
+  } as any).lazy(() =>
+    import('./routes/pages/creating-products/index.lazy').then((d) => d.Route),
+  )
+
+const PagesCareersIndexLazyRoute = PagesCareersIndexLazyImport.update({
+  id: '/pages/careers/',
+  path: '/pages/careers/',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/pages/careers/index.lazy').then((d) => d.Route),
+)
+
+const PagesAboutUsIndexLazyRoute = PagesAboutUsIndexLazyImport.update({
+  id: '/pages/about-us/',
+  path: '/pages/about-us/',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/pages/about-us/index.lazy').then((d) => d.Route),
+)
 
 const AuthenticatedSettingsIndexLazyRoute =
   AuthenticatedSettingsIndexLazyImport.update({
@@ -741,6 +840,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsIndexLazyImport
       parentRoute: typeof AuthenticatedSettingsRouteLazyImport
     }
+    '/pages/about-us/': {
+      id: '/pages/about-us/'
+      path: '/pages/about-us'
+      fullPath: '/pages/about-us'
+      preLoaderRoute: typeof PagesAboutUsIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/pages/careers/': {
+      id: '/pages/careers/'
+      path: '/pages/careers'
+      fullPath: '/pages/careers'
+      preLoaderRoute: typeof PagesCareersIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/pages/creating-products/': {
+      id: '/pages/creating-products/'
+      path: '/pages/creating-products'
+      fullPath: '/pages/creating-products'
+      preLoaderRoute: typeof PagesCreatingProductsIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/pages/creator-store/': {
+      id: '/pages/creator-store/'
+      path: '/pages/creator-store'
+      fullPath: '/pages/creator-store'
+      preLoaderRoute: typeof PagesCreatorStoreIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/pages/for-creators/': {
+      id: '/pages/for-creators/'
+      path: '/pages/for-creators'
+      fullPath: '/pages/for-creators'
+      preLoaderRoute: typeof PagesForCreatorsIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/pages/fulfillment-page/': {
+      id: '/pages/fulfillment-page/'
+      path: '/pages/fulfillment-page'
+      fullPath: '/pages/fulfillment-page'
+      preLoaderRoute: typeof PagesFulfillmentPageIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/pages/getting-started/': {
+      id: '/pages/getting-started/'
+      path: '/pages/getting-started'
+      fullPath: '/pages/getting-started'
+      preLoaderRoute: typeof PagesGettingStartedIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/pages/make_your_brand/': {
+      id: '/pages/make_your_brand/'
+      path: '/pages/make_your_brand'
+      fullPath: '/pages/make_your_brand'
+      preLoaderRoute: typeof PagesMakeyourbrandIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/pages/privacy/': {
+      id: '/pages/privacy/'
+      path: '/pages/privacy'
+      fullPath: '/pages/privacy'
+      preLoaderRoute: typeof PagesPrivacyIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
     '/_authenticated/productCatalog/products/$id': {
       id: '/_authenticated/productCatalog/products/$id'
       path: '/productCatalog/products/$id'
@@ -894,6 +1056,15 @@ export interface FileRoutesByFullPath {
   '/productCatalog': typeof AuthenticatedProductCatalogIndexLazyRoute
   '/products': typeof AuthenticatedProductsIndexLazyRoute
   '/settings/': typeof AuthenticatedSettingsIndexLazyRoute
+  '/pages/about-us': typeof PagesAboutUsIndexLazyRoute
+  '/pages/careers': typeof PagesCareersIndexLazyRoute
+  '/pages/creating-products': typeof PagesCreatingProductsIndexLazyRoute
+  '/pages/creator-store': typeof PagesCreatorStoreIndexLazyRoute
+  '/pages/for-creators': typeof PagesForCreatorsIndexLazyRoute
+  '/pages/fulfillment-page': typeof PagesFulfillmentPageIndexLazyRoute
+  '/pages/getting-started': typeof PagesGettingStartedIndexLazyRoute
+  '/pages/make_your_brand': typeof PagesMakeyourbrandIndexLazyRoute
+  '/pages/privacy': typeof PagesPrivacyIndexLazyRoute
   '/productCatalog/products/$id': typeof AuthenticatedProductCatalogProductsIdLazyRoute
   '/productCatalog/products': typeof AuthenticatedProductCatalogProductsIndexLazyRoute
   '/productCatalog/category/$slug/$id': typeof AuthenticatedProductCatalogCategorySlugIdLazyRoute
@@ -935,6 +1106,15 @@ export interface FileRoutesByTo {
   '/productCatalog': typeof AuthenticatedProductCatalogIndexLazyRoute
   '/products': typeof AuthenticatedProductsIndexLazyRoute
   '/settings': typeof AuthenticatedSettingsIndexLazyRoute
+  '/pages/about-us': typeof PagesAboutUsIndexLazyRoute
+  '/pages/careers': typeof PagesCareersIndexLazyRoute
+  '/pages/creating-products': typeof PagesCreatingProductsIndexLazyRoute
+  '/pages/creator-store': typeof PagesCreatorStoreIndexLazyRoute
+  '/pages/for-creators': typeof PagesForCreatorsIndexLazyRoute
+  '/pages/fulfillment-page': typeof PagesFulfillmentPageIndexLazyRoute
+  '/pages/getting-started': typeof PagesGettingStartedIndexLazyRoute
+  '/pages/make_your_brand': typeof PagesMakeyourbrandIndexLazyRoute
+  '/pages/privacy': typeof PagesPrivacyIndexLazyRoute
   '/productCatalog/products/$id': typeof AuthenticatedProductCatalogProductsIdLazyRoute
   '/productCatalog/products': typeof AuthenticatedProductCatalogProductsIndexLazyRoute
   '/productCatalog/category/$slug/$id': typeof AuthenticatedProductCatalogCategorySlugIdLazyRoute
@@ -980,6 +1160,15 @@ export interface FileRoutesById {
   '/_authenticated/productCatalog/': typeof AuthenticatedProductCatalogIndexLazyRoute
   '/_authenticated/products/': typeof AuthenticatedProductsIndexLazyRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexLazyRoute
+  '/pages/about-us/': typeof PagesAboutUsIndexLazyRoute
+  '/pages/careers/': typeof PagesCareersIndexLazyRoute
+  '/pages/creating-products/': typeof PagesCreatingProductsIndexLazyRoute
+  '/pages/creator-store/': typeof PagesCreatorStoreIndexLazyRoute
+  '/pages/for-creators/': typeof PagesForCreatorsIndexLazyRoute
+  '/pages/fulfillment-page/': typeof PagesFulfillmentPageIndexLazyRoute
+  '/pages/getting-started/': typeof PagesGettingStartedIndexLazyRoute
+  '/pages/make_your_brand/': typeof PagesMakeyourbrandIndexLazyRoute
+  '/pages/privacy/': typeof PagesPrivacyIndexLazyRoute
   '/_authenticated/productCatalog/products/$id': typeof AuthenticatedProductCatalogProductsIdLazyRoute
   '/_authenticated/productCatalog/products/': typeof AuthenticatedProductCatalogProductsIndexLazyRoute
   '/_authenticated/productCatalog/category/$slug/$id': typeof AuthenticatedProductCatalogCategorySlugIdLazyRoute
@@ -1025,6 +1214,15 @@ export interface FileRouteTypes {
     | '/productCatalog'
     | '/products'
     | '/settings/'
+    | '/pages/about-us'
+    | '/pages/careers'
+    | '/pages/creating-products'
+    | '/pages/creator-store'
+    | '/pages/for-creators'
+    | '/pages/fulfillment-page'
+    | '/pages/getting-started'
+    | '/pages/make_your_brand'
+    | '/pages/privacy'
     | '/productCatalog/products/$id'
     | '/productCatalog/products'
     | '/productCatalog/category/$slug/$id'
@@ -1065,6 +1263,15 @@ export interface FileRouteTypes {
     | '/productCatalog'
     | '/products'
     | '/settings'
+    | '/pages/about-us'
+    | '/pages/careers'
+    | '/pages/creating-products'
+    | '/pages/creator-store'
+    | '/pages/for-creators'
+    | '/pages/fulfillment-page'
+    | '/pages/getting-started'
+    | '/pages/make_your_brand'
+    | '/pages/privacy'
     | '/productCatalog/products/$id'
     | '/productCatalog/products'
     | '/productCatalog/category/$slug/$id'
@@ -1108,6 +1315,15 @@ export interface FileRouteTypes {
     | '/_authenticated/productCatalog/'
     | '/_authenticated/products/'
     | '/_authenticated/settings/'
+    | '/pages/about-us/'
+    | '/pages/careers/'
+    | '/pages/creating-products/'
+    | '/pages/creator-store/'
+    | '/pages/for-creators/'
+    | '/pages/fulfillment-page/'
+    | '/pages/getting-started/'
+    | '/pages/make_your_brand/'
+    | '/pages/privacy/'
     | '/_authenticated/productCatalog/products/$id'
     | '/_authenticated/productCatalog/products/'
     | '/_authenticated/productCatalog/category/$slug/$id'
@@ -1132,6 +1348,15 @@ export interface RootRouteChildren {
   errors404LazyRoute: typeof errors404LazyRoute
   errors500LazyRoute: typeof errors500LazyRoute
   errors503LazyRoute: typeof errors503LazyRoute
+  PagesAboutUsIndexLazyRoute: typeof PagesAboutUsIndexLazyRoute
+  PagesCareersIndexLazyRoute: typeof PagesCareersIndexLazyRoute
+  PagesCreatingProductsIndexLazyRoute: typeof PagesCreatingProductsIndexLazyRoute
+  PagesCreatorStoreIndexLazyRoute: typeof PagesCreatorStoreIndexLazyRoute
+  PagesForCreatorsIndexLazyRoute: typeof PagesForCreatorsIndexLazyRoute
+  PagesFulfillmentPageIndexLazyRoute: typeof PagesFulfillmentPageIndexLazyRoute
+  PagesGettingStartedIndexLazyRoute: typeof PagesGettingStartedIndexLazyRoute
+  PagesMakeyourbrandIndexLazyRoute: typeof PagesMakeyourbrandIndexLazyRoute
+  PagesPrivacyIndexLazyRoute: typeof PagesPrivacyIndexLazyRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -1151,6 +1376,15 @@ const rootRouteChildren: RootRouteChildren = {
   errors404LazyRoute: errors404LazyRoute,
   errors500LazyRoute: errors500LazyRoute,
   errors503LazyRoute: errors503LazyRoute,
+  PagesAboutUsIndexLazyRoute: PagesAboutUsIndexLazyRoute,
+  PagesCareersIndexLazyRoute: PagesCareersIndexLazyRoute,
+  PagesCreatingProductsIndexLazyRoute: PagesCreatingProductsIndexLazyRoute,
+  PagesCreatorStoreIndexLazyRoute: PagesCreatorStoreIndexLazyRoute,
+  PagesForCreatorsIndexLazyRoute: PagesForCreatorsIndexLazyRoute,
+  PagesFulfillmentPageIndexLazyRoute: PagesFulfillmentPageIndexLazyRoute,
+  PagesGettingStartedIndexLazyRoute: PagesGettingStartedIndexLazyRoute,
+  PagesMakeyourbrandIndexLazyRoute: PagesMakeyourbrandIndexLazyRoute,
+  PagesPrivacyIndexLazyRoute: PagesPrivacyIndexLazyRoute,
 }
 
 export const routeTree = rootRoute
@@ -1178,7 +1412,16 @@ export const routeTree = rootRoute
         "/(errors)/403",
         "/(errors)/404",
         "/(errors)/500",
-        "/(errors)/503"
+        "/(errors)/503",
+        "/pages/about-us/",
+        "/pages/careers/",
+        "/pages/creating-products/",
+        "/pages/creator-store/",
+        "/pages/for-creators/",
+        "/pages/fulfillment-page/",
+        "/pages/getting-started/",
+        "/pages/make_your_brand/",
+        "/pages/privacy/"
       ]
     },
     "/_authenticated": {
@@ -1341,6 +1584,33 @@ export const routeTree = rootRoute
     "/_authenticated/settings/": {
       "filePath": "_authenticated/settings/index.lazy.tsx",
       "parent": "/_authenticated/settings"
+    },
+    "/pages/about-us/": {
+      "filePath": "pages/about-us/index.lazy.tsx"
+    },
+    "/pages/careers/": {
+      "filePath": "pages/careers/index.lazy.tsx"
+    },
+    "/pages/creating-products/": {
+      "filePath": "pages/creating-products/index.lazy.tsx"
+    },
+    "/pages/creator-store/": {
+      "filePath": "pages/creator-store/index.lazy.tsx"
+    },
+    "/pages/for-creators/": {
+      "filePath": "pages/for-creators/index.lazy.tsx"
+    },
+    "/pages/fulfillment-page/": {
+      "filePath": "pages/fulfillment-page/index.lazy.tsx"
+    },
+    "/pages/getting-started/": {
+      "filePath": "pages/getting-started/index.lazy.tsx"
+    },
+    "/pages/make_your_brand/": {
+      "filePath": "pages/make_your_brand/index.lazy.tsx"
+    },
+    "/pages/privacy/": {
+      "filePath": "pages/privacy/index.lazy.tsx"
     },
     "/_authenticated/productCatalog/products/$id": {
       "filePath": "_authenticated/productCatalog/products/$id.lazy.tsx",

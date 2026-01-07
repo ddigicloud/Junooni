@@ -1,4 +1,4 @@
-// src/components/Designer/engines/DynamicMockupEngine.tsx - PROFESSIONAL CYLINDRICAL WRAP FIX
+// src/components/Designer/engines/DynamicMockupEngine.tsx - COMPLETE FIX
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as PIXI from 'pixi.js';
 
@@ -199,10 +199,6 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
   const [lastMockupId, setLastMockupId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const debugMessage = useCallback((message: string, data?: any) => {
-    console.log(`[DynamicMockup] ${message}`, data || '');
-  }, []);
-
   const updateProgress = useCallback((progress: number) => {
     if (!mountedRef.current || !renderingRef.current) return;
     
@@ -302,41 +298,6 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
       default: return PIXI.BLEND_MODES.NORMAL || 0;
     }
   }, []);
-
-  const createAlphaMask = useCallback(async (
-    visibleArea: any,
-    areaName: string,
-    designContainer: PIXI.Container,
-    mockupDimensions: { width: number; height: number; x: number; y: number }
-  ): Promise<void> => {
-    try {
-      const alphaMask = mockup.alpMasks?.find(mask => 
-        mask.alfarea.toLowerCase() === areaName.toLowerCase()
-      );
-      
-      if (alphaMask?.maskImg?.url) {
-        console.log(`🎭 Applying alpha mask for ${areaName}`);
-        const maskTexture = await loadImageSafely(alphaMask.maskImg.url, `alpha mask for ${areaName}`);
-        
-        if (maskTexture) {
-          const maskSprite = new PIXI.Sprite(maskTexture);
-          maskSprite.width = mockupDimensions.width;
-          maskSprite.height = mockupDimensions.height;
-          maskSprite.x = -mockupDimensions.x;
-          maskSprite.y = -mockupDimensions.y;
-          
-          designContainer.mask = maskSprite;
-          if (designContainer.parent) {
-            designContainer.parent.addChild(maskSprite);
-          }
-          
-          console.log(`✅ Alpha mask applied for ${areaName}`);
-        }
-      }
-    } catch (error) {
-      console.error(`❌ Alpha mask error for ${areaName}:`, error);
-    }
-  }, [mockup.alpMasks, loadImageSafely]);
 
   const cleanup = useCallback(() => {
     if (cleanupInProgressRef.current) return;
@@ -449,14 +410,13 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
   const renderMockup = useCallback(async (app: PIXI.Application) => {
     if (!mountedRef.current || !renderingRef.current) return;
     
-    console.log('\n🎬 ===== RENDERING MOCKUP WITH PROFESSIONAL CYLINDRICAL WRAP =====\n');
+    console.log('\n🎬 ===== CYLINDRICAL WRAP RENDERING =====\n');
     updateProgress(25);
 
     try {
       app.stage.removeChildren();
       app.stage.sortableChildren = true;
 
-      // Load base mockup
       const mockupTexture = await loadImageSafely(mockup.photo.url, 'mockup photo');
       
       if (!mockupTexture || !mountedRef.current) {
@@ -497,7 +457,6 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
       updateProgress(40);
 
       const area = mockup.area || [];
-      console.log(`\n🗺️ Processing ${area.length} areas\n`);
 
       for (let index = 0; index < area.length; index++) {
         if (!mountedRef.current || !renderingRef.current) break;
@@ -505,7 +464,9 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
         const visibleArea = area[index];
         const areaName = visibleArea.areaName;
         
-        console.log(`\n📍 === AREA: ${areaName} ===`);
+        console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`📍 AREA: ${areaName}`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         
         const uvSettings = visibleArea.uvMap;
         
@@ -514,7 +475,14 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
           continue;
         }
         
-        // Find design elements
+        const displacementMap = mockup.dispMaps?.find(dm => 
+          dm.disarea?.toLowerCase() === areaName.toLowerCase()
+        );
+        
+        const hasDisplacement = !!displacementMap?.dispImg?.url;
+        
+        console.log(`Surface: ${uvSettings.srfc}, Displacement: ${hasDisplacement ? 'YES' : 'NO'}`);
+        
         const areaVariations = [areaName, areaName.toLowerCase(), 'front', 'Front'];
         
         let areaDesignElements: DesignElement[] = [];
@@ -551,19 +519,29 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
           designContainer.zIndex = 10 + index;
           designContainer.sortableChildren = true;
           
-          // Calculate UV area in pixels on mockup
-          const uvAreaX = uvSettings.uStart * mockupDisplayWidth;
-          const uvAreaY = uvSettings.vStart * mockupDisplayHeight;
-          const uvAreaWidth = uvSettings.uSpan * mockupDisplayWidth;
-          const uvAreaHeight = uvSettings.vSpan * mockupDisplayHeight;
+          console.log(`📦 Created container, z-index: ${designContainer.zIndex}`);
           
-          console.log(`📐 UV area: (${uvAreaX.toFixed(0)}, ${uvAreaY.toFixed(0)}) ${uvAreaWidth.toFixed(0)}x${uvAreaHeight.toFixed(0)}`);
+          // Use UV coordinates when displacement is active
+          let finalX, finalY, finalWidth, finalHeight;
           
-          // Get canvas dimensions
+          if (hasDisplacement) {
+            finalX = uvSettings.uStart * mockupDisplayWidth;
+            finalY = uvSettings.vStart * mockupDisplayHeight;
+            finalWidth = uvSettings.uSpan * mockupDisplayWidth;
+            finalHeight = uvSettings.vSpan * mockupDisplayHeight;
+            console.log(`📐 UV Mode: (${finalX.toFixed(0)}, ${finalY.toFixed(0)}) ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}`);
+          } else {
+            const placement = visibleArea.design;
+            finalX = placement.coordinateX * mockupDisplayWidth;
+            finalY = placement.coordinateY * mockupDisplayHeight;
+            finalWidth = placement.coordinateWidth * mockupDisplayWidth;
+            finalHeight = placement.coordinateHeight * mockupDisplayHeight;
+            console.log(`📐 Design Mode: (${finalX.toFixed(0)}, ${finalY.toFixed(0)}) ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}`);
+          }
+          
           const canvasWidth = canvasConfig?.canvasPixWid || 500;
           const canvasHeight = canvasConfig?.canvasPixHeight || 500;
           
-          // Get printable area
           const printableArea = canvasPrintableAreas?.[areaName] || canvasPrintableAreas?.[foundAreaKey];
 
           let printableX = 0;
@@ -577,31 +555,30 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
             const rawWidth = printableArea.width || 1;
             const rawHeight = printableArea.height || 1;
             
-            // Check if already in pixels
             if (rawWidth > 100 || rawHeight > 100) {
               printableX = rawX;
               printableY = rawY;
               printableWidth = rawWidth;
               printableHeight = rawHeight;
             } else {
-              // Normalized coordinates
               printableX = rawX * canvasWidth;
               printableY = rawY * canvasHeight;
               printableWidth = rawWidth * canvasWidth;
               printableHeight = rawHeight * canvasHeight;
             }
-            
-            console.log(`📐 Printable: ${printableWidth.toFixed(0)}x${printableHeight.toFixed(0)} at (${printableX.toFixed(0)}, ${printableY.toFixed(0)})`);
           }
 
-          // Calculate scale from canvas printable area to UV area
-          const scaleX = uvAreaWidth / printableWidth;
-          const scaleY = uvAreaHeight / printableHeight;
+          // 🎯 CORRECT: Map printable area directly to UV/final area
+          // The printable area on canvas should fill the UV area on the mockup
+          const scaleX = finalWidth / printableWidth;
+          const scaleY = finalHeight / printableHeight;
           
-          console.log(`⚖️ Scale: X=${scaleX.toFixed(4)}, Y=${scaleY.toFixed(4)}`);
+          console.log(`   Printable area: ${printableWidth.toFixed(0)}x${printableHeight.toFixed(0)} at (${printableX.toFixed(0)}, ${printableY.toFixed(0)})`);
+          console.log(`   Final UV area: ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}`);
+          console.log(`   Scale: X=${scaleX.toFixed(4)}, Y=${scaleY.toFixed(4)}`);
           
-          // 🎯 PROFESSIONAL CYLINDRICAL WRAP - STEP 1: Render design elements
-          console.log(`\n🎨 STEP 1: Rendering design elements`);
+          // Render design elements
+          console.log(`\n🎨 Rendering ${areaDesignElements.length} elements...`);
           
           for (const [elemIndex, element] of areaDesignElements.entries()) {
             if (!mountedRef.current || !renderingRef.current) break;
@@ -613,7 +590,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
                 if (designTexture && mountedRef.current) {
                   const designSprite = new PIXI.Sprite(designTexture);
                   
-                  // Transform from canvas coordinates to container coordinates
+                  // Transform: canvas coords → relative to printable → scaled to UV area
                   const relativeX = (element.x || 0) - printableX;
                   const relativeY = (element.y || 0) - printableY;
 
@@ -621,6 +598,11 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
                   designSprite.y = relativeY * scaleY;
                   designSprite.width = (element.width || 100) * scaleX;
                   designSprite.height = (element.height || 100) * scaleY;
+                  
+                  console.log(`   Element ${elemIndex + 1}:`);
+                  console.log(`     Canvas: (${element.x?.toFixed(0)}, ${element.y?.toFixed(0)}) ${element.width?.toFixed(0)}x${element.height?.toFixed(0)}`);
+                  console.log(`     Relative to printable: (${relativeX.toFixed(0)}, ${relativeY.toFixed(0)})`);
+                  console.log(`     Scaled to UV: (${designSprite.x.toFixed(1)}, ${designSprite.y.toFixed(1)}) ${designSprite.width.toFixed(1)}x${designSprite.height.toFixed(1)}`);
                   
                   if (element.rotation) {
                     designSprite.anchor.set(0.5);
@@ -636,163 +618,143 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
                   if (element.scaleY !== undefined) designSprite.scale.y *= element.scaleY;
                   
                   designContainer.addChild(designSprite);
-                  console.log(`  ✅ Added image at (${designSprite.x.toFixed(0)}, ${designSprite.y.toFixed(0)}) size ${designSprite.width.toFixed(0)}x${designSprite.height.toFixed(0)}`);
+                  console.log(`   ✅ Element ${elemIndex + 1} added`);
                 }
               }
             } catch (elementError) {
-              console.error(`❌ Element error:`, elementError);
+              console.error(`   ❌ Element ${elemIndex + 1} error:`, elementError);
               continue;
             }
           }
           
-          // 🎯 PROFESSIONAL CYLINDRICAL WRAP - STEP 2: Apply displacement
-          const displacementMap = mockup.dispMaps?.find(dm => 
-            dm.disarea?.toLowerCase() === areaName.toLowerCase()
-          );
+          console.log(`✅ All elements added to container`);
           
-          if (displacementMap?.dispImg?.url) {
-            console.log(`\n🔄 STEP 2: APPLYING PROFESSIONAL CYLINDRICAL WRAP`);
+          // 🎯 STEP 1: Position container FIRST
+          designContainer.x = mockupSprite.x + finalX;
+          designContainer.y = mockupSprite.y + finalY;
+          console.log(`\n📍 STEP 1: Container positioned at (${designContainer.x.toFixed(0)}, ${designContainer.y.toFixed(0)})`);
+          
+          // 🎯 STEP 2: Apply blend mode and opacity
+          const placement = visibleArea.design;
+          if (placement.blend) {
+            designContainer.blendMode = getPixiBlend(placement.blend);
+            console.log(`   Blend: ${placement.blend}`);
+          }
+          
+          if (placement.opacity !== null && placement.opacity !== undefined && placement.opacity !== 1) {
+            designContainer.alpha = Math.max(0, Math.min(1, placement.opacity));
+            console.log(`   Opacity: ${designContainer.alpha}`);
+          }
+          
+          // 🎯 STEP 3: Apply displacement filter
+          if (hasDisplacement) {
+            console.log(`\n🔄 STEP 3: Applying displacement:`);
             
             try {
               const dispTexture = await loadImageSafely(displacementMap.dispImg.url, `displacement for ${areaName}`);
               
               if (dispTexture && mountedRef.current) {
-                // Create displacement sprite matching the container bounds
                 const displacementSprite = new PIXI.Sprite(dispTexture);
-                displacementSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
                 
-                // Size displacement map to match UV area
-                displacementSprite.width = uvAreaWidth;
-                displacementSprite.height = uvAreaHeight;
+                // Fix for PIXI v8 API
+                if (displacementSprite.texture.source) {
+                  displacementSprite.texture.source.style.addressMode = 'repeat';
+                  console.log(`   ✅ Set addressMode to repeat`);
+                }
+                
+                displacementSprite.width = finalWidth;
+                displacementSprite.height = finalHeight;
                 displacementSprite.x = 0;
                 displacementSprite.y = 0;
                 
-                // Add displacement sprite to container (won't be visible)
                 designContainer.addChild(displacementSprite);
+                console.log(`   ✅ Displacement sprite added: ${displacementSprite.width.toFixed(0)}x${displacementSprite.height.toFixed(0)}`);
                 
                 const intensity = displacementMap.disint || 1.0;
                 const surfaceType = displacementMap.dsrfaceTy || uvSettings.srfc;
                 
-                // 🎯 CRITICAL: Professional cylindrical wrap formula
-                // The secret is in the displacement scale relative to the surface curvature
-                let wrapFactorX = 0.5;  // Default 50% for strong cylindrical wrap
-                let wrapFactorY = 0.05; // Minimal vertical
+                let horizontalWrapPercent = 0.55;
+                let verticalWrapPercent = 0.02;
                 
-                // Adjust based on surface type
                 if (surfaceType === 'cylindrical' || surfaceType === 'cylinder') {
-                  // Mugs need STRONG horizontal displacement (40-60% of width)
-                  wrapFactorX = 0.6;  // 60% for pronounced wrap
-                  wrapFactorY = 0.03; // Very minimal vertical
-                  
-                  console.log(`🏺 CYLINDRICAL SURFACE DETECTED`);
+                  horizontalWrapPercent = 0.60;
+                  verticalWrapPercent = 0.02;
                 } else if (surfaceType === 'spherical' || surfaceType === 'sphere') {
-                  wrapFactorX = 0.4;
-                  wrapFactorY = 0.4;  // Spheres need both directions
+                  horizontalWrapPercent = 0.40;
+                  verticalWrapPercent = 0.40;
                 } else if (surfaceType === 'conical' || surfaceType === 'cone') {
-                  wrapFactorX = 0.45;
-                  wrapFactorY = 0.15;
+                  horizontalWrapPercent = 0.45;
+                  verticalWrapPercent = 0.15;
                 }
                 
-                // Apply surface wrap settings if available
                 const wrapSettings = visibleArea.surfaceWrapSettings;
                 if (wrapSettings?.enableWrap) {
                   const customIntensity = wrapSettings.wrapIntensity || 1.0;
-                  wrapFactorX *= customIntensity;
-                  wrapFactorY *= customIntensity;
-                  
-                  console.log(`⚙️ Custom wrap settings applied: ${customIntensity}x`);
+                  horizontalWrapPercent *= customIntensity;
+                  verticalWrapPercent *= customIntensity;
+                  console.log(`   ⚙️ Custom wrap intensity: ${customIntensity}`);
                 }
                 
-                // Calculate final displacement scales
-                const professionalDisplacement = {
-                  x: uvAreaWidth * wrapFactorX * intensity,
-                  y: uvAreaHeight * wrapFactorY * intensity
-                };
+                const displacementScaleX = finalWidth * horizontalWrapPercent * intensity;
+                const displacementScaleY = finalHeight * verticalWrapPercent * intensity;
                 
-                console.log(`\n🎯 PROFESSIONAL WRAP CONFIGURATION:`);
-                console.log(`   Surface: ${surfaceType}`);
-                console.log(`   UV Area: ${uvAreaWidth.toFixed(0)}w × ${uvAreaHeight.toFixed(0)}h px`);
-                console.log(`   Wrap Factors: X=${(wrapFactorX * 100).toFixed(0)}% Y=${(wrapFactorY * 100).toFixed(0)}%`);
-                console.log(`   Displacement: X=${professionalDisplacement.x.toFixed(1)}px Y=${professionalDisplacement.y.toFixed(1)}px`);
-                console.log(`   Intensity: ${intensity}`);
+                console.log(`   📏 Displacement scale: X=${displacementScaleX.toFixed(1)}px Y=${displacementScaleY.toFixed(1)}px`);
+                console.log(`   🌀 Effect: ${((displacementScaleX / finalWidth) * 100).toFixed(1)}% horizontal wrap`);
                 
-                // Create and apply displacement filter
                 const displacementFilter = new PIXI.DisplacementFilter({
                   sprite: displacementSprite,
-                  scale: professionalDisplacement
+                  scale: { x: displacementScaleX, y: displacementScaleY }
                 });
                 
                 designContainer.filters = [displacementFilter];
-                
-                console.log(`✅ Professional cylindrical wrap applied!`);
-                console.log(`🔍 VERIFICATION:`);
-                console.log(`   Filter scale: X=${displacementFilter.scale.x.toFixed(1)}px Y=${displacementFilter.scale.y.toFixed(1)}px`);
-                console.log(`   Horizontal wrap: ${((displacementFilter.scale.x / uvAreaWidth) * 100).toFixed(1)}% of width`);
-                console.log(`   Vertical variation: ${((displacementFilter.scale.y / uvAreaHeight) * 100).toFixed(1)}% of height\n`);
+                console.log(`   ✅ Displacement filter applied!`);
               }
             } catch (dispError) {
-              console.error(`❌ Displacement error:`, dispError);
-            }
-          } else {
-            console.log(`⚠️ No displacement map found for ${areaName}`);
-          }
-          
-          // Position container at UV coordinates
-          designContainer.x = mockupSprite.x + uvAreaX;
-          designContainer.y = mockupSprite.y + uvAreaY;
-          
-          console.log(`📍 Container position: (${designContainer.x.toFixed(0)}, ${designContainer.y.toFixed(0)})`);
-          
-          // Apply design coordinate adjustments if present
-          const placement = visibleArea.design;
-          
-          if (placement && placement.coordinateWidth && placement.coordinateHeight) {
-            const designAreaX = placement.coordinateX * mockupDisplayWidth;
-            const designAreaY = placement.coordinateY * mockupDisplayHeight;
-            const designAreaWidth = placement.coordinateWidth * mockupDisplayWidth;
-            const designAreaHeight = placement.coordinateHeight * mockupDisplayHeight;
-            
-            console.log(`📍 Design coords: (${designAreaX.toFixed(0)}, ${designAreaY.toFixed(0)}) ${designAreaWidth.toFixed(0)}x${designAreaHeight.toFixed(0)}`);
-            
-            // Scale container to match design area
-            const designScaleX = designAreaWidth / uvAreaWidth;
-            const designScaleY = designAreaHeight / uvAreaHeight;
-            
-            designContainer.scale.x *= designScaleX;
-            designContainer.scale.y *= designScaleY;
-            
-            // Position at design coordinates
-            designContainer.x = mockupSprite.x + designAreaX;
-            designContainer.y = mockupSprite.y + designAreaY;
-            
-            console.log(`✅ Applied design scale: (${designScaleX.toFixed(4)}, ${designScaleY.toFixed(4)})`);
-            console.log(`✅ Final position: (${designContainer.x.toFixed(0)}, ${designContainer.y.toFixed(0)})`);
-            
-            if (placement.blend) {
-              designContainer.blendMode = getPixiBlend(placement.blend);
-            }
-            
-            if (placement.opacity !== null && placement.opacity !== undefined && placement.opacity !== 1) {
-              designContainer.alpha = Math.max(0, Math.min(1, placement.opacity));
+              console.error(`   ❌ Displacement error:`, dispError);
             }
           }
           
-          // Add to stage
+          // 🎯 STEP 4: Add to stage
+          console.log(`\n📌 STEP 4: Adding container to stage...`);
           app.stage.addChild(designContainer);
+          console.log(`✅ Container added to stage, parent exists: ${!!designContainer.parent}`);
 
-          // Apply alpha mask (last)
+          // 🎯 STEP 5: Apply alpha mask (AFTER adding to stage)
           try {
-            if (visibleArea.Config?.enableMasking || mockup.alpMasks?.length) {
-              await createAlphaMask(visibleArea, areaName, designContainer, mockupDimensions);
+            const alphaMask = mockup.alpMasks?.find(mask => 
+              mask.alfarea.toLowerCase() === areaName.toLowerCase()
+            );
+            
+            if (alphaMask?.maskImg?.url) {
+              console.log(`\n🎭 STEP 5: Applying alpha mask...`);
+              const maskTexture = await loadImageSafely(alphaMask.maskImg.url, `alpha mask for ${areaName}`);
+              
+              if (maskTexture && mountedRef.current) {
+                const maskSprite = new PIXI.Sprite(maskTexture);
+                maskSprite.width = mockupDimensions.width;
+                maskSprite.height = mockupDimensions.height;
+                maskSprite.x = mockupSprite.x;
+                maskSprite.y = mockupSprite.y;
+                
+                console.log(`   Mask sprite: ${maskSprite.width.toFixed(0)}x${maskSprite.height.toFixed(0)} at (${maskSprite.x.toFixed(0)}, ${maskSprite.y.toFixed(0)})`);
+                
+                // Add mask to stage (not to parent)
+                app.stage.addChild(maskSprite);
+                designContainer.mask = maskSprite;
+                
+                console.log(`✅ Alpha mask applied`);
+              }
             }
           } catch (maskError) {
-            console.warn(`⚠️ Mask error:`, maskError);
+            console.error(`⚠️ Mask error:`, maskError);
           }
 
-          console.log(`✅ Completed ${areaName}\n`);
+          console.log(`\n✅ ===== COMPLETED ${areaName} =====\n`);
           
         } catch (areaError) {
-          console.error(`❌ Area error:`, areaError);
+          console.error(`\n❌ ===== AREA ERROR for ${areaName} =====`);
+          console.error(areaError);
+          console.error(`===== END ERROR =====\n`);
           continue;
         }
       }
@@ -800,6 +762,7 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
       updateProgress(95);
 
       if (mountedRef.current && renderingRef.current) {
+        console.log(`\n🎬 Final render...`);
         app.stage.sortChildren();
         app.render();
         
@@ -807,16 +770,20 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
         
         try {
           const imageData = app.canvas.toDataURL();
+          console.log(`✅ Image data generated: ${imageData.substring(0, 50)}...`);
           onRenderComplete?.(imageData);
         } catch (error) {
+          console.error(`❌ toDataURL error:`, error);
           onRenderComplete?.('');
         }
       }
 
-      console.log('\n✅ ===== RENDER COMPLETE WITH PROFESSIONAL WRAP =====\n');
+      console.log('\n✅ ===== RENDER COMPLETE =====\n');
 
     } catch (error) {
-      console.error('❌ Render failed:', error);
+      console.error('\n❌ ===== RENDER FAILED =====');
+      console.error(error);
+      console.error('===== END RENDER ERROR =====\n');
       setError(error instanceof Error ? error.message : 'Rendering failed');
       renderingRef.current = false;
       setIsRendering(false);
@@ -833,7 +800,6 @@ const DynamicMockupEngine: React.FC<DynamicMockupEngineProps> = ({
     loadImageSafely,
     updateProgress,
     onRenderComplete,
-    createAlphaMask,
     getPixiBlend
   ]);
 

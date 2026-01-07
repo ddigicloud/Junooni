@@ -1033,6 +1033,8 @@ const DashboardPage = () => {
     setError(null);
     
     try {
+      console.log('=== DASHBOARD FETCH START ===');
+      
       // Simple token validation
       if (!validateToken()) {
         setError("Authentication required. Please log in.");
@@ -1051,136 +1053,225 @@ const DashboardPage = () => {
         return;
       }
 
-        // Fetch vendor profile
-        const vendorResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
-        });
-        
-        
-        if (vendorResponse.status === 404) {
-          window.location.href = '/onboarding?step=basic-info';
-          setLoading(false);
-          return;
+      console.log('Fetching vendor profile...');
+      
+      // Fetch vendor profile
+      const vendorResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         }
-        
-        if (vendorResponse.status === 401 || vendorResponse.status === 403) {
-          localStorage.removeItem("vendorToken");
-          setAuthError(true);
-          setError("Your session has expired. Please log in again.");
-          setLoading(false);
-          return;
-        }
-        
-        if (!vendorResponse.ok) {
-          throw new Error(`Error fetching vendor profile: ${vendorResponse.status} ${vendorResponse.statusText}`);
-        }
-        
-        const vendorData = await vendorResponse.json();
-        
-        // Check onboarding completion status
-        const onboardingCheck = checkOnboardingCompletion(vendorData);
-        setOnboardingStatus(onboardingCheck);
-        
-        // Transform vendor data
-        const transformedVendor: Vendor = {
-          id: vendorData.vendor?.id || "1",
-          name: vendorData.vendor?.name || 
-        (vendorData.vendor?.admins?.[0]?.first_name && vendorData.vendor?.admins?.[0]?.last_name ? 
-          `${vendorData.vendor.admins[0].first_name} ${vendorData.vendor.admins[0].last_name}` : 
-          vendorData.vendor?.admin?.[0]?.first_name && vendorData.vendor?.admin?.[0]?.last_name ?
-          `${vendorData.vendor.admin[0].first_name} ${vendorData.vendor.admin[0].last_name}` :
-          vendorData.vendor?.first_name && vendorData.vendor?.last_name ?
-          `${vendorData.vendor.first_name} ${vendorData.vendor.last_name}` :
-          "Creator"),
-          email: vendorData.vendor?.email || "creator@junooni.com",
-          avatar: vendorData.vendor?.logo || vendorData.vendor?.avatar || undefined,
-          store_name: vendorData.vendor?.store_name || vendorData.vendor?.business_name || "My Junooni Store",
-          created_at: vendorData.vendor?.created_at || new Date().toISOString(),
-          products_count: vendorData.products_count || 0,
-          verified: vendorData.vendor?.verified || vendorData.vendor?.verified_seller || false
-        };
-        
-        setVendor(transformedVendor);
-
-        // Fetch recent vendor orders
-        try {
-          
-          const orderResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders?limit=10`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            }
-          });
-          
-          if (!orderResponse.ok) {
-           setOrders([]);
-          } else {
-            const orderData = await orderResponse.json();
-            
-            const transformedOrders = transformVendorOrders(orderData);
-            
-            setOrders(transformedOrders);
-          }
-        } catch (orderError) {
-          setOrders([]);
-        }
-        
-        // Fetch products
-        try {
-          const productResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            }
-          });
-          
-          if (!productResponse.ok) {
-            setProducts([]);
-          } else {
-            const productData = await productResponse.json();
-            //console.log("product response data:", productData);
-            
-            // Transform products
-            const transformedProducts = (productData.products || []).map((product: any): Product => {
-              return {
-                id: product.id,
-                title: product.title || product.name || "Unnamed Product",
-                description: product.description || "",
-                price: typeof product.price === 'number' 
-                  ? product.price 
-                  : product.price?.value 
-                    ? parseFloat(product.price.value) 
-                    : 0,
-                image_url: product.thumbnail || product.image_url || product.images?.[0] || "",
-                status: product.status || "draft",
-                created_at: product.created_at || new Date().toISOString(),
-                handle: product.handle || "",
-                variants: product.variants || []
-              };
-            });
-            //console.log("Transformed product with price:", transformedProducts);
-            
-            setProducts(transformedProducts);
-          }
-        } catch (productError) {
-         setProducts([]);
-        }
-        
-      } catch (err: any) {
-        setError(err.message || "Failed to load dashboard data");
-      } finally {
+      });
+      
+      console.log('Vendor response status:', vendorResponse.status);
+      
+      if (vendorResponse.status === 404) {
+        window.location.href = '/onboarding?step=basic-info';
         setLoading(false);
+        return;
       }
-    };
-    
-    fetchData();
-  }, [navigate]);
+      
+      if (vendorResponse.status === 401 || vendorResponse.status === 403) {
+        localStorage.removeItem("vendorToken");
+        setAuthError(true);
+        setError("Your session has expired. Please log in again.");
+        setLoading(false);
+        return;
+      }
+      
+      if (!vendorResponse.ok) {
+        throw new Error(`Error fetching vendor profile: ${vendorResponse.status} ${vendorResponse.statusText}`);
+      }
+      
+      const vendorData = await vendorResponse.json();
+      console.log('Vendor data received:', vendorData);
+      
+      // Check onboarding completion status
+      const onboardingCheck = checkOnboardingCompletion(vendorData);
+      setOnboardingStatus(onboardingCheck);
+      
+      // Transform vendor data
+      const transformedVendor: Vendor = {
+        id: vendorData.vendor?.id || "1",
+        name: vendorData.vendor?.name || 
+              (vendorData.vendor?.admins?.[0]?.first_name && vendorData.vendor?.admins?.[0]?.last_name ? 
+                `${vendorData.vendor.admins[0].first_name} ${vendorData.vendor.admins[0].last_name}` : 
+                vendorData.vendor?.admin?.[0]?.first_name && vendorData.vendor?.admin?.[0]?.last_name ?
+                `${vendorData.vendor.admin[0].first_name} ${vendorData.vendor.admin[0].last_name}` :
+                vendorData.vendor?.first_name && vendorData.vendor?.last_name ?
+                `${vendorData.vendor.first_name} ${vendorData.vendor.last_name}` :
+                "Creator"),
+        email: vendorData.vendor?.email || "creator@junooni.com",
+        avatar: vendorData.vendor?.logo || vendorData.vendor?.avatar || undefined,
+        store_name: vendorData.vendor?.store_name || vendorData.vendor?.business_name || "My Junooni Store",
+        created_at: vendorData.vendor?.created_at || new Date().toISOString(),
+        products_count: vendorData.products_count || 0,
+        verified: vendorData.vendor?.verified || vendorData.vendor?.verified_seller || false
+      };
+      
+      setVendor(transformedVendor);
+      console.log('Vendor set:', transformedVendor);
+
+      // Fetch recent orders (only 5 for dashboard)
+      console.log('Fetching recent orders...');
+      try {
+        const orderResponse = await fetch(
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders?limit=5`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            }
+          }
+        );
+        
+        console.log('Orders response status:', orderResponse.status);
+        
+        if (!orderResponse.ok) {
+          console.warn('Failed to fetch orders:', orderResponse.status);
+          setOrders([]);
+        } else {
+          const orderData = await orderResponse.json();
+          console.log('Raw order data:', orderData);
+          
+          // Get orders array from response
+          let ordersArray = [];
+          if (orderData.orders && Array.isArray(orderData.orders)) {
+            ordersArray = orderData.orders;
+          } else if (orderData.data && Array.isArray(orderData.data)) {
+            ordersArray = orderData.data;
+          } else if (Array.isArray(orderData)) {
+            ordersArray = orderData;
+          }
+          
+          console.log('Orders array length:', ordersArray.length);
+          
+          // Take only first 5 and transform
+          const ordersToDisplay = ordersArray.slice(0, 5);
+          console.log('Orders to display:', ordersToDisplay.length);
+          
+          const transformedOrders = ordersToDisplay.map((order: any, index: number) => {
+            try {
+              const getNum = (val: any, def: number = 0): number => {
+                if (typeof val === 'number') return val;
+                if (typeof val === 'string') return parseFloat(val) || def;
+                return def;
+              };
+              
+              const vendor_items = (order.vendor_items || []).map((item: any) => ({
+                id: item.id || '',
+                title: item.title || item.product_title || "Unknown Product",
+                quantity: Math.max(1, getNum(item.quantity, 1)),
+                unit_price: getNum(item.unit_price),
+                total: getNum(item.unit_price) * Math.max(1, getNum(item.quantity, 1))
+              }));
+              
+              return {
+                id: order.id || `order_${index}`,
+                display_id: order.display_id || index + 1,
+                customer: {
+                  first_name: order.customer?.first_name || order.billing_address?.first_name || "Guest",
+                  last_name: order.customer?.last_name || order.billing_address?.last_name || "",
+                  email: order.customer?.email || order.email || "customer@example.com",
+                  phone: order.customer?.phone
+                },
+                created_at: order.created_at || new Date().toISOString(),
+                vendor_total: getNum(order.vendor_total || order.vendor_payment_amount),
+                vendor_subtotal: getNum(order.vendor_subtotal),
+                vendor_shipping_total: getNum(order.vendor_shipping_total),
+                vendor_tax_total: getNum(order.vendor_tax_total),
+                vendor_items: vendor_items,
+                payment_status: order.payment_status || "pending",
+                fulfillment_status: order.fulfillment_status || "not_fulfilled",
+                currency_code: "INR",
+                vendor_id: order.vendor_id || "",
+                vendor_handle: order.vendor_handle || "unknown",
+                vendor_payment_amount: getNum(order.vendor_payment_amount || order.vendor_total),
+                has_claims: order.has_claims || false,
+                has_returns: order.has_returns || false
+              };
+            } catch (transformError) {
+              console.error('Error transforming order:', transformError);
+              return null;
+            }
+          }).filter(Boolean);
+          
+          console.log('Transformed orders:', transformedOrders.length);
+          setOrders(transformedOrders);
+        }
+      } catch (orderError) {
+        console.error('Order fetch error:', orderError);
+        setOrders([]);
+      }
+      
+      // Fetch products (only 3 for dashboard)
+      console.log('Fetching products...');
+      try {
+        const productResponse = await fetch(
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products?limit=3`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            }
+          }
+        );
+        
+        console.log('Products response status:', productResponse.status);
+        
+        if (!productResponse.ok) {
+          console.warn('Failed to fetch products:', productResponse.status);
+          setProducts([]);
+        } else {
+          const productData = await productResponse.json();
+          console.log('Raw product data:', productData);
+          
+          // Get products array
+          const productsArray = productData.products || [];
+          console.log('Products array length:', productsArray.length);
+          
+          // Transform products (only first 3)
+          const transformedProducts = productsArray.slice(0, 3).map((product: any): Product => {
+            return {
+              id: product.id,
+              title: product.title || product.name || "Unnamed Product",
+              description: product.description || "",
+              price: typeof product.price === 'number' 
+                ? product.price 
+                : product.price?.value 
+                  ? parseFloat(product.price.value) 
+                  : 0,
+              image_url: product.thumbnail || product.image_url || product.images?.[0] || "",
+              status: product.status || "draft",
+              created_at: product.created_at || new Date().toISOString(),
+              handle: product.handle || "",
+              variants: product.variants || []
+            };
+          });
+          
+          console.log('Transformed products:', transformedProducts.length);
+          setProducts(transformedProducts);
+        }
+      } catch (productError) {
+        console.error('Product fetch error:', productError);
+        setProducts([]);
+      }
+      
+      console.log('=== DASHBOARD FETCH COMPLETE ===');
+      
+    } catch (err: any) {
+      console.error('Dashboard error:', err);
+      setError(err.message || "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchData();
+}, [navigate]);
   
   // Calculate enhanced stats using vendor data
   const calculateStats = () => {
@@ -1507,7 +1598,7 @@ const DashboardPage = () => {
                                     <span>{order.customer.first_name} {order.customer.last_name}</span>
                                   </p>
                                 </div>
-                                <p className="text-xs text-gray-500 whitespace-nowrap">{formatDate(order.created_at)}</p>
+                                {/* <p className="text-xs text-gray-500 whitespace-nowrap">{formatDate(order.created_at)}</p> */}
                               </div>
                               
                               {/* Status and Price - Desktop */}
