@@ -434,7 +434,7 @@
 //                     <div key={option.id}>
 //                       {/* Custom header for Size with Size Chart link */}
 //                       <div className="flex items-center gap-4 mb-3">
-//                         <span className="text-m font-semibold">Select {option.title}</span>
+//                         <span className="font-semibold text-m">Select {option.title}</span>
 //                         {product.size_chart && product.size_chart.chart && (
 //                           <button
 //                             onClick={() => setShowSizeChart(true)}
@@ -587,12 +587,12 @@
 
 //       {/* Size Chart Modal */}
 //       {showSizeChart && product.size_chart && product.size_chart.chart && (
-//         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+//         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
 //           <div className="rounded-lg max-w-4xl max-h-[90vh] overflow-y-auto relative w-full">
 //             {/* Close Button */}
 //             <button
 //               onClick={() => setShowSizeChart(false)}
-//               className="absolute top-4 right-4 z-10 p-2 bg-gray-100 hover:bg-gray-200 rounded-full"
+//               className="absolute z-10 p-2 bg-gray-100 rounded-full top-4 right-4 hover:bg-gray-200"
 //             >
 //               <X size={20} />
 //             </button>
@@ -828,7 +828,7 @@ export default function ProductActions({
                       <div key={option.id}>
                         {/* Custom header for Size with Size Chart link */}
                         <div className="flex items-center gap-4 mb-3">
-                          <span className="text-m font-semibold">Select {option.title}</span>
+                          <span className="font-semibold text-m">Select {option.title}</span>
                           {product.size_chart && product.size_chart.chart && (
                             <button
                               onClick={() => setShowSizeChart(true)}
@@ -969,12 +969,12 @@ export default function ProductActions({
 
       {/* Size Chart Modal */}
       {showSizeChart && product.size_chart && product.size_chart.chart && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="rounded-lg max-w-4xl max-h-[90vh] overflow-y-auto relative w-full">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="rounded-lg max-w-4xl max-h-[80vh] overflow-y-auto relative w-full mt-8">
             {/* Close Button */}
             <button
               onClick={() => setShowSizeChart(false)}
-              className="absolute top-4 right-4 z-10 p-2 bg-gray-100 hover:bg-gray-200 rounded-full"
+              className="absolute z-10 p-2 bg-gray-100 rounded-full top-4 right-4 hover:bg-gray-200"
             >
               <X size={20} />
             </button>

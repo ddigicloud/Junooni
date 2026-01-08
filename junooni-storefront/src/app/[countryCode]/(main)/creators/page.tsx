@@ -366,27 +366,46 @@ const VendorCard = ({ vendor }: { vendor: Vendor }) => {
           </div>
 
           {/* Stats and Actions */}
-          <div className="flex items-center justify-between pt-3 border-t">
-            <div className="flex items-center gap-1 text-xs text-gray-500">
-              <Users size={14} />
-              <span>{followerCount} followers</span>
-            </div>
+        <div className="flex flex-col gap-1">
+  <div className="flex items-center justify-between pt-3 border-t">
+    <div className="flex items-center gap-1 text-xs text-gray-500">
+      <Users size={14} />
+      <span>{followerCount} followers</span>
+    </div>
 
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                handleFollowToggle(id)
-              }}
-              disabled={isLoading || !currentCustomer}
-              className={`px-3 py-1 text-xs font-medium rounded-full transition ${
-                isFollowed
-                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  : "bg-[#e65100] text-white hover:bg-[#d84315]"
-              } ${isLoading || !currentCustomer ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              {isLoading ? "..." : isFollowed ? "Following" : "Follow"}
-            </button>
-          </div>
+    <button
+      onClick={(e) => {
+        e.preventDefault()
+        handleFollowToggle(id)
+      }}
+      disabled={isLoading || !currentCustomer}
+      className={`group px-3 py-1 text-xs font-medium rounded-full transition ${
+        isFollowed
+          ? "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
+          : "bg-[#e65100] text-white hover:bg-[#d84315] active:bg-[#bf360c]"
+      } ${isLoading || !currentCustomer ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+      {isLoading ? (
+        "..."
+      ) : !currentCustomer ? (
+        <>
+          <span className="sm:group-hover:hidden">Follow</span>
+          <span className="hidden sm:group-hover:inline">Login to follow</span>
+        </>
+      ) : isFollowed ? (
+        "Following"
+      ) : (
+        "Follow"
+      )}
+    </button>
+  </div>
+  
+  {!currentCustomer && (
+    <p className="text-[10px] text-gray-400 text-right sm:hidden">
+      Login required to follow
+    </p>
+  )}
+</div>
         </div>
       </motion.div>
     </Link>
@@ -510,13 +529,13 @@ const VendorCard = ({ vendor }: { vendor: Vendor }) => {
       )}
 
       {/* Main Content */}
-      <main className="py-6 px-1 sm:px-4">
+      <main className="px-1 py-6 sm:px-4">
         {isLoading ? (
           <SkeletonGrid />
         ) : filteredVendors.length > 0 ? (
           <>
             {/* Vendors Grid */}
-            <div className="grid grid-cols-2 gap-1 sm:gap-4 mb-8 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-1 mb-8 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
               {currentVendors.map((vendor) => (
                 <VendorCard key={vendor.id} vendor={vendor} />
               ))}

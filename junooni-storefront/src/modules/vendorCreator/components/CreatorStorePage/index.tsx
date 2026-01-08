@@ -12,6 +12,7 @@ import {
   Instagram,
   Twitter,
   Youtube,
+   Facebook,
   ExternalLink,
   Calendar,
   Tag,
@@ -19,6 +20,7 @@ import {
   Users,
   ChevronRight,
   ChevronLeft,
+  AlertCircle,
   ArrowRight,
   MessageCircleMore,
   Sparkles,
@@ -425,11 +427,16 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
   }, [currentCustomer, followers])
 
   // Updated follow/unfollow handler
-  const handleFollowToggle = async () => {
-    if (!currentCustomer) {
-      //console.warn("User must be logged in to follow/unfollow.")
-      return toast.warning("Please log in to follow/unfollow.")
-    }
+const handleFollowToggle = async () => {
+  if (!currentCustomer) {
+    return toast("Please log in to follow/unfollow.", {
+      icon: <AlertCircle className="text-white" size={20} />,
+      style: {
+        background: '#e65100',
+        color: '#fff',
+      },
+    })
+  }
 
     try {
       if (isFollowing) {
@@ -671,6 +678,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
     socialMedia: {
       instagram: vendor.instagram || null,
       twitter: vendor.xtwitter || null,
+      facebook: vendor.facebook || null,
       youtube: vendor.youtube || null,
       website: vendor.othersocial || null,
     },
@@ -689,6 +697,11 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
     },
   }
 
+  console.log("🔍 Vendor data:", vendor)
+  console.log("🔍 Available vendor keys:", Object.keys(vendor))
+  console.log("🔍 Creator data:", creator)
+  console.log("🔍 Available creator keys:", Object.keys(creator))
+  
   // Format large numbers with K/M suffix
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -716,6 +729,10 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
         return username.startsWith("http")
           ? username
           : `https://twitter.com/${username}`
+      case "facebook":
+        return username.startsWith("http")
+          ? username
+          : `https://facebook.com/${username}`
       case "youtube":
         return username.startsWith("http")
           ? username
@@ -1053,6 +1070,79 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                       </motion.button>
                     )}
                   </motion.div>
+
+                  {/* Social Media Links - Enhanced with handles */}
+                  <motion.div variants={slideIn} className="flex flex-wrap items-center gap-0 mb-0">
+                    {creator.socialMedia.instagram && (
+                      <a
+                        href={formatSocialUrl('instagram', creator.socialMedia.instagram)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-3 text-gray-700 transition-colors bg-white rounded-full hover:bg-gray-200"
+                      >
+                        <Instagram size={22} className="text-pink-600" />
+                        {/* <span className="text-sm font-medium">
+                          @{creator.socialMedia.instagram.replace(/^(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\/$/, '')}
+                        </span> */}
+                      </a>
+                    )}
+                    
+                    {creator.socialMedia.twitter && (
+                      <a
+                        href={formatSocialUrl('twitter', creator.socialMedia.twitter)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-3 text-gray-700 transition-colors bg-white rounded-full hover:bg-gray-200"
+                      >
+                        <Twitter size={22} className="text-blue-400" />
+                        {/* <span className="text-sm font-medium">
+                          @{creator.socialMedia.twitter.replace(/^(https?:\/\/)?(www\.)?(twitter|x)\.com\//i, '').replace(/\/$/, '')}
+                        </span> */}
+                      </a>
+                    )}
+                    
+                    {creator.socialMedia.facebook && (
+                      <a
+                        href={formatSocialUrl('facebook', creator.socialMedia.facebook)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-3 text-gray-700 transition-colors bg-white rounded-full hover:bg-gray-200"
+                      >
+                        <Facebook size={22} className="text-blue-600" />
+                        {/* <span className="text-sm font-medium">
+                          {creator.socialMedia.facebook.replace(/^(https?:\/\/)?(www\.)?facebook\.com\//i, '').replace(/\/$/, '')}
+                        </span> */}
+                      </a>
+                    )}
+                    
+                    {creator.socialMedia.youtube && (
+                      <a
+                        href={formatSocialUrl('youtube', creator.socialMedia.youtube)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-3 text-gray-700 transition-colors bg-white rounded-full hover:bg-gray-200"
+                      >
+                        <Youtube size={22} className="text-red-600" />
+                        {/* <span className="text-sm font-medium">
+                          {creator.socialMedia.youtube.replace(/^(https?:\/\/)?(www\.)?youtube\.com\/(c\/|@)?/i, '').replace(/\/$/, '')}
+                        </span> */}
+                      </a>
+                    )}
+                    
+                    {creator.socialMedia.website && (
+                      <a
+                        href={formatSocialUrl('website', creator.socialMedia.website)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-3 text-gray-700 transition-colors bg-gray-100 rounded-full hover:bg-gray-200"
+                      >
+                        <ExternalLink size={22} className="text-gray-600" />
+                        <span className="text-sm font-medium">
+                          {creator.socialMedia.website.replace(/^(https?:\/\/)?(www\.)?/i, '').split('/')[0]}
+                        </span>
+                      </a>
+                    )}
+                  </motion.div>
                 </div>
               </div>
 
@@ -1138,7 +1228,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                 </div>
               </motion.div>
 
-              {/* Fans Section */}
+             {/* Fans Section */}
               <motion.div
                 variants={fadeIn}
                 className="my-8 bg-gradient-to-r from-[#e65100] to-[#ff9800] rounded-lg overflow-hidden shadow-md"
@@ -1228,25 +1318,81 @@ const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
                         </motion.div>
                       </>
                     ) : (
-                      // Show placeholder avatars when no followers
-                      <div className="flex -space-x-4">
-                        {[1, 2, 3].map((i) => (
-                          <motion.div
-                            key={`placeholder-avatar-${i}`}
-                            className="w-10 h-10 overflow-hidden border-2 border-white rounded-full opacity-50"
-                            whileHover={{ y: -3 }}
-                          >
-                            <div className="flex items-center justify-center w-full h-full font-bold text-white bg-white/20 backdrop-blur-sm">
-                              ?
-                            </div>
-                          </motion.div>
-                        ))}
+                      // Enhanced empty state with clickable section + button
+                      <div className="flex flex-col items-center space-y-4">
+                        {/* Clickable animated heart section */}
                         <motion.div
-                          whileHover={{ scale: 1.1 }}
-                          className="flex items-center justify-center w-10 h-10 text-sm font-bold text-white border-2 border-white rounded-full opacity-50 bg-white/20 backdrop-blur-sm"
+                          onClick={handleFollowToggle}
+                          disabled={isLoadingAuth}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className={`flex items-center space-x-4 cursor-pointer group ${
+                            isLoadingAuth ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
-                          +
+                          {/* Animated heart with ripple effect */}
+                          <motion.div
+                            className="relative"
+                            animate={{ scale: [1, 1.15, 1] }}
+                            transition={{ 
+                              duration: 1.5, 
+                              repeat: Infinity, 
+                              ease: "easeInOut" 
+                            }}
+                          >
+                            <div className="flex items-center justify-center border-2 border-white rounded-full w-14 h-14 bg-white/20 backdrop-blur-sm">
+                              <Heart
+                                size={24}
+                                fill="currentColor"
+                                className="text-white transition-colors duration-300 group-hover:text-[#e65100]"
+                              />
+                            </div>
+
+                            {/* Ripple effect */}
+                            <motion.div
+                              className="absolute inset-0 border-2 rounded-full border-white/50"
+                              animate={{ 
+                                scale: [1, 1.8], 
+                                opacity: [0.6, 0] 
+                              }}
+                              transition={{ 
+                                duration: 1.5, 
+                                repeat: Infinity, 
+                                ease: "easeOut" 
+                              }}
+                            />
+                          </motion.div>
+
+                          {/* Text content */}
+                          <div>
+                            <p className="text-base font-bold text-white">No fans yet!</p>
+                            <p className="text-sm text-white/80">Be the first to follow</p>
+                            <p className="mt-1 text-xs text-white/80">Click here!</p>
+                          </div>
                         </motion.div>
+
+                        {/* Follow Button */}
+                        {/* <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handleFollowToggle}
+                          disabled={isLoadingAuth}
+                          className={`flex items-center px-6 py-2.5 bg-white text-[#e65100] rounded-full text-sm font-bold shadow-lg hover:shadow-xl transition-shadow ${
+                            isLoadingAuth ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                        >
+                          {isLoadingAuth ? (
+                            <>
+                              <div className="w-4 h-4 mr-2 border-2 border-[#e65100] border-t-transparent rounded-full animate-spin"></div>
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              <Heart size={14} className="mr-2" />
+                              Follow Now
+                            </>
+                          )}
+                        </motion.button> */}
                       </div>
                     )}
                   </div>

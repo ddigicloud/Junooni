@@ -132,7 +132,10 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
             <div className="p-4 md:p-8 md:col-span-2">
               {/* Vendor Info */}
               {extendedProduct.vendor && (
-                <div className="flex items-center mb-4">
+                <a 
+                  href={`/creator/${extendedProduct.vendor.handle || "vendor"}`}
+                  className="flex items-center mb-4 group"
+                >
                   {extendedProduct.vendor.logo ? (
                     <img 
                       src={extendedProduct.vendor.logo} 
@@ -146,14 +149,16 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                   )}
                   <div className="leading-tight">
                     <div className="flex items-center -mt-1">
-                      <h4 className="text-sm font-medium">{extendedProduct.vendor.name || "Unknown Vendor"}</h4>
+                      <h4 className="text-sm font-medium group-hover:text-[#e65100] transition-colors">{extendedProduct.vendor.name || "Unknown Vendor"}</h4>
                       {extendedProduct.vendor?.verified === "Yes" && (
-                        <Check size={12} className="text-orange-500" />
+                        <Check size={12} className="ml-1 text-orange-500" />
                       )}
                     </div>
-                    <span className="block -mt-1 text-xs text-gray-500">@{extendedProduct.vendor.handle || "vendor"}</span>
+                    <span className="block -mt-1 text-xs text-gray-500 group-hover:text-[#e65100] transition-colors">
+                      @{extendedProduct.vendor.handle || "vendor"}
+                    </span>
                   </div>
-                </div>
+                </a>
               )}     
               
               {/* Product Info */}
