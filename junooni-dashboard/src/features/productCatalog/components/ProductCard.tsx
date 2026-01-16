@@ -330,7 +330,7 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
   const handleProductClick = () => {
     const currentPath = router.state.location.pathname;
     router.navigate({
-      to: `/${currentPath}/${product.id}`
+      to: `/productCatalog/${product.id}`
     });
     
     sessionStorage.setItem(`product_${product.id}`, JSON.stringify(product));

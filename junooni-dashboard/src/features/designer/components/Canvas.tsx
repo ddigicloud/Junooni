@@ -8083,75 +8083,77 @@ const renderPreview = useCallback(() => {
                 }
                 
                 return colorMockups.map((mockup, index) => {
-                  const isSelectedMockup = selectedHeroMockup?.id === mockup.id || 
-                                           (!selectedHeroMockup && index === 0);
-                  
-                  const mockupAreaName = mockup.area?.[0]?.areaName || mockup.viewAngle || mockup.title || `View ${index + 1}`;
+                const isSelectedMockup = selectedHeroMockup?.id === mockup.id || 
+                                        (!selectedHeroMockup && index === 0);
+                
+                const mockupAreaName = mockup.area?.[0]?.areaName || mockup.viewAngle || mockup.title || `View ${index + 1}`;
 
-                   // ðŸ”¥ Get thumbnail dimensions from PayloadCMS
-                  const thumbnailDims = getMockupDimensions(mockup, 'thumbnail');
+                // 🔥 Get thumbnail dimensions from PayloadCMS
+                const thumbnailDims = getMockupDimensions(mockup, 'thumbnail');
 
-                  const engineType = determineRequiredEngine(mockup);
-                  const requiresPixi = engineType === 'pixi';
-
-                    //console.log(`Mockup ${mockup.id} requires PIXI:`, requiresPixi);
-                  ////console.log('Thumbnail dimensions:', thumbnailDims);
-
-                    // const thumbnailKey = requiresPixi
-                    // ? `thumb-${mockup.id}-${activeColor}-${isSelectedMockup ? 'sel' : 'unsel'}`
-                    // : `thumb-${mockup.id}-${activeColor}`;
-                  
-                  return (
-                    <div key={`mockup-${mockup.id}`}>
-                      <button
-                       onSelect={() => {
-                          //console.log('Thumbnail selected:', mockup.title, 'size:', (mockup as any).photoSize);
-                          setSelectedHeroMockup(mockup);
-                        }}
-                        className={`w-full p-2 border rounded-lg transition-all touch-manipulation ${
-                          isSelectedMockup
-                            ? 'border-orange-500 ring-2 ring-orange-200'
-                            : 'border-none hover:border-white-300 hover:shadow-sm'
-                        }`}
-                      >
-                        <div className="relative mb-2 overflow-hidden rounded bg-white-100 aspect-square">
-                          {requiresPixi ? (
-                          // PIXI: Use dynamic key to force cleanup
-                          <ThumbnailPreview
-                            key={`thumb-pixi-${mockup.id}-${activeColor}-${isSelectedMockup}`}
-                            mockup={mockup}
-                            designElements={getVisibleDesignElements(designElements)} 
-                            canvasConfigs={canvasConfigs}
-                            canvasPrintableAreas={printableAreas}
-                            productColor={activeColor}
-                            displayDimensions={thumbnailDims}
-                            isSelected={isSelectedMockup}
-                            isMainPreview={false}
-                            onSelect={() => setSelectedHeroMockup(mockup)}
-                            productData={productData}
-                          />
-                        ) : (
-                          // Canvas: No key = smooth, no remount
-                          <ThumbnailPreview
-                            mockup={mockup}
-                            designElements={getVisibleDesignElements(designElements)} 
-                            canvasConfigs={canvasConfigs}
-                            canvasPrintableAreas={printableAreas}
-                            productColor={activeColor}
-                            displayDimensions={thumbnailDims}
-                            isSelected={isSelectedMockup}
-                            isMainPreview={false}
-                            onSelect={() => setSelectedHeroMockup(mockup)}
-                            productData={productData}
-                          />
-                        )}
-                                         
-                          
-                        </div>
-                      </button>
-                    </div>
-                  );
+                const engineType = determineRequiredEngine(mockup);
+                const requiresPixi = engineType === 'pixi';
+                
+                // 🔥 FIX: Filter design elements for this specific mockup
+                const mockupAreaNames = mockup.area?.map(a => a.areaName?.toLowerCase()) || [];
+                const filteredDesignElements: Record<string, DesignElement[]> = {};
+                
+                mockupAreaNames.forEach(areaName => {
+                  if (designElements[areaName]) {
+                    filteredDesignElements[areaName] = designElements[areaName];
+                  }
                 });
+                
+                return (
+                  <div key={`mockup-${mockup.id}`}>
+                    <button
+                    onSelect={() => {
+                        setSelectedHeroMockup(mockup);
+                      }}
+                      className={`w-full p-2 border rounded-lg transition-all touch-manipulation ${
+                        isSelectedMockup
+                          ? 'border-orange-500 ring-2 ring-orange-200'
+                          : 'border-none hover:border-white-300 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="relative mb-2 overflow-hidden rounded bg-white-100 aspect-square">
+                        {requiresPixi ? (
+                        // PIXI: Use dynamic key to force cleanup
+                        <ThumbnailPreview
+                          key={`thumb-pixi-${mockup.id}-${activeColor}-${isSelectedMockup}`}
+                          mockup={mockup}
+                          designElements={getVisibleDesignElements(filteredDesignElements)} // 🔥 Use filtered
+                          canvasConfigs={canvasConfigs}
+                          canvasPrintableAreas={printableAreas}
+                          productColor={activeColor}
+                          displayDimensions={thumbnailDims}
+                          isSelected={isSelectedMockup}
+                          isMainPreview={false}
+                          onSelect={() => setSelectedHeroMockup(mockup)}
+                          productData={productData}
+                        />
+                      ) : (
+                        // Canvas: No key = smooth, no remount
+                        <ThumbnailPreview
+                          mockup={mockup}
+                          designElements={getVisibleDesignElements(filteredDesignElements)} // 🔥 Use filtered
+                          canvasConfigs={canvasConfigs}
+                          canvasPrintableAreas={printableAreas}
+                          productColor={activeColor}
+                          displayDimensions={thumbnailDims}
+                          isSelected={isSelectedMockup}
+                          isMainPreview={false}
+                          onSelect={() => setSelectedHeroMockup(mockup)}
+                          productData={productData}
+                        />
+                      )}
+                                      
+                        
+                      </div>
+                    </button>
+                  </div>
+                );
+              });
               })()}
             </div>
           </div>
@@ -8261,38 +8263,48 @@ const renderPreview = useCallback(() => {
                   //   : `main-canvas-${heroMockup.id}`; // Stable key for Canvas
 
               
+                  // 🔥 FIX: Filter design elements to only those matching this mockup's areas
+                  const mockupAreaNames = heroMockup.area?.map(a => a.areaName?.toLowerCase()) || [];
+                  const filteredDesignElements: Record<string, DesignElement[]> = {};
+
+                  mockupAreaNames.forEach(areaName => {
+                    if (designElements[areaName]) {
+                      filteredDesignElements[areaName] = designElements[areaName];
+                    }
+                  });
+
                   return (
                     <div className="w-full h-full">
                       {requiresPixi ? (
-                      // PIXI: Force remount with dynamic key
-                      <ThumbnailPreview
-                        key={`main-pixi-${heroMockup.id}-${activeColor}-${Date.now()}`}
-                        mockup={heroMockup}
-                        designElements={getVisibleDesignElements(designElements)}  
-                        canvasConfigs={canvasConfigs}
-                        canvasPrintableAreas={printableAreas}
-                        productColor={activeColor}
-                        displayDimensions={mockupDims}
-                        isMainPreview={true}
-                        isSelected={true}
-                        onSelect={() => {}}
-                        productData={productData}
-                      />
-                    ) : (
-                      // Canvas: No key = smooth transitions
-                      <ThumbnailPreview
-                        mockup={heroMockup}
-                        designElements={getVisibleDesignElements(designElements)}  
-                        canvasConfigs={canvasConfigs}
-                        canvasPrintableAreas={printableAreas}
-                        productColor={activeColor}
-                        displayDimensions={mockupDims}
-                        isMainPreview={true}
-                        isSelected={true}
-                        onSelect={() => {}}
-                        productData={productData}
-                      />
-                    )}
+                        // PIXI: Force remount with dynamic key
+                        <ThumbnailPreview
+                          key={`main-pixi-${heroMockup.id}-${activeColor}-${Date.now()}`}
+                          mockup={heroMockup}
+                          designElements={getVisibleDesignElements(filteredDesignElements)} // 🔥 Use filtered elements
+                          canvasConfigs={canvasConfigs}
+                          canvasPrintableAreas={printableAreas}
+                          productColor={activeColor}
+                          displayDimensions={mockupDims}
+                          isMainPreview={true}
+                          isSelected={true}
+                          onSelect={() => {}}
+                          productData={productData}
+                        />
+                      ) : (
+                        // Canvas: No key = smooth transitions
+                        <ThumbnailPreview
+                          mockup={heroMockup}
+                          designElements={getVisibleDesignElements(filteredDesignElements)} // 🔥 Use filtered elements
+                          canvasConfigs={canvasConfigs}
+                          canvasPrintableAreas={printableAreas}
+                          productColor={activeColor}
+                          displayDimensions={mockupDims}
+                          isMainPreview={true}
+                          isSelected={true}
+                          onSelect={() => {}}
+                          productData={productData}
+                        />
+                      )}
                     </div>
                   );
                 })()}
@@ -8315,37 +8327,42 @@ const renderPreview = useCallback(() => {
                     }
                     
                     return colorMockups.map((mockup, index) => {
-                      const isSelectedMockup = selectedHeroMockup?.id === mockup.id || 
-                                              (!selectedHeroMockup && index === 0);
-                      
-                      const thumbnailDims = getMockupDimensions(mockup, 'thumbnail');
+                    const isSelectedMockup = selectedHeroMockup?.id === mockup.id || 
+                                            (!selectedHeroMockup && index === 0);
+                    
+                    const thumbnailDims = getMockupDimensions(mockup, 'thumbnail');
 
-                      // Check if this specific mockup uses PIXI
-                   const engineType = determineRequiredEngine(mockup);
+                    // Check if this specific mockup uses PIXI
+                    const engineType = determineRequiredEngine(mockup);
                     const requiresPixi = engineType === 'pixi';
-                      
-                      // Different key strategy: PIXI needs remount, Canvas doesn't
-                      // const thumbnailKey = requiresPixi
-                      //   ? `thumb-${mockup.id}-${activeColor}-${isSelectedMockup ? 'sel' : 'unsel'}`
-                      //    : `thumb-canvas-${mockup.id}`;
-                      
-                      return (
-                        <div key={`mobile-mockup-${mockup.id}`} className="flex-shrink-0">
-                          <button
-                            onClick={() => setSelectedHeroMockup(mockup)}
-                            className={`w-20 h-20 p-1 border rounded-lg transition-all touch-manipulation ${
-                              isSelectedMockup
-                                ? 'border-orange-500 ring-orange-200'
-                                : 'border-none hover:border-white-300 hover:shadow-sm'
-                            }`}
-                          >
-                            <div className="relative w-full h-full overflow-hidden bg-gray-100 rounded border-none">
-                               {requiresPixi ? (
+                    
+                    // 🔥 FIX: Filter design elements for this specific mockup
+                    const mockupAreaNames = mockup.area?.map(a => a.areaName?.toLowerCase()) || [];
+                    const filteredDesignElements: Record<string, DesignElement[]> = {};
+                    
+                    mockupAreaNames.forEach(areaName => {
+                      if (designElements[areaName]) {
+                        filteredDesignElements[areaName] = designElements[areaName];
+                      }
+                    });
+                    
+                    return (
+                      <div key={`mobile-mockup-${mockup.id}`} className="flex-shrink-0">
+                        <button
+                          onClick={() => setSelectedHeroMockup(mockup)}
+                          className={`w-20 h-20 p-1 border rounded-lg transition-all touch-manipulation ${
+                            isSelectedMockup
+                              ? 'border-orange-500 ring-orange-200'
+                              : 'border-none hover:border-white-300 hover:shadow-sm'
+                          }`}
+                        >
+                          <div className="relative w-full h-full overflow-hidden bg-gray-100 rounded border-none">
+                            {requiresPixi ? (
                               // PIXI: Use dynamic key to force cleanup
                               <ThumbnailPreview
                                 key={`thumb-pixi-${mockup.id}-${activeColor}-${isSelectedMockup}`}
                                 mockup={mockup}
-                                designElements={getVisibleDesignElements(designElements)} 
+                                designElements={getVisibleDesignElements(filteredDesignElements)} // 🔥 Use filtered
                                 canvasConfigs={canvasConfigs}
                                 canvasPrintableAreas={printableAreas}
                                 productColor={activeColor}
@@ -8359,7 +8376,7 @@ const renderPreview = useCallback(() => {
                               // Canvas: No key = smooth, no remount
                               <ThumbnailPreview
                                 mockup={mockup}
-                                designElements={getVisibleDesignElements(designElements)} 
+                                designElements={getVisibleDesignElements(filteredDesignElements)} // 🔥 Use filtered
                                 canvasConfigs={canvasConfigs}
                                 canvasPrintableAreas={printableAreas}
                                 productColor={activeColor}
@@ -8370,11 +8387,11 @@ const renderPreview = useCallback(() => {
                                 productData={productData}
                               />
                             )}
-                            </div>
-                          </button>
-                        </div>
-                      );
-                    });
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  });
                   })()}
                 </div>
               </div>
@@ -9551,68 +9568,74 @@ useEffect(() => {
 
   // Auto-select hero mockup based on active color
   // Auto-select hero mockup based on active color - PRESERVE AREA on color change
+// Auto-select hero mockup based on active color AND active area
 useEffect(() => {
-  if (allMockups.length > 0 && activeColor) {
-    // 🔥 FIX: Determine which area to preserve
-    // If user has a selected mockup, keep its area when color changes
-    let targetArea = activeArea; // Default to activeArea
+  // 🔥 Safety check for required values
+  if (!allMockups.length || !activeColor || !activeArea) {
+    return;
+  }
+  
+  // 🔥 FIX: Always check if we need to update the mockup for the current area/color combination
+  let targetArea = activeArea;
+  
+  // Get mockups for the active color and area
+  const colorMockups = getMockupsForColor(
+    productData,
+    activeColor,
+    activeTechnology,
+    productData?.size_Images ? activeSize : undefined
+  );
+  
+  // 🔥 FIX: Filter to mockups that match the TARGET area (current activeArea)
+  const areaSpecificMockups = colorMockups.filter(mockup => {
+    if (!mockup.area || !Array.isArray(mockup.area)) return false;
     
-    if (selectedHeroMockup?.area && selectedHeroMockup.area.length > 0) {
-      // User has selected a specific mockup - preserve its area
-      const currentMockupArea = selectedHeroMockup.area[0]?.areaName?.toLowerCase();
-      if (currentMockupArea) {
-        targetArea = currentMockupArea; // Use the selected mockup's area
-        //console.log('Preserving area from selected mockup:', targetArea);
-      }
-    }
-    
-    // Get mockups for the active color
-    const colorMockups = getMockupsForColor(
-      productData,
-      activeColor,
-      activeTechnology,
-      productData.size_Images ? activeSize : undefined
-    );
-    
-    // 🔥 FIX: Filter to mockups that match the TARGET area (preserved from selection)
-    const areaSpecificMockups = colorMockups.filter(mockup => {
+    return mockup.area.some(area => {
+      if (!area?.areaName) return false;
+      return area.areaName.toLowerCase() === targetArea?.toLowerCase();
+    });
+  });
+  
+  // Prefer area-specific mockup, fallback to any mockup for this color
+  let bestMockup = areaSpecificMockups[0] || colorMockups[0];
+  
+  // If still no mockup, try neutral colors for the target area
+  if (!bestMockup) {
+    const neutralDetector = createDynamicNeutralDetector(productData);
+    const neutralMockups = allMockups.filter(mockup => {
+      const mockupColor = mockup.photoColor || '';
+      
       if (!mockup.area || !Array.isArray(mockup.area)) return false;
       
-      return mockup.area.some(area => {
+      const hasTargetArea = mockup.area.some(area => {
         if (!area?.areaName) return false;
-        return area.areaName.toLowerCase() === targetArea.toLowerCase();
-      });
-    });
-    
-    // Prefer area-specific mockup, fallback to any mockup for this color
-    let bestMockup = areaSpecificMockups[0] || colorMockups[0];
-    
-    // If still no mockup, try neutral colors for the target area
-    if (!bestMockup) {
-      const neutralDetector = createDynamicNeutralDetector(productData);
-      const neutralMockups = allMockups.filter(mockup => {
-        const mockupColor = mockup.photoColor || '';
-        
-        if (!mockup.area || !Array.isArray(mockup.area)) return false;
-        
-        const hasTargetArea = mockup.area.some(area => {
-          if (!area?.areaName) return false;
-          return area.areaName.toLowerCase() === targetArea.toLowerCase();
-        });
-        
-        return neutralDetector.isNeutral(mockupColor) && hasTargetArea;
+        return area.areaName.toLowerCase() === targetArea?.toLowerCase();
       });
       
-      bestMockup = neutralMockups[0];
-    }
+      return neutralDetector.isNeutral(mockupColor) && hasTargetArea;
+    });
     
-    // Auto-select the best mockup for the target area
-    if (bestMockup) {
-      //console.log('Auto-selecting mockup for area:', targetArea, '-> mockup:', bestMockup.title);
-      setSelectedHeroMockup(bestMockup);
-    }
+    bestMockup = neutralMockups[0];
   }
-}, [activeColor, allMockups, productData, activeTechnology, activeSize, selectedHeroMockup]);
+  
+  // 🔥 FIX: Check if the current selected mockup is correct for this area and color
+  const currentMockupArea = selectedHeroMockup?.area?.[0]?.areaName?.toLowerCase();
+  const currentMockupColor = selectedHeroMockup?.photoColor?.toLowerCase();
+  const targetColorLower = activeColor?.toLowerCase();
+  
+  // Determine if current mockup is wrong
+  const needsUpdate = !selectedHeroMockup || 
+                      currentMockupArea !== targetArea?.toLowerCase() ||
+                      (currentMockupColor !== targetColorLower && 
+                       currentMockupColor !== '#ffffff' && 
+                       currentMockupColor !== '#00000000' &&
+                       currentMockupColor !== 'transparent');
+  
+  // Update mockup if needed
+  if (needsUpdate && bestMockup) {
+    setSelectedHeroMockup(bestMockup);
+  }
+}, [activeColor, activeArea, allMockups, productData, activeTechnology, activeSize, selectedHeroMockup]);
     
     useEffect(() => {
       const transformer = transformerRef.current;

@@ -584,45 +584,82 @@ const Navbar = () => {
 
   useEffect(() => {
     const fetchCategories = async () => {
+      console.log('[Navbar] 🚀 Starting fetchCategories...');
+      const startTime = performance.now();
+      
       // Try to load from cache first
+      console.log('[Navbar] 📦 Checking cache...');
+      const cacheCheckStart = performance.now();
       const cachedData = getCachedData();
+      console.log(`[Navbar] ⏱️ Cache check took: ${(performance.now() - cacheCheckStart).toFixed(2)}ms`);
+      
       if (cachedData) {
+        console.log('[Navbar] ✅ Using cached data, items:', cachedData.length);
+        const renderStart = performance.now();
         setOrganizedCategories(cachedData);
         setLoading(false);
+        console.log(`[Navbar] ⏱️ State update (cached) took: ${(performance.now() - renderStart).toFixed(2)}ms`);
+        console.log(`[Navbar] 🏁 Total time (with cache): ${(performance.now() - startTime).toFixed(2)}ms`);
         return;
       }
+      
+      console.log('[Navbar] ❌ No cache, fetching from API...');
 
       try {
         // Reduced depth from 3 to 2 for faster loading
         // Only fetch what's needed for the navbar
+        const fetchStart = performance.now();
+        console.log('[Navbar] 🌐 Initiating fetch request to:', `${vite_payload}/api/globals/header?depth=2`);
+        
         const response = await fetch(`${vite_payload}/api/globals/header?depth=2`, {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
         })
         
+        console.log(`[Navbar] ⏱️ Network fetch took: ${(performance.now() - fetchStart).toFixed(2)}ms`);
+        console.log('[Navbar] 📡 Response status:', response.status, response.statusText);
+        
         if (!response.ok) {
           throw new Error('Failed to fetch header');
         }
         
+        const parseStart = performance.now();
         const data = await response.json()
+        console.log(`[Navbar] ⏱️ JSON parsing took: ${(performance.now() - parseStart).toFixed(2)}ms`);
+        console.log('[Navbar] 📄 Response data structure:', {
+          hasDocs: !!data.docs,
+          docsLength: data.docs?.length,
+          hasNavItems: !!(data.docs?.[0]?.navItems || data.navItems)
+        });
+        
         const header = data.docs?.[0] || data
         
         if (!header || !header.navItems) {
-          console.warn('No header or navItems found')
+          console.warn('[Navbar] ⚠️ No header or navItems found')
           setLoading(false)
           return
         }
 
         // Parse the header structure
+        const transformStart = performance.now();
+        console.log('[Navbar] 🔄 Parsing header nav items, count:', header.navItems.length);
         const categories = parseHeaderNavItems(header.navItems)
+        console.log(`[Navbar] ⏱️ Parse transformation took: ${(performance.now() - transformStart).toFixed(2)}ms`);
+        console.log('[Navbar] 📊 Parsed categories count:', categories.length);
         
         // Cache the results
+        const cacheStart = performance.now();
         setCachedData(categories);
+        console.log(`[Navbar] ⏱️ Caching took: ${(performance.now() - cacheStart).toFixed(2)}ms`);
         
+        const stateUpdateStart = performance.now();
         setOrganizedCategories(categories)
         setLoading(false)
+        console.log(`[Navbar] ⏱️ State update took: ${(performance.now() - stateUpdateStart).toFixed(2)}ms`);
+        console.log(`[Navbar] 🏁 Total time (no cache): ${(performance.now() - startTime).toFixed(2)}ms`);
       } catch (error) {
-        console.error('Error fetching header categories:', error)
+        console.error('[Navbar] ❌ Error fetching header categories:', error)
+        console.log(`[Navbar] 🏁 Failed after: ${(performance.now() - startTime).toFixed(2)}ms`);
         setLoading(false)
       }
     }
