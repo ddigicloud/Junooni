@@ -3570,7 +3570,7 @@ useEffect(() => {
         handlingTime,
         rushAvailable,
         rushTime,
-        hasData: !!(shippingTime || handlingTime)
+        hasData: true
       });
       // ===== COLOR OPTIONS REMOVED - NOW HANDLED BY populateFormWithDesignData =====
       
@@ -5996,7 +5996,8 @@ const combinedArtworkPayload = {
        }
     
     // Add fulfillment information
-    if (payloadFulfillmentData.hasData) {
+    // Add fulfillment information - ALWAYS set for PayloadCMS products
+    if (enhancedProductData || payloadFulfillmentData.hasData) {
       const fulfillmentData = {
         type: "JUNOONI-fulfillment",
         ...(payloadFulfillmentData.shippingTime && { 
@@ -7471,7 +7472,7 @@ if (!printTechId || !printTechName) {
                 <div className="mb-6 space-y-3">
                   <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
                     <div className="flex items-start">
-                      <div className="p-2 mr-3 bg-orange-100 rounded-full text-orange-600">
+                      <div className="p-2 mr-3 text-orange-600 bg-orange-100 rounded-full">
                         <IconInfoCircle size={20} />
                       </div>
                       <div className="flex-1">
@@ -7481,7 +7482,7 @@ if (!printTechId || !printTechName) {
                             href={`/productCatalog/${enhancedProductData.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mt-1 text-base font-semibold text-orange-900 hover:text-orange-700 underline decoration-orange-300 hover:decoration-orange-500 transition-colors duration-200"
+                            className="mt-1 text-base font-semibold text-orange-900 underline transition-colors duration-200 hover:text-orange-700 decoration-orange-300 hover:decoration-orange-500"
                           >
                             {enhancedProductData.name}
                             <IconExternalLink size={14} className="inline ml-1 mb-0.5" />
@@ -7511,7 +7512,7 @@ if (!printTechId || !printTechName) {
                   return displayTech && (
                     <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
                       <div className="flex items-start">
-                        <div className="p-2 mr-3 bg-orange-100 rounded-full text-orange-600">
+                        <div className="p-2 mr-3 text-orange-600 bg-orange-100 rounded-full">
                           <IconInfoCircle size={20} />
                         </div>
                         <div className="flex-1">

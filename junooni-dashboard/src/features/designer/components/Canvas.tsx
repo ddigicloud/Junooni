@@ -2712,7 +2712,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
         return (
           <div className="flex items-center justify-center w-full h-full">
             <div className="text-center">
-              <div className="w-6 h-6 mx-auto mb-1 border-b-2 border-Orange-500 rounded-full animate-spin"></div>
+              <div className="w-6 h-6 mx-auto mb-1 border-b-2 rounded-full border-Orange-500 animate-spin"></div>
               {/* <div className="text-xs text-gray-600">Canvas Rendering...</div> */}
             </div>
           </div>
@@ -3244,7 +3244,7 @@ const StoreImportModal: React.FC<StoreImportModalProps> = ({
         <div className="px-4 py-5 space-y-5">
           {/* ✅ ERROR STATE - SHORTENED */}
           {hasError && !isGenerating && (
-            <div className="p-6 space-y-4 rounded-lg bg-white">
+            <div className="p-6 space-y-4 bg-white rounded-lg">
               {/* Error Icon and Message */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 bg-red-100 rounded-full">
@@ -4305,7 +4305,6 @@ const getPricingInfoForArea = useCallback((areaId: string): { minimumPrice: numb
   try {
     const technology = getCurrentTechnology();
     
-    // Try to get area-specific pricing from PayloadCMS
     if (technology?.custAreas) {
       const area = technology.custAreas.find((a: any) => 
         a.areaName.toLowerCase() === areaId.toLowerCase()
@@ -4315,64 +4314,43 @@ const getPricingInfoForArea = useCallback((areaId: string): { minimumPrice: numb
         const minimumPrice = parseFloat(area['Minimum printing price'] || '0');
         const pricePerSquareInch = parseFloat(area['Per sq inch printing price'] || '0');
         
-        // //console.log('ðŸ”§ AREA PRICING DATA:', {
-        //   areaId,
-        //   minimumPrice,
-        //   pricePerSquareInch,
-        //   hasMinimum: !!area['Minimum printing price'],
-        //   hasRate: !!area['Per sq inch printing price']
-        //  });
-
         // Case 1: Has both minimum and rate per sq inch
         if (area['Minimum printing price'] && area['Per sq inch printing price']) {
-          return { 
-            minimumPrice, 
-            pricePerSquareInch, 
-            isFixedPrice: false 
-          };
+          return { minimumPrice, pricePerSquareInch, isFixedPrice: false };
         }
         
         // Case 2: Has minimum price but no rate (fixed price model)
         if (area['Minimum printing price'] && !area['Per sq inch printing price']) {
-          return { 
-            minimumPrice, 
-            pricePerSquareInch: 0, 
-            isFixedPrice: true 
-          };
+          return { minimumPrice, pricePerSquareInch: 0, isFixedPrice: true };
         }
         
         // Case 3: Has rate but no minimum
         if (!area['Minimum printing price'] && area['Per sq inch printing price']) {
-          return { 
-            minimumPrice: 0, 
-            pricePerSquareInch, 
-            isFixedPrice: false 
-          };
+          return { minimumPrice: 0, pricePerSquareInch, isFixedPrice: false };
         }
+        
+        // ✅ NEW Case 4: Neither field exists - return 0 for printing cost
+        return { 
+          minimumPrice: 0,  // ✅ Changed from productCost to 0
+          pricePerSquareInch: 0, 
+          isFixedPrice: true 
+        };
       }
     }
     
-    // Case 4: No area-specific pricing, fallback to product cost
-    const productCost = productData?.cost || 0;
-    // //console.log('ðŸ”§ FALLBACK TO PRODUCT COST:', {
-    //   areaId,
-    //   productCost,
-    //   reason: 'No area-specific pricing found'
-    // });
-    
+    // ✅ FIXED: Fallback when no area found - return 0
     return { 
-      minimumPrice: productCost, 
+      minimumPrice: 0,  // ✅ Changed from productCost to 0
       pricePerSquareInch: 0, 
       isFixedPrice: true 
     };
 
   } catch (error) {
-    ////console.error('Error getting pricing info for area:', areaId, error);
+    console.error('Error getting pricing info for area:', areaId, error);
     
-    // Final fallback to product cost
-    const productCost = productData?.cost || 100;
+    // ✅ FIXED: Error fallback - return 0
     return { 
-      minimumPrice: productCost, 
+      minimumPrice: 0,  // ✅ Changed from productCost to 0
       pricePerSquareInch: 0, 
       isFixedPrice: true 
     };
@@ -7875,7 +7853,7 @@ const renderPreview = useCallback(() => {
                     loop 
                     muted 
                     playsInline
-                    className="w-36 h-36 object-contain rounded-md"
+                    className="object-contain rounded-md w-36 h-36"
                   />
                 </div>
               </div>
@@ -7903,8 +7881,14 @@ const renderPreview = useCallback(() => {
               </button>
               
               {/* Help Text */}
-              <p className="mt-3 text-xs text-center text-gray-500">
-                Need help? Contact support
+             <p className="mt-3 text-xs text-center text-gray-500">
+                Need help?{" "}
+                <a
+                  href="mailto:support@junooni.com"
+                  className="text-orange-500 underline hover:text-orange-600"
+                >
+                  Contact support
+                </a>
               </p>
             </div>
           </div>
@@ -8356,7 +8340,7 @@ const renderPreview = useCallback(() => {
                               : 'border-none hover:border-white-300 hover:shadow-sm'
                           }`}
                         >
-                          <div className="relative w-full h-full overflow-hidden bg-gray-100 rounded border-none">
+                          <div className="relative w-full h-full overflow-hidden bg-gray-100 border-none rounded">
                             {requiresPixi ? (
                               // PIXI: Use dynamic key to force cleanup
                               <ThumbnailPreview
@@ -9126,7 +9110,7 @@ const renderPreview = useCallback(() => {
         const selectedElement = designElements[activeArea]?.find(el => el.id === selectedId);
         const rotation = selectedElement?.rotation || 0;
         return (
-          <div className="flex items-center justify-between w-1/2 sm:w-full md:w-full pt-2 pb-2 border-t border-gray-200">
+          <div className="flex items-center justify-between w-1/2 pt-2 pb-2 border-t border-gray-200 sm:w-full md:w-full">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -9304,7 +9288,7 @@ case 'sizes':
       
       {/* Active Size Indicator - Only show when size_Images is true */}
       {productData?.size_Images && activeSize && (
-        <div className="flex items-center justify-between p-2 rounded-lg bg-orange-50 border border-orange-200">
+        <div className="flex items-center justify-between p-2 border border-orange-200 rounded-lg bg-orange-50">
           <span className="text-sm font-medium text-gray-700">Active Size</span>
           <span className="text-sm font-bold text-orange-600">{activeSize}</span>
         </div>

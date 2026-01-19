@@ -1681,10 +1681,10 @@ loadProduct();
       <DialogContent className="w-[95vw] max-w-5xl max-h-[90vh] overflow-y-auto p-3 sm:p-6 rounded-lg sm:rounded-xl">
         <DialogHeader className="flex flex-row items-center justify-between gap-2 pb-4 border-b border-gray-200">
           <div className="flex-1 min-w-0">
-            <DialogTitle className="text-lg sm:text-xl font-bold text-gray-900">
+            <DialogTitle className="text-lg font-bold text-gray-900 sm:text-xl">
               Inventory Management
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm text-gray-600 mt-1">
+            <DialogDescription className="mt-1 text-xs text-gray-600 sm:text-sm">
               Manage stock levels for all variants
             </DialogDescription>
           </div>
@@ -1692,7 +1692,7 @@ loadProduct();
           {/* Close button for mobile */}
           {/* <button
             onClick={() => setIsStockModalOpen(false)}
-            className="flex-shrink-0 p-1 ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="flex-shrink-0 p-1 ml-2 text-gray-500 transition-colors rounded-lg hover:text-gray-700 hover:bg-gray-100"
             aria-label="Close inventory modal"
           >
             <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1701,7 +1701,7 @@ loadProduct();
           </button> */}
         </DialogHeader>
 
-        <div className="overflow-x-auto -mx-3 sm:-mx-6 px-3 sm:px-6 mt-4">
+        <div className="px-3 mt-4 -mx-3 overflow-x-auto sm:-mx-6 sm:px-6">
           <InventoryManagementModal
             variants={form.getValues('variants')}
             inventoryLevels={inventoryLevels}
@@ -2927,10 +2927,10 @@ const onSubmit = async (values: ProductFormValues) => {
                       status: values.status,
                       thumbnail: values.thumbnail || "",
                       discountable: Boolean(values.discountable),
-                      weight: values.weight ? parseInt(values.weight) || 0 : 0,
-                      length: values.length ? parseInt(values.length) || 0 : 0,
-                      width: values.width ? parseInt(values.width) || 0 : 0,
-                      height: values.height ? parseInt(values.height) || 0 : 0,
+                      weight: values.weight ? parseFloat(values.weight) || 0 : 0,
+                      length: values.length ? parseFloat(values.length) || 0 : 0,
+                      width: values.width ? parseFloat(values.width) || 0 : 0,
+                      height: values.height ? parseFloat(values.height) || 0 : 0,
                       material: values.material || undefined,
                       origin_country: values.origin_country || undefined,
                       options,
@@ -3491,17 +3491,17 @@ const handleApiError = (apiError: any) => {
 }
   // Main component render
   return (
-  <div className="px-3 sm:px-6 py-8 bg-gray-50">
+  <div className="px-3 py-8 sm:px-6 bg-gray-50">
   {/* Render the Inventory Management Modal */}
   {renderInventoryManagementModal()}
   
   {/* Header Bar with branding */}
-  <div className="relative flex flex-col justify-between gap-4 py-6 px-4 sm:p-6 md:p-6 mb-6 bg-white border border-gray-100 rounded-lg shadow-sm md:flex-row md:items-center">
+  <div className="relative flex flex-col justify-between gap-4 px-4 py-6 mb-6 bg-white border border-gray-100 rounded-lg shadow-sm sm:p-6 md:p-6 md:flex-row md:items-center">
     
     {/* Close button for mobile - Top right */}
     <button
       onClick={() => navigate({ to: '/products' })}
-      className="absolute top-4 right-4 md:hidden p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+      className="absolute p-1 text-gray-500 transition-colors rounded-lg top-4 right-4 md:hidden hover:text-gray-700 hover:bg-gray-100"
       title="Close"
       aria-label="Close"
     >
@@ -3532,7 +3532,7 @@ const handleApiError = (apiError: any) => {
       <Button
         variant="outline"
         onClick={() => navigate({ to: '/products' })}
-        className="hidden md:flex text-gray-700 border-gray-300 hover:bg-gray-50"
+        className="hidden text-gray-700 border-gray-300 md:flex hover:bg-gray-50"
       >
         Cancel
       </Button>
@@ -3556,7 +3556,7 @@ const handleApiError = (apiError: any) => {
             {/* Left Column */}
             <div className="space-y-6 md:col-span-2">
               {/* Title & Description Section */}
-              <section className="sm:p-6 md:p-6 py-6 px-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-4 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-6">
                 <div className="sm:mb-6 md:mb-6">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Basic Information</h2>
                   <Separator className="mb-6" />
@@ -3626,7 +3626,7 @@ const handleApiError = (apiError: any) => {
                 </div>
               </section>
       {/* Product Details Section (Bullet Points) */}
-              <section className="sm:p-6 md:p-6 py-6 px-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-4 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-6">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Product Details</h2>
                   <Separator className="mb-6" />
                   
@@ -3674,7 +3674,7 @@ const handleApiError = (apiError: any) => {
                 </section>
 
                 {/* Story Behind Design Section */}
-                <section className="sm:p-6 md:p-6 py-6 px-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <section className="px-4 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-6">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Story Behind the Design</h2>
                   <Separator className="mb-6" />
                   
@@ -3704,7 +3704,7 @@ const handleApiError = (apiError: any) => {
                   />
                 </section>
       {/* Media Section - IMPROVED VERSION with working variant-specific uploads */}
-              <section className="sm:p-6 md:p-6 py-6 px-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <section className="px-4 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-6">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Product Images</h2>
                   <Separator className="mb-6" />
                   
@@ -3815,7 +3815,7 @@ const handleApiError = (apiError: any) => {
                             key={`${item.url}-${index}`}
                             className="relative flex flex-col overflow-hidden transition-all duration-200 bg-white border rounded-md group hover:shadow-md"
                           >
-                            <div className="relative flex items-center justify-center md:h-52 h-72 overflow-hidden bg-gray-100">
+                            <div className="relative flex items-center justify-center overflow-hidden bg-gray-100 md:h-52 h-72">
                               <img
                                 src={getImageDisplayUrl(item)}
                                 alt={`Product image ${index + 1}`}
@@ -3894,7 +3894,7 @@ const handleApiError = (apiError: any) => {
                   )}
                 </section>
                 {/* Options & Variants Section with styling */}
-                <section className="px-4 py-6 sm:p-6 md:p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <section className="px-4 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-6">
                   <h2 className="mb-4 text-xl font-semibold text-gray-800">Options & Variants</h2>
                   <Separator className="mb-6" />
                   
@@ -4030,7 +4030,7 @@ const handleApiError = (apiError: any) => {
                   {/* Variants Section with Bulk Editing - MODIFIED to remove stock column and add stock management link */}
                   {variantFields.length > 0 && (
                     <div>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 gap-3">
+                      <div className="flex flex-col items-start justify-between gap-3 mb-5 sm:flex-row sm:items-center">
                         <h3 className="font-medium text-gray-700">Product Variants ({variantFields.length})</h3>
                         <div className="flex items-center space-x-2">
                           <Button 
@@ -4161,13 +4161,13 @@ const handleApiError = (apiError: any) => {
                    
                       {/* Variants Table - MODIFIED to remove stock column */}
                       {/* Variants Table - MOBILE RESPONSIVE */}
-                      <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm -mx-4 sm:mx-0">
+                      <div className="-mx-4 overflow-x-auto border border-gray-200 rounded-lg shadow-sm sm:mx-0">
                         <div className="inline-block min-w-full align-middle">
                           <table className="min-w-full border-collapse">
                             <thead>
                               <tr className="border-b border-gray-200 bg-gray-50">
                                 {bulkEditMode && (
-                                  <th className="p-2 sm:p-3 text-left border-r border-gray-200 w-10">
+                                  <th className="w-10 p-2 text-left border-r border-gray-200 sm:p-3">
                                     <span className="sr-only">Select</span>
                                   </th>
                                 )}
@@ -4323,7 +4323,7 @@ const handleApiError = (apiError: any) => {
               {/* Right Column */}
               <div className="space-y-6">
                 {/* Status Card */}
-                <section className="py-6 px-4 sm:p-6 md:p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <section className="px-4 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-6">
                   <h2 className="mb-4 text-lg font-semibold text-gray-800">Status & Visibility</h2>
                   <Separator className="mb-6" />
                   
@@ -4483,7 +4483,7 @@ const handleApiError = (apiError: any) => {
                 {/* Shipping & Fulfillment Info Card */}
                 {/* Shipping & Fulfillment Info Card */}
                 {/* Shipping & Fulfillment Info Card - UPDATED */}
-<section className="py-6 px-4 sm:p-6 md:p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+<section className="px-4 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-6">
   <h2 className="mb-4 text-lg font-semibold text-gray-800">Shipping & Fulfillment</h2>
   <Separator className="mb-4" />
   
@@ -4517,11 +4517,11 @@ const handleApiError = (apiError: any) => {
       <h4 className="mb-3 font-medium text-orange-900">Fulfillment Details</h4>
       {/* <div className="space-y-2">
         <div className="flex items-start gap-2">
-          <span className="text-blue-600 font-medium min-w-fit">Product :</span>
+          <span className="font-medium text-blue-600 min-w-fit">Product :</span>
           <span className="text-gray-800">{form.watch('title') || 'Not specified'}</span>
         </div>
         <div className="flex items-start gap-2">
-          <span className="text-blue-600 font-medium min-w-fit">Technology Name:</span>
+          <span className="font-medium text-blue-600 min-w-fit">Technology Name:</span>
           <span className="text-gray-800">
             {technologyName  ||  'Not specified'}
           </span>
@@ -4530,7 +4530,7 @@ const handleApiError = (apiError: any) => {
       <div className="mb-6 space-y-3">
         <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
           <div className="flex items-start">
-            {/* <div className="p-2 mr-3 bg-orange-100 rounded-full text-orange-600">
+            {/* <div className="p-2 mr-3 text-orange-600 bg-orange-100 rounded-full">
               <IconInfoCircle size={20} />
             </div> */}
             <div className="flex-1">
@@ -4559,7 +4559,7 @@ const handleApiError = (apiError: any) => {
        
         <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
           <div className="flex items-start">
-            {/* <div className="p-2 mr-3 bg-orange-100 rounded-full text-orange-600">
+            {/* <div className="p-2 mr-3 text-orange-600 bg-orange-100 rounded-full">
               <IconInfoCircle size={20} />
             </div> */}
             <div className="flex-1">
@@ -4622,7 +4622,7 @@ const handleApiError = (apiError: any) => {
         Inventory is managed automatically based on the blank product availability in CMS.
       </p>
 
-      <Alert className="mt-4 bg-orange-50 border-orange-200">
+      <Alert className="mt-4 border-orange-200 bg-orange-50">
         <IconInfoCircle className="w-4 h-4 text-[#e65100]" />
         <AlertDescription className="text-[#e65100]">
           Stock levels are synced from the blank product SKU in Payload CMS.
@@ -4650,7 +4650,7 @@ const handleApiError = (apiError: any) => {
 </section>
                 
                 {/* Physical Details Card */}
-                <section className="py-6 px-4 sm:p-6 md:p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <section className="px-4 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-6">
                   <h2 className="mb-4 text-lg font-semibold text-gray-800">Physical Details</h2>
                   <Separator className="mb-6" />
                   
@@ -4734,7 +4734,7 @@ const handleApiError = (apiError: any) => {
                 </section>
                 
                 {/* Additional Info Card */}
-                <section className="py-6 px-4 sm:p-6 md:p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <section className="px-4 py-6 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-6">
                   <h2 className="mb-4 text-lg font-semibold text-gray-800">Additional Info</h2>
                   <Separator className="mb-6" />
                   
@@ -4792,7 +4792,7 @@ const handleApiError = (apiError: any) => {
             </div>
             
             {/* Bottom Action Bar - Fixed to bottom on mobile */}
-            <div className="fixed bottom-0 left-0 right-0 z-10 sm:p-4 md:p-4 px-4 py-2 bg-white border-t border-gray-200 md:static md:bg-transparent md:border-0 md:p-0 md:mt-6">
+            <div className="fixed bottom-0 left-0 right-0 z-10 px-4 py-2 bg-white border-t border-gray-200 sm:p-4 md:p-4 md:static md:bg-transparent md:border-0 md:p-0 md:mt-6">
               <div className="flex justify-end mx-auto space-x-3 max-w-7xl">
                 <Button 
                   variant="outline" 
