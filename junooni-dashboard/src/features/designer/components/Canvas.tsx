@@ -3801,10 +3801,10 @@ const [activeSize, setActiveSize] = useState<string>(() => {
 
 
 
-const handlePanelMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-  if (isMobile) return;
+const handlePanelDragStart = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+  // Don't handle on desktop if isMobile check is active
+  // Allow on both mobile and desktop now
   
-  // Only allow dragging from the drag handle
   const target = e.target as HTMLElement;
   if (!target.closest('[data-drag-handle]')) {
     return;
@@ -3813,67 +3813,70 @@ const handlePanelMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) =
   e.preventDefault();
   e.stopPropagation();
   
-  // ðŸ”¥ FIX: Read current position directly from the DOM element instead of state
+  // Get client coordinates from either mouse or touch event
+  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+  
   const currentLeft = panelRef.current ? parseFloat(panelRef.current.style.left || '0') : alignmentPanelPos.x;
   const currentTop = panelRef.current ? parseFloat(panelRef.current.style.top || '0') : alignmentPanelPos.y;
   
-  // Store initial mouse position and CURRENT panel position (not stale state)
   dragStartRef.current = {
-    x: e.clientX,
-    y: e.clientY,
+    x: clientX,
+    y: clientY,
     panelX: currentLeft,
     panelY: currentTop
   };
   
   setIsDraggingPanel(true);
-  
-  //console.log('ðŸ”µ Drag started:', dragStartRef.current);
-}, [isMobile, alignmentPanelPos]); // Keep alignmentPanelPos as fallback only
+}, [alignmentPanelPos]);
 
-const handlePanelMouseMove = useCallback((e: MouseEvent) => {
+const handlePanelDragMove = useCallback((e: MouseEvent | TouchEvent) => {
   if (!isDraggingPanel) return;
   
   e.preventDefault();
   e.stopPropagation();
   
-  // Calculate distance moved from start
-  const deltaX = e.clientX - dragStartRef.current.x;
-  const deltaY = e.clientY - dragStartRef.current.y;
+  // Get client coordinates from either mouse or touch event
+  const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+  const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
   
-  // Calculate new position
+  const deltaX = clientX - dragStartRef.current.x;
+  const deltaY = clientY - dragStartRef.current.y;
+  
   const newX = dragStartRef.current.panelX + deltaX;
   const newY = dragStartRef.current.panelY + deltaY;
   
-  // ðŸ”¥ FIX: Get actual panel dimensions from the DOM
   const panelWidth = panelRef.current?.offsetWidth || 250;
   const panelHeight = panelRef.current?.offsetHeight || 200;
   
-  // Apply boundaries - allow panel to reach edges but not go off-screen
-  const maxX = window.innerWidth - panelWidth - 16; // 16px padding from edge
+  const maxX = window.innerWidth - panelWidth - 16;
   const maxY = window.innerHeight - panelHeight - 16;
   
-  const boundedX = Math.max(16, Math.min(newX, maxX)); // 16px minimum from left
-  const boundedY = Math.max(16, Math.min(newY, maxY)); // 16px minimum from top
+  const boundedX = Math.max(16, Math.min(newX, maxX));
+  const boundedY = Math.max(16, Math.min(newY, maxY));
   
-  // Update position immediately using ref for visual feedback
+  // ✅ UPDATE DOM DIRECTLY for immediate visual feedback
   if (panelRef.current) {
     panelRef.current.style.left = `${boundedX}px`;
     panelRef.current.style.top = `${boundedY}px`;
   }
   
-  // Also update state (debounced effect)
+  // ✅ Also update state (but don't wait for re-render)
   setAlignmentPanelPos({ x: boundedX, y: boundedY });
 }, [isDraggingPanel]);
 
-const handlePanelMouseUp = useCallback((e: MouseEvent) => {
+const handlePanelDragEnd = useCallback((e: MouseEvent | TouchEvent) => {
   if (!isDraggingPanel) return;
   
   e.preventDefault();
   e.stopPropagation();
   
-  // Calculate final position
-  const deltaX = e.clientX - dragStartRef.current.x;
-  const deltaY = e.clientY - dragStartRef.current.y;
+  // Get client coordinates from either mouse or touch event
+  const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX;
+  const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : e.clientY;
+  
+  const deltaX = clientX - dragStartRef.current.x;
+  const deltaY = clientY - dragStartRef.current.y;
   
   const finalX = dragStartRef.current.panelX + deltaX;
   const finalY = dragStartRef.current.panelY + deltaY;
@@ -3886,8 +3889,6 @@ const handlePanelMouseUp = useCallback((e: MouseEvent) => {
   
   setAlignmentPanelPos({ x: boundedX, y: boundedY });
   setIsDraggingPanel(false);
-  
-  //console.log('ðŸŸ¢ Drag ended at:', { x: boundedX, y: boundedY });
 }, [isDraggingPanel]);
 
 
@@ -7556,17 +7557,24 @@ const handleFileUpload = useCallback(async (files) => {
       const success = await addImageToCanvasWithStateProtection(blobUrl, file.name, activeArea, base64Data);
       
       if (success) {
-        // ðŸ”¥ NEW: Trigger pricing calculation after successful upload
+        // 🔥 NEW: Close mobile bottom sheet after successful upload
+        if (isMobile) {
+          setTimeout(() => {
+            setShowMobileBottomSheet(false);
+          }, 500); // Small delay to show the uploaded file briefly
+        }
+        
+        // Trigger pricing calculation after successful upload
         setTimeout(() => {
           updatePricingData();
-        }, 500); // Small delay to ensure state is updated
+        }, 500);
       }
       
     } catch (error) {
-      ////console.error('Error uploading file:', error);
+      console.error('Error uploading file:', error);
     }
   }
-}, [activeArea, addImageToCanvasWithStateProtection, updatePricingData]);
+}, [activeArea, addImageToCanvasWithStateProtection, updatePricingData, isMobile]);
 
 
   
@@ -8949,55 +8957,55 @@ const renderPreview = useCallback(() => {
 
       {/* Mobile-friendly element controls */}
       {selectedId && (
-        <div
+      <div
         ref={panelRef}
         className={`${
-        isMobile
-        ? 'absolute -bottom-16 left-4 right-4'
-        : 'fixed'
+          isMobile
+            ? 'fixed'  // ✅ Change to 'fixed' on mobile too
+            : 'fixed'
         } sm:p-3 px-3 py-0 bg-white border-2 border-orange-500 shadow-xl rounded-xl z-[60] ${
-        isDraggingPanel ? 'cursor-grabbing shadow-2xl' : 'cursor-default'
+          isDraggingPanel ? 'cursor-grabbing shadow-2xl' : 'cursor-default'
         }`}
-        style={!isMobile ? {
-        left: `${alignmentPanelPos.x}px`,
-        top: `${alignmentPanelPos.y}px`,
-        userSelect: 'none',
-        transition: isDraggingPanel ? 'none' : 'box-shadow 0.2s ease',
-        pointerEvents: 'auto',
-        maxWidth: '250px',
-        willChange: isDraggingPanel ? 'transform' : 'auto',
-        transform: isDraggingPanel ? 'scale(1.02)' : 'scale(1)',
-        } : {}}
+        style={{
+          left: `${alignmentPanelPos.x}px`,
+          top: `${alignmentPanelPos.y}px`,
+          userSelect: 'none',
+          transition: isDraggingPanel ? 'none' : 'box-shadow 0.2s ease',
+          pointerEvents: 'auto',
+          maxWidth: isMobile ? '280px' : '250px',  // ✅ Responsive max-width
+          width: isMobile ? 'calc(100% - 32px)' : 'auto',  // ✅ Mobile width
+          willChange: isDraggingPanel ? 'transform' : 'auto',
+          transform: isDraggingPanel ? 'scale(1.02)' : 'scale(1)',
+          touchAction: 'none',
+        }}
         onClick={(e) => e.stopPropagation()}
-        onMouseDown={handlePanelMouseDown}
-        >
-      {!isMobile && (
+        onMouseDown={handlePanelDragStart}
+        onTouchStart={handlePanelDragStart}
+      >
+      {/* Show drag handle on both mobile and desktop when panel is visible */}
+      {selectedId && (
         <div
-        data-drag-handle="true"
-        className={`flex items-center justify-between pb-2 mb-2 border-b border-gray-200 ${
-        isDraggingPanel ? 'cursor-grabbing bg-gray-50' : 'cursor-grab hover:bg-gray-50'
-        } rounded-t-lg transition-colors px-2 py-1`}
+          data-drag-handle="true"
+          className={`flex items-center justify-between pb-2 mb-2 border-b border-gray-200 ${
+            isDraggingPanel ? 'cursor-grabbing bg-gray-50' : 'cursor-grab hover:bg-gray-50'
+          } rounded-t-lg transition-colors px-2 py-1`}
         >
-      <div className="flex items-center gap-2">
-        <div className="flex gap-1">
-      <div className={`w-1 h-1 rounded-full transition-colors ${
-      isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
-      }`}></div>
-      <div className={`w-1 h-1 rounded-full transition-colors ${
-      isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
-      }`}></div>
-      <div className={`w-1 h-1 rounded-full transition-colors ${
-      isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
-      }`}></div>
-      <div className={`w-1 h-1 rounded-full transition-colors ${
-      isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
-      }`}></div>
-      </div>
-      <span className="text-xs font-medium text-gray-500">
-      {isDraggingPanel ? 'Dragging...' : 'Drag to move'}
-      </span>
-      </div>
-      </div>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              {[...Array(4)].map((_, i) => (
+                <div 
+                  key={i}
+                  className={`w-1 h-1 rounded-full transition-colors ${
+                    isDraggingPanel ? 'bg-orange-500' : 'bg-gray-400'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs font-medium text-gray-500">
+              {isDraggingPanel ? 'Dragging...' : 'Drag to move'}
+            </span>
+          </div>
+        </div>
       )}
 
       <div className="space-y-0 md:space-y-3">
@@ -9150,7 +9158,7 @@ const renderPreview = useCallback(() => {
       )}
       </div>
       );
-}, [getCanvasConfig, getPrintableAreaFromPhoto, activeArea, activeColor, canvasImages, handleStageClick, brandColor, renderDesignElements, selectedId, centerElement, deleteSelectedElement, getSurfaceConfiguration, isMobile, handlePanelMouseDown, isDraggingPanel, alignmentPanelPos, productData]);
+}, [getCanvasConfig, getPrintableAreaFromPhoto, activeArea, activeColor, canvasImages, handleStageClick, brandColor, renderDesignElements, selectedId, centerElement, deleteSelectedElement, getSurfaceConfiguration, isMobile, isDraggingPanel, alignmentPanelPos, productData]);
 
     // =====================================
     // SETTINGS PANELS
@@ -9483,23 +9491,25 @@ useEffect(() => {
 
 useEffect(() => {
   if (isDraggingPanel) {
-    // Attach listeners to document for better capture
-    document.addEventListener('mousemove', handlePanelMouseMove, { capture: true });
-    document.addEventListener('mouseup', handlePanelMouseUp, { capture: true });
+    // Add both mouse and touch listeners
+    document.addEventListener('mousemove', handlePanelDragMove, { capture: true });
+    document.addEventListener('mouseup', handlePanelDragEnd, { capture: true });
+    document.addEventListener('touchmove', handlePanelDragMove, { capture: true, passive: false });
+    document.addEventListener('touchend', handlePanelDragEnd, { capture: true });
     
-    // Prevent text selection during drag
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'grabbing';
     
-    // Disable pointer events on canvas
     const canvasContainer = document.querySelector('.konvajs-content');
     if (canvasContainer) {
       (canvasContainer as HTMLElement).style.pointerEvents = 'none';
     }
     
     return () => {
-      document.removeEventListener('mousemove', handlePanelMouseMove, { capture: true });
-      document.removeEventListener('mouseup', handlePanelMouseUp, { capture: true });
+      document.removeEventListener('mousemove', handlePanelDragMove, { capture: true });
+      document.removeEventListener('mouseup', handlePanelDragEnd, { capture: true });
+      document.removeEventListener('touchmove', handlePanelDragMove, { capture: true });
+      document.removeEventListener('touchend', handlePanelDragEnd, { capture: true });
       
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
@@ -9509,7 +9519,7 @@ useEffect(() => {
       }
     };
   }
-}, [isDraggingPanel, handlePanelMouseMove, handlePanelMouseUp]);
+}, [isDraggingPanel, handlePanelDragMove, handlePanelDragEnd]);
 
 // ðŸ”¥ FIX: Reset hero mockup when size changes
   useEffect(() => {

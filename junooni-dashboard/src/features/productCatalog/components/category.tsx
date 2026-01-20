@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -124,7 +124,7 @@ interface Breadcrumb {
 interface Category {
   id: number;
   title: string;
-  description?: any; // Rich text description from payload
+  description?: any;
   slug: string;
   parent: Category | null;
   breadcrumbs: Breadcrumb[];
@@ -201,7 +201,7 @@ interface MobileFilterOverlayProps {
 
 interface ColorFilterProps {
   colors: ColorOption[];
-  selectedColors: string[]; // Now contains color hex values instead of IDs
+  selectedColors: string[];
   onChange: (selectedColors: string[]) => void;
 }
 
@@ -210,7 +210,7 @@ interface CheckboxFilterProps {
   selectedItems: string[];
   onChange: (selectedItems: string[]) => void;
   nameKey?: string;
-  valueKey?: string; // Added to support filtering by a specific property value
+  valueKey?: string;
 }
 
 interface CategoryTreeProps {
@@ -221,16 +221,11 @@ interface CategoryTreeProps {
 
 // Helper function to determine if a color is light (for contrasting check mark)
 const isLightColor = (hex: string): boolean => {
-  // Convert hex to RGB
   const hexWithoutHash = hex.replace('#', '');
   const r = parseInt(hexWithoutHash.substring(0, 2), 16);
   const g = parseInt(hexWithoutHash.substring(2, 4), 16);
   const b = parseInt(hexWithoutHash.substring(4, 6), 16);
-  
-  // Calculate perceived brightness (YIQ formula)
   const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  
-  // Return true if color is light (brightness > 128)
   return brightness > 128;
 };
 
@@ -241,10 +236,7 @@ const parseRichTextContent = (description: any): { heading: string; subheading: 
     subheading: "Discover our curated collection of premium products designed to meet your needs."
   };
 
-  //console.log("Parsing description:", description); // Debug log
-
   if (!description || !description.root || !description.root.children) {
-    //console.log("No description structure found, using fallback");
     return fallback;
   }
   
@@ -263,27 +255,19 @@ const parseRichTextContent = (description: any): { heading: string; subheading: 
   let heading = fallback.heading;
   let subheading = fallback.subheading;
   
-  //console.log("Description children:", description.root.children); // Debug log
-  
-  description.root.children.forEach((child: any, index: number) => {
-    //console.log(`Child ${index}:`, child); // Debug log
-    
+  description.root.children.forEach((child: any) => {
     if (child.type === "heading" && child.tag === "h1" && child.children) {
       heading = extractTextFromChildren(child.children);
-      //console.log("Found heading:", heading);
     } else if (child.type === "paragraph" && child.children) {
       subheading = extractTextFromChildren(child.children);
-      //console.log("Found subheading:", subheading);
     }
   });
   
-  //console.log("Final result:", { heading, subheading });
   return { heading, subheading };
 };
 
 // Custom hook for animation styles
 const useStyles = () => {
-  // Add the animation to the document if it doesn't exist
   useEffect(() => {
     if (!document.getElementById('slide-in-animation')) {
       const style = document.createElement('style');
@@ -373,7 +357,6 @@ const useStyles = () => {
 const MobileFilterOverlay: React.FC<MobileFilterOverlayProps> = ({ isOpen, onClose, onReset, children }) => {
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  // Handle click outside to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (overlayRef.current && !overlayRef.current.contains(event.target as Node)) {
@@ -390,7 +373,6 @@ const MobileFilterOverlay: React.FC<MobileFilterOverlayProps> = ({ isOpen, onClo
     };
   }, [isOpen, onClose]);
 
-  // Prevent body scroll when overlay is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -453,7 +435,6 @@ const MobileFilterOverlay: React.FC<MobileFilterOverlayProps> = ({ isOpen, onClo
 const FilterSection: React.FC<FilterSectionProps> = ({ title, children, defaultOpen = false, isMobile = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   
-  // For desktop view (min-width: 768px), always keep sections open
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 768px)');
     const handleChange = (e: MediaQueryListEvent) => {
@@ -464,12 +445,10 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, children, defaultO
       }
     };
 
-    // Set initial state based on current screen size
     if (mediaQuery.matches) {
       setIsOpen(true);
     }
 
-    // Listen for changes
     mediaQuery.addEventListener('change', handleChange);
     
     return () => {
@@ -477,7 +456,6 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, children, defaultO
     };
   }, [defaultOpen]);
 
-  // In mobile mode, don't render the collapsible section
   if (isMobile) {
     return <>{children}</>;
   }
@@ -500,14 +478,16 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, children, defaultO
 
 const ColorFilter: React.FC<ColorFilterProps> = ({ colors, selectedColors, onChange }) => {
   const [showAll, setShowAll] = useState(false);
-  const INITIAL_COLOR_COUNT = 12; // Show 12 colors initially
+  const INITIAL_COLOR_COUNT = 12;
   
-  // Deduplicate colors by colorHex value - this ensures we only show each unique color once
-  const uniqueColors = colors.filter((color, index, self) => 
-    index === self.findIndex((c) => c.colorHex === color.colorHex)
+  // Memoize unique colors to prevent recalculation
+  const uniqueColors = useMemo(() => 
+    colors.filter((color, index, self) => 
+      index === self.findIndex((c) => c.colorHex === color.colorHex)
+    ),
+    [colors]
   );
   
-  // Determine which colors to display
   const displayedColors = showAll ? uniqueColors : uniqueColors.slice(0, INITIAL_COLOR_COUNT);
   const hasMoreColors = uniqueColors.length > INITIAL_COLOR_COUNT;
   
@@ -548,7 +528,6 @@ const ColorFilter: React.FC<ColorFilterProps> = ({ colors, selectedColors, onCha
         })}
       </div>
       
-      {/* Show more/less button */}
       {hasMoreColors && (
         <button
           onClick={() => setShowAll(!showAll)}
@@ -578,7 +557,6 @@ const CheckboxFilter: React.FC<CheckboxFilterProps> = ({
   nameKey = 'name',
   valueKey
 }) => {
-  // Get the value to use for filtering - either the specified valueKey or fallback to id
   const getItemValue = (item: any): string => {
     if (valueKey && item[valueKey]) {
       return item[valueKey];
@@ -586,12 +564,15 @@ const CheckboxFilter: React.FC<CheckboxFilterProps> = ({
     return item.id;
   };
 
-  // Deduplicate items based on the value we're filtering by
-  const uniqueItems = valueKey 
-    ? items.filter((item, index, self) => 
-        index === self.findIndex(i => i[valueKey] === item[valueKey])
-      )
-    : items;
+  // Memoize unique items
+  const uniqueItems = useMemo(() => 
+    valueKey 
+      ? items.filter((item, index, self) => 
+          index === self.findIndex(i => i[valueKey] === item[valueKey])
+        )
+      : items,
+    [items, valueKey]
+  );
   
   return (
     <div className="space-y-3">
@@ -621,13 +602,13 @@ const CheckboxFilter: React.FC<CheckboxFilterProps> = ({
   );
 };
 
-const CategoryTree: React.FC<CategoryTreeProps> = ({ categories, currentCategoryId, onSelectCategory }) => {
-  // Find parent categories (those with no parent)
-  const parentCategories = categories.filter((cat) => !cat.parent);
+const CategoryTree: React.FC<CategoryTreeProps> = React.memo(({ categories, currentCategoryId, onSelectCategory }) => {
+  const parentCategories = useMemo(() => 
+    categories.filter((cat) => !cat.parent),
+    [categories]
+  );
   
-  // Function to recursively render a category and its children
-  const renderCategory = (category: Category) => {
-    // Find children
+  const renderCategory = useCallback((category: Category) => {
     const children = categories.filter((cat) => 
       cat.parent && cat.parent.id === category.id
     );
@@ -653,14 +634,16 @@ const CategoryTree: React.FC<CategoryTreeProps> = ({ categories, currentCategory
         )}
       </div>
     );
-  };
+  }, [categories, currentCategoryId, onSelectCategory]);
   
   return (
     <div className="space-y-1">
       {parentCategories.map((cat) => renderCategory(cat))}
     </div>
   );
-};
+});
+
+CategoryTree.displayName = 'CategoryTree';
 
 const vite_backend = import.meta.env.VITE_MEDUSA_BACKEND_URL;
 const BRAND = {
@@ -678,12 +661,10 @@ const BRAND = {
 };
 
 const CategoryPage: React.FC = () => {
-  // Add animation styles
   useStyles();
   
   const [simplifiedProducts, setSimplifiedProducts] = useState<SimplifiedProduct[]>([]);
   const [apiProducts, setApiProducts] = useState<APIProduct[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<SimplifiedProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -698,91 +679,9 @@ const CategoryPage: React.FC = () => {
   // Mobile filter overlay states
   const [activeFilterOverlay, setActiveFilterOverlay] = useState<string | null>(null);
   const [isMobileView, setIsMobileView] = useState<boolean>(false);
-  
-  // Available filter options (populated from products)
-  const [availableColors, setAvailableColors] = useState<ColorOption[]>([]);
-  const [availableSizes, setAvailableSizes] = useState<SizeOption[]>([]);
-  const [availableTechnologies, setAvailableTechnologies] = useState<PrintingTechnology[]>([]);
-  // const { toast } = useToast();
-  // const [isAuthenticated, setIsAuthenticated] = useState(false);
-  // const [isChecking, setIsChecking] = useState(true);
-
-  // useEffect(() => {
-  //     const verifyAuthentication = async () => {
-  //       try {
-  //         const token = localStorage.getItem('vendorToken');
-          
-  //         // If no token exists at all, redirect immediately
-  //         if (!token) {
-  //           toast({
-  //             title: "Authentication Required",
-  //             description: "Please sign in to access the catalog.",
-  //             variant: "destructive",
-  //           });
-  //           window.location.href = '/sign-in';
-  //           return;
-  //         }
-  
-  //         // Verify token with backend
-  //         const response = await fetch(`${vite_backend}/api/vendors/me`, {
-  //           method: 'GET',
-  //           headers: {
-  //             'Authorization': `Bearer ${token}`,
-  //             'Content-Type': 'application/json',
-  //           },
-  //           credentials: 'include',
-  //         });
-  
-  //         if (!response.ok) {
-  //           // Token is invalid or expired
-  //           localStorage.removeItem('vendorToken');
-  //           toast({
-  //             title: "Session Expired",
-  //             description: "Please sign in again.",
-  //             variant: "destructive",
-  //           });
-  //           window.location.href = '/sign-in';
-  //           return;
-  //         }
-  
-  //         // Token is valid
-  //         setIsAuthenticated(true);
-  //         setIsChecking(false);
-          
-  //       } catch (error) {
-  //         console.error('Authentication verification failed:', error);
-  //         localStorage.removeItem('vendorToken');
-  //         toast({
-  //           title: "Authentication Error",
-  //           description: "Please sign in again.",
-  //           variant: "destructive",
-  //         });
-  //         window.location.href = '/sign-in';
-  //       }
-  //     };
-  
-  //     verifyAuthentication();
-  //   }, [toast]);
-  
-  //   // Show loading state while checking authentication
-  //   if (isChecking || !isAuthenticated) {
-  //     return (
-  //       <div className="flex items-center justify-center min-h-screen">
-  //         <div className="text-center">
-  //           <div className="w-16 h-16 border-4 border-t-4 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: BRAND.primary }}></div>
-  //           <p className="mt-4 text-gray-600">Verifying authentication...</p>
-  //         </div>
-  //       </div>
-  //     );
-  //   }
-    
 
   const params = useParams({strict:false});
   const slug = params.slug as string;
-
-  // console.log("🔗 URL params:", params);
-  // console.log("🔗 Extracted slug:", slug);
-  // console.log("🔗 Slug type:", typeof slug);
 
   // Check if we're in mobile view
   useEffect(() => {
@@ -790,10 +689,7 @@ const CategoryPage: React.FC = () => {
       setIsMobileView(window.innerWidth < 768);
     };
     
-    // Initial check
     checkMobileView();
-    
-    // Add resize listener
     window.addEventListener('resize', checkMobileView);
     
     return () => {
@@ -801,182 +697,47 @@ const CategoryPage: React.FC = () => {
     };
   }, []);
 
-  // Open a specific filter overlay on mobile
-  const openFilterOverlay = (): void => {
-    setActiveFilterOverlay('all');
-  };
-
-  // Close the active filter overlay
-  const closeFilterOverlay = () => {
-    setActiveFilterOverlay(null);
-  };
-  
-  // Get the count of active filters
-  const getTotalActiveFilterCount = (): number => {
-    return selectedColorHexes.length + 
-           selectedSizeNames.length + 
-           selectedTechnologyNames.length + 
-           selectedCategories.length;
-  };
-
-  // Fetch categories and products from API
-useEffect(() => {
-  console.log("=== CATEGORY PAGE DEBUG START ===");
-  console.log("🔗 Current URL:", window.location.pathname);
-  
-  const fetchCategories = async () => {
-    console.log("📡 Starting API fetch...");
-    try {
-      // Fetch categories
-      const response = await fetch(`${vite_payload}/api/categories?limit=0&depth=2`, {
-        credentials: 'include'
-      });
-      const data = await response.json();
-      console.log("📦 Categories fetched:", data.docs?.length);
-      
-      setCategories(data.docs);
-      
-      // Parse URL to get the correct slug
-      const pathParts = window.location.pathname.split('/');
-      console.log("🔗 Path parts:", pathParts);
-      
-      const categoryIndex = pathParts.indexOf('category');
-      const slugParts = pathParts.slice(categoryIndex + 1).filter(Boolean);
-      console.log("🔍 Slug parts:", slugParts);
-      
-      // CRITICAL: Use the LAST segment as the category slug
-      const targetSlug = slugParts[slugParts.length - 1];
-      console.log("🎯 Target slug to match:", targetSlug);
-      
-      // Find matching category
-      const matchedCategory = data.docs.find((item: Category) => {
-        console.log(`🔍 Comparing "${item.slug}" with "${targetSlug}"`);
-        return item.slug === targetSlug;
-      });
-      
-      console.log("✅ Matched category:", matchedCategory ? matchedCategory.title : "NONE");
-      
-      if (matchedCategory) {
-        console.log("📊 Category details:", matchedCategory);
-        setCurrentCategory(matchedCategory);
-        
-        // Process products
-        if (matchedCategory.products && matchedCategory.products.length > 0) {
-          console.log("✅ Products found:", matchedCategory.products.length);
-          
-          // Store API products
-          setApiProducts(matchedCategory.products);
-          
-          // Extract filter options
-          const colors: ColorOption[] = [];
-          const sizes: SizeOption[] = [];
-          const technologies: PrintingTechnology[] = [];
-          
-          matchedCategory.products.forEach((product: APIProduct) => {
-            if (product.colorOptions) {
-              product.colorOptions.forEach((color: ColorOption) => {
-                if (!colors.some((c) => c.id === color.id)) {
-                  colors.push(color);
-                }
-              });
-            }
-            
-            if (product.sizeOptions) {
-              product.sizeOptions.forEach((size: SizeOption) => {
-                if (!sizes.some((s) => s.id === size.id)) {
-                  sizes.push(size);
-                }
-              });
-            }
-            
-            if (product.printingTechnologies) {
-              product.printingTechnologies.forEach((tech: PrintingTechnology) => {
-                if (!technologies.some((t) => t.id === tech.id)) {
-                  technologies.push(tech);
-                }
-              });
-            }
-          });
-          
-          setAvailableColors(colors);
-          setAvailableSizes(sizes);
-          setAvailableTechnologies(technologies);
-          
-          // Format products
-          const formattedProducts: SimplifiedProduct[] = matchedCategory.products.map((apiProduct: APIProduct) => {
-            const productColors = apiProduct.colorOptions?.map((color: ColorOption) => color.colorHex) || [];
-            
-            return {
-              id: String(apiProduct.id),
-              name: apiProduct.name,
-              price: apiProduct.cost,
-              rating: 4.5,
-              image: apiProduct.displayImages && apiProduct.displayImages.length > 0 
-                ? apiProduct.displayImages[0].image.url 
-                : '/placeholder-image.jpg',
-              category: apiProduct.categories.map((cat: Category) => cat.slug),
-              availableColors: productColors,
-              colorOptions: apiProduct.colorOptions || [],
-              sizeOptions: apiProduct.sizeOptions || [],
-              printingTechnologies: apiProduct.printingTechnologies || [],
-              description: apiProduct.description,
-              isNew: false,
-              onSale: false,
-            };
-          });
-          
-          console.log("📦 Formatted products:", formattedProducts.length);
-          
-          const sortedProducts = formattedProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id));
-          
-          console.log("✅ Setting products state...");
-          setSimplifiedProducts(sortedProducts);
-          setFilteredProducts(sortedProducts);
-          
-          console.log("✅ Products state set!");
-          console.log("📦 simplifiedProducts:", sortedProducts.length);
-          console.log("📦 filteredProducts:", sortedProducts.length);
-        } else {
-          console.log("⚠️ No products in category");
-          setSimplifiedProducts([]);
-          setApiProducts([]);
-          setFilteredProducts([]);
-        }
-      } else {
-        console.log("❌ No matching category");
-        setCurrentCategory(null);
-        setSimplifiedProducts([]);
-        setApiProducts([]);
-        setFilteredProducts([]);
+  // Memoize available filter options extraction
+  const { availableColors, availableSizes, availableTechnologies } = useMemo(() => {
+    const colors: ColorOption[] = [];
+    const sizes: SizeOption[] = [];
+    const technologies: PrintingTechnology[] = [];
+    
+    apiProducts.forEach((product: APIProduct) => {
+      if (product.colorOptions) {
+        product.colorOptions.forEach((color: ColorOption) => {
+          if (!colors.some((c) => c.id === color.id)) {
+            colors.push(color);
+          }
+        });
       }
       
-      setLoadingCategories(false);
-      setLoading(false);
+      if (product.sizeOptions) {
+        product.sizeOptions.forEach((size: SizeOption) => {
+          if (!sizes.some((s) => s.id === size.id)) {
+            sizes.push(size);
+          }
+        });
+      }
       
-      console.log("=== CATEGORY PAGE DEBUG END ===");
-    } catch (error) {
-      console.error('❌ Error:', error);
-      setLoadingCategories(false);
-      setLoading(false);
-    }
-  };
+      if (product.printingTechnologies) {
+        product.printingTechnologies.forEach((tech: PrintingTechnology) => {
+          if (!technologies.some((t) => t.id === tech.id)) {
+            technologies.push(tech);
+          }
+        });
+      }
+    });
+    
+    return { availableColors: colors, availableSizes: sizes, availableTechnologies: technologies };
+  }, [apiProducts]);
 
-  fetchCategories();
-}, [vite_payload]); // ✅ ONLY vite_payload in dependencies, NOT slug!
-
-// Add this RIGHT AFTER your existing fetchCategories code:
-console.log("🔍 CHECKING STATE:");
-console.log("  - simplifiedProducts length:", simplifiedProducts.length);
-console.log("  - filteredProducts length:", filteredProducts.length);
-console.log("  - loading:", loading);
-
-  // Apply filters when filter selections change
-  useEffect(() => {
-    if (simplifiedProducts.length === 0) return;
+  // Memoize filtered products - THIS IS THE KEY OPTIMIZATION
+  const filteredProducts = useMemo(() => {
+    if (simplifiedProducts.length === 0) return [];
     
     let results = [...simplifiedProducts];
     
-    // Filter by colors - now using colorHex values for matching
     if (selectedColorHexes.length > 0) {
       results = results.filter(product => 
         product.colorOptions && product.colorOptions.some(color => 
@@ -985,7 +746,6 @@ console.log("  - loading:", loading);
       );
     }
     
-    // Filter by sizes - now using sizeName values for matching
     if (selectedSizeNames.length > 0) {
       results = results.filter(product => 
         product.sizeOptions && product.sizeOptions.some(size => 
@@ -994,7 +754,6 @@ console.log("  - loading:", loading);
       );
     }
     
-    // Filter by printing technologies - now using technologyName for matching
     if (selectedTechnologyNames.length > 0) {
       results = results.filter(product => 
         product.printingTechnologies && product.printingTechnologies.some(tech => 
@@ -1003,7 +762,6 @@ console.log("  - loading:", loading);
       );
     }
     
-    // Filter by categories (subcategories)
     if (selectedCategories.length > 0) {
       results = results.filter(product => 
         product.category && product.category.some(cat => 
@@ -1012,31 +770,111 @@ console.log("  - loading:", loading);
       );
     }
     
-    setFilteredProducts(results);
+    return results;
   }, [simplifiedProducts, selectedColorHexes, selectedSizeNames, selectedTechnologyNames, selectedCategories]);
 
-  // Helper function to create metadata for ProductCard
-  const createProductMetadata = (productId: string): ProductMetadata => {
-    // Find the simplified product to get rating
+  // Fetch categories and products from API - OPTIMIZED
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(`${vite_payload}/api/categories?limit=0&depth=2`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch categories');
+        
+        const data = await response.json();
+        
+        if (!isMounted) return;
+        
+        setCategories(data.docs);
+        
+        const pathParts = window.location.pathname.split('/');
+        const categoryIndex = pathParts.indexOf('category');
+        const slugParts = pathParts.slice(categoryIndex + 1).filter(Boolean);
+        const targetSlug = slugParts[slugParts.length - 1];
+        
+        const matchedCategory = data.docs.find((item: Category) => item.slug === targetSlug);
+        
+        if (matchedCategory) {
+          setCurrentCategory(matchedCategory);
+          
+          if (matchedCategory.products && matchedCategory.products.length > 0) {
+            setApiProducts(matchedCategory.products);
+            
+            const formattedProducts: SimplifiedProduct[] = matchedCategory.products.map((apiProduct: APIProduct) => {
+              const productColors = apiProduct.colorOptions?.map((color: ColorOption) => color.colorHex) || [];
+              
+              return {
+                id: String(apiProduct.id),
+                name: apiProduct.name,
+                price: apiProduct.cost,
+                rating: 4.5,
+                image: apiProduct.displayImages && apiProduct.displayImages.length > 0 
+                  ? apiProduct.displayImages[0].image.url 
+                  : '/placeholder-image.jpg',
+                category: apiProduct.categories.map((cat: Category) => cat.slug),
+                availableColors: productColors,
+                colorOptions: apiProduct.colorOptions || [],
+                sizeOptions: apiProduct.sizeOptions || [],
+                printingTechnologies: apiProduct.printingTechnologies || [],
+                description: apiProduct.description,
+                isNew: false,
+                onSale: false,
+              };
+            });
+            
+            const sortedProducts = formattedProducts.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+            
+            setSimplifiedProducts(sortedProducts);
+          } else {
+            setSimplifiedProducts([]);
+            setApiProducts([]);
+          }
+        } else {
+          setCurrentCategory(null);
+          setSimplifiedProducts([]);
+          setApiProducts([]);
+        }
+        
+        setLoadingCategories(false);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        if (isMounted) {
+          setLoadingCategories(false);
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCategories();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [vite_payload]);
+
+  // Memoize helper functions
+  const createProductMetadata = useCallback((productId: string): ProductMetadata => {
     const simplifiedProduct = simplifiedProducts.find(p => p.id === productId);
     const rating = simplifiedProduct ? simplifiedProduct.rating : 4.5;
     
     return {
-      isBestSeller: false, // Could be determined by sales data or other criteria
-      isStaffPick: false, // Could be a flag you set elsewhere
+      isBestSeller: false,
+      isStaffPick: false,
       rating: rating,
-      reviewCount: Math.floor(10 + Math.random() * 140) // Just for demonstration
+      reviewCount: Math.floor(10 + Math.random() * 140)
     };
-  };
+  }, [simplifiedProducts]);
 
-  // Helper function to convert API product to the format expected by ProductCard
-  const getProductCardData = (productId: string): Product | null => {
-    // Find the original API product that matches this id
+  const getProductCardData = useCallback((productId: string): Product | null => {
     const apiProduct = apiProducts.find(p => p.id === parseInt(productId));
     
     if (!apiProduct) return null;
     
-    // Map to the exact Product interface expected by ProductCard and ProductPage
     return {
       id: apiProduct.id,
       name: apiProduct.name,
@@ -1058,30 +896,47 @@ console.log("  - loading:", loading);
       updatedAt: apiProduct.updatedAt || new Date().toISOString(),
       createdAt: apiProduct.createdAt || new Date().toISOString()
     };
-  };
+  }, [apiProducts]);
 
-  // This function helps store the complete product data in sessionStorage
-  const storeCompleteProductData = (productId: string): void => {
+  const storeCompleteProductData = useCallback((productId: string): void => {
     const apiProduct = apiProducts.find(p => p.id === parseInt(productId));
     if (apiProduct) {
-      // Store the complete API product data for the product page to use
       sessionStorage.setItem(`product_${apiProduct.id}`, JSON.stringify(apiProduct));
     }
-  };
+  }, [apiProducts]);
   
-  // Handle category selection
-  const handleCategorySelect = (categorySlug: string): void => {
-    // Navigate to the selected category
+  const handleCategorySelect = useCallback((categorySlug: string): void => {
     window.location.href = `/productCatalog/category/${categorySlug}`;
-  };
+  }, []);
   
-  // Clear all filters
-  const clearAllFilters = (): void => {
+  const clearAllFilters = useCallback((): void => {
     setSelectedColorHexes([]);
     setSelectedSizeNames([]);
     setSelectedTechnologyNames([]);
     setSelectedCategories([]);
-  };
+  }, []);
+
+  const openFilterOverlay = useCallback((): void => {
+    setActiveFilterOverlay('all');
+  }, []);
+
+  const closeFilterOverlay = useCallback(() => {
+    setActiveFilterOverlay(null);
+  }, []);
+  
+  const getTotalActiveFilterCount = useCallback((): number => {
+    return selectedColorHexes.length + 
+           selectedSizeNames.length + 
+           selectedTechnologyNames.length + 
+           selectedCategories.length;
+  }, [selectedColorHexes, selectedSizeNames, selectedTechnologyNames, selectedCategories]);
+
+  // Memoize hero content
+  const heroContent = useMemo(() => {
+    return currentCategory && currentCategory.description 
+      ? parseRichTextContent(currentCategory.description)
+      : { heading: "Products", subheading: "Discover our curated collection of premium products designed to meet your needs." };
+  }, [currentCategory]);
 
   return (
     <>
@@ -1090,48 +945,17 @@ console.log("  - loading:", loading);
         <div className="container px-4 py-8 mx-auto mt-12">
           {/* Dynamic Hero Section */}
           <div className="sm:mt-12 mb-4 animate-fadeIn">
-            {(() => {
-              // console.log("🎯 Hero section - currentCategory:", currentCategory);
-              // console.log("🎯 Hero section - has description:", !!currentCategory?.description);
-              
-              const { heading, subheading } = currentCategory && currentCategory.description 
-                ? parseRichTextContent(currentCategory.description)
-                : { heading: "Products", subheading: "Discover our curated collection of premium products designed to meet your needs." };
-
-              // console.log("🎯 Final heading:", heading);
-              // console.log("🎯 Final subheading:", subheading);
-
-              return (
-                <>
-                  <h1 className="mb-4 text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#e65100] to-orange-600 bg-clip-text text-transparent">
-                    {heading}
-                  </h1>
-                  <p className="max-w-2xl text-lg text-gray-600">
-                    {subheading}
-                  </p>
-                </>
-              );
-            })()}
+            <h1 className="mb-4 text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#e65100] to-orange-600 bg-clip-text text-transparent">
+              {heroContent.heading}
+            </h1>
+            <p className="max-w-2xl text-lg text-gray-600">
+              {heroContent.subheading}
+            </p>
           </div>
-          
-          {/* Breadcrumb Navigation based on Category */}
-          {/* {!loadingCategories && currentCategory && (
-            <div className="flex items-center px-4 py-2 mb-3 text-sm bg-white border border-orange-100 rounded-full shadow-sm w-fit animate-fadeIn">
-              <a href="/" className="hover:text-[#e65100] transition-colors text-gray-600">Home</a>
-              <span className="mx-2 text-gray-400">/</span>
-              {currentCategory.breadcrumbs.map((crumb, idx) => (
-                <div key={crumb.id} className="flex items-center">
-                  {idx > 0 && <span className="mx-2 text-gray-400">/</span>}
-                  <a href={crumb.url} className="hover:text-[#e65100] transition-colors text-gray-600">{crumb.label}</a>
-                </div>
-              ))}
-            </div>
-          )} */}
           
           {/* Category Pill Navigation */}
           <div className="flex gap-3 pb-2 mb-6 overflow-x-auto md:hidden flex-nowrap">
             {categories.map((item) => (
-              console.log("item slug", item.slug),
               <div 
                 key={item.id}
                 className={`category-pill rounded-full px-6 py-3 whitespace-nowrap text-sm font-medium cursor-pointer ${
@@ -1155,7 +979,7 @@ console.log("  - loading:", loading);
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-2 border-[#e65100] text-[#e65100] hover:bg-[#e65100] hover:text-white transition-all duration-200"
-                onClick={() => openFilterOverlay()}
+                onClick={openFilterOverlay}
               >
                 <Filter size={16} />
                 <span>Filters</span>
@@ -1189,8 +1013,7 @@ console.log("  - loading:", loading);
                   </div>
                   
                   {/* Active Filters Summary */}
-                  {(selectedColorHexes.length > 0 || selectedSizeNames.length > 0 || 
-                    selectedTechnologyNames.length > 0 || selectedCategories.length > 0) && (
+                  {getTotalActiveFilterCount() > 0 && (
                     <div className="p-6 mb-6 bg-white border border-orange-100 shadow-sm rounded-xl">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
@@ -1208,7 +1031,6 @@ console.log("  - loading:", loading);
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {selectedColorHexes.map(colorHex => {
-                          // Find the first color with this hex value
                           const color = availableColors.find(c => c.colorHex === colorHex);
                           return color ? (
                             <Badge 
@@ -1231,7 +1053,6 @@ console.log("  - loading:", loading);
                         })}
                         
                         {selectedSizeNames.map(sizeName => {
-                          // Find the first size with this name
                           const size = availableSizes.find(s => s.sizeName === sizeName);
                           return size ? (
                             <Badge 
@@ -1250,7 +1071,6 @@ console.log("  - loading:", loading);
                         })}
                         
                         {selectedTechnologyNames.map(techName => {
-                          // Find the first technology with this name
                           const tech = availableTechnologies.find(t => t.technologyName === techName);
                           return tech ? (
                             <Badge 
@@ -1311,14 +1131,13 @@ console.log("  - loading:", loading);
               )}
             </div>
             
-            {/* Mobile Filter Overlay - Main one with all filters */}
+            {/* Mobile Filter Overlay */}
             {isMobileView && (
               <MobileFilterOverlay
                 isOpen={activeFilterOverlay === 'all'}
                 onClose={closeFilterOverlay}
                 onReset={clearAllFilters}
               >
-                {/* Colors */}
                 {availableColors.length > 0 && (
                   <div className="mb-8">
                     <h3 className="flex items-center gap-2 mb-4 text-lg font-semibold text-gray-900">
@@ -1335,7 +1154,6 @@ console.log("  - loading:", loading);
                 
                 <Separator className="my-6" />
                 
-                {/* Other filters */}
                 {availableSizes.length > 0 && (
                   <div className="mb-8">
                     <h3 className="flex items-center gap-2 mb-4 text-lg font-semibold text-gray-900">
@@ -1411,9 +1229,7 @@ console.log("  - loading:", loading);
                   ) : (
                     <div className="grid grid-cols-1 gap-6 product-grid sm:grid-cols-2 lg:grid-cols-3">
                       {filteredProducts.map((product, index) => {
-                        // Get the product card data format
                         const productCardData = getProductCardData(product.id);
-                        // Create metadata
                         const productCardMetadata = createProductMetadata(product.id);
                         
                         if (!productCardData) return null;
@@ -1430,7 +1246,6 @@ console.log("  - loading:", loading);
                               metadata={productCardMetadata}
                             />
                             
-                            {/* Additional badges that aren't part of the standard ProductCard */}
                             {product.isNew && (
                               <Badge className="absolute z-20 font-medium text-white top-3 left-3 bg-gradient-to-r from-green-500 to-emerald-600">
                                 New
