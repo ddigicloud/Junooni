@@ -19,6 +19,7 @@ export const sendOrderConfirmationWorkflow = createWorkflow(
         "currency_code",
         "total",
         "items.*",
+        "items.variant.*",
         "shipping_address.*",
         "billing_address.*",
         "shipping_methods.*",

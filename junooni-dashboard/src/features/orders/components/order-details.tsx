@@ -503,6 +503,8 @@ interface PaymentCollection {
 interface VendorOrder {
   id: string
   display_id: number
+  status: string  // ✅ This captures "canceled" status
+  canceled_at?: string  // ✅ Add this field
   customer: {
     first_name: string
     last_name: string
@@ -525,7 +527,6 @@ interface VendorOrder {
   vendor_shipping_total: number
   vendor_tax_total: number
   
-  status: string
   vendor_items: OrderItem[] // ✅ Only vendor's items
   payment_status: string
   fulfillment_status: string
@@ -945,6 +946,13 @@ const StatusBadge = ({ status }: { status: string }) => {
   
   const getStatusProps = (status: string) => {
     switch (status) {
+      case "canceled":
+      case "cancelled":
+        return { 
+          variant: "outline" as const, 
+          className: "font-medium text-red-700 bg-red-50 border-red-200",
+          icon: <XCircle className="w-3 h-3 mr-1" />  // ✅ Changed from AlertTriangle
+        };
       case "not_fulfilled":
       case "pending":
         return { 
@@ -1032,28 +1040,34 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-// ✅ NEW: Payment Status Badge component (separate from fulfillment StatusBadge)
-// ✅ NEW: Payment Status Badge component with DEBUG LOGGING
-// ✅ FIXED: Payment Status Badge component with correct data path
 // ✅ FIXED: Simple Payment Status Badge - checks provider_id only
-const PaymentStatusBadge = ({ status, paymentCollections, vendorPaymentDetails }: { 
+const PaymentStatusBadge = ({ status, paymentCollections, vendorPaymentDetails, orderStatus, canceledAt }: { 
   status: string
   paymentCollections?: any[]
   vendorPaymentDetails?: any
+  orderStatus?: string
+  canceledAt?: string
 }) => {
+  
+  // ✅ CHECK FOR REFUNDED OR CANCELED STATUS FIRST
+  if (status === "refunded" || orderStatus === "canceled" || canceledAt) {
+    return (
+      <Badge variant="outline" className="font-medium text-red-700 bg-red-50 border-red-200">
+        <XCircle className="w-3 h-3 mr-1" />
+        Refunded
+      </Badge>
+    );
+  }
   
   // ✅ Helper function to detect if payment is COD/Manual
   const isCODPayment = () => {
-    // Check payment_collections array
     if (paymentCollections && Array.isArray(paymentCollections) && paymentCollections.length > 0) {
       const paymentCollection = paymentCollections[0];
       
-      // Check payments array for provider_id
       if (paymentCollection.payments && Array.isArray(paymentCollection.payments) && paymentCollection.payments.length > 0) {
         const payment = paymentCollection.payments[0];
         const providerId = payment.provider_id?.toLowerCase() || '';
         
-        // Check for COD indicators
         const hasSystemDefault = providerId.includes('system_default') || 
                                  providerId.includes('pp_system');
         const hasManualCodCash = providerId.includes('manual') || 
@@ -1062,38 +1076,36 @@ const PaymentStatusBadge = ({ status, paymentCollections, vendorPaymentDetails }
         const hasRazorpay = providerId.includes('razorpay');
         
         if (hasSystemDefault || hasManualCodCash) {
-          return true;  // COD
+          return true;
         }
         
         if (hasRazorpay) {
-          return false;  // Online payment
+          return false;
         }
         
-        // Check for authorized but not captured pattern
         if (paymentCollection.status === 'authorized' && 
             payment.captured_at === null && 
             paymentCollection.captured_amount === 0) {
-          return true;  // COD
+          return true;
         }
       }
     }
     
-    return false;  // Default to online payment
+    return false;
   };
   
   const isCOD = isCODPayment();
   
-  // ✅ SIMPLE LOGIC: Check provider_id only
   if (isCOD) {
     return (
-      <Badge variant="outline" className="text-orange-700 bg-orange-50 border-orange-200 font-medium">
+      <Badge variant="outline" className="font-medium text-orange-700 bg-orange-50 border-orange-200">
         <Package className="w-3 h-3 mr-1" />
         COD
       </Badge>
     );
   } else {
     return (
-      <Badge variant="outline" className="text-green-700 bg-green-50 border-green-200 font-medium">
+      <Badge variant="outline" className="font-medium text-green-700 bg-green-50 border-green-200">
         <CreditCard className="w-3 h-3 mr-1" />
         Paid
       </Badge>
@@ -2340,6 +2352,7 @@ if (itemFulfillment) {
     vendor_tax_total: vendorTax,
     
     status: orderData.status || "pending",
+     canceled_at: orderData.canceled_at,
     vendor_items: vendorItems,
     payment_status: orderData.payment_status || "pending",
     fulfillment_status: orderData.fulfillment_status || "not_fulfilled",
@@ -2683,25 +2696,6 @@ const handleMarkAsShipped = async () => {
     setShipmentLoading(false);
   }
 };
-
-// ✅ UPDATED: Generate tracking URL based on carrier (simplified)
-// const generateTrackingUrl = (carrier: string, trackingNumber: string): string => {
-//   // Basic tracking URL generation - vendors can override with custom URLs
-//   const trackingUrls = {
-//     'fedex': `https://www.fedex.com/fedextrack/?tracknumbers=${trackingNumber}`,
-//     'ups': `https://www.ups.com/track?tracknum=${trackingNumber}`,
-//     'dhl': `https://www.dhl.com/global-en/home/tracking.html?tracking-id=${trackingNumber}`,
-//     'usps': `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${trackingNumber}`,
-//     'bluedart': `https://www.bluedart.com/web/guest/trackdart?trackFor=0&trackNo=${trackingNumber}`,
-//     'dtdc': `https://www.dtdc.in/tracking/tracking_results.asp?Ttype=awb_no&strTnumber=${trackingNumber}`,
-//     'aramex': `https://www.aramex.com/track/results?ShipmentNumber=${trackingNumber}`,
-//     'ecom': `https://ecomexpress.in/tracking/?awb_field=${trackingNumber}`,
-//     'delhivery': `https://www.delhivery.com/track/package/${trackingNumber}`
-//   };
-  
-//   // Return carrier-specific URL or a generic format
-//   return trackingUrls[carrier] || `https://track.aftership.com/${trackingNumber}`;
-// };
 
   // ✅ Updated invoice generation for vendor-specific data
 
@@ -3200,15 +3194,21 @@ const generateInvoice = () => {
               <div className="flex items-center gap-3 mb-2">
                 <div>
                   <span className="mr-2 text-sm text-gray-500">Status:</span>
-                  <StatusBadge status={order.fulfillment_status} />
+                  {/* ✅ Check for canceled status first */}
+                  {order.status === "canceled" || order.canceled_at ? (
+                    <StatusBadge status="canceled" />
+                  ) : (
+                    <StatusBadge status={order.fulfillment_status} />
+                  )}
                 </div>
                 <div>
                   <span className="mr-2 text-sm text-gray-500">Payment:</span>
-                  {/* <StatusBadge status={order.payment_status} /> */}
                   <PaymentStatusBadge 
                     status={order.payment_status} 
                     paymentCollections={order.payment_collections}
                     vendorPaymentDetails={order.vendor_payment_details}
+                    orderStatus={order.status}
+                    canceledAt={order.canceled_at}
                   />
                 </div>
               </div>
@@ -3286,18 +3286,31 @@ const generateInvoice = () => {
                 <CreditCard className="w-4 h-4 mr-1" />
                 Your Payment
               </div>
-              <div className="font-medium">
-                {order.payment_status === "refunded"
+              <div className="font-medium" style={{
+                color: order.payment_status === "refunded" || order.status === "canceled" || order.canceled_at
+                  ? "#B91C1C"  // Red color for refunded/canceled
+                  : undefined
+              }}>
+                {order.payment_status === "refunded" || order.status === "canceled" || order.canceled_at
                   ? "Refunded"
                   : ["paid", "captured"].includes(order.payment_status)
                   ? "Paid"
                   : "Payment Pending"}
               </div>
-               <div className="text-sm text-gray-600">
+              <div className="text-sm text-gray-600">
                 Method: Online Payment
               </div>
-              <div className="text-sm font-medium" style={{ color: BRAND.primary }}>
-                Amount: {formatPrice(order.vendor_payment_amount, order.currency_code)}
+              <div className="text-sm font-medium" style={{ 
+                color: order.payment_status === "refunded" || order.status === "canceled" || order.canceled_at
+                  ? "#B91C1C"  // Red color for refunded/canceled
+                  : BRAND.primary 
+              }}>
+                Amount: {formatPrice(
+                  order.payment_status === "refunded" || order.status === "canceled" || order.canceled_at
+                    ? 0
+                    : order.vendor_payment_amount, 
+                  order.currency_code
+                )}
               </div>
             </div>
           </div>
@@ -4208,16 +4221,37 @@ const generateInvoice = () => {
                   </div>
                   
                   {/* Current Status */}
-                  <div className="p-4 rounded-lg" style={{ backgroundColor: `${BRAND.primary}11` }}>
+                  {/* Current Status */}
+                  <div className="p-4 rounded-lg" style={{ 
+                    backgroundColor: order.status === "canceled" || order.canceled_at || order.payment_status === "refunded"
+                      ? "#FEE2E2" 
+                      : `${BRAND.primary}11` 
+                  }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <div className="p-2 mr-3 rounded-full" style={{ backgroundColor: `${BRAND.primary}22` }}>
-                          <Clock className="w-5 h-5" style={{ color: BRAND.primary }} />
+                        <div className="p-2 mr-3 rounded-full" style={{ 
+                          backgroundColor: order.status === "canceled" || order.canceled_at || order.payment_status === "refunded"
+                            ? "#FCA5A5" 
+                            : `${BRAND.primary}22` 
+                        }}>
+                          {order.status === "canceled" || order.canceled_at || order.payment_status === "refunded" ? (
+                            <XCircle className="w-5 h-5 text-red-700" />
+                          ) : (
+                            <Clock className="w-5 h-5" style={{ color: BRAND.primary }} />
+                          )}
                         </div>
                         <div>
                           <div className="text-sm font-medium">Current Status</div>
-                          <div className="font-bold" style={{ color: BRAND.primary }}>
+                          <div className="font-bold" style={{ 
+                            color: order.status === "canceled" || order.canceled_at || order.payment_status === "refunded"
+                              ? "#B91C1C" 
+                              : BRAND.primary 
+                          }}>
                             {(() => {
+                              // ✅ CHECK FOR CANCELED/REFUNDED FIRST
+                              if (order.status === "canceled" || order.canceled_at) return "Canceled";
+                              if (order.payment_status === "refunded") return "Refunded";
+                              
                               const {
                                 vendorHasClaims,
                                 vendorHasReturns
@@ -4240,7 +4274,17 @@ const generateInvoice = () => {
                           </div>
                         </div>
                       </div>
-                      <StatusBadge status={order.fulfillment_status} />
+                      {/* ✅ Show appropriate badge */}
+                      {order.status === "canceled" || order.canceled_at ? (
+                        <StatusBadge status="canceled" />
+                      ) : order.payment_status === "refunded" ? (
+                        <Badge variant="outline" className="font-medium text-red-700 bg-red-50 border-red-200">
+                          <XCircle className="w-3 h-3 mr-1" />
+                          Refunded
+                        </Badge>
+                      ) : (
+                        <StatusBadge status={order.fulfillment_status} />
+                      )}
                     </div>
                     
                     {(() => {
@@ -4455,8 +4499,27 @@ const generateInvoice = () => {
                         {/* ✅ UPDATED: Use calculated vendor profit instead of order.vendor_total */}
                         <div className="flex justify-between font-bold">
                           <span>You earned (net)</span>
-                          <span style={{ color: BRAND.primary }}>{formatPrice(order.payment_status === 'refunded' ? 0 : Math.abs(calculateFinalVendorProfit(order).finalVendorProfit), order.currency_code)}</span>
+                           <span style={{ color: BRAND.primary }}>
+                              {/* ✅ Check both payment_status and order.status */}
+                              {order.payment_status === 'refunded' || order.status === 'canceled' || order.canceled_at
+                                ? formatPrice(0, order.currency_code)
+                                : formatPrice(Math.abs(calculateFinalVendorProfit(order).finalVendorProfit), order.currency_code)
+                              }
+                            </span>
                         </div>
+
+                        {/* Add a refund notice */}
+                        {(order.payment_status === 'refunded' || order.status === 'canceled') && (
+                          <div className="p-3 mt-4 text-xs text-red-800 border border-red-200 rounded-md bg-red-50">
+                            <div className="flex items-center">
+                              <XCircle className="w-4 h-4 mr-2" />
+                              <span>
+                                This order has been {order.payment_status === 'refunded' ? 'refunded' : 'canceled'}. 
+                                No payment will be processed.
+                              </span>
+                            </div>
+                          </div>
+                        )}
                         
                         {/* Status Notice */}
                         {hasChanges && (
@@ -4506,27 +4569,61 @@ const generateInvoice = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Payment Status</span>
-                    {/* <StatusBadge status={order.payment_status} /> */}
-                    <PaymentStatusBadge 
+                   <PaymentStatusBadge 
                       status={order.payment_status} 
                       paymentCollections={order.payment_collections}
                       vendorPaymentDetails={order.vendor_payment_details}
+                      orderStatus={order.status}
+                      canceledAt={order.canceled_at}
                     />
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Your Amount</span>
-                    <span className="font-medium" style={{ color: BRAND.primary }}>
-                      {formatPrice(order.payment_status === 'refunded' ? 0 : order.vendor_payment_amount, order.currency_code)}
+                    <span className="font-medium" style={{ 
+                      color: order.payment_status === 'refunded' || order.status === 'canceled' 
+                        ? "#B91C1C" 
+                        : BRAND.primary 
+                    }}>
+                      {formatPrice(
+                        order.payment_status === 'refunded' || order.status === 'canceled' || order.canceled_at
+                          ? 0 
+                          : order.vendor_payment_amount, 
+                        order.currency_code
+                      )}
                     </span>
                   </div>
+                  
+                  {/* ✅ Show order status if canceled */}
+                  {(order.status === "canceled" || order.canceled_at) && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Order Status</span>
+                      <StatusBadge status="canceled" />
+                    </div>
+                  )}
                 </div>
                 
-                {order.payment_status === "captured" && (
+                {/* ✅ UPDATED: Show appropriate message based on status */}
+                {order.payment_status === "captured" && order.status !== "canceled" && !order.canceled_at && (
                   <div className="p-3 mt-4 border border-green-200 rounded-md bg-green-50">
                     <div className="flex items-center">
                       <CircleCheck className="w-4 h-4 mr-2 text-green-600" />
                       <span className="text-sm text-green-800">
                         Payment received for your products
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* ✅ NEW: Show refunded/canceled message */}
+                {(order.payment_status === "refunded" || order.status === "canceled" || order.canceled_at) && (
+                  <div className="p-3 mt-4 border border-red-200 rounded-md bg-red-50">
+                    <div className="flex items-center">
+                      <XCircle className="w-4 h-4 mr-2 text-red-600" />
+                      <span className="text-sm text-red-800">
+                        {order.payment_status === "refunded" 
+                          ? "This order has been refunded. Payment was reversed."
+                          : "This order has been canceled. No payment will be processed."
+                        }
                       </span>
                     </div>
                   </div>

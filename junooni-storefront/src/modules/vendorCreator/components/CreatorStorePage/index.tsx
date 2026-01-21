@@ -11,6 +11,7 @@ import {
   Bell,
   Instagram,
   Twitter,
+  X,
   Youtube,
    Facebook,
   ExternalLink,
@@ -43,6 +44,7 @@ import {
   staggerContainer,
 } from "../../../../types/vendor"
 import { assets } from "@assets/assets"
+import Twittericon from "@assets/twitter.png"
 import {
   Addfollower,
   deletefollower,
@@ -665,7 +667,7 @@ const handleFollowToggle = async () => {
     name: vendor.name,
     handle: vendor.handle,
     role: vendor.creator_title || "Music Artist & Visual Creator",
-    verified: true,
+    verified: vendor.verified === "Yes" || vendor.verified === true,
     followers: followerCount,
     bio: vendor.creator_bio || "Artist bio not provided.",
     shortBio: vendor.creator_bio
@@ -697,10 +699,13 @@ const handleFollowToggle = async () => {
     },
   }
 
-  console.log("🔍 Vendor data:", vendor)
-  console.log("🔍 Available vendor keys:", Object.keys(vendor))
-  console.log("🔍 Creator data:", creator)
-  console.log("🔍 Available creator keys:", Object.keys(creator))
+
+  // console.log("🔍 Vendor details:", vendor)
+  // console.log("🔍 Creator verified status:", creator.verified)
+  // console.log("🔍 Vendor data:", vendor)
+  // console.log("🔍 Available vendor keys:", Object.keys(vendor))
+  // console.log("🔍 Creator data:", creator)
+  // console.log("🔍 Available creator keys:", Object.keys(creator))
   
   // Format large numbers with K/M suffix
   const formatNumber = (num: number): string => {
@@ -925,11 +930,59 @@ const handleFollowToggle = async () => {
                           <p className="px-4 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
                             @ {creator.handle}
                           </p>
-                          {creator.verified && (
-                            <span className="ml-2 bg-[#e65100] text-white text-xs px-2 py-0.5 rounded-full">
-                              Verified
-                            </span>
-                          )}
+                   {creator.verified && (
+  <svg
+    className="ml-2 inline-block align-middle"
+    width="18"
+    height="18"
+    viewBox="0 0 20 20"
+    preserveAspectRatio="xMidYMid meet"
+    aria-label="Verified"
+  >
+    {/* Verified badge shape (clean + symmetrical) */}
+    <path
+      fill="#e65100"
+      d="
+        M10 0.8
+        L12.2 2.2
+        L14.9 1.9
+        L16.1 4.4
+        L18.6 5.6
+        L17.9 8.3
+        L19.2 10
+        L17.9 11.7
+        L18.6 14.4
+        L16.1 15.6
+        L14.9 18.1
+        L12.2 17.8
+        L10 19.2
+        L7.8 17.8
+        L5.1 18.1
+        L3.9 15.6
+        L1.4 14.4
+        L2.1 11.7
+        L0.8 10
+        L2.1 8.3
+        L1.4 5.6
+        L3.9 4.4
+        L5.1 1.9
+        L7.8 2.2
+        Z"
+    />
+
+    {/* Check */}
+    <path
+      d="M6.2 10.2l2.1 2.2 4.5-4.6"
+      fill="none"
+      stroke="white"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)}
+
+
                         </div>
                       </motion.div>
 
@@ -996,7 +1049,7 @@ const handleFollowToggle = async () => {
                                   onClick={() => handleShare('twitter')}
                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 >
-                                  <Twitter size={16} className="mr-2" />
+                                  <img src={Twittericon.src} alt="Twitter" className="w-4 h-4 mr-2" />
                                   Share on Twitter
                                 </button>
                                 <button
@@ -1080,7 +1133,7 @@ const handleFollowToggle = async () => {
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 px-3 py-3 text-gray-700 transition-colors bg-white rounded-full hover:bg-gray-200"
                       >
-                        <Instagram size={22} className="text-pink-600" />
+                        <Instagram size={22} className="text-grey-400" />
                         {/* <span className="text-sm font-medium">
                           @{creator.socialMedia.instagram.replace(/^(https?:\/\/)?(www\.)?instagram\.com\//i, '').replace(/\/$/, '')}
                         </span> */}
@@ -1094,7 +1147,7 @@ const handleFollowToggle = async () => {
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 px-3 py-3 text-gray-700 transition-colors bg-white rounded-full hover:bg-gray-200"
                       >
-                        <Twitter size={22} className="text-blue-400" />
+                        <img src={Twittericon.src} alt="Twitter" className="w-5 h-5 text-grey-400" />
                         {/* <span className="text-sm font-medium">
                           @{creator.socialMedia.twitter.replace(/^(https?:\/\/)?(www\.)?(twitter|x)\.com\//i, '').replace(/\/$/, '')}
                         </span> */}
@@ -1108,7 +1161,7 @@ const handleFollowToggle = async () => {
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 px-3 py-3 text-gray-700 transition-colors bg-white rounded-full hover:bg-gray-200"
                       >
-                        <Facebook size={22} className="text-blue-600" />
+                        <Facebook size={22} className="text-grey-400" />
                         {/* <span className="text-sm font-medium">
                           {creator.socialMedia.facebook.replace(/^(https?:\/\/)?(www\.)?facebook\.com\//i, '').replace(/\/$/, '')}
                         </span> */}
@@ -1122,7 +1175,7 @@ const handleFollowToggle = async () => {
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 px-3 py-3 text-gray-700 transition-colors bg-white rounded-full hover:bg-gray-200"
                       >
-                        <Youtube size={22} className="text-red-600" />
+                        <Youtube size={22} className="text-grey-400" />
                         {/* <span className="text-sm font-medium">
                           {creator.socialMedia.youtube.replace(/^(https?:\/\/)?(www\.)?youtube\.com\/(c\/|@)?/i, '').replace(/\/$/, '')}
                         </span> */}
@@ -1205,7 +1258,7 @@ const handleFollowToggle = async () => {
                           onClick={() => handleShare('twitter')}
                           className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          <Twitter size={16} className="mr-3" />
+                          <X size={16} className="mr-3" />
                           Share on Twitter
                         </button>
                         <button
@@ -1928,9 +1981,9 @@ const ColorOptions = ({ colors }: { colors: Array<{name: string, hex: string, ke
               )}
               
               {/* Selected indicator for dark colors */}
-              {(selectedColor === color.hex || hoveredColor === color.hex) && (color.hex === '#000000' || color.hex === '#780000') && (
+              {/* {(selectedColor === color.hex || hoveredColor === color.hex) && (color.hex === '#000000' || color.hex === '#780000') && (
                 <div className="absolute w-2 h-2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-full top-1/2 left-1/2"></div>
-              )}
+              )} */}
             </div>
           </li>
         ))}

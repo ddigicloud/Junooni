@@ -5,7 +5,7 @@ import Link from "next/link";
 import { 
   ShoppingBag, RefreshCcw, PackageCheck, XCircle, 
   CheckCircle, Clock, CreditCard, AlertCircle, 
-  Package, Truck, Mail, Phone, MapPin, FileText
+  Package, Truck, Mail, Phone, MapPin, FileText, Video, Camera
 } from "lucide-react";
 
 const RefundsReturnsPage = () => {
@@ -19,6 +19,7 @@ const RefundsReturnsPage = () => {
     { id: "exchange-policy", title: "Exchange Policy", icon: <PackageCheck size={20} /> },
     { id: "non-returnable", title: "Non-Returnable Items", icon: <XCircle size={20} /> },
     { id: "damaged-items", title: "Damaged/Defective Items", icon: <AlertCircle size={20} /> },
+    { id: "rto-orders", title: "Undelivered Orders (RTO)", icon: <Truck size={20} /> },
     { id: "contact", title: "Contact Support", icon: <Mail size={20} /> }
   ];
 
@@ -33,33 +34,33 @@ const RefundsReturnsPage = () => {
   const returnSteps = [
     {
       number: "1",
-      title: "Initiate Return",
-      description: "Log in to your account and go to 'My Orders'. Select the order and click 'Return Item'.",
-      icon: <Package size={32} />
+      title: "Contact Support Immediately",
+      description: "Report the issue within 7 days of delivery. Delays beyond this will not be entertained.",
+      icon: <Mail size={32} />
     },
     {
       number: "2",
-      title: "Select Reason",
-      description: "Choose a return reason and provide any additional details about the item.",
-      icon: <FileText size={32} />
+      title: "Provide Evidence",
+      description: "Submit unboxing video and clear images showing the defect, damage, or misprint along with original packaging.",
+      icon: <Video size={32} />
     },
     {
       number: "3",
-      title: "Pack the Item",
-      description: "Securely pack the item in its original packaging with all tags and accessories.",
-      icon: <PackageCheck size={32} />
+      title: "Verification Process",
+      description: "Our team will review your claim and evidence. This typically takes 1-2 business days.",
+      icon: <FileText size={32} />
     },
     {
       number: "4",
-      title: "Ship It Back",
-      description: "Use our prepaid shipping label or arrange pickup. Track your return shipment.",
+      title: "Reverse Pickup",
+      description: "If approved, we'll arrange reverse pickup within 5 days of delivery. Return shipping cost equals forward shipping cost.",
       icon: <Truck size={32} />
     },
     {
       number: "5",
-      title: "Get Refund",
-      description: "Once we receive and inspect the item, your refund will be processed within 5-7 days.",
-      icon: <CreditCard size={32} />
+      title: "Resolution",
+      description: "Upon verification, we'll reprint and ship a replacement at no cost, or process a refund within 5-7 business days.",
+      icon: <CheckCircle size={32} />
     }
   ];
 
@@ -82,11 +83,11 @@ const RefundsReturnsPage = () => {
             <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-white/20">
               <RefreshCcw size={32} />
             </div>
-            <h1 className="mb-4 text-3xl font-bold md:text-4xl">Returns & Refunds</h1>
+            <h1 className="mb-4 text-3xl font-bold md:text-4xl">Returns & Refunds Policy</h1>
             <p className="text-lg opacity-90">
-              We want you to love your purchase! If you're not completely satisfied, we're here to help.
+              Quality is our priority! Learn about our print-on-demand return and refund policies.
             </p>
-            <p className="mt-2 text-sm opacity-75">Last Updated: October 22, 2025</p>
+            <p className="mt-2 text-sm opacity-75">Last Updated: January 21, 2026</p>
           </div>
         </div>
       </div>
@@ -119,20 +120,48 @@ const RefundsReturnsPage = () => {
               <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-3">
                 <div className="bg-white rounded-lg shadow-sm p-6 text-center border-t-4 border-[#e65100]">
                   <Clock size={32} className="mx-auto text-[#e65100] mb-3" />
-                  <h3 className="mb-2 font-bold text-gray-900">30-Day Window</h3>
-                  <p className="text-sm text-gray-600">Return items within 30 days of delivery</p>
+                  <h3 className="mb-2 font-bold text-gray-900">7-Day Claim Window</h3>
+                  <p className="text-sm text-gray-600">Report defects within 7 days of delivery</p>
                 </div>
                 
-                <div className="p-6 text-center bg-white border-t-4 border-green-500 rounded-lg shadow-sm">
-                  <CheckCircle size={32} className="mx-auto mb-3 text-green-500" />
-                  <h3 className="mb-2 font-bold text-gray-900">Easy Process</h3>
-                  <p className="text-sm text-gray-600">Simple returns through your account</p>
+                <div className="p-6 text-center bg-white border-t-4 border-purple-500 rounded-lg shadow-sm">
+                  <Video size={32} className="mx-auto mb-3 text-purple-500" />
+                  <h3 className="mb-2 font-bold text-gray-900">Video Evidence Required</h3>
+                  <p className="text-sm text-gray-600">Unboxing video mandatory for claims</p>
                 </div>
                 
                 <div className="p-6 text-center bg-white border-t-4 border-blue-500 rounded-lg shadow-sm">
-                  <CreditCard size={32} className="mx-auto mb-3 text-blue-500" />
-                  <h3 className="mb-2 font-bold text-gray-900">Quick Refunds</h3>
-                  <p className="text-sm text-gray-600">Refunds processed in 5-7 business days</p>
+                  <PackageCheck size={32} className="mx-auto mb-3 text-blue-500" />
+                  <h3 className="mb-2 font-bold text-gray-900">Quality Assured</h3>
+                  <p className="text-sm text-gray-600">Free replacement for defective items</p>
+                </div>
+              </div>
+
+              {/* Important Notice */}
+              <div className="mb-8 p-6 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle size={24} className="text-amber-600 flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-bold text-gray-900 mb-2">Print-on-Demand Products - Important Notice</h3>
+                    <p className="text-sm text-gray-700 mb-3">
+                      All products sold on Junooni are custom-made print-on-demand items. This means each product is 
+                      created specifically for your order. Due to the customized nature of our products:
+                    </p>
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      <li className="flex items-start gap-2">
+                        <XCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span><strong>Returns are ONLY accepted for defective, damaged, or misprinted products</strong></span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <XCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span>Wrong size, color preference, or change of mind are NOT valid return reasons</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                        <span>We use OEKO-TEX ECO PASSPORT-certified inks with world-class digital printers</span>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
               </div>
 
@@ -147,42 +176,69 @@ const RefundsReturnsPage = () => {
                   </h2>
                   
                   <p className="mb-4 leading-relaxed text-gray-600">
-                    At Junooni, we want you to be completely satisfied with your purchase. If for any reason you're not happy 
-                    with your order, we accept returns within <strong>30 days</strong> of delivery date.
+                    At Junooni, we prioritize customer satisfaction and product quality. Our return policy is designed 
+                    specifically for print-on-demand custom products.
                   </p>
 
-                  <div className="bg-orange-50 border-l-4 border-[#e65100] p-4 rounded mb-6">
-                    <h3 className="mb-2 font-semibold text-gray-900">Return Eligibility Requirements:</h3>
+                  <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded mb-6">
+                    <h3 className="mb-3 font-semibold text-gray-900 flex items-center gap-2">
+                      <AlertCircle size={20} className="text-red-600" />
+                      When Returns Are Accepted:
+                    </h3>
                     <ul className="space-y-2 text-sm text-gray-700">
                       <li className="flex items-start gap-2">
                         <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
-                        <span>Item must be in original, unused condition</span>
+                        <span><strong>Defective products:</strong> Manufacturing defects or quality issues</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
-                        <span>All original tags and labels must be attached</span>
+                        <span><strong>Damaged items:</strong> Products damaged during shipping</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
-                        <span>Item must be in original packaging when possible</span>
+                        <span><strong>Misprinted products:</strong> Incorrect designs or printing errors</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
-                        <span>Return must be initiated within 30 days of delivery</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
-                        <span>Proof of purchase (order number) required</span>
+                        <span><strong>Wrong item sent:</strong> Different product than what was ordered</span>
                       </li>
                     </ul>
                   </div>
 
-                  <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                  <div className="bg-orange-50 border-l-4 border-[#e65100] p-4 rounded mb-6">
+                    <h3 className="mb-3 font-semibold text-gray-900">Mandatory Requirements for Returns:</h3>
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      <li className="flex items-start gap-2">
+                        <Video size={16} className="text-[#e65100] mt-0.5 flex-shrink-0" />
+                        <span><strong>Unboxing Video:</strong> Must show package opening and product condition (MANDATORY)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Camera size={16} className="text-[#e65100] mt-0.5 flex-shrink-0" />
+                        <span><strong>Clear Images:</strong> Photos of the defective item from multiple angles</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Package size={16} className="text-[#e65100] mt-0.5 flex-shrink-0" />
+                        <span><strong>Original Packaging:</strong> Photos of the packaging (if damaged in shipping)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Clock size={16} className="text-[#e65100] mt-0.5 flex-shrink-0" />
+                        <span><strong>7-Day Window:</strong> Claims must be reported within 7 days of delivery</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <FileText size={16} className="text-[#e65100] mt-0.5 flex-shrink-0" />
+                        <span><strong>Order Details:</strong> Order number and description of the issue</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="p-4 border border-red-200 rounded-lg bg-red-50">
                     <p className="flex items-start gap-2 text-sm text-gray-700">
-                      <AlertCircle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                      <XCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
                       <span>
-                        <strong>Note:</strong> Items returned without meeting these requirements may not be accepted for refund. 
-                        We reserve the right to refuse returns that don't meet our policy guidelines.
+                        <strong>IMPORTANT:</strong> Claims made after 7 days from the delivery date will NOT be entertained. 
+                        Returns without unboxing video and proper evidence will be rejected. Advise customers to unbox 
+                        packages carefully - if damaged by scissors or sharp objects, refunds or replacements are not possible 
+                        unless unpacking videos are provided.
                       </span>
                     </p>
                   </div>
@@ -196,38 +252,39 @@ const RefundsReturnsPage = () => {
                   </h2>
                   
                   <p className="mb-4 leading-relaxed text-gray-600">
-                    Once we receive and inspect your returned item, we will process your refund. Here's what you need to know:
+                    Refunds are processed only for defective, damaged, or misprinted products after verification.
                   </p>
 
                   <div className="mb-6 space-y-4">
                     <div className="pl-4 border-l-4 border-gray-300">
+                      <h4 className="mb-1 font-semibold text-gray-900">Refund Eligibility</h4>
+                      <p className="text-sm text-gray-600">
+                        Refunds are <strong>ONLY</strong> issued for products that are defective, damaged, or misprinted. 
+                        Personal preferences (wrong size, change of mind, color preference) are not eligible for refunds.
+                      </p>
+                    </div>
+                    
+                    <div className="pl-4 border-l-4 border-gray-300">
                       <h4 className="mb-1 font-semibold text-gray-900">Processing Time</h4>
                       <p className="text-sm text-gray-600">
-                        Refunds are processed within <strong>5-7 business days</strong> after we receive and inspect your return.
+                        Once we receive and verify your return (damaged products will be processed within 7 days), 
+                        refunds are processed and credited via the original payment method within <strong>5-7 business days</strong>.
                       </p>
                     </div>
                     
                     <div className="pl-4 border-l-4 border-gray-300">
                       <h4 className="mb-1 font-semibold text-gray-900">Refund Method</h4>
                       <p className="text-sm text-gray-600">
-                        Refunds are issued to the original payment method used for the purchase. If you paid by credit/debit card, 
-                        the refund will appear in your account within 7-10 business days depending on your bank.
+                        Refunds are issued to the original payment method. Bank processing may take an additional 7-10 
+                        business days depending on your financial institution.
                       </p>
                     </div>
                     
                     <div className="pl-4 border-l-4 border-gray-300">
-                      <h4 className="mb-1 font-semibold text-gray-900">Shipping Costs</h4>
+                      <h4 className="mb-1 font-semibold text-gray-900">Shipping Fees</h4>
                       <p className="text-sm text-gray-600">
-                        Original shipping charges are non-refundable unless the return is due to our error (wrong item sent, 
-                        defective product, etc.). Return shipping costs are the customer's responsibility.
-                      </p>
-                    </div>
-                    
-                    <div className="pl-4 border-l-4 border-gray-300">
-                      <h4 className="mb-1 font-semibold text-gray-900">Partial Refunds</h4>
-                      <p className="text-sm text-gray-600">
-                        In some cases, only partial refunds may be granted (e.g., items with obvious signs of use, items not in 
-                        original condition, items with missing parts not due to our error).
+                        Shipping fees are <strong>non-refundable</strong> unless the return is due to our error 
+                        (defective product, misprint, wrong item sent). Return shipping cost equals forward shipping cost.
                       </p>
                     </div>
                   </div>
@@ -239,8 +296,12 @@ const RefundsReturnsPage = () => {
                     </h4>
                     <div className="space-y-2 text-sm text-gray-700">
                       <div className="flex items-center justify-between">
-                        <span>Return received and inspected:</span>
+                        <span>Claim submission and verification:</span>
                         <span className="font-medium">1-2 business days</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Return pickup and processing:</span>
+                        <span className="font-medium">5-7 business days</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span>Refund processing:</span>
@@ -252,7 +313,7 @@ const RefundsReturnsPage = () => {
                       </div>
                       <div className="flex items-center justify-between pt-2 mt-2 font-semibold border-t">
                         <span>Total estimated time:</span>
-                        <span>13-19 business days</span>
+                        <span>18-26 business days</span>
                       </div>
                     </div>
                   </div>
@@ -262,11 +323,11 @@ const RefundsReturnsPage = () => {
                 <section id="how-to-return" className="mb-8 scroll-mt-24">
                   <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
                     <Package size={24} className="text-[#e65100]" />
-                    How to Return an Item
+                    How to Return a Defective Item
                   </h2>
                   
                   <p className="mb-6 leading-relaxed text-gray-600">
-                    Returning an item is easy! Follow these simple steps:
+                    Follow these steps to report and return a defective, damaged, or misprinted product:
                   </p>
 
                   <div className="mb-6 space-y-4">
@@ -288,14 +349,30 @@ const RefundsReturnsPage = () => {
                     ))}
                   </div>
 
-                  <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+                  <div className="p-4 border border-green-200 rounded-lg bg-green-50 mb-4">
                     <h4 className="flex items-center gap-2 mb-2 font-semibold text-gray-900">
-                      <Truck size={20} className="text-green-600" />
-                      Free Return Shipping Available
+                      <PackageCheck size={20} className="text-green-600" />
+                      What Happens After Verification?
+                    </h4>
+                    <p className="text-sm text-gray-700 mb-2">
+                      Upon verification of your claim, we will:
+                    </p>
+                    <ul className="text-sm text-gray-700 space-y-1 ml-4">
+                      <li>• Reprint and ship a replacement product at <strong>no additional cost</strong></li>
+                      <li>• OR process a full refund if you prefer</li>
+                      <li>• Cover all shipping costs for the replacement</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                    <h4 className="flex items-center gap-2 mb-2 font-semibold text-gray-900">
+                      <Truck size={20} className="text-blue-600" />
+                      Reverse Pickup Details
                     </h4>
                     <p className="text-sm text-gray-700">
-                      For items that are defective, damaged, or incorrectly shipped, we provide a <strong>prepaid return shipping 
-                      label</strong> at no cost to you. For other returns, standard return shipping charges apply.
+                      A reverse pickup can be arranged within <strong>5 days of delivery</strong>. The reverse shipping 
+                      cost is equal to the forward shipping cost and is deducted from the refund amount (unless the return 
+                      is due to our error, in which case it's free).
                     </p>
                   </div>
                 </section>
@@ -308,24 +385,29 @@ const RefundsReturnsPage = () => {
                   </h2>
                   
                   <p className="mb-4 leading-relaxed text-gray-600">
-                    If you'd like to exchange an item for a different size, color, or variant, we're happy to help!
+                    Due to the custom nature of our print-on-demand products, direct exchanges are not available.
                   </p>
 
                   <div className="bg-orange-50 border-l-4 border-[#e65100] p-4 rounded mb-4">
-                    <h4 className="mb-2 font-semibold text-gray-900">How Exchanges Work:</h4>
-                    <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
-                      <li>Initiate a return request for the original item</li>
-                      <li>Place a new order for the item you want</li>
-                      <li>Once we receive your return, we'll process your refund</li>
-                      <li>Your new order will be shipped separately</li>
+                    <h4 className="mb-2 font-semibold text-gray-900">For Wrong Size or Personal Preference:</h4>
+                    <p className="text-sm text-gray-700 mb-3">
+                      If you ordered the wrong size or want a different variant, you will need to:
+                    </p>
+                    <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside ml-4">
+                      <li>Place a new order for the correct size/variant at your own expense</li>
+                      <li>You may keep or donate the original item (no return needed)</li>
                     </ol>
+                    <p className="text-sm text-gray-700 mt-3">
+                      <strong>Important:</strong> Junooni does not provide refunds or exchanges for wrong size selections 
+                      or change of mind. Please double-check size charts before ordering.
+                    </p>
                   </div>
 
-                  <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                  <div className="bg-green-50 border-l-4 border-green-600 p-4 rounded">
+                    <h4 className="mb-2 font-semibold text-gray-900">For Defective/Damaged Products:</h4>
                     <p className="text-sm text-gray-700">
-                      <strong>Why we do it this way:</strong> This ensures you get your new item as quickly as possible without 
-                      waiting for the return to be processed first. If there's a price difference, you'll be charged or refunded 
-                      accordingly.
+                      If the product is defective, damaged, or misprinted, we will provide a <strong>free replacement</strong> 
+                      after verification. Follow the return process outlined above with unboxing video and images.
                     </p>
                   </div>
                 </section>
@@ -334,55 +416,70 @@ const RefundsReturnsPage = () => {
                 <section id="non-returnable" className="mb-8 scroll-mt-24">
                   <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
                     <XCircle size={24} className="text-[#e65100]" />
-                    Non-Returnable Items
+                    Non-Returnable Scenarios
                   </h2>
                   
                   <p className="mb-4 leading-relaxed text-gray-600">
-                    For health, safety, and hygiene reasons, certain items cannot be returned unless defective or damaged upon arrival:
+                    The following situations are NOT eligible for returns or refunds:
                   </p>
 
                   <div className="grid grid-cols-1 gap-3 mb-6 md:grid-cols-2">
                     <div className="p-4 border border-red-200 rounded-lg bg-red-50">
                       <XCircle size={20} className="mb-2 text-red-600" />
-                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Personal Care Items</h4>
-                      <p className="text-xs text-gray-600">Cosmetics, fragrances, skincare products</p>
+                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Wrong Size Selection</h4>
+                      <p className="text-xs text-gray-600">Customer ordered incorrect size without defect</p>
                     </div>
                     
                     <div className="p-4 border border-red-200 rounded-lg bg-red-50">
                       <XCircle size={20} className="mb-2 text-red-600" />
-                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Undergarments & Swimwear</h4>
-                      <p className="text-xs text-gray-600">If hygiene seal is broken</p>
+                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Change of Mind</h4>
+                      <p className="text-xs text-gray-600">Customer preference or style changes</p>
                     </div>
                     
                     <div className="p-4 border border-red-200 rounded-lg bg-red-50">
                       <XCircle size={20} className="mb-2 text-red-600" />
-                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Custom/Personalized Items</h4>
-                      <p className="text-xs text-gray-600">Items made specifically for you</p>
+                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Color Variations</h4>
+                      <p className="text-xs text-gray-600">Slight color differences due to digital printing (normal)</p>
                     </div>
                     
                     <div className="p-4 border border-red-200 rounded-lg bg-red-50">
                       <XCircle size={20} className="mb-2 text-red-600" />
-                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Final Sale Items</h4>
-                      <p className="text-xs text-gray-600">Items marked as "Final Sale" or "Clearance"</p>
+                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Measurement Tolerance</h4>
+                      <p className="text-xs text-gray-600">±0.5 inches variation is standard for apparel</p>
                     </div>
                     
                     <div className="p-4 border border-red-200 rounded-lg bg-red-50">
                       <XCircle size={20} className="mb-2 text-red-600" />
-                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Gift Cards</h4>
-                      <p className="text-xs text-gray-600">Digital or physical gift cards</p>
+                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Claims After 7 Days</h4>
+                      <p className="text-xs text-gray-600">Reports made beyond 7-day window</p>
                     </div>
                     
                     <div className="p-4 border border-red-200 rounded-lg bg-red-50">
                       <XCircle size={20} className="mb-2 text-red-600" />
-                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Downloadable Products</h4>
-                      <p className="text-xs text-gray-600">Digital content once accessed</p>
+                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Missing Evidence</h4>
+                      <p className="text-xs text-gray-600">No unboxing video or insufficient proof</p>
+                    </div>
+
+                    <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+                      <XCircle size={20} className="mb-2 text-red-600" />
+                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Customer-Inflicted Damage</h4>
+                      <p className="text-xs text-gray-600">Damaged by scissors or improper handling</p>
+                    </div>
+                    
+                    <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+                      <XCircle size={20} className="mb-2 text-red-600" />
+                      <h4 className="mb-1 text-sm font-semibold text-gray-900">Used Products</h4>
+                      <p className="text-xs text-gray-600">Products that show signs of wear or use</p>
                     </div>
                   </div>
 
-                  <div className="p-4 border border-yellow-200 rounded-lg bg-yellow-50">
+                  <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                    <h4 className="font-semibold text-gray-900 mb-2">About Color Variations & Print Quality:</h4>
                     <p className="text-sm text-gray-700">
-                      <strong>Exception:</strong> If any of these items arrive damaged, defective, or are not as described, 
-                      please contact us immediately. We'll work with you to resolve the issue.
+                      We use world-class digital printers with <strong>OEKO-TEX ECO PASSPORT-certified inks</strong>. 
+                      The colors may not always match the provided designs exactly and could slightly differ due to screen 
+                      display variations and printing processes. This is normal for digital printing and not considered a defect. 
+                      We recommend ordering test samples before placing large orders.
                     </p>
                   </div>
                 </section>
@@ -391,184 +488,344 @@ const RefundsReturnsPage = () => {
                 <section id="damaged-items" className="mb-8 scroll-mt-24">
                   <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
                     <AlertCircle size={24} className="text-[#e65100]" />
-                    Damaged or Defective Items
+                    Damaged, Defective or Misprinted Items
                   </h2>
                   
                   <p className="mb-4 leading-relaxed text-gray-600">
-                    We take great care in packaging and shipping your orders, but occasionally items may arrive damaged or 
-                    have manufacturing defects. Here's what to do:
+                    We take quality seriously. If your product arrives damaged, defective, or misprinted, we'll make it right.
                   </p>
 
                   <div className="p-4 mb-4 border-l-4 border-red-600 rounded bg-red-50">
-                    <h4 className="mb-2 font-semibold text-gray-900">Report Within 48 Hours</h4>
+                    <h4 className="mb-2 font-semibold text-gray-900 flex items-center gap-2">
+                      <Clock size={20} className="text-red-600" />
+                      Report Within 7 Days - This is Mandatory
+                    </h4>
                     <p className="mb-3 text-sm text-gray-700">
-                      Please inspect your order upon delivery and report any damage or defects within <strong>48 hours</strong> of 
-                      receiving your package.
+                      Please inspect your order immediately upon delivery and report any damage, defects, or printing 
+                      errors within <strong>7 days</strong>. Claims made after 7 days will NOT be accepted.
                     </p>
                     
-                    <h4 className="mt-4 mb-2 font-semibold text-gray-900">What We Need From You:</h4>
+                    <h4 className="mt-4 mb-2 font-semibold text-gray-900 flex items-center gap-2">
+                      <Video size={20} className="text-red-600" />
+                      Required Evidence (MANDATORY):
+                    </h4>
                     <ul className="space-y-1 text-sm text-gray-700">
                       <li className="flex items-start gap-2">
                         <span className="font-bold text-red-600">•</span>
-                        <span>Clear photos of the damaged/defective item</span>
+                        <span><strong>Unboxing video</strong> showing package opening and product condition</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="font-bold text-red-600">•</span>
-                        <span>Photos of the packaging (if damaged in shipping)</span>
+                        <span>Clear photos of the damaged/defective item from multiple angles</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="font-bold text-red-600">•</span>
-                        <span>Order number and description of the issue</span>
+                        <span>Photos of the original packaging (especially if damaged in shipping)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="font-bold text-red-600">•</span>
+                        <span>Order number and detailed description of the issue</span>
                       </li>
                     </ul>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-3 mb-4">
                     <div className="p-3 pl-4 border-l-4 border-green-500 rounded-r-lg bg-green-50">
                       <p className="text-sm text-gray-700">
-                        <strong className="text-green-700">Free replacement:</strong> We'll send you a replacement at no cost, 
-                        including free shipping.
+                        <strong className="text-green-700">Free replacement:</strong> We'll reprint and ship a replacement 
+                        at no cost, including free shipping, once the claim is verified.
                       </p>
                     </div>
                     
                     <div className="p-3 pl-4 border-l-4 border-green-500 rounded-r-lg bg-green-50">
                       <p className="text-sm text-gray-700">
                         <strong className="text-green-700">Full refund option:</strong> If you prefer a refund instead of 
-                        replacement, we'll process it immediately.
+                        replacement, we'll process it within 5-7 business days after verification.
                       </p>
                     </div>
                     
                     <div className="p-3 pl-4 border-l-4 border-green-500 rounded-r-lg bg-green-50">
                       <p className="text-sm text-gray-700">
-                        <strong className="text-green-700">No return needed:</strong> In most cases, you can keep or dispose 
-                        of the damaged item.
+                        <strong className="text-green-700">Reverse pickup arranged:</strong> We'll coordinate pickup of the 
+                        defective item within 5 days of delivery at no cost to you.
                       </p>
                     </div>
                   </div>
-                </section>
 
-                {/* 7. International Returns */}
-                <section className="mb-8">
-                  <h2 className="mb-4 text-2xl font-bold text-gray-900">International Returns</h2>
-                  
-                  <p className="mb-4 leading-relaxed text-gray-600">
-                    For orders shipped outside India, please note:
-                  </p>
-
-                  <ul className="mb-4 space-y-2 text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <span className="text-[#e65100] font-bold mt-1">•</span>
-                      <span>Return shipping costs are the customer's responsibility</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-[#e65100] font-bold mt-1">•</span>
-                      <span>Items must be shipped back to our India warehouse</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-[#e65100] font-bold mt-1">•</span>
-                      <span>Customers are responsible for any customs duties or import taxes on returns</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-[#e65100] font-bold mt-1">•</span>
-                      <span>Original shipping charges are non-refundable unless the item is defective or was shipped incorrectly</span>
-                    </li>
-                  </ul>
-
-                  <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                  <div className="p-4 border border-amber-200 rounded-lg bg-amber-50">
+                    <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      <AlertCircle size={20} className="text-amber-600" />
+                      Important: Package Opening Instructions
+                    </h4>
                     <p className="text-sm text-gray-700">
-                      We recommend using a trackable shipping service for international returns. Please contact our support team 
-                      before shipping to receive detailed instructions and our return address.
+                      Customers should unbox packages carefully. If the product is damaged by scissors, knives, or sharp 
+                      objects during unboxing, <strong>refunds or replacements are NOT possible</strong> unless unpacking 
+                      videos are provided showing that the damage existed before opening.
                     </p>
                   </div>
                 </section>
 
-                {/* 8. Cancellations */}
-                <section className="mb-8">
-                  <h2 className="mb-4 text-2xl font-bold text-gray-900">Order Cancellations</h2>
+                {/* 7. RTO Orders */}
+                <section id="rto-orders" className="mb-8 scroll-mt-24">
+                  <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
+                    <Truck size={24} className="text-[#e65100]" />
+                    Undelivered Orders (RTO - Return to Origin)
+                  </h2>
                   
                   <p className="mb-4 leading-relaxed text-gray-600">
-                    Changed your mind? You can cancel your order, but timing is important:
+                    If a courier company is unable to deliver an order, the status will be marked as "Undelivered" or 
+                    "Return to Origin" (RTO), and the product will be sent back to our facility.
                   </p>
 
-                  <div className="mb-4 space-y-3">
-                    <div className="p-4 border-l-4 border-green-500 rounded-r-lg bg-green-50">
-                      <h4 className="mb-1 font-semibold text-gray-900">Within 1 Hour of Order</h4>
-                      <p className="text-sm text-gray-600">
-                        You can cancel your order yourself through your account. Go to "My Orders" and click "Cancel Order". 
-                        Full refund will be processed immediately.
+                  <div className="bg-amber-50 border-l-4 border-amber-600 p-4 rounded mb-4">
+                    <h4 className="mb-2 font-semibold text-gray-900">Common Reasons for RTO:</h4>
+                    <ul className="space-y-1 text-sm text-gray-700">
+                      <li className="flex items-start gap-2">
+                        <span className="text-amber-600 font-bold">•</span>
+                        <span>Pincode not serviceable by courier</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-amber-600 font-bold">•</span>
+                        <span>COD amount not ready with customer</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-amber-600 font-bold">•</span>
+                        <span>Customer not contactable or unreachable</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-amber-600 font-bold">•</span>
+                        <span>Incomplete or incorrect delivery address</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-amber-600 font-bold">•</span>
+                        <span>Customer refused delivery</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-amber-600 font-bold">•</span>
+                        <span>Door/premises/office closed during delivery attempts</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-amber-600 font-bold">•</span>
+                        <span>Poor weather conditions affecting delivery</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-amber-600 font-bold">•</span>
+                        <span>Self-pickup or future delivery requested by customer</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-3 mb-4">
+                    <div className="p-4 border-l-4 border-blue-500 rounded-r-lg bg-blue-50">
+                      <h4 className="font-semibold text-gray-900 mb-1">RTO Return Address</h4>
+                      <p className="text-sm text-gray-700">
+                        RTO products are sent back to: <strong>Junooni Warehouse, Saharanpur, Uttar Pradesh, India</strong>
                       </p>
                     </div>
-                    
-                    <div className="p-4 border-l-4 border-yellow-500 rounded-r-lg bg-yellow-50">
-                      <h4 className="mb-1 font-semibold text-gray-900">After 1 Hour (Before Shipping)</h4>
-                      <p className="text-sm text-gray-600">
-                        Contact our customer support team immediately. If the order hasn't shipped yet, we may be able to cancel it. 
-                        A full refund will be issued if successfully canceled.
-                      </p>
-                    </div>
-                    
+
                     <div className="p-4 border-l-4 border-red-500 rounded-r-lg bg-red-50">
-                      <h4 className="mb-1 font-semibold text-gray-900">After Shipping</h4>
-                      <p className="text-sm text-gray-600">
-                        Once an order has shipped, it cannot be canceled. You'll need to wait for delivery and then initiate a return 
-                        following our standard return process.
+                      <h4 className="font-semibold text-gray-900 mb-1">RTO Charges & Refunds</h4>
+                      <p className="text-sm text-gray-700 mb-2">
+                        <strong>No refunds are processed for RTO orders.</strong> If the pin code becomes unserviceable 
+                        after placing the order, or if delivery fails due to incorrect address provided by the customer, 
+                        Junooni is not responsible for the RTO.
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        However, if you would like to have the order re-shipped to the correct address, you can place a 
+                        new order and cover the shipping costs for re-delivery.
+                      </p>
+                    </div>
+
+                    <div className="p-4 border-l-4 border-purple-500 rounded-r-lg bg-purple-50">
+                      <h4 className="font-semibold text-gray-900 mb-1">Custom Return Address Not Available</h4>
+                      <p className="text-sm text-gray-700">
+                        A custom return address is not possible because courier companies do not offer this option. 
+                        All RTO shipments automatically return to our default warehouse address.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+                    <h4 className="font-semibold text-gray-900 mb-2">How to Avoid RTO:</h4>
+                    <ul className="space-y-1 text-sm text-gray-700">
+                      <li>✓ Double-check your delivery address before placing order</li>
+                      <li>✓ Ensure your phone number is correct and reachable</li>
+                      <li>✓ Verify that your pincode is serviceable</li>
+                      <li>✓ Keep COD amount ready if you chose Cash on Delivery</li>
+                      <li>✓ Be available during estimated delivery window</li>
+                    </ul>
+                  </div>
+                </section>
+
+                {/* 8. Lost Items */}
+                <section className="mb-8">
+                  <h2 className="mb-4 text-2xl font-bold text-gray-900">Lost or Missing Items</h2>
+                  
+                  <p className="mb-4 leading-relaxed text-gray-600">
+                    In rare cases, items may be lost during shipping.
+                  </p>
+
+                  <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded mb-4">
+                    <h4 className="font-semibold text-gray-900 mb-2">For Items Lost During Shipping:</h4>
+                    <p className="text-sm text-gray-700 mb-2">
+                      Junooni issues a refund once the shipping status confirms the item is lost. This typically requires:
+                    </p>
+                    <ul className="space-y-1 text-sm text-gray-700 ml-4">
+                      <li>• Confirmation from courier partner that item is lost</li>
+                      <li>• No delivery attempted within 15 days (Air) or 20 days (Surface)</li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="p-3 pl-4 border-l-4 border-green-500 rounded-r-lg bg-green-50">
+                      <p className="text-sm text-gray-700">
+                        <strong className="text-green-700">Option 1:</strong> We can reproduce and re-ship the product 
+                        to you at no additional cost.
+                      </p>
+                    </div>
+                    
+                    <div className="p-3 pl-4 border-l-4 border-green-500 rounded-r-lg bg-green-50">
+                      <p className="text-sm text-gray-700">
+                        <strong className="text-green-700">Option 2:</strong> Receive a full refund for the order.
                       </p>
                     </div>
                   </div>
                 </section>
 
-                {/* 9. Creator-Specific Items */}
+                {/* 9. Delayed Deliveries */}
                 <section className="mb-8">
-                  <h2 className="mb-4 text-2xl font-bold text-gray-900">Creator Merchandise Returns</h2>
+                  <h2 className="mb-4 text-2xl font-bold text-gray-900">Delayed Order Delivery</h2>
                   
                   <p className="mb-4 leading-relaxed text-gray-600">
-                    Some merchandise is produced specifically for individual creators. While our standard return policy applies, 
-                    please note:
+                    If an item isn't attempted for delivery within the expected timeframe, we have options to help you.
                   </p>
 
-                  <ul className="mb-4 space-y-2 text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <span className="text-[#e65100] font-bold mt-1">•</span>
-                      <span>Limited edition or exclusive items may have modified return windows</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-[#e65100] font-bold mt-1">•</span>
-                      <span>Pre-order items can be canceled before production begins</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-[#e65100] font-bold mt-1">•</span>
-                      <span>Autographed items are final sale unless damaged or defective</span>
-                    </li>
-                  </ul>
+                  <div className="bg-orange-50 border-l-4 border-[#e65100] p-4 rounded mb-4">
+                    <h4 className="font-semibold text-gray-900 mb-2">Timeframe for Escalation:</h4>
+                    <ul className="space-y-1 text-sm text-gray-700">
+                      <li className="flex items-center gap-2">
+                        <Clock size={16} className="text-[#e65100]" />
+                        <span><strong>Air Shipping:</strong> No delivery attempt within 15 days</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Clock size={16} className="text-[#e65100]" />
+                        <span><strong>Surface Shipping:</strong> No delivery attempt within 20 days</span>
+                      </li>
+                    </ul>
+                  </div>
 
-                  <p className="text-sm italic text-gray-600">
-                    Any special return conditions will be clearly stated on the product page before purchase.
-                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="p-4 border-2 border-[#e65100] rounded-lg bg-orange-50">
+                      <h4 className="font-semibold text-gray-900 mb-2">Resolution Option 1</h4>
+                      <p className="text-sm text-gray-700">
+                        Reproduce and re-ship the product to your address at no additional cost.
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 border-2 border-[#e65100] rounded-lg bg-orange-50">
+                      <h4 className="font-semibold text-gray-900 mb-2">Resolution Option 2</h4>
+                      <p className="text-sm text-gray-700">
+                        Receive a full refund for the order if you prefer not to wait for re-shipment.
+                      </p>
+                    </div>
+                  </div>
                 </section>
 
-                {/* 10. Contact Support */}
+                {/* 10. Order Cancellations */}
+                <section className="mb-8">
+                  <h2 className="mb-4 text-2xl font-bold text-gray-900">Order Cancellations</h2>
+                  
+                  <p className="mb-4 leading-relaxed text-gray-600">
+                    Due to our print-on-demand model, order cancellation options are limited.
+                  </p>
+
+                  <div className="mb-4 space-y-3">
+                    <div className="p-4 border-l-4 border-red-600 rounded-r-lg bg-red-50">
+                      <h4 className="mb-1 font-semibold text-gray-900">Once Order is Processed</h4>
+                      <p className="text-sm text-gray-600">
+                        <strong>Once an order is processed, it CANNOT be canceled.</strong> This is because we immediately 
+                        begin custom printing your design on the selected product. Please review your order carefully before 
+                        checkout.
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 border-l-4 border-yellow-500 rounded-r-lg bg-yellow-50">
+                      <h4 className="mb-1 font-semibold text-gray-900">Within 1 Hour of Order (Limited Window)</h4>
+                      <p className="text-sm text-gray-600">
+                        Contact our support team immediately if you need to cancel. If production hasn't started, 
+                        we may be able to cancel your order. Full refund will be issued if successfully canceled.
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 border-l-4 border-green-500 rounded-r-lg bg-green-50">
+                      <h4 className="mb-1 font-semibold text-gray-900">After Production/Shipping</h4>
+                      <p className="text-sm text-gray-600">
+                        Once production is complete or the order has shipped, cancellation is not possible. 
+                        The order will be delivered as planned.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                    <p className="text-sm text-gray-700">
+                      <strong>Pro Tip:</strong> Always double-check your design, size selection, and delivery address 
+                      before placing your order. Once production starts, changes cannot be made.
+                    </p>
+                  </div>
+                </section>
+
+                {/* 11. Measurement Tolerance */}
+                <section className="mb-8">
+                  <h2 className="mb-4 text-2xl font-bold text-gray-900">Measurement Tolerance for Apparel</h2>
+                  
+                  <p className="mb-4 leading-relaxed text-gray-600">
+                    Please be aware of standard manufacturing variations for apparel products.
+                  </p>
+
+                  <div className="bg-amber-50 border-l-4 border-amber-600 p-4 rounded">
+                    <h4 className="font-semibold text-gray-900 mb-2">±0.5 Inch Tolerance is Standard</h4>
+                    <p className="text-sm text-gray-700 mb-3">
+                      A measurement tolerance of <strong>±0.5 inches</strong> (approximately 1.27 cm) is standard for all 
+                      apparel products and is NOT eligible for returns or refunds. This is normal manufacturing variation 
+                      in the garment industry.
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      For example, if a t-shirt is listed as 28 inches in length, the actual measurement could be anywhere 
+                      from 27.5 to 28.5 inches, and this is considered within acceptable tolerance.
+                    </p>
+                    <p className="text-sm text-gray-700 mt-3">
+                      <strong>Please refer to our size chart guide</strong> and consider this tolerance when selecting sizes. 
+                      If you're between sizes or prefer a specific fit, we recommend ordering accordingly.
+                    </p>
+                  </div>
+                </section>
+
+                {/* 12. Contact Support */}
                 <section id="contact" className="scroll-mt-24">
                   <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
                     <Mail size={24} className="text-[#e65100]" />
-                    Need Help with a Return?
+                    Need Help with Returns or Refunds?
                   </h2>
                   
                   <p className="mb-6 leading-relaxed text-gray-600">
-                    Our customer support team is here to assist you with any questions or concerns about returns and refunds.
+                    Our customer support team is here to assist you with any questions about returns, refunds, or 
+                    defective products. Have your order number ready for faster service!
                   </p>
                   
                   <div className="bg-orange-50 border-l-4 border-[#e65100] p-6 rounded-lg">
-                    <h3 className="mb-4 font-bold text-gray-900">Contact Our Returns Team</h3>
+                    <h3 className="mb-4 font-bold text-gray-900">Contact Our Support Team</h3>
                     
                     <div className="space-y-3">
                       <div className="flex items-start gap-3">
                         <Mail size={20} className="text-[#e65100] mt-0.5 flex-shrink-0" />
                         <div>
-                          <p className="font-medium text-gray-900">Email</p>
+                          <p className="font-medium text-gray-900">Email (Preferred for Returns)</p>
                           <a href="mailto:support@junooni.com" className="text-[#e65100] hover:underline">
                             support@junooni.com
                           </a>
-                          <p className="mt-1 text-xs text-gray-600">Response within 24 hours</p>
+                          <p className="mt-1 text-xs text-gray-600">
+                            Send unboxing video and images for faster processing • Response within 24 hours
+                          </p>
                         </div>
                       </div>
                       
@@ -586,10 +843,13 @@ const RefundsReturnsPage = () => {
                       <div className="flex items-start gap-3">
                         <MapPin size={20} className="text-[#e65100] mt-0.5 flex-shrink-0" />
                         <div>
-                          <p className="font-medium text-gray-900">Return Address</p>
+                          <p className="font-medium text-gray-900">Warehouse & Returns Address</p>
                           <p className="text-sm text-gray-600">
-                            Junooni Returns Department<br />
+                            Junooni<br />
                             Saharanpur, Uttar Pradesh, India
+                          </p>
+                          <p className="mt-1 text-xs text-gray-600">
+                            (RTO orders automatically returned here)
                           </p>
                         </div>
                       </div>
@@ -597,8 +857,14 @@ const RefundsReturnsPage = () => {
 
                     <div className="pt-4 mt-6 border-t border-orange-200">
                       <p className="text-sm text-gray-700">
-                        <strong>Pro Tip:</strong> Have your order number ready when contacting us for faster assistance!
+                        <strong>Important:</strong> When contacting support about a defective product, please include:
                       </p>
+                      <ul className="mt-2 space-y-1 text-xs text-gray-700 ml-4">
+                        <li>• Order number</li>
+                        <li>• Unboxing video (mandatory)</li>
+                        <li>• Clear photos of the issue</li>
+                        <li>• Description of the problem</li>
+                      </ul>
                     </div>
                   </div>
                 </section>
@@ -609,33 +875,53 @@ const RefundsReturnsPage = () => {
                   
                   <div className="space-y-4">
                     <div>
-                      <h4 className="mb-1 font-semibold text-gray-900">Can I return an item I bought on sale?</h4>
+                      <h4 className="mb-1 font-semibold text-gray-900">Can I return a product if I ordered the wrong size?</h4>
                       <p className="text-sm text-gray-600">
-                        Yes! Items purchased during sales or promotions can be returned following our standard return policy, 
-                        unless marked as "Final Sale."
+                        No, wrong size selections are not eligible for returns or refunds. You would need to place a new 
+                        order for the correct size at your own expense. Please check our size charts carefully before ordering.
                       </p>
                     </div>
                     
                     <div>
-                      <h4 className="mb-1 font-semibold text-gray-900">What if I lost my order confirmation?</h4>
+                      <h4 className="mb-1 font-semibold text-gray-900">What if the color looks different from the website?</h4>
                       <p className="text-sm text-gray-600">
-                        No problem! You can find your order number by logging into your account, or contact our support team 
-                        with your email address and they can help locate your order.
+                        Slight color variations are normal with digital printing and screen display differences. Minor 
+                        color differences are not considered defects and are not eligible for returns. Significant 
+                        misprints (wrong colors entirely) are eligible for return with video evidence.
                       </p>
                     </div>
                     
                     <div>
-                      <h4 className="mb-1 font-semibold text-gray-900">Can I return part of my order?</h4>
+                      <h4 className="mb-1 font-semibold text-gray-900">Do I need to provide an unboxing video for every return?</h4>
                       <p className="text-sm text-gray-600">
-                        Yes, you can return individual items from an order. You'll receive a refund for the returned items only.
+                        Yes, an unboxing video is <strong>mandatory</strong> for all return claims. Without video proof, 
+                        we cannot verify the defect and claims will be rejected. Start recording before opening the package.
                       </p>
                     </div>
                     
                     <div>
-                      <h4 className="mb-1 font-semibold text-gray-900">Will I be charged for return shipping?</h4>
+                      <h4 className="mb-1 font-semibold text-gray-900">What happens if my order is returned to origin (RTO)?</h4>
                       <p className="text-sm text-gray-600">
-                        For damaged, defective, or incorrectly shipped items, return shipping is free. For other returns, 
-                        standard return shipping charges apply (typically ₹50-₹100 depending on location).
+                        RTO orders are not eligible for refunds. If delivery failed due to incorrect address or 
+                        unavailability, you can place a new order and pay for re-shipment. Always ensure your address 
+                        and phone number are correct.
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <h4 className="mb-1 font-semibold text-gray-900">How long does the entire refund process take?</h4>
+                      <p className="text-sm text-gray-600">
+                        From claim submission to refund in your account: approximately 18-26 business days. This includes 
+                        verification (1-2 days), pickup and return processing (5-7 days), refund processing (5-7 days), 
+                        and bank processing (7-10 days).
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="mb-1 font-semibold text-gray-900">Can I cancel my order after placing it?</h4>
+                      <p className="text-sm text-gray-600">
+                        Once an order is processed, it cannot be canceled as we immediately begin custom printing. 
+                        Contact us within 1 hour if you need to cancel - we may be able to help if production hasn't started.
                       </p>
                     </div>
                   </div>
@@ -654,7 +940,7 @@ const RefundsReturnsPage = () => {
         </div>
       </main>
       
-      {/* Footer */}
+      {/* Footer - Commented out as in original */}
       {/* <footer className="py-6 mt-12 bg-white border-t">
         <div className="container px-4 mx-auto text-center">
           <p className="text-sm text-gray-500">© {new Date().getFullYear()} Junooni. All rights reserved.</p>
@@ -671,4 +957,3 @@ const RefundsReturnsPage = () => {
 };
 
 export default RefundsReturnsPage;
-

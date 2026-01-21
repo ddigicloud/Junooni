@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ChatwootWidget from '../chatwootWidget/page';
 import Link from "next/link";
 import { 
@@ -10,8 +10,10 @@ import {
   CheckCircle, Info, FileText, Search,
   Plus, Minus, MapPin, Calendar,
   ThumbsUp, Star, Users, Globe,
-  Facebook, Twitter, Instagram, Linkedin, X
+  Facebook, Twitter, Instagram, Linkedin, X, Youtube,
+  Shield
 } from "lucide-react";
+import twitterIcon from "@assets/twitter.png"
 
 const StillNeedHelpPage = () => {
   const [expandedFaq, setExpandedFaq] = useState(null);
@@ -22,8 +24,19 @@ const StillNeedHelpPage = () => {
     email: '',
     orderNumber: '',
     category: '',
-    message: ''
+    message: '',
+    honeypot: '', // Bot trap field
+    isVerified: false // Human verification checkbox
   });
+  
+  // Track when form was first interacted with (bot protection)
+  const formStartTime = useRef(null);
+  const minFormTime = 3000; // Minimum 3 seconds to fill form (bots are faster)
+
+  // Initialize form start time when component mounts
+  useEffect(() => {
+    formStartTime.current = Date.now();
+  }, []);
 
   // Function to open Chatwoot widget
   const openChatwoot = () => {
@@ -66,15 +79,39 @@ const StillNeedHelpPage = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Bot protection checks
+    const formFillTime = Date.now() - formStartTime.current;
+    
+    // Check 1: Honeypot field (should be empty)
+    if (formData.honeypot !== '') {
+      console.log('Bot detected: honeypot field filled');
+      return; // Silent fail for bots
+    }
+    
+    // Check 2: Form filled too quickly (likely a bot)
+    if (formFillTime < minFormTime) {
+      setSubmitStatus('error');
+      setTimeout(() => setSubmitStatus(null), 5000);
+      return;
+    }
+    
+    // Check 3: Human verification checkbox
+    if (!formData.isVerified) {
+      setSubmitStatus('error');
+      setTimeout(() => setSubmitStatus(null), 5000);
+      return;
+    }
+    
     setIsSubmitting(true);
     setSubmitStatus(null);
 
@@ -93,6 +130,7 @@ ${formData.message}
 
 ---
 *Submitted via Support Request Form*
+*Form fill time: ${Math.round(formFillTime / 1000)}s*
       `.trim();
 
       // Send to your backend API endpoint that forwards to Chatwoot
@@ -108,7 +146,8 @@ ${formData.message}
           orderNumber: formData.orderNumber,
           category: formData.category,
           message: formData.message,
-          formattedMessage: messageBody
+          formattedMessage: messageBody,
+          formFillTime: formFillTime // Send for server-side validation
         })
       });
 
@@ -121,8 +160,13 @@ ${formData.message}
           email: '',
           orderNumber: '',
           category: '',
-          message: ''
+          message: '',
+          honeypot: '',
+          isVerified: false
         });
+        
+        // Reset form start time
+        formStartTime.current = Date.now();
 
         // Auto-hide success message after 10 seconds
         setTimeout(() => {
@@ -418,6 +462,18 @@ ${formData.message}
                   </p>
 
                   <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Honeypot field - hidden from users, visible to bots */}
+                    <div className="absolute opacity-0 pointer-events-none" aria-hidden="true">
+                      <input
+                        type="text"
+                        name="honeypot"
+                        value={formData.honeypot}
+                        onChange={handleInputChange}
+                        tabIndex="-1"
+                        autoComplete="off"
+                      />
+                    </div>
+
                     <div className="grid gap-4 md:grid-cols-2">
                       <div>
                         <label className="block mb-2 text-sm font-medium text-gray-900">
@@ -504,19 +560,43 @@ ${formData.message}
                         disabled={isSubmitting}
                         rows={6}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e65100] focus:border-transparent disabled:bg-gray-100"
-                        placeholder="Please describe your issue in detail. Include any relevant order numbers, error messages, or screenshots."
+                        placeholder="Please describe your issue in detail. Include any relevant order numbers, error messages."
                       ></textarea>
+                    </div>
+
+                    {/* Human Verification Checkbox */}
+                    <div className="p-4 border-2 border-gray-300 rounded-lg bg-gray-50">
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          id="isVerified"
+                          name="isVerified"
+                          checked={formData.isVerified}
+                          onChange={handleInputChange}
+                          disabled={isSubmitting}
+                          className="w-5 h-5 mt-0.5 text-[#e65100] border-gray-300 rounded focus:ring-[#e65100] focus:ring-2 disabled:bg-gray-200"
+                        />
+                        <label htmlFor="isVerified" className="flex-1 text-sm text-gray-900 cursor-pointer">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Shield size={18} className="text-[#e65100]" />
+                            <span className="font-semibold">I'm not a robot *</span>
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            Please check this box to verify you're a human and help us prevent spam
+                          </p>
+                        </label>
+                      </div>
                     </div>
 
                     <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
                       <p className="text-sm text-gray-700">
-                        <strong>💡 Tip:</strong> The more details you provide, the faster we can help! Include order numbers, screenshots, and specific error messages if applicable.
+                        <strong>💡 Tip:</strong> The more details you provide, the faster we can help! Include order numbers, and specific error messages if applicable.
                       </p>
                     </div>
 
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !formData.isVerified}
                       className="w-full md:w-auto px-8 py-3 bg-[#e65100] text-white font-medium rounded-lg hover:bg-[#d84315] transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? (
@@ -561,7 +641,12 @@ ${formData.message}
                           <div className="flex-1">
                             <h4 className="mb-1 font-semibold text-red-900">Submission Failed</h4>
                             <p className="text-sm text-red-700">
-                              There was an error submitting your request. Please try again or contact us directly at <a href="mailto:support@junooni.com" className="underline font-medium">support@junooni.com</a>
+                              {!formData.isVerified 
+                                ? "Please verify you're not a robot by checking the verification box above."
+                                : "There was an error submitting your request. Please try again or contact us directly at "}
+                              {formData.isVerified && (
+                                <a href="mailto:support@junooni.com" className="underline font-medium">support@junooni.com</a>
+                              )}
                             </p>
                           </div>
                           <button
@@ -576,7 +661,6 @@ ${formData.message}
                   </form>
                 </section>
 
-                {/* Rest of the sections remain the same... */}
                 {/* 5. Support Hours */}
                 <section id="support-hours" className="p-6 bg-white rounded-lg shadow-sm md:p-8 scroll-mt-24">
                   <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
@@ -692,7 +776,7 @@ ${formData.message}
 
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     <a 
-                      href="https://facebook.com/junooni" 
+                      href="https://www.facebook.com/p/Junooni-61577994639087/" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex flex-col items-center gap-2 p-4 transition-colors border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50"
@@ -702,7 +786,7 @@ ${formData.message}
                     </a>
 
                     <a 
-                      href="https://www.instagram.com/be_junooni?utm_source=qr&igsh=YmI4eTJhazMxMHo0" 
+                      href="https://www.instagram.com/bejunooni?utm_source=qr&igsh=YmI4eTJhazMxMHo0" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex flex-col items-center gap-2 p-4 transition-colors border border-gray-200 rounded-lg hover:border-pink-500 hover:bg-pink-50"
@@ -711,94 +795,27 @@ ${formData.message}
                       <span className="text-sm font-medium text-gray-900">Instagram</span>
                     </a>
 
-                    <a 
-                      href="https://twitter.com/junooni" 
-                      target="_blank" 
+                    <a
+                      href="https://twitter.com/junooni"
+                      target="_blank"
                       rel="noopener noreferrer"
-                      className="flex flex-col items-center gap-2 p-4 transition-colors border border-gray-200 rounded-lg hover:border-sky-500 hover:bg-sky-50"
+                      className="flex flex-col items-center gap-2 p-4 transition-colors border border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50"
                     >
-                      <Twitter size={32} className="text-sky-600" />
-                      <span className="text-sm font-medium text-gray-900">Twitter</span>
+                      <img src={twitterIcon.src} alt="X (Twitter)" className="w-8 h-8 object-contain" />
+                      <span className="text-sm font-medium text-gray-900">X</span>
                     </a>
 
                     <a 
-                      href="https://linkedin.com/company/junooni" 
+                      href="https://www.youtube.com/@bejunooni?si=p96lWYtfDUMhsII3" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="flex flex-col items-center gap-2 p-4 transition-colors border border-gray-200 rounded-lg hover:border-blue-700 hover:bg-blue-50"
+                      className="flex flex-col items-center gap-2 p-4 transition-colors border border-gray-200 rounded-lg hover:border-red-600 hover:bg-red-50"
                     >
-                      <Linkedin size={32} className="text-blue-700" />
-                      <span className="text-sm font-medium text-gray-900">LinkedIn</span>
+                      <Youtube size={32} className="text-red-600" />
+                      <span className="text-sm font-medium text-gray-900">Youtube</span>
                     </a>
                   </div>
                 </section>
-
-                {/* 8. Feedback */}
-                <section id="feedback" className="p-6 mt-8 rounded-lg shadow-sm bg-gradient-to-r from-orange-50 to-red-50 md:p-8 scroll-mt-24">
-                  <h2 className="flex items-center gap-2 mb-4 text-2xl font-bold text-gray-900">
-                    <ThumbsUp size={24} className="text-[#e65100]" />
-                    We Value Your Feedback
-                  </h2>
-                  
-                  <p className="mb-6 text-gray-700">
-                    Your feedback helps us improve! Let us know how we're doing and what we can do better.
-                  </p>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                      <h3 className="flex items-center gap-2 mb-2 font-semibold text-gray-900">
-                        <Star size={20} className="text-yellow-500" />
-                        Rate Your Experience
-                      </h3>
-                      <p className="mb-3 text-sm text-gray-600">
-                        How was your support experience? Your rating helps us serve you better.
-                      </p>
-                      <button className="text-[#e65100] font-medium hover:underline text-sm">
-                        Leave a Rating →
-                      </button>
-                    </div>
-
-                    <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                      <h3 className="flex items-center gap-2 mb-2 font-semibold text-gray-900">
-                        <MessageCircle size={20} className="text-blue-500" />
-                        Share Suggestions
-                      </h3>
-                      <p className="mb-3 text-sm text-gray-600">
-                        Have ideas to improve Junooni? We'd love to hear them!
-                      </p>
-                      <a 
-                        href="mailto:feedback@junooni.com" 
-                        className="text-[#e65100] font-medium hover:underline text-sm"
-                      >
-                        Send Feedback →
-                      </a>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Final CTA */}
-                <div className="mt-8 bg-[#e65100] text-white rounded-lg shadow-lg p-6 md:p-8 text-center">
-                  <h3 className="mb-3 text-2xl font-bold">We're Here to Help!</h3>
-                  <p className="mb-6 opacity-90">
-                    Don't hesitate to reach out. Our team is dedicated to ensuring you have the best experience with Junooni.
-                  </p>
-                  <div className="flex flex-col justify-center gap-4 sm:flex-row">
-                    <a 
-                      href="tel:+918694062222"
-                      className="px-6 py-3 bg-white text-[#e65100] font-medium rounded-lg hover:bg-gray-100 transition-colors inline-flex items-center justify-center gap-2"
-                    >
-                      <Phone size={20} />
-                      Call Now
-                    </a>
-                    <a 
-                      href="mailto:support@junooni.com"
-                      className="inline-flex items-center justify-center gap-2 px-6 py-3 font-medium text-white transition-colors rounded-lg bg-white/20 hover:bg-white/30"
-                    >
-                      <Mail size={20} />
-                      Email Us
-                    </a>
-                  </div>
-                </div>
               </div>
 
               {/* Back to Top Button */}
