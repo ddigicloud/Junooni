@@ -135,6 +135,7 @@ const EditProduct = () => {
   
   // For variant toggle
   const [hasVariants, setHasVariants] = useState(false);
+  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
 
   // For bulk editing variants
   const [bulkEditMode, setBulkEditMode] = useState(false);
@@ -884,6 +885,18 @@ const isNewVariant = (variant) => {
           };
         }) || [];
 
+        // ✅ ADD THESE DEBUG LOGS HERE (after transformedMedia is created)
+        console.log("=== IMAGE ID DEBUGGING ===");
+        console.log("Product images from API:", product.images);
+        console.log("Transformed media items:", transformedMedia);
+        transformedMedia.forEach((item, i) => {
+          console.log(`Image ${i}:`, {
+            id: item.id,
+            url: item.url,
+            isNew: item.isNew
+          });
+        });
+        console.log("=== END IMAGE DEBUGGING ===");
         // //console.log("Product Images:", product.images);
         // //console.log("Transformed Media Initial:", transformedMedia);
         // Process variant-specific image associations
@@ -2150,16 +2163,42 @@ loadProduct();
 
   // Remove an image and revoke its object URL if necessary
   const handleRemoveImage = (index: number) => {
-    setMediaItems((prev) => {
-      const removed = prev[index];
-      if (removed.file) {
-        URL.revokeObjectURL(removed.url);
-      }
-      // Return filtered array with reordered ranks
-      const filtered = prev.filter((_, i) => i !== index);
-      return filtered.map((item, i) => ({ ...item, rank: i }));
+  setMediaItems((prev) => {
+    const removed = prev[index];
+    
+    console.log("=== REMOVING IMAGE ===");
+    console.log("Image to remove:", {
+      index,
+      id: removed.id,
+      url: removed.url,
+      isNew: removed.isNew
     });
-  };
+    
+    // Only track for deletion if it has a proper img_ ID
+    if (removed.id && removed.id.startsWith('img_') && !removed.isNew) {
+      console.log(`✅ Valid image ID, marking for deletion: ${removed.id}`);
+      setDeletedImageIds(prevDeleted => {
+        if (!prevDeleted.includes(removed.id)) {
+          return [...prevDeleted, removed.id];
+        }
+        return prevDeleted;
+      });
+    } else {
+      console.log(`Skipping deletion - invalid or missing ID:`, removed.id);
+    }
+    
+    // Revoke blob URL if it's a local file
+    if (removed.file && removed.url.startsWith('blob:')) {
+      URL.revokeObjectURL(removed.url);
+    }
+    
+    console.log("=== END REMOVE IMAGE ===\n");
+    
+    // Return filtered array
+    const filtered = prev.filter((_, i) => i !== index);
+    return filtered.map((item, i) => ({ ...item, rank: i }));
+  });
+};
 
   // Move image up in order
   const handleMoveImageUp = (index: number) => {
@@ -2521,6 +2560,7 @@ const onSubmit = async (values: ProductFormValues) => {
       // Prepare images in the API format - ensure they all have proper IDs
       const images = (updatedMedia || [])
         .filter(item => item && item.url && !item.url.startsWith('blob:')) // Filter out any remaining blob URLs
+        .filter(item => !deletedImageIds.includes(item.id)) // ✅ ADD THIS: Filter out deleted images
         .map((item) => ({
           url: item.url,
           rank: item.rank || 0,
@@ -2529,7 +2569,11 @@ const onSubmit = async (values: ProductFormValues) => {
           ...(item.colorValue ? { metadata: { color: item.colorValue } } : {}),
         }));
       
-      //console.log("Final images to be sent to API:", images);
+      console.log("Final images to be sent to API:", images);
+      // ADD THIS: Include deleted image IDs in the product data
+      if (deletedImageIds.length > 0) {
+        console.log("Images to be deleted:", deletedImageIds);
+      }
       
       // --- STEP 2: Process Options (wrapped with try/catch) ---
       try {
@@ -2938,11 +2982,36 @@ const onSubmit = async (values: ProductFormValues) => {
                       // Add category if selected
                       //categories: values.category_id ? [{ id: values.category_id }] : [],
                       categories: values.category_ids?.map(id => ({ id })) || [],
-                      metadata: metadata
+                      metadata: metadata,
+                      //deleted_images: deletedImageIds.length > 0 ? deletedImageIds : undefined
                     };
                     
                     //console.log("Updating product with data:", productData);
                     
+                    // --- STEP 8.5: Delete images from server ---
+                      try {
+                        if (deletedImageIds && deletedImageIds.length > 0) {
+                          console.log(`Deleting ${deletedImageIds.length} images from server...`);
+                          
+                          // Delete each image individually
+                          for (const imageId of deletedImageIds) {
+                            try {
+                              await uploadProductImage({
+                                productId: id,
+                                imageId: imageId,
+                                action: 'delete'
+                              });
+                              console.log(`Successfully deleted image: ${imageId}`);
+                            } catch (deleteError) {
+                              console.error(`Failed to delete image ${imageId}:`, deleteError);
+                              // Continue deleting other images even if one fails
+                            }
+                          }
+                        }
+                      } catch (imageDeleteError) {
+                        console.error('Error deleting images:', imageDeleteError);
+                        // Don't fail the entire save operation if image deletion fails
+                      }
                     // --- STEP 9: Make API Calls ---
                     try {
                       // First, update the main product
@@ -3038,6 +3107,21 @@ const onSubmit = async (values: ProductFormValues) => {
                         // --- STEP 10: Handle Success ---
                         // Reset unsaved changes flag
                         setHasUnsavedVariantChanges(false);
+
+                        // ✅ ADD THIS: Update mediaItems state to remove deleted images
+                        if (deletedImageIds.length > 0) {
+                          setMediaItems(prevItems => {
+                            const filtered = prevItems.filter(item => 
+                              !deletedImageIds.includes(item.id)
+                            );
+                            return filtered.map((item, index) => ({
+                              ...item,
+                              rank: index
+                            }));
+                          });
+                        }
+                        // ADD THIS: Reset deleted images tracking
+                        setDeletedImageIds([]);
                         
                         // Show success message
                         toast({

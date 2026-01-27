@@ -2630,6 +2630,12 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   const renderEngine = determineRenderEngine();
   const shouldUseDirectRender = renderEngine === 'canvas'; // 🔥 Only use direct render for Canvas
 
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect();
+  }, [onSelect]);
+  
   // 🔥 NEW: Use renderMockupDirectly ONLY for Canvas engine
   useEffect(() => {
     if (!shouldUseDirectRender) {
@@ -2843,7 +2849,9 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
 
   return (
     <button
-      onClick={onSelect}
+      // onClick={onSelect}
+      onClick={handleClick}  // ✅ Use the handler here
+      type="button" 
       className={`w-full p-0 sm:p-2 sm:pt-2 border rounded-lg transition-all relative touch-manipulation ${
         isSelected
           ? 'border-white bg-white ring-2 ring-white'
@@ -3591,7 +3599,7 @@ const EnhancedCanvas: React.FC<{ productData: PayloadProductData }> = ({ product
   // =====================================
   // STATE MANAGEMENT
   // =====================================
-  
+  const [userSelectedMockupInPreview, setUserSelectedMockupInPreview] = useState(false);
   const [activeView, setActiveView] = useState<'design' | 'preview'>('design');
   const [activeTab, setActiveTab] = useState<'product' | 'colors' | 'sizes' | 'upload' | 'library' | 'layers' | 'pricing'>('product');
   const [debugMode, setDebugMode] = useState(false);
@@ -8099,7 +8107,10 @@ const renderPreview = useCallback(() => {
                 return (
                   <div key={`mockup-${mockup.id}`}>
                     <button
-                    onSelect={() => {
+                      onSelect={() => { setSelectedHeroMockup(mockup);}}
+                      onClick={() => {
+                        console.log('Mockup clicked:', mockup.title);
+                        setUserSelectedMockupInPreview(true); // ✅ Mark as manually selected
                         setSelectedHeroMockup(mockup);
                       }}
                       className={`w-full p-2 border rounded-lg transition-all touch-manipulation ${
@@ -8341,7 +8352,11 @@ const renderPreview = useCallback(() => {
                     return (
                       <div key={`mobile-mockup-${mockup.id}`} className="flex-shrink-0">
                         <button
-                          onClick={() => setSelectedHeroMockup(mockup)}
+                          onClick={() => {
+                            console.log('Mobile mockup clicked:', mockup.title);
+                            setUserSelectedMockupInPreview(true); // ✅ Mark as manually selected
+                            setSelectedHeroMockup(mockup);
+                          }}
                           className={`w-20 h-20 p-1 border rounded-lg transition-all touch-manipulation ${
                             isSelectedMockup
                               ? 'border-orange-500 ring-orange-200'
@@ -9563,9 +9578,16 @@ useEffect(() => {
   // Auto-select hero mockup based on active color
   // Auto-select hero mockup based on active color - PRESERVE AREA on color change
 // Auto-select hero mockup based on active color AND active area
+// Auto-select hero mockup based on active color AND active area
+// Auto-select hero mockup based on active color AND active area
 useEffect(() => {
   // 🔥 Safety check for required values
   if (!allMockups.length || !activeColor || !activeArea) {
+    return;
+  }
+  
+  // 🔥 NEW: If user has manually selected in preview mode, don't auto-change
+  if (userSelectedMockupInPreview && activeView === 'preview') {
     return;
   }
   
@@ -9612,24 +9634,12 @@ useEffect(() => {
     bestMockup = neutralMockups[0];
   }
   
-  // 🔥 FIX: Check if the current selected mockup is correct for this area and color
-  const currentMockupArea = selectedHeroMockup?.area?.[0]?.areaName?.toLowerCase();
-  const currentMockupColor = selectedHeroMockup?.photoColor?.toLowerCase();
-  const targetColorLower = activeColor?.toLowerCase();
-  
-  // Determine if current mockup is wrong
-  const needsUpdate = !selectedHeroMockup || 
-                      currentMockupArea !== targetArea?.toLowerCase() ||
-                      (currentMockupColor !== targetColorLower && 
-                       currentMockupColor !== '#ffffff' && 
-                       currentMockupColor !== '#00000000' &&
-                       currentMockupColor !== 'transparent');
-  
   // Update mockup if needed
-  if (needsUpdate && bestMockup) {
+  if (bestMockup) {
     setSelectedHeroMockup(bestMockup);
   }
-}, [activeColor, activeArea, allMockups, productData, activeTechnology, activeSize, selectedHeroMockup]);
+}, [activeColor, activeArea, allMockups, productData, activeTechnology, activeSize, userSelectedMockupInPreview, activeView]);
+// ✅ REMOVED selectedHeroMockup from dependencies to prevent re-triggering
     
     useEffect(() => {
       const transformer = transformerRef.current;
@@ -9810,9 +9820,10 @@ useEffect(() => {
     setSelectedId(null);
   }, [activeArea]); // âœ… REMOVED triggerUpdate from deps
     
+    // Reset manual selection flag when entering preview mode
     useEffect(() => {
       if (activeView === 'preview') {
-        setSelectedId(null);
+        setUserSelectedMockupInPreview(false);
       }
     }, [activeView]);
     

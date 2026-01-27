@@ -1,5 +1,5 @@
 import { CreditCard } from "lucide-react"
-import { isStripe, paymentInfoMap } from "@lib/constants"
+import { paymentInfoMap } from "@lib/constants"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import { formatDate } from "@lib/data/date-util"
@@ -15,9 +15,23 @@ const PaymentDetails = ({ order }: PaymentDetailsProps) => {
     return null
   }
 
+  // Determine payment method display name
+  const getPaymentMethodName = () => {
+    // Check for manual payment first
+    if (payment.provider_id === "manual" || 
+        payment.provider_id === "pp_system_default" ||
+        payment.provider_id.toLowerCase().includes("manual")) {
+      return "COD"
+    }
+    
+    // Then check paymentInfoMap
+    return paymentInfoMap[payment.provider_id]?.title ||
+           payment.provider_id.replace("_", " ").toUpperCase()
+  }
+
   return (
     <div className="mb-6 overflow-hidden bg-white rounded-lg sm:shadow md:shadow">
-      <div className="sm:p-6 md:p-6 sm:px-0 py-3">
+      <div className="py-3 sm:p-6 md:p-6 sm:px-0">
         <div className="flex items-center mb-4">
           <div className="flex-shrink-0">
             <div className="flex items-center justify-center w-10 h-10 text-orange-600 bg-orange-100 rounded-full">
@@ -44,14 +58,8 @@ const PaymentDetails = ({ order }: PaymentDetailsProps) => {
                   className="text-sm font-medium text-gray-900"
                   data-testid="payment-method"
                 >
-                  {paymentInfoMap[payment.provider_id]?.title ||
-                    payment.provider_id.replace("_", " ").toUpperCase()}
+                  {getPaymentMethodName()}
                 </p>
-                {isStripe(payment.provider_id) && payment.data?.card_last4 && (
-                  <p className="text-sm text-gray-600">
-                    •••• •••• •••• {payment.data.card_last4}
-                  </p>
-                )}
               </div>
             </div>
           </div>
@@ -82,7 +90,7 @@ const PaymentDetails = ({ order }: PaymentDetailsProps) => {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Status:</span>
                 <span className="font-medium text-green-600">
-                  {payment.captured_at ? "Paid" : "Authorized"}
+                  {payment.captured_at ? "Paid" : "COD"}
                 </span>
               </div>
             </div>

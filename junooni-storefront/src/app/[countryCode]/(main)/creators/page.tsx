@@ -34,7 +34,7 @@ interface Vendor {
   handle: string
   logo?: string
   coverphoto?: string
-  creator_title?: string
+  creator_category?: string
   creator_bio?: string
   popular_product?: string
 }
@@ -191,8 +191,8 @@ const VendorsDiscoveryPage = () => {
     if (allVendors.length > 0) {
       const categorySet = new Set<string>()
       allVendors.forEach((vendor) => {
-        if (vendor.creator_title) {
-          categorySet.add(vendor.creator_title)
+        if (vendor.creator_category) {
+          categorySet.add(vendor.creator_category)
         }
       })
 
@@ -262,7 +262,7 @@ const VendorsDiscoveryPage = () => {
     if (activeCategory !== "all") {
       filtered = filtered.filter(
         (vendor) =>
-          vendor.creator_title?.toLowerCase() === activeCategory.toLowerCase()
+          vendor.creator_category?.toLowerCase() === activeCategory.toLowerCase()
       )
     }
 
@@ -311,7 +311,7 @@ const VendorsDiscoveryPage = () => {
   // Replace the VendorCard component with this fixed version:
 
 const VendorCard = ({ vendor }: { vendor: Vendor }) => {
-  const { id, name, handle, logo, coverphoto, creator_title, creator_bio } = vendor
+  const { id, name, handle, logo, coverphoto, creator_category, creator_bio } = vendor
   const isFollowed = followedVendors[id] || false
   const isLoading = isLoadingFollow[id] || false
   const followerCount = followerCounts[id] || 0
@@ -350,10 +350,10 @@ const VendorCard = ({ vendor }: { vendor: Vendor }) => {
             <h3 className="mb-1 text-base font-semibold truncate">{name}</h3>
             <p className="mb-2 text-xs text-gray-500">@{handle}</p>
 
-            {creator_title && (
+            {creator_category && (
               <div className="flex justify-center mb-2">
                 <span className="inline-block px-2 py-0.5 bg-orange-50 text-[#e65100] text-xs rounded-full">
-                  {creator_title}
+                  {creator_category}
                 </span>
               </div>
             )}

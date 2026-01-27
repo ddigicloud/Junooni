@@ -117,9 +117,9 @@ const getItemTaxPerUnit = (item: OrderItem) => {
   if (!item.tax_lines || item.tax_lines.length === 0) return 0;
   
   const totalTax = item.tax_lines.reduce((sum, taxLine) => {
-    const taxAmount = typeof taxLine.subtotal === 'number' 
-      ? taxLine.subtotal 
-      : parseFloat(taxLine.subtotal) || 0;
+    const taxAmount = typeof taxLine.total === 'number' 
+      ? taxLine.total 
+      : parseFloat(taxLine.total) || 0;
     return sum + taxAmount;
   }, 0);
   
@@ -128,16 +128,57 @@ const getItemTaxPerUnit = (item: OrderItem) => {
 };
 
 // Calculate payment processing fee
-const calculatePaymentProcessingFee = (totalAmount: number) => {
-  const gatewayFee = totalAmount * 0.02; // 2% of total
-  const gstOnFee = gatewayFee * 0.18; // 18% GST on gateway fee
+// ✅ UPDATED: Calculate payment processing fee based on payment method
+const calculatePaymentProcessingFee = (totalAmount: number, paymentMethod: string = 'unknown') => {
+  // For COD or manual payments - flat ₹35 fee
+  if (paymentMethod === 'cod' || paymentMethod === 'manual' || paymentMethod === 'cash_on_delivery') {
+    return {
+      gatewayFee: 35,
+      gstOnFee: 0,
+      totalProcessingFee: 35,
+      feeType: 'flat_cod'
+    };
+  }
+  
+  // For online payments (Razorpay) - 2% + 18% GST
+  const gatewayFee = totalAmount * 0.02;
+  const gstOnFee = gatewayFee * 0.18;
   const totalProcessingFee = gatewayFee + gstOnFee;
   
-  return {
-    gatewayFee,
-    gstOnFee,
-    totalProcessingFee
+  return { 
+    gatewayFee, 
+    gstOnFee, 
+    totalProcessingFee,
+    feeType: 'razorpay_online'
   };
+};
+
+// ✅ NEW: Detect payment method from order
+const detectPaymentMethod = (paymentCollections?: any[]): string => {
+  // Check payment collections for Razorpay
+  if (paymentCollections && paymentCollections.length > 0) {
+    for (const collection of paymentCollections) {
+      // Check payment providers
+      if (collection.payment_providers) {
+        const hasRazorpay = collection.payment_providers.some((provider: any) => 
+          provider.id?.toLowerCase().includes('razorpay') || 
+          provider.provider_id?.toLowerCase().includes('razorpay')
+        );
+        if (hasRazorpay) return 'razorpay';
+      }
+      
+      // Check payments
+      if (collection.payments && collection.payments.length > 0) {
+        const hasRazorpay = collection.payments.some((payment: any) => 
+          payment.provider_id?.toLowerCase().includes('razorpay')
+        );
+        if (hasRazorpay) return 'razorpay';
+      }
+    }
+  }
+  
+  // If not Razorpay, treat as COD
+  return 'cod';
 };
 
 // ✅ UPDATED: Mark as Shipped Modal Component
@@ -687,7 +728,9 @@ const calculateFinalVendorProfit = (order: VendorOrder) => {
   })();
 
   // Calculate payment processing fee
-  const { totalProcessingFee } = calculatePaymentProcessingFee(netSubtotal);
+  //const { totalProcessingFee } = calculatePaymentProcessingFee(netSubtotal);
+  const paymentMethod = detectPaymentMethod(order.payment_collections);
+  const { totalProcessingFee, feeType } = calculatePaymentProcessingFee(netSubtotal, paymentMethod);
   
   // Calculate final vendor profit after processing fee
   const finalVendorProfit = netVendorProfit - totalProcessingFee;
@@ -696,7 +739,9 @@ const calculateFinalVendorProfit = (order: VendorOrder) => {
     netVendorProfit,
     totalProcessingFee,
     finalVendorProfit,
-    netSubtotal
+    netSubtotal,
+    paymentMethod,  // ✅ ADDED: Return payment method for display
+    feeType         // ✅ ADDED: Return fee type for display
   };
 };
 
@@ -1052,7 +1097,7 @@ const PaymentStatusBadge = ({ status, paymentCollections, vendorPaymentDetails, 
   // ✅ CHECK FOR REFUNDED OR CANCELED STATUS FIRST
   if (status === "refunded" || orderStatus === "canceled" || canceledAt) {
     return (
-      <Badge variant="outline" className="font-medium text-red-700 bg-red-50 border-red-200">
+      <Badge variant="outline" className="font-medium text-red-700 border-red-200 bg-red-50">
         <XCircle className="w-3 h-3 mr-1" />
         Refunded
       </Badge>
@@ -1098,14 +1143,14 @@ const PaymentStatusBadge = ({ status, paymentCollections, vendorPaymentDetails, 
   
   if (isCOD) {
     return (
-      <Badge variant="outline" className="font-medium text-orange-700 bg-orange-50 border-orange-200">
+      <Badge variant="outline" className="font-medium text-orange-700 border-orange-200 bg-orange-50">
         <Package className="w-3 h-3 mr-1" />
         COD
       </Badge>
     );
   } else {
     return (
-      <Badge variant="outline" className="font-medium text-green-700 bg-green-50 border-green-200">
+      <Badge variant="outline" className="font-medium text-green-700 border-green-200 bg-green-50">
         <CreditCard className="w-3 h-3 mr-1" />
         Paid
       </Badge>
@@ -1222,7 +1267,12 @@ const calculateVendorPayoutTotals = (items: OrderItem[]) => {
   })();
 
   // ✅ NEW: Calculate payment processing fee
-  const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(netSubtotal);
+  //const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(netSubtotal);
+  const paymentMethod = detectPaymentMethod(order.payment_collections);
+  const { gatewayFee, gstOnFee, totalProcessingFee, feeType } = calculatePaymentProcessingFee(
+    netSubtotal,
+    paymentMethod
+  );
   
   // ✅ NEW: Calculate final vendor profit after processing fee
   const finalVendorProfit = netVendorProfit - totalProcessingFee;
@@ -1415,9 +1465,12 @@ const calculateVendorPayoutTotals = (items: OrderItem[]) => {
               )}
               
               {/* Processing Fee */}
+              {/* Processing Fee */}
               <div className="flex justify-between">
                 <span className="text-gray-600">
-                  Processing fee (2% + GST)
+                  <span className="ml-1 text-xs text-gray-500">
+                    ({feeType === 'flat_cod' ? 'COD fee' : '2% + GST on online payment'})
+                  </span>
                   <span className="ml-1 text-xs text-gray-500">on {formatPrice(netSubtotal, order.currency_code)}</span>
                 </span>
                 <span className="text-red-600">-{formatPrice(totalProcessingFee, order.currency_code)}</span>
@@ -2858,7 +2911,12 @@ const generateInvoice = () => {
       })();
       
       const itemSubtotal = calculateItemTotals(items);
-      const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(itemSubtotal);
+      //const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(itemSubtotal);
+      const paymentMethod = detectPaymentMethod(order.payment_collections);
+      const { gatewayFee, gstOnFee, totalProcessingFee, feeType } = calculatePaymentProcessingFee(
+        itemSubtotal,
+        paymentMethod
+      );
       const finalVendorProfit = netVendorProfit - totalProcessingFee;
       
       const finalY = doc.lastAutoTable.finalY + 12;  // ✅ Reduced spacing
@@ -2953,11 +3011,16 @@ const generateInvoice = () => {
       }
       
       doc.text(paymentStatus, 58, paymentY);
+
+      const paymentMethod = detectPaymentMethod(order.payment_collections);
+      const feeDescription = paymentMethod === 'cod' 
+        ? "* Flat ₹35 processing fee applied for COD orders"
+        : "* Payment processing fees include 2% gateway fee plus 18% GST for online payments";
       
       doc.setTextColor(100, 100, 100);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(smallFontSize);
-      doc.text("* Payment processing fees include 2% gateway fee plus 18% GST", 20, paymentY + 7);
+      doc.text(feeDescription, 20, paymentY + 7);
       
       // ✅ UPDATED: Larger page number
       doc.setFontSize(smallFontSize);
@@ -4278,7 +4341,7 @@ const generateInvoice = () => {
                       {order.status === "canceled" || order.canceled_at ? (
                         <StatusBadge status="canceled" />
                       ) : order.payment_status === "refunded" ? (
-                        <Badge variant="outline" className="font-medium text-red-700 bg-red-50 border-red-200">
+                        <Badge variant="outline" className="font-medium text-red-700 border-red-200 bg-red-50">
                           <XCircle className="w-3 h-3 mr-1" />
                           Refunded
                         </Badge>

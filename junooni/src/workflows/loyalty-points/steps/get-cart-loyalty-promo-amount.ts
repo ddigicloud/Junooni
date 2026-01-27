@@ -40,4 +40,3 @@ export const getCartLoyaltyPromoAmountStep = createStep(
     return new StepResponse(amount)
   }
 )
-

@@ -19,18 +19,18 @@ export const deductPurchasePointsStep = createStep(
       LOYALTY_MODULE
     )
 
-    const pointsToDeduct = await loyaltyModuleService.calculatePointsFromAmount(
-      amount
-    )
+    // const pointsToDeduct = await loyaltyModuleService.calculatePointsFromAmount(
+    //   amount
+    // )
 
     const result = await loyaltyModuleService.deductPoints(
       customer_id,
-      pointsToDeduct
+      amount
     )
 
     return new StepResponse(result, {
       customer_id,
-      points: pointsToDeduct
+      points: amount
     })
   },
   async (data, { container }) => {
@@ -49,6 +49,5 @@ export const deductPurchasePointsStep = createStep(
     )
   }
 )
-
 
 

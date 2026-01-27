@@ -131,7 +131,7 @@
 "use client"
 
 import { HttpTypes } from "@medusajs/types"
-import { Check, Clock } from "lucide-react"
+import { Check, Clock, Banknote } from "lucide-react"
 import { formatDate } from "@lib/data/date-util"
 
 type OrderDetailsProps = {
@@ -145,9 +145,34 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
     return formatted.slice(0, 1).toUpperCase() + formatted.slice(1)
   }
 
+  // Check if order is COD (Cash on Delivery)
+  const isCODOrder = () => {
+    // Check metadata for payment method
+    if (order.metadata?.payment_method === "cod" || order.metadata?.payment_method === "cash_on_delivery") {
+      return true
+    }
+    
+    // Check if payment provider is manual or COD related
+    const paymentProvider = order.payment_collections?.[0]?.payments?.[0]?.provider_id
+    if (paymentProvider === "pp_system_default" || paymentProvider?.includes("manual")) {
+      return true
+    }
+    
+    return false
+  }
+
   const formatPaymentStatus = (status: string) => {
+    // If COD order, always show "COD"
+    if (isCODOrder()) {
+      return "COD"
+    }
+    
+    // Standard payment status formatting
     if (status === "captured") {
       return "Paid"
+    }
+    if (status === "authorized") {
+      return "Authorized"
     }
     const formatted = status.split("_").join(" ")
     return formatted.slice(0, 1).toUpperCase() + formatted.slice(1)
@@ -165,6 +190,13 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
       case "fulfilled":
         return (
           <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <Clock size={14} className="mr-1" />
+            {formatStatus(status)}
+          </div>
+        )
+      case "shipped":
+        return (
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
             <Clock size={14} className="mr-1" />
             {formatStatus(status)}
           </div>
@@ -201,19 +233,44 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
   }
 
   const getPaymentStatusBadge = (status: string) => {
+    // Check if COD order first
+    if (isCODOrder()) {
+      return (
+        <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+          <Banknote size={14} className="mr-1" />
+          COD
+        </div>
+      )
+    }
+
+    // Standard payment status badges
     switch (status) {
       case "captured":
         return (
           <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             <Check size={14} className="mr-1" />
-            {formatPaymentStatus(status)}
+            Paid
+          </div>
+        )
+      case "authorized":
+        return (
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <Check size={14} className="mr-1" />
+            Authorized
           </div>
         )
       case "awaiting":
         return (
           <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
             <Clock size={14} className="mr-1" />
-            {formatPaymentStatus(status)}
+            Awaiting
+          </div>
+        )
+      case "pending":
+        return (
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            <Clock size={14} className="mr-1" />
+            Pending
           </div>
         )
       default:

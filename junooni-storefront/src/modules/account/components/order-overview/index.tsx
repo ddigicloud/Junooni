@@ -23,6 +23,13 @@ type OrderOverviewProps = {
 }
 
 const OrderOverview = ({ orders }: OrderOverviewProps) => {
+  // Log orders data on component mount/update
+  // console.log('📋 OrderOverview rendered with orders:', {
+  //   totalOrders: orders?.length,
+  //   orders: orders,
+  //   firstOrderItems: orders?.[0]?.items
+  // })
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [ordersPerPage, setOrdersPerPage] = useState(6)
@@ -142,6 +149,175 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
     )
   }
 
+  // NEW: Function to get variant image from metadata
+  const getVariantImage = (item: any) => {
+    // console.log('🔍 Checking variant image for item:', {
+    //   itemId: item.id,
+    //   itemTitle: item.title,
+    //   hasVariant: !!item.variant,
+    //   hasMetadata: !!item.variant?.metadata,
+    //   metadata: item.variant?.metadata,
+    //   defaultThumbnail: item.thumbnail
+    // })
+    
+    if (item.variant?.metadata) {
+      const metadata = item.variant.metadata
+      //console.log('📦 Variant metadata found:', metadata)
+      
+      // Priority 1: Check for 'variant_images' (JSON string array)
+      if (metadata.variant_images) {
+        try {
+          const variantImages = typeof metadata.variant_images === 'string' 
+            ? JSON.parse(metadata.variant_images) 
+            : metadata.variant_images
+          
+          if (Array.isArray(variantImages) && variantImages.length > 0) {
+            //console.log('✅ Using first image from variant_images:', variantImages[0])
+            return variantImages[0]
+          }
+        } catch (error) {
+          //console.error('❌ Error parsing variant_images:', error)
+        }
+      }
+      
+      // Priority 2: Check for 'color_images' (JSON string array of objects)
+      if (metadata.color_images) {
+        try {
+          const colorImages = typeof metadata.color_images === 'string'
+            ? JSON.parse(metadata.color_images)
+            : metadata.color_images
+          
+          if (Array.isArray(colorImages) && colorImages.length > 0 && colorImages[0].url) {
+           //console.log('✅ Using first image from color_images:', colorImages[0].url)
+            return colorImages[0].url
+          }
+        } catch (error) {
+          //console.error('❌ Error parsing color_images:', error)
+        }
+      }
+      
+      // Priority 3: Check for 'option_images' (JSON string array of objects)
+      if (metadata.option_images) {
+        try {
+          const optionImages = typeof metadata.option_images === 'string'
+            ? JSON.parse(metadata.option_images)
+            : metadata.option_images
+          
+          if (Array.isArray(optionImages) && optionImages.length > 0 && optionImages[0].url) {
+            //console.log('✅ Using first image from option_images:', optionImages[0].url)
+            return optionImages[0].url
+          }
+        } catch (error) {
+          //console.error('❌ Error parsing option_images:', error)
+        }
+      }
+      
+      // Priority 4: Check for 'image' field in metadata
+      if (metadata.image && typeof metadata.image === 'string') {
+        //console.log('✅ Using metadata.image:', metadata.image)
+        return metadata.image
+      }
+      
+      // Priority 5: Check for 'thumbnail' field in metadata
+      if (metadata.thumbnail && typeof metadata.thumbnail === 'string') {
+        //console.log('✅ Using metadata.thumbnail:', metadata.thumbnail)
+        return metadata.thumbnail
+      }
+      
+      // Priority 6: Check for 'image_url' field in metadata
+      if (metadata.image_url && typeof metadata.image_url === 'string') {
+        //console.log('✅ Using metadata.image_url:', metadata.image_url)
+        return metadata.image_url
+      }
+      
+      //console.log('⚠️ No valid image found in metadata, using fallback')
+    } else {
+      //console.log('⚠️ No variant metadata found, using default thumbnail')
+    }
+    
+    // Fall back to the item's default thumbnail
+    console.log('🔄 Fallback to item.thumbnail:', item.thumbnail)
+    return item.thumbnail
+  }
+
+  // NEW: Function to get variant images array from metadata
+  const getVariantImages = (item: any) => {
+    // console.log('🖼️ Checking variant images array for item:', {
+    //   itemId: item.id,
+    //   hasVariant: !!item.variant,
+    //   hasMetadataImages: !!item.variant?.metadata?.variant_images,
+    //   metadataImages: item.variant?.metadata?.variant_images
+    // })
+    
+    if (item.variant?.metadata) {
+      const metadata = item.variant.metadata
+      
+      // Priority 1: Check for 'variant_images' (JSON string array)
+      if (metadata.variant_images) {
+        try {
+          const variantImages = typeof metadata.variant_images === 'string'
+            ? JSON.parse(metadata.variant_images)
+            : metadata.variant_images
+          
+          if (Array.isArray(variantImages) && variantImages.length > 0) {
+            //console.log('✅ Using variant_images array:', variantImages)
+            return variantImages
+          }
+        } catch (error) {
+          //console.error('❌ Error parsing variant_images:', error)
+        }
+      }
+      
+      // Priority 2: Check for 'color_images' and extract URLs
+      if (metadata.color_images) {
+        try {
+          const colorImages = typeof metadata.color_images === 'string'
+            ? JSON.parse(metadata.color_images)
+            : metadata.color_images
+          
+          if (Array.isArray(colorImages) && colorImages.length > 0) {
+            const imageUrls = colorImages.map((img: any) => img.url).filter(Boolean)
+            if (imageUrls.length > 0) {
+              //console.log('✅ Using color_images URLs:', imageUrls)
+              return imageUrls
+            }
+          }
+        } catch (error) {
+          //console.error('❌ Error parsing color_images:', error)
+        }
+      }
+      
+      // Priority 3: Check for 'option_images' and extract URLs
+      if (metadata.option_images) {
+        try {
+          const optionImages = typeof metadata.option_images === 'string'
+            ? JSON.parse(metadata.option_images)
+            : metadata.option_images
+          
+          if (Array.isArray(optionImages) && optionImages.length > 0) {
+            const imageUrls = optionImages.map((img: any) => img.url).filter(Boolean)
+            if (imageUrls.length > 0) {
+              //console.log('✅ Using option_images URLs:', imageUrls)
+              return imageUrls
+            }
+          }
+        } catch (error) {
+          //console.error('❌ Error parsing option_images:', error)
+        }
+      }
+      
+      // Priority 4: Check for 'images' array
+      if (metadata.images && Array.isArray(metadata.images)) {
+        //console.log('✅ Using metadata.images array:', metadata.images)
+        return metadata.images
+      }
+    }
+    
+    //console.log('⚠️ No images array in metadata, returning empty array')
+    // Fall back to empty array (Thumbnail component will use thumbnail prop)
+    return []
+  }
+
   // Render order card
   const renderOrderCard = (order: HttpTypes.StoreOrder) => {
     const numberOfLines =
@@ -178,10 +354,14 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
             <div className="flex items-center" title="Order Total">
               <CreditCard size={14} className="mr-1 text-gray-400" />
               <span data-testid="order-amount" className="font-medium">
-                {convertToLocale({
-                  amount: order.total,
-                  currency_code: order.currency_code,
-                })}
+                {order.total && order.currency_code ? (
+                    convertToLocale({
+                      amount: order.total,
+                      currency_code: order.currency_code,
+                    })
+                  ) : (
+                    'N/A'
+                )}
               </span>
             </div>
 
@@ -194,38 +374,55 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
           </div>
         </div>
 
-        {/* Order Items */}
+        {/* Order Items - UPDATED to use variant images from metadata */}
         <div className="p-4">
           <div className="flex pb-2 -mx-1 overflow-x-auto">
-            {order.items?.slice(0, 5).map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-col flex-shrink-0 px-1"
-                style={{ width: "100px" }}
-                data-testid="order-item"
-              >
-                <div className="w-full mb-1 overflow-hidden border border-gray-100 rounded aspect-square bg-gray-50">
-                  <Thumbnail
-                    thumbnail={item.thumbnail}
-                    images={[]}
-                    size="full"
-                  />
+            {order.items?.slice(0, 5).map((item) => {
+              // console.log('🎨 Rendering order item:', {
+              //   orderId: order.id,
+              //   itemId: item.id,
+              //   itemTitle: item.title,
+              //   fullItemData: item
+              // })
+              
+              const variantThumbnail = getVariantImage(item)
+              const variantImages = getVariantImages(item)
+              
+              // console.log('🎯 Final image data for Thumbnail component:', {
+              //   thumbnail: variantThumbnail,
+              //   images: variantImages
+              // })
+              
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col flex-shrink-0 px-1"
+                  style={{ width: "100px" }}
+                  data-testid="order-item"
+                >
+                  <div className="w-full mb-1 overflow-hidden border border-gray-100 rounded aspect-square bg-gray-50">
+                    <Thumbnail
+                      thumbnail={variantThumbnail}
+                      images={variantImages}
+                      size="full"
+                    />
+                  </div>
+                  <div className="flex items-center overflow-hidden text-xs text-gray-700 whitespace-nowrap">
+                    <span
+                      className="truncate"
+                      data-testid="item-title"
+                      title={item.title}
+                      style={{ maxWidth: "80px" }}
+                    >
+                      {item.title}
+                    </span>
+                    <span className="flex-shrink-0 ml-1 text-gray-500">
+                      ×{item.quantity}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center overflow-hidden text-xs text-gray-700 whitespace-nowrap">
-                  <span
-                    className="truncate"
-                    data-testid="item-title"
-                    title={item.title}
-                    style={{ maxWidth: "80px" }}
-                  >
-                    {item.title}
-                  </span>
-                  <span className="flex-shrink-0 ml-1 text-gray-500">
-                    ×{item.quantity}
-                  </span>
-                </div>
-              </div>
-            ))}
+              )
+            })}
 
             {(order.items?.length || 0) > 5 && (
               <div
@@ -403,7 +600,6 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
             </div>
 
             {/* Mobile quick-jump (visible only on xs screens) */}
-           {/* Mobile quick-jump (visible only on xs screens) */}
             <div className="mt-3 sm:hidden">
               <label htmlFor="mobile-page-jump" className="sr-only">Go to page</label>
               <select
@@ -434,7 +630,6 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
             </div>
           </div>
         )}
-
 
         {/* Load More Controls */}
         {viewMode === 'loadMore' && (

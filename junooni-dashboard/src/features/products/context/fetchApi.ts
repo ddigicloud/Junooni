@@ -347,18 +347,29 @@ export async function uploadProductImage({
   const token = localStorage.getItem("vendorToken");
   
   try {
-    // Handle image deletion
+    // ✅ Handle image deletion
     if (action === 'delete' && imageId) {
-      const response = await axios.delete(`${API_BASE_URL}/vendors/uploads/${imageId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      console.log(`🗑️ Deleting image ${imageId} from product ${productId}`);
       
-      return { success: true };
+      const response = await axios.delete(
+        `${API_BASE_URL}/vendors/uploads`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: {
+            fileId: imageId,
+            productId: productId  // Include productId to help with thumbnail handling
+          }
+        }
+      );
+      
+      console.log(`✅ Image deleted successfully:`, response.data);
+      return response.data;
     }
     
-    // Handle file upload via FormData
+    // ✅ Handle file upload via FormData
     if (formData) {
       const response = await axios.post(`${API_BASE_URL}/vendors/uploads`, formData, {
         headers: {
@@ -368,7 +379,7 @@ export async function uploadProductImage({
         withCredentials: true,
       });
       
-      //console.log("Image upload response:", response.data);
+      console.log("Image upload response:", response.data);
       
       // Return all files or just the first one based on the multiple flag
       return multiple ? response.data.files : response.data.files[0];
@@ -387,13 +398,13 @@ export async function uploadProductImage({
         }
       );
       
-      //console.log("URL image upload response:", response.data);
+      console.log("URL image upload response:", response.data);
       return response.data;
     }
     
     throw new Error('Invalid upload parameters');
   } catch (error) {
-    //console.error('Error with image operation:', error);
+    console.error('Error with image operation:', error);
     throw error;
   }
 }

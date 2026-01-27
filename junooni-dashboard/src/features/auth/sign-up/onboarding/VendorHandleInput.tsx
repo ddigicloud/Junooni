@@ -130,7 +130,7 @@ const VendorHandleInput = ({ vendorData, updateVendorData, brandColors }) => {
   const getFeedbackMessage = () => {
     if (!vendorData.vendor.handle) {
       return {
-        text: "Vendor's handle is required",
+        text: "Handle is required",
         color: brandColors.error
       };
     }
@@ -167,7 +167,7 @@ const VendorHandleInput = ({ vendorData, updateVendorData, brandColors }) => {
     <div>
       <div className="flex justify-between mb-2">
         <label className="block text-sm font-medium">
-          Vendor's Handle <span className="text-red-500">*</span>
+          Handle <span className="text-red-500">*</span>
         </label>
         <span className="text-xs text-gray-400">Required</span>
       </div>

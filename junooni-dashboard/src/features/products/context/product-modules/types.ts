@@ -74,6 +74,7 @@ export interface MediaItem {
   file?: File | null;
   url: string;
   rank: number;
+  id?: string;  // ✅ ADD THIS LINE
   isNew: boolean;
   colorValue?: string;
   variantInfo?: VariantInfo | null;

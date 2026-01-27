@@ -489,7 +489,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                 <div className="flex flex-col gap-6 md:flex-row">
                   <div className="w-full">
                     <div className="flex justify-between mb-2">
-                      <label className="block text-sm font-medium">Logo <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium">Profile pic <span className="text-red-500">*</span></label>
                       <span className="text-xs text-gray-400">Recommended size: 400x400px</span>
                     </div>
                     <div 
@@ -531,7 +531,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                             <IconFileText className="w-6 h-6 text-gray-400" />
                           </div>
                           <p className="text-sm font-medium">
-                            Drop your logo here or <span style={{ color: brandColors.primary, cursor: 'pointer' }}>browse</span>
+                            Drop your picture here or <span style={{ color: brandColors.primary, cursor: 'pointer' }}>browse</span>
                           </p>
                           <p className="mt-1 text-xs text-gray-500">Supports JPG, PNG, SVG</p>
                         </div>
@@ -1553,7 +1553,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 2. Account Registration
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 To become a creator on Junooni, you must:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -1569,7 +1569,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 3. Creator Responsibilities
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 As a creator, you are responsible for:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -1594,7 +1594,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 5. Payments and Fees
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 Junooni operates on a commission-based model:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -1609,7 +1609,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 6. Prohibited Activities
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 You may not:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -1689,7 +1689,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 1. Product Listings
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 All product listings must:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -1705,7 +1705,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 2. Prohibited Items
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 The following items are strictly prohibited:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -1723,7 +1723,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 3. Order Fulfillment
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 Sellers must:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -1739,7 +1739,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 4. Pricing and Fees
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 Regarding pricing:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -1764,7 +1764,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 6. Customer Service
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 Excellence in customer service includes:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -1789,7 +1789,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 8. Account Requirements
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 To maintain seller status:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -1814,7 +1814,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <h3 className="mb-2 text-lg font-semibold" style={{ color: brandColors.secondary }}>
                 10. Policy Violations
               </h3>
-              <p className="text-gray-700 mb-2">
+              <p className="mb-2 text-gray-700">
                 Violations of this policy may result in:
               </p>
               <ul className="pl-5 space-y-1 text-gray-700 list-disc">
@@ -3077,14 +3077,14 @@ if (isLoading) {
               
               {/* UPDATED FOOTER WITH BOTH BUTTONS */}
               {currentStep !== "welcome" && (
-                <CardFooter className="px-4 sm:px-6 pt-4 pb-6 border-t" style={{ borderColor: `${BRAND.primary}11` }}>
+                <CardFooter className="px-4 pt-4 pb-6 border-t sm:px-6" style={{ borderColor: `${BRAND.primary}11` }}>
                 {/* Mobile Layout (< sm) - Stacked in 2 rows */}
                 <div className="flex flex-col w-full gap-3 sm:hidden">
                   {/* Row 1: Back and Continue */}
                   <div className="flex justify-between gap-2">
                     <Button
                       variant="outline"
-                      className="transition-all duration-200 text-sm h-9 flex-1"
+                      className="flex-1 text-sm transition-all duration-200 h-9"
                       onClick={() => {
                         const currentIndex = STEPS.findIndex(step => step.id === currentStep);
                         if (currentIndex > 0) {
@@ -3097,7 +3097,7 @@ if (isLoading) {
                     
                     <Button 
                       onClick={handleContinue}
-                      className="transition-all duration-200 hover:shadow-md text-sm h-9 flex-1"
+                      className="flex-1 text-sm transition-all duration-200 hover:shadow-md h-9"
                       style={{ 
                         background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
                         color: 'white' 
@@ -3122,7 +3122,7 @@ if (isLoading) {
                     <Button
                       variant="outline"
                       onClick={handleSaveAndExit}
-                      className="transition-all duration-200 hover:shadow-md text-sm h-9 px-3"
+                      className="px-3 text-sm transition-all duration-200 hover:shadow-md h-9"
                       style={{ 
                         borderColor: BRAND.primary,
                         color: BRAND.primary 
@@ -3154,7 +3154,7 @@ if (isLoading) {
                 </div>
                 
                 {/* Desktop Layout (>= sm) - Original horizontal layout */}
-                <div className="hidden sm:flex justify-between w-full">
+                <div className="justify-between hidden w-full sm:flex">
                   <div className="flex-1 max-w-[200px]">
                     <Button
                       variant="outline"

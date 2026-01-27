@@ -299,21 +299,67 @@ const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
 };
 
 // ✅ NEW: Calculate payment processing fee (2% + 18% GST)
-const calculatePaymentProcessingFee = (totalAmount: number, paymentStatus: string = 'paid') => {
+// ✅ UPDATED: Calculate payment processing fee based on payment method
+const calculatePaymentProcessingFee = (totalAmount: number, paymentStatus: string = 'paid', paymentMethod: string = 'unknown') => {
   // If payment is refunded, no processing fees apply
   if (paymentStatus === 'refunded') {
     return {
       gatewayFee: 0,
       gstOnFee: 0,
-      totalProcessingFee: 0
+      totalProcessingFee: 0,
+      feeType: 'none'
     };
   }
   
+  // For COD or manual payments - flat ₹35 fee
+  if (paymentMethod === 'cod' || paymentMethod === 'manual' || paymentMethod === 'cash_on_delivery') {
+    return {
+      gatewayFee: 35,
+      gstOnFee: 0,
+      totalProcessingFee: 35,
+      feeType: 'flat_cod'
+    };
+  }
+  
+  // For online payments (Razorpay) - 2% + 18% GST
   const gatewayFee = totalAmount * 0.02;
   const gstOnFee = gatewayFee * 0.18;
   const totalProcessingFee = gatewayFee + gstOnFee;
   
-  return { gatewayFee, gstOnFee, totalProcessingFee };
+  return { 
+    gatewayFee, 
+    gstOnFee, 
+    totalProcessingFee,
+    feeType: 'razorpay_online'
+  };
+};
+
+// ✅ NEW: Detect payment method from order
+const detectPaymentMethod = (order: any): string => {
+  // Check payment collections for Razorpay
+  if (order.payment_collections && order.payment_collections.length > 0) {
+    for (const collection of order.payment_collections) {
+      // Check payment providers
+      if (collection.payment_providers) {
+        const hasRazorpay = collection.payment_providers.some(provider => 
+          provider.id?.toLowerCase().includes('razorpay') || 
+          provider.provider_id?.toLowerCase().includes('razorpay')
+        );
+        if (hasRazorpay) return 'razorpay';
+      }
+      
+      // Check payments
+      if (collection.payments && collection.payments.length > 0) {
+        const hasRazorpay = collection.payments.some(payment => 
+          payment.provider_id?.toLowerCase().includes('razorpay')
+        );
+        if (hasRazorpay) return 'razorpay';
+      }
+    }
+  }
+  
+  // If not Razorpay, treat as COD
+  return 'cod';
 };
 
 // ✅ NEW: Fetch claims and returns separately to avoid field expansion issues
@@ -1584,7 +1630,18 @@ for (const metaItem of vendorMetadataItems) {
 
   // ✅ NEW: Calculate payment processing fee
 // ✅ NEW: Calculate payment processing fee - pass vendor-specific payment status
-  const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(vendorSubtotal, paymentStatus);
+  //const { gatewayFee, gstOnFee, totalProcessingFee } = calculatePaymentProcessingFee(vendorSubtotal, paymentStatus);
+
+  // ✅ UPDATED: Detect payment method and calculate processing fee accordingly
+  const paymentMethod = detectPaymentMethod(order);
+  console.log(`💳 Payment method detected: ${paymentMethod}`);
+
+  const { gatewayFee, gstOnFee, totalProcessingFee, feeType } = calculatePaymentProcessingFee(
+    vendorSubtotal, 
+    paymentStatus,
+    paymentMethod
+  );
+  console.log(`💰 Processing fee: ₹${totalProcessingFee} (type: ${feeType})`);
 
   // If payment is refunded, vendor payout is zero
   let finalVendorRevenue = 0;
@@ -1679,6 +1736,8 @@ for (const metaItem of vendorMetadataItems) {
     authorized_amount: vendorPaymentData.authorized_amount,
     net_amount: vendorPaymentData.net_amount,
     amount_owed: vendorPaymentData.amount_owed,
+    payment_method: paymentMethod, // ✅ ADDED
+    fee_type: feeType, // ✅ ADDED
     global_payment_status: order.payment_status // For comparison
   },
     

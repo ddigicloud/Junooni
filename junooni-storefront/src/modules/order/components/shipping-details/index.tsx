@@ -1,6 +1,6 @@
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { MapPin, Truck, Calendar, Check, Clock, Package, AlertCircle, ShoppingBag } from "lucide-react"
+import { MapPin, Truck, Calendar, Check, Clock, Package, AlertCircle, ShoppingBag, ExternalLink } from "lucide-react"
 import { formatDate } from "@lib/data/date-util"
 
 type ShippingDetailsProps = {
@@ -12,60 +12,106 @@ const ShippingDetails = ({ order }: ShippingDetailsProps) => {
   const formatPaymentProvider = (providerId: string) => {
     if (!providerId) return "N/A"
     
-    // Handle pp_system_default
     if (providerId === "pp_system_default") {
       return "Standard Payment"
     }
     
-    // Remove 'pp_' prefix and extract the payment provider name
-    // e.g., 'pp_razorpay_razorpay' -> 'razorpay'
     const withoutPrefix = providerId.replace(/^pp_/, '')
-    
-    // Split by underscore and get the first part
     const parts = withoutPrefix.split('_')
     const providerName = parts[0]
     
-    // Capitalize first letter
     return providerName.charAt(0).toUpperCase() + providerName.slice(1)
   }
 
-  // Function to get a more detailed fulfillment status with additional information
-  // Function to get a more detailed fulfillment status with additional information
-const getDetailedFulfillmentStatus = () => {
-  console.log("=== ORDER DEBUG INFO ===")
-  console.log("Order ID:", order.id)
-  console.log("Fulfillment Status:", order.fulfillment_status)
-  console.log("Payment Status:", order.payment_status)
-  console.log("Order Status:", order.status)
-  console.log("Fulfillments:", order.fulfillments)
-  
-  // Check if order is canceled first (highest priority)
-  if (order.status === "canceled" || order.payment_status === "refunded") {
-    return "canceled"
-  }
-  
-  if (!order.fulfillment_status || order.fulfillment_status === "not_fulfilled") {
-    // Check payment status to provide more context
-    if (order.payment_status === "captured") {
-      return "payment_confirmed"
+  // Function to get tracking information from fulfillments
+  const getTrackingInfo = () => {
+    console.log("=== TRACKING DEBUG ===")
+    console.log("Order fulfillment_status:", order.fulfillment_status)
+    console.log("Order fulfillments:", order.fulfillments)
+    
+    if (!order.fulfillments || order.fulfillments.length === 0) {
+      console.log("No fulfillments found")
+      return null
     }
-    return "pending"
-  } else if (order.fulfillment_status === "delivered") {
-    return "delivered"
-  } else if (order.fulfillment_status === "partially_fulfilled" || order.fulfillment_status === "fulfilled") {
-    return "shipped"
-  } else {
-    return "processing"
+
+    console.log("Number of fulfillments:", order.fulfillments.length)
+
+    // Loop through all fulfillments to find one with tracking
+    for (const fulfillment of order.fulfillments) {
+      console.log("Checking fulfillment:", fulfillment.id)
+      console.log("Fulfillment labels:", fulfillment.labels)
+      
+      if (fulfillment.labels && fulfillment.labels.length > 0) {
+        const label = fulfillment.labels[0]
+        console.log("Found label:", label)
+        
+        // Check if tracking_number exists and is not empty
+        if (label.tracking_number && label.tracking_number.trim() !== '') {
+          console.log("Valid tracking found:", label.tracking_number)
+          
+          return {
+            trackingNumber: label.tracking_number,
+            trackingUrl: label.tracking_url || label.tracking_number,
+            labelUrl: label.label_url,
+            fulfillmentId: fulfillment.id,
+            shippedAt: fulfillment.shipped_at,
+            deliveredAt: fulfillment.delivered_at,
+          }
+        }
+      }
+    }
+
+    console.log("No valid tracking information found")
+    return null
   }
-}
 
-const status = getDetailedFulfillmentStatus()
+  const trackingInfo = getTrackingInfo()
+  console.log("Final tracking info:", trackingInfo)
 
-// Enhanced timeline steps with dynamic updates based on actual API data
-const getTimelineSteps = () => {
-  // If order is canceled, show a different timeline
-  if (status === "canceled") {
-    return [
+  // Function to get a more detailed fulfillment status
+  const getDetailedFulfillmentStatus = () => {
+    if (order.status === "canceled" || order.payment_status === "refunded") {
+      return "canceled"
+    }
+    
+    if (!order.fulfillment_status || order.fulfillment_status === "not_fulfilled") {
+      if (order.payment_status === "captured") {
+        return "payment_confirmed"
+      }
+      return "pending"
+    } else if (order.fulfillment_status === "delivered") {
+      return "delivered"
+    } else if (order.fulfillment_status === "shipped") {
+      return "shipped"
+    } else {
+      return "processing"
+    }
+  }
+
+  const status = getDetailedFulfillmentStatus()
+
+  // Enhanced timeline steps
+  const getTimelineSteps = () => {
+    if (status === "canceled") {
+      return [
+        {
+          title: "Order Placed",
+          description: formatDate(order.created_at),
+          status: "completed",
+          icon: <Package size={16} />,
+        },
+        {
+          title: "Order Canceled",
+          description: order.payment_status === "refunded"
+            ? "Payment has been refunded"
+            : "Order was canceled",
+          status: "canceled",
+          icon: <AlertCircle size={16} />,
+        },
+      ]
+    }
+
+    const steps = [
       {
         title: "Order Placed",
         description: formatDate(order.created_at),
@@ -73,61 +119,42 @@ const getTimelineSteps = () => {
         icon: <Package size={16} />,
       },
       {
-        title: "Order Canceled",
-        description: order.payment_status === "refunded"
-          ? "Payment has been refunded"
-          : "Order was canceled",
-        status: "canceled",
+        title: "Payment Confirmed",
+        description: order.payment_status === "captured" 
+          ? `Payment captured on ${formatDate(order.payment_collections?.[0]?.payments?.[0]?.captured_at || order.created_at)}`
+          : "Waiting for payment confirmation",
+        status: order.payment_status === "captured" ? "completed" : "pending",
         icon: <AlertCircle size={16} />,
       },
+      {
+        title: "Fulfilled",
+        description: status !== "pending" 
+          ? `Started processing at ${formatDate(order.updated_at || order.created_at)}`
+          : "Order will be processed after payment",
+        status: status === "pending" ? "pending" : "completed",
+        icon: <Clock size={16} />,
+      },
+      {
+        title: "Shipped",
+        description: status === "shipped" || status === "delivered"
+          ? `Shipped via ${order.shipping_methods?.[0]?.name || "Standard Shipping"}`
+          : "Awaiting shipment",
+        status: status === "shipped" || status === "delivered" ? "completed" : "pending",
+        icon: <Truck size={16} />,
+      },
+      {
+        title: "Delivered",
+        description: status === "delivered" 
+          ? `Delivered to ${order.shipping_address?.first_name} ${order.shipping_address?.last_name}`
+          : "Estimated delivery date TBD",
+        status: status === "delivered" ? "completed" : "pending",
+        icon: <Check size={16} />,
+      },
     ]
+
+    return steps
   }
 
-  const steps = [
-    {
-      title: "Order Placed",
-      description: formatDate(order.created_at),
-      status: "completed",
-      icon: <Package size={16} />,
-    },
-    {
-      title: "Payment Confirmed",
-      description: order.payment_status === "captured" 
-        ? `Payment captured on ${formatDate(order.payment_collections?.[0]?.captured_at || order.created_at)}`
-        : "Waiting for payment confirmation",
-      status: order.payment_status === "captured" ? "completed" : "pending",
-      icon: <AlertCircle size={16} />,
-    },
-    {
-      title: "Processing",
-      description: status !== "pending" 
-        ? `Started processing at ${formatDate(order.updated_at || order.created_at)}`
-        : "Order will be processed after payment",
-      status: status === "pending" ? "pending" : "completed",
-      icon: <Clock size={16} />,
-    },
-    {
-      title: "Shipped",
-      description: status === "shipped" || status === "delivered"
-        ? `Shipped via ${order.shipping_methods?.[0]?.name || "Standard Shipping"}`
-        : "Awaiting shipment",
-      status: status === "shipped" || status === "delivered" ? "completed" : "pending",
-      icon: <Truck size={16} />,
-    },
-    {
-      title: "Delivered",
-      description: status === "delivered" 
-        ? `Delivered to ${order.shipping_address?.first_name} ${order.shipping_address?.last_name}`
-        : "Estimated delivery date TBD",
-      status: status === "delivered" ? "completed" : "pending",
-      icon: <Check size={16} />,
-    },
-  ]
-
-  return steps
-}
-
-  console.log("Order Status for Timeline:", status)
   const timelineSteps = getTimelineSteps()
 
   return (
@@ -143,7 +170,53 @@ const getTimelineSteps = () => {
             Shipping Information
           </h2>
         </div>
-        
+
+        {/* Tracking Information Banner - Show if tracking available AND order is shipped */}
+        {trackingInfo && trackingInfo.trackingNumber && (order.fulfillment_status === "shipped" || order.fulfillment_status === "delivered") && (
+          <div className="p-4 mb-6 border-2 border-orange-200 rounded-lg bg-orange-50">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start flex-1">
+                <div className="flex-shrink-0">
+                  <div className="flex items-center justify-center w-10 h-10 text-orange-600 bg-orange-100 rounded-full">
+                    <Truck size={20} />
+                  </div>
+                </div>
+                <div className="ml-4 flex-1">
+                  <h3 className="text-sm font-semibold text-orange-900">
+                    Track Your Order
+                  </h3>
+                  <p className="mt-1 text-xs text-orange-700">
+                    Your order has been shipped. Click the link below to track your package.
+                  </p>
+                  {trackingInfo.shippedAt && (
+                    <p className="mt-1 text-xs text-orange-600">
+                      Shipped on: {formatDate(trackingInfo.shippedAt)}
+                    </p>
+                  )}
+                  {trackingInfo.deliveredAt && (
+                    <p className="mt-1 text-xs text-green-600 font-medium">
+                      Delivered on: {formatDate(trackingInfo.deliveredAt)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Tracking Link */}
+            <div className="mt-4">
+              <a
+                href={trackingInfo.trackingNumber}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                <Truck size={16} className="mr-2" />
+                Track Package
+                <ExternalLink size={14} className="ml-2" />
+              </a>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {/* Shipping Address */}
@@ -205,7 +278,6 @@ const getTimelineSteps = () => {
                       {order.shipping_address?.phone}
                     </p>
                   )}
-                  {/* Add customer information if available */}
                   {(order.customer?.first_name || order.customer?.last_name) && (
                     <p>
                       <span className="font-medium">Customer:</span>{" "}
@@ -251,7 +323,6 @@ const getTimelineSteps = () => {
         </div>
 
         {/* Order Status Banner */}
-       {/* Order Status Banner */}
         <div className={`mt-6 p-4 rounded-lg ${
           status === "canceled"
             ? "bg-red-50 border border-red-200"
@@ -303,7 +374,7 @@ const getTimelineSteps = () => {
                     {order.payment_status === "refunded" && " Your payment has been refunded."}
                   </>
                 )}
-                {status !== "canceled" && order.payment_status === "captured" && order.fulfillment_status === "not_fulfilled" && (
+                {status !== "canceled" && order.payment_status === "captured" && (order.fulfillment_status === "shipped" || order.fulfillment_status === "not_fulfilled") && (
                   "Your payment has been confirmed. We're now preparing your order for shipment."
                 )}
                 {status !== "canceled" && order.payment_status === "captured" && order.fulfillment_status === "delivered" && (
@@ -324,18 +395,14 @@ const getTimelineSteps = () => {
           </h3>
 
           <div className="relative">
-            {/* Timeline */}
             <div className="hidden sm:block absolute top-0 left-1/2 w-0.5 h-full bg-gray-200 transform -translate-x-1/2"></div>
 
-            {/* Steps */}
             <div className="space-y-8">
               {timelineSteps.map((step, index) => (
                 <div
                   key={index}
                   className="relative flex flex-col items-center sm:flex-row sm:items-center"
                 >
-
-                  {/* Desktop LEFT side */}
                   <div className="justify-end hidden w-1/2 pr-8 sm:flex">
                     <div className="text-right">
                       <h3 className={`text-sm font-medium ${
@@ -351,7 +418,6 @@ const getTimelineSteps = () => {
                     </div>
                   </div>
 
-                 {/* Status icon */}
                   <div
                     className={`z-0 flex items-center justify-center flex-shrink-0 w-8 h-8 mx-auto rounded-full sm:mx-0 ${
                       step.status === "completed"
@@ -370,7 +436,6 @@ const getTimelineSteps = () => {
                     )}
                   </div>
 
-                  {/* Mobile text */}
                   <div className="sm:w-1/2 sm:pl-8">
                     <div className="px-4 mt-3 text-center sm:hidden">
                       <h3 className={`text-sm font-medium ${
@@ -386,7 +451,6 @@ const getTimelineSteps = () => {
                     </div>
                   </div>
 
-                  {/* Vertical line for mobile timeline */}
                   {index !== timelineSteps.length - 1 && (
                     <div className="absolute w-px h-full bg-gray-300 left-1/2 top-8 sm:hidden"></div>
                   )}

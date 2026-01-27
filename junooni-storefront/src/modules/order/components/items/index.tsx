@@ -1,96 +1,6 @@
-// import repeat from "@lib/util/repeat"
-// import { HttpTypes } from "@medusajs/types"
-// import { Table } from "@medusajs/ui"
-
-// import Divider from "@modules/common/components/divider"
-// import Item from "@modules/order/components/item"
-// import SkeletonLineItem from "@modules/skeletons/components/skeleton-line-item"
-
-// type ItemsProps = {
-//   order: HttpTypes.StoreOrder
-// }
-
-// const Items = ({ order }: ItemsProps) => {
-//   const items = order.items
-
-//   return (
-//     <div className="flex flex-col">
-//       <Divider className="!mb-0" />
-//       <Table>
-//         <Table.Body data-testid="products-table">
-//           {items?.length
-//             ? items
-//                 .sort((a, b) => {
-//                   return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
-//                 })
-//                 .map((item) => {
-//                   return (
-//                     <Item
-//                       key={item.id}
-//                       item={item}
-//                       currencyCode={order.currency_code}
-//                     />
-//                   )
-//                 })
-//             : repeat(5).map((i) => {
-//                 return <SkeletonLineItem key={i} />
-//               })}
-//         </Table.Body>
-//       </Table>
-//     </div>
-//   )
-// }
-
-// export default Items
-
-// import repeat from "@lib/util/repeat"
-// import { HttpTypes } from "@medusajs/types"
-// import { Table } from "@medusajs/ui"
-
-// import Divider from "@modules/common/components/divider"
-// import Item from "@modules/order/components/item"
-// import SkeletonLineItem from "@modules/skeletons/components/skeleton-line-item"
-
-// type ItemsProps = {
-//   order: HttpTypes.StoreOrder
-// }
-
-// const Items = ({ order }: ItemsProps) => {
-//   const items = order.items
-
-//   return (
-//     <div className="flex flex-col">
-//       <Divider className="!mb-0" />
-//       <Table>
-//         <Table.Body data-testid="products-table">
-//           {items?.length
-//             ? items
-//                 .sort((a, b) => {
-//                   return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
-//                 })
-//                 .map((item) => {
-//                   return (
-//                     <Item
-//                       key={item.id}
-//                       item={item}
-//                       currencyCode={order.currency_code}
-//                     />
-//                   )
-//                 })
-//             : repeat(5).map((i) => {
-//                 return <SkeletonLineItem key={i} />
-//               })}
-//         </Table.Body>
-//       </Table>
-//     </div>
-//   )
-// }
-
-// export default Items
-
 import { HttpTypes } from "@medusajs/types"
 import { convertToLocale } from "@lib/util/money"
-import { ShoppingBag } from "lucide-react"
+import { ShoppingBag, Truck, ExternalLink } from "lucide-react"
 
 type ItemsProps = {
   order: HttpTypes.StoreOrder
@@ -174,6 +84,36 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
     return null
   }
 
+  // Helper function to get tracking info for a specific item
+  const getItemTrackingInfo = (itemId: string) => {
+    if (!order.fulfillments || order.fulfillments.length === 0) {
+      return null
+    }
+
+    // Find the fulfillment that contains this specific item
+    for (const fulfillment of order.fulfillments) {
+      if (fulfillment.items && fulfillment.items.length > 0) {
+        const hasItem = fulfillment.items.some(
+          (fulfillmentItem) => fulfillmentItem.line_item_id === itemId
+        )
+
+        if (hasItem && fulfillment.labels && fulfillment.labels.length > 0) {
+          const label = fulfillment.labels[0]
+          if (label.tracking_number && label.tracking_number.trim() !== '') {
+            return {
+              trackingNumber: label.tracking_number,
+              trackingUrl: label.tracking_url || label.tracking_number,
+              shippedAt: fulfillment.shipped_at,
+              deliveredAt: fulfillment.delivered_at,
+            }
+          }
+        }
+      }
+    }
+
+    return null
+  }
+
   return (
     <div className="mb-6 overflow-hidden bg-white rounded-lg sm:shadow md:shadow">
       <div className="p-6">
@@ -191,6 +131,7 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
         <div className="space-y-4">
           {items.map((item) => {
             const itemImage = getItemImage(item)
+            const trackingInfo = getItemTrackingInfo(item.id)
             
             return (
               <div
@@ -213,8 +154,8 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
                   </div>
                 </div>
                 <div className="flex-1 sm:ml-6">
-                  <div className="flex justify-between">
-                    <div>
+                  <div className="flex flex-col justify-between sm:flex-row">
+                    <div className="flex-1">
                       <h3 className="text-base font-medium text-gray-900">
                         {item.product_title}
                       </h3>
@@ -235,33 +176,52 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
                       <p className="mt-1 text-sm text-gray-500">
                         Quantity: {item.quantity}
                       </p>
+
+                      {showStatus && item.fulfillment_status && (
+                        <div className="mt-2">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            ${
+                              item.fulfillment_status === "fulfilled"
+                                ? "bg-green-100 text-green-800"
+                                : item.fulfillment_status === "partially_fulfilled"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {item.fulfillment_status.replace("_", " ")}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <p className="text-base font-medium text-gray-900">
-                        {getAmount(item.total)}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {getAmount(item.unit_price)} each
-                      </p>
+                    
+                    <div className="flex flex-col items-end mt-4 sm:mt-0 sm:ml-4">
+                      <div className="text-right">
+                        <p className="text-base font-medium text-gray-900">
+                          {getAmount(item.total)}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {getAmount(item.unit_price)} each
+                        </p>
+                      </div>
+
+                      {/* Track Now Button */}
+                      {trackingInfo && trackingInfo.trackingNumber && (
+                        <div className="mt-3">
+                          <a
+                            href={trackingInfo.trackingNumber}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
+                          >
+                            <Truck size={14} className="mr-1.5" />
+                            Track Now
+                            <ExternalLink size={12} className="ml-1.5" />
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  {showStatus && item.fulfillment_status && (
-                    <div className="mt-2">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                        ${
-                          item.fulfillment_status === "fulfilled"
-                            ? "bg-green-100 text-green-800"
-                            : item.fulfillment_status === "partially_fulfilled"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {item.fulfillment_status.replace("_", " ")}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             )

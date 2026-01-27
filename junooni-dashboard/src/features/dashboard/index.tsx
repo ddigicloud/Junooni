@@ -733,9 +733,16 @@ const isEmptyResponse = (data: any) => {
 
 // Enhanced Summary Cards Component using vendor-specific data
 const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: Product[] }) => {
+  // console.log('=== SUMMARY CARDS DEBUG START ===');
+  // console.log('Raw orders received:', orders);
+  // console.log('Number of orders:', orders.length);
+  
   // Calculate summary metrics from vendor-filtered orders
   const totalOrders = orders.length;
   const totalRevenue = orders.reduce((sum, order) => sum + (order.vendor_total || 0), 0);
+  
+  // console.log('Total orders:', totalOrders);
+  // console.log('Total revenue:', totalRevenue);
   
   const pendingOrders = orders.filter(order => 
     order.fulfillment_status === "not_fulfilled" || 
@@ -747,16 +754,57 @@ const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: P
     order.fulfillment_status === "partially_fulfilled"
   ).length;
   
-  // Today's orders
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // console.log('Pending orders:', pendingOrders);
+  // console.log('Processing orders:', processingOrders);
   
+  // Today's orders - filtered from the available orders
+  // Get today's date at midnight in local timezone
+  const today = new Date();
+  // console.log('Current date/time (before reset):', today.toString());
+  // console.log('Current date/time ISO:', today.toISOString());
+  
+  today.setHours(0, 0, 0, 0);
+  // console.log('Today at midnight:', today.toString());
+  // console.log('Today at midnight ISO:', today.toISOString());
+  
+  // Get tomorrow's date at midnight to create a proper range
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  // console.log('Tomorrow at midnight:', tomorrow.toString());
+  // console.log('Tomorrow at midnight ISO:', tomorrow.toISOString());
+  
+  // console.log('\n--- Filtering orders for today ---');
   const todayOrders = orders.filter(order => {
     const orderDate = new Date(order.created_at);
-    return orderDate >= today;
+    // console.log(`\nOrder #${order.display_id}:`);
+    // console.log('  created_at string:', order.created_at);
+    // console.log('  Order date object:', orderDate.toString());
+    // console.log('  Order date ISO:', orderDate.toISOString());
+    // console.log('  Order date time:', orderDate.getTime());
+    // console.log('  Today time:', today.getTime());
+    // console.log('  Tomorrow time:', tomorrow.getTime());
+    // console.log('  Is >= today?', orderDate >= today);
+    // console.log('  Is < tomorrow?', orderDate < tomorrow);
+    // console.log('  Is today\'s order?', orderDate >= today && orderDate < tomorrow);
+    
+    // Order must be >= today at midnight AND < tomorrow at midnight
+    const isToday = orderDate >= today && orderDate < tomorrow;
+    if (isToday) {
+      console.log('  ✅ THIS ORDER COUNTS AS TODAY');
+    } else {
+      console.log('  ❌ This order is NOT today');
+    }
+    return isToday;
   });
   
+  // console.log('\n--- Today\'s Orders Summary ---');
+  // console.log('Today\'s orders count:', todayOrders.length);
+  // console.log('Today\'s orders:', todayOrders);
+  
   const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.vendor_total || 0), 0);
+  //console.log('Today\'s revenue:', todayRevenue);
+  
+  //console.log('=== SUMMARY CARDS DEBUG END ===\n');
   
   return (
     <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -767,7 +815,7 @@ const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: P
             <div>
               <p className="mb-1 text-sm text-gray-500">Today's Revenue</p>
               <h3 className="text-lg font-bold" style={{ color: BRAND.primary }}>{formatPrice(todayRevenue)}</h3>
-              <p className="mt-1 text-sm text-gray-500">{todayOrders.length} orders today</p>
+              <p className="mt-1 text-sm text-gray-500">{todayOrders.length} {todayOrders.length === 1 ? 'order' : 'orders'} today</p>
             </div>
             <div className="p-3 rounded-lg" style={{ backgroundColor: `${BRAND.primary}22` }}>
               <TrendingUp className="w-6 h-6" style={{ color: BRAND.primary }} />
@@ -776,14 +824,14 @@ const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: P
         </CardContent>
       </Card>
       
-      {/* Total Revenue */}
+      {/* Revenue from Last 5 Orders */}
       <Card className="shadow-md">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="mb-1 text-sm text-gray-500">Total Revenue</p>
+              <p className="mb-1 text-sm text-gray-500">Revenue (Last 5 Orders)</p>
               <h3 className="text-lg font-bold">{formatPrice(totalRevenue)}</h3>
-              <p className="mt-1 text-sm text-gray-500">From {totalOrders} orders</p>
+              <p className="mt-1 text-sm text-gray-500">{totalOrders} recent {totalOrders === 1 ? 'order' : 'orders'}</p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
               <CreditCard className="w-6 h-6 text-green-600" />
@@ -792,14 +840,14 @@ const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: P
         </CardContent>
       </Card>
       
-      {/* Pending Orders */}
+      {/* Pending Orders (from the 5 orders) */}
       <Card className="shadow-md">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="mb-1 text-sm text-gray-500">Pending Orders</p>
               <h3 className="text-lg font-bold">{pendingOrders}</h3>
-              {/* <p className="mt-1 text-sm text-gray-500">Need attention</p> */}
+              <p className="mt-1 text-sm text-gray-500">In last {totalOrders} {totalOrders === 1 ? 'order' : 'orders'}</p>
             </div>
             <div className="p-3 rounded-lg bg-amber-100">
               <Clock className="w-6 h-6 text-amber-600" />
@@ -815,7 +863,7 @@ const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: P
             <div>
               <p className="mb-1 text-sm text-gray-500">Your Products</p>
               <h3 className="text-lg font-bold">{products.length}</h3>
-              {/* <p className="mt-1 text-sm text-gray-500">Listed in store</p> */}
+              <p className="mt-1 text-sm text-gray-500">Recently added</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-lg">
               <Package className="w-6 h-6 text-blue-600" />
@@ -1033,7 +1081,7 @@ const DashboardPage = () => {
     setError(null);
     
     try {
-      console.log('=== DASHBOARD FETCH START ===');
+      //console.log('=== DASHBOARD FETCH START ===');
       
       // Simple token validation
       if (!validateToken()) {
@@ -1053,7 +1101,7 @@ const DashboardPage = () => {
         return;
       }
 
-      console.log('Fetching vendor profile...');
+      //console.log('Fetching vendor profile...');
       
       // Fetch vendor profile
       const vendorResponse = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
@@ -1064,7 +1112,7 @@ const DashboardPage = () => {
         }
       });
       
-      console.log('Vendor response status:', vendorResponse.status);
+      //console.log('Vendor response status:', vendorResponse.status);
       
       if (vendorResponse.status === 404) {
         window.location.href = '/onboarding?step=basic-info';
@@ -1085,7 +1133,7 @@ const DashboardPage = () => {
       }
       
       const vendorData = await vendorResponse.json();
-      console.log('Vendor data received:', vendorData);
+      //console.log('Vendor data received:', vendorData);
       
       // Check onboarding completion status
       const onboardingCheck = checkOnboardingCompletion(vendorData);
@@ -1111,10 +1159,10 @@ const DashboardPage = () => {
       };
       
       setVendor(transformedVendor);
-      console.log('Vendor set:', transformedVendor);
+      //console.log('Vendor set:', transformedVendor);
 
       // Fetch recent orders (only 5 for dashboard)
-      console.log('Fetching recent orders...');
+      //console.log('Fetching recent orders...');
       try {
         const orderResponse = await fetch(
           `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/orders?limit=5`,
@@ -1127,14 +1175,14 @@ const DashboardPage = () => {
           }
         );
         
-        console.log('Orders response status:', orderResponse.status);
+        //console.log('Orders response status:', orderResponse.status);
         
         if (!orderResponse.ok) {
           console.warn('Failed to fetch orders:', orderResponse.status);
           setOrders([]);
         } else {
           const orderData = await orderResponse.json();
-          console.log('Raw order data:', orderData);
+          //console.log('Raw order data:', orderData);
           
           // Get orders array from response
           let ordersArray = [];
@@ -1154,6 +1202,13 @@ const DashboardPage = () => {
           
           const transformedOrders = ordersToDisplay.map((order: any, index: number) => {
             try {
+              // console.log(`\n=== TRANSFORMING ORDER ${index + 1} ===`);
+              // console.log('Raw order data:', order);
+              // console.log('Order ID:', order.id);
+              // console.log('Order display_id:', order.display_id);
+              // console.log('Raw created_at:', order.created_at);
+              // console.log('Type of created_at:', typeof order.created_at);
+              
               const getNum = (val: any, def: number = 0): number => {
                 if (typeof val === 'number') return val;
                 if (typeof val === 'string') return parseFloat(val) || def;
@@ -1168,7 +1223,7 @@ const DashboardPage = () => {
                 total: getNum(item.unit_price) * Math.max(1, getNum(item.quantity, 1))
               }));
               
-              return {
+              const transformedOrder = {
                 id: order.id || `order_${index}`,
                 display_id: order.display_id || index + 1,
                 customer: {
@@ -1192,13 +1247,19 @@ const DashboardPage = () => {
                 has_claims: order.has_claims || false,
                 has_returns: order.has_returns || false
               };
+              
+              // console.log('Transformed created_at:', transformedOrder.created_at);
+              // console.log('Transformed vendor_total:', transformedOrder.vendor_total);
+              // console.log('=== END TRANSFORM ===\n');
+              
+              return transformedOrder;
             } catch (transformError) {
               console.error('Error transforming order:', transformError);
               return null;
             }
           }).filter(Boolean);
           
-          console.log('Transformed orders:', transformedOrders.length);
+          //console.log('Transformed orders:', transformedOrders.length);
           setOrders(transformedOrders);
         }
       } catch (orderError) {
@@ -1207,7 +1268,7 @@ const DashboardPage = () => {
       }
       
       // Fetch products (only 3 for dashboard)
-      console.log('Fetching products...');
+      //console.log('Fetching products...');
       try {
         const productResponse = await fetch(
           `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/products?limit=3`,
@@ -1220,18 +1281,18 @@ const DashboardPage = () => {
           }
         );
         
-        console.log('Products response status:', productResponse.status);
+        //console.log('Products response status:', productResponse.status);
         
         if (!productResponse.ok) {
-          console.warn('Failed to fetch products:', productResponse.status);
+          //console.warn('Failed to fetch products:', productResponse.status);
           setProducts([]);
         } else {
           const productData = await productResponse.json();
-          console.log('Raw product data:', productData);
+          //console.log('Raw product data:', productData);
           
           // Get products array
           const productsArray = productData.products || [];
-          console.log('Products array length:', productsArray.length);
+          //console.log('Products array length:', productsArray.length);
           
           // Transform products (only first 3)
           const transformedProducts = productsArray.slice(0, 3).map((product: any): Product => {
@@ -1252,18 +1313,18 @@ const DashboardPage = () => {
             };
           });
           
-          console.log('Transformed products:', transformedProducts.length);
+          //console.log('Transformed products:', transformedProducts.length);
           setProducts(transformedProducts);
         }
       } catch (productError) {
-        console.error('Product fetch error:', productError);
+        //console.error('Product fetch error:', productError);
         setProducts([]);
       }
       
-      console.log('=== DASHBOARD FETCH COMPLETE ===');
+      //console.log('=== DASHBOARD FETCH COMPLETE ===');
       
     } catch (err: any) {
-      console.error('Dashboard error:', err);
+      //console.error('Dashboard error:', err);
       setError(err.message || "Failed to load dashboard data");
     } finally {
       setLoading(false);
@@ -1321,13 +1382,17 @@ const DashboardPage = () => {
       order.fulfillment_status === "partially_shipped"
     ).length;
     
-    // Today's orders
+    // Today's orders - proper date range check
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
     const todayOrders = validOrders.filter(order => {
       const orderDate = new Date(order.created_at);
-      return orderDate >= today;
+      // Order must be >= today at midnight AND < tomorrow at midnight
+      return orderDate >= today && orderDate < tomorrow;
     });
     
     const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.vendor_total || 0), 0);

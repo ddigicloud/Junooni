@@ -46,7 +46,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
 
   return (
     <Table.Row className="w-full" data-testid="product-row">
-      <Table.Cell className="!pl-0 p-4 w-24">
+      <Table.Cell className="!pl-4 p-4 w-24">
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
           className={clx("flex", {
@@ -66,12 +66,14 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
       </Table.Cell>
 
       <Table.Cell className="text-left">
-        <Text
-          className="txt-medium-plus text-ui-fg-base"
-          data-testid="product-title"
-        >
-          {item.product_title}
-        </Text>
+        <LocalizedClientLink href={`/products/${item.product_handle}`}>
+          <Text
+            className="txt-medium-plus text-ui-fg-base hover:text-[#e65100] transition-colors"
+            data-testid="product-title"
+          >
+            {item.product_title}
+          </Text>
+        </LocalizedClientLink>
         <LineItemOptions variant={item.variant} data-testid="product-variant" />
       </Table.Cell>
 
@@ -117,9 +119,9 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         </Table.Cell>
       )}
 
-      <Table.Cell className="!pr-0">
+      <Table.Cell className="!pr-4">
         <span
-          className={clx("!pr-0", {
+          className={clx("!pr-4", {
             "flex flex-col items-end h-full justify-center": type === "preview",
           })}
         >

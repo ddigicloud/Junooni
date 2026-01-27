@@ -96,9 +96,33 @@ import Bestsellers from "@modules/home/components/BestSellers"
 import FeaturedProducts from "@modules/home/components/featured-products"
 
 export const metadata: Metadata = {
-  title: "JUNOONI | HOME",
+  title: "Junooni Store | India's Premier Creator Merchandise Marketplace",
   description:
-    "A performant frontend ecommerce starter template with Next.js 14 and Medusa.",
+    "Shop exclusive creator merchandise from your favorite Indian content creators. Discover unique apparel, prints, tech accessories & keepsakes. Support creators, wear your passion.",
+  openGraph: {
+    title: "Junooni Store | Creator Merchandise Marketplace",
+    description: "Shop exclusive merchandise from India's top content creators. Unique designs, quality products, direct creator support.",
+    type: "website",
+    siteName: "Junooni Store",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Junooni Store | Creator Merchandise Marketplace",
+    description: "Shop exclusive merchandise from India's top content creators.",
+  },
+  keywords: [
+    "creator merchandise India",
+    "Indian creator merch",
+    "content creator products",
+    "custom apparel India",
+    "creator merchandise marketplace",
+    "support Indian creators",
+    "unique creator designs",
+  ],
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default async function Home(props: {

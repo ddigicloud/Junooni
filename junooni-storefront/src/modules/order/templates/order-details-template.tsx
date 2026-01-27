@@ -202,7 +202,7 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
             </nav>
           </div>
 
-          <div className="sm:p-6 md:p-6 px-0 py-3">
+          <div className="px-0 py-3 sm:p-6 md:p-6">
             {activeTab === "items" && <Items order={order} />}
 
             {activeTab === "payment" && (
@@ -215,16 +215,16 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
           </div>
 
           {/* Professional Invoice Actions - Only show if order is fulfilled/delivered */}
-          {(order.fulfillment_status === 'fulfilled' || order.fulfillment_status === 'delivered') && (
+          {(order.fulfillment_status === 'delivered') && (
             <div className="p-6 border-t border-gray-200 bg-gray-50">
               <div className="flex flex-col space-y-4">
                 {/* Professional Backend Invoice */}
                 <div>
-                  {/* <h3 className="text-sm font-medium text-gray-900 mb-3">Click below button to download invoice 👇</h3> */}
+                  {/* <h3 className="mb-3 text-sm font-medium text-gray-900">Click below button to download invoice 👇</h3> */}
                 
                 {/* Error Display */}
                 {invoiceError && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <div className="p-3 mb-4 border border-red-200 rounded-md bg-red-50">
                     <p className="text-sm text-red-700">
                       <strong>Error:</strong> {invoiceError}
                     </p>
@@ -235,7 +235,7 @@ const OrderDetailsTemplate: React.FC<OrderDetailsTemplateProps> = ({
                   <button
                     onClick={generateProfessionalInvoice}
                     disabled={isGeneratingInvoice}
-                    className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white transition-colors bg-orange-600 border border-transparent rounded-md shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isGeneratingInvoice ? (
                       <>
