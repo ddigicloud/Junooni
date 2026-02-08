@@ -827,8 +827,8 @@ export default function ProductActions({
                     return (
                       <div key={option.id}>
                         {/* Custom header for Size with Size Chart link */}
-                        <div className="flex items-center gap-4 mb-3">
-                          <span className="font-semibold text-m">Select {option.title}</span>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-semibold text-base">Select {option.title}</span>
                           {product.size_chart && product.size_chart.chart && (
                             <button
                               onClick={() => setShowSizeChart(true)}
@@ -841,17 +841,16 @@ export default function ProductActions({
                         </div>
                         
                         {/* Size options without title since we rendered it above */}
-                        <div className="flex gap-3" data-testid="product-options">
+                        <div className="flex flex-wrap gap-3" data-testid="product-options">
                           {(option.values ?? []).map((v) => (
                             <button
                               onClick={() => setOptionValue(option.id, v.value)}
                               key={v.value}
                               className={clx(
-                                "border-ui-border-base border rounded-md text-small-regular w-12 h-10",
+                                "border rounded-md text-sm font-medium px-4 py-2 min-w-[60px] h-10 flex items-center justify-center transition-all",
                                 {
-                                  "bg-[#E65100] text-white border-4 border-[#E65100]": v.value === options[option.id],
-                                  "border-ui-border-base hover:border-[#E65100]": v.value !== options[option.id],
-                                  "transition-shadow ease-in-out duration-150": v.value !== options[option.id],
+                                  "bg-[#E65100] text-white border-[#E65100]": v.value === options[option.id],
+                                  "border-gray-300 hover:border-[#E65100] bg-white text-gray-700": v.value !== options[option.id],
                                 }
                               )}
                               disabled={!!disabled || isAdding}

@@ -479,7 +479,57 @@ const ProductPreview = ({
             <span className="mr-1 text-sm font-medium text-black">{vendorName}</span>
           )}
           {product.vendor?.verified === "Yes" && (
-            <Check size={14} className="text-orange-500" />
+            // <Check size={14} className="text-orange-500" />
+            <svg
+              className="ml-2 inline-block align-middle"
+              width="18"
+              height="18"
+              viewBox="0 0 20 20"
+              preserveAspectRatio="xMidYMid meet"
+              aria-label="Verified"
+            >
+              {/* Verified badge shape (clean + symmetrical) */}
+              <path
+                fill="#e65100"
+                d="
+                  M10 0.8
+                  L12.2 2.2
+                  L14.9 1.9
+                  L16.1 4.4
+                  L18.6 5.6
+                  L17.9 8.3
+                  L19.2 10
+                  L17.9 11.7
+                  L18.6 14.4
+                  L16.1 15.6
+                  L14.9 18.1
+                  L12.2 17.8
+                  L10 19.2
+                  L7.8 17.8
+                  L5.1 18.1
+                  L3.9 15.6
+                  L1.4 14.4
+                  L2.1 11.7
+                  L0.8 10
+                  L2.1 8.3
+                  L1.4 5.6
+                  L3.9 4.4
+                  L5.1 1.9
+                  L7.8 2.2
+                  Z"
+              />
+
+              {/* Check */}
+              <path
+                d="M6.2 10.2l2.1 2.2 4.5-4.6"
+                fill="none"
+                stroke="white"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+                          
           )}
         </div>
         

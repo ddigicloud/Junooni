@@ -7505,6 +7505,7 @@ if (!printTechId || !printTechName) {
                  {(() => {
                   // Get the CANVAS-SELECTED technology from filteredProductData
                   const locationState = location.state as LocationState;
+                  console.log('locationState:', locationState);
                   const canvasSelectedTech = locationState?.filteredProductData?.printT?.[0]?.technologyName;
                   const payloadBaseTech = designData?.printingTechnology || enhancedProductData?.printT?.[0]?.technologyName;
                   const displayTech = canvasSelectedTech || payloadBaseTech;

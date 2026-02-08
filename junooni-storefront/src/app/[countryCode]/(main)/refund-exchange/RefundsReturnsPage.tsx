@@ -67,17 +67,17 @@ const RefundsReturnsPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="sticky top-0 z-10 py-4 bg-white shadow-sm">
+      {/* <header className="sticky top-0 z-10 py-4 bg-white shadow-sm">
         <div className="container px-4 mx-auto">
           <Link href="/" className="flex items-center">
             <ShoppingBag className="h-6 w-6 text-[#e65100] mr-2" />
             <span className="text-lg font-bold">JUNOONI</span>
           </Link>
         </div>
-      </header>
+      </header> */}
       
       {/* Hero Section */}
-      <div className="bg-[#e65100] text-white py-10 md:py-12">
+      <div className="bg-[#e65100] text-white py-10 md:py-12 mt-8 md:mt-12">
         <div className="container px-4 mx-auto">
           <div className="max-w-4xl mx-auto text-center">
             <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-white/20">
@@ -92,7 +92,7 @@ const RefundsReturnsPage = () => {
         </div>
       </div>
       
-      <main className="container px-4 py-8 mx-auto md:py-12">
+      <main className="px-3 md:px-4 py-8 mx-auto md:py-12">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
             {/* Sidebar Navigation - Hidden on mobile */}

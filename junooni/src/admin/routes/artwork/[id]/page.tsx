@@ -146,45 +146,49 @@ function ArtworkEditPage() {
       setSaving(false);
     }
   };
+const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = e.target.files;
+  if (!files || !artwork) return;
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || !artwork) return;
+  setUploading(true);
+  try {
+    // Single request - workflow handles both upload and linking
+    const formData = new FormData();
+    Array.from(files).forEach(file => {
+      formData.append('files', file);
+    });
 
-    setUploading(true);
-    try {
-      for (let file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('file_description', '');
-        formData.append('vendor_artwork_id', artwork.id);
+    const response = await fetch(`/admin/artwork/${artwork.id}/artfiles`, {
+      method: "POST",
+      body: formData,
+      credentials: 'include',
+    });
 
-        const response = await fetch(`/admin/artwork/${artwork.id}/media`, {
-          method: "POST",
-          body: formData
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${file.name}`);
-        }
-      }
-
-      await fetchArtwork(artwork.id);
-      toast.success(`${files.length} file(s) uploaded successfully`);
-    } catch (error) {
-      console.error("Failed to upload files:", error);
-      toast.error("Failed to upload files");
-    } finally {
-      setUploading(false);
-      e.target.value = '';
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Upload failed');
     }
-  };
+
+    const result = await response.json();
+    console.log('Upload successful:', result);
+
+    // Refresh artwork to show new files
+    await fetchArtwork(artwork.id);
+    toast.success(`${files.length} file(s) uploaded successfully`);
+  } catch (error) {
+    console.error("Failed to upload files:", error);
+    toast.error(`Failed to upload files: ${error.message}`);
+  } finally {
+    setUploading(false);
+    e.target.value = '';
+  }
+};
 
   const handleDeleteMedia = async () => {
     if (!deleteMediaId) return;
     
     try {
-      await fetch(`/admin/artwork/media/${deleteMediaId}`, {
+      await fetch(`/admin/artwork/${artwork.id}/artfiles/${deleteMediaId}`, {
         method: "DELETE",
       });
       

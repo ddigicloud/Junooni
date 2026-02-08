@@ -64,6 +64,8 @@ interface AreaPricingInfo {
   currentImageArea: number;            // Current area consumed by images
   calculatedPrice: number;
   finalPrice: number;
+  consumedWidth?: number;
+  consumedHeight?: number;
   elements: Array<{
     elementId: string;
     elementName: string;
@@ -705,7 +707,7 @@ const getSizeAwareImage = () => {
         )}
       </div>
       
-      <p className="text-xs font-medium text-center sm:text-sm">{areaName}</p>
+      <p className="text-xs font-medium text-center sm:text-sm">{areaName.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())}</p>
       
       {/* 🔥 NEW: Show size info below area name if size_Images is true */}
       {productData?.size_Images && activeSize && (
@@ -728,11 +730,6 @@ const renderMockupDirectly = async (
   productColor: string,
   targetResolution: number = 1000
 ): Promise<string> => {
-  // console.log('🎨 Direct Canvas Render - Checking for color masking');
-  // console.log('   Mockup color:', mockup.photoColor);
-  // console.log('   Product color:', productColor);
-  // console.log('   requiresColorMasking:', mockup.requiresColorMasking);
-  // console.log('   maskColor:', mockup.maskColor);
   
   return new Promise(async (resolve, reject) => {
     try {
@@ -921,17 +918,6 @@ const renderMockupDirectly = async (
           if (element.rotation) {
             ctx.rotate((element.rotation * Math.PI) / 180);
           }
-          // if (element.rotation) {
-          //   console.log('🔍 DEBUG:', {
-          //     id: element.id,
-          //     x: element.x,
-          //     y: element.y,
-          //     width: element.width,
-          //     scaleX: element.scaleX,
-          //     centerInCanvasX,
-          //     centerX
-          //   });
-          // }
           
           //ctx.globalAlpha = (element.opacity || 1) * (design.opacity || 1);
           // Set element opacity (default to 1 if not specified)
@@ -1105,7 +1091,214 @@ const createCanvasColorMatcher = (productData: PayloadProductData) => {
   };
 };
 
+// Utility function to crop transparent areas from image
+const cropTransparentPixels = (img: HTMLImageElement): { 
+  croppedCanvas: HTMLCanvasElement; 
+  croppedBase64: string;
+  bounds: { x: number; y: number; width: number; height: number }; 
+  originalWidth: number;
+  originalHeight: number;
+} => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  
+  if (!ctx) {
+    throw new Error('Could not get canvas context');
+  }
+  
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+  ctx.drawImage(img, 0, 0);
+  
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  let minX = canvas.width;
+  let minY = canvas.height;
+  let maxX = 0;
+  let maxY = 0;
+  
+  // Find bounding box of visible pixels (alpha > 10 for slight tolerance)
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      const alpha = data[(y * canvas.width + x) * 4 + 3];
+      if (alpha > 10) { // Non-transparent pixel with tolerance
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  
+  // If all transparent, return original
+  if (maxX < minX || maxY < minY) {
+    return {
+      croppedCanvas: canvas,
+      croppedBase64: canvas.toDataURL('image/png', 0.95),
+      bounds: { x: 0, y: 0, width: canvas.width, height: canvas.height },
+      originalWidth: canvas.width,
+      originalHeight: canvas.height
+    };
+  }
+  
+  // Add small padding (2px) to avoid cutting too close
+  minX = Math.max(0, minX - 2);
+  minY = Math.max(0, minY - 2);
+  maxX = Math.min(canvas.width - 1, maxX + 2);
+  maxY = Math.min(canvas.height - 1, maxY + 2);
+  
+  const width = maxX - minX + 1;
+  const height = maxY - minY + 1;
+  
+  // Create cropped canvas
+  const croppedCanvas = document.createElement('canvas');
+  croppedCanvas.width = width;
+  croppedCanvas.height = height;
+  const croppedCtx = croppedCanvas.getContext('2d');
+  
+  if (!croppedCtx) {
+    throw new Error('Could not get cropped canvas context');
+  }
+  
+  croppedCtx.drawImage(
+    canvas,
+    minX, minY, width, height,
+    0, 0, width, height
+  );
+  
+  const croppedBase64 = croppedCanvas.toDataURL('image/png', 0.95);
+  
+  return {
+    croppedCanvas,
+    croppedBase64,
+    bounds: { x: minX, y: minY, width, height },
+    originalWidth: canvas.width,
+    originalHeight: canvas.height
+  };
+};
 
+// Utility function to merge multiple design elements into one image
+const mergeDesignElements = async (
+  elements: DesignElement[],
+  areaId: string,
+  canvasConfig: any,
+  printableArea: any
+): Promise<{
+  mergedCanvas: HTMLCanvasElement;
+  mergedBase64: string;
+  bounds: { x: number; y: number; width: number; height: number };
+}> => {
+  if (elements.length === 0) {
+    throw new Error('No elements to merge');
+  }
+
+  // If only one element, return it as-is
+  if (elements.length === 1 && elements[0].type === 'image' && elements[0].image) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = elements[0].width;
+    canvas.height = elements[0].height;
+    
+    if (ctx) {
+      ctx.drawImage(elements[0].image, 0, 0, canvas.width, canvas.height);
+    }
+    
+    return {
+      mergedCanvas: canvas,
+      mergedBase64: canvas.toDataURL('image/png', 0.95),
+      bounds: {
+        x: elements[0].x,
+        y: elements[0].y,
+        width: elements[0].width,
+        height: elements[0].height
+      }
+    };
+  }
+
+  // Sort elements by zIndex (bottom to top)
+  const sortedElements = [...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+
+  // Calculate bounding box of all elements
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  sortedElements.forEach(element => {
+    const elemLeft = element.x;
+    const elemTop = element.y;
+    const elemRight = element.x + element.width * (element.scaleX || 1);
+    const elemBottom = element.y + element.height * (element.scaleY || 1);
+
+    minX = Math.min(minX, elemLeft);
+    minY = Math.min(minY, elemTop);
+    maxX = Math.max(maxX, elemRight);
+    maxY = Math.max(maxY, elemBottom);
+  });
+
+  const mergedWidth = maxX - minX;
+  const mergedHeight = maxY - minY;
+
+  // Create canvas for merged image
+  const mergedCanvas = document.createElement('canvas');
+  mergedCanvas.width = Math.ceil(mergedWidth);
+  mergedCanvas.height = Math.ceil(mergedHeight);
+  const mergedCtx = mergedCanvas.getContext('2d');
+
+  if (!mergedCtx) {
+    throw new Error('Could not get merged canvas context');
+  }
+
+  // Draw each element onto the merged canvas
+  for (const element of sortedElements) {
+    if (element.type === 'image' && element.image) {
+      mergedCtx.save();
+
+      // Calculate position relative to merged canvas origin
+      const relativeX = element.x - minX;
+      const relativeY = element.y - minY;
+
+      // Apply transformations
+      const centerX = relativeX + (element.width * (element.scaleX || 1)) / 2;
+      const centerY = relativeY + (element.height * (element.scaleY || 1)) / 2;
+
+      mergedCtx.translate(centerX, centerY);
+
+      if (element.rotation) {
+        mergedCtx.rotate((element.rotation * Math.PI) / 180);
+      }
+
+      mergedCtx.scale(element.scaleX || 1, element.scaleY || 1);
+      mergedCtx.globalAlpha = element.opacity || 1;
+
+      // Draw the image
+      mergedCtx.drawImage(
+        element.image,
+        -element.width / 2,
+        -element.height / 2,
+        element.width,
+        element.height
+      );
+
+      mergedCtx.restore();
+    }
+  }
+
+  const mergedBase64 = mergedCanvas.toDataURL('image/png', 0.95);
+
+  return {
+    mergedCanvas,
+    mergedBase64,
+    bounds: {
+      x: minX,
+      y: minY,
+      width: mergedWidth,
+      height: mergedHeight
+    }
+  };
+};
 
 const convertFileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -1301,11 +1494,6 @@ const getMockupsForColor = (
   activeTechnology: string,
   selectedSize?: string
 ): DynamicMockupPhoto[] => {
-  // console.log('🔍 getMockupsForColor called:', {
-  //   colorHex,
-  //   selectedSize,
-  //   activeTechnology
-  // });
   
   const allMockups: DynamicMockupPhoto[] = [];
   
@@ -1325,13 +1513,6 @@ const getMockupsForColor = (
       }
     });
   }
-  
-  //console.log('📦 Total mockups in tech:', allMockups.length);
-  // console.log('📸 Mockup colors:', allMockups.map(m => ({ 
-  //   id: m.id, 
-  //   title: m.title, 
-  //   photoColor: m.photoColor 
-  // })));
   
   if (!productData?.colorOptions) {
     //console.log('⚠️ No color options, returning all mockups');
@@ -2458,19 +2639,6 @@ public generateForStoreImport = async (
                 color_combinations: colorCombinations
               });
 
-              // ðŸ”¥ DEBUG: Log what we just added
-              // console.log('ðŸ“¦ ADDED MOCKUP VARIANT:', {
-              //   title: mockup.title,
-              //   mockup_size: mockupSize,
-              //   mockup_color: mockup.photoColor,
-              //   color_name: colorCombinations[0].color_name,
-              //   color_hex: colorCombinations[0].color_hex,
-              //   size_variants: colorCombinations[0].size_variants.map(sv => ({
-              //     size_name: sv.size_name,
-              //     has_images: sv.generated_images.length > 0
-              //   }))
-              // });
-
               completedCombinations++;
 
             } catch (error) {
@@ -2520,19 +2688,6 @@ public generateForStoreImport = async (
       size_Images: productData.size_Images
     }
   };
-
-//   console.log('ðŸ“¦ FINAL MOCKUP VARIANTS SUMMARY:', {
-//   total_variants: mockupVariants.length,
-//   variants: mockupVariants.map(v => ({
-//     title: v.mockup_title,
-//     mockup_size: v.mockup_size,
-//     mockup_color: v.mockup_color,
-//     color_combinations: v.color_combinations?.length || 0,
-//     first_color: v.color_combinations?.[0]?.color_name,
-//     size_variants_count: v.color_combinations?.[0]?.size_variants?.length || 0,
-//     sizes: v.color_combinations?.[0]?.size_variants?.map(sv => sv.size_name)
-//   }))
-// });
 
   return {
     product_id: productData.id || `product-${Date.now()}`,
@@ -4256,56 +4411,209 @@ const extractDesignImages = useCallback(() => {
     
     totalElements += elements.length;
     
-    elements.forEach((element, index) => {
-      if (element.type === 'image' && element.imageBase64) {
-        imageElements++;
+    // Filter visible image elements only
+    const visibleImageElements = elements.filter(
+      el => el.type === 'image' && el.visible !== false && el.image
+    );
+
+    if (visibleImageElements.length === 0) {
+      return;
+    }
+
+    imageElements++;
+
+    const canvasConfig = getCanvasConfig(area);
+    const printableArea = getPrintableAreaFromPhoto(area);
+
+    try {
+      // Sort by zIndex
+      const sortedElements = [...visibleImageElements].sort(
+        (a, b) => (a.zIndex || 0) - (b.zIndex || 0)
+      );
+
+      // 🔥 STEP 1: Calculate bounding box in canvas coordinates
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      sortedElements.forEach(element => {
+        const elemLeft = element.x;
+        const elemTop = element.y;
+        const elemRight = element.x + element.width * (element.scaleX || 1);
+        const elemBottom = element.y + element.height * (element.scaleY || 1);
+
+        minX = Math.min(minX, elemLeft);
+        minY = Math.min(minY, elemTop);
+        maxX = Math.max(maxX, elemRight);
+        maxY = Math.max(maxY, elemBottom);
+      });
+
+      const boundingWidthCanvas = maxX - minX;
+      const boundingHeightCanvas = maxY - minY;
+
+      // 🔥 STEP 2: Find the highest resolution needed
+      // Calculate pixels per canvas unit for each element
+      let maxPixelDensity = 0;
+      
+      sortedElements.forEach(element => {
+        const origW = element.originalImageWidth || element.image.naturalWidth || element.image.width;
+        const origH = element.originalImageHeight || element.image.naturalHeight || element.image.height;
         
-        const canvasConfig = getCanvasConfig(area);
-        const dpiInfo = calculateDPI(element);
+        // How many original pixels per canvas pixel?
+        const pixelDensityX = origW / element.width;
+        const pixelDensityY = origH / element.height;
+        const pixelDensity = Math.max(pixelDensityX, pixelDensityY);
         
-        // Generate detailed manufacturing description
-        const widthInches = (element.width / canvasConfig.width) * canvasConfig.realWorldWidth;
-        const heightInches = (element.height / canvasConfig.height) * canvasConfig.realWorldHeight;
-        const xInches = (element.x / canvasConfig.width) * canvasConfig.realWorldWidth;
-        const yInches = (element.y / canvasConfig.height) * canvasConfig.realWorldHeight;
-        
-        const description = `DESIGN IMAGE SPECIFICATIONS:
-Area: ${area.toUpperCase()}
-Position: (${xInches.toFixed(3)}", ${yInches.toFixed(3)}")
-Size: ${widthInches.toFixed(3)}" x ${heightInches.toFixed(3)}"
-Pixels: ${element.width} x ${element.height}
-Original: ${element.originalImageWidth || element.width} x ${element.originalImageHeight || element.height}
-Print Quality: ${dpiInfo.quality} (${dpiInfo.dpi} DPI)
-Rotation: ${element.rotation || 0}Â°
-Scale: ${element.scaleX || 1} x ${element.scaleY || 1}
-Opacity: ${Math.round((element.opacity || 1) * 100)}%
-File: ${element.imageName || `design-image-${imageElements}.png`}
-Generated: ${new Date().toISOString()}`;
-        
-        const designImage = {
-          id: element.id,
-          name: element.imageName || `design-image-${imageElements}.png`,
-          type: 'image/png',
-          base64Data: element.imageBase64,
-          originalWidth: element.originalImageWidth || element.width,
-          originalHeight: element.originalImageHeight || element.height,
-          area: area,
-          position: { x: element.x, y: element.y },
-          dimensions: { width: element.width, height: element.height },
-          rotation: element.rotation || 0,
-          scaleX: element.scaleX || 1,
-          scaleY: element.scaleY || 1,
-          opacity: element.opacity || 1,
-          description: description
-        };
-        
-        designImages.push(designImage);
+        maxPixelDensity = Math.max(maxPixelDensity, pixelDensity);
+      });
+
+      // 🔥 STEP 3: Use MAXIMUM pixel density for output (at least 2x for quality)
+      const outputScale = Math.max(maxPixelDensity, 3); // Minimum 3x for crisp output
+      
+      const outputWidth = Math.round(boundingWidthCanvas * outputScale);
+      const outputHeight = Math.round(boundingHeightCanvas * outputScale);
+
+      // 🔥 STEP 4: Create ultra high-resolution canvas
+      const mergedCanvas = document.createElement('canvas');
+      mergedCanvas.width = outputWidth;
+      mergedCanvas.height = outputHeight;
+      
+      const mergedCtx = mergedCanvas.getContext('2d', { 
+        alpha: true,
+        willReadFrequently: false,
+        desynchronized: false
+      });
+
+      if (!mergedCtx) {
+        console.error('Could not get merged canvas context');
+        return;
       }
-    });
+
+      // 🔥 CRITICAL: Use best quality settings
+      mergedCtx.imageSmoothingEnabled = true; // Enable for high-quality scaling
+      mergedCtx.imageSmoothingQuality = 'high';
+
+      // 🔥 STEP 5: Draw each element at NATIVE resolution
+      sortedElements.forEach(element => {
+        mergedCtx.save();
+
+        // Calculate scaled positions and dimensions
+        const relativeX = (element.x - minX) * outputScale;
+        const relativeY = (element.y - minY) * outputScale;
+        
+        const displayWidth = element.width * (element.scaleX || 1) * outputScale;
+        const displayHeight = element.height * (element.scaleY || 1) * outputScale;
+
+        const centerX = relativeX + displayWidth / 2;
+        const centerY = relativeY + displayHeight / 2;
+
+        // Apply transformations
+        mergedCtx.translate(centerX, centerY);
+
+        if (element.rotation) {
+          mergedCtx.rotate((element.rotation * Math.PI) / 180);
+        }
+
+        mergedCtx.globalAlpha = element.opacity || 1;
+
+        // 🔥 KEY: Draw from ORIGINAL image source at full resolution
+        // This is critical - we draw the original high-res image, not the canvas version
+        mergedCtx.drawImage(
+          element.image, // Original high-res image
+          0, 0, // Source x, y (use full image)
+          element.image.naturalWidth || element.image.width, // Source width (full)
+          element.image.naturalHeight || element.image.height, // Source height (full)
+          -displayWidth / 2, // Destination x
+          -displayHeight / 2, // Destination y  
+          displayWidth, // Destination width
+          displayHeight // Destination height
+        );
+
+        mergedCtx.restore();
+      });
+
+      // 🔥 STEP 6: Export at MAXIMUM quality
+      const mergedBase64 = mergedCanvas.toDataURL('image/png', 1.0);
+
+      // Calculate real-world dimensions
+      const widthInches = (boundingWidthCanvas / printableArea.width) * canvasConfig.realWorldWidth;
+      const heightInches = (boundingHeightCanvas / printableArea.height) * canvasConfig.realWorldHeight;
+      const xInches = ((minX - printableArea.x) / printableArea.width) * canvasConfig.realWorldWidth;
+      const yInches = ((minY - printableArea.y) / printableArea.height) * canvasConfig.realWorldHeight;
+
+      // Calculate actual DPI based on output
+      const dpiX = Math.round(outputWidth / widthInches);
+      const dpiY = Math.round(outputHeight / heightInches);
+      const dpi = Math.round((dpiX + dpiY) / 2);
+      
+      let quality: 'Poor' | 'Good' | 'Excellent' = 'Excellent';
+      if (dpi < 150) quality = 'Poor';
+      else if (dpi < 300) quality = 'Good';
+
+      const hasTransformations = sortedElements.some(
+        el => (el.scaleX && el.scaleX !== 1) || 
+              (el.scaleY && el.scaleY !== 1) || 
+              (el.rotation && el.rotation !== 0)
+      );
+
+      const transformationInfo = sortedElements.map(el => ({
+        id: el.id,
+        name: el.imageName || 'Element',
+        rotation: el.rotation || 0,
+        scaleX: el.scaleX || 1,
+        scaleY: el.scaleY || 1,
+        opacity: el.opacity || 1,
+        originalRes: `${el.originalImageWidth || el.image.naturalWidth || el.image.width} x ${el.originalImageHeight || el.image.naturalHeight || el.image.height}`
+      }));
+
+      const description = `ULTRA HIGH-RES MERGED DESIGN:
+Area: ${area.toUpperCase()}
+Elements Merged: ${sortedElements.length}
+Position: (${xInches.toFixed(3)}", ${yInches.toFixed(3)}")
+Physical Size: ${widthInches.toFixed(3)}" x ${heightInches.toFixed(3)}"
+Output Resolution: ${outputWidth} x ${outputHeight} pixels
+Output DPI: ${dpi} (${dpiX} x ${dpiY})
+Print Quality: ${quality}
+Pixel Scale Factor: ${outputScale.toFixed(2)}x
+Transformations: ${hasTransformations ? 'Yes' : 'No'}
+${hasTransformations ? `\nElement Details:
+${transformationInfo.map(t => `  • ${t.name}: ${t.originalRes}px, Rotation ${t.rotation}°, Scale ${t.scaleX}x${t.scaleY}, Opacity ${Math.round(t.opacity * 100)}%`).join('\n')}` : ''}
+Generated: ${new Date().toISOString()}`;
+
+      const designImage = {
+        id: `merged-${area}-${Date.now()}`,
+        name: `${area}-merged-design.png`,
+        type: 'image/png',
+        base64Data: mergedBase64,
+        originalWidth: outputWidth,
+        originalHeight: outputHeight,
+        area: area,
+        position: { x: minX, y: minY },
+        dimensions: { width: boundingWidthCanvas, height: boundingHeightCanvas },
+        isMerged: true,
+        elementCount: sortedElements.length,
+        transformations: transformationInfo,
+        dpi: dpi,
+        printQuality: quality,
+        outputScale: outputScale,
+        description: description
+      };
+
+      designImages.push(designImage);
+
+    } catch (error) {
+      console.error(`Failed to merge elements in area ${area}:`, error);
+    }
+  });
+  
+  console.log('📦 Extracted ultra high-res design images:', {
+    total: designImages.length,
+    totalElements: designImages.reduce((sum, img) => sum + (img.elementCount || 0), 0)
   });
   
   return designImages;
-}, [designElements, getCanvasConfig, calculateDPI]);
+}, [designElements, getCanvasConfig, getPrintableAreaFromPhoto]);
 
 
 // 3. HELPER FUNCTIONS SECTION - Add these pricing calculation functions
@@ -4368,20 +4676,44 @@ const getPricingInfoForArea = useCallback((areaId: string): { minimumPrice: numb
 
 const calculateElementRealWorldDimensions = useCallback((element: DesignElement, areaId: string) => {
   const canvasConfig = getCanvasConfig(areaId);
-  const printableArea = getPrintableAreaFromPhoto(areaId); // Design area bounds
+  const printableArea = getPrintableAreaFromPhoto(areaId);
   
-  // ðŸ”§ FIXED: Calculate only the area within design boundaries
+  // 🔥 Get actual rendered dimensions including scale
+  let effectiveWidth = element.width * (element.scaleX || 1);
+  let effectiveHeight = element.height * (element.scaleY || 1);
+  
+  // 🔥 For images with transparency, calculate visible pixel area only
+  if (element.type === 'image' && element.image) {
+    try {
+      // Detect transparent pixels and get actual visible bounds
+      const { bounds } = cropTransparentPixels(element.image);
+      
+      // Calculate the ratio of visible pixels to total image
+      const originalWidth = element.originalImageWidth || element.image.naturalWidth || element.width;
+      const originalHeight = element.originalImageHeight || element.image.naturalHeight || element.height;
+      const visibleRatio = (bounds.width * bounds.height) / (originalWidth * originalHeight);
+      
+      // Apply the visible ratio to maintain aspect ratio
+      effectiveWidth = element.width * (element.scaleX || 1) * Math.sqrt(visibleRatio);
+      effectiveHeight = element.height * (element.scaleY || 1) * Math.sqrt(visibleRatio);
+      
+    } catch (error) {
+      console.warn('Could not detect transparent pixels, using full dimensions', error);
+    }
+  }
+  
+  // 🔥 Calculate intersection with design area
   const elementLeft = element.x;
   const elementTop = element.y;
-  const elementRight = element.x + element.width;
-  const elementBottom = element.y + element.height;
+  const elementRight = element.x + effectiveWidth;
+  const elementBottom = element.y + effectiveHeight;
   
   const designLeft = printableArea.x;
   const designTop = printableArea.y;
   const designRight = printableArea.x + printableArea.width;
   const designBottom = printableArea.y + printableArea.height;
   
-  // Calculate intersection (only the part within design area)
+  // Calculate intersection
   const intersectionLeft = Math.max(elementLeft, designLeft);
   const intersectionTop = Math.max(elementTop, designTop);
   const intersectionRight = Math.min(elementRight, designRight);
@@ -4398,24 +4730,34 @@ const calculateElementRealWorldDimensions = useCallback((element: DesignElement,
     };
   }
   
-  // Calculate dimensions of intersection area only
   const intersectionWidth = intersectionRight - intersectionLeft;
   const intersectionHeight = intersectionBottom - intersectionTop;
   
-  const widthInches = (intersectionWidth / printableArea.width) * canvasConfig.realWorldWidth;
-  const heightInches = (intersectionHeight / printableArea.height) * canvasConfig.realWorldHeight;
+  // 🔥 KEY FIX: Calculate PPI (Pixels Per Inch) using the LONGER dimension
+  // This ensures aspect ratio is preserved regardless of printable area shape
+  
+  // Method 1: Use the printable area's PPI as baseline
+  const printableAreaPPIWidth = printableArea.width / canvasConfig.realWorldWidth;
+  const printableAreaPPIHeight = printableArea.height / canvasConfig.realWorldHeight;
+  
+  // Use the average PPI for consistent scaling
+  const averagePPI = (printableAreaPPIWidth + printableAreaPPIHeight) / 2;
+  
+  // Convert element dimensions to inches using this PPI
+  const widthInches = intersectionWidth / averagePPI;
+  const heightInches = intersectionHeight / averagePPI;
+  
+  // Calculate position
   const xInches = ((intersectionLeft - printableArea.x) / printableArea.width) * canvasConfig.realWorldWidth;
   const yInches = ((intersectionTop - printableArea.y) / printableArea.height) * canvasConfig.realWorldHeight;
+  
+  // Calculate area
   const areaSquareInches = widthInches * heightInches;
 
-  // //console.log('ðŸ”§ INTERSECTION CALCULATION:', {
-  //   elementBounds: `${elementLeft},${elementTop} to ${elementRight},${elementBottom}`,
-  //   designBounds: `${designLeft},${designTop} to ${designRight},${designBottom}`,
-  //   intersectionBounds: `${intersectionLeft},${intersectionTop} to ${intersectionRight},${intersectionBottom}`,
-  //   intersectionSize: `${intersectionWidth}x${intersectionHeight}`,
-  //   areaSquareInches,
-  //   maxPossible: 320
-  // });
+  // 🔥 Verify aspect ratio is maintained
+  const elementAspectRatio = effectiveWidth / effectiveHeight;
+  const calculatedAspectRatio = widthInches / heightInches;
+  const aspectRatioError = Math.abs(elementAspectRatio - calculatedAspectRatio);
 
   return {
     widthInches: Number(widthInches.toFixed(3)),
@@ -4437,6 +4779,21 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
   const canvasConfig = getCanvasConfig(areaId);
   const printableArea = getPrintableAreaFromPhoto(areaId);
   const totalDesignAreaAvailable = canvasConfig.realWorldWidth * canvasConfig.realWorldHeight;
+
+  // 🔥 NEW: Calculate bounding box of all elements to get consumed dimensions
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+   visibleElements.forEach(element => {
+    const dims = calculateElementRealWorldDimensions(element, areaId);
+    minX = Math.min(minX, dims.xInches);
+    minY = Math.min(minY, dims.yInches);
+    maxX = Math.max(maxX, dims.xInches + dims.widthInches);
+    maxY = Math.max(maxY, dims.yInches + dims.heightInches);
+  });
+
+  // Calculate consumed width and height
+  const consumedWidth = visibleElements.length > 0 ? maxX - minX : 0;
+  const consumedHeight = visibleElements.length > 0 ? maxY - minY : 0;
 
   // 🔥 FIXED: Precise area calculation with overlap detection using analytical geometry
   const calculateVisibleAreas = () => {
@@ -4569,7 +4926,10 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
     currentImageArea: Number(totalCurrentImageArea.toFixed(3)),
     calculatedPrice: Number(totalCost.toFixed(2)),
     finalPrice: Number(totalCost.toFixed(2)),
-    elements: elementPricing
+    elements: elementPricing,
+    // 🔥 ADD these new fields
+    consumedWidth: Number(consumedWidth.toFixed(2)),
+    consumedHeight: Number(consumedHeight.toFixed(2))
   };
 }, [designElements, getPricingInfoForArea, calculateElementRealWorldDimensions, getCanvasConfig, getPrintableAreaFromPhoto]);
 
@@ -4669,80 +5029,67 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     const canvasConfig = getCanvasConfig(areaId, activeColor);
     const printableArea = getPrintableAreaFromPhoto(areaId, activeColor);
     
-    // Get the canvas background image (t-shirt template)
     const canvasImage = canvasImages[`${areaId}_${activeColor}`] || canvasImages[areaId];
-    
-    // //console.log(`ðŸŽ¯ CANVAS CAPTURE: Starting capture for ${areaId}`, {
-    //   canvasConfig,
-    //   hasCanvasImage: !!canvasImage,
-    //   visibleElements: visibleElements.length,
-    //   printableArea
-    // });
     
     // Create temporary stage with higher resolution for quality
     const tempStage = new Konva.Stage({
       container: document.createElement('div'),
       width: canvasConfig.width,
       height: canvasConfig.height,
-      pixelRatio: 2 // High quality
+      pixelRatio: 2
     });
     
     const tempLayer = new Konva.Layer();
     tempStage.add(tempLayer);
     
-    // STEP 1: Add transparent background (no color fill)
+    // STEP 1: Add transparent background
     const backgroundRect = new Konva.Rect({
       x: 0,
       y: 0,
       width: canvasConfig.width,
       height: canvasConfig.height,
-      fill: 'transparent', // Transparent background
+      fill: 'transparent',
       listening: false
     });
     tempLayer.add(backgroundRect);
     
-    // STEP 2: Add the t-shirt template with color applied only to the t-shirt shape
+    // STEP 2: Add the t-shirt template with color
     if (canvasImage) {
-      ////console.log(`ðŸŽ¯ CANVAS CAPTURE: Adding t-shirt template with color ${activeColor}`);
-      
-      // First, add a colored rectangle for the t-shirt
       const tshirtColorRect = new Konva.Rect({
         x: 0,
         y: 0,
         width: canvasConfig.width,
         height: canvasConfig.height,
-        fill: activeColor, // T-shirt color
+        fill: activeColor,
         listening: false
       });
       tempLayer.add(tshirtColorRect);
       
-      // Then add the t-shirt template as a mask to shape the color
       const canvasImageNode = new Konva.Image({
         image: canvasImage,
         x: 0,
         y: 0,
         width: canvasConfig.width,
         height: canvasConfig.height,
-        globalCompositeOperation: 'destination-in', // Use t-shirt shape as mask
+        globalCompositeOperation: 'destination-in',
         listening: false
       });
       tempLayer.add(canvasImageNode);
       
-      // Add texture/detail overlay if needed
       const textureOverlay = new Konva.Image({
         image: canvasImage,
         x: 0,
         y: 0,
         width: canvasConfig.width,
         height: canvasConfig.height,
-        opacity: 0.1, // Very subtle texture
+        opacity: 0.1,
         globalCompositeOperation: 'multiply',
         listening: false
       });
       tempLayer.add(textureOverlay);
     }
     
-    // STEP 3: Create clipping group for design elements (THIS WAS MISSING!)
+    // STEP 3: Create clipping group for design elements
     const clippingGroup = new Konva.Group({
       clipFunc: (ctx) => {
         ctx.beginPath();
@@ -4752,15 +5099,15 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     });
     tempLayer.add(clippingGroup);
     
-    // STEP 4: Add all visible design elements INSIDE the clipping group
+    // STEP 4: Add all visible design elements with their transformations preserved
     for (const element of visibleElements) {
       if (element.type === 'image' && element.image) {
-        ////console.log(`ðŸŽ¯ CANVAS CAPTURE: Adding clipped image element ${element.id}`);
-        
         const imageNode = new Konva.Image({
           image: element.image,
-          x: element.x,
-          y: element.y,
+          x: element.x + element.width / 2,
+          y: element.y + element.height / 2,
+          offsetX: element.width / 2,
+          offsetY: element.height / 2,
           width: element.width,
           height: element.height,
           rotation: element.rotation || 0,
@@ -4769,15 +5116,15 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
           opacity: element.opacity || 1,
           listening: false
         });
-        clippingGroup.add(imageNode); // Add to clipping group instead of layer
+        clippingGroup.add(imageNode);
         
       } else if (element.type === 'text') {
-        ////console.log(`ðŸŽ¯ CANVAS CAPTURE: Adding clipped text element ${element.id}`);
-        
         const textNode = new Konva.Text({
           text: element.text || 'Text',
-          x: element.x,
-          y: element.y,
+          x: element.x + element.width / 2,
+          y: element.y + (element.height || element.fontSize || 20) / 2,
+          offsetX: element.width / 2,
+          offsetY: (element.height || element.fontSize || 20) / 2,
           width: element.width,
           fontSize: element.fontSize || 20,
           fontFamily: element.fontFamily || 'Arial',
@@ -4788,11 +5135,11 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
           opacity: element.opacity || 1,
           listening: false
         });
-        clippingGroup.add(textNode); // Add to clipping group instead of layer
+        clippingGroup.add(textNode);
       }
     }
     
-    // STEP 5: Add printable area boundary for manufacturer reference (AFTER clipped elements)
+    // STEP 5: Add printable area boundary
     const printableBorder = new Konva.Rect({
       x: printableArea.x,
       y: printableArea.y,
@@ -4803,12 +5150,11 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
       dash: [6, 4],
       listening: false
     });
-    tempLayer.add(printableBorder); // Add to main layer (not clipped)
+    tempLayer.add(printableBorder);
     
-    // STEP 6: Force layer to draw and wait for completion
+    // STEP 6: Force layer to draw
     tempLayer.draw();
     
-    // Small delay to ensure rendering is complete
     await new Promise(resolve => setTimeout(resolve, 100));
     
     // STEP 7: Export as high-quality PNG
@@ -4818,11 +5164,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
       pixelRatio: 2
     });
     
-    // //console.log(`ðŸŽ¯ CANVAS CAPTURE: Successfully captured ${areaId}`, {
-    //   dataUrlLength: dataURL.length,
-    //   hasBackground: !!canvasImage,
-    //   clippedElements: visibleElements.length
-    // });
+    console.log(`✅ Canvas capture complete for ${areaId} with ${visibleElements.length} elements (transformations preserved)`);
     
     // Cleanup
     tempStage.destroy();
@@ -4830,13 +5172,13 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     return dataURL;
     
   } catch (error) {
-    ////console.error(`ðŸŽ¯ CANVAS CAPTURE: Error capturing area ${areaId}:`, error);
+    console.error(`❌ Canvas capture error for area ${areaId}:`, error);
     return null;
   }
 }, [getCanvasConfig, getPrintableAreaFromPhoto, designElements, activeColor, canvasImages]);
 
 
-const generateDetailedAreaAnalysis = useCallback(() => {
+const generateDetailedAreaAnalysis = useCallback((pricingData) => {
   const detailedAnalysis = {
     total_design_area_available: 0,
     current_image_area_used: 0,
@@ -4861,18 +5203,42 @@ const generateDetailedAreaAnalysis = useCallback(() => {
     let areaCurrentImageUsed = 0;
     const elementDetails = [];
 
+    // 🔥 GET CONSUMED DIMENSIONS FROM PRICING DATA (Design Size in UI)
+    // const areaPricing = pricingData?.areas_pricing?.[areaId];
+    const areaPricing = pricingData?.areas?.[areaId];
+    const consumedWidthInches = areaPricing?.consumedWidth || 0;
+    const consumedHeightInches = areaPricing?.consumedHeight || 0;
+    
+    // Get bounding box for position info
+    let consumedMinX = Infinity;
+    let consumedMinY = Infinity;
+    let consumedMaxX = -Infinity;
+    let consumedMaxY = -Infinity;
+
+    if (visibleElements.length > 0) {
+      visibleElements.forEach(element => {
+        const elemLeft = element.x;
+        const elemTop = element.y;
+        const elemRight = element.x + element.width * (element.scaleX || 1);
+        const elemBottom = element.y + element.height * (element.scaleY || 1);
+
+        consumedMinX = Math.min(consumedMinX, elemLeft);
+        consumedMinY = Math.min(consumedMinY, elemTop);
+        consumedMaxX = Math.max(consumedMaxX, elemRight);
+        consumedMaxY = Math.max(consumedMaxY, elemBottom);
+      });
+    }
+
     // Process each element in this area
     visibleElements.forEach((element, index) => {
       const realWorldDims = calculateElementRealWorldDimensions(element, areaId);
       areaCurrentImageUsed += realWorldDims.areaSquareInches;
 
-      // Calculate element-specific details
       const elementDetail = {
         element_id: element.id,
         element_name: element.imageName || element.text || `Element ${index + 1}`,
         element_type: element.type,
         
-        // ðŸ”¥ NEW: Physical dimensions in inches
         physical_dimensions: {
           width_inches: Number(realWorldDims.widthInches.toFixed(3)),
           height_inches: Number(realWorldDims.heightInches.toFixed(3)),
@@ -4881,15 +5247,13 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           position_y_inches: Number(realWorldDims.yInches.toFixed(3))
         },
         
-        // ðŸ”¥ NEW: Pixel dimensions
         pixel_dimensions: {
-          width_pixels: Math.round(element.width),
-          height_pixels: Math.round(element.height),
+          width_pixels: Math.round(element.width * (element.scaleX || 1)),
+          height_pixels: Math.round(element.height * (element.scaleY || 1)),
           position_x_pixels: Math.round(element.x),
           position_y_pixels: Math.round(element.y)
         },
         
-        // ðŸ”¥ NEW: Original image information
         original_image_info: {
           original_width_pixels: element.originalImageWidth || element.width,
           original_height_pixels: element.originalImageHeight || element.height,
@@ -4897,7 +5261,6 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           original_aspect_ratio: Number(((element.originalImageWidth || element.width) / (element.originalImageHeight || element.height)).toFixed(3))
         },
         
-        // ðŸ”¥ NEW: Transformation details (including rotation)
         transformations: {
           rotation_degrees: Number((element.rotation || 0).toFixed(2)),
           scale_x: Number((element.scaleX || 1).toFixed(3)),
@@ -4907,7 +5270,6 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           is_scaled: Math.abs((element.scaleX || 1) - 1) > 0.01 || Math.abs((element.scaleY || 1) - 1) > 0.01
         },
         
-        // ðŸ”¥ NEW: Quality and DPI information
         print_quality: (() => {
           const dpiInfo = calculateDPI(element);
           return {
@@ -4918,13 +5280,11 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           };
         })(),
         
-        // ðŸ”¥ NEW: Area utilization for this element
         area_utilization: {
           design_area_consumed_percentage: Number(((realWorldDims.areaSquareInches / areaDesignAvailable) * 100).toFixed(2)),
-          printable_area_consumed_percentage: Number(((realWorldDims.areaSquareInches / (printableArea.width * printableArea.height / (canvasConfig.width * canvasConfig.height) * areaDesignAvailable)) * 100).toFixed(2))
+          printable_area_consumed_percentage: Number(((realWorldDims.areaSquareInches / (canvasConfig.realWorldWidth * canvasConfig.realWorldHeight)) * 100).toFixed(2))
         },
         
-        // ðŸ”¥ NEW: Positioning information
         positioning: {
           is_centered_horizontally: Math.abs((element.x + element.width/2) - (printableArea.x + printableArea.width/2)) < 5,
           is_centered_vertically: Math.abs((element.y + element.height/2) - (printableArea.y + printableArea.height/2)) < 5,
@@ -4936,7 +5296,6 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           }
         },
         
-        // ðŸ”¥ NEW: State information
         state: {
           visible: element.visible !== false,
           locked: element.locked || false,
@@ -4949,23 +5308,26 @@ const generateDetailedAreaAnalysis = useCallback(() => {
       elementDetails.push(elementDetail);
     });
 
-    // Calculate area utilization
     const areaUtilization = areaDesignAvailable > 0 ? (areaCurrentImageUsed / areaDesignAvailable) * 100 : 0;
     
-    // Determine if area has elements
     if (visibleElements.length > 0) {
       detailedAnalysis.areas_with_elements.push(areaId);
     } else {
       detailedAnalysis.areas_without_elements.push(areaId);
     }
     
-    // Store detailed breakdown for this area
+    const consumedXInches = consumedMinX !== Infinity 
+      ? ((consumedMinX - printableArea.x) / printableArea.width) * canvasConfig.realWorldWidth
+      : 0;
+    const consumedYInches = consumedMinY !== Infinity 
+      ? ((consumedMinY - printableArea.y) / printableArea.height) * canvasConfig.realWorldHeight
+      : 0;
+    
     detailedAnalysis.detailed_areas_breakdown[areaId] = {
       area_id: areaId,
       area_name: areaId.charAt(0).toUpperCase() + areaId.slice(1),
       has_elements: visibleElements.length > 0,
       
-      // ðŸ”¥ NEW: Area capacity information
       capacity: {
         design_area_available_sq_inches: Number(areaDesignAvailable.toFixed(3)),
         current_image_area_used_sq_inches: Number(areaCurrentImageUsed.toFixed(3)),
@@ -4973,7 +5335,6 @@ const generateDetailedAreaAnalysis = useCallback(() => {
         utilization_percentage: Number(areaUtilization.toFixed(2))
       },
       
-      // ðŸ”¥ NEW: Canvas and printable area info
       area_specifications: {
         canvas_width_pixels: canvasConfig.width,
         canvas_height_pixels: canvasConfig.height,
@@ -4986,12 +5347,24 @@ const generateDetailedAreaAnalysis = useCallback(() => {
           height_pixels: printableArea.height,
           x_inches: Number(((printableArea.x / canvasConfig.width) * canvasConfig.realWorldWidth).toFixed(3)),
           y_inches: Number(((printableArea.y / canvasConfig.height) * canvasConfig.realWorldHeight).toFixed(3)),
-          width_inches: Number(((printableArea.width / canvasConfig.width) * canvasConfig.realWorldWidth).toFixed(3)),
-          height_inches: Number(((printableArea.height / canvasConfig.height) * canvasConfig.realWorldHeight).toFixed(3))
+          // 🔥 FROM pricingData.areas_pricing (Design Size displayed in UI)
+          width_inches: Number(consumedWidthInches.toFixed(3)),
+          height_inches: Number(consumedHeightInches.toFixed(3)),
+          full_printable_width_inches: Number(canvasConfig.realWorldWidth.toFixed(3)),
+          full_printable_height_inches: Number(canvasConfig.realWorldHeight.toFixed(3)),
+          consumed_bounding_box: {
+            min_x_pixels: consumedMinX !== Infinity ? Math.round(consumedMinX) : 0,
+            min_y_pixels: consumedMinY !== Infinity ? Math.round(consumedMinY) : 0,
+            max_x_pixels: consumedMaxX !== -Infinity ? Math.round(consumedMaxX) : 0,
+            max_y_pixels: consumedMaxY !== -Infinity ? Math.round(consumedMaxY) : 0,
+            width_pixels: consumedMaxX !== -Infinity ? Math.round(consumedMaxX - consumedMinX) : 0,
+            height_pixels: consumedMaxY !== -Infinity ? Math.round(consumedMaxY - consumedMinY) : 0,
+            x_inches_in_printable: Number(consumedXInches.toFixed(3)),
+            y_inches_in_printable: Number(consumedYInches.toFixed(3))
+          }
         }
       },
       
-      // ðŸ”¥ NEW: Element statistics
       element_statistics: {
         total_elements: elements.length,
         visible_elements: visibleElements.length,
@@ -5002,24 +5375,18 @@ const generateDetailedAreaAnalysis = useCallback(() => {
         scaled_elements: visibleElements.filter(el => Math.abs((el.scaleX || 1) - 1) > 0.01 || Math.abs((el.scaleY || 1) - 1) > 0.01).length
       },
       
-      // ðŸ”¥ NEW: Individual elements in this area
       elements: elementDetails
     };
     
-    // Store element details
     detailedAnalysis.element_details[areaId] = elementDetails;
-    
-    // Add to totals
     detailedAnalysis.total_design_area_available += areaDesignAvailable;
     detailedAnalysis.current_image_area_used += areaCurrentImageUsed;
   });
 
-  // Calculate overall utilization
   detailedAnalysis.area_utilization_percentage = detailedAnalysis.total_design_area_available > 0 
     ? Number(((detailedAnalysis.current_image_area_used / detailedAnalysis.total_design_area_available) * 100).toFixed(2))
     : 0;
 
-  // Create area summary
   detailedAnalysis.area_summary = {
     total_areas: availableAreas.length,
     areas_with_content: detailedAnalysis.areas_with_elements.length,
@@ -5040,7 +5407,6 @@ const generateDetailedAreaAnalysis = useCallback(() => {
       return mostUtilizedArea;
     })(),
     design_complexity_score: (() => {
-      // Calculate complexity based on number of elements, transformations, etc.
       const totalElements = Object.values(detailedAnalysis.element_details).flat().length;
       const rotatedElements = Object.values(detailedAnalysis.element_details).flat().filter(el => el.transformations.is_rotated).length;
       const scaledElements = Object.values(detailedAnalysis.element_details).flat().filter(el => el.transformations.is_scaled).length;
@@ -5069,9 +5435,16 @@ const generateDetailedAreaAnalysis = useCallback(() => {
     })()
   };
 
-  ////console.log('ðŸ”§ Generated detailed area analysis:', detailedAnalysis);
+  console.log('🔧 Generated detailed area analysis using Design Size from pricingData:', detailedAnalysis);
   return detailedAnalysis;
-}, [availableAreas, designElements, getCanvasConfig, getPrintableAreaFromPhoto, calculateElementRealWorldDimensions, calculateDPI]);
+}, [
+  availableAreas, 
+  designElements, 
+  getCanvasConfig, 
+  getPrintableAreaFromPhoto, 
+  calculateElementRealWorldDimensions, 
+  calculateDPI
+]);
 
 
 const generateCanvasMetadata = useCallback((areaId: string): CanvasImageMetadata => {
@@ -5388,7 +5761,7 @@ const renderPricingPanel = () => {
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats - UPDATED */}
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 rounded-lg bg-orange-50">
           <div className="flex items-center gap-2 mb-1">
@@ -5400,14 +5773,30 @@ const renderPricingPanel = () => {
           <div className="text-xl font-bold text-orange-800">{pricingBreakdown.totalElements}</div>
         </div>
         
+        {/* 🔥 UPDATED: Show consumed dimensions instead of total area */}
         <div className="p-3 rounded-lg bg-orange-50">
           <div className="flex items-center gap-2 mb-1">
             <div className="flex items-center justify-center w-6 h-6 bg-orange-100 rounded">
               <Ruler size={14} className="text-orange-600" />
             </div>
-            <span className="text-xs font-medium text-orange-700">Design Area</span>
+            <span className="text-xs font-medium text-orange-700">Design Size</span>
           </div>
-          <div className="text-xl font-bold text-orange-800">{pricingBreakdown.totalDesignArea}&quot;</div>
+          {(() => {
+            // Get the first area with elements to show dimensions
+            const areaWithElements = Object.values(pricingBreakdown.areas).find(
+              area => area.elements.length > 0
+            );
+            
+            if (areaWithElements && areaWithElements.consumedWidth && areaWithElements.consumedHeight) {
+              return (
+                <div className="text-base font-bold text-orange-800">
+                  {areaWithElements.consumedWidth}" × {areaWithElements.consumedHeight}"
+                </div>
+              );
+            }
+            
+            return <div className="text-xl font-bold text-orange-800">0"</div>;
+          })()}
         </div>
       </div>
 
@@ -5425,7 +5814,6 @@ const renderPricingPanel = () => {
           <details key={area.areaId} className="overflow-hidden border border-gray-200 rounded-lg group bg-gray-50">
             <summary className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100">
               <div className="flex items-center gap-2">
-                {/* <ChevronDown size={16} className="text-gray-400 transition-transform group-open:rotate-180" /> */}
                 <span className="font-medium text-gray-900">{area.areaName}</span>
                 <span className="px-2 py-0.5 text-xs font-medium text-gray-600 bg-gray-200 rounded-full">
                   {area.elements.length} element{area.elements.length !== 1 ? 's' : ''}
@@ -5435,66 +5823,6 @@ const renderPricingPanel = () => {
                 Rs.{area.finalPrice}
               </span>
             </summary>
-            
-            {/* <div className="p-3 space-y-3 bg-white border-t">
-              Area Statistics 
-              <div className="grid grid-cols-2 gap-2 p-2 rounded bg-gray-50">
-                <div>
-                  <div className="text-xs text-gray-500">Available Area</div>
-                  <div className="font-semibold text-gray-800">{area.designAreaSquareInches}&quot; sq</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Used Area</div>
-                  <div className="font-semibold text-orange-600">{area.currentImageArea}&quot; sq</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Rate</div>
-                  <div className="font-semibold text-gray-800">Rs.{area.pricePerSquareInch}/sq&quot;</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Minimum</div>
-                  <div className="font-semibold text-gray-800">Rs.{area.minimumPrice}</div>
-                </div>
-              </div>
-
-               Price Calculation Formula 
-              <div className="p-2 border-l-2 border-orange-400 rounded bg-orange-50">
-                <div className="mb-1 text-xs font-medium text-orange-700">Calculation</div>
-                <div className="font-mono text-xs text-orange-900">
-                  max(Rs.{area.minimumPrice}, {area.currentImageArea}&quot; Ã— Rs.{area.pricePerSquareInch})
-                </div>
-                <div className="mt-1 text-xs text-orange-600">
-                  = Rs.{area.finalPrice}
-                </div>
-              </div>
-
-               Elements Breakdown 
-              {area.elements.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-gray-700">Elements:</div>
-                  {area.elements.map(element => (
-                    <div key={element.elementId} className="p-2 bg-white border rounded">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900 truncate">{element.elementName}</div>
-                          <div className="text-xs text-gray-500">Area: {element.areaSquareInches}&quot; sq</div>
-                        </div>
-                        <div className="text-sm font-bold text-green-600 whitespace-nowrap">
-                          Rs.{element.elementPrice}
-                        </div>
-                      </div>
-                      
-                      {element.extraArea > 0 && (
-                        <div className="flex items-center gap-1 px-2 py-1 text-xs text-orange-700 rounded bg-orange-50">
-                          <Info size={12} />
-                          Expanded by +{element.extraArea}&quot; sq from original
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div> */}
           </details>
         ))}
       </div>
@@ -5711,20 +6039,6 @@ const productDataFlags = {
 
 // Process mockup variants
 if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
-  // 🔍 DEBUG: Log the raw mockup variants data BEFORE processing
-  // console.log('🔍 RAW MOCKUP VARIANTS DATA:', JSON.stringify(
-  //   storeData.mockup_variants.map(mv => ({
-  //     id: mv.mockup_id,
-  //     title: mv.mockup_title,
-  //     viewAngle: mv.view_angle,
-  //     hasDesign: mv.has_design_elements,
-  //     colorCombosCount: mv.color_combinations?.length,
-  //     firstColorHex: mv.color_combinations?.[0]?.color_hex,
-  //     firstSizeVariantsCount: mv.color_combinations?.[0]?.size_variants?.length,
-  //     firstImageDataPreview: mv.color_combinations?.[0]?.size_variants?.[0]?.generated_images?.[0]?.image_data?.substring(0, 50)
-  //   })),
-  //   null, 2
-  // ));
   
   // 🆕 Track processed mockups by image data hash to prevent true duplicates
   const processedMockups = new Set<string>();
@@ -5767,9 +6081,7 @@ if (storeData.mockup_variants && Array.isArray(storeData.mockup_variants)) {
           
           // 🆕 CRITICAL: Validate that imageData exists and is not empty
           if (!generatedImage?.image_data || generatedImage.image_data.length < 100) {
-            //console.error(`❌ SKIPPING: ${mockupVariant.mockup_title} (${mockupVariant.view_angle}) - Empty or invalid image data`);
-            //console.error(`   hasDesign: ${mockupVariant.has_design_elements}`);
-            //console.error(`   imageData length: ${generatedImage?.image_data?.length || 0}`);
+        
             return; // Skip this mockup - don't add to colorSpecificImages
           }
           
@@ -6019,17 +6331,6 @@ const sizeOptions = allSizesSet.size > 0
     };
   });
   
-  // console.log('✅ Final color-specific mockups:', colorSpecificMockups.map(c => ({
-  //   name: c.colorName,
-  //   hex: c.colorHex,
-  //   mockupCount: c.imageCount,
-  //   mockups: c.mockups.map(m => ({ 
-  //     viewAngle: m.viewAngle, 
-  //     hasDesign: m.hasDesign,
-  //     hasImageData: m.imageData?.length > 100
-  //   }))
-  // })));
-  
   const designData = {
     productInfo: {
       title: storeData.product_name || 'Custom Design Product',
@@ -6225,20 +6526,6 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
 
 
 const navigateToCreatePage = useCallback((transformedData) => {
-  // //console.log('ðŸ”§ NAVIGATION DEBUG - Enhanced data being sent to Create:', {
-  //   hasDetailedAreaAnalysis: !!transformedData.detailedAreaAnalysis,
-  //   hasDesignMetrics: !!transformedData.designMetrics,
-  //   totalElements: transformedData.designMetrics?.totalElements,
-  //   areasWithElements: transformedData.designMetrics?.areasWithElements,
-  //   areasWithoutElements: transformedData.designMetrics?.areasWithoutElements,
-  //   utilizationPercentage: transformedData.designMetrics?.utilizationPercentage,
-  //   complexityRating: transformedData.designMetrics?.complexityRating,
-  //   elementDetailsKeys: Object.keys(transformedData.designMetrics?.elementDetails || {}),
-  //   areaBreakdownKeys: Object.keys(transformedData.designMetrics?.areaBreakdown || {}),
-  //   mockupImagesCount: Object.keys(transformedData.mockupImages || {}).length,
-  //   canvasImagesCount: transformedData.canvasImages?.length || 0,
-  //   designImagesCount: transformedData.designImages?.length || 0
-  // });
 
   // Log detailed element information for each area
   if (transformedData.designMetrics?.elementDetails) {
@@ -6413,14 +6700,6 @@ for (const mockup of allMockups) {
   // ðŸ”¥ NEW: Check if product has only ONE customization area
   const custAreas = productData.printT?.[0]?.custAreas || [];
   const hasSingleCustArea = custAreas.length === 1;
-  
-//   console.log('ðŸ”§ Product Configuration:', {
-//   isCylindrical,
-//   custAreasCount: custAreas.length,
-//   hasSingleCustArea,
-//   areasWithElements: areasWithElements.length,
-//   willApplyToAllMockups: isCylindrical && hasSingleCustArea && areasWithElements.length > 0
-// });
 
   let designToUse: Record<string, DesignElement[]>;
   let hasDesignElements: boolean;
@@ -6446,9 +6725,6 @@ for (const mockup of allMockups) {
     hasDesignElements = mockupAreas.some(areaName => 
       areasWithElements.some(elementArea => elementArea.toLowerCase() === areaName)
     );
-
-    // console.log('   Result:', hasDesignElements ? '✅ HAS DESIGN' : '❌ NO DESIGN');
-    // console.log('');
     
     designToUse = designElements;
     //console.log('   Using design elements as-is for this mockup', designToUse);
@@ -6702,7 +6978,10 @@ const handleImportToStore = useCallback(async () => {
       const designImages = extractDesignImages();
       const canvasImages = exportAllCanvasImages();
       const finalPricingBreakdown = calculateTotalPricing();
-      const detailedAreaAnalysis = generateDetailedAreaAnalysis();
+
+      const pricingData = calculateTotalPricing();
+
+      const detailedAreaAnalysis = generateDetailedAreaAnalysis(pricingData);
 
        // ðŸ”¥ FIX: Calculate total current image area
       let totalCurrentImageArea = 0;
@@ -6816,13 +7095,10 @@ const handleImportToStore = useCallback(async () => {
     return;
   }
 
-  ////console.log('ðŸ”§ IMPORT DEBUG - Starting import process...');
-  ////console.log('ðŸ”§ Current designElements:', designElements);
-  ////console.log('ðŸ”§ Available areas:', availableAreas);
-
   // Generate detailed area analysis BEFORE import
   ////console.log('ðŸ”§ Generating detailed area analysis...');
-  const detailedAreaAnalysis = generateDetailedAreaAnalysis();
+  const pricingData = calculateTotalPricing();
+  const detailedAreaAnalysis = generateDetailedAreaAnalysis(pricingData);
   
   ////console.log('ðŸ”§ DETAILED AREA ANALYSIS:', detailedAreaAnalysis);
   ////console.log('ðŸ”§ Area Summary:', detailedAreaAnalysis.area_summary);
@@ -6991,14 +7267,6 @@ selectedColors.forEach(color => {
     );
 
 
-    // //console.log('ðŸ”§ Comprehensive generation completed:', {
-    //   totalImages: comprehensiveImportData.generation_summary.total_images_generated,
-    //   timeMs: comprehensiveImportData.generation_summary.total_time_ms,
-    //   errors: comprehensiveImportData.generation_summary.errors.length,
-    //   areasWithElements: areasWithElements,
-    //   areasWithoutElements: areasWithoutElements
-    // });
-
     if (comprehensiveImportData.generation_summary.total_images_generated === 0) {
       throw new Error(`No mockup images were generated. Check mockup configuration for technology: ${activeTechnology}`);
     }
@@ -7054,16 +7322,6 @@ selectedColors.forEach(color => {
     // Add additional comprehensive store data
     const designImages = extractDesignImages();
     const canvasImages = exportAllCanvasImages();
-
-  //   console.log('ðŸ“¦ GENERATION COMPLETE:', {
-  //   total_variants: comprehensiveImportData.mockup_variants.length,
-  //   variants: comprehensiveImportData.mockup_variants.map(v => ({
-  //     title: v.mockup_title,
-  //     mockup_size: v.mockup_size,
-  //     mockup_color: v.mockup_color,
-  //     has_design: v.has_design_elements
-  //   }))
-  // });
     
     comprehensiveImportData.canvas_images = canvasImages;
     comprehensiveImportData.design_images = designImages;
@@ -7177,12 +7435,6 @@ selectedColors.forEach(color => {
       }
     };
 
-    // //console.log('ðŸ”§ Enhanced import data created with detailed analysis:', {
-    //   totalElements: detailedAreaAnalysis.area_summary.total_elements_across_all_areas,
-    //   complexityRating: detailedAreaAnalysis.area_summary.design_complexity_score.complexity_rating,
-    //   utilizationPercentage: detailedAreaAnalysis.area_utilization_percentage,
-    //   areasWithContent: detailedAreaAnalysis.areas_with_elements.length
-    // });
 
     setStoreImportData(comprehensiveImportData);
 
@@ -7195,24 +7447,9 @@ selectedColors.forEach(color => {
 
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // //console.log('ðŸ”§ Transforming comprehensive data and navigating...');
-    //const transformedData = transformStoreDataForCreate(comprehensiveImportData, filteredProductData);
-
-  //   console.log('ðŸ“¦ BEFORE TRANSFORM:', {
-  //   total_mockup_variants: comprehensiveImportData.mockup_variants.length,
-  //   has_design_images: !!comprehensiveImportData.design_images,
-  //   design_images_count: comprehensiveImportData.design_images?.length || 0
-  // });
-
   // Transform the data
   //console.log('ðŸ”§ CALLING transformStoreDataForCreate...');
   const transformedData = transformStoreDataForCreate(comprehensiveImportData, filteredProductData);
-
-  // console.log('ðŸ”§ AFTER TRANSFORM:', {
-  //   mockupImagesCount: Object.keys(transformedData.mockupImages || {}).length,
-  //   mockupImageKeys: Object.keys(transformedData.mockupImages || {}),
-  //   colorSpecificImagesCount: Object.keys(transformedData.colorSpecificImages || {}).length
-  // });
 
      navigateToCreatePage(transformedData);
 
@@ -7468,15 +7705,48 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
     const img = new Image();
     img.crossOrigin = 'anonymous';
     
-    img.onload = () => {
+    img.onload = async () => {
       try {
+        // 🔥 NEW: Crop transparent pixels before storing
+        let finalImage = img;
+        let finalBase64 = base64Data;
+        let croppedBounds = null;
+        
+        try {
+          const cropResult = cropTransparentPixels(img);
+          
+          // Only use cropped version if it significantly reduced size (>5% reduction)
+          const originalArea = (img.naturalWidth || img.width) * (img.naturalHeight || img.height);
+          const croppedArea = cropResult.bounds.width * cropResult.bounds.height;
+          const reduction = 1 - (croppedArea / originalArea);
+          
+          if (reduction > 0.05) {
+            console.log('✂️ Cropped transparent areas:', {
+              original: `${img.naturalWidth || img.width} x ${img.naturalHeight || img.height}`,
+              cropped: `${cropResult.bounds.width} x ${cropResult.bounds.height}`,
+              reduction: `${(reduction * 100).toFixed(1)}%`
+            });
+            
+            // Create image from cropped canvas
+            finalImage = new Image();
+            finalImage.src = cropResult.croppedBase64;
+            await new Promise((res) => { finalImage.onload = res; });
+            
+            finalBase64 = cropResult.croppedBase64;
+            croppedBounds = cropResult.bounds;
+          }
+        } catch (cropError) {
+          console.warn('Could not crop transparent areas, using original', cropError);
+        }
+        
         const canvasConfig = getCanvasConfig(areaToUse);
         const printableArea = getPrintableAreaFromPhoto(areaToUse, activeColor);
         
-        // Calculate size
+        // Calculate size using the final (possibly cropped) image
         const maxWidth = printableArea.width * 0.8;
         const maxHeight = printableArea.height * 0.8;
-        const aspectRatio = img.naturalWidth / img.naturalHeight;
+        const aspectRatio = (finalImage.naturalWidth || finalImage.width) / 
+                           (finalImage.naturalHeight || finalImage.height);
         
         let width = maxWidth;
         let height = maxWidth / aspectRatio;
@@ -7488,37 +7758,51 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
         const centerX = printableArea.x + (printableArea.width - width) / 2;
         const centerY = printableArea.y + (printableArea.height - height) / 2;
         
-        // âœ… CREATE ELEMENT WITH GUARANTEED BASE64
+        // Create element with cropped image data
         const element = {
           id: `img-${Date.now()}-${Math.random()}`,
           type: 'image',
-          x: centerX, y: centerY, width, height,
-          rotation: 0, scaleX: 1, scaleY: 1,
-          draggable: true, selected: false, zIndex: 1,
-          image: img, imageName: imageName || 'Uploaded Image',
+          x: centerX, 
+          y: centerY, 
+          width, 
+          height,
+          rotation: 0, 
+          scaleX: 1, 
+          scaleY: 1,
+          draggable: true, 
+          selected: false, 
+          zIndex: 1,
+          image: finalImage, 
+          imageName: imageName || 'Uploaded Image',
           imageUrl: imageSrc,
-          imageBase64: base64Data, // âœ… STORE BASE64
-          originalImageWidth: img.naturalWidth || img.width,
-          originalImageHeight: img.naturalHeight || img.height,
-          opacity: 1, visible: true, locked: false
+          imageBase64: finalBase64, // Store cropped base64
+          originalImageWidth: finalImage.naturalWidth || finalImage.width,
+          originalImageHeight: finalImage.naturalHeight || finalImage.height,
+          // Store crop info for reference
+          cropInfo: croppedBounds ? {
+            wasCropped: true,
+            originalDimensions: {
+              width: img.naturalWidth || img.width,
+              height: img.naturalHeight || img.height
+            },
+            croppedBounds
+          } : null,
+          opacity: 1, 
+          visible: true, 
+          locked: false
         };
         
-        
-        // âœ… ATOMIC STATE UPDATE WITH PROPER MERGING
+        // Atomic state update
         setDesignElements(currentState => {
-          
-          // Ensure area exists
           const updatedState = { ...currentState };
           if (!updatedState[areaToUse]) {
             updatedState[areaToUse] = [];
           }
           
-          // Calculate proper zIndex
           const existingElements = updatedState[areaToUse] || [];
           const maxZIndex = existingElements.reduce((max, el) => Math.max(max, el.zIndex || 0), 0);
           element.zIndex = maxZIndex + 1;
           
-          // Add element to area
           updatedState[areaToUse] = [...existingElements, element];
           
           return updatedState;
@@ -8820,10 +9104,10 @@ const renderPreview = useCallback(() => {
   
   const canvasImage = canvasImages[cacheKey] || canvasImages[activeArea];
   
-  console.log(`🎨 Rendering canvas with key: ${cacheKey}`, {
-    hasImage: !!canvasImage,
-    availableKeys: Object.keys(canvasImages)
-  });
+  // console.log(`🎨 Rendering canvas with key: ${cacheKey}`, {
+  //   hasImage: !!canvasImage,
+  //   availableKeys: Object.keys(canvasImages)
+  // });
   
   const surfaceConfig = getSurfaceConfiguration();
 
@@ -10018,16 +10302,6 @@ useEffect(() => {
   }
 }, [productData, designElements, updatePricingData]);
 
-// In renderPreview, right after getting colorMockups
-// useEffect(() => {
-//   console.log('ðŸ” Preview State:', {
-//     activeSize,
-//     activeColor,
-//     selectedSizes,
-//     size_Images: productData?.size_Images
-//   });
-// }, [activeSize, activeColor, selectedSizes, productData?.size_Images]);
-
 // ðŸ”¥ NEW: Error handling for pricing calculations
 useEffect(() => {
   // Monitor for pricing calculation errors and provide user feedback
@@ -10097,19 +10371,7 @@ useEffect(() => {
                   )}
                   Design
                 </button>
-                {/* Debug //console Log */}
-                {/* {(() => {
-                  console.log('ðŸ” Debug No_Mockup_Compatible:', {
-                    productData: productData,
-                    No_Mockup_Compatible: productData?.No_Mockup_Compatible,
-                    type: typeof productData?.No_Mockup_Compatible,
-                    hasProductData: !!productData,
-                    allKeys: productData ? Object.keys(productData) : []
-                  });
-                  return null; // Must return something in JSX
-                })()} */}
           
-                
                 <button
                   onClick={() => setActiveView('preview')}
                   className={`flex items-center gap-0.5 sm:gap-2 

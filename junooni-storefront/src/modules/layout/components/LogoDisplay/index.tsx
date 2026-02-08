@@ -48,7 +48,7 @@ const LogoDisplay = () => {
   const isMainPage = noBackButtonPages.includes(logicalPath);
   const isCategoryPage = /^\/categories\/[^/]+$/.test(logicalPath);
 
-  const showBackButton = !(isHomePage || isMainPage || isCategoryPage);
+  const showBackButton = !(isHomePage || isMainPage);
 
   return (
     <LocalizedClientLink

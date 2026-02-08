@@ -9,7 +9,7 @@ import {
   fileId: string
   mimeType: string
   filename: string
-  //vendor_artwork_id: string
+  vendor_artwork_id: string
   file_type: string
   file_description: string
 }
@@ -23,10 +23,13 @@ const createArtworkMediasStep = createStep(
   async ({ 
     medias,
   }: CreateArtworkMediasStepInput, { container }) => {
+    console.log('Creating medias:', medias.length, 'items')
     const vendorArtworkModuleService: VendorArtworkModuleService = 
       container.resolve(VENDOR_ARTWORK_MODULE)
 
     const artworkMedias = await vendorArtworkModuleService.createVendorArtworkMedias(medias)
+    console.log('Created medias:', artworkMedias.length, 'items')
+    console.log('Created medias details:', artworkMedias)
 
     return new StepResponse({
       vendor_artwork_media: artworkMedias,

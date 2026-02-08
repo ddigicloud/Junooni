@@ -18,6 +18,7 @@ import {
   
       const artwork = await vendorArtworkModuleService
         .createVendorArtworks(data)
+        console.log('Created artwork:', artwork)
       
       return new StepResponse({
         vendor_artwork: artwork,
@@ -25,6 +26,7 @@ import {
         vendor_artwork: artwork,
       })
     },
+    
     async ({ vendor_artwork }, { container }) => {
       const vendorArtworkModuleService: VendorArtworkModuleService = 
         container.resolve(VENDOR_ARTWORK_MODULE)

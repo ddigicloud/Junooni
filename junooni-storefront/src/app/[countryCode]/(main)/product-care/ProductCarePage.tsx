@@ -40,17 +40,17 @@ const ProductCarePage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm py-4 sticky top-0 z-10">
+      {/* <header className="bg-white shadow-sm py-4 sticky top-0 z-10">
         <div className="container mx-auto px-4">
           <Link href="/" className="flex items-center">
             <ShoppingBag className="h-6 w-6 text-[#e65100] mr-2" />
             <span className="font-bold text-lg">JUNOONI</span>
           </Link>
         </div>
-      </header>
+      </header> */}
       
       {/* Hero Section */}
-      <div className="bg-[#e65100] text-white py-10 md:py-12">
+      <div className="bg-[#e65100] text-white py-10 md:py-12 mt-8 md:mt-12">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4">
@@ -64,7 +64,7 @@ const ProductCarePage = () => {
         </div>
       </div>
       
-      <main className="container mx-auto px-4 py-8 md:py-12">
+      <main className="mx-auto px-3 md:px-4 py-8 md:py-12">
         <div className="max-w-6xl mx-auto">
           {/* Quick Care Tips Banner */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">

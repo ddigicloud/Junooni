@@ -11,7 +11,7 @@ import {
   ) => {
     const { 
       fields, 
-      limit = 1000, 
+      limit = 20, 
       offset = 0,
     } = req.validatedQuery || {}
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
@@ -57,25 +57,25 @@ export const POST = async (
   req: AuthenticatedMedusaRequest<CreateRequestBody>,
   res: MedusaResponse
 ) => {
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-  
-
   const { result } = await CreateArtworkWorkflow(
     req.scope
   ).run({
     input: {
       vendor_artwork: {
         name: req.validatedBody.name,
-       description: req.validatedBody.description,
+        description: req.validatedBody.description,
         medias: req.validatedBody.medias.map((media) => ({
           fileId: media.file_id,
           mimeType: media.mime_type,
-          ...media,
+          filename: media.filename,
+          file_type: media.file_type,
+          file_description: media.file_description,
         })),
       }
     },
   })
 
+  console.log("result inside API - created artwork", result.vendor_artwork)
   res.json({
     vendor_artwork: result.vendor_artwork,
   })

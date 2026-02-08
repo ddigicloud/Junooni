@@ -13,6 +13,12 @@ import {
   Package,
   ShoppingBag,
   Truck,
+  Film,        
+  Shirt,       
+  MoreHorizontal, 
+  Palette,     
+  Laugh,       
+  Award,       
 } from "lucide-react"
 import { retriveVendorsFollowers, retriveVendors } from "@lib/data/vendors"
 import { followerList } from "@lib/data/customer"
@@ -196,13 +202,24 @@ const VendorsDiscoveryPage = () => {
         }
       })
 
-      const iconMap: Record<string, React.ReactNode> = {
-        default: <Store size={18} />,
-        electronics: <Package size={18} />,
-        fashion: <ShoppingBag size={18} />,
-        food: <Store size={18} />,
-        delivery: <Truck size={18} />,
-      }
+       const iconMap: Record<string, React.ReactNode> = {
+      // Default and common categories
+      default: <Store size={18} />,
+      store: <Store size={18} />,
+      
+      // Specific category icons
+      cinema: <Film size={18} />,
+      fashion: <Shirt size={18} />,
+      Other: <MoreHorizontal size={18} />,
+      art: <Palette size={18} />,
+      comedy: <Laugh size={18} />,
+      influencer: <Award size={18} />,
+      
+      // Additional possible categories
+      electronics: <Package size={18} />,
+      food: <ShoppingBag size={18} />,
+      delivery: <Truck size={18} />,
+    }
 
       const newCategories: Category[] = [
         { id: "all", name: "All Categories", icon: <Store size={18} /> },
@@ -494,7 +511,7 @@ const VendorCard = ({ vendor }: { vendor: Vendor }) => {
       {/* Filters panel */}
       {isFiltersOpen && (
         <div className="bg-white border-t border-b shadow-sm">
-          <div className="container px-4 py-4 mx-auto">
+          <div className="px-4 py-4 mx-auto">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-medium">Filter by Category</h3>
               <button
@@ -520,7 +537,7 @@ const VendorCard = ({ vendor }: { vendor: Vendor }) => {
                   onClick={() => setActiveCategory(category.id)}
                 >
                   <span className="mr-1.5">{category.icon}</span>
-                  {category.name}
+                  {category.name.charAt(0).toUpperCase() + category.name.slice(1)}
                 </button>
               ))}
             </div>

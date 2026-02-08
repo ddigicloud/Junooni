@@ -215,7 +215,9 @@ const VendorList: React.FC = () => {
                         </div>
                       </div>
                       <h3 className="font-medium text-md text-start">{vendor.name}</h3>
-                      <p className="text-sm text-start">{(vendor as any).creator_bio}</p>
+                      <p className="text-sm text-start line-clamp-4">
+                        {(vendor as any).creator_bio}
+                      </p>
                     </Link>
                   </SwiperSlide>
                 ))}

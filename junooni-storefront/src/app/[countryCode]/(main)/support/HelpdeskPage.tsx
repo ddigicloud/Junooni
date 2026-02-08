@@ -96,17 +96,17 @@ const HelpdeskPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="py-4 bg-white shadow-sm">
+      {/* <header className="py-4 bg-white shadow-sm">
         <div className="container px-4 mx-auto">
           <Link href="/" className="flex items-center">
             <ShoppingBag className="h-6 w-6 text-[#e65100] mr-2" />
             <span className="text-lg font-bold">JUNOONI</span>
           </Link>
         </div>
-      </header>
+      </header> */}
       
       {/* Hero Section */}
-      <div className="bg-[#e65100] text-white py-10 md:py-16">
+      <div className="bg-[#e65100] text-white py-10 md:py-16 mt-8 md:mt-12">
         <div className="container px-4 mx-auto text-center">
           <h1 className="mb-4 text-3xl font-bold md:text-4xl">How can we help you?</h1>
           <p className="max-w-2xl mx-auto mb-6 text-lg">
@@ -137,7 +137,7 @@ const HelpdeskPage = () => {
         </div>
       </div>
       
-      <main className="container px-4 py-8 mx-auto md:py-12">
+      <main className="px-2 md:px-4 py-8 mx-auto md:py-12">
         {/* Help Categories */}
         <section className="mb-12">
           <h2 className="mb-6 text-2xl font-bold text-center">Browse Help Topics</h2>

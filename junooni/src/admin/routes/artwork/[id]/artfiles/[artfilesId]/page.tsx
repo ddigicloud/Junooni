@@ -172,7 +172,7 @@ function ArtFileDetailPage() {
     if (!artFile) return;
     
     try {
-      await fetch(`/admin/artwork/media/${artFile.id}`, {
+      await fetch(`/admin/artwork/${artworkId}/artfiles/${artFile.id}`, {
         method: "DELETE",
       });
       

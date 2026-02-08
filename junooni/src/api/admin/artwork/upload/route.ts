@@ -1,14 +1,6 @@
 import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { MedusaError } from "@medusajs/framework/utils"
 import { uploadFilesWorkflow } from "@medusajs/medusa/core-flows"
-import { VENDOR_ARTWORK_MODULE } from "../../../../modules/artwork"
-import multer from "multer"
-import { z } from "zod"
-import { createVendorArtworkSchema } from "../../../validation-schemas"
-
-const upload = multer({ storage: multer.memoryStorage() })
-
-
 
 export const POST = async (
   req: AuthenticatedMedusaRequest,

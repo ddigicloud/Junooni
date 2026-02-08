@@ -52,11 +52,10 @@ import {
       //   )
       // )
   
-        
+     
       return new WorkflowResponse({
         vendor_artwork: {
           ...vendor_artwork
-          // medias: vendor_artwork,
         },
       })
     }
