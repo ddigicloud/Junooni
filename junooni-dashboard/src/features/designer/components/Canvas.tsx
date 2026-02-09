@@ -4399,6 +4399,8 @@ const getVisibleDesignElements = useCallback((elements: Record<string, DesignEle
   }, [designElements]);
   
 
+// Around line 4850 - Replace the extractDesignImages function
+
 const extractDesignImages = useCallback(() => {
   const designImages = [];
   let totalElements = 0;
@@ -4411,7 +4413,6 @@ const extractDesignImages = useCallback(() => {
     
     totalElements += elements.length;
     
-    // Filter visible image elements only
     const visibleImageElements = elements.filter(
       el => el.type === 'image' && el.visible !== false && el.image
     );
@@ -4426,55 +4427,97 @@ const extractDesignImages = useCallback(() => {
     const printableArea = getPrintableAreaFromPhoto(area);
 
     try {
-      // Sort by zIndex
       const sortedElements = [...visibleImageElements].sort(
         (a, b) => (a.zIndex || 0) - (b.zIndex || 0)
       );
 
-      // 🔥 STEP 1: Calculate bounding box in canvas coordinates
+      // 🔥 CALCULATE AXIS-ALIGNED BOUNDING BOX (AABB) - The invisible rectangular boundary
       let minX = Infinity;
       let minY = Infinity;
       let maxX = -Infinity;
       let maxY = -Infinity;
 
       sortedElements.forEach(element => {
-        const elemLeft = element.x;
-        const elemTop = element.y;
-        const elemRight = element.x + element.width * (element.scaleX || 1);
-        const elemBottom = element.y + element.height * (element.scaleY || 1);
+        const width = element.width * (element.scaleX || 1);
+        const height = element.height * (element.scaleY || 1);
+        const centerX = element.x + width / 2;
+        const centerY = element.y + height / 2;
+        const rotation = element.rotation || 0;
 
-        minX = Math.min(minX, elemLeft);
-        minY = Math.min(minY, elemTop);
-        maxX = Math.max(maxX, elemRight);
-        maxY = Math.max(maxY, elemBottom);
+        if (rotation !== 0) {
+          // Element is rotated - calculate the 4 corners after rotation
+          const radians = (rotation * Math.PI) / 180;
+          const cos = Math.cos(radians);
+          const sin = Math.sin(radians);
+
+          const corners = [
+            { x: -width / 2, y: -height / 2 },
+            { x: width / 2, y: -height / 2 },
+            { x: width / 2, y: height / 2 },
+            { x: -width / 2, y: height / 2 }
+          ];
+
+          corners.forEach(corner => {
+            const rotatedX = centerX + (corner.x * cos - corner.y * sin);
+            const rotatedY = centerY + (corner.x * sin + corner.y * cos);
+
+            minX = Math.min(minX, rotatedX);
+            maxX = Math.max(maxX, rotatedX);
+            minY = Math.min(minY, rotatedY);
+            maxY = Math.max(maxY, rotatedY);
+          });
+        } else {
+          // No rotation - simple axis-aligned rectangle
+          minX = Math.min(minX, element.x);
+          maxX = Math.max(maxX, element.x + width);
+          minY = Math.min(minY, element.y);
+          maxY = Math.max(maxY, element.y + height);
+        }
       });
 
       const boundingWidthCanvas = maxX - minX;
       const boundingHeightCanvas = maxY - minY;
 
-      // 🔥 STEP 2: Find the highest resolution needed
-      // Calculate pixels per canvas unit for each element
-      let maxPixelDensity = 0;
+      // 🔥 NEW FIX: Calculate ACTUAL pixel density needed to preserve original quality
+      let maxRequiredScale = 0;
       
       sortedElements.forEach(element => {
+        // Get ORIGINAL image dimensions (before any canvas scaling)
         const origW = element.originalImageWidth || element.image.naturalWidth || element.image.width;
         const origH = element.originalImageHeight || element.image.naturalHeight || element.image.height;
         
-        // How many original pixels per canvas pixel?
-        const pixelDensityX = origW / element.width;
-        const pixelDensityY = origH / element.height;
-        const pixelDensity = Math.max(pixelDensityX, pixelDensityY);
+        // Get CURRENT displayed dimensions (after scaling on canvas)
+        const displayW = element.width * (element.scaleX || 1);
+        const displayH = element.height * (element.scaleY || 1);
         
-        maxPixelDensity = Math.max(maxPixelDensity, pixelDensity);
+        // Calculate how much we need to scale to preserve original pixels
+        // If original is 3000px and displayed as 300px on canvas, we need 10x scale
+        const scaleNeededX = origW / displayW;
+        const scaleNeededY = origH / displayH;
+        const scaleNeeded = Math.max(scaleNeededX, scaleNeededY);
+        
+        maxRequiredScale = Math.max(maxRequiredScale, scaleNeeded);
+        
+        console.log(`📐 Element "${element.imageName || element.id}":`, {
+          originalSize: `${origW}×${origH}px`,
+          displayedSize: `${displayW.toFixed(1)}×${displayH.toFixed(1)}px`,
+          scaleNeeded: scaleNeeded.toFixed(2) + 'x',
+          currentScale: `${element.scaleX || 1}×${element.scaleY || 1}`
+        });
       });
 
-      // 🔥 STEP 3: Use MAXIMUM pixel density for output (at least 2x for quality)
-      const outputScale = Math.max(maxPixelDensity, 3); // Minimum 3x for crisp output
+      // ✅ CRITICAL: Use the MAXIMUM scale needed to preserve ALL original pixels
+      // Don't enforce minimum of 3x - use whatever preserves original quality
+      const outputScale = Math.max(maxRequiredScale, 1); // At least 1x, but use original if higher
+      
+      console.log(`🎯 Final output scale for ${area}: ${outputScale.toFixed(2)}x (preserves original DPI)`);
       
       const outputWidth = Math.round(boundingWidthCanvas * outputScale);
       const outputHeight = Math.round(boundingHeightCanvas * outputScale);
 
-      // 🔥 STEP 4: Create ultra high-resolution canvas
+      console.log(`📦 Output canvas size: ${outputWidth}×${outputHeight}px`);
+
+      // Create high-resolution canvas for the bounding box
       const mergedCanvas = document.createElement('canvas');
       mergedCanvas.width = outputWidth;
       mergedCanvas.height = outputHeight;
@@ -4490,15 +4533,20 @@ const extractDesignImages = useCallback(() => {
         return;
       }
 
-      // 🔥 CRITICAL: Use best quality settings
-      mergedCtx.imageSmoothingEnabled = true; // Enable for high-quality scaling
+      // ✅ CRITICAL: Use 'high' quality for image smoothing
+      mergedCtx.imageSmoothingEnabled = true;
       mergedCtx.imageSmoothingQuality = 'high';
 
-      // 🔥 STEP 5: Draw each element at NATIVE resolution
+      // Optional: Add border to visualize the bounding box (remove in production)
+      mergedCtx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
+      mergedCtx.lineWidth = 2;
+      mergedCtx.strokeRect(0, 0, outputWidth, outputHeight);
+
+      // Draw each element within the bounding box
       sortedElements.forEach(element => {
         mergedCtx.save();
 
-        // Calculate scaled positions and dimensions
+        // Position relative to bounding box origin
         const relativeX = (element.x - minX) * outputScale;
         const relativeY = (element.y - minY) * outputScale;
         
@@ -4508,7 +4556,6 @@ const extractDesignImages = useCallback(() => {
         const centerX = relativeX + displayWidth / 2;
         const centerY = relativeY + displayHeight / 2;
 
-        // Apply transformations
         mergedCtx.translate(centerX, centerY);
 
         if (element.rotation) {
@@ -4517,32 +4564,33 @@ const extractDesignImages = useCallback(() => {
 
         mergedCtx.globalAlpha = element.opacity || 1;
 
-        // 🔥 KEY: Draw from ORIGINAL image source at full resolution
-        // This is critical - we draw the original high-res image, not the canvas version
+        // ✅ CRITICAL: Draw using FULL source image dimensions
+        const sourceWidth = element.image.naturalWidth || element.image.width;
+        const sourceHeight = element.image.naturalHeight || element.image.height;
+
         mergedCtx.drawImage(
-          element.image, // Original high-res image
-          0, 0, // Source x, y (use full image)
-          element.image.naturalWidth || element.image.width, // Source width (full)
-          element.image.naturalHeight || element.image.height, // Source height (full)
-          -displayWidth / 2, // Destination x
-          -displayHeight / 2, // Destination y  
-          displayWidth, // Destination width
-          displayHeight // Destination height
+          element.image,
+          0, 0,                    // Source x, y
+          sourceWidth,             // ✅ Full source width
+          sourceHeight,            // ✅ Full source height
+          -displayWidth / 2,       // Dest x (centered)
+          -displayHeight / 2,      // Dest y (centered)
+          displayWidth,            // Dest width (scaled)
+          displayHeight            // Dest height (scaled)
         );
 
         mergedCtx.restore();
       });
 
-      // 🔥 STEP 6: Export at MAXIMUM quality
+      // ✅ CRITICAL: Export at MAXIMUM quality (1.0 = lossless PNG)
       const mergedBase64 = mergedCanvas.toDataURL('image/png', 1.0);
 
-      // Calculate real-world dimensions
+      // Calculate real-world dimensions of the bounding box
       const widthInches = (boundingWidthCanvas / printableArea.width) * canvasConfig.realWorldWidth;
       const heightInches = (boundingHeightCanvas / printableArea.height) * canvasConfig.realWorldHeight;
       const xInches = ((minX - printableArea.x) / printableArea.width) * canvasConfig.realWorldWidth;
       const yInches = ((minY - printableArea.y) / printableArea.height) * canvasConfig.realWorldHeight;
 
-      // Calculate actual DPI based on output
       const dpiX = Math.round(outputWidth / widthInches);
       const dpiY = Math.round(outputHeight / heightInches);
       const dpi = Math.round((dpiX + dpiY) / 2);
@@ -4567,31 +4615,66 @@ const extractDesignImages = useCallback(() => {
         originalRes: `${el.originalImageWidth || el.image.naturalWidth || el.image.width} x ${el.originalImageHeight || el.image.naturalHeight || el.image.height}`
       }));
 
-      const description = `ULTRA HIGH-RES MERGED DESIGN:
+      const description = `MANUFACTURING FILM SPECIFICATION:
 Area: ${area.toUpperCase()}
+Film Type: AXIS-ALIGNED BOUNDING BOX (AABB)
 Elements Merged: ${sortedElements.length}
-Position: (${xInches.toFixed(3)}", ${yInches.toFixed(3)}")
-Physical Size: ${widthInches.toFixed(3)}" x ${heightInches.toFixed(3)}"
-Output Resolution: ${outputWidth} x ${outputHeight} pixels
-Output DPI: ${dpi} (${dpiX} x ${dpiY})
+
+FILM POSITION & SIZE:
+Position in Print Area: (${xInches.toFixed(3)}", ${yInches.toFixed(3)}")
+Film Physical Dimensions: ${widthInches.toFixed(3)}" × ${heightInches.toFixed(3)}"
+Film Digital Resolution: ${outputWidth} × ${outputHeight} pixels
+Film DPI: ${dpi} (${dpiX} × ${dpiY})
 Print Quality: ${quality}
+
+QUALITY PRESERVATION:
+Original DPI Preserved: YES
+Output Scale Factor: ${outputScale.toFixed(2)}x
+Image Smoothing: High Quality
+Compression: None (PNG 1.0)
+
+MANUFACTURING NOTES:
+- This is the SMALLEST RECTANGLE that contains all rotated elements
+- Rectangle edges are PARALLEL to canvas axes (axis-aligned)
+- Film includes all design elements with proper rotation applied
+- Manufacturer should cut film to these exact rectangular dimensions
+- All elements are pre-composed within this single film layer
+- ORIGINAL IMAGE QUALITY FULLY PRESERVED
+
+TECHNICAL SPECS:
 Pixel Scale Factor: ${outputScale.toFixed(2)}x
-Transformations: ${hasTransformations ? 'Yes' : 'No'}
+Has Transformations: ${hasTransformations ? 'Yes' : 'No'}
 ${hasTransformations ? `\nElement Details:
-${transformationInfo.map(t => `  • ${t.name}: ${t.originalRes}px, Rotation ${t.rotation}°, Scale ${t.scaleX}x${t.scaleY}, Opacity ${Math.round(t.opacity * 100)}%`).join('\n')}` : ''}
+${transformationInfo.map(t => `  • ${t.name}: ${t.originalRes}px, Rotation ${t.rotation}°, Scale ${t.scaleX}×${t.scaleY}, Opacity ${Math.round(t.opacity * 100)}%`).join('\n')}` : ''}
+
 Generated: ${new Date().toISOString()}`;
 
       const designImage = {
-        id: `merged-${area}-${Date.now()}`,
-        name: `${area}-merged-design.png`,
+        id: `film-${area}-${Date.now()}`,
+        name: `${area}-manufacturing-film.png`,
         type: 'image/png',
         base64Data: mergedBase64,
         originalWidth: outputWidth,
         originalHeight: outputHeight,
         area: area,
         position: { x: minX, y: minY },
-        dimensions: { width: boundingWidthCanvas, height: boundingHeightCanvas },
+        dimensions: { 
+          width: boundingWidthCanvas, 
+          height: boundingHeightCanvas 
+        },
+        physicalDimensions: {
+          widthInches: Number(widthInches.toFixed(3)),
+          heightInches: Number(heightInches.toFixed(3)),
+          xInches: Number(xInches.toFixed(3)),
+          yInches: Number(yInches.toFixed(3))
+        },
         isMerged: true,
+        isManufacturingFilm: true,
+        filmBoundingBox: {
+          minX, minY, maxX, maxY,
+          widthCanvas: boundingWidthCanvas,
+          heightCanvas: boundingHeightCanvas
+        },
         elementCount: sortedElements.length,
         transformations: transformationInfo,
         dpi: dpi,
@@ -4603,11 +4686,11 @@ Generated: ${new Date().toISOString()}`;
       designImages.push(designImage);
 
     } catch (error) {
-      console.error(`Failed to merge elements in area ${area}:`, error);
+      console.error(`Failed to create manufacturing film for area ${area}:`, error);
     }
   });
   
-  console.log('📦 Extracted ultra high-res design images:', {
+  console.log('📦 Extracted manufacturing films (axis-aligned bounding boxes):', {
     total: designImages.length,
     totalElements: designImages.reduce((sum, img) => sum + (img.elementCount || 0), 0)
   });
@@ -4768,170 +4851,310 @@ const calculateElementRealWorldDimensions = useCallback((element: DesignElement,
   };
 }, [getCanvasConfig, getPrintableAreaFromPhoto]);
 
+// Around line 4720 - Replace the calculateAreaPricing function with this fixed version:
+
 const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
   const elements = designElements[areaId] || [];
-  const visibleElements = elements
-    .filter(element => element.visible !== false)
-    .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)); // Sort by z-index (bottom to top)
   
-  const { minimumPrice, pricePerSquareInch, isFixedPrice } = getPricingInfoForArea(areaId);
-  
+  if (!Array.isArray(elements)) {
+    //console.warn(`Invalid elements for area ${areaId}`);
+    return {
+      areaId,
+      areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
+      minimumPrice: 0,
+      pricePerSquareInch: 0,
+      designAreaSquareInches: 0,
+      currentImageArea: 0,
+      calculatedPrice: 0,
+      finalPrice: 0,
+      consumedWidth: 0,
+      consumedHeight: 0,
+      elements: []
+    };
+  }
+
+  const visibleElements = elements.filter(el => el.visible !== false);
+
+  if (visibleElements.length === 0) {
+    return {
+      areaId,
+      areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
+      minimumPrice: 0,
+      pricePerSquareInch: 0,
+      designAreaSquareInches: 0,
+      currentImageArea: 0,
+      calculatedPrice: 0,
+      finalPrice: 0,
+      consumedWidth: 0,
+      consumedHeight: 0,
+      elements: []
+    };
+  }
+
+  const sortedElements = [...visibleElements].sort(
+    (a, b) => (a.zIndex || 0) - (b.zIndex || 0)
+  );
+
   const canvasConfig = getCanvasConfig(areaId);
   const printableArea = getPrintableAreaFromPhoto(areaId);
-  const totalDesignAreaAvailable = canvasConfig.realWorldWidth * canvasConfig.realWorldHeight;
 
-  // 🔥 NEW: Calculate bounding box of all elements to get consumed dimensions
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
-   visibleElements.forEach(element => {
-    const dims = calculateElementRealWorldDimensions(element, areaId);
-    minX = Math.min(minX, dims.xInches);
-    minY = Math.min(minY, dims.yInches);
-    maxX = Math.max(maxX, dims.xInches + dims.widthInches);
-    maxY = Math.max(maxY, dims.yInches + dims.heightInches);
-  });
-
-  // Calculate consumed width and height
-  const consumedWidth = visibleElements.length > 0 ? maxX - minX : 0;
-  const consumedHeight = visibleElements.length > 0 ? maxY - minY : 0;
-
-  // 🔥 FIXED: Precise area calculation with overlap detection using analytical geometry
-  const calculateVisibleAreas = () => {
-    if (visibleElements.length === 0) return { totalArea: 0, elementAreas: [] };
-    if (visibleElements.length === 1) {
-      const dims = calculateElementRealWorldDimensions(visibleElements[0], areaId);
-      return { 
-        totalArea: dims.areaSquareInches, 
-        elementAreas: [{ element: visibleElements[0], visibleArea: dims.areaSquareInches }] 
-      };
-    }
-
-    // Get all element rectangles
-    const elementRects = visibleElements.map(element => {
-      const dims = calculateElementRealWorldDimensions(element, areaId);
-      return {
-        element,
-        x: dims.xInches,
-        y: dims.yInches,
-        width: dims.widthInches,
-        height: dims.heightInches,
-        area: dims.areaSquareInches
-      };
-    }).filter(rect => rect.area > 0); // Skip zero-area elements
-
-    // Helper function to calculate intersection area between two rectangles
-    const getIntersectionArea = (rect1: any, rect2: any): number => {
-      const x1 = Math.max(rect1.x, rect2.x);
-      const y1 = Math.max(rect1.y, rect2.y);
-      const x2 = Math.min(rect1.x + rect1.width, rect2.x + rect2.width);
-      const y2 = Math.min(rect1.y + rect1.height, rect2.y + rect2.height);
-      
-      if (x2 <= x1 || y2 <= y1) return 0; // No intersection
-      
-      return (x2 - x1) * (y2 - y1);
-    };
-
-    // Calculate total area using inclusion-exclusion principle for rectangles
-    // Start with sum of all individual areas
-    let totalArea = elementRects.reduce((sum, rect) => sum + rect.area, 0);
-
-    // Subtract all pairwise intersections (overlaps counted once, not twice)
-    for (let i = 0; i < elementRects.length; i++) {
-      for (let j = i + 1; j < elementRects.length; j++) {
-        const overlapArea = getIntersectionArea(elementRects[i], elementRects[j]);
-        if (overlapArea > 0) {
-          totalArea -= overlapArea;
-        }
-      }
-    }
-
-    // For triple+ overlaps, this is more complex (inclusion-exclusion principle)
-    // But for most practical cases with 2-3 elements, pairwise is sufficient
-    // If you have many overlapping elements, we'd need the full inclusion-exclusion
-
-    // Calculate visible area for each element (their actual area within printable region)
-    const elementAreas = elementRects.map(rect => {
-      return {
-        element: rect.element,
-        visibleArea: Number(rect.area.toFixed(3))
-      };
-    });
-    
+  if (!canvasConfig || !printableArea) {
+    //console.warn(`Missing config for area ${areaId}`);
     return {
-      totalArea: Number(totalArea.toFixed(3)),
-      elementAreas
+      areaId,
+      areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
+      minimumPrice: 0,
+      pricePerSquareInch: 0,
+      designAreaSquareInches: 0,
+      currentImageArea: 0,
+      calculatedPrice: 0,
+      finalPrice: 0,
+      consumedWidth: 0,
+      consumedHeight: 0,
+      elements: []
     };
-  };
+  }
 
-  const { totalArea: totalCurrentImageArea, elementAreas } = calculateVisibleAreas();
-  const elementPricing: AreaPricingInfo['elements'] = [];
+  // 🔥 CALCULATE AXIS-ALIGNED BOUNDING BOX (AABB)
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
 
-  elementAreas.forEach(({ element, visibleArea }) => {
-    const currentRealWorldDims = calculateElementRealWorldDimensions(element, areaId);
-    const currentAreaSquareInches = currentRealWorldDims.areaSquareInches;
+  sortedElements.forEach(element => {
+    const width = element.width * (element.scaleX || 1);
+    const height = element.height * (element.scaleY || 1);
+    const centerX = element.x + width / 2;
+    const centerY = element.y + height / 2;
+    const rotation = element.rotation || 0;
 
-    let elementPrice: number;
+    if (Math.abs(rotation) > 0.1) {
+      // Element is rotated - calculate the 4 corners after rotation
+      const radians = (rotation * Math.PI) / 180;
+      const cos = Math.cos(radians);
+      const sin = Math.sin(radians);
 
-    if (isFixedPrice) {
-      // Fixed price model - use minimum price regardless of area
-      elementPrice = minimumPrice;
+      // Four corners of the rectangle (relative to center)
+      const corners = [
+        { x: -width / 2, y: -height / 2 }, // Top-left
+        { x: width / 2, y: -height / 2 },  // Top-right
+        { x: width / 2, y: height / 2 },   // Bottom-right
+        { x: -width / 2, y: height / 2 }   // Bottom-left
+      ];
+
+      // Rotate each corner and find the bounding box
+      corners.forEach(corner => {
+        const rotatedX = centerX + (corner.x * cos - corner.y * sin);
+        const rotatedY = centerY + (corner.x * sin + corner.y * cos);
+
+        minX = Math.min(minX, rotatedX);
+        maxX = Math.max(maxX, rotatedX);
+        minY = Math.min(minY, rotatedY);
+        maxY = Math.max(maxY, rotatedY);
+      });
     } else {
-      // Area-based pricing model - distribute price based on VISIBLE area
-      const proportionalShare = totalCurrentImageArea > 0 
-        ? (visibleArea / totalCurrentImageArea)
-        : 1 / visibleElements.length;
-      
-      const totalAreaPrice = totalCurrentImageArea * pricePerSquareInch;
-      const totalPrice = Math.max(minimumPrice, totalAreaPrice);
-      elementPrice = totalPrice * proportionalShare;
+      // No rotation - simple axis-aligned rectangle
+      minX = Math.min(minX, element.x);
+      maxX = Math.max(maxX, element.x + width);
+      minY = Math.min(minY, element.y);
+      maxY = Math.max(maxY, element.y + height);
     }
-
-    // Calculate original area for reference
-    let originalAreaSquareInches = 0;
-    if (element.type === 'image') {
-      const originalImageWidthInInches = ((element.originalImageWidth || element.width) / printableArea.width) * canvasConfig.realWorldWidth;
-      const originalImageHeightInInches = ((element.originalImageHeight || element.height) / printableArea.height) * canvasConfig.realWorldHeight;
-      originalAreaSquareInches = originalImageWidthInInches * originalImageHeightInInches;
-    } else {
-      originalAreaSquareInches = currentAreaSquareInches;
-    }
-
-    elementPricing.push({
-      elementId: element.id,
-      elementName: element.imageName || element.text || `Element ${element.id.slice(-4)}`,
-      areaSquareInches: visibleArea, // 🔥 Use visible area instead of total area
-      elementPrice: Number(elementPrice.toFixed(2)),
-      originalArea: Number(originalAreaSquareInches.toFixed(3)),
-      extraArea: Number(Math.max(0, visibleArea - originalAreaSquareInches).toFixed(3))
-    });
-
-    element.realWorldDimensions = currentRealWorldDims;
   });
 
-  // Calculate total cost using visible area only
+  // 🔥 FIX: CLAMP to printable area boundaries
+  const printableLeft = printableArea.x;
+  const printableRight = printableArea.x + printableArea.width;
+  const printableTop = printableArea.y;
+  const printableBottom = printableArea.y + printableArea.height;
+
+  // Clamp the bounding box to printable area
+  minX = Math.max(minX, printableLeft);
+  maxX = Math.min(maxX, printableRight);
+  minY = Math.max(minY, printableTop);
+  maxY = Math.min(maxY, printableBottom);
+
+  // Handle case where element is completely outside printable area
+  if (minX >= maxX || minY >= maxY) {
+    return {
+      areaId,
+      areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
+      minimumPrice: 0,
+      pricePerSquareInch: 0,
+      designAreaSquareInches: canvasConfig.realWorldWidth * canvasConfig.realWorldHeight,
+      currentImageArea: 0,
+      calculatedPrice: 0,
+      finalPrice: 0,
+      consumedWidth: 0,
+      consumedHeight: 0,
+      elements: []
+    };
+  }
+
+  // The bounding box dimensions in canvas coordinates (CLAMPED to printable area)
+  const consumedWidthCanvas = maxX - minX;
+  const consumedHeightCanvas = maxY - minY;
+
+  // 🔥 FIX: Calculate PPI using PRINTABLE AREA dimensions (not canvas dimensions)
+  const printableAreaPPIWidth = printableArea.width / canvasConfig.realWorldWidth;
+  const printableAreaPPIHeight = printableArea.height / canvasConfig.realWorldHeight;
+  
+  // Use the average PPI for consistent scaling
+  const averagePPI = (printableAreaPPIWidth + printableAreaPPIHeight) / 2;
+  
+  // ✅ CRITICAL FIX: Convert clamped canvas pixels to real-world inches
+  let consumedWidth = consumedWidthCanvas / averagePPI;
+  let consumedHeight = consumedHeightCanvas / averagePPI;
+
+  // ✅ NEW FIX: Check if element FILLS the printable area
+  // If the bounding box touches the printable area boundaries, use printable area dimensions
+  const TOLERANCE = 2; // 2 pixel tolerance for "touching" the boundary
+
+  const touchesLeft = Math.abs(minX - printableLeft) < TOLERANCE;
+  const touchesRight = Math.abs(maxX - printableRight) < TOLERANCE;
+  const touchesTop = Math.abs(minY - printableTop) < TOLERANCE;
+  const touchesBottom = Math.abs(maxY - printableBottom) < TOLERANCE;
+
+  // If element spans the full width of printable area, use printable area width
+  if (touchesLeft && touchesRight) {
+    consumedWidth = canvasConfig.realWorldWidth;
+    console.log('✅ Element fills full WIDTH - using printable area width:', consumedWidth);
+  }
+
+  // If element spans the full height of printable area, use printable area height
+  if (touchesTop && touchesBottom) {
+    consumedHeight = canvasConfig.realWorldHeight;
+    console.log('✅ Element fills full HEIGHT - using printable area height:', consumedHeight);
+  }
+
+  // ✅ VERIFICATION: Ensure dimensions never exceed printable area (safety clamp)
+  const maxPossibleWidth = canvasConfig.realWorldWidth;
+  const maxPossibleHeight = canvasConfig.realWorldHeight;
+  
+  const finalConsumedWidth = Math.min(consumedWidth, maxPossibleWidth);
+  const finalConsumedHeight = Math.min(consumedHeight, maxPossibleHeight);
+  
+  // Verify aspect ratio is preserved (only if NOT using printable area dimensions)
+  if (!(touchesLeft && touchesRight && touchesTop && touchesBottom)) {
+    const canvasAspectRatio = consumedWidthCanvas / consumedHeightCanvas;
+    const inchesAspectRatio = finalConsumedWidth / finalConsumedHeight;
+    const aspectRatioError = Math.abs(canvasAspectRatio - inchesAspectRatio);
+    
+    if (aspectRatioError > 0.01) {
+      console.warn('⚠️ Aspect ratio not preserved:', {
+        canvasAspectRatio: canvasAspectRatio.toFixed(3),
+        inchesAspectRatio: inchesAspectRatio.toFixed(3),
+        error: aspectRatioError.toFixed(4)
+      });
+    }
+  }
+  
+  // This is the FILM area (invisible rectangular boundary area)
+  const totalCurrentImageArea = finalConsumedWidth * finalConsumedHeight;
+
+  // Get pricing info
+  const pricingInfo = getPricingInfoForArea(areaId);
+  if (!pricingInfo) {
+    console.warn(`No pricing info for area ${areaId}`);
+    return {
+      areaId,
+      areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
+      minimumPrice: 0,
+      pricePerSquareInch: 0,
+      designAreaSquareInches: canvasConfig.realWorldWidth * canvasConfig.realWorldHeight,
+      currentImageArea: totalCurrentImageArea,
+      calculatedPrice: 0,
+      finalPrice: 0,
+      consumedWidth: Number(finalConsumedWidth.toFixed(3)),
+      consumedHeight: Number(finalConsumedHeight.toFixed(3)),
+      elements: []
+    };
+  }
+
+  const { minimumPrice, pricePerSquareInch, isFixedPrice } = pricingInfo;
+
+  // Calculate total cost based on bounding box area
   let totalCost: number;
   if (isFixedPrice) {
     totalCost = minimumPrice;
   } else {
-    const calculatedPrice = totalCurrentImageArea * pricePerSquareInch;
-    totalCost = Math.max(minimumPrice, calculatedPrice);
+    const areaCost = totalCurrentImageArea * pricePerSquareInch;
+    totalCost = Math.max(minimumPrice, areaCost);
   }
+
+  // Create breakdown for each element
+  const breakdown = sortedElements.map(element => {
+    const dims = calculateElementRealWorldDimensions(element, areaId);
+    const elementArea = dims.widthInches * dims.heightInches;
+
+    let elementCost: number;
+    if (isFixedPrice) {
+      elementCost = totalCost / sortedElements.length;
+    } else {
+      const proportion = totalCurrentImageArea > 0 ? elementArea / totalCurrentImageArea : 0;
+      elementCost = totalCost * proportion;
+    }
+
+    return {
+      elementId: element.id,
+      elementName: element.imageName || 'Unnamed Element',
+      areaSquareInches: elementArea,
+      elementPrice: elementCost,
+      originalArea: elementArea,
+      extraArea: 0
+    };
+  });
+
+  // 🔥 Debug log to verify clamping worked
+  console.log('🔍 calculateAreaPricing for', areaId, {
+    consumedWidthCanvas: consumedWidthCanvas.toFixed(2),
+    consumedHeightCanvas: consumedHeightCanvas.toFixed(2),
+    averagePPI: averagePPI.toFixed(2),
+    consumedWidthInches: consumedWidth.toFixed(3),
+    consumedHeightInches: consumedHeight.toFixed(3),
+    finalConsumedWidth: finalConsumedWidth.toFixed(3),
+    finalConsumedHeight: finalConsumedHeight.toFixed(3),
+    maxAllowedWidth: maxPossibleWidth.toFixed(3),
+    maxAllowedHeight: maxPossibleHeight.toFixed(3),
+    touchDetection: {
+      touchesLeft,
+      touchesRight,
+      touchesTop,
+      touchesBottom,
+      fillsWidth: touchesLeft && touchesRight,
+      fillsHeight: touchesTop && touchesBottom
+    },
+    totalCurrentImageArea: totalCurrentImageArea.toFixed(3),
+    totalCost: totalCost.toFixed(2),
+    clampedToPrintable: {
+      originalBounds: { 
+        minX: minX.toFixed(2), 
+        maxX: maxX.toFixed(2), 
+        minY: minY.toFixed(2), 
+        maxY: maxY.toFixed(2) 
+      },
+      printableBounds: { 
+        printableLeft: printableLeft.toFixed(2), 
+        printableRight: printableRight.toFixed(2), 
+        printableTop: printableTop.toFixed(2), 
+        printableBottom: printableBottom.toFixed(2) 
+      }
+    }
+  });
 
   return {
     areaId,
     areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
     minimumPrice,
     pricePerSquareInch,
-    designAreaSquareInches: Number(totalDesignAreaAvailable.toFixed(3)),
-    currentImageArea: Number(totalCurrentImageArea.toFixed(3)),
-    calculatedPrice: Number(totalCost.toFixed(2)),
-    finalPrice: Number(totalCost.toFixed(2)),
-    elements: elementPricing,
-    // 🔥 ADD these new fields
-    consumedWidth: Number(consumedWidth.toFixed(2)),
-    consumedHeight: Number(consumedHeight.toFixed(2))
+    designAreaSquareInches: canvasConfig.realWorldWidth * canvasConfig.realWorldHeight,
+    currentImageArea: totalCurrentImageArea,
+    calculatedPrice: totalCost,
+    finalPrice: totalCost,
+    consumedWidth: Number(finalConsumedWidth.toFixed(3)),
+    consumedHeight: Number(finalConsumedHeight.toFixed(3)),
+    elements: breakdown
   };
-}, [designElements, getPricingInfoForArea, calculateElementRealWorldDimensions, getCanvasConfig, getPrintableAreaFromPhoto]);
+}, [designElements, getCanvasConfig, getPrintableAreaFromPhoto, calculateElementRealWorldDimensions, getPricingInfoForArea]);
 
 const calculateTotalPricing = useCallback((): TotalPricingBreakdown => {
   setPriceCalculationLoading(true);
@@ -5026,6 +5249,11 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
       return null;
     }
     
+    // 🔥 FIX 1: Sort by z-index (LOWEST first, so they appear UNDER higher z-index elements)
+    const sortedElements = [...visibleElements].sort(
+      (a, b) => (a.zIndex || 0) - (b.zIndex || 0)
+    );
+    
     const canvasConfig = getCanvasConfig(areaId, activeColor);
     const printableArea = getPrintableAreaFromPhoto(areaId, activeColor);
     
@@ -5099,8 +5327,21 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     });
     tempLayer.add(clippingGroup);
     
+    // 🔥 FIX 2: Calculate printable area offset
+    const offsetX = printableArea.x;
+    const offsetY = printableArea.y;
+    
+    console.log('📐 Printable area offset:', { offsetX, offsetY });
+    console.log('📦 Sorted elements by z-index:', sortedElements.map(el => ({
+      id: el.id,
+      zIndex: el.zIndex || 0,
+      x: el.x,
+      y: el.y
+    })));
+    
     // STEP 4: Add all visible design elements with their transformations preserved
-    for (const element of visibleElements) {
+    // ✅ NOW USING SORTED ELEMENTS
+    for (const element of sortedElements) {
       if (element.type === 'image' && element.image) {
         const imageNode = new Konva.Image({
           image: element.image,
@@ -5164,7 +5405,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
       pixelRatio: 2
     });
     
-    console.log(`✅ Canvas capture complete for ${areaId} with ${visibleElements.length} elements (transformations preserved)`);
+    console.log(`✅ Canvas capture complete for ${areaId} with ${sortedElements.length} elements (z-index sorted)`);
     
     // Cleanup
     tempStage.destroy();
@@ -5781,22 +6022,24 @@ const renderPricingPanel = () => {
             </div>
             <span className="text-xs font-medium text-orange-700">Design Size</span>
           </div>
-          {(() => {
-            // Get the first area with elements to show dimensions
-            const areaWithElements = Object.values(pricingBreakdown.areas).find(
-              area => area.elements.length > 0
-            );
-            
-            if (areaWithElements && areaWithElements.consumedWidth && areaWithElements.consumedHeight) {
-              return (
-                <div className="text-base font-bold text-orange-800">
-                  {areaWithElements.consumedWidth}" × {areaWithElements.consumedHeight}"
-                </div>
-              );
-            }
-            
-            return <div className="text-xl font-bold text-orange-800">0"</div>;
-          })()}
+            {(() => {
+              // Get the first area with elements to show dimensions
+              const areaWithElements = pricingBreakdown?.areas 
+                ? Object.values(pricingBreakdown.areas).find(
+                    area => area?.elements?.length > 0
+                  )
+                : null;
+
+              if (areaWithElements && areaWithElements.consumedWidth && areaWithElements.consumedHeight) {
+                return (
+                  <div className="text-base font-bold text-orange-800">
+                    {areaWithElements.consumedWidth}" × {areaWithElements.consumedHeight}"
+                  </div>
+                );
+              }
+
+              return <div className="text-xl font-bold text-orange-800">0"</div>;
+            })()}
         </div>
       </div>
 
@@ -5810,21 +6053,27 @@ const renderPricingPanel = () => {
           <span className="text-xs text-gray-500">({Object.keys(areas).length} areas)</span>
         </div>
         
-        {Object.values(areas).map(area => (
-          <details key={area.areaId} className="overflow-hidden border border-gray-200 rounded-lg group bg-gray-50">
-            <summary className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-gray-900">{area.areaName}</span>
-                <span className="px-2 py-0.5 text-xs font-medium text-gray-600 bg-gray-200 rounded-full">
-                  {area.elements.length} element{area.elements.length !== 1 ? 's' : ''}
+        {Object.values(areas).map(area => {
+          if (!area || !area.elements || !Array.isArray(area.elements)) {
+            return null;
+          }
+
+          return (
+            <details key={area.areaId} className="overflow-hidden border border-gray-200 rounded-lg group bg-gray-50">
+              <summary className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-900">{area.areaName}</span>
+                  <span className="px-2 py-0.5 text-xs font-medium text-gray-600 bg-gray-200 rounded-full">
+                    {area.elements.length} element{area.elements.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <span className="text-base font-bold text-green-600">
+                  Rs.{area.finalPrice}
                 </span>
-              </div>
-              <span className="text-base font-bold text-green-600">
-                Rs.{area.finalPrice}
-              </span>
-            </summary>
-          </details>
-        ))}
+              </summary>
+            </details>
+          );
+        })}
       </div>
 
       {/* Cost Breakdown */}
