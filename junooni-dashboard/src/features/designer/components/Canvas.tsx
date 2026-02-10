@@ -4857,7 +4857,7 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
   const elements = designElements[areaId] || [];
   
   if (!Array.isArray(elements)) {
-    //console.warn(`Invalid elements for area ${areaId}`);
+    console.warn(`Invalid elements for area ${areaId}`);
     return {
       areaId,
       areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
@@ -4896,10 +4896,10 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
   );
 
   const canvasConfig = getCanvasConfig(areaId);
-  const printableArea = getPrintableAreaFromPhoto(areaId);
+  const printableArea = getPrintableAreaFromPhoto(areaId, activeColor);
 
   if (!canvasConfig || !printableArea) {
-    //console.warn(`Missing config for area ${areaId}`);
+    console.warn(`Missing config for area ${areaId}`);
     return {
       areaId,
       areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
@@ -4929,20 +4929,17 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
     const rotation = element.rotation || 0;
 
     if (Math.abs(rotation) > 0.1) {
-      // Element is rotated - calculate the 4 corners after rotation
       const radians = (rotation * Math.PI) / 180;
       const cos = Math.cos(radians);
       const sin = Math.sin(radians);
 
-      // Four corners of the rectangle (relative to center)
       const corners = [
-        { x: -width / 2, y: -height / 2 }, // Top-left
-        { x: width / 2, y: -height / 2 },  // Top-right
-        { x: width / 2, y: height / 2 },   // Bottom-right
-        { x: -width / 2, y: height / 2 }   // Bottom-left
+        { x: -width / 2, y: -height / 2 },
+        { x: width / 2, y: -height / 2 },
+        { x: width / 2, y: height / 2 },
+        { x: -width / 2, y: height / 2 }
       ];
 
-      // Rotate each corner and find the bounding box
       corners.forEach(corner => {
         const rotatedX = centerX + (corner.x * cos - corner.y * sin);
         const rotatedY = centerY + (corner.x * sin + corner.y * cos);
@@ -4953,7 +4950,6 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
         maxY = Math.max(maxY, rotatedY);
       });
     } else {
-      // No rotation - simple axis-aligned rectangle
       minX = Math.min(minX, element.x);
       maxX = Math.max(maxX, element.x + width);
       minY = Math.min(minY, element.y);
@@ -4967,20 +4963,18 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
   const printableTop = printableArea.y;
   const printableBottom = printableArea.y + printableArea.height;
 
-  // Clamp the bounding box to printable area
   minX = Math.max(minX, printableLeft);
   maxX = Math.min(maxX, printableRight);
   minY = Math.max(minY, printableTop);
   maxY = Math.min(maxY, printableBottom);
 
-  // Handle case where element is completely outside printable area
   if (minX >= maxX || minY >= maxY) {
     return {
       areaId,
       areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
       minimumPrice: 0,
       pricePerSquareInch: 0,
-      designAreaSquareInches: canvasConfig.realWorldWidth * canvasConfig.realWorldHeight,
+      designAreaSquareInches: 14 * 16,
       currentImageArea: 0,
       calculatedPrice: 0,
       finalPrice: 0,
@@ -4990,65 +4984,57 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
     };
   }
 
-  // The bounding box dimensions in canvas coordinates (CLAMPED to printable area)
   const consumedWidthCanvas = maxX - minX;
   const consumedHeightCanvas = maxY - minY;
 
-  // 🔥 FIX: Calculate PPI using PRINTABLE AREA dimensions (not canvas dimensions)
-  const printableAreaPPIWidth = printableArea.width / canvasConfig.realWorldWidth;
-  const printableAreaPPIHeight = printableArea.height / canvasConfig.realWorldHeight;
+  // 🔥 ASPECT RATIO PRESERVATION: Use average PPI for both dimensions
+  const PRINTABLE_WIDTH_INCHES = 14;
+  const PRINTABLE_HEIGHT_INCHES = 16;
+
+  const ppiWidth = printableArea.width / PRINTABLE_WIDTH_INCHES;   // 180 / 14 = 12.857
+  const ppiHeight = printableArea.height / PRINTABLE_HEIGHT_INCHES; // 225 / 16 = 14.0625
+
+  // 🔥 Use average PPI to preserve aspect ratio
+  const averagePPI = (ppiWidth + ppiHeight) / 2;  // 13.46
   
-  // Use the average PPI for consistent scaling
-  const averagePPI = (printableAreaPPIWidth + printableAreaPPIHeight) / 2;
-  
-  // ✅ CRITICAL FIX: Convert clamped canvas pixels to real-world inches
+  // Convert pixels to inches using single PPI (preserves aspect ratio)
   let consumedWidth = consumedWidthCanvas / averagePPI;
   let consumedHeight = consumedHeightCanvas / averagePPI;
 
-  // ✅ NEW FIX: Check if element FILLS the printable area
-  // If the bounding box touches the printable area boundaries, use printable area dimensions
-  const TOLERANCE = 2; // 2 pixel tolerance for "touching" the boundary
+  // 🔥 CLAMP to max dimensions
+  const finalConsumedWidth = Math.min(consumedWidth, PRINTABLE_WIDTH_INCHES);
+  const finalConsumedHeight = Math.min(consumedHeight, PRINTABLE_HEIGHT_INCHES);
 
-  const touchesLeft = Math.abs(minX - printableLeft) < TOLERANCE;
-  const touchesRight = Math.abs(maxX - printableRight) < TOLERANCE;
-  const touchesTop = Math.abs(minY - printableTop) < TOLERANCE;
-  const touchesBottom = Math.abs(maxY - printableBottom) < TOLERANCE;
-
-  // If element spans the full width of printable area, use printable area width
-  if (touchesLeft && touchesRight) {
-    consumedWidth = canvasConfig.realWorldWidth;
-    console.log('✅ Element fills full WIDTH - using printable area width:', consumedWidth);
-  }
-
-  // If element spans the full height of printable area, use printable area height
-  if (touchesTop && touchesBottom) {
-    consumedHeight = canvasConfig.realWorldHeight;
-    console.log('✅ Element fills full HEIGHT - using printable area height:', consumedHeight);
-  }
-
-  // ✅ VERIFICATION: Ensure dimensions never exceed printable area (safety clamp)
-  const maxPossibleWidth = canvasConfig.realWorldWidth;
-  const maxPossibleHeight = canvasConfig.realWorldHeight;
+  // 🔥 VERIFICATION
+  const canvasAspectRatio = consumedWidthCanvas / consumedHeightCanvas;
+  const inchesAspectRatio = finalConsumedWidth / finalConsumedHeight;
   
-  const finalConsumedWidth = Math.min(consumedWidth, maxPossibleWidth);
-  const finalConsumedHeight = Math.min(consumedHeight, maxPossibleHeight);
-  
-  // Verify aspect ratio is preserved (only if NOT using printable area dimensions)
-  if (!(touchesLeft && touchesRight && touchesTop && touchesBottom)) {
-    const canvasAspectRatio = consumedWidthCanvas / consumedHeightCanvas;
-    const inchesAspectRatio = finalConsumedWidth / finalConsumedHeight;
-    const aspectRatioError = Math.abs(canvasAspectRatio - inchesAspectRatio);
-    
-    if (aspectRatioError > 0.01) {
-      console.warn('⚠️ Aspect ratio not preserved:', {
-        canvasAspectRatio: canvasAspectRatio.toFixed(3),
-        inchesAspectRatio: inchesAspectRatio.toFixed(3),
-        error: aspectRatioError.toFixed(4)
-      });
+  console.log('📐 Dimension Calculation (ASPECT RATIO PRESERVED):', {
+    areaId,
+    printableArea: {
+      widthPx: printableArea.width,
+      heightPx: printableArea.height,
+      widthInches: PRINTABLE_WIDTH_INCHES,
+      heightInches: PRINTABLE_HEIGHT_INCHES,
+      ppiWidth: ppiWidth.toFixed(3),
+      ppiHeight: ppiHeight.toFixed(3),
+      averagePPI: averagePPI.toFixed(3)
+    },
+    consumed: {
+      widthPx: consumedWidthCanvas.toFixed(2),
+      heightPx: consumedHeightCanvas.toFixed(2),
+      widthInches: consumedWidth.toFixed(3),
+      heightInches: consumedHeight.toFixed(3),
+      aspectRatio: canvasAspectRatio.toFixed(3)
+    },
+    final: {
+      widthInches: finalConsumedWidth.toFixed(3),
+      heightInches: finalConsumedHeight.toFixed(3),
+      aspectRatio: inchesAspectRatio.toFixed(3),
+      aspectRatioMatch: Math.abs(canvasAspectRatio - inchesAspectRatio) < 0.01
     }
-  }
+  });
   
-  // This is the FILM area (invisible rectangular boundary area)
   const totalCurrentImageArea = finalConsumedWidth * finalConsumedHeight;
 
   // Get pricing info
@@ -5060,7 +5046,7 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
       areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
       minimumPrice: 0,
       pricePerSquareInch: 0,
-      designAreaSquareInches: canvasConfig.realWorldWidth * canvasConfig.realWorldHeight,
+      designAreaSquareInches: 14 * 16,
       currentImageArea: totalCurrentImageArea,
       calculatedPrice: 0,
       finalPrice: 0,
@@ -5072,7 +5058,7 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
 
   const { minimumPrice, pricePerSquareInch, isFixedPrice } = pricingInfo;
 
-  // Calculate total cost based on bounding box area
+  // Calculate total cost
   let totalCost: number;
   if (isFixedPrice) {
     totalCost = minimumPrice;
@@ -5104,49 +5090,12 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
     };
   });
 
-  // 🔥 Debug log to verify clamping worked
-  console.log('🔍 calculateAreaPricing for', areaId, {
-    consumedWidthCanvas: consumedWidthCanvas.toFixed(2),
-    consumedHeightCanvas: consumedHeightCanvas.toFixed(2),
-    averagePPI: averagePPI.toFixed(2),
-    consumedWidthInches: consumedWidth.toFixed(3),
-    consumedHeightInches: consumedHeight.toFixed(3),
-    finalConsumedWidth: finalConsumedWidth.toFixed(3),
-    finalConsumedHeight: finalConsumedHeight.toFixed(3),
-    maxAllowedWidth: maxPossibleWidth.toFixed(3),
-    maxAllowedHeight: maxPossibleHeight.toFixed(3),
-    touchDetection: {
-      touchesLeft,
-      touchesRight,
-      touchesTop,
-      touchesBottom,
-      fillsWidth: touchesLeft && touchesRight,
-      fillsHeight: touchesTop && touchesBottom
-    },
-    totalCurrentImageArea: totalCurrentImageArea.toFixed(3),
-    totalCost: totalCost.toFixed(2),
-    clampedToPrintable: {
-      originalBounds: { 
-        minX: minX.toFixed(2), 
-        maxX: maxX.toFixed(2), 
-        minY: minY.toFixed(2), 
-        maxY: maxY.toFixed(2) 
-      },
-      printableBounds: { 
-        printableLeft: printableLeft.toFixed(2), 
-        printableRight: printableRight.toFixed(2), 
-        printableTop: printableTop.toFixed(2), 
-        printableBottom: printableBottom.toFixed(2) 
-      }
-    }
-  });
-
   return {
     areaId,
     areaName: areaId.charAt(0).toUpperCase() + areaId.slice(1),
     minimumPrice,
     pricePerSquareInch,
-    designAreaSquareInches: canvasConfig.realWorldWidth * canvasConfig.realWorldHeight,
+    designAreaSquareInches: 14 * 16,
     currentImageArea: totalCurrentImageArea,
     calculatedPrice: totalCost,
     finalPrice: totalCost,
@@ -5154,7 +5103,7 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
     consumedHeight: Number(finalConsumedHeight.toFixed(3)),
     elements: breakdown
   };
-}, [designElements, getCanvasConfig, getPrintableAreaFromPhoto, calculateElementRealWorldDimensions, getPricingInfoForArea]);
+}, [designElements, getCanvasConfig, getPrintableAreaFromPhoto, calculateElementRealWorldDimensions, getPricingInfoForArea, activeColor]);
 
 const calculateTotalPricing = useCallback((): TotalPricingBreakdown => {
   setPriceCalculationLoading(true);
@@ -6014,7 +5963,7 @@ const renderPricingPanel = () => {
           <div className="text-xl font-bold text-orange-800">{pricingBreakdown.totalElements}</div>
         </div>
         
-        {/* 🔥 UPDATED: Show consumed dimensions instead of total area */}
+        {/* // 🔥 FIXED: Show dimensions for ACTIVE AREA */}
         <div className="p-3 rounded-lg bg-orange-50">
           <div className="flex items-center gap-2 mb-1">
             <div className="flex items-center justify-center w-6 h-6 bg-orange-100 rounded">
@@ -6023,22 +5972,28 @@ const renderPricingPanel = () => {
             <span className="text-xs font-medium text-orange-700">Design Size</span>
           </div>
             {(() => {
-              // Get the first area with elements to show dimensions
-              const areaWithElements = pricingBreakdown?.areas 
-                ? Object.values(pricingBreakdown.areas).find(
-                    area => area?.elements?.length > 0
-                  )
-                : null;
+              // 🔥 CRITICAL FIX: Get dimensions for the ACTIVE AREA, not just first area
+              const activeAreaPricing = pricingBreakdown?.areas?.[activeArea];
 
-              if (areaWithElements && areaWithElements.consumedWidth && areaWithElements.consumedHeight) {
+              if (activeAreaPricing && activeAreaPricing.consumedWidth && activeAreaPricing.consumedHeight) {
                 return (
-                  <div className="text-base font-bold text-orange-800">
-                    {areaWithElements.consumedWidth}" × {areaWithElements.consumedHeight}"
+                  <div className="space-y-1">
+                    <div className="text-base font-bold text-orange-800">
+                      {activeAreaPricing.consumedWidth}" × {activeAreaPricing.consumedHeight}"
+                    </div>
+                    <div className="text-xs text-orange-600">
+                      {activeArea.charAt(0).toUpperCase() + activeArea.slice(1)}
+                    </div>
                   </div>
                 );
               }
 
-              return <div className="text-xl font-bold text-orange-800">0"</div>;
+              return (
+                <div className="space-y-1">
+                  <div className="text-base font-bold text-orange-800">0"</div>
+                  <div className="text-xs text-orange-600">No elements</div>
+                </div>
+              );
             })()}
         </div>
       </div>
@@ -6068,7 +6023,7 @@ const renderPricingPanel = () => {
                   </span>
                 </div>
                 <span className="text-base font-bold text-green-600">
-                  Rs.{area.finalPrice}
+                  Rs.{Number(area.finalPrice).toFixed(3)}
                 </span>
               </summary>
             </details>

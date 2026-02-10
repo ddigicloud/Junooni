@@ -507,60 +507,67 @@ async function buildDesignsForItem(query: any, item: any): Promise<any[]> {
   })
 
   // Build design objects
-  Object.entries(designsByArea).forEach(([area, elements]) => {
-    elements.forEach((element) => {
-      const placementSku = getPlacementSku(area)
+Object.entries(designsByArea).forEach(([area, elements]) => {
+  elements.forEach((element) => {
+    const placementSku = getPlacementSku(area)
+    
+    // Get dimensions for this area from manufacturing layout
+    const dimensions = dimensionsByArea[area] || { width: "", height: "" }
+    
+    console.log(`   📏 ${area} final dimensions: ${dimensions.width}" x ${dimensions.height}"`)
+    
+    // Extract date and random part from variant SKU
+    // Expected format: JUNI-golden-yellow-x-271225-MJNYKZ9N
+    const variantSku = item?.variant?.sku || ""
+    
+    console.log("🔍 Debug SKU extraction:")
+    console.log("   variant SKU:", variantSku)
+    
+    let baseDesignCode = ""
+    
+    // Split by dash and get the last two parts (date and random)
+    const skuParts = variantSku.split("-")
+    
+    if (skuParts.length >= 2) {
+      // Get last two parts: date (271225) and random (MJNYKZ9N)
+      const datePart = skuParts[skuParts.length - 2]
+      const randomPart = skuParts[skuParts.length - 1]
       
-      // Get dimensions for this area from manufacturing layout
-      const dimensions = dimensionsByArea[area] || { width: "", height: "" }
-      
-      console.log(`   📏 ${area} final dimensions: ${dimensions.width}" x ${dimensions.height}"`)
-      
-      // Extract date and random part from variant SKU
-      // Expected format: JUNI-golden-yellow-x-271225-MJNYKZ9N
-      const variantSku = item?.variant?.sku || ""
-      
-      console.log("🔍 Debug SKU extraction:")
-      console.log("   variant SKU:", variantSku)
-      
-      let designCode = ""
-      
-      // Split by dash and get the last two parts (date and random)
-      const skuParts = variantSku.split("-")
-      
-      if (skuParts.length >= 2) {
-        // Get last two parts: date (271225) and random (MJNYKZ9N)
-        const datePart = skuParts[skuParts.length - 2]
-        const randomPart = skuParts[skuParts.length - 1]
-        
-        // Check if datePart looks like a date (6 digits: DDMMYY)
-        if (datePart && /^\d{6}$/.test(datePart)) {
-          designCode = `${datePart}-${randomPart}`
-          console.log("   ✅ Extracted design code:", designCode)
-        } else {
-          // Fallback: use just the last part
-          designCode = randomPart || "default"
-          console.log("   ⚠️ Date format not found, using last part:", designCode)
-        }
+      // Check if datePart looks like a date (6 digits: DDMMYY)
+      if (datePart && /^\d{6}$/.test(datePart)) {
+        baseDesignCode = `${datePart}-${randomPart}`
+        console.log("   ✅ Extracted base design code:", baseDesignCode)
       } else {
-        // Fallback for unexpected format - keep under 20 chars
-        const randomSuffix = Math.floor(Math.random() * 9000) + 1000
-        designCode = `def-${randomSuffix}` // Max 9 chars
-        console.log("   ⚠️ SKU format unexpected, using random:", designCode)
+        // Fallback: use just the last part
+        baseDesignCode = randomPart || "default"
+        console.log("   ⚠️ Date format not found, using last part:", baseDesignCode)
       }
+    } else {
+      // Fallback for unexpected format - keep under 20 chars
+      const randomSuffix = Math.floor(Math.random() * 9000) + 1000
+      baseDesignCode = `def-${randomSuffix}` // Max 9 chars
+      console.log("   ⚠️ SKU format unexpected, using random:", baseDesignCode)
+    }
 
-      designs.push({
-        design_code: designCode,
-        width_inches: dimensions.width || "",
-        height_inches: dimensions.height || "",
-        placement_sku: placementSku,
-        mockup_link: layoutsByArea[area] || item.thumbnail || "",
-        design_link: element.url,
-      })
+    // 🔥 CRITICAL: Make design_code unique per area (Qikink requirement)
+    // Use area suffix to differentiate designs for different placements
+    const areaCode = area.substring(0, 2).toUpperCase() // FR, BA, LS, RS, LP
+    const designCode = `${baseDesignCode}-${areaCode}`
+    
+    console.log(`   ✅ Created unique design code for ${area}: ${designCode}`)
 
-      console.log(`   ✅ Added ${area} design with code ${designCode}: ${element.url}`)
+    designs.push({
+      design_code: designCode,  // ✅ Now unique per area!
+      width_inches: dimensions.width || "",
+      height_inches: dimensions.height || "",
+      placement_sku: placementSku,
+      mockup_link: layoutsByArea[area] || item.thumbnail || "",
+      design_link: element.url,
     })
+
+    console.log(`   ✅ Added ${area} design with code ${designCode}: ${element.url}`)
   })
+})
 
   if (designs.length === 0) {
     //console.log("   ⚠️ No valid designs found in artwork, using fallback")
@@ -742,10 +749,17 @@ function buildFallbackDesign(item: any): any[] {
  */
 function getAreaFromDescription(desc: string): string {
   const lower = desc.toLowerCase()
-  if (lower.includes("front area")) return "front"
-  if (lower.includes("back area")) return "back"
-  if (lower.includes("left sleeve")) return "left_sleeve"
-  if (lower.includes("right sleeve")) return "right_sleeve"
+  
+  // Check for specific area keywords (order matters - check more specific first)
+  if (lower.includes("left_sleeve") || lower.includes("left sleeve")) return "left_sleeve"
+  if (lower.includes("right_sleeve") || lower.includes("right sleeve")) return "right_sleeve"
+  if (lower.includes("left_pocket") || lower.includes("left pocket")) return "left_pocket"
+  if (lower.includes("right_pocket") || lower.includes("right pocket")) return "right_pocket"
+  if (lower.includes("back")) return "back"
+  if (lower.includes("front")) return "front"
+  
+  // Default to front if no area keyword found
+  console.log(`⚠️ Could not determine area from description: "${desc}" - defaulting to front`)
   return "front"
 }
 
@@ -756,10 +770,20 @@ function getPlacementSku(area: string): string {
   const mapping: Record<string, string> = {
     front: "fr",
     back: "bk",
-    left_sleeve: "sl",
-    right_sleeve: "sr",
+    left_sleeve: "ls",
+    left_sleeves: "ls",  // Handle plural
+    right_sleeve: "rs",
+    right_sleeves: "rs", // Handle plural
+    left_pocket: "lp",
+    right_pocket: "rp",
   }
-  return mapping[area] || "fr"
+  const sku = mapping[area.toLowerCase()] || "fr"
+  
+  if (!mapping[area.toLowerCase()]) {
+    console.log(`⚠️ Unknown area "${area}" - defaulting placement_sku to "fr"`)
+  }
+  
+  return sku
 }
 
 /**
