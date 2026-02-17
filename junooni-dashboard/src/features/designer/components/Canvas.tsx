@@ -1336,6 +1336,80 @@ const convertImageToBase64 = (img) => {
   });
 };
 
+// Add this new utility function after convertImageToBase64
+const optimizeImage = async (img: HTMLImageElement, maxWidth: number = 1500, quality: number = 0.85): Promise<{ 
+  optimizedImage: HTMLImageElement; 
+  optimizedBase64: string;
+  originalSize: number;
+  optimizedSize: number;
+}> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      // Calculate new dimensions
+      const originalWidth = img.naturalWidth || img.width;
+      const originalHeight = img.naturalHeight || img.height;
+      
+      let newWidth = originalWidth;
+      let newHeight = originalHeight;
+      
+      // Only resize if image is larger than maxWidth
+      if (originalWidth > maxWidth) {
+        const aspectRatio = originalHeight / originalWidth;
+        newWidth = maxWidth;
+        newHeight = maxWidth * aspectRatio;
+      }
+      
+      // Set canvas dimensions
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      
+      // Enable image smoothing for better quality
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      
+      // Draw optimized image
+      ctx.drawImage(img, 0, 0, newWidth, newHeight);
+      
+      // Convert to base64 with compression
+      const optimizedBase64 = canvas.toDataURL('image/jpeg', quality);
+      
+      // Calculate sizes
+      const originalSize = img.src.length;
+      const optimizedSize = optimizedBase64.length;
+      
+      // Create new image from optimized base64
+      const optimizedImg = new Image();
+      optimizedImg.crossOrigin = 'anonymous';
+      
+      optimizedImg.onload = () => {
+        console.log(`✅ Image optimized: ${originalWidth}x${originalHeight} → ${newWidth}x${newHeight}`);
+        console.log(`📉 Size reduced: ${(originalSize / 1024 / 1024).toFixed(2)}MB → ${(optimizedSize / 1024 / 1024).toFixed(2)}MB`);
+        
+        resolve({
+          optimizedImage: optimizedImg,
+          optimizedBase64,
+          originalSize,
+          optimizedSize
+        });
+      };
+      
+      optimizedImg.onerror = () => reject(new Error('Failed to create optimized image'));
+      optimizedImg.src = optimizedBase64;
+      
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 const loadImageWithCORS = (src) => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -1398,7 +1472,7 @@ const validateImageFile = (file: File): { valid: boolean; error?: string } => {
     return { valid: false, error: 'Please select an image file (PNG, JPG, GIF, etc.)' };
   }
   
-  if (file.size > 10 * 1024 * 1024) {
+  if (file.size > 30 * 1024 * 1024) {
     return { valid: false, error: 'File size must be less than 10MB' };
   }
   
@@ -2314,40 +2388,40 @@ public setProductData(productData: any) {
 }
 
   
-  private determineEngine = (mockup: DynamicMockupPhoto): 'canvas_professional' | 'pixi_dynamic' => {
-  // ðŸ”¥ FORCE CANVAS FOR T-SHIRTS - Add this check first
-  if (this.productData?.productType?.toLowerCase().includes('shirt') || 
-      this.productData?.productType?.toLowerCase().includes('tee') ||
-      this.productData?.productType?.toLowerCase().includes('apparel')) {
-    return 'canvas_professional';
-  }
+// private determineEngine = (mockup: DynamicMockupPhoto): 'canvas_professional' | 'pixi_dynamic' => {
+//   // ðŸ”¥ FORCE CANVAS FOR T-SHIRTS - Add this check first
+//   if (this.productData?.productType?.toLowerCase().includes('shirt') || 
+//       this.productData?.productType?.toLowerCase().includes('tee') ||
+//       this.productData?.productType?.toLowerCase().includes('apparel')) {
+//     return 'canvas_professional';
+//   }
 
-  if (mockup.render?.pfEngine) {
-    switch (mockup.render.pfEngine) {
-      case 'canvas':
-        return 'canvas_professional';
-      case 'pixi':
-        return 'pixi_dynamic';
-      case 'auto':
-        break;
-    }
-  }
+//   if (mockup.render?.pfEngine) {
+//     switch (mockup.render.pfEngine) {
+//       case 'canvas':
+//         return 'canvas_professional';
+//       case 'pixi':
+//         return 'pixi_dynamic';
+//       case 'auto':
+//         break;
+//     }
+//   }
 
-  const requiresPixi = !!(
-    mockup.dispMaps?.length ||
-    mockup.alpMasks?.length ||
-    mockup.light?.length ||
-    mockup.area?.some(area => 
-      area.surfaceWrapSettings?.enableWrap ||
-      area.perspectiveSettings?.enablePerspective ||
-      area.fbrc?.enableFabricBlend ||
-      area.Config?.enableMasking
-    ) ||
-    mockup.render?.enableAdvancedEffects
-  );
+//   const requiresPixi = !!(
+//     mockup.dispMaps?.length ||
+//     mockup.alpMasks?.length ||
+//     mockup.light?.length ||
+//     mockup.area?.some(area => 
+//       area.surfaceWrapSettings?.enableWrap ||
+//       area.perspectiveSettings?.enablePerspective ||
+//       area.fbrc?.enableFabricBlend ||
+//       area.Config?.enableMasking
+//     ) ||
+//     mockup.render?.enableAdvancedEffects
+//   );
 
-  return requiresPixi ? 'pixi_dynamic' : 'canvas_professional';
-};
+//   return requiresPixi ? 'pixi_dynamic' : 'canvas_professional';
+// };
 
  public generateSingleMockup = async (
   mockup: DynamicMockupPhoto,
@@ -2733,6 +2807,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   const [renderComplete, setRenderComplete] = useState(false);
   const [forceRender, setForceRender] = useState(false);
 
+
   // Determine which engine this mockup needs
   const determineRenderEngine = useCallback((): 'canvas' | 'pixi' | 'auto' => {
     if (mockup.render?.pfEngine) {
@@ -3032,6 +3107,21 @@ interface LayersPanelProps {
   onDeleteLayer: (layerId: string) => void;
   onMoveLayer: (layerId: string, direction: 'up' | 'down') => void;
   onDuplicateLayer: (layerId: string) => void;
+  // 🔥 Add these required props
+  customWidth: string;
+  customHeight: string;
+  lockAspectRatio: boolean;
+  setCustomWidth: (width: string) => void;
+  setCustomHeight: (height: string) => void;
+  setLockAspectRatio: (locked: boolean) => void;
+  designElements: Record<string, DesignElement[]>;
+  activeArea: string;
+  activeColor: string;
+  getCanvasConfig: (area: string) => any;
+  getPrintableAreaFromPhoto: (area: string, color: string) => any;
+  setDesignElements: React.Dispatch<React.SetStateAction<Record<string, DesignElement[]>>>;
+  updatePricingData: () => void;
+  triggerUpdate: () => void;
 }
 
 const LayersPanel: React.FC<LayersPanelProps> = ({
@@ -3042,9 +3132,28 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
   onToggleLock,
   onDeleteLayer,
   onMoveLayer,
-  onDuplicateLayer
+  onDuplicateLayer,
+  customWidth,
+  customHeight,
+  lockAspectRatio,
+  setCustomWidth,
+  setCustomHeight,
+  setLockAspectRatio,
+  designElements,
+  activeArea,
+  activeColor,
+  getCanvasConfig,
+  getPrintableAreaFromPhoto,
+  setDesignElements,
+  updatePricingData,
+  triggerUpdate
 }) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  // const [customWidth, setCustomWidth] = useState<string>('');
+  // const [customHeight, setCustomHeight] = useState<string>('');
+  // const [lockAspectRatio, setLockAspectRatio] = useState(true);
+  // const [designElements, setDesignElements] = useState<Record<string, DesignElement[]>>({});
+  // const [activeArea, setActiveArea] = useState<string>('front');
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -3125,7 +3234,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
                 <div className="flex-shrink-0 w-6 h-6 overflow-hidden bg-gray-100 border rounded sm:w-8 sm:h-8">
                   {layer.element.type === 'image' && layer.element.image ? (
                     <img
-                      src={layer.element.imageUrl}
+                      src={layer.element.imageBase64 || layer.element.imageUrl}
                       alt={layer.element.layerName}
                       className="object-cover w-full h-full"
                     />
@@ -3145,7 +3254,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
                     {layer.element.layerName || layer.element.imageName || layer.element.text || `Layer ${index + 1}`}
                   </div>
                   <div className="text-xs text-gray-500 uppercase">
-                    {layer.element.type} â€¢ Z:{layer.element.zIndex || 0}
+                    {layer.element.type} • Z:{layer.element.zIndex || 0}
                   </div>
                 </div>
               </div>
@@ -3226,6 +3335,291 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
           </div>
         ))}
       </div>
+
+       {/* 🔥 NEW: ADD CUSTOM DIMENSIONS SECTION HERE */}
+      {selectedId && (
+        <div 
+          className="mt-4 border-0 rounded-lg"
+          data-custom-dimensions="true"
+          style={{ 
+            borderColor: '#e65100',
+            backgroundColor: '#fff3e0'
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <div className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Calculator className="w-4 h-4" style={{ color: '#e65100' }} />
+                <h4 className="text-sm font-semibold" style={{ color: '#e65100' }}>Custom Dimensions</h4>
+              </div>
+              {selectedId && (
+                <button
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLockAspectRatio(!lockAspectRatio);
+                  }}
+                  className={`p-1 rounded transition-colors`}
+                  style={{
+                    backgroundColor: lockAspectRatio ? '#e65100' : 'white',
+                    color: lockAspectRatio ? 'white' : '#e65100',
+                    border: lockAspectRatio ? 'none' : '1px solid #e65100'
+                  }}
+                  title={lockAspectRatio ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {lockAspectRatio ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    )}
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {(() => {
+              const selectedElement = designElements[activeArea]?.find(el => el.id === selectedId);
+              if (!selectedElement) return (
+                <div className="py-4 text-sm text-center text-gray-500">
+                  Element not found
+                </div>
+              );
+
+              const canvasConfig = getCanvasConfig(activeArea);
+              const maxWidthInches = canvasConfig.realWorldWidth;
+              const maxHeightInches = canvasConfig.realWorldHeight;
+              const aspectRatio = selectedElement.width / selectedElement.height;
+
+              const handleWidthChange = (value: string) => {
+                const widthNum = parseFloat(value);
+                
+                if (!isNaN(widthNum) && widthNum > maxWidthInches) {
+                  setCustomWidth(maxWidthInches.toFixed(2));
+                  
+                  if (lockAspectRatio) {
+                    const newHeight = maxWidthInches / aspectRatio;
+                    if (newHeight <= maxHeightInches) {
+                      setCustomHeight(newHeight.toFixed(2));
+                    } else {
+                      const adjustedWidth = maxHeightInches * aspectRatio;
+                      setCustomWidth(adjustedWidth.toFixed(2));
+                      setCustomHeight(maxHeightInches.toFixed(2));
+                    }
+                  }
+                  return;
+                }
+                
+                setCustomWidth(value);
+                
+                if (isNaN(widthNum) || widthNum <= 0) return;
+
+                if (lockAspectRatio) {
+                  const newHeight = widthNum / aspectRatio;
+                  
+                  if (newHeight > maxHeightInches) {
+                    const adjustedWidth = maxHeightInches * aspectRatio;
+                    setCustomWidth(adjustedWidth.toFixed(2));
+                    setCustomHeight(maxHeightInches.toFixed(2));
+                  } else {
+                    setCustomHeight(newHeight.toFixed(2));
+                  }
+                }
+              };
+
+              const handleHeightChange = (value: string) => {
+                const heightNum = parseFloat(value);
+                
+                if (!isNaN(heightNum) && heightNum > maxHeightInches) {
+                  setCustomHeight(maxHeightInches.toFixed(2));
+                  
+                  if (lockAspectRatio) {
+                    const newWidth = maxHeightInches * aspectRatio;
+                    if (newWidth <= maxWidthInches) {
+                      setCustomWidth(newWidth.toFixed(2));
+                    } else {
+                      const adjustedHeight = maxWidthInches / aspectRatio;
+                      setCustomHeight(adjustedHeight.toFixed(2));
+                      setCustomWidth(maxWidthInches.toFixed(2));
+                    }
+                  }
+                  return;
+                }
+                
+                setCustomHeight(value);
+                
+                if (isNaN(heightNum) || heightNum <= 0) return;
+
+                if (lockAspectRatio) {
+                  const newWidth = heightNum * aspectRatio;
+                  
+                  if (newWidth > maxWidthInches) {
+                    const adjustedHeight = maxWidthInches / aspectRatio;
+                    setCustomHeight(adjustedHeight.toFixed(2));
+                    setCustomWidth(maxWidthInches.toFixed(2));
+                  } else {
+                    setCustomWidth(newWidth.toFixed(2));
+                  }
+                }
+              };
+
+              const applyCustomDimensions = () => {
+                const widthNum = parseFloat(customWidth);
+                const heightNum = parseFloat(customHeight);
+
+                if (isNaN(widthNum) || isNaN(heightNum) || widthNum <= 0 || heightNum <= 0) {
+                  alert('⚠️ Please enter valid dimensions');
+                  return;
+                }
+
+                if (widthNum > maxWidthInches || heightNum > maxHeightInches) {
+                  alert(`⚠️ Dimensions exceed printable area!\nMax: ${maxWidthInches.toFixed(2)}" × ${maxHeightInches.toFixed(2)}"`);
+                  return;
+                }
+
+                const printableArea = getPrintableAreaFromPhoto(activeArea, activeColor);
+                const ppiWidth = printableArea.width / canvasConfig.realWorldWidth;
+                const ppiHeight = printableArea.height / canvasConfig.realWorldHeight;
+                const averagePPI = (ppiWidth + ppiHeight) / 2;
+
+                const newWidthPx = widthNum * averagePPI;
+                const newHeightPx = heightNum * averagePPI;
+
+                const centerX = printableArea.x + (printableArea.width / 2);
+                const centerY = printableArea.y + (printableArea.height / 2);
+
+                setDesignElements(prev => {
+                  const updated = { ...prev };
+                  if (updated[activeArea]) {
+                    updated[activeArea] = updated[activeArea].map(el =>
+                      el.id === selectedId
+                        ? {
+                            ...el,
+                            width: newWidthPx,
+                            height: newHeightPx,
+                            x: centerX - (newWidthPx / 2),
+                            y: centerY - (newHeightPx / 2),
+                            scaleX: 1,
+                            scaleY: 1,
+                          }
+                        : el
+                    );
+                  }
+                  return updated;
+                });
+
+                setTimeout(() => {
+                  updatePricingData();
+                  triggerUpdate();
+                }, 100);
+              };
+
+              return (
+                <>
+                  <div className="px-2 py-1 mb-2 text-xs rounded" style={{ backgroundColor: '#ffe0b2', color: '#bf360c' }}>
+                    Max: {maxWidthInches.toFixed(2)}" × {maxHeightInches.toFixed(2)}"
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <label className="w-16 text-xs font-medium" style={{ color: '#bf360c' }}>Width:</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.1"
+                        max={maxWidthInches}
+                        value={customWidth}
+                        onChange={(e) => handleWidthChange(e.target.value)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        onFocus={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        // 🔥 ADD THESE KEYBOARD EVENT HANDLERS
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          // Prevent any global keyboard shortcuts while editing
+                          if (e.key === 'Backspace' || e.key === 'Delete') {
+                            e.stopPropagation();
+                          }
+                        }}
+                        onKeyUp={(e) => e.stopPropagation()}
+                        onKeyPress={(e) => e.stopPropagation()}
+                        className="flex-1 px-2 py-1 text-sm border rounded focus:ring-2 focus:outline-none"
+                        style={{ 
+                          borderColor: '#ffccbc',
+                          focusRingColor: '#e65100'
+                        }}
+                        placeholder="Width in inches"
+                      />
+                      <span className="text-xs font-semibold" style={{ color: '#e65100' }}>"</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="w-16 text-xs font-medium" style={{ color: '#bf360c' }}>Height:</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.1"
+                        max={maxHeightInches}
+                        value={customHeight}
+                        onChange={(e) => handleHeightChange(e.target.value)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        onFocus={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                         // 🔥 ADD THESE KEYBOARD EVENT HANDLERS
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          // Prevent any global keyboard shortcuts while editing
+                          if (e.key === 'Backspace' || e.key === 'Delete') {
+                            e.stopPropagation();
+                          }
+                        }}
+                        onKeyUp={(e) => e.stopPropagation()}
+                        onKeyPress={(e) => e.stopPropagation()}
+                        className="flex-1 px-2 py-1 text-sm border rounded focus:ring-2 focus:outline-none"
+                        style={{ 
+                          borderColor: '#ffccbc',
+                          focusRingColor: '#e65100'
+                        }}
+                        placeholder="Height in inches"
+                      />
+                      <span className="text-xs font-semibold" style={{ color: '#e65100' }}>"</span>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        applyCustomDimensions();
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      disabled={!customWidth || !customHeight}
+                      className="w-full px-3 py-2 text-sm font-medium text-white transition-colors rounded disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      style={{
+                        backgroundColor: customWidth && customHeight ? '#e65100' : '#9e9e9e'
+                      }}
+                    >
+                      Apply Dimensions
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
       
       {layers.length === 0 && (
         <div className="py-8 text-center text-gray-500">
@@ -4241,7 +4635,14 @@ const getAreaDisplayData = useCallback((areaId: string) => {
       
       if (productData?.color_Images && targetColor) {
         // For color_Images products, photoColor stores COLOR
-        return p?.photoColor?.toLowerCase() === targetColor?.toLowerCase();
+        // 🆕 NEW: Also check for -aop suffix for AOP products
+        const photoColor = p?.photoColor?.toLowerCase() || '';
+        const targetColorLower = targetColor?.toLowerCase() || '';
+        
+        // Match exact color or color with -aop suffix
+        return photoColor === targetColorLower || 
+               photoColor === `${targetColorLower}-aop` ||
+               photoColor.replace('-aop', '') === targetColorLower;
       }
       
       return false;
@@ -4249,10 +4650,13 @@ const getAreaDisplayData = useCallback((areaId: string) => {
     
     // Fallback to white/default
     if (!canvasPhoto) {
-      canvasPhoto = area.designCanvasPhotos.find((p: any) => 
-        p?.photoColor?.toLowerCase() === '#ffffff' ||
-        p?.photoColor?.toLowerCase() === 'white'
-      );
+      canvasPhoto = area.designCanvasPhotos.find((p: any) => {
+        const photoColor = p?.photoColor?.toLowerCase() || '';
+        return photoColor === '#ffffff' || 
+               photoColor === 'white' ||
+               photoColor === '#ffffff-aop' || // 🆕 NEW: AOP white variant
+               photoColor === 'white-aop';
+      });
     }
     
     // Fallback to first photo
@@ -4271,15 +4675,44 @@ const getAreaDisplayData = useCallback((areaId: string) => {
     }
 
     const canvasConfig = getCanvasConfig(areaId, colorHex);
-    const printArea = {
-      x: canvasPhoto.printAreaCoord.x * canvasConfig.width,
-      y: canvasPhoto.printAreaCoord.y * canvasConfig.height, 
-      width: canvasPhoto.printAreaCoord.width * canvasConfig.width,
-      height: canvasPhoto.printAreaCoord.height * canvasConfig.height,
-    };
+    
+    // 🔥 CRITICAL FIX: Handle both normalized (0-1) and pixel coordinates
+    const coord = canvasPhoto.printAreaCoord;
+    
+    // Detect if coordinates are normalized (0-1 range) or absolute pixels
+    const isNormalized = coord.x <= 1 && coord.y <= 1 && coord.width <= 1 && coord.height <= 1;
+    
+    let printArea;
+    
+    if (isNormalized) {
+      // 🆕 NEW: For normalized coordinates (AOP products typically use this)
+      printArea = {
+        x: coord.x * canvasConfig.width,
+        y: coord.y * canvasConfig.height,
+        width: coord.width * canvasConfig.width,
+        height: coord.height * canvasConfig.height,
+      };
+      
+      console.log(`✅ Using normalized coordinates for ${areaId}:`, {
+        normalized: coord,
+        pixels: printArea,
+        canvasSize: `${canvasConfig.width}×${canvasConfig.height}`
+      });
+      
+    } else {
+      // Original logic for absolute pixel coordinates
+      printArea = {
+        x: coord.x * canvasConfig.width,
+        y: coord.y * canvasConfig.height, 
+        width: coord.width * canvasConfig.width,
+        height: coord.height * canvasConfig.height,
+      };
+    }
     
     return printArea;
+    
   } catch (error) {
+    console.error(`Error getting printable area for ${areaId}:`, error);
     const canvasConfig = getCanvasConfig(areaId);
     return { 
       x: 0, 
@@ -4471,8 +4904,40 @@ const extractDesignImages = useCallback(() => {
         }
       });
 
+      // 🔥 NEW: CLAMP TO PRINTABLE AREA BOUNDARIES
+      const printableLeft = printableArea.x;
+      const printableRight = printableArea.x + printableArea.width;
+      const printableTop = printableArea.y;
+      const printableBottom = printableArea.y + printableArea.height;
+
+      // Calculate original bounding box (before clamping)
+      const originalMinX = minX;
+      const originalMinY = minY;
+      const originalMaxX = maxX;
+      const originalMaxY = maxY;
+
+      // Clamp to printable area
+      minX = Math.max(minX, printableLeft);
+      maxX = Math.min(maxX, printableRight);
+      minY = Math.max(minY, printableTop);
+      maxY = Math.min(maxY, printableBottom);
+
+      // Check if bounding box is completely outside printable area
+      if (minX >= maxX || minY >= maxY) {
+        console.warn(`⚠️ Design elements in ${area} are completely outside printable area - skipping`);
+        return;
+      }
+
       const boundingWidthCanvas = maxX - minX;
       const boundingHeightCanvas = maxY - minY;
+
+      // Calculate if any elements were cropped
+      const wasCropped = (
+        originalMinX < printableLeft ||
+        originalMaxX > printableRight ||
+        originalMinY < printableTop ||
+        originalMaxY > printableBottom
+      );
 
       // 🔥 NEW FIX: Calculate ACTUAL pixel density needed to preserve original quality
       let maxRequiredScale = 0;
@@ -4487,31 +4952,18 @@ const extractDesignImages = useCallback(() => {
         const displayH = element.height * (element.scaleY || 1);
         
         // Calculate how much we need to scale to preserve original pixels
-        // If original is 3000px and displayed as 300px on canvas, we need 10x scale
         const scaleNeededX = origW / displayW;
         const scaleNeededY = origH / displayH;
         const scaleNeeded = Math.max(scaleNeededX, scaleNeededY);
         
         maxRequiredScale = Math.max(maxRequiredScale, scaleNeeded);
-        
-        // console.log(`📐 Element "${element.imageName || element.id}":`, {
-        //   originalSize: `${origW}×${origH}px`,
-        //   displayedSize: `${displayW.toFixed(1)}×${displayH.toFixed(1)}px`,
-        //   scaleNeeded: scaleNeeded.toFixed(2) + 'x',
-        //   currentScale: `${element.scaleX || 1}×${element.scaleY || 1}`
-        // });
       });
 
       // ✅ CRITICAL: Use the MAXIMUM scale needed to preserve ALL original pixels
-      // Don't enforce minimum of 3x - use whatever preserves original quality
-      const outputScale = Math.max(maxRequiredScale, 1); // At least 1x, but use original if higher
-      
-      //console.log(`🎯 Final output scale for ${area}: ${outputScale.toFixed(2)}x (preserves original DPI)`);
+      const outputScale = Math.max(maxRequiredScale, 1);
       
       const outputWidth = Math.round(boundingWidthCanvas * outputScale);
       const outputHeight = Math.round(boundingHeightCanvas * outputScale);
-
-      //console.log(`📦 Output canvas size: ${outputWidth}×${outputHeight}px`);
 
       // Create high-resolution canvas for the bounding box
       const mergedCanvas = document.createElement('canvas');
@@ -4525,7 +4977,7 @@ const extractDesignImages = useCallback(() => {
       });
 
       if (!mergedCtx) {
-        //console.error('Could not get merged canvas context');
+        console.error('Could not get merged canvas context');
         return;
       }
 
@@ -4533,50 +4985,70 @@ const extractDesignImages = useCallback(() => {
       mergedCtx.imageSmoothingEnabled = true;
       mergedCtx.imageSmoothingQuality = 'high';
 
-      // Optional: Add border to visualize the bounding box (remove in production)
-      mergedCtx.strokeStyle = 'rgba(255, 0, 0, 0.3)';
-      mergedCtx.lineWidth = 2;
-      mergedCtx.strokeRect(0, 0, outputWidth, outputHeight);
+      // 🔥 NEW: Create clipping region for printable area
+      mergedCtx.save();
+      mergedCtx.beginPath();
+      mergedCtx.rect(0, 0, outputWidth, outputHeight);
+      mergedCtx.clip();
 
       // Draw each element within the bounding box
       sortedElements.forEach(element => {
+        if (!element.image) return;
+        
         mergedCtx.save();
 
-        // Position relative to bounding box origin
-        const relativeX = (element.x - minX) * outputScale;
-        const relativeY = (element.y - minY) * outputScale;
+        // Calculate element boundaries
+        const elemWidth = element.width * (element.scaleX || 1);
+        const elemHeight = element.height * (element.scaleY || 1);
+        const elemCenterX = element.x + elemWidth / 2;
+        const elemCenterY = element.y + elemHeight / 2;
+
+        // 🔥 NEW: Check if element intersects with the clamped bounding box
+        const elemLeft = element.x;
+        const elemRight = element.x + elemWidth;
+        const elemTop = element.y;
+        const elemBottom = element.y + elemHeight;
+
+        // Skip if element is completely outside the cropped area
+        if (elemRight < minX || elemLeft > maxX || elemBottom < minY || elemTop > maxY) {
+          mergedCtx.restore();
+          return;
+        }
+
+        // Calculate center position in canvas space FIRST (using UNSCALED dimensions)
+        const centerInCanvasX = element.x + element.width / 2;
+        const centerInCanvasY = element.y + element.height / 2;
+
+        // Transform center to output canvas space (relative to cropped bounding box)
+        const centerX = (centerInCanvasX - minX) * outputScale;
+        const centerY = (centerInCanvasY - minY) * outputScale;
+
+        // Calculate final dimensions (with all scales applied)
+        const elementWidth = element.width * outputScale * (element.scaleX || 1);
+        const elementHeight = element.height * outputScale * (element.scaleY || 1);
         
-        const displayWidth = element.width * (element.scaleX || 1) * outputScale;
-        const displayHeight = element.height * (element.scaleY || 1) * outputScale;
-
-        const centerX = relativeX + displayWidth / 2;
-        const centerY = relativeY + displayHeight / 2;
-
         mergedCtx.translate(centerX, centerY);
-
+        
         if (element.rotation) {
           mergedCtx.rotate((element.rotation * Math.PI) / 180);
         }
-
+        
+        // Set element opacity (default to 1 if not specified)
         mergedCtx.globalAlpha = element.opacity || 1;
-
-        // ✅ CRITICAL: Draw using FULL source image dimensions
-        const sourceWidth = element.image.naturalWidth || element.image.width;
-        const sourceHeight = element.image.naturalHeight || element.image.height;
-
+        
+        // Draw design image
         mergedCtx.drawImage(
           element.image,
-          0, 0,                    // Source x, y
-          sourceWidth,             // ✅ Full source width
-          sourceHeight,            // ✅ Full source height
-          -displayWidth / 2,       // Dest x (centered)
-          -displayHeight / 2,      // Dest y (centered)
-          displayWidth,            // Dest width (scaled)
-          displayHeight            // Dest height (scaled)
+          -elementWidth / 2,
+          -elementHeight / 2,
+          elementWidth,
+          elementHeight
         );
-
+        
         mergedCtx.restore();
       });
+
+      mergedCtx.restore(); // Remove clipping
 
       // ✅ CRITICAL: Export at MAXIMUM quality (1.0 = lossless PNG)
       const mergedBase64 = mergedCanvas.toDataURL('image/png', 1.0);
@@ -4611,9 +5083,18 @@ const extractDesignImages = useCallback(() => {
         originalRes: `${el.originalImageWidth || el.image.naturalWidth || el.image.width} x ${el.originalImageHeight || el.image.naturalHeight || el.image.height}`
       }));
 
+      // 🔥 NEW: Add cropping information to description
+      const croppingInfo = wasCropped ? `
+CROPPING APPLIED:
+- Original Bounds: (${Math.round(originalMinX)}, ${Math.round(originalMinY)}) to (${Math.round(originalMaxX)}, ${Math.round(originalMaxY)})
+- Printable Area: (${printableLeft}, ${printableTop}) to (${printableRight}, ${printableBottom})
+- Cropped Bounds: (${Math.round(minX)}, ${Math.round(minY)}) to (${Math.round(maxX)}, ${Math.round(maxY)})
+- Design extended outside printable area and was automatically cropped
+` : '- Design fits completely within printable area (no cropping needed)';
+
       const description = `MANUFACTURING FILM SPECIFICATION:
 Area: ${area.toUpperCase()}
-Film Type: AXIS-ALIGNED BOUNDING BOX (AABB)
+Film Type: AXIS-ALIGNED BOUNDING BOX (AABB) ${wasCropped ? '- CROPPED TO PRINTABLE AREA' : ''}
 Elements Merged: ${sortedElements.length}
 
 FILM POSITION & SIZE:
@@ -4629,6 +5110,8 @@ Output Scale Factor: ${outputScale.toFixed(2)}x
 Image Smoothing: High Quality
 Compression: None (PNG 1.0)
 
+${croppingInfo}
+
 MANUFACTURING NOTES:
 - This is the SMALLEST RECTANGLE that contains all rotated elements
 - Rectangle edges are PARALLEL to canvas axes (axis-aligned)
@@ -4636,10 +5119,12 @@ MANUFACTURING NOTES:
 - Manufacturer should cut film to these exact rectangular dimensions
 - All elements are pre-composed within this single film layer
 - ORIGINAL IMAGE QUALITY FULLY PRESERVED
+${wasCropped ? '- ⚠️ ELEMENTS EXTENDING BEYOND PRINTABLE AREA HAVE BEEN AUTOMATICALLY CROPPED' : ''}
 
 TECHNICAL SPECS:
 Pixel Scale Factor: ${outputScale.toFixed(2)}x
 Has Transformations: ${hasTransformations ? 'Yes' : 'No'}
+Was Cropped to Printable Area: ${wasCropped ? 'Yes' : 'No'}
 ${hasTransformations ? `\nElement Details:
 ${transformationInfo.map(t => `  • ${t.name}: ${t.originalRes}px, Rotation ${t.rotation}°, Scale ${t.scaleX}×${t.scaleY}, Opacity ${Math.round(t.opacity * 100)}%`).join('\n')}` : ''}
 
@@ -4647,7 +5132,7 @@ Generated: ${new Date().toISOString()}`;
 
       const designImage = {
         id: `film-${area}-${Date.now()}`,
-        name: `${area}-manufacturing-film.png`,
+        name: `${area}-manufacturing-film${wasCropped ? '-cropped' : ''}.png`,
         type: 'image/png',
         base64Data: mergedBase64,
         originalWidth: outputWidth,
@@ -4666,10 +5151,19 @@ Generated: ${new Date().toISOString()}`;
         },
         isMerged: true,
         isManufacturingFilm: true,
+        wasCropped: wasCropped, // 🔥 NEW: Flag indicating if cropping occurred
         filmBoundingBox: {
           minX, minY, maxX, maxY,
           widthCanvas: boundingWidthCanvas,
-          heightCanvas: boundingHeightCanvas
+          heightCanvas: boundingHeightCanvas,
+          // 🔥 NEW: Store original bounds before cropping
+          originalMinX, originalMinY, originalMaxX, originalMaxY,
+          croppedPixels: wasCropped ? {
+            left: Math.max(0, printableLeft - originalMinX),
+            right: Math.max(0, originalMaxX - printableRight),
+            top: Math.max(0, printableTop - originalMinY),
+            bottom: Math.max(0, originalMaxY - printableBottom)
+          } : null
         },
         elementCount: sortedElements.length,
         transformations: transformationInfo,
@@ -4682,14 +5176,15 @@ Generated: ${new Date().toISOString()}`;
       designImages.push(designImage);
 
     } catch (error) {
-      //console.error(`Failed to create manufacturing film for area ${area}:`, error);
+      console.error(`Failed to create manufacturing film for area ${area}:`, error);
     }
   });
   
-  // console.log('📦 Extracted manufacturing films (axis-aligned bounding boxes):', {
-  //   total: designImages.length,
-  //   totalElements: designImages.reduce((sum, img) => sum + (img.elementCount || 0), 0)
-  // });
+  console.log('📦 Extracted manufacturing films (axis-aligned bounding boxes):', {
+    total: designImages.length,
+    totalElements: designImages.reduce((sum, img) => sum + (img.elementCount || 0), 0),
+    croppedFilms: designImages.filter(img => img.wasCropped).length
+  });
   
   return designImages;
 }, [designElements, getCanvasConfig, getPrintableAreaFromPhoto]);
@@ -4911,7 +5406,21 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
     };
   }
 
-  // 🔥 CALCULATE AXIS-ALIGNED BOUNDING BOX (AABB)
+  // 🆕 NEW: Detect if this is an AOP product
+  const isAOPProduct = (() => {
+    try {
+      const area = getCustomizationAreaByName(areaId);
+      if (!area?.designCanvasPhotos?.length) return false;
+      
+      return area.designCanvasPhotos.some((photo: any) => 
+        photo?.photoColor?.toLowerCase().includes('-aop')
+      );
+    } catch {
+      return false;
+    }
+  })();
+
+  // 🔥 CALCULATE AXIS-ALIGNED BOUNDING BOX (AABB) - FOR ALL PRODUCTS
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -4984,19 +5493,15 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
   const consumedHeightCanvas = maxY - minY;
 
   // 🔥 ASPECT RATIO PRESERVATION: Use average PPI for both dimensions
-  // ✅ USE THIS INSTEAD
   const canvasConfigs = getCanvasConfig(activeArea);
   const PRINTABLE_WIDTH_INCHES = canvasConfigs.realWorldWidth;
   const PRINTABLE_HEIGHT_INCHES = canvasConfigs.realWorldHeight;
 
-  // const PRINTABLE_WIDTH_INCHES = 14;
-  // const PRINTABLE_HEIGHT_INCHES = 16;
-
-  const ppiWidth = printableArea.width / PRINTABLE_WIDTH_INCHES;   // 180 / 14 = 12.857
-  const ppiHeight = printableArea.height / PRINTABLE_HEIGHT_INCHES; // 225 / 16 = 14.0625
+  const ppiWidth = printableArea.width / PRINTABLE_WIDTH_INCHES;
+  const ppiHeight = printableArea.height / PRINTABLE_HEIGHT_INCHES;
 
   // 🔥 Use average PPI to preserve aspect ratio
-  const averagePPI = (ppiWidth + ppiHeight) / 2;  // 13.46
+  const averagePPI = (ppiWidth + ppiHeight) / 2;
   
   // Convert pixels to inches using single PPI (preserves aspect ratio)
   let consumedWidth = consumedWidthCanvas / averagePPI;
@@ -5006,37 +5511,16 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
   const finalConsumedWidth = Math.min(consumedWidth, PRINTABLE_WIDTH_INCHES);
   const finalConsumedHeight = Math.min(consumedHeight, PRINTABLE_HEIGHT_INCHES);
 
-  // 🔥 VERIFICATION
-  const canvasAspectRatio = consumedWidthCanvas / consumedHeightCanvas;
-  const inchesAspectRatio = finalConsumedWidth / finalConsumedHeight;
+  // 🔥 CRITICAL FIX: For AOP products, pricing uses FULL area, but display shows ACTUAL consumed dimensions
+  let totalCurrentImageArea: number;
   
-  // console.log('📐 Dimension Calculation (ASPECT RATIO PRESERVED):', {
-  //   areaId,
-  //   printableArea: {
-  //     widthPx: printableArea.width,
-  //     heightPx: printableArea.height,
-  //     widthInches: PRINTABLE_WIDTH_INCHES,
-  //     heightInches: PRINTABLE_HEIGHT_INCHES,
-  //     ppiWidth: ppiWidth.toFixed(3),
-  //     ppiHeight: ppiHeight.toFixed(3),
-  //     averagePPI: averagePPI.toFixed(3)
-  //   },
-  //   consumed: {
-  //     widthPx: consumedWidthCanvas.toFixed(2),
-  //     heightPx: consumedHeightCanvas.toFixed(2),
-  //     widthInches: consumedWidth.toFixed(3),
-  //     heightInches: consumedHeight.toFixed(3),
-  //     aspectRatio: canvasAspectRatio.toFixed(3)
-  //   },
-  //   final: {
-  //     widthInches: finalConsumedWidth.toFixed(3),
-  //     heightInches: finalConsumedHeight.toFixed(3),
-  //     aspectRatio: inchesAspectRatio.toFixed(3),
-  //     aspectRatioMatch: Math.abs(canvasAspectRatio - inchesAspectRatio) < 0.01
-  //   }
-  // });
-  
-  const totalCurrentImageArea = finalConsumedWidth * finalConsumedHeight;
+  if (isAOPProduct) {
+    // 🆕 FOR AOP: Pricing is based on FULL printable area
+    totalCurrentImageArea = PRINTABLE_WIDTH_INCHES * PRINTABLE_HEIGHT_INCHES;
+  } else {
+    // 🔥 FOR REGULAR: Pricing is based on actual consumed area
+    totalCurrentImageArea = finalConsumedWidth * finalConsumedHeight;
+  }
 
   // Get pricing info
   const pricingInfo = getPricingInfoForArea(areaId);
@@ -5100,11 +5584,11 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
     currentImageArea: totalCurrentImageArea,
     calculatedPrice: totalCost,
     finalPrice: totalCost,
-    consumedWidth: Number(finalConsumedWidth.toFixed(2)),
-    consumedHeight: Number(finalConsumedHeight.toFixed(2)),
+    consumedWidth: Number(finalConsumedWidth.toFixed(2)), // 🔥 Shows ACTUAL element dimensions
+    consumedHeight: Number(finalConsumedHeight.toFixed(2)), // 🔥 Shows ACTUAL element dimensions
     elements: breakdown
   };
-}, [designElements, getCanvasConfig, getPrintableAreaFromPhoto, calculateElementRealWorldDimensions, getPricingInfoForArea, activeColor]);
+}, [designElements, getCanvasConfig, getPrintableAreaFromPhoto, calculateElementRealWorldDimensions, getPricingInfoForArea, activeColor, getCustomizationAreaByName, activeArea]);
 
 const calculateTotalPricing = useCallback((): TotalPricingBreakdown => {
   setPriceCalculationLoading(true);
@@ -5209,6 +5693,21 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     
     const canvasImage = canvasImages[`${areaId}_${activeColor}`] || canvasImages[areaId];
     
+    // 🆕 NEW: Detect if this is an AOP product
+    const isAOPProduct = (() => {
+      try {
+        const area = getCustomizationAreaByName(areaId);
+        if (!area?.designCanvasPhotos?.length) return false;
+        
+        // Check if any photo has -aop in photoColor
+        return area.designCanvasPhotos.some((photo: any) => 
+          photo?.photoColor?.toLowerCase().includes('-aop')
+        );
+      } catch {
+        return false;
+      }
+    })();
+    
     // Create temporary stage with higher resolution for quality
     const tempStage = new Konva.Stage({
       container: document.createElement('div'),
@@ -5220,20 +5719,23 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     const tempLayer = new Konva.Layer();
     tempStage.add(tempLayer);
     
-    // STEP 1: Add transparent background
-    const backgroundRect = new Konva.Rect({
-      x: 0,
-      y: 0,
-      width: canvasConfig.width,
-      height: canvasConfig.height,
-      fill: 'transparent',
-      listening: false
-    });
-    tempLayer.add(backgroundRect);
-    
-    // STEP 2: Add the t-shirt template with color
-    if (canvasImage) {
-      const tshirtColorRect = new Konva.Rect({
+    // 🔥 FIX 2: CONDITIONAL LAYER ORDER BASED ON AOP
+    if (isAOPProduct) {
+      // ========== AOP PRODUCT: Design BELOW template ==========
+      
+      // STEP 1: Add transparent background
+      const backgroundRect = new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: canvasConfig.width,
+        height: canvasConfig.height,
+        fill: 'transparent',
+        listening: false
+      });
+      tempLayer.add(backgroundRect);
+      
+      // STEP 2: Add base color layer
+      const colorRect = new Konva.Rect({
         x: 0,
         y: 0,
         width: canvasConfig.width,
@@ -5241,121 +5743,211 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
         fill: activeColor,
         listening: false
       });
-      tempLayer.add(tshirtColorRect);
+      tempLayer.add(colorRect);
       
-      const canvasImageNode = new Konva.Image({
-        image: canvasImage,
-        x: 0,
-        y: 0,
-        width: canvasConfig.width,
-        height: canvasConfig.height,
-        globalCompositeOperation: 'destination-in',
-        listening: false
+      // STEP 3: Create clipping group for design elements
+      const clippingGroup = new Konva.Group({
+        clipFunc: (ctx) => {
+          ctx.beginPath();
+          ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
+          ctx.closePath();
+        }
       });
-      tempLayer.add(canvasImageNode);
+      tempLayer.add(clippingGroup);
       
-      const textureOverlay = new Konva.Image({
-        image: canvasImage,
-        x: 0,
-        y: 0,
-        width: canvasConfig.width,
-        height: canvasConfig.height,
-        opacity: 0.1,
-        globalCompositeOperation: 'multiply',
-        listening: false
-      });
-      tempLayer.add(textureOverlay);
-    }
-    
-    // STEP 3: Create clipping group for design elements
-    const clippingGroup = new Konva.Group({
-      clipFunc: (ctx) => {
-        ctx.beginPath();
-        ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
-        ctx.closePath();
+      // STEP 4: Add all visible design elements (BELOW template for AOP)
+      for (const element of sortedElements) {
+        if (element.type === 'image' && element.image) {
+          const imageNode = new Konva.Image({
+            image: element.image,
+            x: element.x + element.width / 2,
+            y: element.y + element.height / 2,
+            offsetX: element.width / 2,
+            offsetY: element.height / 2,
+            width: element.width,
+            height: element.height,
+            rotation: element.rotation || 0,
+            scaleX: element.scaleX || 1,
+            scaleY: element.scaleY || 1,
+            opacity: element.opacity || 1,
+            listening: false
+          });
+          clippingGroup.add(imageNode);
+          
+        } else if (element.type === 'text') {
+          const textNode = new Konva.Text({
+            text: element.text || 'Text',
+            x: element.x + element.width / 2,
+            y: element.y + (element.height || element.fontSize || 20) / 2,
+            offsetX: element.width / 2,
+            offsetY: (element.height || element.fontSize || 20) / 2,
+            width: element.width,
+            fontSize: element.fontSize || 20,
+            fontFamily: element.fontFamily || 'Arial',
+            fill: element.fill || '#000000',
+            rotation: element.rotation || 0,
+            scaleX: element.scaleX || 1,
+            scaleY: element.scaleY || 1,
+            opacity: element.opacity || 1,
+            listening: false
+          });
+          clippingGroup.add(textNode);
+        }
       }
-    });
-    tempLayer.add(clippingGroup);
-    
-    // 🔥 FIX 2: Calculate printable area offset
-    const offsetX = printableArea.x;
-    const offsetY = printableArea.y;
-    
-    //console.log('📐 Printable area offset:', { offsetX, offsetY });
-    // console.log('📦 Sorted elements by z-index:', sortedElements.map(el => ({
-    //   id: el.id,
-    //   zIndex: el.zIndex || 0,
-    //   x: el.x,
-    //   y: el.y
-    // })));
-    
-    // STEP 4: Add all visible design elements with their transformations preserved
-    // ✅ NOW USING SORTED ELEMENTS
-    for (const element of sortedElements) {
-      if (element.type === 'image' && element.image) {
-        const imageNode = new Konva.Image({
-          image: element.image,
-          x: element.x + element.width / 2,
-          y: element.y + element.height / 2,
-          offsetX: element.width / 2,
-          offsetY: element.height / 2,
-          width: element.width,
-          height: element.height,
-          rotation: element.rotation || 0,
-          scaleX: element.scaleX || 1,
-          scaleY: element.scaleY || 1,
-          opacity: element.opacity || 1,
+      
+      // STEP 5: Add the t-shirt template ON TOP (for AOP)
+      if (canvasImage) {
+        const canvasImageNode = new Konva.Image({
+          image: canvasImage,
+          x: 0,
+          y: 0,
+          width: canvasConfig.width,
+          height: canvasConfig.height,
           listening: false
         });
-        clippingGroup.add(imageNode);
+        tempLayer.add(canvasImageNode);
+      }
+      
+      // STEP 6: Add printable area boundary
+      const printableBorder = new Konva.Rect({
+        x: printableArea.x,
+        y: printableArea.y,
+        width: printableArea.width,
+        height: printableArea.height,
+        stroke: '#FF0000',
+        strokeWidth: 2,
+        dash: [6, 4],
+        listening: false
+      });
+      tempLayer.add(printableBorder);
+      
+    } else {
+      // ========== REGULAR PRODUCT: Design ABOVE template (ORIGINAL LOGIC) ==========
+      
+      // STEP 1: Add transparent background
+      const backgroundRect = new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: canvasConfig.width,
+        height: canvasConfig.height,
+        fill: 'transparent',
+        listening: false
+      });
+      tempLayer.add(backgroundRect);
+      
+      // STEP 2: Add the t-shirt template with color
+      if (canvasImage) {
+        const tshirtColorRect = new Konva.Rect({
+          x: 0,
+          y: 0,
+          width: canvasConfig.width,
+          height: canvasConfig.height,
+          fill: activeColor,
+          listening: false
+        });
+        tempLayer.add(tshirtColorRect);
         
-      } else if (element.type === 'text') {
-        const textNode = new Konva.Text({
-          text: element.text || 'Text',
-          x: element.x + element.width / 2,
-          y: element.y + (element.height || element.fontSize || 20) / 2,
-          offsetX: element.width / 2,
-          offsetY: (element.height || element.fontSize || 20) / 2,
-          width: element.width,
-          fontSize: element.fontSize || 20,
-          fontFamily: element.fontFamily || 'Arial',
-          fill: element.fill || '#000000',
-          rotation: element.rotation || 0,
-          scaleX: element.scaleX || 1,
-          scaleY: element.scaleY || 1,
-          opacity: element.opacity || 1,
+        const canvasImageNode = new Konva.Image({
+          image: canvasImage,
+          x: 0,
+          y: 0,
+          width: canvasConfig.width,
+          height: canvasConfig.height,
+          globalCompositeOperation: 'destination-in',
           listening: false
         });
-        clippingGroup.add(textNode);
+        tempLayer.add(canvasImageNode);
+        
+        const textureOverlay = new Konva.Image({
+          image: canvasImage,
+          x: 0,
+          y: 0,
+          width: canvasConfig.width,
+          height: canvasConfig.height,
+          opacity: 0.1,
+          globalCompositeOperation: 'multiply',
+          listening: false
+        });
+        tempLayer.add(textureOverlay);
       }
+      
+      // STEP 3: Create clipping group for design elements
+      const clippingGroup = new Konva.Group({
+        clipFunc: (ctx) => {
+          ctx.beginPath();
+          ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
+          ctx.closePath();
+        }
+      });
+      tempLayer.add(clippingGroup);
+      
+      // STEP 4: Add all visible design elements with their transformations preserved
+      for (const element of sortedElements) {
+        if (element.type === 'image' && element.image) {
+          const imageNode = new Konva.Image({
+            image: element.image,
+            x: element.x + element.width / 2,
+            y: element.y + element.height / 2,
+            offsetX: element.width / 2,
+            offsetY: element.height / 2,
+            width: element.width,
+            height: element.height,
+            rotation: element.rotation || 0,
+            scaleX: element.scaleX || 1,
+            scaleY: element.scaleY || 1,
+            opacity: element.opacity || 1,
+            listening: false
+          });
+          clippingGroup.add(imageNode);
+          
+        } else if (element.type === 'text') {
+          const textNode = new Konva.Text({
+            text: element.text || 'Text',
+            x: element.x + element.width / 2,
+            y: element.y + (element.height || element.fontSize || 20) / 2,
+            offsetX: element.width / 2,
+            offsetY: (element.height || element.fontSize || 20) / 2,
+            width: element.width,
+            fontSize: element.fontSize || 20,
+            fontFamily: element.fontFamily || 'Arial',
+            fill: element.fill || '#000000',
+            rotation: element.rotation || 0,
+            scaleX: element.scaleX || 1,
+            scaleY: element.scaleY || 1,
+            opacity: element.opacity || 1,
+            listening: false
+          });
+          clippingGroup.add(textNode);
+        }
+      }
+      
+      // STEP 5: Add printable area boundary
+      const printableBorder = new Konva.Rect({
+        x: printableArea.x,
+        y: printableArea.y,
+        width: printableArea.width,
+        height: printableArea.height,
+        stroke: '#FF0000',
+        strokeWidth: 2,
+        dash: [6, 4],
+        listening: false
+      });
+      tempLayer.add(printableBorder);
     }
     
-    // STEP 5: Add printable area boundary
-    const printableBorder = new Konva.Rect({
-      x: printableArea.x,
-      y: printableArea.y,
-      width: printableArea.width,
-      height: printableArea.height,
-      stroke: '#FF0000',
-      strokeWidth: 2,
-      dash: [6, 4],
-      listening: false
-    });
-    tempLayer.add(printableBorder);
-    
-    // STEP 6: Force layer to draw
+    // STEP 7: Force layer to draw
     tempLayer.draw();
     
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    // STEP 7: Export as high-quality PNG
+    // STEP 8: Export as high-quality PNG
     const dataURL = tempStage.toDataURL({
       mimeType: 'image/png',
       quality: 1.0,
       pixelRatio: 2
     });
     
-    //console.log(`✅ Canvas capture complete for ${areaId} with ${sortedElements.length} elements (z-index sorted)`);
+    console.log(`✅ Canvas capture complete for ${areaId} (${isAOPProduct ? 'AOP' : 'Regular'}) with ${sortedElements.length} elements`);
     
     // Cleanup
     tempStage.destroy();
@@ -5363,10 +5955,10 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     return dataURL;
     
   } catch (error) {
-    //console.error(`❌ Canvas capture error for area ${areaId}:`, error);
+    console.error(`❌ Canvas capture error for area ${areaId}:`, error);
     return null;
   }
-}, [getCanvasConfig, getPrintableAreaFromPhoto, designElements, activeColor, canvasImages]);
+}, [getCanvasConfig, getPrintableAreaFromPhoto, designElements, activeColor, canvasImages, getCustomizationAreaByName]);
 
 
 const generateDetailedAreaAnalysis = useCallback((pricingData) => {
@@ -6009,331 +6601,6 @@ const renderPricingPanel = () => {
             })()}
 
           </div>
-
-         {/* 🔥 Custom Dimensions Section - Full Width with Brand Color */}
-        <div 
-          className="col-span-2 mt-3 border-0 rounded-lg"
-          data-custom-dimensions="true"
-          style={{ 
-            borderColor: '#e65100',
-            backgroundColor: '#fff3e0'
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-          }}
-          onTouchStart={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          <div className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Calculator className="w-4 h-4" style={{ color: '#e65100' }} />
-                <h4 className="text-sm font-semibold" style={{ color: '#e65100' }}>Custom Dimensions</h4>
-              </div>
-              {selectedId && (
-                <button
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLockAspectRatio(!lockAspectRatio);
-                  }}
-                  className={`p-1 rounded transition-colors`}
-                  style={{
-                    backgroundColor: lockAspectRatio ? '#e65100' : 'white',
-                    color: lockAspectRatio ? 'white' : '#e65100',
-                    border: lockAspectRatio ? 'none' : '1px solid #e65100'
-                  }}
-                  title={lockAspectRatio ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {lockAspectRatio ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                    )}
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            {selectedId ? (() => {
-              const selectedElement = designElements[activeArea]?.find(el => el.id === selectedId);
-              if (!selectedElement) return (
-                <div className="text-sm text-center text-gray-500 py-4">
-                  Element not found
-                </div>
-              );
-
-              // Get printable area limits
-              const canvasConfig = getCanvasConfig(activeArea);
-              const maxWidthInches = canvasConfig.realWorldWidth;
-              const maxHeightInches = canvasConfig.realWorldHeight;
-
-              // Calculate aspect ratio
-              const aspectRatio = selectedElement.width / selectedElement.height;
-
-              const handleWidthChange = (value: string) => {
-                const widthNum = parseFloat(value);
-                
-                // Prevent exceeding max width
-                if (!isNaN(widthNum) && widthNum > maxWidthInches) {
-                  setCustomWidth(maxWidthInches.toFixed(2));
-                  
-                  if (lockAspectRatio) {
-                    const newHeight = maxWidthInches / aspectRatio;
-                    if (newHeight <= maxHeightInches) {
-                      setCustomHeight(newHeight.toFixed(2));
-                    } else {
-                      // If aspect ratio causes height to exceed, adjust width based on max height
-                      const adjustedWidth = maxHeightInches * aspectRatio;
-                      setCustomWidth(adjustedWidth.toFixed(2));
-                      setCustomHeight(maxHeightInches.toFixed(2));
-                    }
-                  }
-                  return;
-                }
-                
-                setCustomWidth(value);
-                
-                if (isNaN(widthNum) || widthNum <= 0) return;
-
-                if (lockAspectRatio) {
-                  const newHeight = widthNum / aspectRatio;
-                  
-                  // Check if calculated height exceeds max
-                  if (newHeight > maxHeightInches) {
-                    // Adjust both to fit within limits
-                    const adjustedWidth = maxHeightInches * aspectRatio;
-                    setCustomWidth(adjustedWidth.toFixed(2));
-                    setCustomHeight(maxHeightInches.toFixed(2));
-                  } else {
-                    setCustomHeight(newHeight.toFixed(2));
-                  }
-                }
-              };
-
-              const handleHeightChange = (value: string) => {
-                const heightNum = parseFloat(value);
-                
-                // Prevent exceeding max height
-                if (!isNaN(heightNum) && heightNum > maxHeightInches) {
-                  setCustomHeight(maxHeightInches.toFixed(2));
-                  
-                  if (lockAspectRatio) {
-                    const newWidth = maxHeightInches * aspectRatio;
-                    if (newWidth <= maxWidthInches) {
-                      setCustomWidth(newWidth.toFixed(2));
-                    } else {
-                      // If aspect ratio causes width to exceed, adjust height based on max width
-                      const adjustedHeight = maxWidthInches / aspectRatio;
-                      setCustomHeight(adjustedHeight.toFixed(2));
-                      setCustomWidth(maxWidthInches.toFixed(2));
-                    }
-                  }
-                  return;
-                }
-                
-                setCustomHeight(value);
-                
-                if (isNaN(heightNum) || heightNum <= 0) return;
-
-                if (lockAspectRatio) {
-                  const newWidth = heightNum * aspectRatio;
-                  
-                  // Check if calculated width exceeds max
-                  if (newWidth > maxWidthInches) {
-                    // Adjust both to fit within limits
-                    const adjustedHeight = maxWidthInches / aspectRatio;
-                    setCustomHeight(adjustedHeight.toFixed(2));
-                    setCustomWidth(maxWidthInches.toFixed(2));
-                  } else {
-                    setCustomWidth(newWidth.toFixed(2));
-                  }
-                }
-              };
-
-              const applyCustomDimensions = () => {
-                const widthNum = parseFloat(customWidth);
-                const heightNum = parseFloat(customHeight);
-
-                if (isNaN(widthNum) || isNaN(heightNum) || widthNum <= 0 || heightNum <= 0) {
-                  alert('⚠️ Please enter valid dimensions');
-                  return;
-                }
-
-                // Final check if dimensions exceed printable area
-                if (widthNum > maxWidthInches || heightNum > maxHeightInches) {
-                  alert(`⚠️ Dimensions exceed printable area!\nMax: ${maxWidthInches.toFixed(2)}" × ${maxHeightInches.toFixed(2)}"`);
-                  return;
-                }
-
-                const printableArea = getPrintableAreaFromPhoto(activeArea, activeColor);
-
-                // Convert inches to pixels
-                const ppiWidth = printableArea.width / canvasConfig.realWorldWidth;
-                const ppiHeight = printableArea.height / canvasConfig.realWorldHeight;
-                const averagePPI = (ppiWidth + ppiHeight) / 2;
-
-                const newWidthPx = widthNum * averagePPI;
-                const newHeightPx = heightNum * averagePPI;
-
-                // Calculate centered position within printable area
-                const centerX = printableArea.x + (printableArea.width / 2);
-                const centerY = printableArea.y + (printableArea.height / 2);
-
-                // Update the element with new dimensions AND centered position
-                setDesignElements(prev => {
-                  const updated = { ...prev };
-                  if (updated[activeArea]) {
-                    updated[activeArea] = updated[activeArea].map(el =>
-                      el.id === selectedId
-                        ? {
-                            ...el,
-                            width: newWidthPx,
-                            height: newHeightPx,
-                            x: centerX - (newWidthPx / 2), // Center horizontally
-                            y: centerY - (newHeightPx / 2), // Center vertically
-                            scaleX: 1,
-                            scaleY: 1,
-                          }
-                        : el
-                    );
-                  }
-                  return updated;
-                });
-
-                // Recalculate pricing
-                setTimeout(() => {
-                  updatePricingData();
-                  triggerUpdate();
-                }, 100);
-              };
-
-              return (
-                <>
-                  {/* Max Dimensions Info */}
-                  <div className="mb-2 px-2 py-1 text-xs rounded" style={{ backgroundColor: '#ffe0b2', color: '#bf360c' }}>
-                    Max: {maxWidthInches.toFixed(2)}" × {maxHeightInches.toFixed(2)}"
-                  </div>
-
-                  {/* Input Fields */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs font-medium w-16" style={{ color: '#bf360c' }}>Width:</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.1"
-                        max={maxWidthInches}
-                        value={customWidth}
-                        onChange={(e) => handleWidthChange(e.target.value)}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onFocus={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onPointerDown={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onKeyDown={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onInput={(e) => {
-                          e.stopPropagation();
-                        }}
-                        className="flex-1 px-2 py-1 text-sm border rounded focus:ring-2 focus:outline-none"
-                        style={{ 
-                          borderColor: '#ffccbc',
-                          focusRingColor: '#e65100'
-                        }}
-                        placeholder="Width in inches"
-                      />
-                      <span className="text-xs font-semibold" style={{ color: '#e65100' }}>"</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs font-medium w-16" style={{ color: '#bf360c' }}>Height:</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.1"
-                        max={maxHeightInches}
-                        value={customHeight}
-                        onChange={(e) => handleHeightChange(e.target.value)}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onFocus={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onPointerDown={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onKeyDown={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onInput={(e) => {
-                          e.stopPropagation();
-                        }}
-                        className="flex-1 px-2 py-1 text-sm border rounded focus:ring-2 focus:outline-none"
-                        style={{ 
-                          borderColor: '#ffccbc',
-                          focusRingColor: '#e65100'
-                        }}
-                        placeholder="Height in inches"
-                      />
-                      <span className="text-xs font-semibold" style={{ color: '#e65100' }}>"</span>
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        applyCustomDimensions();
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      disabled={!customWidth || !customHeight}
-                      className="w-full px-3 py-2 text-sm font-medium text-white rounded transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                      style={{
-                        backgroundColor: customWidth && customHeight ? '#e65100' : '#9e9e9e'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (customWidth && customHeight) {
-                          e.currentTarget.style.backgroundColor = '#d84315';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (customWidth && customHeight) {
-                          e.currentTarget.style.backgroundColor = '#e65100';
-                        }
-                      }}
-                    >
-                      Apply Dimensions
-                    </button>
-                  </div>
-                </>
-              );
-            })() : (
-              <div className="text-sm text-center text-gray-500 py-4">
-                Select an element to customize its dimensions
-              </div>
-            )}
-          </div>
-        </div>
-          
       </div>
 
       {/* Areas Breakdown - Collapsible */}
@@ -7469,6 +7736,48 @@ const handleImportToStore = useCallback(async () => {
         },
         canvas_images: canvasImages,
         design_images: designImages,
+
+        // ✅ ADD THIS - was completely missing for No_Mockup_Compatible products
+        image_area_analysis: {
+          detailed_element_breakdown: detailedAreaAnalysis.element_details,
+          area_specifications: Object.fromEntries(
+            Object.entries(detailedAreaAnalysis.detailed_areas_breakdown || {}).map(([areaId, breakdown]: [string, any]) => [
+              areaId,
+              breakdown.area_specifications
+            ])
+          ),
+          design_complexity: detailedAreaAnalysis.area_summary?.design_complexity_score,
+          elements_summary: Object.fromEntries(
+            Object.entries(detailedAreaAnalysis.element_details || {}).map(([areaId, elements]: [string, any[]]) => [
+              areaId,
+              elements.map(element => ({
+                id: element.element_id,
+                name: element.element_name,
+                type: element.element_type,
+                dimensions: {
+                  width_inches: element.physical_dimensions.width_inches,
+                  height_inches: element.physical_dimensions.height_inches,
+                  area_square_inches: element.physical_dimensions.area_square_inches,
+                  width_pixels: element.pixel_dimensions.width_pixels,
+                  height_pixels: element.pixel_dimensions.height_pixels
+                },
+                transformations: {
+                  rotation_degrees: element.transformations.rotation_degrees,
+                  is_rotated: element.transformations.is_rotated,
+                  is_scaled: element.transformations.is_scaled,
+                  scale_x: element.transformations.scale_x,
+                  scale_y: element.transformations.scale_y
+                },
+                quality: {
+                  dpi: element.print_quality.dpi,
+                  rating: element.print_quality.quality_rating,
+                  is_print_ready: element.print_quality.is_print_ready
+                },
+                positioning: element.positioning
+              }))
+            ])
+          )
+        },
          
         // ðŸ”¥ ADD: Include detailed area analysis
         detailed_area_analysis: detailedAreaAnalysis,
@@ -8065,6 +8374,7 @@ const renderUploadPanel = () => {
         type="file"
         multiple
         accept="image/*"
+        key={uploadedFiles.length}
         onChange={(e) => handleFileUpload(e.target.files)}
         className="hidden"
       />
@@ -8147,48 +8457,63 @@ const renderUploadPanel = () => {
 const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageName, targetArea, base64Data) => {
   const areaToUse = targetArea || activeArea;
   
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     
     img.onload = async () => {
       try {
-        // 🔥 NEW: Crop transparent pixels before storing
         let finalImage = img;
         let finalBase64 = base64Data;
+        
+        // 🚀 NEW: Optimize high-quality images for performance
+        const imageSize = (img.naturalWidth || img.width) * (img.naturalHeight || img.height);
+        const isMegapixel = imageSize > 2000000; // ~2MP threshold
+        
+        if (isMegapixel) {
+          console.log('🔧 Optimizing large image for canvas performance...');
+          
+          try {
+            const optimized = await optimizeImage(img, 1500, 0.85);
+            finalImage = optimized.optimizedImage;
+            finalBase64 = optimized.optimizedBase64;
+            
+            console.log(`✅ Image optimized successfully`);
+          } catch (optimizeError) {
+            console.warn('⚠️ Could not optimize image, using original', optimizeError);
+          }
+        }
+        
+        // 🔥 Crop transparent pixels
         let croppedBounds = null;
         
         try {
-          const cropResult = cropTransparentPixels(img);
+          const cropResult = cropTransparentPixels(finalImage);
           
-          // Only use cropped version if it significantly reduced size (>5% reduction)
-          const originalArea = (img.naturalWidth || img.width) * (img.naturalHeight || img.height);
+          const originalArea = (finalImage.naturalWidth || finalImage.width) * 
+                              (finalImage.naturalHeight || finalImage.height);
           const croppedArea = cropResult.bounds.width * cropResult.bounds.height;
           const reduction = 1 - (croppedArea / originalArea);
           
           if (reduction > 0.05) {
-            // console.log('✂️ Cropped transparent areas:', {
-            //   original: `${img.naturalWidth || img.width} x ${img.naturalHeight || img.height}`,
-            //   cropped: `${cropResult.bounds.width} x ${cropResult.bounds.height}`,
-            //   reduction: `${(reduction * 100).toFixed(1)}%`
-            // });
+            const croppedImg = new Image();
+            croppedImg.src = cropResult.croppedBase64;
+            await new Promise((res) => { croppedImg.onload = res; });
             
-            // Create image from cropped canvas
-            finalImage = new Image();
-            finalImage.src = cropResult.croppedBase64;
-            await new Promise((res) => { finalImage.onload = res; });
-            
+            finalImage = croppedImg;
             finalBase64 = cropResult.croppedBase64;
             croppedBounds = cropResult.bounds;
+            
+            console.log(`✂️ Cropped transparent areas: ${(reduction * 100).toFixed(1)}% reduction`);
           }
         } catch (cropError) {
-          //console.warn('Could not crop transparent areas, using original', cropError);
+          console.warn('Could not crop transparent areas, using current image', cropError);
         }
         
         const canvasConfig = getCanvasConfig(areaToUse);
         const printableArea = getPrintableAreaFromPhoto(areaToUse, activeColor);
         
-        // Calculate size using the final (possibly cropped) image
+        // Calculate size using the final image
         const maxWidth = printableArea.width * 0.8;
         const maxHeight = printableArea.height * 0.8;
         const aspectRatio = (finalImage.naturalWidth || finalImage.width) / 
@@ -8204,7 +8529,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
         const centerX = printableArea.x + (printableArea.width - width) / 2;
         const centerY = printableArea.y + (printableArea.height - height) / 2;
         
-        // Create element with cropped image data
+        // Create element
         const element = {
           id: `img-${Date.now()}-${Math.random()}`,
           type: 'image',
@@ -8221,10 +8546,9 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
           image: finalImage, 
           imageName: imageName || 'Uploaded Image',
           imageUrl: imageSrc,
-          imageBase64: finalBase64, // Store cropped base64
+          imageBase64: finalBase64,
           originalImageWidth: finalImage.naturalWidth || finalImage.width,
           originalImageHeight: finalImage.naturalHeight || finalImage.height,
-          // Store crop info for reference
           cropInfo: croppedBounds ? {
             wasCropped: true,
             originalDimensions: {
@@ -8272,10 +8596,20 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
 
 
 const handleFileUpload = useCallback(async (files) => {
-  if (!files) return;
+  if (!files || files.length === 0) return;
+  
+  console.log(`📁 Uploading ${files.length} file(s)...`);
   
   for (const file of Array.from(files)) {
     try {
+      // Validate file
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        alert(`❌ ${file.name}: ${validation.error}`);
+        continue;
+      }
+      
+      // Convert to base64
       const base64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target.result);
@@ -8283,35 +8617,65 @@ const handleFileUpload = useCallback(async (files) => {
         reader.readAsDataURL(file);
       });
       
-      const blobUrl = URL.createObjectURL(file);
+      // Create unique blob URL with timestamp to allow duplicates
+      const uniqueBlob = new Blob([file], { type: file.type });
+      const blobUrl = URL.createObjectURL(uniqueBlob);
       
+      // 🔥 NEW: Generate unique ID for duplicate files
+      const uniqueFileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Add to uploaded files list (allows duplicates)
       setUploadedFiles(prev => [...prev, {
-        id: `file-${Date.now()}`,
-        file, url: blobUrl, base64Data,
-        name: file.name, size: file.size, type: file.type,
-        uploadProgress: 100, isUploading: false, targetArea: activeArea
+        id: uniqueFileId,
+        file, 
+        url: blobUrl, 
+        base64Data,
+        name: file.name, 
+        size: file.size, 
+        type: file.type,
+        uploadProgress: 100, 
+        isUploading: false, 
+        targetArea: activeArea
       }]);
       
-      const success = await addImageToCanvasWithStateProtection(blobUrl, file.name, activeArea, base64Data);
+      console.log(`✅ Added ${file.name} to upload list (ID: ${uniqueFileId})`);
+      
+      // Add image to canvas
+      const success = await addImageToCanvasWithStateProtection(
+        blobUrl, 
+        file.name, 
+        activeArea, 
+        base64Data
+      );
       
       if (success) {
-        // 🔥 NEW: Close mobile bottom sheet after successful upload
+        console.log(`✅ Successfully added ${file.name} to canvas`);
+        
+        // Close mobile bottom sheet after successful upload
         if (isMobile) {
           setTimeout(() => {
             setShowMobileBottomSheet(false);
-          }, 500); // Small delay to show the uploaded file briefly
+          }, 500);
         }
         
-        // Trigger pricing calculation after successful upload
+        // Trigger pricing calculation
         setTimeout(() => {
           updatePricingData();
         }, 500);
       }
       
     } catch (error) {
-      //console.error('Error uploading file:', error);
+      console.error(`❌ Error uploading ${file.name}:`, error);
+      alert(`Failed to upload ${file.name}: ${error.message}`);
     }
   }
+  
+  // 🔥 CRITICAL FIX: Reset file input to allow same file upload
+  if (fileInputRef.current) {
+    fileInputRef.current.value = '';
+    console.log('🔄 File input reset - ready for duplicate uploads');
+  }
+  
 }, [activeArea, addImageToCanvasWithStateProtection, updatePricingData, isMobile]);
 
 
@@ -9419,7 +9783,7 @@ const renderPreview = useCallback(() => {
     });
 }, [designElements, selectedId, updatePricingData]);
   
-  const renderCanvas = useCallback(() => {
+const renderCanvas = useCallback(() => {
   const canvasConfig = getCanvasConfig(activeArea, activeColor);
   const printableArea = getPrintableAreaFromPhoto(activeArea, activeColor, activeSize);
   
@@ -9427,13 +9791,10 @@ const renderPreview = useCallback(() => {
   let cacheKey: string;
   
   if (productData?.size_Images) {
-    // For size-specific products, key by size only
     cacheKey = `${activeArea}_${activeSize}`;
   } else if (productData?.color_Images) {
-    // For color-specific products, key by color only
     cacheKey = `${activeArea}_${activeColor}`;
   } else {
-    // For shared products, just use area
     cacheKey = activeArea;
   }
   
@@ -9441,138 +9802,253 @@ const renderPreview = useCallback(() => {
   
   const surfaceConfig = getSurfaceConfiguration();
 
- const baseWidth = canvasConfig.width;
- const baseHeight = canvasConfig.height;
- const maxWidth = isMobile ? window.innerWidth - 40 : baseWidth;
- const maxHeight = isMobile ? window.innerHeight * 0.6 : baseHeight;
+  // 🆕 NEW: Detect AOP product
+  const isAOPProduct = (() => {
+    try {
+      const area = getCustomizationAreaByName(activeArea);
+      if (!area?.designCanvasPhotos?.length) return false;
+      
+      // Check if any photo has -aop in photoColor
+      return area.designCanvasPhotos.some((photo: any) => 
+        photo?.photoColor?.toLowerCase().includes('-aop')
+      );
+    } catch {
+      return false;
+    }
+  })();
 
- const scale = Math.min(maxWidth / baseWidth, maxHeight / baseHeight, 1);
- const displayWidth = baseWidth * scale;
- const displayHeight = baseHeight * scale;
+  const baseWidth = canvasConfig.width;
+  const baseHeight = canvasConfig.height;
+  const maxWidth = isMobile ? window.innerWidth - 40 : baseWidth;
+  const maxHeight = isMobile ? window.innerHeight * 0.6 : baseHeight;
 
- return (
-      <div className="relative">
-        <Stage
-          ref={stageRef}
-          width={displayWidth}
-          height={displayHeight}
-          scaleX={scale}
-          scaleY={scale}
-          onClick={handleStageClick}
-          onTap={handleStageClick}
-          onTouchStart={(e) => {
+  const scale = Math.min(maxWidth / baseWidth, maxHeight / baseHeight, 1);
+  const displayWidth = baseWidth * scale;
+  const displayHeight = baseHeight * scale;
+
+  return (
+    <div className="relative">
+      <Stage
+        ref={stageRef}
+        width={displayWidth}
+        height={displayHeight}
+        scaleX={scale}
+        scaleY={scale}
+        onClick={handleStageClick}
+        onTap={handleStageClick}
+        onTouchStart={(e) => {
           if (e.target === e.target.getStage()) {
-          setSelectedId(null);
+            setSelectedId(null);
           }
-          }}
-          className="bg-white border border-none rounded-lg shadow-sm touch-manipulation"
-        >
-      {/* LAYER 1: Base Color Layer - Always visible, changes with activeColor */}
-      <Layer>
-        <Rect
-        x={0}
-        y={0}
-        width={canvasConfig.width}
-        height={canvasConfig.height}
-        fill={activeColor}
-        listening={false}
-        />
-      </Layer>
-
-      {/* LAYER 2: Template/T-Shirt Image Layer - Shows on top with proper masking */}
-      {canvasImage && (
-        <Layer>
-          <KonvaImage
-          image={canvasImage}
-          x={0}
-          y={0}
-          width={canvasConfig.width}
-          height={canvasConfig.height}
-          listening={false}
-          opacity={1}
-          />
-        </Layer>
-      )}
-
-      {/* LAYER 3: Subtle texture overlay - optional */}
-      {canvasImage && (
-        <Layer>
-          <KonvaImage
-          image={canvasImage}
-          x={0}
-          y={0}
-          width={canvasConfig.width}
-          height={canvasConfig.height}
-          opacity={surfaceConfig.renderType === 'leather' ? 0.12 : 0.08}
-          globalCompositeOperation="multiply"
-          listening={false}
-          />
-        </Layer>
-      )}
-
-      {/* LAYER 4: Printable area boundary */}
-      <Layer>
-        <Rect
-        x={printableArea.x}
-        y={printableArea.y}
-        width={printableArea.width}
-        height={printableArea.height}
-        stroke={brandColor}
-        strokeWidth={2}
-        dash={[6, 4]}
-        listening={false}
-        />
-      </Layer>
-
-      {/* LAYER 5: Design elements (clipped to printable area) */}
-      <Layer ref={layerRef}>
-        <Group
-        clipFunc={(ctx) => {
-        ctx.beginPath();
-        ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
-        ctx.closePath();
-        ctx.clip();
         }}
-        >
-        {renderDesignElements(activeArea)}
-        </Group>
-      </Layer>
+        className="bg-white border border-none rounded-lg shadow-sm touch-manipulation"
+      >
+        {/* 🔥 CONDITIONAL LAYER ORDER BASED ON AOP */}
+        {isAOPProduct ? (
+          <>
+            {/* AOP PRODUCT: Design elements BELOW canvas template */}
+            
+            {/* LAYER 1: Base Color Layer */}
+            <Layer>
+              <Rect
+                x={0}
+                y={0}
+                width={canvasConfig.width}
+                height={canvasConfig.height}
+                fill={activeColor}
+                listening={false}
+              />
+            </Layer>
 
-      {/* LAYER 6: Transformer for selected element - MUST BE LAST to stay on top */}
-      <Layer listening={true}>
-        <Transformer
-        ref={transformerRef}
-        anchorStroke={brandColor}
-        anchorFill="#FFFFFF"
-        anchorSize={isMobile ? 12 : 8}
-        borderStroke={brandColor}
-        borderDash={[4, 4]}
-        rotateAnchorOffset={25}
-        keepRatio={true
-        }
-        listening={true}
-        anchorStyleFunc={(anchor) => {
-        anchor.cornerRadius(2);
-        anchor.strokeWidth(2);
-        if (anchor.hasName('top-center') || anchor.hasName('bottom-center') ||
-        anchor.hasName('middle-left') || anchor.hasName('middle-right')) {
-        anchor.width(8);
-        anchor.height(8);
-        }
-        }}
-        boundBoxFunc={(oldBox, newBox) => {
-        if (newBox.width < 10 || newBox.height < 10) {
-        return oldBox;
-        }
-        return newBox;
-        }}
-        enabledAnchors={[
-        'top-left', 'top-center', 'top-right',
-        'middle-left', 'middle-right',
-        'bottom-left', 'bottom-center', 'bottom-right',
-        ]}
-        />
-      </Layer>
+            {/* LAYER 2: Design elements (clipped to printable area) - BELOW template */}
+            <Layer ref={layerRef}>
+              <Group
+                clipFunc={(ctx) => {
+                  ctx.beginPath();
+                  ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
+                  ctx.closePath();
+                  ctx.clip();
+                }}
+              >
+                {renderDesignElements(activeArea)}
+              </Group>
+            </Layer>
+
+            {/* LAYER 3: Template/Canvas Image Layer - ON TOP for AOP */}
+            {canvasImage && (
+              <Layer>
+                <KonvaImage
+                  image={canvasImage}
+                  x={0}
+                  y={0}
+                  width={canvasConfig.width}
+                  height={canvasConfig.height}
+                  listening={false}
+                  opacity={1}
+                />
+              </Layer>
+            )}
+
+            {/* LAYER 4: Printable area boundary */}
+            <Layer>
+              <Rect
+                x={printableArea.x}
+                y={printableArea.y}
+                width={printableArea.width}
+                height={printableArea.height}
+                stroke={brandColor}
+                strokeWidth={2}
+                dash={[6, 4]}
+                listening={false}
+              />
+            </Layer>
+
+            {/* LAYER 5: Transformer for selected element */}
+            <Layer listening={true}>
+              <Transformer
+                ref={transformerRef}
+                anchorStroke={brandColor}
+                anchorFill="#FFFFFF"
+                anchorSize={isMobile ? 12 : 8}
+                borderStroke={brandColor}
+                borderDash={[4, 4]}
+                rotateAnchorOffset={25}
+                keepRatio={true}
+                listening={true}
+                anchorStyleFunc={(anchor) => {
+                  anchor.cornerRadius(2);
+                  anchor.strokeWidth(2);
+                  if (anchor.hasName('top-center') || anchor.hasName('bottom-center') ||
+                      anchor.hasName('middle-left') || anchor.hasName('middle-right')) {
+                    anchor.width(8);
+                    anchor.height(8);
+                  }
+                }}
+                boundBoxFunc={(oldBox, newBox) => {
+                  if (newBox.width < 10 || newBox.height < 10) {
+                    return oldBox;
+                  }
+                  return newBox;
+                }}
+                enabledAnchors={[
+                  'top-left', 'top-center', 'top-right',
+                  'middle-left', 'middle-right',
+                  'bottom-left', 'bottom-center', 'bottom-right',
+                ]}
+              />
+            </Layer>
+          </>
+        ) : (
+          <>
+            {/* REGULAR PRODUCT: Design elements ABOVE canvas template (original order) */}
+            
+            {/* LAYER 1: Base Color Layer */}
+            <Layer>
+              <Rect
+                x={0}
+                y={0}
+                width={canvasConfig.width}
+                height={canvasConfig.height}
+                fill={activeColor}
+                listening={false}
+              />
+            </Layer>
+
+            {/* LAYER 2: Template/T-Shirt Image Layer */}
+            {canvasImage && (
+              <Layer>
+                <KonvaImage
+                  image={canvasImage}
+                  x={0}
+                  y={0}
+                  width={canvasConfig.width}
+                  height={canvasConfig.height}
+                  listening={false}
+                  opacity={1}
+                />
+              </Layer>
+            )}
+
+            {/* LAYER 3: Subtle texture overlay */}
+            {canvasImage && (
+              <Layer>
+                <KonvaImage
+                  image={canvasImage}
+                  x={0}
+                  y={0}
+                  width={canvasConfig.width}
+                  height={canvasConfig.height}
+                  opacity={surfaceConfig.renderType === 'leather' ? 0.12 : 0.08}
+                  globalCompositeOperation="multiply"
+                  listening={false}
+                />
+              </Layer>
+            )}
+
+            {/* LAYER 4: Printable area boundary */}
+            <Layer>
+              <Rect
+                x={printableArea.x}
+                y={printableArea.y}
+                width={printableArea.width}
+                height={printableArea.height}
+                stroke={brandColor}
+                strokeWidth={2}
+                dash={[6, 4]}
+                listening={false}
+              />
+            </Layer>
+
+            {/* LAYER 5: Design elements (clipped to printable area) - ABOVE template */}
+            <Layer ref={layerRef}>
+              <Group
+                clipFunc={(ctx) => {
+                  ctx.beginPath();
+                  ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
+                  ctx.closePath();
+                  ctx.clip();
+                }}
+              >
+                {renderDesignElements(activeArea)}
+              </Group>
+            </Layer>
+
+            {/* LAYER 6: Transformer for selected element */}
+            <Layer listening={true}>
+              <Transformer
+                ref={transformerRef}
+                anchorStroke={brandColor}
+                anchorFill="#FFFFFF"
+                anchorSize={isMobile ? 12 : 8}
+                borderStroke={brandColor}
+                borderDash={[4, 4]}
+                rotateAnchorOffset={25}
+                keepRatio={true}
+                listening={true}
+                anchorStyleFunc={(anchor) => {
+                  anchor.cornerRadius(2);
+                  anchor.strokeWidth(2);
+                  if (anchor.hasName('top-center') || anchor.hasName('bottom-center') ||
+                      anchor.hasName('middle-left') || anchor.hasName('middle-right')) {
+                    anchor.width(8);
+                    anchor.height(8);
+                  }
+                }}
+                boundBoxFunc={(oldBox, newBox) => {
+                  if (newBox.width < 10 || newBox.height < 10) {
+                    return oldBox;
+                  }
+                  return newBox;
+                }}
+                enabledAnchors={[
+                  'top-left', 'top-center', 'top-right',
+                  'middle-left', 'middle-right',
+                  'bottom-left', 'bottom-center', 'bottom-right',
+                ]}
+              />
+            </Layer>
+          </>
+        )}
       </Stage>
 
       {/* Dragging overlay indicator */}
@@ -10055,6 +10531,20 @@ case 'sizes':
               onDeleteLayer={handleDeleteLayer}
               onMoveLayer={handleMoveLayer}
               onDuplicateLayer={handleDuplicateLayer}
+              customWidth={customWidth}
+              customHeight={customHeight}
+              lockAspectRatio={lockAspectRatio}
+              setCustomWidth={setCustomWidth}
+              setCustomHeight={setCustomHeight}
+              setLockAspectRatio={setLockAspectRatio}
+              designElements={designElements}
+              activeArea={activeArea}
+              activeColor={activeColor}
+              getCanvasConfig={getCanvasConfig}
+              getPrintableAreaFromPhoto={getPrintableAreaFromPhoto}
+              setDesignElements={setDesignElements}
+              updatePricingData={updatePricingData}
+              triggerUpdate={triggerUpdate}
             />
           );
 
@@ -10121,6 +10611,21 @@ useEffect(() => {
     document.removeEventListener('mousedown', handleClickOutside, true);
   };
 }, [selectedId, isMobile]);
+
+// Add this useEffect after the other cleanup effects
+useEffect(() => {
+  // Clean up blob URLs when component unmounts or files change
+  return () => {
+    uploadedFiles.forEach(file => {
+      try {
+        URL.revokeObjectURL(file.url);
+        console.log(`🗑️ Cleaned up blob URL for ${file.name}`);
+      } catch (error) {
+        // Ignore errors during cleanup
+      }
+    });
+  };
+}, [uploadedFiles]);
 
 
 useEffect(() => {

@@ -396,9 +396,11 @@ const PRINT_TECHNOLOGY_MAP: Record<string, string> = {
   "dtg": "1",
   "direct to garment": "1",
   "all over printed": "2",
-  "aop": "2",
+  "aop": "2"  ,
+  "sublimation": "2",
   "embroidery": "3",
   "accessories": "5",
+  "digital": "5",
   "puff print": "6",
   "puff": "6",
   "glow in dark": "7",
@@ -750,16 +752,52 @@ function buildFallbackDesign(item: any): any[] {
 function getAreaFromDescription(desc: string): string {
   const lower = desc.toLowerCase()
   
-  // Check for specific area keywords (order matters - check more specific first)
-  if (lower.includes("left_sleeve") || lower.includes("left sleeve")) return "left_sleeve"
-  if (lower.includes("right_sleeve") || lower.includes("right sleeve")) return "right_sleeve"
-  if (lower.includes("left_pocket") || lower.includes("left pocket")) return "left_pocket"
-  if (lower.includes("right_pocket") || lower.includes("right pocket")) return "right_pocket"
-  if (lower.includes("back")) return "back"
-  if (lower.includes("front")) return "front"
+  console.log(`\n🔍 DEBUG getAreaFromDescription:`)
+  console.log(`   Input: "${desc.substring(0, 100)}..."`)
   
-  // Default to front if no area keyword found
-  console.log(`⚠️ Could not determine area from description: "${desc}" - defaulting to front`)
+  // Extract area from the TITLE line (most reliable)
+  // Match "MANUFACTURING LAYOUT - {AREA} AREA" or "{area} design element"
+  const titleMatch = desc.match(/(?:MANUFACTURING LAYOUT -|design element \d+ -)\s*([A-Z_a-z]+)\s+(?:AREA|design)/i)
+  if (titleMatch) {
+    const area = titleMatch[1].toLowerCase().replace(/sleeves?/, 'sleeve')
+    console.log(`   ✅ Extracted from title: ${area}`)
+    
+    // Normalize area names
+    if (area === 'left_sleeve' || area === 'left' || area === 'left_sleeves') return 'left_sleeve'
+    if (area === 'right_sleeve' || area === 'right' || area === 'right_sleeves') return 'right_sleeve'
+    if (area === 'left_pocket') return 'left_pocket'
+    if (area === 'right_pocket') return 'right_pocket'
+    if (area === 'back') return 'back'
+    if (area === 'front') return 'front'
+  }
+  
+  // Fallback: Check for specific area keywords using word boundaries
+  if (/\bleft[_\s]sleeve/i.test(desc)) {
+    console.log(`   ✅ Matched (fallback): left_sleeve`)
+    return "left_sleeve"
+  }
+  if (/\bright[_\s]sleeve/i.test(desc)) {
+    console.log(`   ✅ Matched (fallback): right_sleeve`)
+    return "right_sleeve"
+  }
+  if (/\bleft[_\s]pocket/i.test(desc)) {
+    console.log(`   ✅ Matched (fallback): left_pocket`)
+    return "left_pocket"
+  }
+  if (/\bright[_\s]pocket/i.test(desc)) {
+    console.log(`   ✅ Matched (fallback): right_pocket`)
+    return "right_pocket"
+  }
+  if (/\bfront\b/i.test(desc)) {
+    console.log(`   ✅ Matched (fallback): front`)
+    return "front"
+  }
+  if (/\bback\b/i.test(desc)) {
+    console.log(`   ✅ Matched (fallback): back`)
+    return "back"
+  }
+  
+  console.log(`   ⚠️ No match - defaulting to front`)
   return "front"
 }
 
