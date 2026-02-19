@@ -95,88 +95,8 @@ export function ResetPasswordForm({ className, ...props }: ResetPasswordFormProp
 
   if (!token || !email) {
     return (
-      <div className={cn('grid gap-6 relative', className)} {...props}>
-        {/* Animated Border Orb Effect */}
-        <div className="absolute inset-0 pointer-events-none" style={{ margin: '-20px' }}>
-          <div className="border-orb"></div>
-        </div>
-        
-        <style jsx>{`
-          .border-orb {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: radial-gradient(circle, #e65100 0%, #ff8f00 50%, #e65100 100%);
-            border-radius: 50%;
-            box-shadow: 
-              0 0 15px rgba(230, 81, 0, 0.8),
-              0 0 30px rgba(230, 81, 0, 0.5),
-              0 0 45px rgba(230, 81, 0, 0.3);
-            animation: moveAroundOuterBorder 6s linear infinite;
-            z-index: 10;
-          }
-          
-          .border-orb::before {
-            content: '';
-            position: absolute;
-            top: 1px;
-            left: 1px;
-            width: 6px;
-            height: 6px;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.6), transparent);
-            border-radius: 50%;
-          }
-          
-          .border-orb::after {
-            content: '';
-            position: absolute;
-            width: 100px;
-            height: 4px;
-            background: linear-gradient(90deg, 
-              transparent 0%, 
-              rgba(230, 81, 0, 0.1) 30%, 
-              rgba(230, 81, 0, 0.4) 50%, 
-              rgba(230, 81, 0, 0.1) 70%, 
-              transparent 100%);
-            left: -100px;
-            top: 2px;
-            border-radius: 50px;
-            filter: blur(4px);
-            z-index: -1;
-          }
-
-          @keyframes moveAroundOuterBorder {
-            0% {
-              top: -4px;
-              left: 0%;
-            }
-            25% {
-              top: 0%;
-              left: calc(100% - 8px);
-            }
-            50% {
-              top: calc(100% - 8px);
-              left: calc(100% - 8px);
-            }
-            75% {
-              top: calc(100% - 4px);
-              left: 0%;
-            }
-            100% {
-              top: -4px;
-              left: 0%;
-            }
-          }
-          
-          @media (prefers-reduced-motion: reduce) {
-            .border-orb {
-              animation: none;
-              opacity: 0.5;
-            }
-          }
-        `}</style>
-        
-        <div className="relative z-20 space-y-4 text-center">
+      <div className={cn('grid gap-6', className)} {...props}>
+        <div className="space-y-4 text-center">
           <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
             <AlertCircle className="w-6 h-6 text-red-600" />
           </div>
@@ -188,7 +108,7 @@ export function ResetPasswordForm({ className, ...props }: ResetPasswordFormProp
           </div>
           <Button 
             onClick={() => navigate({ to: '/sign-in' })} 
-            className="relative z-20 w-full"
+            className="w-full"
             style={{ backgroundColor: '#e65100' }}
           >
             Go to Sign In
@@ -199,88 +119,8 @@ export function ResetPasswordForm({ className, ...props }: ResetPasswordFormProp
   }
 
   return (
-    <div className={cn('grid gap-6 relative', className)} {...props}>
-      {/* Animated Border Orb Effect */}
-      <div className="absolute inset-0 pointer-events-none" style={{ margin: '-20px' }}>
-        <div className="border-orb"></div>
-      </div>
-      
-      <style jsx>{`
-        .border-orb {
-          position: absolute;
-          width: 8px;
-          height: 8px;
-          background: radial-gradient(circle, #e65100 0%, #ff8f00 50%, #e65100 100%);
-          border-radius: 50%;
-          box-shadow: 
-            0 0 15px rgba(230, 81, 0, 0.8),
-            0 0 30px rgba(230, 81, 0, 0.5),
-            0 0 45px rgba(230, 81, 0, 0.3);
-          animation: moveAroundOuterBorder 6s linear infinite;
-          z-index: 10;
-        }
-        
-        .border-orb::before {
-          content: '';
-          position: absolute;
-          top: 1px;
-          left: 1px;
-          width: 6px;
-          height: 6px;
-          background: radial-gradient(circle, rgba(255, 255, 255, 0.6), transparent);
-          border-radius: 50%;
-        }
-        
-        .border-orb::after {
-          content: '';
-          position: absolute;
-          width: 100px;
-          height: 4px;
-          background: linear-gradient(90deg, 
-            transparent 0%, 
-            rgba(230, 81, 0, 0.1) 30%, 
-            rgba(230, 81, 0, 0.4) 50%, 
-            rgba(230, 81, 0, 0.1) 70%, 
-            transparent 100%);
-          left: -100px;
-          top: 2px;
-          border-radius: 50px;
-          filter: blur(4px);
-          z-index: -1;
-        }
-
-        @keyframes moveAroundOuterBorder {
-          0% {
-            top: -4px;
-            left: 0%;
-          }
-          25% {
-            top: 0%;
-            left: calc(100% - 8px);
-          }
-          50% {
-            top: calc(100% - 8px);
-            left: calc(100% - 8px);
-          }
-          75% {
-            top: calc(100% - 4px);
-            left: 0%;
-          }
-          100% {
-            top: -4px;
-            left: 0%;
-          }
-        }
-        
-        @media (prefers-reduced-motion: reduce) {
-          .border-orb {
-            animation: none;
-            opacity: 0.5;
-          }
-        }
-      `}</style>
-      
-      <div className="relative z-20 space-y-2 text-center">
+    <div className={cn('grid gap-6', className)} {...props}>
+      <div className="space-y-2 text-center">
         <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full" style={{ backgroundColor: '#e6510020' }}>
           <Shield className="w-6 h-6" style={{ color: '#e65100' }} />
         </div>
@@ -293,7 +133,7 @@ export function ResetPasswordForm({ className, ...props }: ResetPasswordFormProp
       </div>
 
       {successMessage && (
-        <Alert className="relative z-20 border-green-200 bg-green-50">
+        <Alert className="border-green-200 bg-green-50">
           <CheckCircle className="w-4 h-4 text-green-600" />
           <AlertDescription className="text-green-800">
             {successMessage}
@@ -302,14 +142,14 @@ export function ResetPasswordForm({ className, ...props }: ResetPasswordFormProp
       )}
 
       {errorMessage && (
-        <Alert className="relative z-20 border-red-200 bg-red-50">
+        <Alert className="border-red-200 bg-red-50">
           <AlertCircle className="w-4 h-4 text-red-600" />
           <AlertDescription className="text-red-800">{errorMessage}</AlertDescription>
         </Alert>
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="relative z-20">
+        <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className='grid gap-2'>
             <FormField
               control={form.control}
@@ -354,12 +194,12 @@ export function ResetPasswordForm({ className, ...props }: ResetPasswordFormProp
               {isLoading ? 'Resetting...' : 'Reset Password'}
             </Button>
 
-            <div className="relative z-20 mt-4 text-center">
+            <div className="mt-4 text-center">
               <Button 
                 variant="ghost" 
                 onClick={() => navigate({ to: '/sign-in' })}
                 disabled={isLoading}
-                className="relative z-20 text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground"
               >
                 Back to Sign In
               </Button>

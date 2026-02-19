@@ -184,8 +184,7 @@ const PasswordChangeModal: React.FC<PasswordChangeModalProps> = React.memo(({
   const [currentPasswordError, setCurrentPasswordError] = useState('');
   const [newPasswordError, setNewPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
-
-  
+  // Add a ref at the top of your component with other refs  
   // Input refs
   const currentPasswordRef = useRef<HTMLInputElement>(null);
   const newPasswordRef = useRef<HTMLInputElement>(null);
@@ -384,6 +383,7 @@ export default function CreatorProfile() {
   });
   const [showBankDetails, setShowBankDetails] = useState(false);
 const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const cancelledChequeRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const coverPhotoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -2392,6 +2392,7 @@ const openChatwoot = () => {
                               <div
                                 className="flex items-center justify-center h-32 transition-colors border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50"
                                 style={{ borderColor: vendorData.vendor.cancelled_checkque ? BRAND.success : 'rgb(229, 231, 235)' }}
+                                onClick={() => cancelledChequeRef.current?.click()}  // ADD THIS
                               >
                                 {vendorData.vendor.cancelled_checkque ? (
                                   <div className="relative w-full h-full">
@@ -2415,6 +2416,14 @@ const openChatwoot = () => {
                                   </div>
                                 )}
                               </div>
+                              {/* ADD THIS hidden input below the div */}
+                              <input
+                                type="file"
+                                ref={cancelledChequeRef}
+                                className="hidden"
+                                accept="image/jpeg,image/png,application/pdf"
+                                onChange={(e) => handleImageUpload(e, 'cancelled_checkque')}
+                              />
                             </div>
                           </div>
                         ) : (

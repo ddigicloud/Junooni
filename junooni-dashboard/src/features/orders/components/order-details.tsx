@@ -1028,13 +1028,6 @@ const StatusBadge = ({ status }: { status: string }) => {
           className: "text-green-700 bg-green-50 border-green-200 font-medium",
           icon: <CircleCheck className="w-3 h-3 mr-1" />
         };
-      case "cancelled":
-      case "canceled":
-        return { 
-          variant: "outline" as const, 
-          className: "text-red-700 bg-red-50 border-red-200 font-medium",
-          icon: <AlertTriangle className="w-3 h-3 mr-1" />
-        };
       case "authorized":
       case "captured":
       case "paid":

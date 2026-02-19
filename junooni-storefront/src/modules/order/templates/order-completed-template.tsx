@@ -62,6 +62,7 @@ import OrderDetails from "@modules/order/components/order-details"
 import ShippingDetails from "@modules/order/components/shipping-details"
 import PaymentDetails from "@modules/order/components/payment-details"
 import { HttpTypes } from "@medusajs/types"
+import ClearCheckoutHistory from "@modules/order/components/clear-checkout-history"
 
 type OrderCompletedTemplateProps = {
   order: HttpTypes.StoreOrder
@@ -76,6 +77,7 @@ export default async function OrderCompletedTemplate({
 
   return (
     <div className="py-6 min-h-[calc(100vh-64px)]">
+      <ClearCheckoutHistory />
       <div className="flex flex-col items-center justify-center w-full h-full max-w-4xl content-container gap-y-10">
         {isOnboarding && <OnboardingCta orderId={order.id} />}
         <div

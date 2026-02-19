@@ -1353,46 +1353,39 @@ const optimizeImage = async (img: HTMLImageElement, maxWidth: number = 1500, qua
         return;
       }
 
-      // Calculate new dimensions
       const originalWidth = img.naturalWidth || img.width;
       const originalHeight = img.naturalHeight || img.height;
       
       let newWidth = originalWidth;
       let newHeight = originalHeight;
       
-      // Only resize if image is larger than maxWidth
       if (originalWidth > maxWidth) {
         const aspectRatio = originalHeight / originalWidth;
         newWidth = maxWidth;
         newHeight = maxWidth * aspectRatio;
       }
       
-      // Set canvas dimensions
       canvas.width = newWidth;
       canvas.height = newHeight;
       
-      // Enable image smoothing for better quality
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       
-      // Draw optimized image
+      // 🔥 FIX: Clear canvas with transparent background first
+      ctx.clearRect(0, 0, newWidth, newHeight);
+      
       ctx.drawImage(img, 0, 0, newWidth, newHeight);
       
-      // Convert to base64 with compression
-      const optimizedBase64 = canvas.toDataURL('image/jpeg', quality);
+      // 🔥 FIX: Use PNG instead of JPEG to preserve transparency
+      const optimizedBase64 = canvas.toDataURL('image/png');
       
-      // Calculate sizes
       const originalSize = img.src.length;
       const optimizedSize = optimizedBase64.length;
       
-      // Create new image from optimized base64
       const optimizedImg = new Image();
       optimizedImg.crossOrigin = 'anonymous';
       
       optimizedImg.onload = () => {
-        console.log(`✅ Image optimized: ${originalWidth}x${originalHeight} → ${newWidth}x${newHeight}`);
-        console.log(`📉 Size reduced: ${(originalSize / 1024 / 1024).toFixed(2)}MB → ${(optimizedSize / 1024 / 1024).toFixed(2)}MB`);
-        
         resolve({
           optimizedImage: optimizedImg,
           optimizedBase64,
@@ -4693,11 +4686,11 @@ const getAreaDisplayData = useCallback((areaId: string) => {
         height: coord.height * canvasConfig.height,
       };
       
-      console.log(`✅ Using normalized coordinates for ${areaId}:`, {
-        normalized: coord,
-        pixels: printArea,
-        canvasSize: `${canvasConfig.width}×${canvasConfig.height}`
-      });
+      // console.log(`✅ Using normalized coordinates for ${areaId}:`, {
+      //   normalized: coord,
+      //   pixels: printArea,
+      //   canvasSize: `${canvasConfig.width}×${canvasConfig.height}`
+      // });
       
     } else {
       // Original logic for absolute pixel coordinates
@@ -4712,7 +4705,7 @@ const getAreaDisplayData = useCallback((areaId: string) => {
     return printArea;
     
   } catch (error) {
-    console.error(`Error getting printable area for ${areaId}:`, error);
+    //console.error(`Error getting printable area for ${areaId}:`, error);
     const canvasConfig = getCanvasConfig(areaId);
     return { 
       x: 0, 
@@ -4924,7 +4917,7 @@ const extractDesignImages = useCallback(() => {
 
       // Check if bounding box is completely outside printable area
       if (minX >= maxX || minY >= maxY) {
-        console.warn(`⚠️ Design elements in ${area} are completely outside printable area - skipping`);
+        //console.warn(`⚠️ Design elements in ${area} are completely outside printable area - skipping`);
         return;
       }
 
@@ -4977,7 +4970,7 @@ const extractDesignImages = useCallback(() => {
       });
 
       if (!mergedCtx) {
-        console.error('Could not get merged canvas context');
+        //console.error('Could not get merged canvas context');
         return;
       }
 
@@ -5176,15 +5169,15 @@ Generated: ${new Date().toISOString()}`;
       designImages.push(designImage);
 
     } catch (error) {
-      console.error(`Failed to create manufacturing film for area ${area}:`, error);
+      //console.error(`Failed to create manufacturing film for area ${area}:`, error);
     }
   });
   
-  console.log('📦 Extracted manufacturing films (axis-aligned bounding boxes):', {
-    total: designImages.length,
-    totalElements: designImages.reduce((sum, img) => sum + (img.elementCount || 0), 0),
-    croppedFilms: designImages.filter(img => img.wasCropped).length
-  });
+  // console.log('📦 Extracted manufacturing films (axis-aligned bounding boxes):', {
+  //   total: designImages.length,
+  //   totalElements: designImages.reduce((sum, img) => sum + (img.elementCount || 0), 0),
+  //   croppedFilms: designImages.filter(img => img.wasCropped).length
+  // });
   
   return designImages;
 }, [designElements, getCanvasConfig, getPrintableAreaFromPhoto]);
@@ -5947,7 +5940,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
       pixelRatio: 2
     });
     
-    console.log(`✅ Canvas capture complete for ${areaId} (${isAOPProduct ? 'AOP' : 'Regular'}) with ${sortedElements.length} elements`);
+    //console.log(`✅ Canvas capture complete for ${areaId} (${isAOPProduct ? 'AOP' : 'Regular'}) with ${sortedElements.length} elements`);
     
     // Cleanup
     tempStage.destroy();
@@ -5955,7 +5948,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     return dataURL;
     
   } catch (error) {
-    console.error(`❌ Canvas capture error for area ${areaId}:`, error);
+    //console.error(`❌ Canvas capture error for area ${areaId}:`, error);
     return null;
   }
 }, [getCanvasConfig, getPrintableAreaFromPhoto, designElements, activeColor, canvasImages, getCustomizationAreaByName]);
@@ -8471,16 +8464,16 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
         const isMegapixel = imageSize > 2000000; // ~2MP threshold
         
         if (isMegapixel) {
-          console.log('🔧 Optimizing large image for canvas performance...');
+          //console.log('🔧 Optimizing large image for canvas performance...');
           
           try {
             const optimized = await optimizeImage(img, 1500, 0.85);
             finalImage = optimized.optimizedImage;
             finalBase64 = optimized.optimizedBase64;
             
-            console.log(`✅ Image optimized successfully`);
+            //console.log(`✅ Image optimized successfully`);
           } catch (optimizeError) {
-            console.warn('⚠️ Could not optimize image, using original', optimizeError);
+            //console.warn('⚠️ Could not optimize image, using original', optimizeError);
           }
         }
         
@@ -8504,10 +8497,10 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
             finalBase64 = cropResult.croppedBase64;
             croppedBounds = cropResult.bounds;
             
-            console.log(`✂️ Cropped transparent areas: ${(reduction * 100).toFixed(1)}% reduction`);
+            //console.log(`✂️ Cropped transparent areas: ${(reduction * 100).toFixed(1)}% reduction`);
           }
         } catch (cropError) {
-          console.warn('Could not crop transparent areas, using current image', cropError);
+          //console.warn('Could not crop transparent areas, using current image', cropError);
         }
         
         const canvasConfig = getCanvasConfig(areaToUse);
@@ -8598,7 +8591,7 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
 const handleFileUpload = useCallback(async (files) => {
   if (!files || files.length === 0) return;
   
-  console.log(`📁 Uploading ${files.length} file(s)...`);
+  //console.log(`📁 Uploading ${files.length} file(s)...`);
   
   for (const file of Array.from(files)) {
     try {
@@ -8638,7 +8631,7 @@ const handleFileUpload = useCallback(async (files) => {
         targetArea: activeArea
       }]);
       
-      console.log(`✅ Added ${file.name} to upload list (ID: ${uniqueFileId})`);
+      //console.log(`✅ Added ${file.name} to upload list (ID: ${uniqueFileId})`);
       
       // Add image to canvas
       const success = await addImageToCanvasWithStateProtection(
@@ -8649,7 +8642,7 @@ const handleFileUpload = useCallback(async (files) => {
       );
       
       if (success) {
-        console.log(`✅ Successfully added ${file.name} to canvas`);
+        //console.log(`✅ Successfully added ${file.name} to canvas`);
         
         // Close mobile bottom sheet after successful upload
         if (isMobile) {
@@ -8665,7 +8658,7 @@ const handleFileUpload = useCallback(async (files) => {
       }
       
     } catch (error) {
-      console.error(`❌ Error uploading ${file.name}:`, error);
+      //console.error(`❌ Error uploading ${file.name}:`, error);
       alert(`Failed to upload ${file.name}: ${error.message}`);
     }
   }
@@ -8673,7 +8666,7 @@ const handleFileUpload = useCallback(async (files) => {
   // 🔥 CRITICAL FIX: Reset file input to allow same file upload
   if (fileInputRef.current) {
     fileInputRef.current.value = '';
-    console.log('🔄 File input reset - ready for duplicate uploads');
+    //console.log('🔄 File input reset - ready for duplicate uploads');
   }
   
 }, [activeArea, addImageToCanvasWithStateProtection, updatePricingData, isMobile]);
