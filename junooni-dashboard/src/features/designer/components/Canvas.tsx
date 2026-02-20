@@ -733,32 +733,24 @@ const renderMockupDirectly = async (
   
   return new Promise(async (resolve, reject) => {
     try {
-      // Create offscreen canvas
       const offscreenCanvas = document.createElement('canvas');
       offscreenCanvas.width = targetResolution;
       offscreenCanvas.height = targetResolution;
       const ctx = offscreenCanvas.getContext('2d', { alpha: true });
       
-      if (!ctx) {
-        throw new Error('Failed to get 2D context');
-      }
+      if (!ctx) throw new Error('Failed to get 2D context');
       
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       
-      // 🔥 FIXED: Check if mockup requires color masking (transparent mockup)
-      // 🆕 NEW: Check if mockup requires color masking (transparent mockup)
       const requiresColorMasking = mockup.requiresColorMasking === true || 
                                   mockup.photoColor?.toLowerCase() === '#00000000';
       const maskColor = mockup.maskColor || productColor || '#ffffff';
 
       if (requiresColorMasking) {
-        
-        // LAYER 1: Draw base color layer FIRST
         ctx.fillStyle = maskColor;
         ctx.fillRect(0, 0, targetResolution, targetResolution);
         
-        // LAYER 2: Load and draw transparent mockup on top
         const mockupBaseImg = await new Promise<HTMLImageElement>((resolve, reject) => {
           const img = new Image();
           img.crossOrigin = 'anonymous';
@@ -767,13 +759,8 @@ const renderMockupDirectly = async (
           img.src = resolveImageUrl(mockup.photo.url);
         });
         
-        // Draw transparent mockup over the color layer
         ctx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
-        
       } else {
-        // ORIGINAL LOGIC: Non-transparent mockup
-        
-        // Load mockup base image
         const mockupBaseImg = await new Promise<HTMLImageElement>((resolve, reject) => {
           const img = new Image();
           img.crossOrigin = 'anonymous';
@@ -782,81 +769,16 @@ const renderMockupDirectly = async (
           img.src = resolveImageUrl(mockup.photo.url);
         });
         
-        // Draw mockup base
         ctx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
-        
-        // Apply product color overlay - only to white t-shirt fabric
-      //   if (productColor !== '#ffffff') {
-      //     // Create temporary canvas for color detection
-      //     const tempCanvas = document.createElement('canvas');
-      //     tempCanvas.width = targetResolution;
-      //     tempCanvas.height = targetResolution;
-      //     const tempCtx = tempCanvas.getContext('2d');
-          
-      //     if (tempCtx) {
-      //       // Draw original image to analyze
-      //       tempCtx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
-      //       const imageData = tempCtx.getImageData(0, 0, targetResolution, targetResolution);
-      //       const data = imageData.data;
-            
-      //       // Create mask: detect only the WHITE t-shirt fabric
-      //       const whiteMin = 200;
-      //       const whiteMax = 250;
-            
-      //       for (let i = 0; i < data.length; i += 4) {
-      //         const r = data[i];
-      //         const g = data[i + 1];
-      //         const b = data[i + 2];
-              
-      //         const brightness = (r + g + b) / 3;
-      //         const colorVariance = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
-              
-      //         const isWhiteFabric = brightness >= whiteMin && 
-      //                               brightness <= whiteMax && 
-      //                               colorVariance < 15 &&
-      //                               !(r > 250 && g > 250 && b > 250);
-              
-      //         if (!isWhiteFabric) {
-      //           data[i + 3] = 0;
-      //         }
-      //       }
-            
-      //       tempCtx.putImageData(imageData, 0, 0);
-            
-      //       // Now apply color with multiply blend
-      //       const colorLayer = document.createElement('canvas');
-      //       colorLayer.width = targetResolution;
-      //       colorLayer.height = targetResolution;
-      //       const colorCtx = colorLayer.getContext('2d');
-            
-      //       if (colorCtx) {
-      //         colorCtx.fillStyle = productColor;
-      //         colorCtx.fillRect(0, 0, targetResolution, targetResolution);
-              
-      //         colorCtx.globalCompositeOperation = 'destination-in';
-      //         colorCtx.drawImage(tempCanvas, 0, 0);
-              
-      //         ctx.drawImage(colorLayer, 0, 0);
-              
-      //         ctx.globalAlpha = 0.15;
-      //         ctx.globalCompositeOperation = 'multiply';
-      //         ctx.drawImage(tempCanvas, 0, 0);
-      //         ctx.globalAlpha = 1;
-      //         ctx.globalCompositeOperation = 'source-over';
-      //       }
-      //     }
-      //   }
       }
       
       // Draw design elements for each area
       for (const mockupArea of mockup.area || []) {
         const areaName = mockupArea.areaName.toLowerCase();
         const elements = designElements[areaName] || [];
-        // const visibleElements = elements.filter(el => el.visible !== false && el.type === 'image');
         const visibleElements = elements
-        .filter(el => el.visible !== false && el.type === 'image')
-        .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)); // ✅ Sort by zIndex ascending (bottom to top)
-      
+          .filter(el => el.visible !== false && el.type === 'image')
+          .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
         
         if (visibleElements.length === 0) continue;
         
@@ -865,78 +787,83 @@ const renderMockupDirectly = async (
         
         if (!canvasConfig || !printableArea) continue;
         
-        // Map design coordinates to mockup space
         const design = mockupArea.design;
+        
+        // Mockup area in pixel space (on the targetResolution canvas)
         const mockupAreaX = design.coordinateX * targetResolution;
         const mockupAreaY = design.coordinateY * targetResolution;
         const mockupAreaWidth = design.coordinateWidth * targetResolution;
         const mockupAreaHeight = design.coordinateHeight * targetResolution;
         
-        // Save context and create clipping region
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(mockupAreaX, mockupAreaY, mockupAreaWidth, mockupAreaHeight);
-        ctx.clip();
-        
-        // Calculate scale factors from canvas to mockup
+        // ✅ FIX: Use a UNIFORM scale factor to preserve element aspect ratios.
+        // Using separate scaleX/scaleY causes distortion when the mockup area's
+        // aspect ratio differs from the printable area's aspect ratio.
+        // We derive a single scale from the WIDTH axis (horizontal reference).
         const scaleX = mockupAreaWidth / printableArea.width;
         const scaleY = mockupAreaHeight / printableArea.height;
+
+        // Use uniform scale — pick scaleX as the reference (width-driven).
+        // This ensures a square element on the canvas stays square in the mockup.
+        const uniformScale = scaleX;
+
+        // Recompute the effective mockup area height using uniform scale so the
+        // clipping rect stays consistent with what we actually draw.
+        const effectiveMockupHeight = printableArea.height * uniformScale;
         
-        // Draw each design element
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(mockupAreaX, mockupAreaY, mockupAreaWidth, effectiveMockupHeight);
+        ctx.clip();
+        
         for (const element of visibleElements) {
           if (!element.image) continue;
           
           ctx.save();
           
-          // Convert canvas coordinates to mockup coordinates
-          // const elementX = mockupAreaX + (element.x - printableArea.x) * scaleX;
-          // const elementY = mockupAreaY + (element.y - printableArea.y) * scaleY;
-          // const elementWidth = element.width * scaleX * (element.scaleX || 1);
-          // const elementHeight = element.height * scaleY * (element.scaleY || 1);
+          // Step 1: Get the element's top-left in printable-area-relative coordinates
+          const elemLeftInPrintable = element.x - printableArea.x;
+          const elemTopInPrintable  = element.y - printableArea.y;
           
-          // Apply transformations
-          // const centerX = elementX + elementWidth / 2;
-          // const centerY = elementY + elementHeight / 2;
-
-          // Calculate center position in canvas space FIRST (using UNSCALED dimensions)
-          const centerInCanvasX = element.x + element.width / 2;
-          const centerInCanvasY = element.y + element.height / 2;
-
-          // Transform center to mockup space
-          const centerX = mockupAreaX + (centerInCanvasX - printableArea.x) * scaleX;
-          const centerY = mockupAreaY + (centerInCanvasY - printableArea.y) * scaleY;
-
-          // Calculate final dimensions (with all scales applied)
-          const elementWidth = element.width * scaleX * (element.scaleX || 1);
-          const elementHeight = element.height * scaleY * (element.scaleY || 1);
+          // Step 2: Apply element scale to get actual rendered size
+          const renderedWidth  = element.width  * (element.scaleX || 1);
+          const renderedHeight = element.height * (element.scaleY || 1);
           
+          // Step 3: Map to mockup space using UNIFORM scale on both axes
+          const elemLeftInMockup   = mockupAreaX + elemLeftInPrintable * uniformScale;
+          const elemTopInMockup    = mockupAreaY + elemTopInPrintable  * uniformScale;
+          const elemWidthInMockup  = renderedWidth  * uniformScale;
+          const elemHeightInMockup = renderedHeight * uniformScale;
+          
+          // Step 4: Center of element in mockup space (for rotation pivot)
+          const centerX = elemLeftInMockup + elemWidthInMockup / 2;
+          const centerY = elemTopInMockup  + elemHeightInMockup / 2;
+          
+          // Step 5: Apply transform
           ctx.translate(centerX, centerY);
           
           if (element.rotation) {
             ctx.rotate((element.rotation * Math.PI) / 180);
           }
           
-          //ctx.globalAlpha = (element.opacity || 1) * (design.opacity || 1);
-          // Set element opacity (default to 1 if not specified)
           ctx.globalAlpha = element.opacity || 1;
           
           if (design.blend && design.blend !== 'normal') {
             ctx.globalCompositeOperation = design.blend as GlobalCompositeOperation;
           }
           
-          // Draw design image
+          // Step 6: Draw centered on the pivot
           ctx.drawImage(
             element.image,
-            -elementWidth / 2,
-            -elementHeight / 2,
-            elementWidth,
-            elementHeight
+            -elemWidthInMockup / 2,
+            -elemHeightInMockup / 2,
+            elemWidthInMockup,
+            elemHeightInMockup
           );
           
           ctx.restore();
         }
         
-        ctx.restore(); // Remove clipping
+        ctx.restore();
       }
       
       // Apply lighting overlays
@@ -962,12 +889,10 @@ const renderMockupDirectly = async (
         }
       }
       
-      // Convert to base64
       const imageData = offscreenCanvas.toDataURL('image/png', 0.95);
       resolve(imageData);
       
     } catch (error) {
-      //console.error('❌ Direct render failed:', error);
       reject(error);
     }
   });
@@ -5486,7 +5411,7 @@ const calculateAreaPricing = useCallback((areaId: string): AreaPricingInfo => {
   const consumedHeightCanvas = maxY - minY;
 
   // 🔥 ASPECT RATIO PRESERVATION: Use average PPI for both dimensions
-  const canvasConfigs = getCanvasConfig(activeArea);
+  const canvasConfigs = getCanvasConfig(areaId);
   const PRINTABLE_WIDTH_INCHES = canvasConfigs.realWorldWidth;
   const PRINTABLE_HEIGHT_INCHES = canvasConfigs.realWorldHeight;
 
@@ -5676,7 +5601,6 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
       return null;
     }
     
-    // 🔥 FIX 1: Sort by z-index (LOWEST first, so they appear UNDER higher z-index elements)
     const sortedElements = [...visibleElements].sort(
       (a, b) => (a.zIndex || 0) - (b.zIndex || 0)
     );
@@ -5686,13 +5610,10 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     
     const canvasImage = canvasImages[`${areaId}_${activeColor}`] || canvasImages[areaId];
     
-    // 🆕 NEW: Detect if this is an AOP product
     const isAOPProduct = (() => {
       try {
         const area = getCustomizationAreaByName(areaId);
         if (!area?.designCanvasPhotos?.length) return false;
-        
-        // Check if any photo has -aop in photoColor
         return area.designCanvasPhotos.some((photo: any) => 
           photo?.photoColor?.toLowerCase().includes('-aop')
         );
@@ -5701,7 +5622,6 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
       }
     })();
     
-    // Create temporary stage with higher resolution for quality
     const tempStage = new Konva.Stage({
       container: document.createElement('div'),
       width: canvasConfig.width,
@@ -5712,22 +5632,19 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
     const tempLayer = new Konva.Layer();
     tempStage.add(tempLayer);
     
-    // 🔥 FIX 2: CONDITIONAL LAYER ORDER BASED ON AOP
+    // ─── STEP 1: Background ───────────────────────────────────────────────
+    const backgroundRect = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: canvasConfig.width,
+      height: canvasConfig.height,
+      fill: 'transparent',
+      listening: false
+    });
+    tempLayer.add(backgroundRect);
+
     if (isAOPProduct) {
-      // ========== AOP PRODUCT: Design BELOW template ==========
-      
-      // STEP 1: Add transparent background
-      const backgroundRect = new Konva.Rect({
-        x: 0,
-        y: 0,
-        width: canvasConfig.width,
-        height: canvasConfig.height,
-        fill: 'transparent',
-        listening: false
-      });
-      tempLayer.add(backgroundRect);
-      
-      // STEP 2: Add base color layer
+      // AOP: color layer first
       const colorRect = new Konva.Rect({
         x: 0,
         y: 0,
@@ -5737,8 +5654,8 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
         listening: false
       });
       tempLayer.add(colorRect);
-      
-      // STEP 3: Create clipping group for design elements
+
+      // AOP: design elements below template
       const clippingGroup = new Konva.Group({
         clipFunc: (ctx) => {
           ctx.beginPath();
@@ -5747,8 +5664,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
         }
       });
       tempLayer.add(clippingGroup);
-      
-      // STEP 4: Add all visible design elements (BELOW template for AOP)
+
       for (const element of sortedElements) {
         if (element.type === 'image' && element.image) {
           const imageNode = new Konva.Image({
@@ -5766,7 +5682,6 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
             listening: false
           });
           clippingGroup.add(imageNode);
-          
         } else if (element.type === 'text') {
           const textNode = new Konva.Text({
             text: element.text || 'Text',
@@ -5787,8 +5702,8 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
           clippingGroup.add(textNode);
         }
       }
-      
-      // STEP 5: Add the t-shirt template ON TOP (for AOP)
+
+      // AOP: template on top
       if (canvasImage) {
         const canvasImageNode = new Konva.Image({
           image: canvasImage,
@@ -5800,57 +5715,30 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
         });
         tempLayer.add(canvasImageNode);
       }
-      
-      // STEP 6: Add printable area boundary
-      const printableBorder = new Konva.Rect({
-        x: printableArea.x,
-        y: printableArea.y,
-        width: printableArea.width,
-        height: printableArea.height,
-        stroke: '#FF0000',
-        strokeWidth: 2,
-        dash: [6, 4],
-        listening: false
-      });
-      tempLayer.add(printableBorder);
-      
+
     } else {
-      // ========== REGULAR PRODUCT: Design ABOVE template (ORIGINAL LOGIC) ==========
-      
-      // STEP 1: Add transparent background
-      const backgroundRect = new Konva.Rect({
+      // REGULAR: color + template first
+      const colorRect = new Konva.Rect({
         x: 0,
         y: 0,
         width: canvasConfig.width,
         height: canvasConfig.height,
-        fill: 'transparent',
+        fill: activeColor,
         listening: false
       });
-      tempLayer.add(backgroundRect);
-      
-      // STEP 2: Add the t-shirt template with color
+      tempLayer.add(colorRect);
+
       if (canvasImage) {
-        const tshirtColorRect = new Konva.Rect({
-          x: 0,
-          y: 0,
-          width: canvasConfig.width,
-          height: canvasConfig.height,
-          fill: activeColor,
-          listening: false
-        });
-        tempLayer.add(tshirtColorRect);
-        
         const canvasImageNode = new Konva.Image({
           image: canvasImage,
           x: 0,
           y: 0,
           width: canvasConfig.width,
           height: canvasConfig.height,
-          globalCompositeOperation: 'destination-in',
           listening: false
         });
         tempLayer.add(canvasImageNode);
-        
+
         const textureOverlay = new Konva.Image({
           image: canvasImage,
           x: 0,
@@ -5863,8 +5751,8 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
         });
         tempLayer.add(textureOverlay);
       }
-      
-      // STEP 3: Create clipping group for design elements
+
+      // REGULAR: design elements above template
       const clippingGroup = new Konva.Group({
         clipFunc: (ctx) => {
           ctx.beginPath();
@@ -5873,8 +5761,7 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
         }
       });
       tempLayer.add(clippingGroup);
-      
-      // STEP 4: Add all visible design elements with their transformations preserved
+
       for (const element of sortedElements) {
         if (element.type === 'image' && element.image) {
           const imageNode = new Konva.Image({
@@ -5892,7 +5779,6 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
             listening: false
           });
           clippingGroup.add(imageNode);
-          
         } else if (element.type === 'text') {
           const textNode = new Konva.Text({
             text: element.text || 'Text',
@@ -5913,45 +5799,385 @@ const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<st
           clippingGroup.add(textNode);
         }
       }
-      
-      // STEP 5: Add printable area boundary
-      const printableBorder = new Konva.Rect({
-        x: printableArea.x,
-        y: printableArea.y,
-        width: printableArea.width,
-        height: printableArea.height,
-        stroke: '#FF0000',
-        strokeWidth: 2,
-        dash: [6, 4],
-        listening: false
-      });
-      tempLayer.add(printableBorder);
     }
-    
-    // STEP 7: Force layer to draw
+
+    // ─── STEP 2: Calculate bounding box of ALL design elements ────────────
+    let designMinX = Infinity;
+    let designMinY = Infinity;
+    let designMaxX = -Infinity;
+    let designMaxY = -Infinity;
+
+    sortedElements.forEach(element => {
+      const w = element.width * (element.scaleX || 1);
+      const h = element.height * (element.scaleY || 1);
+      const cx = element.x + w / 2;
+      const cy = element.y + h / 2;
+      const rot = element.rotation || 0;
+
+      if (Math.abs(rot) > 0.1) {
+        const rad = (rot * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        [
+          { x: -w / 2, y: -h / 2 },
+          { x: w / 2,  y: -h / 2 },
+          { x: w / 2,  y:  h / 2 },
+          { x: -w / 2, y:  h / 2 },
+        ].forEach(corner => {
+          designMinX = Math.min(designMinX, cx + corner.x * cos - corner.y * sin);
+          designMaxX = Math.max(designMaxX, cx + corner.x * cos - corner.y * sin);
+          designMinY = Math.min(designMinY, cy + corner.x * sin + corner.y * cos);
+          designMaxY = Math.max(designMaxY, cy + corner.x * sin + corner.y * cos);
+        });
+      } else {
+        designMinX = Math.min(designMinX, element.x);
+        designMaxX = Math.max(designMaxX, element.x + w);
+        designMinY = Math.min(designMinY, element.y);
+        designMaxY = Math.max(designMaxY, element.y + h);
+      }
+    });
+
+    // Clamp bounding box to printable area
+    designMinX = Math.max(designMinX, printableArea.x);
+    designMinY = Math.max(designMinY, printableArea.y);
+    designMaxX = Math.min(designMaxX, printableArea.x + printableArea.width);
+    designMaxY = Math.min(designMaxY, printableArea.y + printableArea.height);
+
+    // ─── STEP 3: Calculate remaining space in INCHES ──────────────────────
+    // PPI (pixels per inch) based on printable area
+    const ppiX = printableArea.width / canvasConfig.realWorldWidth;
+    const ppiY = printableArea.height / canvasConfig.realWorldHeight;
+    const avgPPI = (ppiX + ppiY) / 2;
+
+    const remainingTop    = (designMinY - printableArea.y) / avgPPI;
+    const remainingBottom = (printableArea.y + printableArea.height - designMaxY) / avgPPI;
+    const remainingLeft   = (designMinX - printableArea.x) / avgPPI;
+    const remainingRight  = (printableArea.x + printableArea.width - designMaxX) / avgPPI;
+
+    const designW = designMaxX - designMinX;
+    const designH = designMaxY - designMinY;
+
+    // ─── STEP 4: Draw printable area boundary (red dashed) ────────────────
+    const printableBorder = new Konva.Rect({
+      x: printableArea.x,
+      y: printableArea.y,
+      width: printableArea.width,
+      height: printableArea.height,
+      stroke: '#FF0000',
+      strokeWidth: 2,
+      dash: [6, 4],
+      listening: false
+    });
+    tempLayer.add(printableBorder);
+
+    // ─── STEP 5: Draw thin blue border AROUND the design bounding box ─────
+    const PADDING = 4; // small visual padding around bounding box
+    const designBorder = new Konva.Rect({
+      x: designMinX - PADDING,
+      y: designMinY - PADDING,
+      width: designW + PADDING * 2,
+      height: designH + PADDING * 2,
+      stroke: '#1E90FF',
+      strokeWidth: 1.5,
+      dash: [4, 3],
+      listening: false
+    });
+    tempLayer.add(designBorder);
+
+    // ─── STEP 6: Helper to draw dimension arrows + labels ─────────────────
+    // ─── Determine arrow color based on t-shirt color luminance ───────────────
+    const hexToRgb = (hex: string) => {
+      const clean = hex.replace('#', '');
+      const full = clean.length === 3
+        ? clean.split('').map(c => c + c).join('')
+        : clean;
+      return {
+        r: parseInt(full.substring(0, 2), 16),
+        g: parseInt(full.substring(2, 4), 16),
+        b: parseInt(full.substring(4, 6), 16)
+      };
+    };
+    const { r, g, b } = hexToRgb(activeColor || '#ffffff');
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    const isLightShirt = luminance > 0.5;
+
+    const ARROW_COLOR = isLightShirt ? '#111111' : '#ffffff';
+    const LABEL_COLOR = '#ffffff';
+    const LABEL_BG    = '#1E90FF';
+    const FONT_SIZE    = Math.max(14, Math.round(canvasConfig.width / 50));
+    const ARROW_HEAD   = 8;  // arrowhead size px
+    const LINE_W       = 1.5;
+
+    /**
+     * Draw a horizontal double-arrow between (x1,y) and (x2,y)
+     * with a centred label above/below.
+     */
+    const drawHArrow = (x1: number, x2: number, y: number, label: string, above: boolean) => {
+      if (Math.abs(x2 - x1) < 2) return; // too small to draw
+
+      // Shaft
+      tempLayer.add(new Konva.Line({
+        points: [x1, y, x2, y],
+        stroke: ARROW_COLOR,
+        strokeWidth: LINE_W,
+        listening: false
+      }));
+
+      // Left arrowhead
+      tempLayer.add(new Konva.Line({
+        points: [x1, y, x1 + ARROW_HEAD, y - ARROW_HEAD / 2, x1 + ARROW_HEAD, y + ARROW_HEAD / 2],
+        closed: true,
+        fill: ARROW_COLOR,
+        stroke: ARROW_COLOR,
+        strokeWidth: 1,
+        listening: false
+      }));
+
+      // Right arrowhead
+      tempLayer.add(new Konva.Line({
+        points: [x2, y, x2 - ARROW_HEAD, y - ARROW_HEAD / 2, x2 - ARROW_HEAD, y + ARROW_HEAD / 2],
+        closed: true,
+        fill: ARROW_COLOR,
+        stroke: ARROW_COLOR,
+        strokeWidth: 1,
+        listening: false
+      }));
+
+      // Label background + text
+      const labelW = FONT_SIZE * label.length * 0.65 + 12;
+      const labelH = FONT_SIZE + 8;
+      const lx = (x1 + x2) / 2 - labelW / 2;
+      const ly = above ? y - labelH - 4 : y + 4;
+
+      tempLayer.add(new Konva.Rect({
+        x: lx, y: ly, width: labelW, height: labelH,
+        fill: LABEL_BG, cornerRadius: 3, listening: false
+      }));
+      tempLayer.add(new Konva.Text({
+        x: lx, y: ly + 2, width: labelW,
+        text: label, fontSize: FONT_SIZE,
+        fontFamily: 'Arial', fill: LABEL_COLOR,
+        align: 'center', listening: false
+      }));
+    };
+
+    /**
+     * Draw a vertical double-arrow between (x,y1) and (x,y2)
+     * with a centred label to the left/right.
+     */
+    const drawVArrow = (x: number, y1: number, y2: number, label: string, toLeft: boolean) => {
+      if (Math.abs(y2 - y1) < 2) return;
+
+      // Shaft
+      tempLayer.add(new Konva.Line({
+        points: [x, y1, x, y2],
+        stroke: ARROW_COLOR,
+        strokeWidth: LINE_W,
+        listening: false
+      }));
+
+      // Top arrowhead
+      tempLayer.add(new Konva.Line({
+        points: [x, y1, x - ARROW_HEAD / 2, y1 + ARROW_HEAD, x + ARROW_HEAD / 2, y1 + ARROW_HEAD],
+        closed: true,
+        fill: ARROW_COLOR,
+        stroke: ARROW_COLOR,
+        strokeWidth: 1,
+        listening: false
+      }));
+
+      // Bottom arrowhead
+      tempLayer.add(new Konva.Line({
+        points: [x, y2, x - ARROW_HEAD / 2, y2 - ARROW_HEAD, x + ARROW_HEAD / 2, y2 - ARROW_HEAD],
+        closed: true,
+        fill: ARROW_COLOR,
+        stroke: ARROW_COLOR,
+        strokeWidth: 1,
+        listening: false
+      }));
+
+      // Label background + text
+      const labelW = FONT_SIZE * label.length * 0.65 + 12;
+      const labelH = FONT_SIZE + 8;
+      const ly = (y1 + y2) / 2 - labelH / 2;
+      const lx = toLeft ? x - labelW - 6 : x + 6;
+
+      // Clamp so label stays inside canvas
+      const clampedLx = Math.max(4, Math.min(lx, canvasConfig.width - labelW - 4));
+
+      tempLayer.add(new Konva.Rect({
+        x: clampedLx, y: ly, width: labelW, height: labelH,
+        fill: LABEL_BG, cornerRadius: 3, listening: false
+      }));
+      tempLayer.add(new Konva.Text({
+        x: clampedLx, y: ly + 2, width: labelW,
+        text: label, fontSize: FONT_SIZE,
+        fontFamily: 'Arial', fill: LABEL_COLOR,
+        align: 'center', listening: false
+      }));
+    };
+
+    // ─── STEP 7: Reference tick lines at printable-area edges ─────────────
+    const TICK = 10; // tick length px
+    const midDesignX = (designMinX + designMaxX) / 2;
+    const midDesignY = (designMinY + designMaxY) / 2;
+
+    // Top tick (at top of printable area, above design centre)
+    if (remainingTop > 0.01) {
+      tempLayer.add(new Konva.Line({
+        points: [midDesignX - TICK, printableArea.y, midDesignX + TICK, printableArea.y],
+        stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
+      }));
+      drawVArrow(midDesignX, printableArea.y, designMinY - PADDING,
+        `${remainingTop.toFixed(2)}"`, false);
+    }
+
+    // Bottom tick
+    if (remainingBottom > 0.01) {
+      const paBottom = printableArea.y + printableArea.height;
+      tempLayer.add(new Konva.Line({
+        points: [midDesignX - TICK, paBottom, midDesignX + TICK, paBottom],
+        stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
+      }));
+      drawVArrow(midDesignX, designMaxY + PADDING, paBottom,
+        `${remainingBottom.toFixed(2)}"`, false);
+    }
+
+    // Left tick
+    // Left tick
+    if (remainingLeft > 0.01) {
+      tempLayer.add(new Konva.Line({
+        points: [printableArea.x, midDesignY - TICK, printableArea.x, midDesignY + TICK],
+        stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
+      }));
+      const leftLabel = `${remainingLeft.toFixed(2)}"`;
+      const leftLabelW = FONT_SIZE * leftLabel.length * 0.65 + 12;
+      const leftLabelH = FONT_SIZE + 8;
+      const leftArrowX1 = printableArea.x;
+      const leftArrowX2 = designMinX - PADDING;
+      const leftArrowSpan = leftArrowX2 - leftArrowX1;
+
+      if (leftArrowSpan >= 2) {
+        // Draw shaft
+        tempLayer.add(new Konva.Line({
+          points: [leftArrowX1, midDesignY, leftArrowX2, midDesignY],
+          stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
+        }));
+        // Arrowheads (only if space allows)
+        if (leftArrowSpan >= ARROW_HEAD * 2) {
+          tempLayer.add(new Konva.Line({
+            points: [leftArrowX1, midDesignY, leftArrowX1 + ARROW_HEAD, midDesignY - ARROW_HEAD / 2, leftArrowX1 + ARROW_HEAD, midDesignY + ARROW_HEAD / 2],
+            closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false
+          }));
+          tempLayer.add(new Konva.Line({
+            points: [leftArrowX2, midDesignY, leftArrowX2 - ARROW_HEAD, midDesignY - ARROW_HEAD / 2, leftArrowX2 - ARROW_HEAD, midDesignY + ARROW_HEAD / 2],
+            closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false
+          }));
+        }
+        // Label: if it fits inside the gap place it there, otherwise place it just outside to the left
+        const lx = (leftArrowX1 + leftArrowX2) / 2 - leftLabelW / 2;
+        const ly = midDesignY - leftLabelH - 4;
+        const finalLx = lx < 2 ? leftArrowX1 : lx; // push right if off-canvas
+        tempLayer.add(new Konva.Rect({
+          x: finalLx, y: ly, width: leftLabelW, height: leftLabelH,
+          fill: LABEL_BG, cornerRadius: 3, listening: false
+        }));
+        tempLayer.add(new Konva.Text({
+          x: finalLx, y: ly + 2, width: leftLabelW,
+          text: leftLabel, fontSize: FONT_SIZE,
+          fontFamily: 'Arial', fill: LABEL_COLOR,
+          align: 'center', listening: false
+        }));
+      }
+    }
+
+    // Right tick
+    // Right tick
+    if (remainingRight > 0.01) {
+      const paRight = printableArea.x + printableArea.width;
+      tempLayer.add(new Konva.Line({
+        points: [paRight, midDesignY - TICK, paRight, midDesignY + TICK],
+        stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
+      }));
+      const rightLabel = `${remainingRight.toFixed(2)}"`;
+      const rightLabelW = FONT_SIZE * rightLabel.length * 0.65 + 12;
+      const rightLabelH = FONT_SIZE + 8;
+      const rightArrowX1 = designMaxX + PADDING;
+      const rightArrowX2 = paRight;
+      const rightArrowSpan = rightArrowX2 - rightArrowX1;
+
+      if (rightArrowSpan >= 2) {
+        // Draw shaft
+        tempLayer.add(new Konva.Line({
+          points: [rightArrowX1, midDesignY, rightArrowX2, midDesignY],
+          stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
+        }));
+        // Arrowheads only if space allows
+        if (rightArrowSpan >= ARROW_HEAD * 2) {
+          tempLayer.add(new Konva.Line({
+            points: [rightArrowX1, midDesignY, rightArrowX1 + ARROW_HEAD, midDesignY - ARROW_HEAD / 2, rightArrowX1 + ARROW_HEAD, midDesignY + ARROW_HEAD / 2],
+            closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false
+          }));
+          tempLayer.add(new Konva.Line({
+            points: [rightArrowX2, midDesignY, rightArrowX2 - ARROW_HEAD, midDesignY - ARROW_HEAD / 2, rightArrowX2 - ARROW_HEAD, midDesignY + ARROW_HEAD / 2],
+            closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false
+          }));
+        }
+        // Label: center in gap if it fits, otherwise float above; clamp to canvas right edge
+        const lx = (rightArrowX1 + rightArrowX2) / 2 - rightLabelW / 2;
+        const ly = midDesignY - rightLabelH - 4;
+        const finalLx = Math.min(lx, canvasConfig.width - rightLabelW - 4);
+        tempLayer.add(new Konva.Rect({
+          x: finalLx, y: ly, width: rightLabelW, height: rightLabelH,
+          fill: LABEL_BG, cornerRadius: 3, listening: false
+        }));
+        tempLayer.add(new Konva.Text({
+          x: finalLx, y: ly + 2, width: rightLabelW,
+          text: rightLabel, fontSize: FONT_SIZE,
+          fontFamily: 'Arial', fill: LABEL_COLOR,
+          align: 'center', listening: false
+        }));
+      }
+    }
+
+    // ─── STEP 8: Draw design element size label ────────────────────────────
+    const designWidthInch  = designW / avgPPI;
+    const designHeightInch = designH / avgPPI;
+    const sizeLabel = `${designWidthInch.toFixed(2)}" × ${designHeightInch.toFixed(2)}"`;
+    const sizeLabelW = FONT_SIZE * sizeLabel.length * 0.62 + 14;
+    const sizeLabelH = FONT_SIZE + 8;
+    const sizeLabelX = Math.max(4, designMinX - PADDING);
+    const sizeLabelY = designMinY + PADDING + 4; // inside the design, just below its top edge
+
+    tempLayer.add(new Konva.Rect({
+      x: sizeLabelX, y: sizeLabelY,
+      width: sizeLabelW, height: sizeLabelH,
+      fill: '#e65100', cornerRadius: 3, listening: false
+    }));
+    tempLayer.add(new Konva.Text({
+      x: sizeLabelX, y: sizeLabelY + 2,
+      width: sizeLabelW, text: sizeLabel,
+      fontSize: FONT_SIZE, fontFamily: 'Arial',
+      fill: '#ffffff', align: 'center', listening: false
+    }));
+
+    // ─── STEP 9: Export ───────────────────────────────────────────────────
     tempLayer.draw();
-    
     await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // STEP 8: Export as high-quality PNG
+
     const dataURL = tempStage.toDataURL({
       mimeType: 'image/png',
       quality: 1.0,
       pixelRatio: 2
     });
-    
-    //console.log(`✅ Canvas capture complete for ${areaId} (${isAOPProduct ? 'AOP' : 'Regular'}) with ${sortedElements.length} elements`);
-    
-    // Cleanup
+
     tempStage.destroy();
-    
     return dataURL;
-    
+
   } catch (error) {
-    //console.error(`❌ Canvas capture error for area ${areaId}:`, error);
     return null;
   }
-}, [getCanvasConfig, getPrintableAreaFromPhoto, designElements, activeColor, canvasImages, getCustomizationAreaByName]);
+}, [getCanvasConfig, getPrintableAreaFromPhoto, designElements, activeColor, canvasImages, getCustomizationAreaByName, activeArea, activeSize]);
 
 
 const generateDetailedAreaAnalysis = useCallback((pricingData) => {
