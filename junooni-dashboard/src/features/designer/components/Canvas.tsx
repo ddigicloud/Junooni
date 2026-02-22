@@ -5591,588 +5591,433 @@ const updatePricingData = useCallback(() => {
 }, [calculateTotalPricing]);
 
 
-// Canvas Image Capture Functions
 const captureCanvasImageForArea = useCallback(async (areaId: string): Promise<string | null> => {
   try {
+    // ── Guard ──────────────────────────────────────────────────────────────
     const elements = designElements[areaId] || [];
-    const visibleElements = elements.filter(element => element.visible !== false);
-    
-    if (visibleElements.length === 0) {
-      return null;
-    }
-    
+    const visibleElements = elements.filter(el => el.visible !== false);
+    if (visibleElements.length === 0) return null;
+
     const sortedElements = [...visibleElements].sort(
       (a, b) => (a.zIndex || 0) - (b.zIndex || 0)
     );
-    
-    const canvasConfig = getCanvasConfig(areaId, activeColor);
-    const printableArea = getPrintableAreaFromPhoto(areaId, activeColor);
-    
-    const canvasImage = canvasImages[`${areaId}_${activeColor}`] || canvasImages[areaId];
-    
+
+    const canvasConfig   = getCanvasConfig(areaId, activeColor);
+    const printableArea  = getPrintableAreaFromPhoto(areaId, activeColor);
+    const canvasImage    = canvasImages[`${areaId}_${activeColor}`] || canvasImages[areaId];
+
     const isAOPProduct = (() => {
       try {
         const area = getCustomizationAreaByName(areaId);
         if (!area?.designCanvasPhotos?.length) return false;
-        return area.designCanvasPhotos.some((photo: any) => 
+        return area.designCanvasPhotos.some((photo: any) =>
           photo?.photoColor?.toLowerCase().includes('-aop')
         );
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     })();
-    
-    const tempStage = new Konva.Stage({
+
+    // ── Shared helper: add design elements to a clipping group ────────────
+    const addElementsToGroup = (group: Konva.Group) => {
+      for (const element of sortedElements) {
+        if (element.type === 'image' && element.image) {
+          group.add(new Konva.Image({
+            image:    element.image,
+            x:        element.x + element.width  / 2,
+            y:        element.y + element.height / 2,
+            offsetX:  element.width  / 2,
+            offsetY:  element.height / 2,
+            width:    element.width,
+            height:   element.height,
+            rotation: element.rotation  || 0,
+            scaleX:   element.scaleX    || 1,
+            scaleY:   element.scaleY    || 1,
+            opacity:  element.opacity   || 1,
+            listening: false,
+          }));
+        } else if (element.type === 'text') {
+          group.add(new Konva.Text({
+            text:       element.text || 'Text',
+            x:          element.x + element.width  / 2,
+            y:          element.y + (element.height || element.fontSize || 20) / 2,
+            offsetX:    element.width  / 2,
+            offsetY:    (element.height || element.fontSize || 20) / 2,
+            width:      element.width,
+            fontSize:   element.fontSize   || 20,
+            fontFamily: element.fontFamily || 'Arial',
+            fill:       element.fill       || '#000000',
+            rotation:   element.rotation   || 0,
+            scaleX:     element.scaleX     || 1,
+            scaleY:     element.scaleY     || 1,
+            opacity:    element.opacity    || 1,
+            listening: false,
+          }));
+        }
+      }
+    };
+
+    // ── Shared helper: build the base mockup layer (color + template + elements) ─
+    const buildMockupLayer = (layer: Konva.Layer) => {
+      // Transparent base
+      layer.add(new Konva.Rect({
+        x: 0, y: 0,
+        width:  canvasConfig.width,
+        height: canvasConfig.height,
+        fill: 'transparent',
+        listening: false,
+      }));
+
+      if (isAOPProduct) {
+        // AOP: color rect → design elements (clipped) → template on top
+        layer.add(new Konva.Rect({
+          x: 0, y: 0,
+          width: canvasConfig.width, height: canvasConfig.height,
+          fill: activeColor, listening: false,
+        }));
+
+        const group = new Konva.Group({
+          clipFunc: (ctx) => {
+            ctx.beginPath();
+            ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
+            ctx.closePath();
+          },
+        });
+        layer.add(group);
+        addElementsToGroup(group);
+
+        if (canvasImage) {
+          layer.add(new Konva.Image({
+            image: canvasImage,
+            x: 0, y: 0,
+            width: canvasConfig.width, height: canvasConfig.height,
+            listening: false,
+          }));
+        }
+      } else {
+        // Regular: color rect → template → texture overlay → design elements (clipped)
+        layer.add(new Konva.Rect({
+          x: 0, y: 0,
+          width: canvasConfig.width, height: canvasConfig.height,
+          fill: activeColor, listening: false,
+        }));
+
+        if (canvasImage) {
+          layer.add(new Konva.Image({
+            image: canvasImage,
+            x: 0, y: 0,
+            width: canvasConfig.width, height: canvasConfig.height,
+            listening: false,
+          }));
+          layer.add(new Konva.Image({
+            image: canvasImage,
+            x: 0, y: 0,
+            width: canvasConfig.width, height: canvasConfig.height,
+            opacity: 0.1,
+            globalCompositeOperation: 'multiply',
+            listening: false,
+          }));
+        }
+
+        const group = new Konva.Group({
+          clipFunc: (ctx) => {
+            ctx.beginPath();
+            ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
+            ctx.closePath();
+          },
+        });
+        layer.add(group);
+        addElementsToGroup(group);
+      }
+    };
+
+    // ════════════════════════════════════════════════════════════════════════
+    // PANEL A — CLEAN (left): mockup + orange printable-area border only
+    //           No arrows, no dimension labels, no blue design border.
+    // ════════════════════════════════════════════════════════════════════════
+    const stageClean = new Konva.Stage({
       container: document.createElement('div'),
-      width: canvasConfig.width,
+      width:  canvasConfig.width,
       height: canvasConfig.height,
-      pixelRatio: 2
+      pixelRatio: 2,
     });
-    
-    const tempLayer = new Konva.Layer();
-    tempStage.add(tempLayer);
-    
-    // ─── STEP 1: Background ───────────────────────────────────────────────
-    const backgroundRect = new Konva.Rect({
-      x: 0,
-      y: 0,
-      width: canvasConfig.width,
+    const layerClean = new Konva.Layer();
+    stageClean.add(layerClean);
+    buildMockupLayer(layerClean);
+
+    // Orange dashed printable-area border (manufacturer sees the print boundary)
+    layerClean.add(new Konva.Rect({
+      x:           printableArea.x,
+      y:           printableArea.y,
+      width:       printableArea.width,
+      height:      printableArea.height,
+      stroke:      '#e65100',   // orange — matches your brand colour
+      strokeWidth: 2,
+      dash:        [6, 4],
+      listening:   false,
+    }));
+
+    layerClean.draw();
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const cleanDataURL = stageClean.toDataURL({ mimeType: 'image/png', quality: 1.0, pixelRatio: 2 });
+    stageClean.destroy();
+
+    // ════════════════════════════════════════════════════════════════════════
+    // PANEL B — ANNOTATED (right): mockup + borders + arrows + size badge
+    // ════════════════════════════════════════════════════════════════════════
+    const stageAnnotated = new Konva.Stage({
+      container: document.createElement('div'),
+      width:  canvasConfig.width,
       height: canvasConfig.height,
-      fill: 'transparent',
-      listening: false
+      pixelRatio: 2,
     });
-    tempLayer.add(backgroundRect);
+    const layerAnnotated = new Konva.Layer();
+    stageAnnotated.add(layerAnnotated);
+    buildMockupLayer(layerAnnotated);
 
-    if (isAOPProduct) {
-      // AOP: color layer first
-      const colorRect = new Konva.Rect({
-        x: 0,
-        y: 0,
-        width: canvasConfig.width,
-        height: canvasConfig.height,
-        fill: activeColor,
-        listening: false
-      });
-      tempLayer.add(colorRect);
+    // ── Bounding box of ALL design elements ─────────────────────────────
+    let designMinX = Infinity,  designMinY = Infinity;
+    let designMaxX = -Infinity, designMaxY = -Infinity;
 
-      // AOP: design elements below template
-      const clippingGroup = new Konva.Group({
-        clipFunc: (ctx) => {
-          ctx.beginPath();
-          ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
-          ctx.closePath();
-        }
-      });
-      tempLayer.add(clippingGroup);
-
-      for (const element of sortedElements) {
-        if (element.type === 'image' && element.image) {
-          const imageNode = new Konva.Image({
-            image: element.image,
-            x: element.x + element.width / 2,
-            y: element.y + element.height / 2,
-            offsetX: element.width / 2,
-            offsetY: element.height / 2,
-            width: element.width,
-            height: element.height,
-            rotation: element.rotation || 0,
-            scaleX: element.scaleX || 1,
-            scaleY: element.scaleY || 1,
-            opacity: element.opacity || 1,
-            listening: false
-          });
-          clippingGroup.add(imageNode);
-        } else if (element.type === 'text') {
-          const textNode = new Konva.Text({
-            text: element.text || 'Text',
-            x: element.x + element.width / 2,
-            y: element.y + (element.height || element.fontSize || 20) / 2,
-            offsetX: element.width / 2,
-            offsetY: (element.height || element.fontSize || 20) / 2,
-            width: element.width,
-            fontSize: element.fontSize || 20,
-            fontFamily: element.fontFamily || 'Arial',
-            fill: element.fill || '#000000',
-            rotation: element.rotation || 0,
-            scaleX: element.scaleX || 1,
-            scaleY: element.scaleY || 1,
-            opacity: element.opacity || 1,
-            listening: false
-          });
-          clippingGroup.add(textNode);
-        }
-      }
-
-      // AOP: template on top
-      if (canvasImage) {
-        const canvasImageNode = new Konva.Image({
-          image: canvasImage,
-          x: 0,
-          y: 0,
-          width: canvasConfig.width,
-          height: canvasConfig.height,
-          listening: false
-        });
-        tempLayer.add(canvasImageNode);
-      }
-
-    } else {
-      // REGULAR: color + template first
-      const colorRect = new Konva.Rect({
-        x: 0,
-        y: 0,
-        width: canvasConfig.width,
-        height: canvasConfig.height,
-        fill: activeColor,
-        listening: false
-      });
-      tempLayer.add(colorRect);
-
-      if (canvasImage) {
-        const canvasImageNode = new Konva.Image({
-          image: canvasImage,
-          x: 0,
-          y: 0,
-          width: canvasConfig.width,
-          height: canvasConfig.height,
-          listening: false
-        });
-        tempLayer.add(canvasImageNode);
-
-        const textureOverlay = new Konva.Image({
-          image: canvasImage,
-          x: 0,
-          y: 0,
-          width: canvasConfig.width,
-          height: canvasConfig.height,
-          opacity: 0.1,
-          globalCompositeOperation: 'multiply',
-          listening: false
-        });
-        tempLayer.add(textureOverlay);
-      }
-
-      // REGULAR: design elements above template
-      const clippingGroup = new Konva.Group({
-        clipFunc: (ctx) => {
-          ctx.beginPath();
-          ctx.rect(printableArea.x, printableArea.y, printableArea.width, printableArea.height);
-          ctx.closePath();
-        }
-      });
-      tempLayer.add(clippingGroup);
-
-      for (const element of sortedElements) {
-        if (element.type === 'image' && element.image) {
-          const imageNode = new Konva.Image({
-            image: element.image,
-            x: element.x + element.width / 2,
-            y: element.y + element.height / 2,
-            offsetX: element.width / 2,
-            offsetY: element.height / 2,
-            width: element.width,
-            height: element.height,
-            rotation: element.rotation || 0,
-            scaleX: element.scaleX || 1,
-            scaleY: element.scaleY || 1,
-            opacity: element.opacity || 1,
-            listening: false
-          });
-          clippingGroup.add(imageNode);
-        } else if (element.type === 'text') {
-          const textNode = new Konva.Text({
-            text: element.text || 'Text',
-            x: element.x + element.width / 2,
-            y: element.y + (element.height || element.fontSize || 20) / 2,
-            offsetX: element.width / 2,
-            offsetY: (element.height || element.fontSize || 20) / 2,
-            width: element.width,
-            fontSize: element.fontSize || 20,
-            fontFamily: element.fontFamily || 'Arial',
-            fill: element.fill || '#000000',
-            rotation: element.rotation || 0,
-            scaleX: element.scaleX || 1,
-            scaleY: element.scaleY || 1,
-            opacity: element.opacity || 1,
-            listening: false
-          });
-          clippingGroup.add(textNode);
-        }
-      }
-    }
-
-    // ─── STEP 2: Calculate bounding box of ALL design elements ────────────
-    let designMinX = Infinity;
-    let designMinY = Infinity;
-    let designMaxX = -Infinity;
-    let designMaxY = -Infinity;
-
-    sortedElements.forEach(element => {
-      const w = element.width * (element.scaleX || 1);
-      const h = element.height * (element.scaleY || 1);
-      const cx = element.x + w / 2;
-      const cy = element.y + h / 2;
-      const rot = element.rotation || 0;
+    sortedElements.forEach(el => {
+      const w  = el.width  * (el.scaleX || 1);
+      const h  = el.height * (el.scaleY || 1);
+      const cx = el.x + w / 2;
+      const cy = el.y + h / 2;
+      const rot = el.rotation || 0;
 
       if (Math.abs(rot) > 0.1) {
         const rad = (rot * Math.PI) / 180;
-        const cos = Math.cos(rad);
-        const sin = Math.sin(rad);
+        const cos = Math.cos(rad), sin = Math.sin(rad);
         [
           { x: -w / 2, y: -h / 2 },
-          { x: w / 2,  y: -h / 2 },
-          { x: w / 2,  y:  h / 2 },
+          { x:  w / 2, y: -h / 2 },
+          { x:  w / 2, y:  h / 2 },
           { x: -w / 2, y:  h / 2 },
-        ].forEach(corner => {
-          designMinX = Math.min(designMinX, cx + corner.x * cos - corner.y * sin);
-          designMaxX = Math.max(designMaxX, cx + corner.x * cos - corner.y * sin);
-          designMinY = Math.min(designMinY, cy + corner.x * sin + corner.y * cos);
-          designMaxY = Math.max(designMaxY, cy + corner.x * sin + corner.y * cos);
+        ].forEach(c => {
+          const rx = cx + c.x * cos - c.y * sin;
+          const ry = cy + c.x * sin + c.y * cos;
+          designMinX = Math.min(designMinX, rx); designMaxX = Math.max(designMaxX, rx);
+          designMinY = Math.min(designMinY, ry); designMaxY = Math.max(designMaxY, ry);
         });
       } else {
-        designMinX = Math.min(designMinX, element.x);
-        designMaxX = Math.max(designMaxX, element.x + w);
-        designMinY = Math.min(designMinY, element.y);
-        designMaxY = Math.max(designMaxY, element.y + h);
+        designMinX = Math.min(designMinX, el.x);        designMaxX = Math.max(designMaxX, el.x + w);
+        designMinY = Math.min(designMinY, el.y);        designMaxY = Math.max(designMaxY, el.y + h);
       }
     });
 
-    // Clamp bounding box to printable area
+    // Clamp to printable area
     designMinX = Math.max(designMinX, printableArea.x);
     designMinY = Math.max(designMinY, printableArea.y);
     designMaxX = Math.min(designMaxX, printableArea.x + printableArea.width);
     designMaxY = Math.min(designMaxY, printableArea.y + printableArea.height);
 
-    // ─── STEP 3: Calculate remaining space in INCHES ──────────────────────
-    // PPI (pixels per inch) based on printable area
-    const ppiX = printableArea.width / canvasConfig.realWorldWidth;
-    const ppiY = printableArea.height / canvasConfig.realWorldHeight;
+    // ── PPI & remaining space ─────────────────────────────────────────────
+    const ppiX   = printableArea.width  / canvasConfig.realWorldWidth;
+    const ppiY   = printableArea.height / canvasConfig.realWorldHeight;
     const avgPPI = (ppiX + ppiY) / 2;
 
-    const remainingTop    = (designMinY - printableArea.y) / avgPPI;
-    const remainingBottom = (printableArea.y + printableArea.height - designMaxY) / avgPPI;
-    const remainingLeft   = (designMinX - printableArea.x) / avgPPI;
-    const remainingRight  = (printableArea.x + printableArea.width - designMaxX) / avgPPI;
+    const remainingTop    = (designMinY - printableArea.y)                          / avgPPI;
+    const remainingBottom = (printableArea.y + printableArea.height - designMaxY)   / avgPPI;
+    const remainingLeft   = (designMinX - printableArea.x)                          / avgPPI;
+    const remainingRight  = (printableArea.x + printableArea.width  - designMaxX)   / avgPPI;
 
     const designW = designMaxX - designMinX;
     const designH = designMaxY - designMinY;
 
-    // ─── STEP 4: Draw printable area boundary (red dashed) ────────────────
-    const printableBorder = new Konva.Rect({
-      x: printableArea.x,
-      y: printableArea.y,
-      width: printableArea.width,
-      height: printableArea.height,
-      stroke: '#FF0000',
-      strokeWidth: 2,
-      dash: [6, 4],
-      listening: false
-    });
-    tempLayer.add(printableBorder);
-
-    // ─── STEP 5: Draw thin blue border AROUND the design bounding box ─────
-    const PADDING = 4; // small visual padding around bounding box
-    const designBorder = new Konva.Rect({
-      x: designMinX - PADDING,
-      y: designMinY - PADDING,
-      width: designW + PADDING * 2,
-      height: designH + PADDING * 2,
-      stroke: '#1E90FF',
-      strokeWidth: 1.5,
-      dash: [4, 3],
-      listening: false
-    });
-    tempLayer.add(designBorder);
-
-    // ─── STEP 6: Helper to draw dimension arrows + labels ─────────────────
-    // ─── Determine arrow color based on t-shirt color luminance ───────────────
+    // ── Arrow / label style ───────────────────────────────────────────────
     const hexToRgb = (hex: string) => {
       const clean = hex.replace('#', '');
-      const full = clean.length === 3
-        ? clean.split('').map(c => c + c).join('')
-        : clean;
+      const full  = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
       return {
         r: parseInt(full.substring(0, 2), 16),
         g: parseInt(full.substring(2, 4), 16),
-        b: parseInt(full.substring(4, 6), 16)
+        b: parseInt(full.substring(4, 6), 16),
       };
     };
     const { r, g, b } = hexToRgb(activeColor || '#ffffff');
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    const luminance    = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     const isLightShirt = luminance > 0.5;
 
     const ARROW_COLOR = isLightShirt ? '#111111' : '#ffffff';
     const LABEL_COLOR = '#ffffff';
     const LABEL_BG    = '#1E90FF';
-    const FONT_SIZE    = Math.max(14, Math.round(canvasConfig.width / 50));
-    const ARROW_HEAD   = 8;  // arrowhead size px
-    const LINE_W       = 1.5;
+    const FONT_SIZE   = Math.max(14, Math.round(canvasConfig.width / 50));
+    const ARROW_HEAD  = 8;
+    const LINE_W      = 1.5;
+    const PADDING     = 4;
 
-    /**
-     * Draw a horizontal double-arrow between (x1,y) and (x2,y)
-     * with a centred label above/below.
-     */
+    // ── Helpers ───────────────────────────────────────────────────────────
+    const addLabel = (lx: number, ly: number, labelW: number, labelH: number, text: string, bgColor = LABEL_BG) => {
+      layerAnnotated.add(new Konva.Rect({ x: lx, y: ly, width: labelW, height: labelH, fill: bgColor, cornerRadius: 3, listening: false }));
+      layerAnnotated.add(new Konva.Text({ x: lx, y: ly + 2, width: labelW, text, fontSize: FONT_SIZE, fontFamily: 'Arial', fill: LABEL_COLOR, align: 'center', listening: false }));
+    };
+
     const drawHArrow = (x1: number, x2: number, y: number, label: string, above: boolean) => {
-      if (Math.abs(x2 - x1) < 2) return; // too small to draw
-
-      // Shaft
-      tempLayer.add(new Konva.Line({
-        points: [x1, y, x2, y],
-        stroke: ARROW_COLOR,
-        strokeWidth: LINE_W,
-        listening: false
-      }));
-
-      // Left arrowhead
-      tempLayer.add(new Konva.Line({
-        points: [x1, y, x1 + ARROW_HEAD, y - ARROW_HEAD / 2, x1 + ARROW_HEAD, y + ARROW_HEAD / 2],
-        closed: true,
-        fill: ARROW_COLOR,
-        stroke: ARROW_COLOR,
-        strokeWidth: 1,
-        listening: false
-      }));
-
-      // Right arrowhead
-      tempLayer.add(new Konva.Line({
-        points: [x2, y, x2 - ARROW_HEAD, y - ARROW_HEAD / 2, x2 - ARROW_HEAD, y + ARROW_HEAD / 2],
-        closed: true,
-        fill: ARROW_COLOR,
-        stroke: ARROW_COLOR,
-        strokeWidth: 1,
-        listening: false
-      }));
-
-      // Label background + text
+      if (Math.abs(x2 - x1) < 2) return;
+      layerAnnotated.add(new Konva.Line({ points: [x1, y, x2, y], stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [x1, y, x1 + ARROW_HEAD, y - ARROW_HEAD / 2, x1 + ARROW_HEAD, y + ARROW_HEAD / 2], closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [x2, y, x2 - ARROW_HEAD, y - ARROW_HEAD / 2, x2 - ARROW_HEAD, y + ARROW_HEAD / 2], closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false }));
       const labelW = FONT_SIZE * label.length * 0.65 + 12;
       const labelH = FONT_SIZE + 8;
       const lx = (x1 + x2) / 2 - labelW / 2;
       const ly = above ? y - labelH - 4 : y + 4;
-
-      tempLayer.add(new Konva.Rect({
-        x: lx, y: ly, width: labelW, height: labelH,
-        fill: LABEL_BG, cornerRadius: 3, listening: false
-      }));
-      tempLayer.add(new Konva.Text({
-        x: lx, y: ly + 2, width: labelW,
-        text: label, fontSize: FONT_SIZE,
-        fontFamily: 'Arial', fill: LABEL_COLOR,
-        align: 'center', listening: false
-      }));
+      addLabel(lx, ly, labelW, labelH, label);
     };
 
-    /**
-     * Draw a vertical double-arrow between (x,y1) and (x,y2)
-     * with a centred label to the left/right.
-     */
     const drawVArrow = (x: number, y1: number, y2: number, label: string, toLeft: boolean) => {
       if (Math.abs(y2 - y1) < 2) return;
-
-      // Shaft
-      tempLayer.add(new Konva.Line({
-        points: [x, y1, x, y2],
-        stroke: ARROW_COLOR,
-        strokeWidth: LINE_W,
-        listening: false
-      }));
-
-      // Top arrowhead
-      tempLayer.add(new Konva.Line({
-        points: [x, y1, x - ARROW_HEAD / 2, y1 + ARROW_HEAD, x + ARROW_HEAD / 2, y1 + ARROW_HEAD],
-        closed: true,
-        fill: ARROW_COLOR,
-        stroke: ARROW_COLOR,
-        strokeWidth: 1,
-        listening: false
-      }));
-
-      // Bottom arrowhead
-      tempLayer.add(new Konva.Line({
-        points: [x, y2, x - ARROW_HEAD / 2, y2 - ARROW_HEAD, x + ARROW_HEAD / 2, y2 - ARROW_HEAD],
-        closed: true,
-        fill: ARROW_COLOR,
-        stroke: ARROW_COLOR,
-        strokeWidth: 1,
-        listening: false
-      }));
-
-      // Label background + text
-      const labelW = FONT_SIZE * label.length * 0.65 + 12;
-      const labelH = FONT_SIZE + 8;
-      const ly = (y1 + y2) / 2 - labelH / 2;
-      const lx = toLeft ? x - labelW - 6 : x + 6;
-
-      // Clamp so label stays inside canvas
+      layerAnnotated.add(new Konva.Line({ points: [x, y1, x, y2], stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [x, y1, x - ARROW_HEAD / 2, y1 + ARROW_HEAD, x + ARROW_HEAD / 2, y1 + ARROW_HEAD], closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false }));
+      layerAnnotated.add(new Konva.Line({ points: [x, y2, x - ARROW_HEAD / 2, y2 - ARROW_HEAD, x + ARROW_HEAD / 2, y2 - ARROW_HEAD], closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false }));
+      const labelW    = FONT_SIZE * label.length * 0.65 + 12;
+      const labelH    = FONT_SIZE + 8;
+      const ly        = (y1 + y2) / 2 - labelH / 2;
+      const lx        = toLeft ? x - labelW - 6 : x + 6;
       const clampedLx = Math.max(4, Math.min(lx, canvasConfig.width - labelW - 4));
-
-      tempLayer.add(new Konva.Rect({
-        x: clampedLx, y: ly, width: labelW, height: labelH,
-        fill: LABEL_BG, cornerRadius: 3, listening: false
-      }));
-      tempLayer.add(new Konva.Text({
-        x: clampedLx, y: ly + 2, width: labelW,
-        text: label, fontSize: FONT_SIZE,
-        fontFamily: 'Arial', fill: LABEL_COLOR,
-        align: 'center', listening: false
-      }));
+      addLabel(clampedLx, ly, labelW, labelH, label);
     };
 
-    // ─── STEP 7: Reference tick lines at printable-area edges ─────────────
-    const TICK = 10; // tick length px
+    // ── Red printable-area border ─────────────────────────────────────────
+    layerAnnotated.add(new Konva.Rect({
+      x: printableArea.x, y: printableArea.y,
+      width: printableArea.width, height: printableArea.height,
+      stroke: '#FF0000', strokeWidth: 2, dash: [6, 4], listening: false,
+    }));
+
+    // ── Blue design bounding-box border ───────────────────────────────────
+    layerAnnotated.add(new Konva.Rect({
+      x: designMinX - PADDING, y: designMinY - PADDING,
+      width: designW + PADDING * 2, height: designH + PADDING * 2,
+      stroke: '#1E90FF', strokeWidth: 1.5, dash: [4, 3], listening: false,
+    }));
+
+    // ── Remaining-space tick + arrow (Top) ────────────────────────────────
     const midDesignX = (designMinX + designMaxX) / 2;
     const midDesignY = (designMinY + designMaxY) / 2;
+    const TICK = 10;
 
-    // Top tick (at top of printable area, above design centre)
     if (remainingTop > 0.01) {
-      tempLayer.add(new Konva.Line({
-        points: [midDesignX - TICK, printableArea.y, midDesignX + TICK, printableArea.y],
-        stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
-      }));
-      drawVArrow(midDesignX, printableArea.y, designMinY - PADDING,
-        `${remainingTop.toFixed(2)}"`, false);
+      layerAnnotated.add(new Konva.Line({ points: [midDesignX - TICK, printableArea.y, midDesignX + TICK, printableArea.y], stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false }));
+      drawVArrow(midDesignX, printableArea.y, designMinY - PADDING, `${remainingTop.toFixed(2)}"`, false);
     }
 
-    // Bottom tick
+    // ── Bottom ────────────────────────────────────────────────────────────
     if (remainingBottom > 0.01) {
       const paBottom = printableArea.y + printableArea.height;
-      tempLayer.add(new Konva.Line({
-        points: [midDesignX - TICK, paBottom, midDesignX + TICK, paBottom],
-        stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
-      }));
-      drawVArrow(midDesignX, designMaxY + PADDING, paBottom,
-        `${remainingBottom.toFixed(2)}"`, false);
+      layerAnnotated.add(new Konva.Line({ points: [midDesignX - TICK, paBottom, midDesignX + TICK, paBottom], stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false }));
+      drawVArrow(midDesignX, designMaxY + PADDING, paBottom, `${remainingBottom.toFixed(2)}"`, false);
     }
 
-    // Left tick
-    // Left tick
+    // ── Left ──────────────────────────────────────────────────────────────
     if (remainingLeft > 0.01) {
-      tempLayer.add(new Konva.Line({
-        points: [printableArea.x, midDesignY - TICK, printableArea.x, midDesignY + TICK],
-        stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
-      }));
-      const leftLabel = `${remainingLeft.toFixed(2)}"`;
+      layerAnnotated.add(new Konva.Line({ points: [printableArea.x, midDesignY - TICK, printableArea.x, midDesignY + TICK], stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false }));
+      const leftLabel  = `${remainingLeft.toFixed(2)}"`;
       const leftLabelW = FONT_SIZE * leftLabel.length * 0.65 + 12;
       const leftLabelH = FONT_SIZE + 8;
-      const leftArrowX1 = printableArea.x;
-      const leftArrowX2 = designMinX - PADDING;
-      const leftArrowSpan = leftArrowX2 - leftArrowX1;
-
-      if (leftArrowSpan >= 2) {
-        // Draw shaft
-        tempLayer.add(new Konva.Line({
-          points: [leftArrowX1, midDesignY, leftArrowX2, midDesignY],
-          stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
-        }));
-        // Arrowheads (only if space allows)
-        if (leftArrowSpan >= ARROW_HEAD * 2) {
-          tempLayer.add(new Konva.Line({
-            points: [leftArrowX1, midDesignY, leftArrowX1 + ARROW_HEAD, midDesignY - ARROW_HEAD / 2, leftArrowX1 + ARROW_HEAD, midDesignY + ARROW_HEAD / 2],
-            closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false
-          }));
-          tempLayer.add(new Konva.Line({
-            points: [leftArrowX2, midDesignY, leftArrowX2 - ARROW_HEAD, midDesignY - ARROW_HEAD / 2, leftArrowX2 - ARROW_HEAD, midDesignY + ARROW_HEAD / 2],
-            closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false
-          }));
+      const ax1 = printableArea.x;
+      const ax2 = designMinX - PADDING;
+      const span = ax2 - ax1;
+      if (span >= 2) {
+        layerAnnotated.add(new Konva.Line({ points: [ax1, midDesignY, ax2, midDesignY], stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false }));
+        if (span >= ARROW_HEAD * 2) {
+          layerAnnotated.add(new Konva.Line({ points: [ax1, midDesignY, ax1 + ARROW_HEAD, midDesignY - ARROW_HEAD / 2, ax1 + ARROW_HEAD, midDesignY + ARROW_HEAD / 2], closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false }));
+          layerAnnotated.add(new Konva.Line({ points: [ax2, midDesignY, ax2 - ARROW_HEAD, midDesignY - ARROW_HEAD / 2, ax2 - ARROW_HEAD, midDesignY + ARROW_HEAD / 2], closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false }));
         }
-        // Label: if it fits inside the gap place it there, otherwise place it just outside to the left
-        const lx = (leftArrowX1 + leftArrowX2) / 2 - leftLabelW / 2;
+        const lx = (ax1 + ax2) / 2 - leftLabelW / 2;
         const ly = midDesignY - leftLabelH - 4;
-        const finalLx = lx < 2 ? leftArrowX1 : lx; // push right if off-canvas
-        tempLayer.add(new Konva.Rect({
-          x: finalLx, y: ly, width: leftLabelW, height: leftLabelH,
-          fill: LABEL_BG, cornerRadius: 3, listening: false
-        }));
-        tempLayer.add(new Konva.Text({
-          x: finalLx, y: ly + 2, width: leftLabelW,
-          text: leftLabel, fontSize: FONT_SIZE,
-          fontFamily: 'Arial', fill: LABEL_COLOR,
-          align: 'center', listening: false
-        }));
+        addLabel(Math.max(2, lx), ly, leftLabelW, leftLabelH, leftLabel);
       }
     }
 
-    // Right tick
-    // Right tick
+    // ── Right ─────────────────────────────────────────────────────────────
     if (remainingRight > 0.01) {
       const paRight = printableArea.x + printableArea.width;
-      tempLayer.add(new Konva.Line({
-        points: [paRight, midDesignY - TICK, paRight, midDesignY + TICK],
-        stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
-      }));
-      const rightLabel = `${remainingRight.toFixed(2)}"`;
+      layerAnnotated.add(new Konva.Line({ points: [paRight, midDesignY - TICK, paRight, midDesignY + TICK], stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false }));
+      const rightLabel  = `${remainingRight.toFixed(2)}"`;
       const rightLabelW = FONT_SIZE * rightLabel.length * 0.65 + 12;
       const rightLabelH = FONT_SIZE + 8;
-      const rightArrowX1 = designMaxX + PADDING;
-      const rightArrowX2 = paRight;
-      const rightArrowSpan = rightArrowX2 - rightArrowX1;
-
-      if (rightArrowSpan >= 2) {
-        // Draw shaft
-        tempLayer.add(new Konva.Line({
-          points: [rightArrowX1, midDesignY, rightArrowX2, midDesignY],
-          stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false
-        }));
-        // Arrowheads only if space allows
-        if (rightArrowSpan >= ARROW_HEAD * 2) {
-          tempLayer.add(new Konva.Line({
-            points: [rightArrowX1, midDesignY, rightArrowX1 + ARROW_HEAD, midDesignY - ARROW_HEAD / 2, rightArrowX1 + ARROW_HEAD, midDesignY + ARROW_HEAD / 2],
-            closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false
-          }));
-          tempLayer.add(new Konva.Line({
-            points: [rightArrowX2, midDesignY, rightArrowX2 - ARROW_HEAD, midDesignY - ARROW_HEAD / 2, rightArrowX2 - ARROW_HEAD, midDesignY + ARROW_HEAD / 2],
-            closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false
-          }));
+      const ax1 = designMaxX + PADDING;
+      const ax2 = paRight;
+      const span = ax2 - ax1;
+      if (span >= 2) {
+        layerAnnotated.add(new Konva.Line({ points: [ax1, midDesignY, ax2, midDesignY], stroke: ARROW_COLOR, strokeWidth: LINE_W, listening: false }));
+        if (span >= ARROW_HEAD * 2) {
+          layerAnnotated.add(new Konva.Line({ points: [ax1, midDesignY, ax1 + ARROW_HEAD, midDesignY - ARROW_HEAD / 2, ax1 + ARROW_HEAD, midDesignY + ARROW_HEAD / 2], closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false }));
+          layerAnnotated.add(new Konva.Line({ points: [ax2, midDesignY, ax2 - ARROW_HEAD, midDesignY - ARROW_HEAD / 2, ax2 - ARROW_HEAD, midDesignY + ARROW_HEAD / 2], closed: true, fill: ARROW_COLOR, stroke: ARROW_COLOR, strokeWidth: 1, listening: false }));
         }
-        // Label: center in gap if it fits, otherwise float above; clamp to canvas right edge
-        const lx = (rightArrowX1 + rightArrowX2) / 2 - rightLabelW / 2;
+        const lx = (ax1 + ax2) / 2 - rightLabelW / 2;
         const ly = midDesignY - rightLabelH - 4;
-        const finalLx = Math.min(lx, canvasConfig.width - rightLabelW - 4);
-        tempLayer.add(new Konva.Rect({
-          x: finalLx, y: ly, width: rightLabelW, height: rightLabelH,
-          fill: LABEL_BG, cornerRadius: 3, listening: false
-        }));
-        tempLayer.add(new Konva.Text({
-          x: finalLx, y: ly + 2, width: rightLabelW,
-          text: rightLabel, fontSize: FONT_SIZE,
-          fontFamily: 'Arial', fill: LABEL_COLOR,
-          align: 'center', listening: false
-        }));
+        addLabel(Math.min(lx, canvasConfig.width - rightLabelW - 4), ly, rightLabelW, rightLabelH, rightLabel);
       }
     }
 
-    // ─── STEP 8: Draw design element size label ────────────────────────────
+    // ── Orange design-size badge ──────────────────────────────────────────
     const designWidthInch  = designW / avgPPI;
     const designHeightInch = designH / avgPPI;
-    const sizeLabel = `${designWidthInch.toFixed(2)}" × ${designHeightInch.toFixed(2)}"`;
+    const sizeLabel  = `${designWidthInch.toFixed(2)}" × ${designHeightInch.toFixed(2)}"`;
     const sizeLabelW = FONT_SIZE * sizeLabel.length * 0.62 + 14;
     const sizeLabelH = FONT_SIZE + 8;
     const sizeLabelX = Math.max(4, designMinX - PADDING);
-    const sizeLabelY = designMinY + PADDING + 4; // inside the design, just below its top edge
+    const sizeLabelY = designMinY + PADDING + 4;
+    addLabel(sizeLabelX, sizeLabelY, sizeLabelW, sizeLabelH, sizeLabel, '#e65100');
 
-    tempLayer.add(new Konva.Rect({
-      x: sizeLabelX, y: sizeLabelY,
-      width: sizeLabelW, height: sizeLabelH,
-      fill: '#e65100', cornerRadius: 3, listening: false
-    }));
-    tempLayer.add(new Konva.Text({
-      x: sizeLabelX, y: sizeLabelY + 2,
-      width: sizeLabelW, text: sizeLabel,
-      fontSize: FONT_SIZE, fontFamily: 'Arial',
-      fill: '#ffffff', align: 'center', listening: false
-    }));
-
-    // ─── STEP 9: Export ───────────────────────────────────────────────────
-    tempLayer.draw();
+    // ── Export annotated ─────────────────────────────────────────────────
+    layerAnnotated.draw();
     await new Promise(resolve => setTimeout(resolve, 100));
+    const annotatedDataURL = stageAnnotated.toDataURL({ mimeType: 'image/png', quality: 1.0, pixelRatio: 2 });
+    stageAnnotated.destroy();
 
-    const dataURL = tempStage.toDataURL({
-      mimeType: 'image/png',
-      quality: 1.0,
-      pixelRatio: 2
-    });
+    // ════════════════════════════════════════════════════════════════════════
+    // COMPOSITE: place CLEAN on the LEFT, ANNOTATED on the RIGHT
+    // Each panel is (canvasConfig.width * 2) px wide because pixelRatio=2
+    // ════════════════════════════════════════════════════════════════════════
+    const panelW   = canvasConfig.width  * 2; // Konva exports at 2× due to pixelRatio
+    const panelH   = canvasConfig.height * 2;
+    const DIVIDER  = 2;                        // divider line thickness px
+    const GAP      = 24;                       // padding around divider
+    const HEADER_H = 36;                       // label strip height (px in output canvas)
+    const TOTAL_W  = panelW * 2 + GAP * 2 + DIVIDER;
+    const TOTAL_H  = panelH + HEADER_H;
 
-    tempStage.destroy();
-    return dataURL;
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = TOTAL_W;
+    offscreen.height = TOTAL_H;
+    const ctx = offscreen.getContext('2d')!;
+
+    // White background
+    ctx.fillStyle = '#f8f8f8';
+    ctx.fillRect(0, 0, TOTAL_W, TOTAL_H);
+
+    // Header bar
+    ctx.fillStyle = '#222222';
+    ctx.fillRect(0, 0, TOTAL_W, HEADER_H);
+
+    // Left header label
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${Math.round(HEADER_H * 0.48)}px Arial`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('For Manufacturer  (Clean)', panelW / 2, HEADER_H / 2);
+
+    // Right header label
+    ctx.fillText('Internal Reference  (With Dimensions)', panelW + GAP * 2 + DIVIDER + panelW / 2, HEADER_H / 2);
+
+    // Vertical divider
+    ctx.fillStyle = '#888888';
+    ctx.fillRect(panelW + GAP, 0, DIVIDER, TOTAL_H);
+
+    // Load & draw images (both are 2× because pixelRatio=2 in Konva export)
+    const loadImg = (src: string): Promise<HTMLImageElement> =>
+      new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+
+    const [cleanImg, annotatedImg] = await Promise.all([loadImg(cleanDataURL), loadImg(annotatedDataURL)]);
+
+    // Left panel
+    ctx.drawImage(cleanImg,     0,                        HEADER_H, panelW, panelH);
+    // Right panel
+    ctx.drawImage(annotatedImg, panelW + GAP * 2 + DIVIDER, HEADER_H, panelW, panelH);
+
+    return offscreen.toDataURL('image/png');
 
   } catch (error) {
     return null;
@@ -10838,7 +10683,7 @@ useEffect(() => {
     uploadedFiles.forEach(file => {
       try {
         URL.revokeObjectURL(file.url);
-        console.log(`🗑️ Cleaned up blob URL for ${file.name}`);
+        //console.log(`🗑️ Cleaned up blob URL for ${file.name}`);
       } catch (error) {
         // Ignore errors during cleanup
       }
