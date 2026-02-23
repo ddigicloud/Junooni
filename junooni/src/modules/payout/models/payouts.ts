@@ -26,7 +26,7 @@ const Payout = model.define("payout", {
   
   // Statistics
   total_orders: model.number().default(0),
-  avg_order_value: model.number().default(0),
+  avg_order_value: model.bigNumber().default(0),
   
   // Payout settings
   minimum_payout_amount: model.number().default(1000), 

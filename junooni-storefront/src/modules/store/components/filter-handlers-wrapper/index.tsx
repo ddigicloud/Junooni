@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState,  useTransition } from "react"
 import PaginatedProductsDisplay from "@modules/store/components/paginated-products-display"
 import { X } from "lucide-react"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
@@ -81,6 +81,7 @@ export default function FilterHandlersWrapper({
   const [currentCategories, setCurrentCategories] = useState<string[]>(initialCategories)
   const [currentMinPrice, setCurrentMinPrice] = useState<number | undefined>(initialMinPrice)
   const [currentMaxPrice, setCurrentMaxPrice] = useState<number | undefined>(initialMaxPrice)
+  const [isPending, startTransition] = useTransition()
 
   // Update state when URL params change
   useEffect(() => {
@@ -341,23 +342,28 @@ export default function FilterHandlersWrapper({
   )
 
   // ✅ Set query params helper with page reset
-  const setQueryParamsWithPageReset = useCallback((name: string, value: string, resetPage = true) => {
-    const query = createQueryStringWithPageReset(name, value, resetPage)
+ const setQueryParamsWithPageReset = useCallback((name: string, value: string, resetPage = true) => {
+  const query = createQueryStringWithPageReset(name, value, resetPage)
+  startTransition(() => {
     router.push(`${pathname}?${query}`, { scroll: false })
-  }, [createQueryStringWithPageReset, router, pathname])
+  })
+}, [createQueryStringWithPageReset, router, pathname])
 
   
-    const setQueryParamsForPrice = useCallback((name: string, value: string) => {
-    const query = createQueryStringWithPageReset(name, value, true) // Reset page on price change
+   const setQueryParamsForPrice = useCallback((name: string, value: string) => {
+  const query = createQueryStringWithPageReset(name, value, true)
+  startTransition(() => {
     router.push(`${pathname}?${query}`, { scroll: false })
-  }, [createQueryStringWithPageReset, router, pathname])
+  })
+}, [createQueryStringWithPageReset, router, pathname])
 
   // Set query params helper (existing - for non-filter changes)
   const setQueryParams = useCallback((name: string, value: string) => {
-    const query = createQueryString(name, value)
+  const query = createQueryString(name, value)
+  startTransition(() => {
     router.push(`${pathname}?${query}`, { scroll: false })
-  }, [createQueryString, router, pathname])
-
+  })
+}, [createQueryString, router, pathname])
   // ✅ Handler functions with page reset for professional UX
   const handleRemoveVendor = useCallback((vendorToRemove: string) => {
     //console.log(`🗑️ Removing vendor handle: "${vendorToRemove}"`)
@@ -398,10 +404,10 @@ export default function FilterHandlersWrapper({
 
   // ✅ Clear all filters and go to page 1
   const handleClearAllFilters = useCallback(() => {
-    //console.log('🔄 PROFESSIONAL UX: Clearing all filters and going to page 1')
-    // Navigate to clean URL with only page=1
+  startTransition(() => {
     router.push(`${pathname}?page=1`, { scroll: false })
-  }, [router, pathname])
+  })
+}, [router, pathname])
 
   // Check for active filters using current state
   const hasActiveFilters = (currentVendors && currentVendors.length > 0) || 
@@ -545,14 +551,26 @@ export default function FilterHandlersWrapper({
       )}
 
       {/* ✅ Products Display - Pass selected colors for image selection */}
-      <PaginatedProductsDisplay
-        products={products}
-        totalCount={totalCount}
-        currentPage={page}
-        totalPages={totalPages}
-        region={region}
-        selectedColors={colorsForImageSelection} // ✅ CRITICAL: Pass selected colors for ProductPreview
-      />
+     <div className="relative">
+        {isPending && (
+          <div className="absolute inset-0 z-10 flex items-start justify-center pt-20 rounded-lg bg-white/60">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-2 border-[#e65100] border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-gray-500">Loading products...</span>
+            </div>
+          </div>
+        )}
+        <div className={`transition-opacity duration-200 ${isPending ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
+          <PaginatedProductsDisplay
+            products={products}
+            totalCount={totalCount}
+            currentPage={page}
+            totalPages={totalPages}
+            region={region}
+            selectedColors={colorsForImageSelection}
+          />
+        </div>
+      </div>
     </div>
   )
 }

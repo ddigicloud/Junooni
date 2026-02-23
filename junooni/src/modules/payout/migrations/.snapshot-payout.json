@@ -148,13 +148,13 @@
         },
         "avg_order_value": {
           "name": "avg_order_value",
-          "type": "integer",
+          "type": "numeric",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "default": "0",
-          "mappedType": "integer"
+          "mappedType": "decimal"
         },
         "minimum_payout_amount": {
           "name": "minimum_payout_amount",
@@ -173,7 +173,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "default": "'weekly'",
+          "default": "'biweekly'",
           "enumItems": [
             "weekly",
             "biweekly",
@@ -311,6 +311,15 @@
           "autoincrement": false,
           "primary": false,
           "nullable": true,
+          "mappedType": "json"
+        },
+        "raw_avg_order_value": {
+          "name": "raw_avg_order_value",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
           "mappedType": "json"
         },
         "created_at": {

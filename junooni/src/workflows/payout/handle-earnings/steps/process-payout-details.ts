@@ -183,13 +183,18 @@ console.log('🎯 FINAL fulfillment type:', fulfillmentType)
     for (const [vendorId, totalEarnings] of vendorBalanceUpdates.entries()) {
       const vendorPayout = await payoutModuleService.getVendorPayout(vendorId)
       if (vendorPayout) {
+        const newTotalEarned = Number((vendorPayout.total_earned + totalEarnings).toFixed(2))
+        const newCurrentBalance = Number((vendorPayout.current_balance + totalEarnings).toFixed(2))
+        const newTotalOrders = vendorPayout.total_orders + 1
+        const newAvgOrderValue = Number((newTotalEarned / newTotalOrders).toFixed(2))
+
         await payoutModuleService.updatePayouts({
           id: vendorPayout.id,
-          current_balance: vendorPayout.current_balance + totalEarnings,
-          total_earned: vendorPayout.total_earned + totalEarnings,
-          total_orders: vendorPayout.total_orders + 1,
+          current_balance: newCurrentBalance,
+          total_earned: newTotalEarned,
+          total_orders: newTotalOrders,
           last_earning_at: new Date(),
-          avg_order_value: (vendorPayout.total_earned + totalEarnings) / (vendorPayout.total_orders + 1),
+          avg_order_value: newAvgOrderValue,
         })
         console.log(`Updated balance for vendor ${vendorId}: +${totalEarnings}`)
       }

@@ -20,7 +20,7 @@ export class Migration20251208113627 extends Migration {
     this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_payout_details_payout_id" ON "payout_details" (payout_id) WHERE deleted_at IS NULL;`);
     this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_payout_details_deleted_at" ON "payout_details" (deleted_at) WHERE deleted_at IS NULL;`);
 
-    this.addSql(`alter table if exists "payout_details" add constraint "payout_details_payout_id_foreign" foreign key ("payout_id") references "payout" ("id") on update cascade;`);
+    this.addSql(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payout_details_payout_id_foreign') THEN ALTER TABLE "payout_details" ADD CONSTRAINT "payout_details_payout_id_foreign" FOREIGN KEY ("payout_id") REFERENCES "payout" ("id") ON UPDATE CASCADE; END IF; END $$;`);
   }
 
   override async down(): Promise<void> {

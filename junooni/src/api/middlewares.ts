@@ -199,6 +199,16 @@ export default defineMiddlewares({
       ],
       
     },
+
+     {
+      matcher: "/admin/incomplete-vendors",
+      middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
+    },
+
+    {
+      matcher: "/admin/send-onboarding-reminder",
+      middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
+    },
     
     {
       matcher: "/vendors/me",

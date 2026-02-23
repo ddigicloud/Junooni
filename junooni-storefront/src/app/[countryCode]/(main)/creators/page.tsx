@@ -43,6 +43,7 @@ interface Vendor {
   creator_category?: string
   creator_bio?: string
   popular_product?: string
+  verified?: string    // Add this
 }
 
 interface Category {
@@ -156,8 +157,9 @@ const VendorsDiscoveryPage = () => {
       try {
         const vendors = await retriveVendors()
         if (vendors && Array.isArray(vendors)) {
-          setAllVendors(vendors)
-          setFilteredVendors(vendors)
+          const verifiedVendors = vendors.filter((v: any) => v.verified === "Yes")
+          setAllVendors(verifiedVendors)
+          setFilteredVendors(verifiedVendors)
         }
       } catch (error) {
         //console.error("Error fetching vendors:", error)
