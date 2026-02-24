@@ -1,13 +1,12 @@
 import { model } from "@medusajs/framework/utils"
 import PayoutDetails from "./payout_details"
 
-
 // Individual transaction records for complete audit trail
 const Payout = model.define("payout", {
   id: model.id().primaryKey(),
   vendor_id: model.text(),
  
-   // Payout scheduling
+  // Payout scheduling
   payout_period: model.text().nullable(), // e.g., "2025-W03"
   scheduled_payout_date: model.dateTime().nullable(),
   
@@ -16,22 +15,21 @@ const Payout = model.define("payout", {
   external_reference_id: model.text().nullable(), // Payment processor reference
   processor_response: model.text().nullable(), // JSON response from payment processor
   
-  // Financial details for earnings
-  payout_total: model.bigNumber().default(0).nullable(),
-  current_balance: model.bigNumber().default(0).nullable(),
-  pending_balance: model.bigNumber().default(0).nullable(),
-  total_earned: model.bigNumber().default(0).nullable(),
-  total_paid: model.bigNumber().default(0).nullable(),
-  total_pending_payout: model.bigNumber().default(0).nullable(),
+  // Using float() instead of bigNumber() to store decimal values correctly
+  payout_total: model.float().default(0).nullable(),
+  current_balance: model.float().default(0).nullable(),
+  pending_balance: model.float().default(0).nullable(),
+  total_earned: model.float().default(0).nullable(),
+  total_paid: model.float().default(0).nullable(),
+  total_pending_payout: model.float().default(0).nullable(),
   
   // Statistics
   total_orders: model.number().default(0),
-  avg_order_value: model.bigNumber().default(0),
+  avg_order_value: model.float().default(0),
   
   // Payout settings
   minimum_payout_amount: model.number().default(1000), 
   payout_schedule: model.enum(["weekly", "biweekly", "monthly"]).default("biweekly"),
-  //preferred_payment_method: model.enum(["bank_transfer", "paypal", "razorpay"]).default("bank_transfer"),
   
   // Timestamps
   last_payout_at: model.dateTime().nullable(),
@@ -43,7 +41,6 @@ const Payout = model.define("payout", {
   hold_payouts: model.boolean().default(false), // Admin can hold payouts
   hold_reason: model.text().nullable(),
 
- 
   payout_details: model.hasMany(() => PayoutDetails, {
     mappedBy: "payout",
   }),
@@ -58,8 +55,5 @@ const Payout = model.define("payout", {
     unique: true
   }
 ])
-
-
-
 
 export default Payout

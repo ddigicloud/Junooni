@@ -300,7 +300,8 @@ class PayoutModuleService extends MedusaService({
       selling_price: params.sellingPrice,
       status: "completed",
       reason: `Order earnings - ${params.orderId} - ${params.productId}`,
-      payout: vendorPayout.id,
+      payout_id: vendorPayout.id,
+
     })
   }
 
@@ -407,7 +408,8 @@ async calculateEarningsFromOrder(
   fulfillmentType: "creator_fulfillment" | "junooni_fulfillment", 
   costPrice?: number,
   quantity: number = 1,  // ✅ quantity parameter with default value
-  taxTotal?: number  // ✅ ADD: actual tax amount from order item
+  taxTotal?: number,  // ✅ ADD: actual tax amount from order item
+  paymentMethod?: string  // ← ADD THIS PARAMETER
 ): Promise<EarningsCalculation> {
   if (orderTotal < 0) {
     throw new MedusaError(
@@ -432,8 +434,14 @@ async calculateEarningsFromOrder(
   //const round2 = (num: number) => Math.round(num * 100) / 100
 
   // Razorpay fee: 2% + 18% GST on fee = 2.36% of gross amount
-  const RAZORPAY_FEE_RATE = 0.0236
-  paymentProcessingFee = orderTotal * RAZORPAY_FEE_RATE
+  if (paymentMethod === 'cod' || paymentMethod === 'cash_on_delivery') {
+  paymentProcessingFee = 35  // Flat ₹35 COD fee
+  console.log(`💳 COD payment detected, flat fee: ₹35`)
+  } else {
+    const RAZORPAY_FEE_RATE = 0.0236
+    paymentProcessingFee = orderTotal * RAZORPAY_FEE_RATE
+    console.log(`💳 Online payment, Razorpay fee (2.36%): ₹${paymentProcessingFee}`)
+}
 
   switch (fulfillmentType) {
     case "creator_fulfillment":
@@ -570,7 +578,8 @@ async calculateEarningsFromOrder(
       type: "payout",
       status: "processing",
       reason: reason,
-      payout: vendorPayout.id,
+      payout_id: vendorPayout.id,
+
     })
 
     await this.updatePayouts({
@@ -610,7 +619,8 @@ async calculateEarningsFromOrder(
       type: "adjustment",
       status: "completed",
       reason: `Manual adjustment: ${reason}`,
-      payout: vendorPayout.id,
+      payout_id: vendorPayout.id,
+
     })
 
     await this.updatePayouts({
@@ -700,7 +710,9 @@ async calculateEarningsFromOrder(
       }
     }
 
-    const filters: any = { payout: vendorPayout.id }
+    //const filters: any = { payout: vendorPayout.id }
+    const filters: any = { payout_id: vendorPayout.id }
+
     if (options.orderId) filters.order_id = options.orderId
     if (options.type) filters.type = options.type
 
@@ -764,7 +776,7 @@ async calculateEarningsFromOrder(
     if (!vendorPayout) return []
 
     const filters: any = { 
-      payout: vendorPayout.id,
+      payout_id: vendorPayout.id,
       type: "earning"
     }
     if (productId) filters.product_id = productId
@@ -1101,7 +1113,7 @@ async calculateEarningsFromOrder(
     }
 
     const filters: any = { 
-      payout: vendorPayout.id,
+       payout_id: vendorPayout.id,
       type: "refund"
     }
     

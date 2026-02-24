@@ -33,6 +33,14 @@ const processAllPayoutDetailsStep = createStep(
       throw new Error(`Order ${orderId} has no items`)
     }
 
+    // ✅ Detect payment method (COD vs Online)
+    const payments = order.payment_collections?.flatMap((col: any) => col.payments || []) || []
+    const isCOD = !payments.some((p: any) => 
+        p.provider_id?.toLowerCase().includes('razorpay')
+      )
+    const paymentMethod = isCOD ? 'cod' : 'online'
+    console.log(`💳 Payment method detected: ${paymentMethod} (providers: ${payments.map((p: any) => p.provider_id).join(', ')})`)
+
     const createdDetails = []
     const vendorBalanceUpdates = new Map<string, number>()
 
@@ -67,47 +75,44 @@ const processAllPayoutDetailsStep = createStep(
           // Parse fulfillment type
           let fulfillmentType: "creator_fulfillment" | "junooni_fulfillment" = "creator_fulfillment"
 
-console.log('🔍 Checking product metadata for fulfillment_type...')
+          console.log('🔍 Checking product metadata for fulfillment_type...')
 
-if (item.product.metadata?.fulfillment_type) {
-  console.log('🔍 Raw fulfillment_type:', item.product.metadata.fulfillment_type)
-  console.log('🔍 Type:', typeof item.product.metadata.fulfillment_type)
-  
-  try {
-    let fulfillmentData = item.product.metadata.fulfillment_type
-    
-    // If it's a string, parse it as JSON
-    if (typeof fulfillmentData === 'string') {
-      console.log('🔍 Parsing JSON string...')
-      fulfillmentData = JSON.parse(fulfillmentData)
-      console.log('✅ Parsed:', JSON.stringify(fulfillmentData, null, 2))
-    }
-    
-    // ✅ FIX: Use case-insensitive match instead of exact string comparison
-    if (fulfillmentData && typeof fulfillmentData === 'object' && fulfillmentData.type) {
-      const typeValue = fulfillmentData.type.toLowerCase()  // Convert to lowercase
-      console.log('🔍 Type value (lowercase):', typeValue)
-      
-      // Check if it contains "junooni" (case-insensitive, flexible spelling)
-      if (typeValue.includes('junooni')) {
-        fulfillmentType = "junooni_fulfillment"
-        console.log('✅ Detected: JUNOONI fulfillment')
-      } else if (typeValue.includes('creator')) {
-        fulfillmentType = "creator_fulfillment"
-        console.log('✅ Detected: CREATOR fulfillment')
-      } else {
-        console.log('⚠️ Unknown type value:', typeValue, '- defaulting to creator_fulfillment')
-      }
-    }
-    
-  } catch (parseError) {
-    console.error('💥 Failed to parse fulfillment type:', parseError)
-  }
-} else {
-  console.log('⚠️ No fulfillment_type in metadata, using default: creator_fulfillment')
-}
+          if (item.product.metadata?.fulfillment_type) {
+            console.log('🔍 Raw fulfillment_type:', item.product.metadata.fulfillment_type)
+            console.log('🔍 Type:', typeof item.product.metadata.fulfillment_type)
+            
+            try {
+              let fulfillmentData = item.product.metadata.fulfillment_type
+              
+              if (typeof fulfillmentData === 'string') {
+                console.log('🔍 Parsing JSON string...')
+                fulfillmentData = JSON.parse(fulfillmentData)
+                console.log('✅ Parsed:', JSON.stringify(fulfillmentData, null, 2))
+              }
+              
+              if (fulfillmentData && typeof fulfillmentData === 'object' && fulfillmentData.type) {
+                const typeValue = fulfillmentData.type.toLowerCase()
+                console.log('🔍 Type value (lowercase):', typeValue)
+                
+                if (typeValue.includes('junooni')) {
+                  fulfillmentType = "junooni_fulfillment"
+                  console.log('✅ Detected: JUNOONI fulfillment')
+                } else if (typeValue.includes('creator')) {
+                  fulfillmentType = "creator_fulfillment"
+                  console.log('✅ Detected: CREATOR fulfillment')
+                } else {
+                  console.log('⚠️ Unknown type value:', typeValue, '- defaulting to creator_fulfillment')
+                }
+              }
+              
+            } catch (parseError) {
+              console.error('💥 Failed to parse fulfillment type:', parseError)
+            }
+          } else {
+            console.log('⚠️ No fulfillment_type in metadata, using default: creator_fulfillment')
+          }
 
-console.log('🎯 FINAL fulfillment type:', fulfillmentType)
+          console.log('🎯 FINAL fulfillment type:', fulfillmentType)
 
           // Get cost price (variant priority)
           const costPrice = Number(
@@ -119,19 +124,31 @@ console.log('🎯 FINAL fulfillment type:', fulfillmentType)
           const itemTotal = item.unit_price * item.quantity
           const taxTotal = item.tax_total || 0
 
+          console.log('🔍 RAW item values:', {
+            unit_price: item.unit_price,
+            quantity: item.quantity,
+            itemTotal: itemTotal,
+            tax_total_raw: item.tax_total,
+            taxTotal: taxTotal,
+            cost_price_raw: item.variant?.metadata?.cost_price || item.product?.metadata?.cost_price,
+            costPrice: costPrice,
+            paymentMethod: paymentMethod,
+          })
+
           // Skip if cost price exceeds total (business logic)
           if (fulfillmentType === "junooni_fulfillment" && costPrice > itemTotal) {
             console.warn(`Skipping item ${item.id} - cost price (${costPrice}) exceeds total (${itemTotal})`)
             continue
           }
 
-          // Calculate earnings
+          // ✅ Calculate earnings with payment method for COD fee detection
           const earnings = await payoutModuleService.calculateEarningsFromOrder(
             itemTotal,
             fulfillmentType,
             costPrice,
             item.quantity,
-            taxTotal  
+            taxTotal,
+            paymentMethod  // ← pass COD/online
           )
 
           // Create payout detail record
@@ -217,7 +234,6 @@ console.log('🎯 FINAL fulfillment type:', fulfillmentType)
     console.log(`Rolling back ${data.createdDetails.length} payout details for order ${data.orderId}`)
     const payoutModuleService: PayoutModuleService = container.resolve(PAYOUT_MODULE)
     
-    // Delete created payout details
     for (const detail of data.createdDetails) {
       try {
         await payoutModuleService.deletePayoutDetails(detail.payoutDetailId)

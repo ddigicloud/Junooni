@@ -78,63 +78,63 @@
         },
         "payout_total": {
           "name": "payout_total",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
           "default": "0",
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "current_balance": {
           "name": "current_balance",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
           "default": "0",
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "pending_balance": {
           "name": "pending_balance",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
           "default": "0",
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "total_earned": {
           "name": "total_earned",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
           "default": "0",
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "total_paid": {
           "name": "total_paid",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
           "default": "0",
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "total_pending_payout": {
           "name": "total_pending_payout",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
           "default": "0",
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "total_orders": {
           "name": "total_orders",
@@ -148,13 +148,13 @@
         },
         "avg_order_value": {
           "name": "avg_order_value",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "default": "0",
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "minimum_payout_amount": {
           "name": "minimum_payout_amount",
@@ -258,69 +258,6 @@
           "primary": false,
           "nullable": true,
           "mappedType": "text"
-        },
-        "raw_payout_total": {
-          "name": "raw_payout_total",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "json"
-        },
-        "raw_current_balance": {
-          "name": "raw_current_balance",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "json"
-        },
-        "raw_pending_balance": {
-          "name": "raw_pending_balance",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "json"
-        },
-        "raw_total_earned": {
-          "name": "raw_total_earned",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "json"
-        },
-        "raw_total_paid": {
-          "name": "raw_total_paid",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "json"
-        },
-        "raw_total_pending_payout": {
-          "name": "raw_total_pending_payout",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "json"
-        },
-        "raw_avg_order_value": {
-          "name": "raw_avg_order_value",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "mappedType": "json"
         },
         "created_at": {
           "name": "created_at",
@@ -644,7 +581,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": false,
+          "nullable": true,
           "mappedType": "text"
         },
         "order_item_id": {
@@ -653,7 +590,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": false,
+          "nullable": true,
           "mappedType": "text"
         },
         "product_id": {
@@ -662,74 +599,74 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": false,
+          "nullable": true,
           "mappedType": "text"
         },
         "amount": {
           "name": "amount",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "tax_amount": {
           "name": "tax_amount",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "default": "0",
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "tds_percentage": {
           "name": "tds_percentage",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "default": "0",
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "tds_amount": {
           "name": "tds_amount",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "default": "0",
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "cost_price": {
           "name": "cost_price",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "commission_rate": {
           "name": "commission_rate",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "selling_price": {
           "name": "selling_price",
-          "type": "numeric",
+          "type": "real",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "mappedType": "decimal"
+          "mappedType": "float"
         },
         "type": {
           "name": "type",
@@ -816,69 +753,6 @@
           "primary": false,
           "nullable": false,
           "mappedType": "text"
-        },
-        "raw_amount": {
-          "name": "raw_amount",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "mappedType": "json"
-        },
-        "raw_tax_amount": {
-          "name": "raw_tax_amount",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "mappedType": "json"
-        },
-        "raw_tds_percentage": {
-          "name": "raw_tds_percentage",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "mappedType": "json"
-        },
-        "raw_tds_amount": {
-          "name": "raw_tds_amount",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "mappedType": "json"
-        },
-        "raw_cost_price": {
-          "name": "raw_cost_price",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "json"
-        },
-        "raw_commission_rate": {
-          "name": "raw_commission_rate",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "json"
-        },
-        "raw_selling_price": {
-          "name": "raw_selling_price",
-          "type": "jsonb",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "mappedType": "json"
         },
         "created_at": {
           "name": "created_at",
