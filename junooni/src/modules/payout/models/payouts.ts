@@ -1,53 +1,52 @@
 import { model } from "@medusajs/framework/utils"
 import PayoutDetails from "./payout_details"
 
-// Individual transaction records for complete audit trail
+// All money fields stored as INTEGER in paise (₹1 = 100 paise) to avoid floating point issues
 const Payout = model.define("payout", {
   id: model.id().primaryKey(),
   vendor_id: model.text(),
- 
+
   // Payout scheduling
-  payout_period: model.text().nullable(), // e.g., "2025-W03"
+  payout_period: model.text().nullable(),
   scheduled_payout_date: model.dateTime().nullable(),
-  
+
   // Payment processing
   payment_method: model.enum(["bank_transfer", "paypal", "razorpay", "manual"]).nullable(),
-  external_reference_id: model.text().nullable(), // Payment processor reference
-  processor_response: model.text().nullable(), // JSON response from payment processor
-  
-  // Using float() instead of bigNumber() to store decimal values correctly
-  payout_total: model.float().default(0).nullable(),
-  current_balance: model.float().default(0).nullable(),
-  pending_balance: model.float().default(0).nullable(),
-  total_earned: model.float().default(0).nullable(),
-  total_paid: model.float().default(0).nullable(),
-  total_pending_payout: model.float().default(0).nullable(),
-  
+  external_reference_id: model.text().nullable(),
+  processor_response: model.text().nullable(),
+
+  // Money fields in PAISE (integer). e.g. ₹647.50 = 64750
+  payout_total: model.number().default(0).nullable(),
+  current_balance: model.number().default(0),
+  pending_balance: model.number().default(0),
+  total_earned: model.number().default(0),
+  total_paid: model.number().default(0),
+  total_pending_payout: model.number().default(0),
+
   // Statistics
   total_orders: model.number().default(0),
-  avg_order_value: model.float().default(0),
-  
+  avg_order_value: model.number().default(0),  // in paise
+
   // Payout settings
-  minimum_payout_amount: model.number().default(1000), 
+  minimum_payout_amount: model.number().default(100000),  // ₹1000 = 100000 paise
   payout_schedule: model.enum(["weekly", "biweekly", "monthly"]).default("biweekly"),
-  
+
   // Timestamps
   last_payout_at: model.dateTime().nullable(),
   last_earning_at: model.dateTime().nullable(),
   next_payout_date: model.dateTime().nullable(),
-  
+
   // Status
   is_payout_enabled: model.boolean().default(true),
-  hold_payouts: model.boolean().default(false), // Admin can hold payouts
+  hold_payouts: model.boolean().default(false),
   hold_reason: model.text().nullable(),
 
   payout_details: model.hasMany(() => PayoutDetails, {
     mappedBy: "payout",
   }),
-  
+
   processed_at: model.dateTime().nullable(),
-  created_by: model.text().nullable(), // Admin user ID for manual transactions
-  
+  created_by: model.text().nullable(),
 })
 .indexes([
   {

@@ -9,7 +9,7 @@ interface PayoutDisplay {
   scheduled_payout_date: string | null;
   payment_method: string | null;
   payout_total: number | null;
-  current_balance: number;
+  current_balance: number;    // already in rupees (converted by API route)
   pending_balance: number;
   total_earned: number;
   total_paid: number;
@@ -33,16 +33,16 @@ interface PayoutDetailDisplay {
   order_id: string;
   order_item_id: string;
   product_id: string;
-  amount: number;
-  tax_amount: number;
+  amount: number;           // from DB in PAISE — divide by 100 to display
+  tax_amount: number;       // paise
   tax_type: string;
-  tds_percentage: number;
-  tds_amount: number;
+  tds_percentage: number;   // basis points (100 = 1%) — divide by 100 to display
+  tds_amount: number;       // paise
   type: "earning" | "payout" | "adjustment" | "refund";
   fulfillment_type: "creator_fulfillment" | "junooni_fulfillment" | null;
-  cost_price: number | null;
-  commission_rate: number | null;
-  selling_price: number | null;
+  cost_price: number | null;    // paise
+  commission_rate: number | null; // basis points
+  selling_price: number | null;   // paise
   status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   reason: string;
   notes: string | null;
@@ -53,13 +53,21 @@ interface PayoutDetailsResponse {
   account: PayoutDisplay;
   transactions: PayoutDetailDisplay[];
   summary: {
-    totalEarnings: number;
-    totalPaid: number;
-    currentBalance: number;
+    totalEarnings: number;  // paise
+    totalPaid: number;      // paise
+    currentBalance: number; // paise
     totalOrders: number;
     totalTransactions: number;
   };
 }
+
+// ─── Conversion helpers ───────────────────────────────────────────────────────
+/** Convert paise → rupees for display */
+const fromPaise = (paise: number): number => paise / 100;
+
+/** Convert basis points → percentage for display. 100bp = 1% */
+const fromBasisPoints = (bp: number): number => bp / 100;
+// ─────────────────────────────────────────────────────────────────────────────
 
 const CreatorPayoutTab = () => {
   const { id } = useParams<{ id: string }>();
@@ -103,6 +111,7 @@ const CreatorPayoutTab = () => {
       if (!response.ok) throw new Error(`Failed to fetch payout: ${response.status}`);
       const data = await response.json();
       if (!data?.payout) { setPayout(null); return; }
+      // payout overview amounts already converted to rupees by the API route
       setPayout(data.payout);
     } catch (error) {
       setError(error instanceof Error ? error.message : "Unknown error occurred");
@@ -126,8 +135,9 @@ const CreatorPayoutTab = () => {
       if (!response.ok) throw new Error(`Failed to fetch payout details: ${response.status}`);
       const data = await response.json();
 
-      let transactions = [];
+      let transactions: PayoutDetailDisplay[] = [];
       let summaryData = null;
+
       if (data.transactions && Array.isArray(data.transactions)) {
         transactions = data.transactions;
         summaryData = data.summary;
@@ -139,10 +149,11 @@ const CreatorPayoutTab = () => {
       }
 
       setPayoutDetails(transactions);
+      // summary amounts come in paise from the service — store as-is, convert at display time
       setSummary(summaryData || {
-        totalEarnings: payout.total_earned,
-        totalPaid: payout.total_paid,
-        currentBalance: payout.current_balance,
+        totalEarnings: payout.total_earned * 100,  // back to paise for consistency
+        totalPaid: payout.total_paid * 100,
+        currentBalance: payout.current_balance * 100,
         totalOrders: payout.total_orders,
         totalTransactions: transactions.length
       });
@@ -177,14 +188,13 @@ const CreatorPayoutTab = () => {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount,
+          amount,  // sent in rupees, API converts to paise
           payment_reference: payoutReference || undefined,
           notes: payoutNotes || undefined,
         }),
       });
 
       const data = await response.json();
-
       if (!response.ok) {
         setPayoutFormError(data.error || "Failed to record payout");
         return;
@@ -196,7 +206,6 @@ const CreatorPayoutTab = () => {
       setPayoutNotes("");
       setShowPayoutForm(false);
 
-      // Refresh payout data
       await fetchPayout();
       if (activeSection === "details") await fetchPayoutDetails();
 
@@ -207,6 +216,7 @@ const CreatorPayoutTab = () => {
     }
   };
 
+  // Formats rupees for display
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -236,33 +246,33 @@ const CreatorPayoutTab = () => {
   };
 
   const getTypeBadge = (type: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       earning: "bg-green-100 text-green-800",
       payout: "bg-blue-100 text-blue-800",
       adjustment: "bg-yellow-100 text-yellow-800",
       refund: "bg-red-100 text-red-800"
     };
-    return <Badge className={colors[type as keyof typeof colors] || "bg-gray-100 text-gray-800"}>{type.charAt(0).toUpperCase() + type.slice(1)}</Badge>;
+    return <Badge className={colors[type] || "bg-gray-100 text-gray-800"}>{type.charAt(0).toUpperCase() + type.slice(1)}</Badge>;
   };
 
   const getStatusBadge = (status: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       pending: "bg-yellow-100 text-yellow-800",
       processing: "bg-blue-100 text-blue-800",
       completed: "bg-green-100 text-green-800",
       failed: "bg-red-100 text-red-800",
       cancelled: "bg-gray-100 text-gray-800"
     };
-    return <Badge className={colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800"}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
+    return <Badge className={colors[status] || "bg-gray-100 text-gray-800"}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
   };
 
   const getFulfillmentBadge = (fulfillmentType: string | null) => {
     if (!fulfillmentType) return <Text className="text-sm text-gray-400">-</Text>;
-    const colors = {
+    const colors: Record<string, string> = {
       creator_fulfillment: "bg-purple-100 text-purple-800",
       junooni_fulfillment: "bg-indigo-100 text-indigo-800"
     };
-    return <Badge className={colors[fulfillmentType as keyof typeof colors] || "bg-gray-100 text-gray-800"}>{fulfillmentType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</Badge>;
+    return <Badge className={colors[fulfillmentType] || "bg-gray-100 text-gray-800"}>{fulfillmentType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</Badge>;
   };
 
   const totalPages = Math.ceil(totalRecords / limit);
@@ -321,20 +331,18 @@ const CreatorPayoutTab = () => {
         <div className="p-6">
           {activeSection === "overview" && (
             <>
-              {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <Heading level="h2" className="text-xl">Payout Information</Heading>
                 {getPayoutStatusBadge()}
               </div>
 
-              {/* Success message */}
               {payoutFormSuccess && (
                 <div className="p-3 mb-4 text-sm text-green-700 border border-green-200 rounded-lg bg-green-50">
                   ✅ {payoutFormSuccess}
                 </div>
               )}
 
-              {/* Balance Overview */}
+              {/* Balance Overview — amounts already in rupees from API */}
               <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-3">
                 <div className="p-4 border rounded-lg bg-green-50">
                   <Text className="text-sm font-medium text-green-600">Current Balance</Text>
@@ -353,7 +361,7 @@ const CreatorPayoutTab = () => {
                 </div>
               </div>
 
-              {/* Record Manual Payout Section */}
+              {/* Record Manual Payout */}
               <div className="mb-6 overflow-hidden border rounded-lg">
                 <div
                   className="flex items-center justify-between p-4 cursor-pointer bg-gray-50 hover:bg-gray-100"
@@ -391,9 +399,7 @@ const CreatorPayoutTab = () => {
                         />
                       </div>
                       <div>
-                        <label className="block mb-1 text-sm font-medium text-gray-700">
-                          Payment Reference
-                        </label>
+                        <label className="block mb-1 text-sm font-medium text-gray-700">Payment Reference</label>
                         <input
                           type="text"
                           value={payoutReference}
@@ -405,9 +411,7 @@ const CreatorPayoutTab = () => {
                     </div>
 
                     <div>
-                      <label className="block mb-1 text-sm font-medium text-gray-700">
-                        Notes
-                      </label>
+                      <label className="block mb-1 text-sm font-medium text-gray-700">Notes</label>
                       <textarea
                         value={payoutNotes}
                         onChange={(e) => setPayoutNotes(e.target.value)}
@@ -543,19 +547,20 @@ const CreatorPayoutTab = () => {
                 </div>
               ) : (
                 <>
+                  {/* Summary cards — convert paise → rupees */}
                   {summary && (
                     <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-4">
                       <div className="p-3 border rounded-lg bg-green-50">
                         <Text className="text-xs text-green-600">Total Earnings</Text>
-                        <Text className="text-lg font-bold text-green-700">{formatCurrency(summary.totalEarnings)}</Text>
+                        <Text className="text-lg font-bold text-green-700">{formatCurrency(fromPaise(summary.totalEarnings))}</Text>
                       </div>
                       <div className="p-3 border rounded-lg bg-blue-50">
                         <Text className="text-xs text-blue-600">Total Paid</Text>
-                        <Text className="text-lg font-bold text-blue-700">{formatCurrency(summary.totalPaid)}</Text>
+                        <Text className="text-lg font-bold text-blue-700">{formatCurrency(fromPaise(summary.totalPaid))}</Text>
                       </div>
                       <div className="p-3 border rounded-lg bg-purple-50">
                         <Text className="text-xs text-purple-600">Current Balance</Text>
-                        <Text className="text-lg font-bold text-purple-700">{formatCurrency(summary.currentBalance)}</Text>
+                        <Text className="text-lg font-bold text-purple-700">{formatCurrency(fromPaise(summary.currentBalance))}</Text>
                       </div>
                       <div className="p-3 border rounded-lg bg-yellow-50">
                         <Text className="text-xs text-yellow-600">Total Orders</Text>
@@ -564,6 +569,7 @@ const CreatorPayoutTab = () => {
                     </div>
                   )}
 
+                  {/* Transaction table — all money fields from DB are in paise, convert with fromPaise() */}
                   <div className="mb-6 overflow-x-auto">
                     <table className="w-full border-collapse">
                       <thead>
@@ -579,34 +585,46 @@ const CreatorPayoutTab = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {payoutDetails.map((detail) => (
-                          <tr key={detail.id} className="border-b hover:bg-gray-50">
-                            <td className="p-3"><Text className="text-sm">{formatDate(detail.created_at)}</Text></td>
-                            <td className="p-3">{getTypeBadge(detail.type)}</td>
-                            <td className="p-3"><Text className="font-mono text-sm">{detail.order_id || "—"}</Text></td>
-                            <td className="p-3 text-right">
-                              <Text className={`font-medium ${detail.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {detail.amount >= 0 ? '+' : ''}{formatCurrency(detail.amount)}
-                              </Text>
-                            </td>
-                            <td className="p-3 text-right">
-                              <Text className="text-sm">{formatCurrency(detail.tax_amount)}</Text>
-                              <Text className="text-xs text-gray-500 uppercase">{detail.tax_type}</Text>
-                            </td>
-                            <td className="p-3 text-right">
-                              {detail.tds_amount > 0 ? (
-                                <div>
-                                  <Text className="text-sm text-red-600">{formatCurrency(detail.tds_amount)}</Text>
-                                  <Text className="text-xs text-gray-500">{detail.tds_percentage}%</Text>
-                                </div>
-                              ) : (
-                                <Text className="text-gray-400">-</Text>
-                              )}
-                            </td>
-                            <td className="p-3">{getStatusBadge(detail.status)}</td>
-                            <td className="p-3">{getFulfillmentBadge(detail.fulfillment_type)}</td>
-                          </tr>
-                        ))}
+                        {payoutDetails.map((detail) => {
+                          // Convert paise → rupees for display
+                          const amountRupees = fromPaise(detail.amount);
+                          const taxRupees = fromPaise(detail.tax_amount);
+                          const tdsRupees = fromPaise(detail.tds_amount);
+                          const tdsPercent = fromBasisPoints(detail.tds_percentage); // 100bp → 1%
+
+                          return (
+                            <tr key={detail.id} className="border-b hover:bg-gray-50">
+                              <td className="p-3"><Text className="text-sm">{formatDate(detail.created_at)}</Text></td>
+                              <td className="p-3">{getTypeBadge(detail.type)}</td>
+                              <td className="p-3">
+                                <Text className="font-mono text-sm">
+                                  {detail.order_id === "manual_payout" || !detail.order_id ? "—" : detail.order_id}
+                                </Text>
+                              </td>
+                              <td className="p-3 text-right">
+                                <Text className={`font-medium ${amountRupees >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {amountRupees >= 0 ? '+' : ''}{formatCurrency(amountRupees)}
+                                </Text>
+                              </td>
+                              <td className="p-3 text-right">
+                                <Text className="text-sm">{formatCurrency(taxRupees)}</Text>
+                                <Text className="text-xs text-gray-500 uppercase">{detail.tax_type}</Text>
+                              </td>
+                              <td className="p-3 text-right">
+                                {tdsRupees !== 0 ? (
+                                  <div>
+                                    <Text className="text-sm text-red-600">{formatCurrency(Math.abs(tdsRupees))}</Text>
+                                    <Text className="text-xs text-gray-500">{tdsPercent.toFixed(0)}%</Text>
+                                  </div>
+                                ) : (
+                                  <Text className="text-gray-400">-</Text>
+                                )}
+                              </td>
+                              <td className="p-3">{getStatusBadge(detail.status)}</td>
+                              <td className="p-3">{getFulfillmentBadge(detail.fulfillment_type)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

@@ -78,63 +78,63 @@
         },
         "payout_total": {
           "name": "payout_total",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
           "default": "0",
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "current_balance": {
           "name": "current_balance",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "default": "0",
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "pending_balance": {
           "name": "pending_balance",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "default": "0",
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "total_earned": {
           "name": "total_earned",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "default": "0",
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "total_paid": {
           "name": "total_paid",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "default": "0",
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "total_pending_payout": {
           "name": "total_pending_payout",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "default": "0",
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "total_orders": {
           "name": "total_orders",
@@ -148,13 +148,13 @@
         },
         "avg_order_value": {
           "name": "avg_order_value",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "default": "0",
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "minimum_payout_amount": {
           "name": "minimum_payout_amount",
@@ -163,7 +163,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "default": "1000",
+          "default": "100000",
           "mappedType": "integer"
         },
         "payout_schedule": {
@@ -604,69 +604,69 @@
         },
         "amount": {
           "name": "amount",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "tax_amount": {
           "name": "tax_amount",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "default": "0",
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "tds_percentage": {
           "name": "tds_percentage",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "default": "0",
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "tds_amount": {
           "name": "tds_amount",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "default": "0",
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "cost_price": {
           "name": "cost_price",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "commission_rate": {
           "name": "commission_rate",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "selling_price": {
           "name": "selling_price",
-          "type": "real",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "mappedType": "float"
+          "mappedType": "integer"
         },
         "type": {
           "name": "type",

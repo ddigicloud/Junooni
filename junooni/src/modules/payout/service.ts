@@ -1,3 +1,1283 @@
+// import { MedusaError, MedusaService } from "@medusajs/framework/utils"
+// import Payout from "./models/payouts"
+// import PayoutBatch from "./models/payout_batch"
+// import PayoutDetails from "./models/payout_details"
+// import { InferTypeOf } from "@medusajs/framework/types"
+
+// type Payout = InferTypeOf<typeof Payout>
+// type PayoutBatch = InferTypeOf<typeof PayoutBatch>
+// type PayoutDetails = InferTypeOf<typeof PayoutDetails>
+
+// interface OrderLineItem {
+//   id: string
+//   product_id: string
+//   quantity: number
+//   unit_price: number
+//   total: number
+//   product: {
+//     id: string
+//     metadata?: {
+//       fulfillment_type?: string
+//     }
+//     vendor: Array<{
+//       id: string
+//       name: string
+//       metadata?: Record<string, any>
+//     }>
+//   }
+//   variant?: {
+//     id: string
+//     metadata?: {
+//       cost_price?: number
+//     }
+//   }
+// }
+
+// interface EarningsCalculation {
+//   grossAmount: number
+//   commissionAmount: number
+//   taxAmount: number
+//   tdsAmount: number
+//   paymentProcessingFee: number
+//   netAmount: number
+//   commissionRate: number
+//   tdsPercentage: number
+// }
+
+// interface VendorEarningsReport {
+//   vendorId: string
+//   totalEarnings: number
+//   totalPaid: number
+//   currentBalance: number
+//   totalOrders: number
+//   productBreakdown: Array<{
+//     productId: string
+//     totalAmount: number
+//     orderCount: number
+//   }>
+// }
+
+// /**
+//  * Helper function to parse fulfillment type from metadata
+//  * Handles various formats:
+//  * - {"type":"JUNOONI-fulfillment"} -> junooni_fulfillment
+//  * - {"type":"Creator-fulfilment"} -> creator_fulfillment
+//  * - String that needs parsing
+//  */
+// function parseFulfillmentType(metadata?: any): "creator_fulfillment" | "junooni_fulfillment" {
+//   console.log('🔍 [parseFulfillmentType] Starting with metadata:', JSON.stringify(metadata, null, 2))
+  
+//   let fulfillmentType: "creator_fulfillment" | "junooni_fulfillment" = "creator_fulfillment"
+  
+//   if (!metadata?.fulfillment_type) {
+//     console.log('❌ [parseFulfillmentType] No fulfillment_type found in metadata, returning default:', fulfillmentType)
+//     return fulfillmentType
+//   }
+
+//   console.log('📦 [parseFulfillmentType] Raw fulfillment_type:', metadata.fulfillment_type)
+//   console.log('📦 [parseFulfillmentType] Type of fulfillment_type:', typeof metadata.fulfillment_type)
+
+//   try {
+//     let fulfillmentData = metadata.fulfillment_type
+    
+//     // If it's a string, try to parse it as JSON
+//     if (typeof fulfillmentData === 'string') {
+//       console.log('🔤 [parseFulfillmentType] fulfillment_type is a string, attempting to parse...')
+//       try {
+//         fulfillmentData = JSON.parse(fulfillmentData)
+//         console.log('✅ [parseFulfillmentType] Successfully parsed JSON:', JSON.stringify(fulfillmentData, null, 2))
+//       } catch (e) {
+//         console.log('⚠️ [parseFulfillmentType] JSON parse failed, trying regex extraction')
+//         // If parsing fails, try to extract type using regex
+//         const typeMatch = fulfillmentData.match(/"type"\s*:\s*"([^"]+)"/i)
+//         if (typeMatch) {
+//           console.log('✅ [parseFulfillmentType] Regex matched type:', typeMatch[1])
+//           fulfillmentData = { type: typeMatch[1] }
+//         } else {
+//           console.log('⚠️ [parseFulfillmentType] Regex failed, checking string content directly')
+//           // Last resort: check if the string itself contains the keywords
+//           const lowerStr = fulfillmentData.toLowerCase()
+//           console.log('🔍 [parseFulfillmentType] Lowercase string:', lowerStr)
+//           if (lowerStr.includes('junooni')) {
+//             console.log('✅ [parseFulfillmentType] Found "junooni" in string, returning junooni_fulfillment')
+//             return "junooni_fulfillment"
+//           } else if (lowerStr.includes('creator')) {
+//             console.log('✅ [parseFulfillmentType] Found "creator" in string, returning creator_fulfillment')
+//             return "creator_fulfillment"
+//           }
+//           console.log('❌ [parseFulfillmentType] No keywords found in string, returning default')
+//           return fulfillmentType
+//         }
+//       }
+//     }
+    
+//     console.log('🔍 [parseFulfillmentType] Checking fulfillmentData object:', JSON.stringify(fulfillmentData, null, 2))
+    
+//     // Check the type field (case-insensitive)
+//     if (fulfillmentData && typeof fulfillmentData === 'object' && fulfillmentData.type) {
+//       const typeValue = fulfillmentData.type.toLowerCase()
+//       console.log('🏷️ [parseFulfillmentType] Type value (lowercase):', typeValue)
+      
+//       if (typeValue.includes('junooni')) {
+//         console.log('✅ [parseFulfillmentType] Type includes "junooni", setting to junooni_fulfillment')
+//         fulfillmentType = "junooni_fulfillment"
+//       } else if (typeValue.includes('creator')) {
+//         console.log('✅ [parseFulfillmentType] Type includes "creator", setting to creator_fulfillment')
+//         fulfillmentType = "creator_fulfillment"
+//       } else {
+//         console.log('⚠️ [parseFulfillmentType] Type value does not match any keywords:', typeValue)
+//       }
+//     } else {
+//       console.log('❌ [parseFulfillmentType] fulfillmentData is not a valid object or missing type field')
+//     }
+//   } catch (parseError) {
+//     console.error('💥 [parseFulfillmentType] Unexpected error:', parseError)
+//   }
+  
+//   console.log('🎯 [parseFulfillmentType] Final result:', fulfillmentType)
+//   return fulfillmentType
+// }
+
+// /**
+//  * Helper function to extract cost price from variant metadata
+//  * Checks variant metadata first, then product metadata as fallback
+//  */
+// function extractCostPrice(variantMetadata?: any, productMetadata?: any): number {
+//   // PRIORITY 1: Check variant metadata for cost_price (this is where it should be!)
+//   if (variantMetadata?.cost_price !== undefined && variantMetadata?.cost_price !== null) {
+//     const costPrice = Number(variantMetadata.cost_price)
+//     if (!isNaN(costPrice) && costPrice >= 0) {
+//       return costPrice
+//     }
+//   }
+  
+//   // PRIORITY 2: Check product metadata as fallback
+//   if (productMetadata?.cost_price !== undefined && productMetadata?.cost_price !== null) {
+//     const costPrice = Number(productMetadata.cost_price)
+//     if (!isNaN(costPrice) && costPrice >= 0) {
+//       return costPrice
+//     }
+//   }
+  
+//   // PRIORITY 3: Try payload_integration in product metadata
+//   if (productMetadata?.payload_integration) {
+//     try {
+//       let payloadData = productMetadata.payload_integration
+      
+//       if (typeof payloadData === 'string') {
+//         payloadData = JSON.parse(payloadData)
+//       }
+      
+//       if (payloadData.base_cost !== undefined && payloadData.base_cost !== null) {
+//         const baseCost = Number(payloadData.base_cost)
+//         if (!isNaN(baseCost) && baseCost >= 0) {
+//           return baseCost
+//         }
+//       }
+//     } catch (e) {
+//       // Silent fail
+//     }
+//   }
+  
+//   return 0
+// }
+
+// class PayoutModuleService extends MedusaService({
+//   Payout,
+//   PayoutDetails,
+//   PayoutBatch,
+// }) {
+
+//   /**
+//    * Process order earnings - main entry point for order fulfillment
+//    * Processes each item individually without grouping
+//    */
+//   async processOrderEarnings(orderId: string, lineItems: OrderLineItem[]): Promise<void> {
+//     // Check if this order has already been processed
+//     const existingDetails = await this.listPayoutDetails({
+//       order_id: orderId
+//     })
+    
+//     if (existingDetails.length > 0) {
+//       return
+//     }
+    
+//     // Process each item individually
+//     for (const item of lineItems) {
+//       if (!item.product.vendor || !Array.isArray(item.product.vendor) || item.product.vendor.length === 0) {
+//         continue
+//       }
+
+//       // Process each vendor for this item
+//       for (const vendor of item.product.vendor) {
+//         if (!vendor || !vendor.id) {
+//           continue
+//         }
+
+//         // Check if this specific item-vendor combination already exists
+//         const existingItemDetail = await this.listPayoutDetails({
+//           order_id: orderId,
+//           order_item_id: item.id,
+//         })
+
+//         if (existingItemDetail.length > 0) {
+//           continue
+//         }
+
+//         try {
+//           // ✅ FIX: Parse fulfillment type from PRODUCT metadata
+//           const fulfillmentType = parseFulfillmentType(item.product.metadata)
+          
+//           // ✅ FIX: Extract cost price from VARIANT metadata (with product fallback)
+//           const costPrice = extractCostPrice(item.variant?.metadata, item.product.metadata)
+          
+//           const itemTotal = item.unit_price * item.quantity
+          
+//           // Calculate earnings for this specific item
+//           const earnings = await this.calculateEarningsFromOrder(
+//             itemTotal, 
+//             fulfillmentType, 
+//             costPrice,
+//             item.quantity
+//           )
+          
+//           // Create individual payout detail record for this item
+//           const payoutDetail = await this.createPayoutDetailForProduct({
+//             vendorId: vendor.id,
+//             orderId,
+//             orderItemId: item.id,
+//             productId: item.product.id,
+//             earnings,
+//             fulfillmentType,
+//             costPrice,
+//             sellingPrice: itemTotal,
+//             quantity: item.quantity,
+//           })
+          
+//           // Update vendor account balance for this item
+//           await this.addEarningsToVendorAccount(vendor.id, earnings.netAmount)
+          
+//         } catch (error) {
+//           throw new MedusaError(
+//             MedusaError.Types.INVALID_DATA,
+//             `Failed to process earnings for vendor ${vendor.id} on item ${item.id}: ${error.message}`
+//           )
+//         }
+//       }
+//     }
+//   }
+
+//   /**
+//    * Create payout detail for individual product
+//    */
+//   private async createPayoutDetailForProduct(params: {
+//     vendorId: string
+//     orderId: string
+//     orderItemId: string
+//     productId: string
+//     earnings: EarningsCalculation
+//     fulfillmentType: "creator_fulfillment" | "junooni_fulfillment"
+//     costPrice: number
+//     sellingPrice: number
+//     quantity: number
+//   }): Promise<PayoutDetails> {
+//     // Get or create vendor payout account
+//     const vendorPayout = await this.getOrCreateVendorPayout(params.vendorId)
+    
+//     return await this.createPayoutDetails({
+//       order_id: params.orderId,
+//       order_item_id: params.orderItemId,
+//       product_id: params.productId,
+//       amount: params.earnings.netAmount,
+//       tax_amount: params.earnings.taxAmount,
+//       tax_type: "igst",
+//       tds_percentage: params.earnings.tdsPercentage,
+//       tds_amount: params.earnings.tdsAmount,
+//       type: "earning",
+//       fulfillment_type: params.fulfillmentType,
+//       cost_price: params.costPrice,
+//       commission_rate: params.earnings.commissionRate,
+//       selling_price: params.sellingPrice,
+//       status: "completed",
+//       reason: `Order earnings - ${params.orderId} - ${params.productId}`,
+//       payout_id: vendorPayout.id,
+
+//     })
+//   }
+
+//   /**
+//    * Add earnings to vendor account balance
+//    */
+//   private async addEarningsToVendorAccount(vendorId: string, amount: number): Promise<Payout> {
+//     if (amount <= 0) {
+//       throw new MedusaError(
+//         MedusaError.Types.INVALID_DATA,
+//         "Earnings amount must be positive"
+//       )
+//     }
+
+//     const vendorPayout = await this.getOrCreateVendorPayout(vendorId)
+
+//     return await this.updatePayouts({
+//       id: vendorPayout.id,
+//       current_balance: vendorPayout.current_balance + amount,
+//       total_earned: vendorPayout.total_earned + amount,
+//       total_orders: vendorPayout.total_orders + 1,
+//       last_earning_at: new Date(),
+//       avg_order_value: (vendorPayout.total_earned + amount) / (vendorPayout.total_orders + 1),
+//     })
+//   }
+
+//   /**
+//    * Get or create vendor payout account
+//    */
+//   async getOrCreateVendorPayout(vendorId: string): Promise<Payout> {
+//     const existingPayout = await this.getVendorPayout(vendorId)
+    
+//     if (existingPayout) {
+//       return existingPayout
+//     }
+
+//     return await this.createPayouts({
+//       vendor_id: vendorId,
+//       current_balance: 0,
+//       pending_balance: 0,
+//       total_earned: 0,
+//       total_paid: 0,
+//       total_pending_payout: 0,
+//       total_orders: 0,
+//       avg_order_value: 0,
+//       minimum_payout_amount: 1000,
+//       payout_schedule: "weekly",
+//       is_payout_enabled: true,
+//       hold_payouts: false,
+//       next_payout_date: this.getNextPayoutDate(),
+//     })
+//   }
+
+//   /**
+//    * Get vendor payout account
+//    */
+//   async getVendorPayout(vendorId: string): Promise<Payout | null> {
+//     const payouts = await this.listPayouts({
+//       vendor_id: vendorId,
+//     })
+
+//     return payouts[0] || null
+//   }
+
+//   /**
+//    * Get vendor current balance
+//    */
+//   async getBalance(vendorId: string): Promise<number> {
+//     const payout = await this.getVendorPayout(vendorId)
+//     return payout?.current_balance || 0
+//   }
+
+//   /**
+//  * Calculate earnings from order item
+//  * 
+//  * CORRECT CALCULATION LOGIC:
+//  * 
+//  * ═══════════════════════════════════════════════════════════════════
+//  * JUNOONI FULFILLMENT (Creator pays Junooni for blank + printing)
+//  * ═══════════════════════════════════════════════════════════════════
+//  * Example: Product listed for ₹700 (tax inclusive), Creator cost = ₹400, Quantity = 2
+//  * 
+//  * Step 1: Calculate total order value
+//  *   Order Total = ₹700 × 2 = ₹1400
+//  * 
+//  * Step 2: Extract GST (from order item tax_total)
+//  *   GST = ₹66.67 (actual tax from order)
+//  *   Net Revenue (ex-GST) = ₹1400 - ₹66.67 = ₹1333.33
+//  * 
+//  * Step 3: Deduct Razorpay fee (2% + 18% GST on fee = 2.36% total)
+//  *   Razorpay Fee = ₹1400 × 0.0236 = ₹33.04
+//  *   Net after gateway = ₹1333.33 - ₹33.04 = ₹1300.29
+//  * 
+//  * Step 4: Deduct TOTAL creator cost (unit cost × quantity)
+//  *   Total Cost = ₹400 × 2 = ₹800
+//  *   Creator Profit = ₹1300.29 - ₹800 = ₹500.29
+//  * 
+//  * Step 5: Deduct TDS (1% of creator profit)
+//  *   TDS = ₹500.29 × 0.01 = ₹5.00
+//  *   Final Payout = ₹500.29 - ₹5.00 = ₹495.29
+//  */
+// async calculateEarningsFromOrder(
+//   orderTotal: number, 
+//   fulfillmentType: "creator_fulfillment" | "junooni_fulfillment", 
+//   costPrice?: number,
+//   quantity: number = 1,  // ✅ quantity parameter with default value
+//   taxTotal?: number,  // ✅ ADD: actual tax amount from order item
+//   paymentMethod?: string  // ← ADD THIS PARAMETER
+// ): Promise<EarningsCalculation> {
+//   if (orderTotal < 0) {
+//     throw new MedusaError(
+//       MedusaError.Types.INVALID_DATA,
+//       "Order total cannot be negative"
+//     )
+//   }
+
+//   if (quantity <= 0) {
+//     throw new MedusaError(
+//       MedusaError.Types.INVALID_DATA,
+//       "Quantity must be positive"
+//     )
+//   }
+
+//   let vendorShare = 0
+//   let commissionRate = 0
+//   let paymentProcessingFee = 0
+//   let taxAmount = 0
+
+//   // Helper to round to 2 decimal places
+//   //const round2 = (num: number) => Math.round(num * 100) / 100
+
+//   // Razorpay fee: 2% + 18% GST on fee = 2.36% of gross amount
+//   if (paymentMethod === 'cod' || paymentMethod === 'cash_on_delivery') {
+//   paymentProcessingFee = 35  // Flat ₹35 COD fee
+//   console.log(`💳 COD payment detected, flat fee: ₹35`)
+//   } else {
+//     const RAZORPAY_FEE_RATE = 0.0236
+//     paymentProcessingFee = orderTotal * RAZORPAY_FEE_RATE
+//     console.log(`💳 Online payment, Razorpay fee (2.36%): ₹${paymentProcessingFee}`)
+// }
+
+//   switch (fulfillmentType) {
+//     case "creator_fulfillment":
+//       // Creator Fulfillment: ₹700 → Razorpay ₹16.52 → ₹683.48 → 90% = ₹615.13
+//       const afterGatewayCreator = orderTotal - paymentProcessingFee
+//       vendorShare = afterGatewayCreator * 0.90
+//       commissionRate = 90
+      
+//       // GST not separately extracted for creator fulfillment
+//       taxAmount = 0
+//       break
+
+//     case "junooni_fulfillment":
+//       if (costPrice === undefined || costPrice === null) {
+//         throw new MedusaError(
+//           MedusaError.Types.INVALID_DATA,
+//           "Cost price is required for Junooni fulfillment"
+//         )
+//       }
+
+//       // ✅ FIX: Calculate total cost by multiplying unit cost by quantity
+//       const totalCostPrice = costPrice * quantity
+      
+//       console.log(`🧮 Cost Calculation: Unit Cost = ₹${costPrice}, Quantity = ${quantity}, Total Cost = ₹${totalCostPrice}`)
+
+//       // ✅ FIX: Use actual tax from order item, or fallback to calculated GST
+//       if (taxTotal !== undefined && taxTotal !== null && taxTotal > 0) {
+//         taxAmount = taxTotal
+//         console.log(`✅ Using actual tax from order: ₹${taxAmount}`)
+//       } else {
+//         // Fallback: Calculate GST (5% for apparel < ₹1000)
+//         taxAmount = orderTotal * 5 / 105
+//         console.log(`⚠️ No tax provided, calculated fallback GST: ₹${taxAmount}`)
+//       }
+      
+//       const netRevenue = orderTotal - taxAmount  // Ex-GST amount
+      
+//       // Step 2: Net after gateway fee
+//       const netAfterGateway = netRevenue - paymentProcessingFee
+      
+//       // ✅ FIX: Compare total cost price (not unit cost) against net amount
+//       if (totalCostPrice > netAfterGateway) {
+//         throw new MedusaError(
+//           MedusaError.Types.INVALID_DATA,
+//           `Total cost price (₹${totalCostPrice} = ₹${costPrice} × ${quantity}) cannot exceed net amount after fees (₹${netAfterGateway})`
+//         )
+//       }
+      
+//       // Step 3: Creator profit = Net after gateway - Total Cost price
+//       vendorShare = netAfterGateway - totalCostPrice
+      
+//       console.log(`💰 Vendor Share Calculation: Net After Gateway = ₹${netAfterGateway}, Total Cost = ₹${totalCostPrice}, Vendor Share = ₹${vendorShare}`)
+      
+//       // Calculate commission rate for reporting purposes
+//       commissionRate = orderTotal > 0 
+//         ? (vendorShare / orderTotal) * 100
+//         : 0
+//       break
+
+//     default:
+//       throw new MedusaError(
+//         MedusaError.Types.INVALID_DATA,
+//         `Invalid fulfillment type: ${fulfillmentType}`
+//       )
+//   }
+
+//   // Calculate TDS (1% of vendor share/profit)
+//   const tdsPercentage = 1
+//   const tdsAmount = vendorShare * 0.01
+  
+//   // Net amount = Vendor share - TDS
+//   const netAmount = vendorShare - tdsAmount
+
+//   return {
+//     grossAmount: orderTotal,           // Total amount customer paid
+//     commissionAmount: vendorShare,     // Creator profit/share before TDS
+//     taxAmount,                         // GST extracted (only for Junooni fulfillment)
+//     tdsAmount,                         // TDS deducted from creator
+//     paymentProcessingFee,              // Razorpay gateway fee
+//     netAmount,                         // Final payout to creator
+//     commissionRate,                    // Percentage for reference
+//     tdsPercentage,                     // TDS rate (1%)
+//   }
+// }
+
+//   /**
+//    * Process individual payout
+//    */
+//   async processPayout(
+//     vendorId: string, 
+//     amount: number, 
+//     paymentMethod: "bank_transfer" | "paypal" | "razorpay" | "manual",
+//     reason: string
+//   ): Promise<PayoutDetails> {
+//     if (amount <= 0) {
+//       throw new MedusaError(
+//         MedusaError.Types.INVALID_DATA,
+//         "Payout amount must be positive"
+//       )
+//     }
+
+//     const vendorPayout = await this.getVendorPayout(vendorId)
+
+//     if (!vendorPayout) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_FOUND,
+//         "Vendor payout record not found"
+//       )
+//     }
+
+//     if (vendorPayout.current_balance < amount) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_ALLOWED,
+//         "Insufficient balance for payout"
+//       )
+//     }
+
+//     if (!vendorPayout.is_payout_enabled || vendorPayout.hold_payouts) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_ALLOWED,
+//         "Payouts are currently disabled for this vendor"
+//       )
+//     }
+
+//     if (amount < vendorPayout.minimum_payout_amount) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_ALLOWED,
+//         `Amount below minimum payout of ₹${vendorPayout.minimum_payout_amount}`
+//       )
+//     }
+
+//     const payoutTransaction = await this.createPayoutDetails({
+//       amount: -amount,
+//       type: "payout",
+//       status: "processing",
+//       reason: reason,
+//       payout_id: vendorPayout.id,
+
+//     })
+
+//     await this.updatePayouts({
+//       id: vendorPayout.id,
+//       current_balance: vendorPayout.current_balance - amount,
+//       total_paid: vendorPayout.total_paid + amount,
+//       last_payout_at: new Date(),
+//       next_payout_date: this.getNextPayoutDate(vendorPayout.payout_schedule),
+//     })
+
+//     return payoutTransaction
+//   }
+
+//   /**
+//    * Add manual adjustment
+//    */
+//   async addAdjustment(vendorId: string, amount: number, reason: string): Promise<PayoutDetails> {
+//     if (amount === 0) {
+//       throw new MedusaError(
+//         MedusaError.Types.INVALID_DATA,
+//         "Adjustment amount cannot be zero"
+//       )
+//     }
+
+//     const vendorPayout = await this.getOrCreateVendorPayout(vendorId)
+//     const newBalance = vendorPayout.current_balance + amount
+
+//     if (newBalance < 0) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_ALLOWED,
+//         "Adjustment would result in negative balance"
+//       )
+//     }
+
+//     const adjustmentTransaction = await this.createPayoutDetails({
+//       amount: amount,
+//       type: "adjustment",
+//       status: "completed",
+//       reason: `Manual adjustment: ${reason}`,
+//       payout_id: vendorPayout.id,
+
+//     })
+
+//     await this.updatePayouts({
+//       id: vendorPayout.id,
+//       current_balance: newBalance,
+//       total_earned: amount > 0 ? vendorPayout.total_earned + amount : vendorPayout.total_earned,
+//     })
+
+//     return adjustmentTransaction
+//   }
+
+//   /**
+//    * Update payout detail status
+//    */
+//   async updatePayoutDetailStatus(
+//     payoutDetailId: string, 
+//     status: "pending" | "processing" | "completed" | "failed" | "cancelled", 
+//     processorResponse?: string
+//   ): Promise<PayoutDetails> {
+//     const payoutDetail = await this.retrievePayoutDetails(payoutDetailId)
+//     if (!payoutDetail) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_FOUND,
+//         "Payout detail not found"
+//       )
+//     }
+
+//     const updateData: any = {
+//       id: payoutDetailId,
+//       status,
+//     }
+
+//     if (processorResponse) {
+//       updateData.notes = processorResponse
+//     }
+
+//     if (status === "failed" && payoutDetail.type === "payout") {
+//       const payoutId = typeof payoutDetail.payout === "string"
+//         ? payoutDetail.payout
+//         : (payoutDetail.payout && (payoutDetail.payout as any).id);
+
+//       const vendorPayout = payoutId ? await this.retrievePayout(payoutId) : null;
+//       if (vendorPayout) {
+//         await this.updatePayouts({
+//           id: vendorPayout.id,
+//           current_balance: vendorPayout.current_balance + Math.abs(payoutDetail.amount),
+//           total_paid: vendorPayout.total_paid - Math.abs(payoutDetail.amount),
+//         })
+//       }
+//     }
+
+//     return await this.updatePayoutDetails(updateData)
+//   }
+
+//   /**
+//    * Get vendor payout details with transaction history
+//    */
+//   async getVendorPayoutDetails(vendorId: string, options: {
+//     orderId?: string
+//     type?: "earning" | "payout" | "adjustment" | "refund"
+//     limit?: number
+//     offset?: number
+//   } = {}): Promise<{
+//     account: Payout | null
+//     transactions: PayoutDetails[]
+//     summary: {
+//       totalEarnings: number
+//       totalPaid: number
+//       currentBalance: number
+//       totalOrders: number
+//       totalTransactions: number
+//     }
+//   }> {
+//     const vendorPayout = await this.getVendorPayout(vendorId)
+    
+//     if (!vendorPayout) {
+//       return {
+//         account: null,
+//         transactions: [],
+//         summary: {
+//           totalEarnings: 0,
+//           totalPaid: 0,
+//           currentBalance: 0,
+//           totalOrders: 0,
+//           totalTransactions: 0,
+//         }
+//       }
+//     }
+
+//     //const filters: any = { payout: vendorPayout.id }
+//     const filters: any = { payout_id: vendorPayout.id }
+
+//     if (options.orderId) filters.order_id = options.orderId
+//     if (options.type) filters.type = options.type
+
+//     const [transactions, totalCount] = await this.listAndCountPayoutDetails(
+//       filters,
+//       {
+//         take: options.limit || 50,
+//         skip: options.offset || 0,
+//         order: { created_at: "DESC" },
+//         select: [
+//           "id",
+//           "order_id", 
+//           "order_item_id",
+//           "product_id",
+//           "amount",
+//           "tax_amount",
+//           "tax_type",
+//           "tds_percentage", 
+//           "tds_amount",
+//           "type",
+//           "fulfillment_type",
+//           "cost_price",
+//           "commission_rate",
+//           "selling_price", 
+//           "status",
+//           "reason",
+//           "notes",
+//           "created_at",
+//           "updated_at"
+//         ]
+//       }
+//     )
+
+//     const summary = {
+//       totalEarnings: vendorPayout.total_earned,
+//       totalPaid: vendorPayout.total_paid,
+//       currentBalance: vendorPayout.current_balance,
+//       totalOrders: vendorPayout.total_orders,
+//       totalTransactions: totalCount,
+//     }
+
+//     return {
+//       account: vendorPayout,
+//       transactions,
+//       summary,
+//     }
+//   }
+
+//   /**
+//    * Get vendor earnings by product
+//    */
+//   async getVendorProductEarnings(vendorId: string, productId?: string): Promise<Array<{
+//     productId: string
+//     totalAmount: number
+//     totalTax: number
+//     totalTds: number
+//     orderCount: number
+//     lastEarningDate: Date
+//   }>> {
+//     const vendorPayout = await this.getVendorPayout(vendorId)
+//     if (!vendorPayout) return []
+
+//     const filters: any = { 
+//       payout_id: vendorPayout.id,
+//       type: "earning"
+//     }
+//     if (productId) filters.product_id = productId
+
+//     const transactions = await this.listPayoutDetails(filters)
+
+//     const productMap = new Map()
+    
+//     transactions.forEach(transaction => {
+//       const key = transaction.product_id
+//       if (!productMap.has(key)) {
+//         productMap.set(key, {
+//           productId: key,
+//           totalAmount: 0,
+//           totalTax: 0,
+//           totalTds: 0,
+//           orderCount: 0,
+//           lastEarningDate: transaction.created_at,
+//         })
+//       }
+      
+//       const product = productMap.get(key)
+//       product.totalAmount += transaction.amount
+//       product.totalTax += transaction.tax_amount
+//       product.totalTds += transaction.tds_amount
+//       product.orderCount += 1
+//       if (transaction.created_at > product.lastEarningDate) {
+//         product.lastEarningDate = transaction.created_at
+//       }
+//     })
+    
+//     return Array.from(productMap.values())
+//   }
+
+//   /**
+//    * Get vendors eligible for payout
+//    */
+//   async getEligibleVendors(): Promise<Payout[]> {
+//     const allPayouts = await this.listPayouts({})
+    
+//     return allPayouts.filter(payout => 
+//       payout.is_payout_enabled &&
+//       !payout.hold_payouts &&
+//       payout.current_balance >= payout.minimum_payout_amount &&
+//       (!payout.next_payout_date || payout.next_payout_date <= new Date())
+//     )
+//   }
+
+//   /**
+//    * Create batch payout
+//    */
+//   async createBatch(period: string, paymentMethod: "bank_transfer" | "paypal" | "stripe" | "manual"): Promise<PayoutBatch> {
+//     const eligibleVendors = await this.getEligibleVendors()
+    
+//     if (eligibleVendors.length === 0) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_FOUND,
+//         "No vendors eligible for payout"
+//       )
+//     }
+
+//     const totalAmount = eligibleVendors.reduce((sum, vendor) => sum + vendor.current_balance, 0)
+//     const batchReference = `BATCH_${period}_${Date.now()}`
+
+//     return await this.createPayoutBatches({
+//       batch_reference: batchReference,
+//       period,
+//       status: "pending",
+//       total_vendors: eligibleVendors.length,
+//       total_amount: totalAmount,
+//       payment_method: paymentMethod,
+//       scheduled_at: new Date(),
+//     })
+//   }
+
+//   /**
+//    * Process batch payout
+//    */
+//   async processBatch(batchId: string): Promise<{ 
+//     batch: PayoutBatch
+//     successful: number
+//     failed: number
+//     results: Array<{ vendorId: string, success: boolean, error?: string }>
+//   }> {
+//     const batch = await this.retrievePayoutBatch(batchId)
+//     if (!batch) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_FOUND,
+//         "Batch not found"
+//       )
+//     }
+
+//     await this.updatePayoutBatches({
+//       id: batchId,
+//       status: "processing",
+//       started_at: new Date(),
+//     })
+
+//     const eligibleVendors = await this.getEligibleVendors()
+//     let successfulCount = 0
+//     let failedCount = 0
+//     const results: Array<{ vendorId: string, success: boolean, error?: string }> = []
+
+//     const paymentMethodMap: Record<string, "bank_transfer" | "paypal" | "razorpay" | "manual"> = {
+//       "stripe": "razorpay",
+//       "bank_transfer": "bank_transfer",
+//       "paypal": "paypal",
+//       "manual": "manual",
+//     }
+    
+//     const payoutPaymentMethod = paymentMethodMap[batch.payment_method] || "manual"
+
+//     for (const vendor of eligibleVendors) {
+//       try {
+//         await this.processPayout(
+//           vendor.vendor_id,
+//           vendor.current_balance,
+//           payoutPaymentMethod,
+//           `Batch payout - ${batch.period}`
+//         )
+//         successfulCount++
+//         results.push({ vendorId: vendor.vendor_id, success: true })
+//       } catch (error) {
+//         failedCount++
+//         results.push({ 
+//           vendorId: vendor.vendor_id, 
+//           success: false, 
+//           error: error instanceof Error ? error.message : "Unknown error"
+//         })
+//       }
+//     }
+
+//     const finalStatus = failedCount === 0 ? "completed" : 
+//                        successfulCount === 0 ? "failed" : "partially_failed"
+
+//     const updatedBatch = await this.updatePayoutBatches({
+//       id: batchId,
+//       status: finalStatus,
+//       successful_payouts: successfulCount,
+//       failed_payouts: failedCount,
+//       completed_at: new Date(),
+//     })
+
+//     return { 
+//       batch: updatedBatch, 
+//       successful: successfulCount, 
+//       failed: failedCount,
+//       results
+//     }
+//   }
+
+//   /**
+//    * Process order refund - creates negative payout details to offset original earnings
+//    */
+//   async processOrderRefund(
+//     orderId: string, 
+//     refundReason: string = "Order refunded",
+//     partialRefundItems?: Array<{
+//       order_item_id: string
+//       refund_amount?: number
+//     }>
+//   ): Promise<{
+//     refundDetails: PayoutDetails[]
+//     vendorsAffected: number
+//     totalRefundAmount: number
+//   }> {
+//     let existingEarnings = await this.listPayoutDetails({
+//       order_id: orderId,
+//       type: "earning",
+//       status: "completed",
+//     })
+
+//     if (existingEarnings.length === 0) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_FOUND,
+//         `No completed earnings found for order ${orderId}`
+//       )
+//     }
+
+//     if (partialRefundItems && partialRefundItems.length > 0) {
+//       const itemIdsToRefund = partialRefundItems.map(item => item.order_item_id)
+//       existingEarnings = existingEarnings.filter(earning => 
+//         earning.order_item_id && itemIdsToRefund.includes(earning.order_item_id)
+//       )
+//     }
+
+//     const existingRefunds = await this.listPayoutDetails({
+//       order_id: orderId,
+//       type: "refund",
+//     })
+
+//     if (existingRefunds.length > 0) {
+//       const refundedItemIds = existingRefunds
+//         .map(refund => refund.order_item_id)
+//         .filter(Boolean)
+
+//       existingEarnings = existingEarnings.filter(earning => 
+//         !earning.order_item_id || !refundedItemIds.includes(earning.order_item_id)
+//       )
+//     }
+
+//     if (existingEarnings.length === 0) {
+//       throw new MedusaError(
+//         MedusaError.Types.INVALID_DATA,
+//         `No earnings available to refund for order ${orderId}`
+//       )
+//     }
+
+//     const refundDetails: PayoutDetails[] = []
+//     let totalRefundAmount = 0
+//     const vendorBalanceUpdates = new Map<string, number>()
+
+//     for (const earning of existingEarnings) {
+//       // Resolve payout id if earning.payout is an object (some relations may populate the full object)
+//       const payoutRef = typeof earning.payout === "string"
+//         ? earning.payout
+//         : (earning.payout && (earning.payout as any).id) || undefined
+
+//       const refundDetail = await this.createPayoutDetails({
+//         order_id: earning.order_id,
+//         order_item_id: earning.order_item_id,
+//         product_id: earning.product_id,
+//         amount: -earning.amount,
+//         tax_amount: -earning.tax_amount,
+//         tax_type: earning.tax_type,
+//         tds_percentage: earning.tds_percentage,
+//         tds_amount: -earning.tds_amount,
+//         type: "refund",
+//         fulfillment_type: earning.fulfillment_type,
+//         cost_price: earning.cost_price,
+//         commission_rate: earning.commission_rate,
+//         selling_price: earning.selling_price,
+//         status: "completed",
+//         reason: `${refundReason} - Offsetting earning ${earning.id}`,
+//         notes: JSON.stringify({
+//           original_earning_id: earning.id,
+//           refund_type: partialRefundItems ? "partial" : "full",
+//           original_amount: earning.amount,
+//           refunded_at: new Date().toISOString(),
+//         }),
+//         payout: payoutRef,
+//       })
+
+//       refundDetails.push(refundDetail)
+//       totalRefundAmount += Math.abs(earning.amount)
+
+//       const payoutId = payoutRef
+//       if (!payoutId) {
+//         // If we don't have a payout id, skip updating balances for this entry
+//       } else {
+//         const currentUpdate = vendorBalanceUpdates.get(payoutId) || 0
+//         vendorBalanceUpdates.set(payoutId, currentUpdate + Math.abs(earning.amount))
+//       }
+//     }
+
+//     for (const [payoutId, refundAmount] of vendorBalanceUpdates.entries()) {
+//       const vendorPayout = await this.retrievePayout(payoutId)
+//       if (vendorPayout) {
+//         await this.updatePayouts({
+//           id: payoutId,
+//           current_balance: vendorPayout.current_balance - refundAmount,
+//           total_earned: vendorPayout.total_earned - refundAmount,
+//           avg_order_value: vendorPayout.total_orders > 0 
+//             ? (vendorPayout.total_earned - refundAmount) / vendorPayout.total_orders 
+//             : 0,
+//         })
+//       }
+//     }
+
+//     return {
+//       refundDetails,
+//       vendorsAffected: vendorBalanceUpdates.size,
+//       totalRefundAmount,
+//     }
+//   }
+
+//   /**
+//    * Check if an order has already been refunded
+//    */
+//   async isOrderRefunded(orderId: string): Promise<{
+//     isRefunded: boolean
+//     hasPartialRefunds: boolean
+//     refundDetails: PayoutDetails[]
+//     totalRefundAmount: number
+//   }> {
+//     const refundDetails = await this.listPayoutDetails({
+//       order_id: orderId,
+//       type: "refund",
+//     })
+
+//     const totalRefundAmount = refundDetails.reduce((sum, detail) => 
+//       sum + Math.abs(detail.amount), 0
+//     )
+
+//     const earnings = await this.listPayoutDetails({
+//       order_id: orderId,
+//       type: "earning",
+//     })
+
+//     const totalEarningsAmount = earnings.reduce((sum, detail) => sum + detail.amount, 0)
+
+//     return {
+//       isRefunded: refundDetails.length > 0,
+//       hasPartialRefunds: totalRefundAmount > 0 && totalRefundAmount < totalEarningsAmount,
+//       refundDetails,
+//       totalRefundAmount,
+//     }
+//   }
+
+//   /**
+//    * Get refund summary for a vendor
+//    */
+//   async getVendorRefundSummary(vendorId: string, options: {
+//     startDate?: Date
+//     endDate?: Date
+//     orderId?: string
+//   } = {}): Promise<{
+//     totalRefunds: number
+//     totalRefundAmount: number
+//     refundsByOrder: Array<{
+//       orderId: string
+//       refundAmount: number
+//       refundCount: number
+//       refundDate: Date
+//     }>
+//   }> {
+//     const vendorPayout = await this.getVendorPayout(vendorId)
+//     if (!vendorPayout) {
+//       return {
+//         totalRefunds: 0,
+//         totalRefundAmount: 0,
+//         refundsByOrder: [],
+//       }
+//     }
+
+//     const filters: any = { 
+//        payout_id: vendorPayout.id,
+//       type: "refund"
+//     }
+    
+//     if (options.orderId) filters.order_id = options.orderId
+
+//     const refundDetails = await this.listPayoutDetails(filters)
+
+//     let filteredRefunds = refundDetails
+//     if (options.startDate || options.endDate) {
+//       filteredRefunds = refundDetails.filter(refund => {
+//         const refundDate = new Date(refund.created_at)
+//         if (options.startDate && refundDate < options.startDate) return false
+//         if (options.endDate && refundDate > options.endDate) return false
+//         return true
+//       })
+//     }
+
+//     const refundsByOrder = new Map()
+    
+//     filteredRefunds.forEach(refund => {
+//       const orderId = refund.order_id
+//       if (!refundsByOrder.has(orderId)) {
+//         refundsByOrder.set(orderId, {
+//           orderId,
+//           refundAmount: 0,
+//           refundCount: 0,
+//           refundDate: refund.created_at,
+//         })
+//       }
+      
+//       const orderRefund = refundsByOrder.get(orderId)
+//       orderRefund.refundAmount += Math.abs(refund.amount)
+//       orderRefund.refundCount += 1
+      
+//       if (refund.created_at > orderRefund.refundDate) {
+//         orderRefund.refundDate = refund.created_at
+//       }
+//     })
+
+//     const totalRefundAmount = filteredRefunds.reduce((sum, detail) => 
+//       sum + Math.abs(detail.amount), 0
+//     )
+
+//     return {
+//       totalRefunds: filteredRefunds.length,
+//       totalRefundAmount,
+//       refundsByOrder: Array.from(refundsByOrder.values()),
+//     }
+//   }
+
+//   /**
+//    * Hold or release vendor payouts
+//    */
+//   async setPayoutHold(vendorId: string, hold: boolean, reason?: string): Promise<Payout> {
+//     const vendorPayout = await this.getVendorPayout(vendorId)
+    
+//     if (!vendorPayout) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_FOUND,
+//         "Vendor not found"
+//       )
+//     }
+
+//     return await this.updatePayouts({
+//       id: vendorPayout.id,
+//       hold_payouts: hold,
+//       hold_reason: hold ? reason || "Administrative hold" : null,
+//     })
+//   }
+
+//   /**
+//    * Get vendor earnings report
+//    */
+//   async getVendorEarningsReport(vendorId: string, options: {
+//     startDate?: Date
+//     endDate?: Date
+//     groupBy?: 'product' | 'month' | 'order'
+//   } = {}): Promise<VendorEarningsReport> {
+//     const { account, transactions } = await this.getVendorPayoutDetails(vendorId)
+    
+//     if (!account) {
+//       throw new MedusaError(
+//         MedusaError.Types.NOT_FOUND,
+//         "Vendor not found"
+//       )
+//     }
+
+//     let filteredTransactions = transactions
+//     if (options.startDate || options.endDate) {
+//       filteredTransactions = transactions.filter(transaction => {
+//         const transactionDate = new Date(transaction.created_at)
+//         if (options.startDate && transactionDate < options.startDate) return false
+//         if (options.endDate && transactionDate > options.endDate) return false
+//         return true
+//       })
+//     }
+
+//     const productMap = new Map()
+//     filteredTransactions
+//       .filter(t => t.type === "earning" && t.product_id)
+//       .forEach(transaction => {
+//         const productId = transaction.product_id!
+//         if (!productMap.has(productId)) {
+//           productMap.set(productId, {
+//             productId,
+//             totalAmount: 0,
+//             orderCount: 0,
+//           })
+//         }
+        
+//         const product = productMap.get(productId)
+//         product.totalAmount += transaction.amount
+//         product.orderCount += 1
+//       })
+
+//     return {
+//       vendorId,
+//       totalEarnings: account.total_earned,
+//       totalPaid: account.total_paid,
+//       currentBalance: account.current_balance,
+//       totalOrders: account.total_orders,
+//       productBreakdown: Array.from(productMap.values()),
+//     }
+//   }
+
+//   private getCurrentPayoutPeriod(): string {
+//     const now = new Date()
+//     const year = now.getFullYear()
+//     const startOfYear = new Date(year, 0, 1)
+//     const pastDaysOfYear = (now.getTime() - startOfYear.getTime()) / 86400000
+//     const weekNumber = Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7)
+//     return `${year}-W${weekNumber.toString().padStart(2, '0')}`
+//   }
+
+//   private getNextPayoutDate(schedule: "weekly" | "biweekly" | "monthly" = "weekly"): Date {
+//     const now = new Date()
+//     const nextPayout = new Date(now)
+
+//     switch (schedule) {
+//       case "weekly":
+//         const daysUntilFriday = (5 - now.getDay() + 7) % 7 || 7
+//         nextPayout.setDate(now.getDate() + daysUntilFriday)
+//         break
+      
+//       case "biweekly":
+//         const daysUntilFridayBi = (5 - now.getDay() + 7) % 7 || 7
+//         nextPayout.setDate(now.getDate() + daysUntilFridayBi + 7)
+//         break
+      
+//       case "monthly":
+//         const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+//         const lastDayOfNextMonth = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0)
+//         const lastFridayOfNextMonth = new Date(lastDayOfNextMonth)
+//         lastFridayOfNextMonth.setDate(lastDayOfNextMonth.getDate() - ((lastDayOfNextMonth.getDay() + 2) % 7))
+//         return lastFridayOfNextMonth
+//     }
+
+//     nextPayout.setHours(17, 0, 0, 0)
+//     return nextPayout
+//   }
+// }
+
+// export default PayoutModuleService
+
 import { MedusaError, MedusaService } from "@medusajs/framework/utils"
 import Payout from "./models/payouts"
 import PayoutBatch from "./models/payout_batch"
@@ -7,6 +1287,14 @@ import { InferTypeOf } from "@medusajs/framework/types"
 type Payout = InferTypeOf<typeof Payout>
 type PayoutBatch = InferTypeOf<typeof PayoutBatch>
 type PayoutDetails = InferTypeOf<typeof PayoutDetails>
+
+// ─── Money helpers ────────────────────────────────────────────────────────────
+/** Convert rupees (float) → paise (integer). ₹647.50 → 64750 */
+const toPaise = (rupees: number): number => Math.round(rupees * 100)
+
+/** Convert paise (integer) → rupees (float). 64750 → 647.50 */
+const toRupees = (paise: number): number => paise / 100
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface OrderLineItem {
   id: string
@@ -33,22 +1321,23 @@ interface OrderLineItem {
   }
 }
 
+// EarningsCalculation always works in RUPEES internally, conversion happens at save time
 interface EarningsCalculation {
-  grossAmount: number
-  commissionAmount: number
-  taxAmount: number
-  tdsAmount: number
-  paymentProcessingFee: number
-  netAmount: number
-  commissionRate: number
-  tdsPercentage: number
+  grossAmount: number         // rupees
+  commissionAmount: number    // rupees
+  taxAmount: number           // rupees
+  tdsAmount: number           // rupees
+  paymentProcessingFee: number // rupees
+  netAmount: number           // rupees
+  commissionRate: number      // percentage (e.g. 90)
+  tdsPercentage: number       // percentage (e.g. 1)
 }
 
 interface VendorEarningsReport {
   vendorId: string
-  totalEarnings: number
-  totalPaid: number
-  currentBalance: number
+  totalEarnings: number   // rupees
+  totalPaid: number       // rupees
+  currentBalance: number  // rupees
   totalOrders: number
   productBreakdown: Array<{
     productId: string
@@ -57,128 +1346,70 @@ interface VendorEarningsReport {
   }>
 }
 
-/**
- * Helper function to parse fulfillment type from metadata
- * Handles various formats:
- * - {"type":"JUNOONI-fulfillment"} -> junooni_fulfillment
- * - {"type":"Creator-fulfilment"} -> creator_fulfillment
- * - String that needs parsing
- */
 function parseFulfillmentType(metadata?: any): "creator_fulfillment" | "junooni_fulfillment" {
-  console.log('🔍 [parseFulfillmentType] Starting with metadata:', JSON.stringify(metadata, null, 2))
-  
+  //console.log('🔍 [parseFulfillmentType] Starting with metadata:', JSON.stringify(metadata, null, 2))
+
   let fulfillmentType: "creator_fulfillment" | "junooni_fulfillment" = "creator_fulfillment"
-  
+
   if (!metadata?.fulfillment_type) {
-    console.log('❌ [parseFulfillmentType] No fulfillment_type found in metadata, returning default:', fulfillmentType)
+    //console.log('❌ [parseFulfillmentType] No fulfillment_type found, returning default:', fulfillmentType)
     return fulfillmentType
   }
 
-  console.log('📦 [parseFulfillmentType] Raw fulfillment_type:', metadata.fulfillment_type)
-  console.log('📦 [parseFulfillmentType] Type of fulfillment_type:', typeof metadata.fulfillment_type)
-
   try {
     let fulfillmentData = metadata.fulfillment_type
-    
-    // If it's a string, try to parse it as JSON
+
     if (typeof fulfillmentData === 'string') {
-      console.log('🔤 [parseFulfillmentType] fulfillment_type is a string, attempting to parse...')
       try {
         fulfillmentData = JSON.parse(fulfillmentData)
-        console.log('✅ [parseFulfillmentType] Successfully parsed JSON:', JSON.stringify(fulfillmentData, null, 2))
       } catch (e) {
-        console.log('⚠️ [parseFulfillmentType] JSON parse failed, trying regex extraction')
-        // If parsing fails, try to extract type using regex
         const typeMatch = fulfillmentData.match(/"type"\s*:\s*"([^"]+)"/i)
         if (typeMatch) {
-          console.log('✅ [parseFulfillmentType] Regex matched type:', typeMatch[1])
           fulfillmentData = { type: typeMatch[1] }
         } else {
-          console.log('⚠️ [parseFulfillmentType] Regex failed, checking string content directly')
-          // Last resort: check if the string itself contains the keywords
           const lowerStr = fulfillmentData.toLowerCase()
-          console.log('🔍 [parseFulfillmentType] Lowercase string:', lowerStr)
-          if (lowerStr.includes('junooni')) {
-            console.log('✅ [parseFulfillmentType] Found "junooni" in string, returning junooni_fulfillment')
-            return "junooni_fulfillment"
-          } else if (lowerStr.includes('creator')) {
-            console.log('✅ [parseFulfillmentType] Found "creator" in string, returning creator_fulfillment')
-            return "creator_fulfillment"
-          }
-          console.log('❌ [parseFulfillmentType] No keywords found in string, returning default')
+          if (lowerStr.includes('junooni')) return "junooni_fulfillment"
+          if (lowerStr.includes('creator')) return "creator_fulfillment"
           return fulfillmentType
         }
       }
     }
-    
-    console.log('🔍 [parseFulfillmentType] Checking fulfillmentData object:', JSON.stringify(fulfillmentData, null, 2))
-    
-    // Check the type field (case-insensitive)
+
     if (fulfillmentData && typeof fulfillmentData === 'object' && fulfillmentData.type) {
       const typeValue = fulfillmentData.type.toLowerCase()
-      console.log('🏷️ [parseFulfillmentType] Type value (lowercase):', typeValue)
-      
-      if (typeValue.includes('junooni')) {
-        console.log('✅ [parseFulfillmentType] Type includes "junooni", setting to junooni_fulfillment')
-        fulfillmentType = "junooni_fulfillment"
-      } else if (typeValue.includes('creator')) {
-        console.log('✅ [parseFulfillmentType] Type includes "creator", setting to creator_fulfillment')
-        fulfillmentType = "creator_fulfillment"
-      } else {
-        console.log('⚠️ [parseFulfillmentType] Type value does not match any keywords:', typeValue)
-      }
-    } else {
-      console.log('❌ [parseFulfillmentType] fulfillmentData is not a valid object or missing type field')
+      if (typeValue.includes('junooni')) fulfillmentType = "junooni_fulfillment"
+      else if (typeValue.includes('creator')) fulfillmentType = "creator_fulfillment"
     }
   } catch (parseError) {
-    console.error('💥 [parseFulfillmentType] Unexpected error:', parseError)
+    //console.error('💥 [parseFulfillmentType] Unexpected error:', parseError)
   }
-  
-  console.log('🎯 [parseFulfillmentType] Final result:', fulfillmentType)
+
+  //console.log('🎯 [parseFulfillmentType] Final result:', fulfillmentType)
   return fulfillmentType
 }
 
-/**
- * Helper function to extract cost price from variant metadata
- * Checks variant metadata first, then product metadata as fallback
- */
 function extractCostPrice(variantMetadata?: any, productMetadata?: any): number {
-  // PRIORITY 1: Check variant metadata for cost_price (this is where it should be!)
   if (variantMetadata?.cost_price !== undefined && variantMetadata?.cost_price !== null) {
     const costPrice = Number(variantMetadata.cost_price)
-    if (!isNaN(costPrice) && costPrice >= 0) {
-      return costPrice
-    }
+    if (!isNaN(costPrice) && costPrice >= 0) return costPrice
   }
-  
-  // PRIORITY 2: Check product metadata as fallback
+
   if (productMetadata?.cost_price !== undefined && productMetadata?.cost_price !== null) {
     const costPrice = Number(productMetadata.cost_price)
-    if (!isNaN(costPrice) && costPrice >= 0) {
-      return costPrice
-    }
+    if (!isNaN(costPrice) && costPrice >= 0) return costPrice
   }
-  
-  // PRIORITY 3: Try payload_integration in product metadata
+
   if (productMetadata?.payload_integration) {
     try {
       let payloadData = productMetadata.payload_integration
-      
-      if (typeof payloadData === 'string') {
-        payloadData = JSON.parse(payloadData)
-      }
-      
+      if (typeof payloadData === 'string') payloadData = JSON.parse(payloadData)
       if (payloadData.base_cost !== undefined && payloadData.base_cost !== null) {
         const baseCost = Number(payloadData.base_cost)
-        if (!isNaN(baseCost) && baseCost >= 0) {
-          return baseCost
-        }
+        if (!isNaN(baseCost) && baseCost >= 0) return baseCost
       }
-    } catch (e) {
-      // Silent fail
-    }
+    } catch (e) { /* silent */ }
   }
-  
+
   return 0
 }
 
@@ -189,74 +1420,53 @@ class PayoutModuleService extends MedusaService({
 }) {
 
   /**
-   * Process order earnings - main entry point for order fulfillment
-   * Processes each item individually without grouping
+   * Process order earnings
+   * NOTE: unit_price and cost_price from Medusa are in PAISE already (Medusa stores all prices as integers)
    */
   async processOrderEarnings(orderId: string, lineItems: OrderLineItem[]): Promise<void> {
-    // Check if this order has already been processed
-    const existingDetails = await this.listPayoutDetails({
-      order_id: orderId
-    })
-    
-    if (existingDetails.length > 0) {
-      return
-    }
-    
-    // Process each item individually
+    const existingDetails = await this.listPayoutDetails({ order_id: orderId })
+    if (existingDetails.length > 0) return
+
     for (const item of lineItems) {
-      if (!item.product.vendor || !Array.isArray(item.product.vendor) || item.product.vendor.length === 0) {
-        continue
-      }
+      if (!item.product.vendor?.length) continue
 
-      // Process each vendor for this item
       for (const vendor of item.product.vendor) {
-        if (!vendor || !vendor.id) {
-          continue
-        }
+        if (!vendor?.id) continue
 
-        // Check if this specific item-vendor combination already exists
         const existingItemDetail = await this.listPayoutDetails({
           order_id: orderId,
           order_item_id: item.id,
         })
-
-        if (existingItemDetail.length > 0) {
-          continue
-        }
+        if (existingItemDetail.length > 0) continue
 
         try {
-          // ✅ FIX: Parse fulfillment type from PRODUCT metadata
           const fulfillmentType = parseFulfillmentType(item.product.metadata)
-          
-          // ✅ FIX: Extract cost price from VARIANT metadata (with product fallback)
-          const costPrice = extractCostPrice(item.variant?.metadata, item.product.metadata)
-          
-          const itemTotal = item.unit_price * item.quantity
-          
-          // Calculate earnings for this specific item
+          const costPriceRupees = extractCostPrice(item.variant?.metadata, item.product.metadata)
+
+          // item.unit_price is in paise from Medusa, convert to rupees for calculation
+          const itemTotalRupees = toRupees(item.unit_price * item.quantity)
+
           const earnings = await this.calculateEarningsFromOrder(
-            itemTotal, 
-            fulfillmentType, 
-            costPrice,
+            itemTotalRupees,
+            fulfillmentType,
+            costPriceRupees,
             item.quantity
           )
-          
-          // Create individual payout detail record for this item
-          const payoutDetail = await this.createPayoutDetailForProduct({
+
+          await this.createPayoutDetailForProduct({
             vendorId: vendor.id,
             orderId,
             orderItemId: item.id,
             productId: item.product.id,
             earnings,
             fulfillmentType,
-            costPrice,
-            sellingPrice: itemTotal,
+            costPrice: costPriceRupees,
+            sellingPrice: itemTotalRupees,
             quantity: item.quantity,
           })
-          
-          // Update vendor account balance for this item
+
           await this.addEarningsToVendorAccount(vendor.id, earnings.netAmount)
-          
+
         } catch (error) {
           throw new MedusaError(
             MedusaError.Types.INVALID_DATA,
@@ -269,6 +1479,7 @@ class PayoutModuleService extends MedusaService({
 
   /**
    * Create payout detail for individual product
+   * Converts rupees → paise before saving
    */
   private async createPayoutDetailForProduct(params: {
     vendorId: string
@@ -277,66 +1488,57 @@ class PayoutModuleService extends MedusaService({
     productId: string
     earnings: EarningsCalculation
     fulfillmentType: "creator_fulfillment" | "junooni_fulfillment"
-    costPrice: number
-    sellingPrice: number
+    costPrice: number    // rupees
+    sellingPrice: number // rupees
     quantity: number
   }): Promise<PayoutDetails> {
-    // Get or create vendor payout account
     const vendorPayout = await this.getOrCreateVendorPayout(params.vendorId)
-    
+
     return await this.createPayoutDetails({
       order_id: params.orderId,
       order_item_id: params.orderItemId,
       product_id: params.productId,
-      amount: params.earnings.netAmount,
-      tax_amount: params.earnings.taxAmount,
+      amount: toPaise(params.earnings.netAmount),
+      tax_amount: toPaise(params.earnings.taxAmount),
       tax_type: "igst",
-      tds_percentage: params.earnings.tdsPercentage,
-      tds_amount: params.earnings.tdsAmount,
+      tds_percentage: Math.round(params.earnings.tdsPercentage * 100),  // 1% → 100
+      tds_amount: toPaise(params.earnings.tdsAmount),
       type: "earning",
       fulfillment_type: params.fulfillmentType,
-      cost_price: params.costPrice,
-      commission_rate: params.earnings.commissionRate,
-      selling_price: params.sellingPrice,
+      cost_price: toPaise(params.costPrice),
+      commission_rate: Math.round(params.earnings.commissionRate * 100), // 90% → 9000
+      selling_price: toPaise(params.sellingPrice),
       status: "completed",
       reason: `Order earnings - ${params.orderId} - ${params.productId}`,
       payout_id: vendorPayout.id,
-
     })
   }
 
   /**
    * Add earnings to vendor account balance
+   * amount is in RUPEES, stored as PAISE
    */
-  private async addEarningsToVendorAccount(vendorId: string, amount: number): Promise<Payout> {
-    if (amount <= 0) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "Earnings amount must be positive"
-      )
+  private async addEarningsToVendorAccount(vendorId: string, amountRupees: number): Promise<Payout> {
+    if (amountRupees <= 0) {
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, "Earnings amount must be positive")
     }
 
     const vendorPayout = await this.getOrCreateVendorPayout(vendorId)
+    const amountPaise = toPaise(amountRupees)
 
     return await this.updatePayouts({
       id: vendorPayout.id,
-      current_balance: vendorPayout.current_balance + amount,
-      total_earned: vendorPayout.total_earned + amount,
+      current_balance: vendorPayout.current_balance + amountPaise,
+      total_earned: vendorPayout.total_earned + amountPaise,
       total_orders: vendorPayout.total_orders + 1,
       last_earning_at: new Date(),
-      avg_order_value: (vendorPayout.total_earned + amount) / (vendorPayout.total_orders + 1),
+      avg_order_value: Math.round((vendorPayout.total_earned + amountPaise) / (vendorPayout.total_orders + 1)),
     })
   }
 
-  /**
-   * Get or create vendor payout account
-   */
   async getOrCreateVendorPayout(vendorId: string): Promise<Payout> {
     const existingPayout = await this.getVendorPayout(vendorId)
-    
-    if (existingPayout) {
-      return existingPayout
-    }
+    if (existingPayout) return existingPayout
 
     return await this.createPayouts({
       vendor_id: vendorId,
@@ -347,7 +1549,7 @@ class PayoutModuleService extends MedusaService({
       total_pending_payout: 0,
       total_orders: 0,
       avg_order_value: 0,
-      minimum_payout_amount: 1000,
+      minimum_payout_amount: 100000, // ₹1000 in paise
       payout_schedule: "weekly",
       is_payout_enabled: true,
       hold_payouts: false,
@@ -355,237 +1557,162 @@ class PayoutModuleService extends MedusaService({
     })
   }
 
-  /**
-   * Get vendor payout account
-   */
   async getVendorPayout(vendorId: string): Promise<Payout | null> {
-    const payouts = await this.listPayouts({
-      vendor_id: vendorId,
-    })
-
+    const payouts = await this.listPayouts({ vendor_id: vendorId })
     return payouts[0] || null
   }
 
-  /**
-   * Get vendor current balance
-   */
   async getBalance(vendorId: string): Promise<number> {
     const payout = await this.getVendorPayout(vendorId)
-    return payout?.current_balance || 0
+    return toRupees(payout?.current_balance || 0)
   }
 
   /**
- * Calculate earnings from order item
- * 
- * CORRECT CALCULATION LOGIC:
- * 
- * ═══════════════════════════════════════════════════════════════════
- * JUNOONI FULFILLMENT (Creator pays Junooni for blank + printing)
- * ═══════════════════════════════════════════════════════════════════
- * Example: Product listed for ₹700 (tax inclusive), Creator cost = ₹400, Quantity = 2
- * 
- * Step 1: Calculate total order value
- *   Order Total = ₹700 × 2 = ₹1400
- * 
- * Step 2: Extract GST (from order item tax_total)
- *   GST = ₹66.67 (actual tax from order)
- *   Net Revenue (ex-GST) = ₹1400 - ₹66.67 = ₹1333.33
- * 
- * Step 3: Deduct Razorpay fee (2% + 18% GST on fee = 2.36% total)
- *   Razorpay Fee = ₹1400 × 0.0236 = ₹33.04
- *   Net after gateway = ₹1333.33 - ₹33.04 = ₹1300.29
- * 
- * Step 4: Deduct TOTAL creator cost (unit cost × quantity)
- *   Total Cost = ₹400 × 2 = ₹800
- *   Creator Profit = ₹1300.29 - ₹800 = ₹500.29
- * 
- * Step 5: Deduct TDS (1% of creator profit)
- *   TDS = ₹500.29 × 0.01 = ₹5.00
- *   Final Payout = ₹500.29 - ₹5.00 = ₹495.29
- */
-async calculateEarningsFromOrder(
-  orderTotal: number, 
-  fulfillmentType: "creator_fulfillment" | "junooni_fulfillment", 
-  costPrice?: number,
-  quantity: number = 1,  // ✅ quantity parameter with default value
-  taxTotal?: number,  // ✅ ADD: actual tax amount from order item
-  paymentMethod?: string  // ← ADD THIS PARAMETER
-): Promise<EarningsCalculation> {
-  if (orderTotal < 0) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      "Order total cannot be negative"
-    )
+   * Calculate earnings from order item
+   * All inputs and outputs are in RUPEES
+   * Conversion to paise happens at save time
+   *
+   * JUNOONI FULFILLMENT example:
+   *   Order Total = ₹1200 (tax inclusive)
+   *   GST = ₹57.14 → Net Revenue = ₹1142.86
+   *   Razorpay 2.36% = ₹28.32 → After Gateway = ₹1114.54
+   *   Cost = ₹460.50 → Profit = ₹654.04
+   *   TDS 1% = ₹6.54 → Final = ₹647.50
+   */
+  async calculateEarningsFromOrder(
+    orderTotalRupees: number,
+    fulfillmentType: "creator_fulfillment" | "junooni_fulfillment",
+    costPriceRupees?: number,
+    quantity: number = 1,
+    taxTotalRupees?: number,
+    paymentMethod?: string
+  ): Promise<EarningsCalculation> {
+    if (orderTotalRupees < 0) {
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, "Order total cannot be negative")
+    }
+    if (quantity <= 0) {
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, "Quantity must be positive")
+    }
+
+    let vendorShare = 0
+    let commissionRate = 0
+    let paymentProcessingFee = 0
+    let taxAmount = 0
+
+    if (paymentMethod === 'cod' || paymentMethod === 'cash_on_delivery') {
+      paymentProcessingFee = 35  // ₹35 flat
+      //console.log(`💳 COD payment, flat fee: ₹35`)
+    } else {
+      paymentProcessingFee = orderTotalRupees * 0.0236
+      //console.log(`💳 Online payment, Razorpay fee (2.36%): ₹${paymentProcessingFee.toFixed(2)}`)
+    }
+
+    switch (fulfillmentType) {
+      case "creator_fulfillment":
+        const afterGatewayCreator = orderTotalRupees - paymentProcessingFee
+        vendorShare = afterGatewayCreator * 0.90
+        commissionRate = 90
+        taxAmount = 0
+        break
+
+      case "junooni_fulfillment":
+        if (costPriceRupees === undefined || costPriceRupees === null) {
+          throw new MedusaError(MedusaError.Types.INVALID_DATA, "Cost price is required for Junooni fulfillment")
+        }
+
+        const totalCostPrice = costPriceRupees * quantity
+        //console.log(`🧮 Unit Cost = ₹${costPriceRupees}, Qty = ${quantity}, Total Cost = ₹${totalCostPrice}`)
+
+        if (taxTotalRupees !== undefined && taxTotalRupees !== null && taxTotalRupees > 0) {
+          taxAmount = taxTotalRupees
+          //console.log(`✅ Using actual tax: ₹${taxAmount}`)
+        } else {
+          taxAmount = orderTotalRupees * 5 / 105
+          //console.log(`⚠️ Fallback GST: ₹${taxAmount.toFixed(2)}`)
+        }
+
+        const netRevenue = orderTotalRupees - taxAmount
+        const netAfterGateway = netRevenue - paymentProcessingFee
+
+        if (totalCostPrice > netAfterGateway) {
+          throw new MedusaError(
+            MedusaError.Types.INVALID_DATA,
+            `Total cost (₹${totalCostPrice}) exceeds net after fees (₹${netAfterGateway.toFixed(2)})`
+          )
+        }
+
+        vendorShare = netAfterGateway - totalCostPrice
+        commissionRate = orderTotalRupees > 0 ? (vendorShare / orderTotalRupees) * 100 : 0
+
+        //console.log(`💰 Vendor Share: ₹${vendorShare.toFixed(2)}`)
+        break
+
+      default:
+        throw new MedusaError(MedusaError.Types.INVALID_DATA, `Invalid fulfillment type: ${fulfillmentType}`)
+    }
+
+    const tdsPercentage = 1
+    const tdsAmount = vendorShare * 0.01
+    const netAmount = vendorShare - tdsAmount
+
+    //console.log(`📊 Final: Gross=₹${orderTotalRupees}, TDS=₹${tdsAmount.toFixed(2)}, Net=₹${netAmount.toFixed(2)}`)
+
+    return {
+      grossAmount: orderTotalRupees,
+      commissionAmount: vendorShare,
+      taxAmount,
+      tdsAmount,
+      paymentProcessingFee,
+      netAmount,
+      commissionRate,
+      tdsPercentage,
+    }
   }
-
-  if (quantity <= 0) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      "Quantity must be positive"
-    )
-  }
-
-  let vendorShare = 0
-  let commissionRate = 0
-  let paymentProcessingFee = 0
-  let taxAmount = 0
-
-  // Helper to round to 2 decimal places
-  //const round2 = (num: number) => Math.round(num * 100) / 100
-
-  // Razorpay fee: 2% + 18% GST on fee = 2.36% of gross amount
-  if (paymentMethod === 'cod' || paymentMethod === 'cash_on_delivery') {
-  paymentProcessingFee = 35  // Flat ₹35 COD fee
-  console.log(`💳 COD payment detected, flat fee: ₹35`)
-  } else {
-    const RAZORPAY_FEE_RATE = 0.0236
-    paymentProcessingFee = orderTotal * RAZORPAY_FEE_RATE
-    console.log(`💳 Online payment, Razorpay fee (2.36%): ₹${paymentProcessingFee}`)
-}
-
-  switch (fulfillmentType) {
-    case "creator_fulfillment":
-      // Creator Fulfillment: ₹700 → Razorpay ₹16.52 → ₹683.48 → 90% = ₹615.13
-      const afterGatewayCreator = orderTotal - paymentProcessingFee
-      vendorShare = afterGatewayCreator * 0.90
-      commissionRate = 90
-      
-      // GST not separately extracted for creator fulfillment
-      taxAmount = 0
-      break
-
-    case "junooni_fulfillment":
-      if (costPrice === undefined || costPrice === null) {
-        throw new MedusaError(
-          MedusaError.Types.INVALID_DATA,
-          "Cost price is required for Junooni fulfillment"
-        )
-      }
-
-      // ✅ FIX: Calculate total cost by multiplying unit cost by quantity
-      const totalCostPrice = costPrice * quantity
-      
-      console.log(`🧮 Cost Calculation: Unit Cost = ₹${costPrice}, Quantity = ${quantity}, Total Cost = ₹${totalCostPrice}`)
-
-      // ✅ FIX: Use actual tax from order item, or fallback to calculated GST
-      if (taxTotal !== undefined && taxTotal !== null && taxTotal > 0) {
-        taxAmount = taxTotal
-        console.log(`✅ Using actual tax from order: ₹${taxAmount}`)
-      } else {
-        // Fallback: Calculate GST (5% for apparel < ₹1000)
-        taxAmount = orderTotal * 5 / 105
-        console.log(`⚠️ No tax provided, calculated fallback GST: ₹${taxAmount}`)
-      }
-      
-      const netRevenue = orderTotal - taxAmount  // Ex-GST amount
-      
-      // Step 2: Net after gateway fee
-      const netAfterGateway = netRevenue - paymentProcessingFee
-      
-      // ✅ FIX: Compare total cost price (not unit cost) against net amount
-      if (totalCostPrice > netAfterGateway) {
-        throw new MedusaError(
-          MedusaError.Types.INVALID_DATA,
-          `Total cost price (₹${totalCostPrice} = ₹${costPrice} × ${quantity}) cannot exceed net amount after fees (₹${netAfterGateway})`
-        )
-      }
-      
-      // Step 3: Creator profit = Net after gateway - Total Cost price
-      vendorShare = netAfterGateway - totalCostPrice
-      
-      console.log(`💰 Vendor Share Calculation: Net After Gateway = ₹${netAfterGateway}, Total Cost = ₹${totalCostPrice}, Vendor Share = ₹${vendorShare}`)
-      
-      // Calculate commission rate for reporting purposes
-      commissionRate = orderTotal > 0 
-        ? (vendorShare / orderTotal) * 100
-        : 0
-      break
-
-    default:
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        `Invalid fulfillment type: ${fulfillmentType}`
-      )
-  }
-
-  // Calculate TDS (1% of vendor share/profit)
-  const tdsPercentage = 1
-  const tdsAmount = vendorShare * 0.01
-  
-  // Net amount = Vendor share - TDS
-  const netAmount = vendorShare - tdsAmount
-
-  return {
-    grossAmount: orderTotal,           // Total amount customer paid
-    commissionAmount: vendorShare,     // Creator profit/share before TDS
-    taxAmount,                         // GST extracted (only for Junooni fulfillment)
-    tdsAmount,                         // TDS deducted from creator
-    paymentProcessingFee,              // Razorpay gateway fee
-    netAmount,                         // Final payout to creator
-    commissionRate,                    // Percentage for reference
-    tdsPercentage,                     // TDS rate (1%)
-  }
-}
 
   /**
    * Process individual payout
+   * amount is in RUPEES
    */
   async processPayout(
-    vendorId: string, 
-    amount: number, 
+    vendorId: string,
+    amountRupees: number,
     paymentMethod: "bank_transfer" | "paypal" | "razorpay" | "manual",
     reason: string
   ): Promise<PayoutDetails> {
-    if (amount <= 0) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "Payout amount must be positive"
-      )
+    if (amountRupees <= 0) {
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, "Payout amount must be positive")
     }
 
     const vendorPayout = await this.getVendorPayout(vendorId)
+    if (!vendorPayout) throw new MedusaError(MedusaError.Types.NOT_FOUND, "Vendor payout record not found")
 
-    if (!vendorPayout) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_FOUND,
-        "Vendor payout record not found"
-      )
+    const amountPaise = toPaise(amountRupees)
+
+    if (vendorPayout.current_balance < amountPaise) {
+      throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Insufficient balance for payout")
     }
-
-    if (vendorPayout.current_balance < amount) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_ALLOWED,
-        "Insufficient balance for payout"
-      )
-    }
-
     if (!vendorPayout.is_payout_enabled || vendorPayout.hold_payouts) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_ALLOWED,
-        "Payouts are currently disabled for this vendor"
-      )
+      throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Payouts are currently disabled for this vendor")
     }
-
-    if (amount < vendorPayout.minimum_payout_amount) {
+    if (amountPaise < vendorPayout.minimum_payout_amount) {
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
-        `Amount below minimum payout of ₹${vendorPayout.minimum_payout_amount}`
+        `Amount below minimum payout of ₹${toRupees(vendorPayout.minimum_payout_amount)}`
       )
     }
 
     const payoutTransaction = await this.createPayoutDetails({
-      amount: -amount,
+      amount: -amountPaise,
       type: "payout",
       status: "processing",
-      reason: reason,
+      reason,
       payout_id: vendorPayout.id,
-
     })
 
     await this.updatePayouts({
       id: vendorPayout.id,
-      current_balance: vendorPayout.current_balance - amount,
-      total_paid: vendorPayout.total_paid + amount,
+      current_balance: vendorPayout.current_balance - amountPaise,
+      total_paid: vendorPayout.total_paid + amountPaise,
       last_payout_at: new Date(),
       next_payout_date: this.getNextPayoutDate(vendorPayout.payout_schedule),
     })
@@ -593,76 +1720,53 @@ async calculateEarningsFromOrder(
     return payoutTransaction
   }
 
-  /**
-   * Add manual adjustment
-   */
-  async addAdjustment(vendorId: string, amount: number, reason: string): Promise<PayoutDetails> {
-    if (amount === 0) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "Adjustment amount cannot be zero"
-      )
+  async addAdjustment(vendorId: string, amountRupees: number, reason: string): Promise<PayoutDetails> {
+    if (amountRupees === 0) {
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, "Adjustment amount cannot be zero")
     }
 
     const vendorPayout = await this.getOrCreateVendorPayout(vendorId)
-    const newBalance = vendorPayout.current_balance + amount
+    const amountPaise = toPaise(amountRupees)
+    const newBalance = vendorPayout.current_balance + amountPaise
 
     if (newBalance < 0) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_ALLOWED,
-        "Adjustment would result in negative balance"
-      )
+      throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Adjustment would result in negative balance")
     }
 
     const adjustmentTransaction = await this.createPayoutDetails({
-      amount: amount,
+      amount: amountPaise,
       type: "adjustment",
       status: "completed",
       reason: `Manual adjustment: ${reason}`,
       payout_id: vendorPayout.id,
-
     })
 
     await this.updatePayouts({
       id: vendorPayout.id,
       current_balance: newBalance,
-      total_earned: amount > 0 ? vendorPayout.total_earned + amount : vendorPayout.total_earned,
+      total_earned: amountRupees > 0 ? vendorPayout.total_earned + amountPaise : vendorPayout.total_earned,
     })
 
     return adjustmentTransaction
   }
 
-  /**
-   * Update payout detail status
-   */
   async updatePayoutDetailStatus(
-    payoutDetailId: string, 
-    status: "pending" | "processing" | "completed" | "failed" | "cancelled", 
+    payoutDetailId: string,
+    status: "pending" | "processing" | "completed" | "failed" | "cancelled",
     processorResponse?: string
   ): Promise<PayoutDetails> {
     const payoutDetail = await this.retrievePayoutDetails(payoutDetailId)
-    if (!payoutDetail) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_FOUND,
-        "Payout detail not found"
-      )
-    }
+    if (!payoutDetail) throw new MedusaError(MedusaError.Types.NOT_FOUND, "Payout detail not found")
 
-    const updateData: any = {
-      id: payoutDetailId,
-      status,
-    }
-
-    if (processorResponse) {
-      updateData.notes = processorResponse
-    }
+    const updateData: any = { id: payoutDetailId, status }
+    if (processorResponse) updateData.notes = processorResponse
 
     if (status === "failed" && payoutDetail.type === "payout") {
       const payoutId = typeof payoutDetail.payout === "string"
         ? payoutDetail.payout
-        : (payoutDetail.payout && (payoutDetail.payout as any).id);
+        : (payoutDetail.payout && (payoutDetail.payout as any).id)
 
-      const vendorPayout = payoutId ? await this.retrievePayout(payoutId) : null;
+      const vendorPayout = payoutId ? await this.retrievePayout(payoutId) : null
       if (vendorPayout) {
         await this.updatePayouts({
           id: vendorPayout.id,
@@ -676,7 +1780,8 @@ async calculateEarningsFromOrder(
   }
 
   /**
-   * Get vendor payout details with transaction history
+   * Get vendor payout details
+   * Returns amounts in PAISE — the API route converts to rupees for the frontend
    */
   async getVendorPayoutDetails(vendorId: string, options: {
     orderId?: string
@@ -687,32 +1792,24 @@ async calculateEarningsFromOrder(
     account: Payout | null
     transactions: PayoutDetails[]
     summary: {
-      totalEarnings: number
-      totalPaid: number
-      currentBalance: number
+      totalEarnings: number   // paise
+      totalPaid: number       // paise
+      currentBalance: number  // paise
       totalOrders: number
       totalTransactions: number
     }
   }> {
     const vendorPayout = await this.getVendorPayout(vendorId)
-    
+
     if (!vendorPayout) {
       return {
         account: null,
         transactions: [],
-        summary: {
-          totalEarnings: 0,
-          totalPaid: 0,
-          currentBalance: 0,
-          totalOrders: 0,
-          totalTransactions: 0,
-        }
+        summary: { totalEarnings: 0, totalPaid: 0, currentBalance: 0, totalOrders: 0, totalTransactions: 0 }
       }
     }
 
-    //const filters: any = { payout: vendorPayout.id }
     const filters: any = { payout_id: vendorPayout.id }
-
     if (options.orderId) filters.order_id = options.orderId
     if (options.type) filters.type = options.type
 
@@ -723,101 +1820,59 @@ async calculateEarningsFromOrder(
         skip: options.offset || 0,
         order: { created_at: "DESC" },
         select: [
-          "id",
-          "order_id", 
-          "order_item_id",
-          "product_id",
-          "amount",
-          "tax_amount",
-          "tax_type",
-          "tds_percentage", 
-          "tds_amount",
-          "type",
-          "fulfillment_type",
-          "cost_price",
-          "commission_rate",
-          "selling_price", 
-          "status",
-          "reason",
-          "notes",
-          "created_at",
-          "updated_at"
+          "id", "order_id", "order_item_id", "product_id",
+          "amount", "tax_amount", "tax_type",
+          "tds_percentage", "tds_amount",
+          "type", "fulfillment_type",
+          "cost_price", "commission_rate", "selling_price",
+          "status", "reason", "notes",
+          "created_at", "updated_at"
         ]
       }
     )
 
-    const summary = {
-      totalEarnings: vendorPayout.total_earned,
-      totalPaid: vendorPayout.total_paid,
-      currentBalance: vendorPayout.current_balance,
-      totalOrders: vendorPayout.total_orders,
-      totalTransactions: totalCount,
-    }
-
     return {
       account: vendorPayout,
       transactions,
-      summary,
+      summary: {
+        totalEarnings: vendorPayout.total_earned,
+        totalPaid: vendorPayout.total_paid,
+        currentBalance: vendorPayout.current_balance,
+        totalOrders: vendorPayout.total_orders,
+        totalTransactions: totalCount,
+      }
     }
   }
 
-  /**
-   * Get vendor earnings by product
-   */
-  async getVendorProductEarnings(vendorId: string, productId?: string): Promise<Array<{
-    productId: string
-    totalAmount: number
-    totalTax: number
-    totalTds: number
-    orderCount: number
-    lastEarningDate: Date
-  }>> {
+  async getVendorProductEarnings(vendorId: string, productId?: string) {
     const vendorPayout = await this.getVendorPayout(vendorId)
     if (!vendorPayout) return []
 
-    const filters: any = { 
-      payout_id: vendorPayout.id,
-      type: "earning"
-    }
+    const filters: any = { payout_id: vendorPayout.id, type: "earning" }
     if (productId) filters.product_id = productId
 
     const transactions = await this.listPayoutDetails(filters)
-
     const productMap = new Map()
-    
+
     transactions.forEach(transaction => {
       const key = transaction.product_id
       if (!productMap.has(key)) {
-        productMap.set(key, {
-          productId: key,
-          totalAmount: 0,
-          totalTax: 0,
-          totalTds: 0,
-          orderCount: 0,
-          lastEarningDate: transaction.created_at,
-        })
+        productMap.set(key, { productId: key, totalAmount: 0, totalTax: 0, totalTds: 0, orderCount: 0, lastEarningDate: transaction.created_at })
       }
-      
       const product = productMap.get(key)
       product.totalAmount += transaction.amount
       product.totalTax += transaction.tax_amount
       product.totalTds += transaction.tds_amount
       product.orderCount += 1
-      if (transaction.created_at > product.lastEarningDate) {
-        product.lastEarningDate = transaction.created_at
-      }
+      if (transaction.created_at > product.lastEarningDate) product.lastEarningDate = transaction.created_at
     })
-    
+
     return Array.from(productMap.values())
   }
 
-  /**
-   * Get vendors eligible for payout
-   */
   async getEligibleVendors(): Promise<Payout[]> {
     const allPayouts = await this.listPayouts({})
-    
-    return allPayouts.filter(payout => 
+    return allPayouts.filter(payout =>
       payout.is_payout_enabled &&
       !payout.hold_payouts &&
       payout.current_balance >= payout.minimum_payout_amount &&
@@ -825,18 +1880,9 @@ async calculateEarningsFromOrder(
     )
   }
 
-  /**
-   * Create batch payout
-   */
   async createBatch(period: string, paymentMethod: "bank_transfer" | "paypal" | "stripe" | "manual"): Promise<PayoutBatch> {
     const eligibleVendors = await this.getEligibleVendors()
-    
-    if (eligibleVendors.length === 0) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_FOUND,
-        "No vendors eligible for payout"
-      )
-    }
+    if (eligibleVendors.length === 0) throw new MedusaError(MedusaError.Types.NOT_FOUND, "No vendors eligible for payout")
 
     const totalAmount = eligibleVendors.reduce((sum, vendor) => sum + vendor.current_balance, 0)
     const batchReference = `BATCH_${period}_${Date.now()}`
@@ -852,137 +1898,66 @@ async calculateEarningsFromOrder(
     })
   }
 
-  /**
-   * Process batch payout
-   */
-  async processBatch(batchId: string): Promise<{ 
-    batch: PayoutBatch
-    successful: number
-    failed: number
-    results: Array<{ vendorId: string, success: boolean, error?: string }>
-  }> {
+  async processBatch(batchId: string) {
     const batch = await this.retrievePayoutBatch(batchId)
-    if (!batch) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_FOUND,
-        "Batch not found"
-      )
-    }
+    if (!batch) throw new MedusaError(MedusaError.Types.NOT_FOUND, "Batch not found")
 
-    await this.updatePayoutBatches({
-      id: batchId,
-      status: "processing",
-      started_at: new Date(),
-    })
+    await this.updatePayoutBatches({ id: batchId, status: "processing", started_at: new Date() })
 
     const eligibleVendors = await this.getEligibleVendors()
-    let successfulCount = 0
-    let failedCount = 0
+    let successfulCount = 0, failedCount = 0
     const results: Array<{ vendorId: string, success: boolean, error?: string }> = []
 
     const paymentMethodMap: Record<string, "bank_transfer" | "paypal" | "razorpay" | "manual"> = {
-      "stripe": "razorpay",
-      "bank_transfer": "bank_transfer",
-      "paypal": "paypal",
-      "manual": "manual",
+      "stripe": "razorpay", "bank_transfer": "bank_transfer", "paypal": "paypal", "manual": "manual",
     }
-    
     const payoutPaymentMethod = paymentMethodMap[batch.payment_method] || "manual"
 
     for (const vendor of eligibleVendors) {
       try {
-        await this.processPayout(
-          vendor.vendor_id,
-          vendor.current_balance,
-          payoutPaymentMethod,
-          `Batch payout - ${batch.period}`
-        )
+        // current_balance is in paise, convert to rupees for processPayout
+        await this.processPayout(vendor.vendor_id, toRupees(vendor.current_balance), payoutPaymentMethod, `Batch payout - ${batch.period}`)
         successfulCount++
         results.push({ vendorId: vendor.vendor_id, success: true })
       } catch (error) {
         failedCount++
-        results.push({ 
-          vendorId: vendor.vendor_id, 
-          success: false, 
-          error: error instanceof Error ? error.message : "Unknown error"
-        })
+        results.push({ vendorId: vendor.vendor_id, success: false, error: error instanceof Error ? error.message : "Unknown error" })
       }
     }
 
-    const finalStatus = failedCount === 0 ? "completed" : 
-                       successfulCount === 0 ? "failed" : "partially_failed"
-
+    const finalStatus = failedCount === 0 ? "completed" : successfulCount === 0 ? "failed" : "partially_failed"
     const updatedBatch = await this.updatePayoutBatches({
-      id: batchId,
-      status: finalStatus,
-      successful_payouts: successfulCount,
-      failed_payouts: failedCount,
-      completed_at: new Date(),
+      id: batchId, status: finalStatus,
+      successful_payouts: successfulCount, failed_payouts: failedCount, completed_at: new Date(),
     })
 
-    return { 
-      batch: updatedBatch, 
-      successful: successfulCount, 
-      failed: failedCount,
-      results
-    }
+    return { batch: updatedBatch, successful: successfulCount, failed: failedCount, results }
   }
 
-  /**
-   * Process order refund - creates negative payout details to offset original earnings
-   */
   async processOrderRefund(
-    orderId: string, 
+    orderId: string,
     refundReason: string = "Order refunded",
-    partialRefundItems?: Array<{
-      order_item_id: string
-      refund_amount?: number
-    }>
-  ): Promise<{
-    refundDetails: PayoutDetails[]
-    vendorsAffected: number
-    totalRefundAmount: number
-  }> {
-    let existingEarnings = await this.listPayoutDetails({
-      order_id: orderId,
-      type: "earning",
-      status: "completed",
-    })
+    partialRefundItems?: Array<{ order_item_id: string; refund_amount?: number }>
+  ) {
+    let existingEarnings = await this.listPayoutDetails({ order_id: orderId, type: "earning", status: "completed" })
 
     if (existingEarnings.length === 0) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_FOUND,
-        `No completed earnings found for order ${orderId}`
-      )
+      throw new MedusaError(MedusaError.Types.NOT_FOUND, `No completed earnings found for order ${orderId}`)
     }
 
-    if (partialRefundItems && partialRefundItems.length > 0) {
+    if (partialRefundItems?.length) {
       const itemIdsToRefund = partialRefundItems.map(item => item.order_item_id)
-      existingEarnings = existingEarnings.filter(earning => 
-        earning.order_item_id && itemIdsToRefund.includes(earning.order_item_id)
-      )
+      existingEarnings = existingEarnings.filter(e => e.order_item_id && itemIdsToRefund.includes(e.order_item_id))
     }
 
-    const existingRefunds = await this.listPayoutDetails({
-      order_id: orderId,
-      type: "refund",
-    })
-
+    const existingRefunds = await this.listPayoutDetails({ order_id: orderId, type: "refund" })
     if (existingRefunds.length > 0) {
-      const refundedItemIds = existingRefunds
-        .map(refund => refund.order_item_id)
-        .filter(Boolean)
-
-      existingEarnings = existingEarnings.filter(earning => 
-        !earning.order_item_id || !refundedItemIds.includes(earning.order_item_id)
-      )
+      const refundedItemIds = existingRefunds.map(r => r.order_item_id).filter(Boolean)
+      existingEarnings = existingEarnings.filter(e => !e.order_item_id || !refundedItemIds.includes(e.order_item_id))
     }
 
     if (existingEarnings.length === 0) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        `No earnings available to refund for order ${orderId}`
-      )
+      throw new MedusaError(MedusaError.Types.INVALID_DATA, `No earnings available to refund for order ${orderId}`)
     }
 
     const refundDetails: PayoutDetails[] = []
@@ -990,7 +1965,6 @@ async calculateEarningsFromOrder(
     const vendorBalanceUpdates = new Map<string, number>()
 
     for (const earning of existingEarnings) {
-      // Resolve payout id if earning.payout is an object (some relations may populate the full object)
       const payoutRef = typeof earning.payout === "string"
         ? earning.payout
         : (earning.payout && (earning.payout as any).id) || undefined
@@ -999,7 +1973,7 @@ async calculateEarningsFromOrder(
         order_id: earning.order_id,
         order_item_id: earning.order_item_id,
         product_id: earning.product_id,
-        amount: -earning.amount,
+        amount: -earning.amount,          // already in paise
         tax_amount: -earning.tax_amount,
         tax_type: earning.tax_type,
         tds_percentage: earning.tds_percentage,
@@ -1023,60 +1997,34 @@ async calculateEarningsFromOrder(
       refundDetails.push(refundDetail)
       totalRefundAmount += Math.abs(earning.amount)
 
-      const payoutId = payoutRef
-      if (!payoutId) {
-        // If we don't have a payout id, skip updating balances for this entry
-      } else {
-        const currentUpdate = vendorBalanceUpdates.get(payoutId) || 0
-        vendorBalanceUpdates.set(payoutId, currentUpdate + Math.abs(earning.amount))
+      if (payoutRef) {
+        const currentUpdate = vendorBalanceUpdates.get(payoutRef) || 0
+        vendorBalanceUpdates.set(payoutRef, currentUpdate + Math.abs(earning.amount))
       }
     }
 
-    for (const [payoutId, refundAmount] of vendorBalanceUpdates.entries()) {
+    for (const [payoutId, refundAmountPaise] of vendorBalanceUpdates.entries()) {
       const vendorPayout = await this.retrievePayout(payoutId)
       if (vendorPayout) {
         await this.updatePayouts({
           id: payoutId,
-          current_balance: vendorPayout.current_balance - refundAmount,
-          total_earned: vendorPayout.total_earned - refundAmount,
-          avg_order_value: vendorPayout.total_orders > 0 
-            ? (vendorPayout.total_earned - refundAmount) / vendorPayout.total_orders 
+          current_balance: vendorPayout.current_balance - refundAmountPaise,
+          total_earned: vendorPayout.total_earned - refundAmountPaise,
+          avg_order_value: vendorPayout.total_orders > 0
+            ? Math.round((vendorPayout.total_earned - refundAmountPaise) / vendorPayout.total_orders)
             : 0,
         })
       }
     }
 
-    return {
-      refundDetails,
-      vendorsAffected: vendorBalanceUpdates.size,
-      totalRefundAmount,
-    }
+    return { refundDetails, vendorsAffected: vendorBalanceUpdates.size, totalRefundAmount }
   }
 
-  /**
-   * Check if an order has already been refunded
-   */
-  async isOrderRefunded(orderId: string): Promise<{
-    isRefunded: boolean
-    hasPartialRefunds: boolean
-    refundDetails: PayoutDetails[]
-    totalRefundAmount: number
-  }> {
-    const refundDetails = await this.listPayoutDetails({
-      order_id: orderId,
-      type: "refund",
-    })
-
-    const totalRefundAmount = refundDetails.reduce((sum, detail) => 
-      sum + Math.abs(detail.amount), 0
-    )
-
-    const earnings = await this.listPayoutDetails({
-      order_id: orderId,
-      type: "earning",
-    })
-
-    const totalEarningsAmount = earnings.reduce((sum, detail) => sum + detail.amount, 0)
+  async isOrderRefunded(orderId: string) {
+    const refundDetails = await this.listPayoutDetails({ order_id: orderId, type: "refund" })
+    const totalRefundAmount = refundDetails.reduce((sum, d) => sum + Math.abs(d.amount), 0)
+    const earnings = await this.listPayoutDetails({ order_id: orderId, type: "earning" })
+    const totalEarningsAmount = earnings.reduce((sum, d) => sum + d.amount, 0)
 
     return {
       isRefunded: refundDetails.length > 0,
@@ -1086,96 +2034,46 @@ async calculateEarningsFromOrder(
     }
   }
 
-  /**
-   * Get refund summary for a vendor
-   */
-  async getVendorRefundSummary(vendorId: string, options: {
-    startDate?: Date
-    endDate?: Date
-    orderId?: string
-  } = {}): Promise<{
-    totalRefunds: number
-    totalRefundAmount: number
-    refundsByOrder: Array<{
-      orderId: string
-      refundAmount: number
-      refundCount: number
-      refundDate: Date
-    }>
-  }> {
+  async getVendorRefundSummary(vendorId: string, options: { startDate?: Date; endDate?: Date; orderId?: string } = {}) {
     const vendorPayout = await this.getVendorPayout(vendorId)
-    if (!vendorPayout) {
-      return {
-        totalRefunds: 0,
-        totalRefundAmount: 0,
-        refundsByOrder: [],
-      }
-    }
+    if (!vendorPayout) return { totalRefunds: 0, totalRefundAmount: 0, refundsByOrder: [] }
 
-    const filters: any = { 
-       payout_id: vendorPayout.id,
-      type: "refund"
-    }
-    
+    const filters: any = { payout_id: vendorPayout.id, type: "refund" }
     if (options.orderId) filters.order_id = options.orderId
 
-    const refundDetails = await this.listPayoutDetails(filters)
+    let refundDetails = await this.listPayoutDetails(filters)
 
-    let filteredRefunds = refundDetails
     if (options.startDate || options.endDate) {
-      filteredRefunds = refundDetails.filter(refund => {
-        const refundDate = new Date(refund.created_at)
-        if (options.startDate && refundDate < options.startDate) return false
-        if (options.endDate && refundDate > options.endDate) return false
+      refundDetails = refundDetails.filter(refund => {
+        const d = new Date(refund.created_at)
+        if (options.startDate && d < options.startDate) return false
+        if (options.endDate && d > options.endDate) return false
         return true
       })
     }
 
     const refundsByOrder = new Map()
-    
-    filteredRefunds.forEach(refund => {
+    refundDetails.forEach(refund => {
       const orderId = refund.order_id
       if (!refundsByOrder.has(orderId)) {
-        refundsByOrder.set(orderId, {
-          orderId,
-          refundAmount: 0,
-          refundCount: 0,
-          refundDate: refund.created_at,
-        })
+        refundsByOrder.set(orderId, { orderId, refundAmount: 0, refundCount: 0, refundDate: refund.created_at })
       }
-      
-      const orderRefund = refundsByOrder.get(orderId)
-      orderRefund.refundAmount += Math.abs(refund.amount)
-      orderRefund.refundCount += 1
-      
-      if (refund.created_at > orderRefund.refundDate) {
-        orderRefund.refundDate = refund.created_at
-      }
+      const r = refundsByOrder.get(orderId)
+      r.refundAmount += Math.abs(refund.amount)
+      r.refundCount += 1
+      if (refund.created_at > r.refundDate) r.refundDate = refund.created_at
     })
 
-    const totalRefundAmount = filteredRefunds.reduce((sum, detail) => 
-      sum + Math.abs(detail.amount), 0
-    )
-
     return {
-      totalRefunds: filteredRefunds.length,
-      totalRefundAmount,
+      totalRefunds: refundDetails.length,
+      totalRefundAmount: refundDetails.reduce((sum, d) => sum + Math.abs(d.amount), 0),
       refundsByOrder: Array.from(refundsByOrder.values()),
     }
   }
 
-  /**
-   * Hold or release vendor payouts
-   */
   async setPayoutHold(vendorId: string, hold: boolean, reason?: string): Promise<Payout> {
     const vendorPayout = await this.getVendorPayout(vendorId)
-    
-    if (!vendorPayout) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_FOUND,
-        "Vendor not found"
-      )
-    }
+    if (!vendorPayout) throw new MedusaError(MedusaError.Types.NOT_FOUND, "Vendor not found")
 
     return await this.updatePayouts({
       id: vendorPayout.id,
@@ -1184,68 +2082,36 @@ async calculateEarningsFromOrder(
     })
   }
 
-  /**
-   * Get vendor earnings report
-   */
-  async getVendorEarningsReport(vendorId: string, options: {
-    startDate?: Date
-    endDate?: Date
-    groupBy?: 'product' | 'month' | 'order'
-  } = {}): Promise<VendorEarningsReport> {
+  async getVendorEarningsReport(vendorId: string, options: { startDate?: Date; endDate?: Date; groupBy?: 'product' | 'month' | 'order' } = {}): Promise<VendorEarningsReport> {
     const { account, transactions } = await this.getVendorPayoutDetails(vendorId)
-    
-    if (!account) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_FOUND,
-        "Vendor not found"
-      )
-    }
+    if (!account) throw new MedusaError(MedusaError.Types.NOT_FOUND, "Vendor not found")
 
-    let filteredTransactions = transactions
+    let filtered = transactions
     if (options.startDate || options.endDate) {
-      filteredTransactions = transactions.filter(transaction => {
-        const transactionDate = new Date(transaction.created_at)
-        if (options.startDate && transactionDate < options.startDate) return false
-        if (options.endDate && transactionDate > options.endDate) return false
+      filtered = transactions.filter(t => {
+        const d = new Date(t.created_at)
+        if (options.startDate && d < options.startDate) return false
+        if (options.endDate && d > options.endDate) return false
         return true
       })
     }
 
     const productMap = new Map()
-    filteredTransactions
-      .filter(t => t.type === "earning" && t.product_id)
-      .forEach(transaction => {
-        const productId = transaction.product_id!
-        if (!productMap.has(productId)) {
-          productMap.set(productId, {
-            productId,
-            totalAmount: 0,
-            orderCount: 0,
-          })
-        }
-        
-        const product = productMap.get(productId)
-        product.totalAmount += transaction.amount
-        product.orderCount += 1
-      })
+    filtered.filter(t => t.type === "earning" && t.product_id).forEach(t => {
+      const pid = t.product_id!
+      if (!productMap.has(pid)) productMap.set(pid, { productId: pid, totalAmount: 0, orderCount: 0 })
+      productMap.get(pid).totalAmount += t.amount
+      productMap.get(pid).orderCount += 1
+    })
 
     return {
       vendorId,
-      totalEarnings: account.total_earned,
-      totalPaid: account.total_paid,
-      currentBalance: account.current_balance,
+      totalEarnings: toRupees(account.total_earned),
+      totalPaid: toRupees(account.total_paid),
+      currentBalance: toRupees(account.current_balance),
       totalOrders: account.total_orders,
       productBreakdown: Array.from(productMap.values()),
     }
-  }
-
-  private getCurrentPayoutPeriod(): string {
-    const now = new Date()
-    const year = now.getFullYear()
-    const startOfYear = new Date(year, 0, 1)
-    const pastDaysOfYear = (now.getTime() - startOfYear.getTime()) / 86400000
-    const weekNumber = Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7)
-    return `${year}-W${weekNumber.toString().padStart(2, '0')}`
   }
 
   private getNextPayoutDate(schedule: "weekly" | "biweekly" | "monthly" = "weekly"): Date {
@@ -1257,18 +2123,16 @@ async calculateEarningsFromOrder(
         const daysUntilFriday = (5 - now.getDay() + 7) % 7 || 7
         nextPayout.setDate(now.getDate() + daysUntilFriday)
         break
-      
       case "biweekly":
         const daysUntilFridayBi = (5 - now.getDay() + 7) % 7 || 7
         nextPayout.setDate(now.getDate() + daysUntilFridayBi + 7)
         break
-      
       case "monthly":
         const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-        const lastDayOfNextMonth = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0)
-        const lastFridayOfNextMonth = new Date(lastDayOfNextMonth)
-        lastFridayOfNextMonth.setDate(lastDayOfNextMonth.getDate() - ((lastDayOfNextMonth.getDay() + 2) % 7))
-        return lastFridayOfNextMonth
+        const lastDay = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0)
+        const lastFriday = new Date(lastDay)
+        lastFriday.setDate(lastDay.getDate() - ((lastDay.getDay() + 2) % 7))
+        return lastFriday
     }
 
     nextPayout.setHours(17, 0, 0, 0)
