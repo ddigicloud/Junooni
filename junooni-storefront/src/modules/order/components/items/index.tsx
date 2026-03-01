@@ -19,7 +19,11 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
     })
   }
 
-  const items = order.items || []
+  //const items = order.items || []
+
+  const items = (order.items || []).filter(
+    (item: any) => !item.metadata?.is_cod_fee
+  )
 
   // Helper function to get the correct variant image
   const getItemImage = (item: HttpTypes.StoreOrderLineItem) => {

@@ -12,7 +12,10 @@ type ItemsTemplateProps = {
 }
 
 const ItemsPreviewTemplate = ({ cart }: ItemsTemplateProps) => {
-  const items = cart.items
+  // const items = cart.items
+   const items = cart.items?.filter(
+    (item: any) => !item.metadata?.is_cod_fee
+  )
   const hasOverflow = items && items.length > 4
 
   return (

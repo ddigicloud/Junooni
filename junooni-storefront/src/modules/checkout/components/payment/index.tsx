@@ -186,7 +186,7 @@
 //                 {availablePaymentMethods.map((paymentMethod) => (
 //                   <div key={paymentMethod.id}>
 //                     {isStripeFunc(paymentMethod.id) ? (
-//                       <div className="rounded-lg overflow-hidden transition-all duration-200 ">
+//                       <div className="overflow-hidden transition-all duration-200 rounded-lg ">
 //                         <StripeCardContainer
 //                           paymentProviderId={paymentMethod.id}
 //                           selectedPaymentOptionId={selectedPaymentMethod}
@@ -197,7 +197,7 @@
 //                         />
 //                       </div>
 //                     ) : isRazorpayFunc(paymentMethod.id) ? (
-//                       <div className="rounded-lg overflow-hidden transition-all duration-200">
+//                       <div className="overflow-hidden transition-all duration-200 rounded-lg">
 //                         <RazorpayContainer
 //                           paymentProviderId={paymentMethod.id}
 //                           selectedPaymentOptionId={selectedPaymentMethod}
@@ -205,7 +205,7 @@
 //                         />
 //                       </div>
 //                     ) : (
-//                       <div className="rounded-lg overflow-hidden transition-all duration-200 ">
+//                       <div className="overflow-hidden transition-all duration-200 rounded-lg ">
 //                         <PaymentContainer
 //                           paymentInfoMap={paymentInfoMap}
 //                           paymentProviderId={paymentMethod.id}
@@ -356,6 +356,12 @@ import bhim from "@assets/bhim.png"
 import Divider from "@modules/common/components/divider"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+import { useCheckout } from "@modules/checkout/context/checkout-context"
+import { addShippingMethod, removeShippingMethod } from "@lib/data/fulfillment"
+import { addCodFee, removeCodFee } from "@lib/data/cart"
+import { sdk } from "@lib/config"
+
+const COD_OPTION_ID = "so_01KJHQ0P1297T2HAM1HFRXYCBK"
 
 // Helper function to get display title
 const getDisplayTitle = (providerId: string) => {
@@ -391,6 +397,8 @@ const Payment = ({
   const [error, setError] = useState<string | null>(null)
   const [cardBrand, setCardBrand] = useState<string | null>(null)
   const [cardComplete, setCardComplete] = useState(false)
+  const { setSelectedPaymentMethod: setGlobalPaymentMethod } = useCheckout()
+
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
     activeSession?.provider_id ?? ""
   )
@@ -405,23 +413,29 @@ const Payment = ({
   const isRazorpay = isRazorpayFunc(selectedPaymentMethod)
 
   const setPaymentMethod = async (method: string) => {
-    setError(null)
-    setSelectedPaymentMethod(method)
-    
-    // For Stripe, initiate session immediately
-    if (isStripeFunc(method)) {
-      await initiatePaymentSession(cart, {
-        provider_id: method,
-      })
-    }
-    
-    // For Razorpay, initiate session (Medusa will handle the provider setup)
-    if (isRazorpayFunc(method)) {
-      await initiatePaymentSession(cart, {
-        provider_id: method,
-      })
-    }
+  setError(null)
+  setSelectedPaymentMethod(method)
+  setGlobalPaymentMethod(method)
+
+  const isCODMethod = method === "pp_system_default"
+
+  if (isCODMethod) {
+    console.log("➕ Adding COD fee...")
+    await addCodFee(cart.id)
+    console.log("✅ COD fee added")
+  } else {
+    console.log("➖ Removing COD fee...")
+    await removeCodFee(cart.id)
+    console.log("✅ COD fee removed")
   }
+
+  if (isStripeFunc(method)) {
+    await initiatePaymentSession(cart, { provider_id: method })
+  }
+  if (isRazorpayFunc(method)) {
+    await initiatePaymentSession(cart, { provider_id: method })
+  }
+}
 
   const paidByGiftcard =
     cart?.gift_cards && cart?.gift_cards?.length > 0 && cart?.total === 0
@@ -548,7 +562,7 @@ const Payment = ({
                 {availablePaymentMethods.map((paymentMethod) => (
                   <div key={paymentMethod.id}>
                     {isStripeFunc(paymentMethod.id) ? (
-                      <div className="rounded-lg overflow-hidden transition-all duration-200 ">
+                      <div className="overflow-hidden transition-all duration-200 rounded-lg ">
                         <StripeCardContainer
                           paymentProviderId={paymentMethod.id}
                           selectedPaymentOptionId={selectedPaymentMethod}
@@ -559,7 +573,7 @@ const Payment = ({
                         />
                       </div>
                     ) : isRazorpayFunc(paymentMethod.id) ? (
-                      <div className="rounded-lg overflow-hidden transition-all duration-200">
+                      <div className="overflow-hidden transition-all duration-200 rounded-lg">
                         <RazorpayContainer
                           paymentProviderId={paymentMethod.id}
                           selectedPaymentOptionId={selectedPaymentMethod}
@@ -567,7 +581,7 @@ const Payment = ({
                         />
                       </div>
                     ) : (
-                      <div className="rounded-lg overflow-hidden transition-all duration-200 ">
+                      <div className="overflow-hidden transition-all duration-200 rounded-lg ">
                         <PaymentContainer
                           paymentInfoMap={paymentInfoMap}
                           paymentProviderId={paymentMethod.id}
@@ -663,23 +677,23 @@ const Payment = ({
                     {isRazorpayFunc(activeSession?.provider_id) ? (
                       <div className="flex items-center -space-x-1.5">
                         {/* Google Pay */}
-                        <div className="w-7 h-7 rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden shadow-sm">
-                          <img src={googlepay.src} alt="Google Pay" className="w-5 h-5 object-contain" />
+                        <div className="flex items-center justify-center overflow-hidden bg-white border-2 border-white rounded-full shadow-sm w-7 h-7">
+                          <img src={googlepay.src} alt="Google Pay" className="object-contain w-5 h-5" />
                         </div>
                         
                         {/* PhonePe */}
-                        <div className="w-7 h-7 rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden shadow-sm">
-                          <img src={phonepe.src} alt="PhonePe" className="w-5 h-5 object-contain" />
+                        <div className="flex items-center justify-center overflow-hidden bg-white border-2 border-white rounded-full shadow-sm w-7 h-7">
+                          <img src={phonepe.src} alt="PhonePe" className="object-contain w-5 h-5" />
                         </div>
                         
                         {/* Paytm */}
-                        <div className="w-7 h-7 rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden shadow-sm">
-                          <img src={paytm.src} alt="Paytm" className="w-5 h-5 object-contain" />
+                        <div className="flex items-center justify-center overflow-hidden bg-white border-2 border-white rounded-full shadow-sm w-7 h-7">
+                          <img src={paytm.src} alt="Paytm" className="object-contain w-5 h-5" />
                         </div>
                         
                         {/* BHIM UPI */}
-                        <div className="w-7 h-7 rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden shadow-sm">
-                          <img src={bhim.src} alt="BHIM UPI" className="w-5 h-5 object-contain" />
+                        <div className="flex items-center justify-center overflow-hidden bg-white border-2 border-white rounded-full shadow-sm w-7 h-7">
+                          <img src={bhim.src} alt="BHIM UPI" className="object-contain w-5 h-5" />
                         </div>
                       </div>
                     ) : (

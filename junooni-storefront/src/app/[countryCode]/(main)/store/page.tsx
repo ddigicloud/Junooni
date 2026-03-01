@@ -1,6 +1,8 @@
 import { Metadata } from "next"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import StoreTemplate from "@modules/store/templates"
+import JsonLd from "../components/JsonLd"
+
 
 export const metadata: Metadata = {
   title: "Store",
@@ -10,6 +12,13 @@ export const metadata: Metadata = {
 // ✅ CRITICAL: Force dynamic rendering for searchParams to work
 export const dynamic = 'force-dynamic'
 
+const storeSchema = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "Junooni Store",
+  "description": "Explore all creator merchandise on Junooni — India's #1 creator merch marketplace.",
+  "url": `https://junooni.com/in/store`,
+}
 type Params = {
   searchParams: Promise<{
     sortBy?: SortOptions
@@ -117,19 +126,22 @@ export default async function StorePage(props: Params) {
   //console.log('==========================================')
 
   return (
-    <StoreTemplate
-      sortBy={searchParams.sortBy}
-      page={pageNumber}                    // ✅ Number instead of string
-      countryCode={params.countryCode}
-      categoryId={searchParams.category_id}  // ✅ Use categoryId for collection filtering
-      collectionId={searchParams.collection_id}  // ✅ For single collection
-      productsIds={productsIds}            // ✅ Array of product IDs
-      vendors={vendorsArray}               // ✅ Array instead of string
-      colors={colorsArray}                 // ✅ Array instead of string  
-      collections={collectionsArray}       // ✅ Array instead of string
-      categories={categoriesArray}         // ✅ NEW: Pass categories array to StoreTemplate
-      minPrice={minPrice}                  // ✅ Number instead of string
-      maxPrice={maxPrice}                  // ✅ Number instead of string
-    />
+     <>
+      <JsonLd data={storeSchema} />
+      <StoreTemplate
+        sortBy={searchParams.sortBy}
+        page={pageNumber}                    // ✅ Number instead of string
+        countryCode={params.countryCode}
+        categoryId={searchParams.category_id}  // ✅ Use categoryId for collection filtering
+        collectionId={searchParams.collection_id}  // ✅ For single collection
+        productsIds={productsIds}            // ✅ Array of product IDs
+        vendors={vendorsArray}               // ✅ Array instead of string
+        colors={colorsArray}                 // ✅ Array instead of string  
+        collections={collectionsArray}       // ✅ Array instead of string
+        categories={categoriesArray}         // ✅ NEW: Pass categories array to StoreTemplate
+        minPrice={minPrice}                  // ✅ Number instead of string
+        maxPrice={maxPrice}                  // ✅ Number instead of string
+      />
+    </>
   )
 }

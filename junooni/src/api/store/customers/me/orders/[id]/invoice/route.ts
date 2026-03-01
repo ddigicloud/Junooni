@@ -428,8 +428,12 @@ export async function POST(
       return isNaN(Number(value)) ? 0 : Number(value)
     }
     
-    const itemsDataWithVendors = await Promise.all(
-      order.items.map(async (item: any) => {
+    // Separate COD fee from regular items
+        const codFeeItem = order.items.find((item: any) => item.metadata?.is_cod_fee === true)
+        const regularItems = order.items.filter((item: any) => !item.metadata?.is_cod_fee)
+
+        const itemsDataWithVendors = await Promise.all(
+          regularItems.map(async (item: any) => {
         const productData = productDataMap.get(item.product_id)
         const hsCode = productData?.hs_code || item.metadata?.hs_code || 'N/A'
         
@@ -564,6 +568,8 @@ export async function POST(
       shipping_subtotal: extractNumeric(order.shipping_subtotal || 0),
       shipping_tax_total: extractNumeric(order.shipping_tax_total || 0),
       currency_code: order.currency_code || 'INR',
+      cod_fee: codFeeItem ? extractNumeric(codFeeItem.unit_price) : 0,
+      is_cod_order: !!codFeeItem,
       shipping_methods: order.shipping_methods?.map((method: any) => ({
         name: method.name || "Standard Shipping",
         total: extractNumeric(method.total),

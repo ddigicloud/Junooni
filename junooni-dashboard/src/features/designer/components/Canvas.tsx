@@ -722,6 +722,11 @@ const getSizeAwareImage = () => {
 // UTILITY FUNCTIONS
 // =====================================
 
+// =====================================================================
+// REPLACE the existing renderMockupDirectly function in Canvas.tsx
+// with this fixed version that properly blends designs into fabric
+// =====================================================================
+
 const renderMockupDirectly = async (
   mockup: DynamicMockupPhoto,
   designElements: Record<string, DesignElement[]>,
@@ -730,168 +735,248 @@ const renderMockupDirectly = async (
   productColor: string,
   targetResolution: number = 1000
 ): Promise<string> => {
-  
+
   return new Promise(async (resolve, reject) => {
     try {
       const offscreenCanvas = document.createElement('canvas');
       offscreenCanvas.width = targetResolution;
       offscreenCanvas.height = targetResolution;
       const ctx = offscreenCanvas.getContext('2d', { alpha: true });
-      
       if (!ctx) throw new Error('Failed to get 2D context');
-      
+
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      
-      const requiresColorMasking = mockup.requiresColorMasking === true || 
-                                  mockup.photoColor?.toLowerCase() === '#00000000';
+
+      // ── Step 1: Draw base mockup photo ──────────────────────────────────
+      const requiresColorMasking =
+        mockup.requiresColorMasking === true ||
+        mockup.photoColor?.toLowerCase() === '#00000000';
       const maskColor = mockup.maskColor || productColor || '#ffffff';
+
+      const mockupBaseImg = await new Promise<HTMLImageElement>((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => res(img);
+        img.onerror = () => rej(new Error('Failed to load mockup base'));
+        img.src = resolveImageUrl(mockup.photo.url);
+      });
 
       if (requiresColorMasking) {
         ctx.fillStyle = maskColor;
         ctx.fillRect(0, 0, targetResolution, targetResolution);
-        
-        const mockupBaseImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => resolve(img);
-          img.onerror = () => reject(new Error('Failed to load mockup'));
-          img.src = resolveImageUrl(mockup.photo.url);
-        });
-        
         ctx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
       } else {
-        const mockupBaseImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => resolve(img);
-          img.onerror = () => reject(new Error('Failed to load mockup'));
-          img.src = resolveImageUrl(mockup.photo.url);
-        });
-        
         ctx.drawImage(mockupBaseImg, 0, 0, targetResolution, targetResolution);
       }
-      
-      // Draw design elements for each area
+
+      // ── Step 2: Composite design elements for each mockup area ──────────
       for (const mockupArea of mockup.area || []) {
         const areaName = mockupArea.areaName.toLowerCase();
         const elements = designElements[areaName] || [];
         const visibleElements = elements
           .filter(el => el.visible !== false && el.type === 'image')
           .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-        
+
         if (visibleElements.length === 0) continue;
-        
+
         const canvasConfig = canvasConfigs[areaName];
         const printableArea = printableAreas[areaName];
-        
         if (!canvasConfig || !printableArea) continue;
-        
+
         const design = mockupArea.design;
-        
-        // Mockup area in pixel space (on the targetResolution canvas)
-        const mockupAreaX = design.coordinateX * targetResolution;
-        const mockupAreaY = design.coordinateY * targetResolution;
-        const mockupAreaWidth = design.coordinateWidth * targetResolution;
+
+        const mockupAreaX      = design.coordinateX     * targetResolution;
+        const mockupAreaY      = design.coordinateY     * targetResolution;
+        const mockupAreaWidth  = design.coordinateWidth  * targetResolution;
         const mockupAreaHeight = design.coordinateHeight * targetResolution;
-        
-        // ✅ FIX: Use a UNIFORM scale factor to preserve element aspect ratios.
-        // Using separate scaleX/scaleY causes distortion when the mockup area's
-        // aspect ratio differs from the printable area's aspect ratio.
-        // We derive a single scale from the WIDTH axis (horizontal reference).
-        const scaleX = mockupAreaWidth / printableArea.width;
-        const scaleY = mockupAreaHeight / printableArea.height;
 
-        // Use uniform scale — pick scaleX as the reference (width-driven).
-        // This ensures a square element on the canvas stays square in the mockup.
-        const uniformScale = scaleX;
-
-        // Recompute the effective mockup area height using uniform scale so the
-        // clipping rect stays consistent with what we actually draw.
+        const uniformScale         = mockupAreaWidth / printableArea.width;
         const effectiveMockupHeight = printableArea.height * uniformScale;
-        
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(mockupAreaX, mockupAreaY, mockupAreaWidth, effectiveMockupHeight);
-        ctx.clip();
-        
+
+        // ── Step 2a: Render design elements onto isolated canvas (transparent bg) ──
+        const designCanvas = document.createElement('canvas');
+        designCanvas.width  = Math.round(mockupAreaWidth);
+        designCanvas.height = Math.round(effectiveMockupHeight);
+        const dCtx = designCanvas.getContext('2d', { alpha: true });
+        if (!dCtx) continue;
+
+        dCtx.imageSmoothingEnabled = true;
+        dCtx.imageSmoothingQuality = 'high';
+        dCtx.clearRect(0, 0, designCanvas.width, designCanvas.height);
+
         for (const element of visibleElements) {
           if (!element.image) continue;
-          
-          ctx.save();
-          
-          // Step 1: Get the element's top-left in printable-area-relative coordinates
-          const elemLeftInPrintable = element.x - printableArea.x;
-          const elemTopInPrintable  = element.y - printableArea.y;
-          
-          // Step 2: Apply element scale to get actual rendered size
-          const renderedWidth  = element.width  * (element.scaleX || 1);
-          const renderedHeight = element.height * (element.scaleY || 1);
-          
-          // Step 3: Map to mockup space using UNIFORM scale on both axes
-          const elemLeftInMockup   = mockupAreaX + elemLeftInPrintable * uniformScale;
-          const elemTopInMockup    = mockupAreaY + elemTopInPrintable  * uniformScale;
-          const elemWidthInMockup  = renderedWidth  * uniformScale;
-          const elemHeightInMockup = renderedHeight * uniformScale;
-          
-          // Step 4: Center of element in mockup space (for rotation pivot)
-          const centerX = elemLeftInMockup + elemWidthInMockup / 2;
-          const centerY = elemTopInMockup  + elemHeightInMockup / 2;
-          
-          // Step 5: Apply transform
-          ctx.translate(centerX, centerY);
-          
-          if (element.rotation) {
-            ctx.rotate((element.rotation * Math.PI) / 180);
-          }
-          
-          ctx.globalAlpha = element.opacity || 1;
-          
-          if (design.blend && design.blend !== 'normal') {
-            ctx.globalCompositeOperation = design.blend as GlobalCompositeOperation;
-          }
-          
-          // Step 6: Draw centered on the pivot
-          ctx.drawImage(
+          dCtx.save();
+
+          const elemLeftInPrintable  = element.x - printableArea.x;
+          const elemTopInPrintable   = element.y - printableArea.y;
+          const renderedWidth        = element.width  * (element.scaleX || 1);
+          const renderedHeight       = element.height * (element.scaleY || 1);
+          const elemLeftInDesign     = elemLeftInPrintable * uniformScale;
+          const elemTopInDesign      = elemTopInPrintable  * uniformScale;
+          const elemWidthInDesign    = renderedWidth  * uniformScale;
+          const elemHeightInDesign   = renderedHeight * uniformScale;
+          const centerX              = elemLeftInDesign + elemWidthInDesign / 2;
+          const centerY              = elemTopInDesign  + elemHeightInDesign / 2;
+
+          dCtx.translate(centerX, centerY);
+          if (element.rotation) dCtx.rotate((element.rotation * Math.PI) / 180);
+          dCtx.globalAlpha = element.opacity || 1;
+          dCtx.drawImage(
             element.image,
-            -elemWidthInMockup / 2,
-            -elemHeightInMockup / 2,
-            elemWidthInMockup,
-            elemHeightInMockup
+            -elemWidthInDesign / 2, -elemHeightInDesign / 2,
+            elemWidthInDesign, elemHeightInDesign
           );
-          
-          ctx.restore();
+          dCtx.restore();
         }
-        
+
+        // ── Step 2b: Apply area transforms + alpha masks ─────────────────────
+        //
+        // THE KEY to wrapping: the mockup area's design config carries
+        // skewX/skewY/rotation/scaleX/scaleY that describe how the print
+        // area sits on the 3D garment surface. Without these the design is
+        // always a flat rectangle regardless of shirt shape.
+
+        const maskedDesignCanvas = document.createElement('canvas');
+        maskedDesignCanvas.width  = targetResolution;
+        maskedDesignCanvas.height = targetResolution;
+        const mCtx = maskedDesignCanvas.getContext('2d', { alpha: true });
+
+        if (mCtx) {
+          mCtx.imageSmoothingEnabled = true;
+          mCtx.imageSmoothingQuality = 'high';
+
+          const areaRotation = design.rotation || 0;
+          const areaSkewX    = design.skewX    || 0;
+          const areaSkewY    = design.skewY    || 0;
+          const areaScaleX   = design.scaleX   || 1;
+          const areaScaleY   = design.scaleY   || 1;
+
+          const areaCentreX = mockupAreaX + mockupAreaWidth   / 2;
+          const areaCentreY = mockupAreaY + effectiveMockupHeight / 2;
+
+          const hasTransform = areaRotation !== 0 || areaSkewX !== 0 || areaSkewY !== 0
+                            || areaScaleX  !== 1  || areaScaleY  !== 1;
+
+          if (hasTransform) {
+            mCtx.save();
+            mCtx.translate(areaCentreX, areaCentreY);
+            if (areaRotation)                       mCtx.rotate((areaRotation * Math.PI) / 180);
+            if (areaScaleX !== 1 || areaScaleY !== 1) mCtx.scale(areaScaleX, areaScaleY);
+            if (areaSkewX || areaSkewY) {
+              mCtx.transform(
+                1, Math.tan((areaSkewY * Math.PI) / 180),
+                   Math.tan((areaSkewX * Math.PI) / 180), 1,
+                0, 0
+              );
+            }
+            mCtx.translate(-areaCentreX, -areaCentreY);
+            mCtx.drawImage(designCanvas, mockupAreaX, mockupAreaY, mockupAreaWidth, effectiveMockupHeight);
+            mCtx.restore();
+          } else {
+            mCtx.drawImage(designCanvas, mockupAreaX, mockupAreaY, mockupAreaWidth, effectiveMockupHeight);
+          }
+
+          // Alpha masks — clip design to garment silhouette (no rectangular bleed)
+          const areaMasks = (mockup.alpMasks || []).filter(
+            m => !m.alfarea || m.alfarea.toLowerCase() === areaName || m.alfarea === 'all'
+          );
+
+          for (const alphaMask of areaMasks) {
+            try {
+              const maskImg = await new Promise<HTMLImageElement>((res, rej) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => res(img);
+                img.onerror = () => rej();
+                img.src = resolveImageUrl(alphaMask.maskImg.url);
+              });
+
+              if (alphaMask.alfamask === 'luminance' || alphaMask.alfamask === 'red_channel') {
+                const tmpCanvas = document.createElement('canvas');
+                tmpCanvas.width = targetResolution;
+                tmpCanvas.height = targetResolution;
+                const tmpCtx = tmpCanvas.getContext('2d')!;
+                tmpCtx.drawImage(maskImg, 0, 0, targetResolution, targetResolution);
+                const imgData = tmpCtx.getImageData(0, 0, targetResolution, targetResolution);
+                const d = imgData.data;
+                for (let i = 0; i < d.length; i += 4) {
+                  const val = alphaMask.alfamask === 'red_channel'
+                    ? d[i]
+                    : Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+                  d[i] = d[i + 1] = d[i + 2] = 0;
+                  d[i + 3] = val;
+                }
+                tmpCtx.putImageData(imgData, 0, 0);
+                mCtx.globalCompositeOperation = 'destination-in';
+                mCtx.drawImage(tmpCanvas, 0, 0, targetResolution, targetResolution);
+              } else {
+                mCtx.globalCompositeOperation = 'destination-in';
+                mCtx.drawImage(maskImg, 0, 0, targetResolution, targetResolution);
+              }
+              mCtx.globalCompositeOperation = 'source-over';
+            } catch {
+              // Skip failed mask gracefully
+            }
+          }
+        }
+
+        // ── Step 2c: Blend onto mockup ────────────────────────────────────────
+        const areaBlendMode = (design.blend && design.blend !== 'normal')
+          ? design.blend as GlobalCompositeOperation
+          : null;
+        const areaOpacity = (design.opacity != null && design.opacity !== 1)
+          ? design.opacity
+          : null;
+
+        ctx.save();
+        if (areaBlendMode) {
+          // CMS-configured blend — admin intentionally set this
+          ctx.globalCompositeOperation = areaBlendMode;
+          ctx.globalAlpha = areaOpacity ?? 0.92;
+          ctx.drawImage(maskedDesignCanvas, 0, 0);
+        } else {
+          // Two-pass default: preserve colours + subtle shadow depth
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = areaOpacity ?? 0.92;
+          ctx.drawImage(maskedDesignCanvas, 0, 0);
+
+          ctx.globalCompositeOperation = 'multiply';
+          ctx.globalAlpha = 0.12;
+          ctx.drawImage(maskedDesignCanvas, 0, 0);
+        }
         ctx.restore();
       }
-      
-      // Apply lighting overlays
+
+      // ── Step 3: Lighting/shadow overlays ────────────────────────────────
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+
       if (mockup.light && mockup.light.length > 0) {
         for (const lightOverlay of mockup.light) {
           try {
-            const lightImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const lightImg = await new Promise<HTMLImageElement>((res, rej) => {
               const img = new Image();
               img.crossOrigin = 'anonymous';
-              img.onload = () => resolve(img);
-              img.onerror = () => reject();
+              img.onload = () => res(img);
+              img.onerror = () => rej();
               img.src = resolveImageUrl(lightOverlay.overImage.url);
             });
-            
             ctx.globalAlpha = lightOverlay.ovlayOpa || 0.5;
-            ctx.globalCompositeOperation = lightOverlay.overbldMde as GlobalCompositeOperation || 'normal';
+            ctx.globalCompositeOperation = (lightOverlay.overbldMde as GlobalCompositeOperation) || 'normal';
             ctx.drawImage(lightImg, 0, 0, targetResolution, targetResolution);
             ctx.globalAlpha = 1;
             ctx.globalCompositeOperation = 'source-over';
           } catch {
-            // Skip failed overlays
+            // Skip failed overlay
           }
         }
       }
-      
-      const imageData = offscreenCanvas.toDataURL('image/png', 0.95);
-      resolve(imageData);
-      
+
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      resolve(offscreenCanvas.toDataURL('image/png', 0.95));
+
     } catch (error) {
       reject(error);
     }

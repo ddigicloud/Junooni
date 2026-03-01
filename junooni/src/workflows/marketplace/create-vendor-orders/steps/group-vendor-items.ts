@@ -16,8 +16,10 @@ const groupVendorItemsStep = createStep(
 
     const vendorsItems: Record<string, CartLineItemDTO[]> = {}
 
-    await promiseAll(cart.items?.map(async (item) => {
-      const { data: [product] } = await query.graph({
+    await promiseAll(cart.items?.filter(
+      (item) => !item.metadata?.is_cod_fee  // ← add this filter
+    ).map(async (item) => {
+          const { data: [product] } = await query.graph({
         entity: "product",
         fields: ["vendor.*"],
         filters: {

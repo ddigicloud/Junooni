@@ -85,20 +85,29 @@ export default async function fix() {
     `)
     console.log('✅ raw_* columns dropped.')
 
-    // ─── Step 4: Verify ───────────────────────────────────────────────────────
+    // ─── Step 4: Add payment_processing_fee column ───────────────────────────
+    console.log('\n🔧 Adding payment_processing_fee column...')
+    await client.query(`
+      ALTER TABLE "payout_details"
+        ADD COLUMN IF NOT EXISTS "payment_processing_fee" bigint NOT NULL DEFAULT 0
+    `)
+    console.log('✅ payment_processing_fee column added (bigint, default 0).')
+    console.log('   Existing records will show 0 → displayed as "—" / COD in the UI.')
+
+    // ─── Step 5: Verify ───────────────────────────────────────────────────────
     console.log('\n✅ Verifying final column types:')
     const verify = await client.query(`
-      SELECT column_name, data_type, is_nullable
+      SELECT column_name, data_type, is_nullable, column_default
       FROM information_schema.columns 
       WHERE table_name IN ('payout_details', 'payout')
-      AND column_name IN ('amount','current_balance','total_paid','total_earned','order_id','product_id','minimum_payout_amount')
+      AND column_name IN ('amount','current_balance','total_paid','total_earned','order_id','product_id','minimum_payout_amount','payment_processing_fee')
       ORDER BY table_name, column_name
     `)
     console.table(verify.rows)
 
     console.log('\n✅ Sample data after conversion:')
     const sample = await client.query(`
-      SELECT id, type, amount, payout_id FROM payout_details ORDER BY created_at DESC LIMIT 5
+      SELECT id, type, amount, payment_processing_fee, payout_id FROM payout_details ORDER BY created_at DESC LIMIT 5
     `)
     console.table(sample.rows)
 
@@ -110,6 +119,7 @@ export default async function fix() {
 
     console.log('\n🎉 Migration complete! All money values now stored as integer paise.')
     console.log('   e.g. ₹647.50 is now stored as 64750')
+    console.log('   payment_processing_fee = 0 for COD / old records, >0 for Razorpay orders')
     console.log('   Restart the server after this migration.')
 
   } catch (err) {

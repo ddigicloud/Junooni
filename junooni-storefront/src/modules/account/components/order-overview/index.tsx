@@ -320,8 +320,11 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
 
   // Render order card
   const renderOrderCard = (order: HttpTypes.StoreOrder) => {
-    const numberOfLines =
-      order.items?.reduce((acc, item) => acc + item.quantity, 0) ?? 0
+    const displayItems = order.items?.filter(
+    (item: any) => !item.metadata?.is_cod_fee
+  )
+     const numberOfLines =
+      displayItems?.reduce((acc, item) => acc + item.quantity, 0) ?? 0
 
     return (
       <div
@@ -377,7 +380,7 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
         {/* Order Items - UPDATED to use variant images from metadata */}
         <div className="p-4">
           <div className="flex pb-2 -mx-1 overflow-x-auto">
-            {order.items?.slice(0, 5).map((item) => {
+              {displayItems?.slice(0, 5).map((item) => {
               // console.log('🎨 Rendering order item:', {
               //   orderId: order.id,
               //   itemId: item.id,
@@ -424,14 +427,14 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
               )
             })}
 
-            {(order.items?.length || 0) > 5 && (
+            {(displayItems?.length || 0) > 5 && (
               <div
                 className="flex items-center justify-center flex-shrink-0 px-1"
                 style={{ width: "100px" }}
               >
                 <div className="flex flex-col items-center justify-center w-full text-gray-500 border border-gray-100 rounded aspect-square bg-gray-50">
                   <span className="text-sm font-medium">
-                    +{(order.items?.length || 0) - 5}
+                    +{(displayItems?.length || 0) - 5}
                   </span>
                   <span className="text-xs">more</span>
                 </div>

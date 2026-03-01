@@ -158,18 +158,6 @@ class InvoiceGeneratorService extends MedusaService({
     const invoiceConfigs = await this.listInvoiceConfigs()
     const config = invoiceConfigs[0] || {}
 
-    // const defaultBillFromAddress = params.bill_from_address || {
-    //   company: 'Junooni',
-    //   address_1: 'C-30, Vasant Vihar',
-    //   address_2: 'Saharanpur',
-    //   city: 'Saharanpur',
-    //   province: 'Uttar Pradesh',
-    //   postal_code: '247001',
-    //   country_code: 'IN',
-    //   phone: '9090909090',
-    //   email: 'ddigicloud@gmail.com'
-    // }
-
     // Convert BigNumber values
     const safeOrderTotals = {
       subtotal: this.extractNumeric(params.order.subtotal),
@@ -336,7 +324,7 @@ class InvoiceGeneratorService extends MedusaService({
         ])
       ]
 
-      // ✅ NEW: Add shipping charges row if shipping exists
+      // ✅ Add shipping charges row if shipping exists (Junooni only)
       const shippingSubtotal = safeOrderTotals.shipping_subtotal
       const shippingTaxTotal = safeOrderTotals.shipping_tax_total
       const shippingTotal = safeOrderTotals.shipping_total
@@ -357,12 +345,10 @@ class InvoiceGeneratorService extends MedusaService({
 
         if (shippingTaxTotal > 0) {
           if (gstBreakdown.isIntraState) {
-            // Intra-state: Split between CGST and SGST
             shippingCgstAmount = shippingTaxTotal / 2
             shippingSgstAmount = shippingTaxTotal / 2
             console.log('   📍 Intra-state shipping: CGST + SGST')
           } else {
-            // Inter-state: Full amount as IGST
             shippingIgstAmount = shippingTaxTotal
             console.log('   📍 Inter-state shipping: IGST')
           }
@@ -370,7 +356,6 @@ class InvoiceGeneratorService extends MedusaService({
 
         console.log('   ✅ Adding shipping row to invoice table')
         
-        // Add shipping charges row to table
         itemsTableBody.push([
           { 
             text: 'Shipping Charges', 
@@ -378,7 +363,7 @@ class InvoiceGeneratorService extends MedusaService({
             alignment: 'left',
             margin: [3, 4, 3, 4],
             bold: true,
-            fillColor: '#f8f9fa'  // Light background to distinguish from products
+            fillColor: '#f8f9fa'
           },
           { 
             text: await this.formatAmount(shippingSubtotal, params.order.currency_code), 
@@ -387,7 +372,7 @@ class InvoiceGeneratorService extends MedusaService({
             fillColor: '#f8f9fa'
           },
           { 
-            text: '1',  // Quantity is always 1 for shipping
+            text: '1',
             style: 'tableRow', 
             alignment: 'center',
             fillColor: '#f8f9fa'
@@ -446,6 +431,48 @@ class InvoiceGeneratorService extends MedusaService({
         console.log(`      New Vendor Total: ${await this.formatAmount(vendorTotal, params.order.currency_code)}`)
       } else if (shippingTotal > 0 && firstVendorItem.fulfillment_type !== 'junooni') {
         console.log(`   ⏭️  Skipping shipping charges for ${firstVendorItem.fulfillment_type} fulfillment (shipping only on Junooni invoices)`)
+      }
+
+      // ✅ COD fee row — OUTSIDE shipping block, always runs if COD order
+      const codFee = this.extractNumeric((params.order as any).cod_fee || 0)
+      const isCodOrder = (params.order as any).is_cod_order
+
+      if (isCodOrder && codFee > 0) {
+        console.log('💵 Adding COD fee row to invoice:', codFee)
+        itemsTableBody.push([
+          {
+            text: 'COD Charges\n(Cash on Delivery)',
+            style: 'tableRow',
+            alignment: 'left',
+            margin: [3, 4, 3, 4],
+            bold: true,
+            fillColor: '#fff3e0'
+          },
+          {
+            text: await this.formatAmount(codFee, params.order.currency_code),
+            style: 'tableRow',
+            alignment: 'center',
+            fillColor: '#fff3e0'
+          },
+          { text: '1', style: 'tableRow', alignment: 'center', fillColor: '#fff3e0' },
+          { text: '0.00', style: 'tableRow', alignment: 'center', fillColor: '#fff3e0' },
+          { text: 'Rs.0.00', style: 'tableRow', alignment: 'center', fillColor: '#fff3e0' },
+          { text: '0.00', style: 'tableRow', alignment: 'center', fillColor: '#fff3e0' },
+          { text: 'Rs.0.00', style: 'tableRow', alignment: 'center', fillColor: '#fff3e0' },
+          { text: '0.00', style: 'tableRow', alignment: 'center', fillColor: '#fff3e0' },
+          { text: 'Rs.0.00', style: 'tableRow', alignment: 'center', fillColor: '#fff3e0' },
+          {
+            text: await this.formatAmount(codFee, params.order.currency_code),
+            style: 'tableRow',
+            alignment: 'right',
+            bold: true,
+            fillColor: '#fff3e0'
+          }
+        ])
+
+        // Update vendor total to include COD fee
+        vendorTotal = vendorTotal + codFee
+        console.log('✅ Updated vendor total with COD fee:', vendorTotal)
       }
 
       // Add final total row
@@ -509,7 +536,6 @@ class InvoiceGeneratorService extends MedusaService({
             {
               width: '50%',
               stack: [
-                // { text: `PacketID: ${params.order.display_id.toString().padStart(6, '0')}`, style: 'invoiceDetailRight', margin: [0, 0, 0, 4] },
                 { text: `Invoice Date: ${invoiceDate}`, style: 'invoiceDetailRight', margin: [0, 0, 0, 4] },
                 { text: `Order Date: ${new Date(params.order.created_at).toLocaleDateString()}`, style: 'invoiceDetailRight', margin: [0, 0, 0, 4] },
                 { text: `Nature of Supply: Goods`, style: 'invoiceDetailRight', margin: [0, 0, 0, 0] }
@@ -770,7 +796,7 @@ ${params.order.shipping_address.city || ''} - ${params.order.shipping_address.po
           fontSize: 18,
           bold: true,
           color: '#000000',
-          characterSpacing: -0.8  // Tighter spacing
+          characterSpacing: -0.8
         },
         addressText: {
           fontSize: 11,

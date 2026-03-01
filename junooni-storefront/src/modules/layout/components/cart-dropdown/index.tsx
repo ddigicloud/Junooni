@@ -31,10 +31,14 @@ const CartDropdown = ({
   const open = () => setCartDropdownOpen(true)
   const close = () => setCartDropdownOpen(false)
 
-  const totalItems =
-    cartState?.items?.reduce((acc, item) => {
-      return acc + item.quantity
-    }, 0) || 0
+  const displayItems = cartState?.items?.filter(
+  (item: any) => !item.metadata?.is_cod_fee
+)
+
+const totalItems =
+  displayItems?.reduce((acc, item) => {
+    return acc + item.quantity
+  }, 0) || 0
 
   const subtotal = cartState?.subtotal ?? 0
   const itemRef = useRef<number>(totalItems || 0)
@@ -113,14 +117,12 @@ const CartDropdown = ({
             <div className="flex items-center justify-center p-4">
               <h3 className="text-large-semi">Cart</h3>
             </div>
-            {cartState && cartState.items?.length ? (
+            {cartState && displayItems?.length ? (
               <>
                 <div className="overflow-y-scroll max-h-[280px] px-4 grid grid-cols-1 gap-y-8 scrollbar p-px">
-                  {cartState.items
+                  {displayItems
                     .sort((a, b) => {
-                      return (a.created_at ?? "") > (b.created_at ?? "")
-                        ? -1
-                        : 1
+                      return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
                     })
                     .map((item) => {
                       // DEBUG: Log each item's data

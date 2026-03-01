@@ -9,6 +9,8 @@ import { listCategories } from "@lib/data/categories"
 import { listCollections } from "@lib/data/collections"
 import { Text, clx } from "@medusajs/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import CheckoutFormWrapper from "@modules/checkout/components/checkout-form-wrapper" // ← add this import
+
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -129,8 +131,9 @@ export default async function Checkout() {
   const customer = await retrieveCustomer()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="flex-1">
+        <CheckoutFormWrapper> {/* ← move wrapper here */}
         <div className="container px-4 py-4 mx-auto lg:py-12">
           {/* Header */}
           {/* <div className="mb-8 text-center lg:mb-12">
@@ -159,6 +162,7 @@ export default async function Checkout() {
             </div>
           </div>
         </div>
+        </CheckoutFormWrapper> {/* ← close here */}
       </div>
       
       {/* Checkout Footer */}

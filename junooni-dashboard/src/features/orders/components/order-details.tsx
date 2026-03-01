@@ -133,9 +133,9 @@ const calculatePaymentProcessingFee = (totalAmount: number, paymentMethod: strin
   // For COD or manual payments - flat ₹35 fee
   if (paymentMethod === 'cod' || paymentMethod === 'manual' || paymentMethod === 'cash_on_delivery') {
     return {
-      gatewayFee: 35,
+      gatewayFee: 0,
       gstOnFee: 0,
-      totalProcessingFee: 35,
+      totalProcessingFee: 0,
       feeType: 'flat_cod'
     };
   }
@@ -1459,15 +1459,15 @@ const calculateVendorPayoutTotals = (items: OrderItem[]) => {
               
               {/* Processing Fee */}
               {/* Processing Fee */}
+              {feeType !== 'flat_cod' && (
               <div className="flex justify-between">
                 <span className="text-gray-600">
-                  <span className="ml-1 text-xs text-gray-500">
-                    ({feeType === 'flat_cod' ? 'COD fee' : '2% + GST on online payment'})
+                    <span className="ml-1 text-xs text-gray-500">(2% + GST on online payment)</span>
+                    <span className="ml-1 text-xs text-gray-500">on {formatPrice(netSubtotal, order.currency_code)}</span>
                   </span>
-                  <span className="ml-1 text-xs text-gray-500">on {formatPrice(netSubtotal, order.currency_code)}</span>
-                </span>
                 <span className="text-red-600">-{formatPrice(totalProcessingFee, order.currency_code)}</span>
               </div>
+            )}
             </div>
             
             <Separator className="my-3" />

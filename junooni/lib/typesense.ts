@@ -1,5 +1,5 @@
-// lib/typesense.ts - ENHANCED WITH COMPLETE VARIANT-SPECIFIC IMAGE SUPPORT
-import Typesense from 'typesense'
+// lib/typesense.ts - FIXED: Increased timeouts + batched imports to prevent 504 errors
+import Typesense, { Client } from 'typesense'
 
 // Initialize Typesense client
 const client = new Typesense.Client({
@@ -11,11 +11,17 @@ const client = new Typesense.Client({
     },
   ],
   apiKey: process.env.TYPESENSE_API_KEY || 'xyz123',
-  connectionTimeoutSeconds: 10,
+  connectionTimeoutSeconds: 120,      // ✅ FIX: was 10, increased to prevent 504 on large imports
+  timeoutSeconds: 120,                // ✅ FIX: added explicit timeout
   healthcheckIntervalSeconds: 30,
+  retryIntervalSeconds: 2,            // ✅ FIX: retry on transient failures
+  numRetries: 3,                      // ✅ FIX: retry up to 3 times
 })
 
-// ✅ ENHANCED: Complete product schema with ALL variant-specific image fields
+// Batch size for imports — keeps each request small to avoid timeouts
+const IMPORT_BATCH_SIZE = 50
+
+// Complete product schema with ALL variant-specific image fields
 const productSchema = {
   name: 'products',
   fields: [
@@ -56,16 +62,16 @@ const productSchema = {
     { name: 'tags', type: 'string', facet: true, optional: true },
     { name: 'categories', type: 'string', facet: true, optional: true },
     
-    // ✅ CRITICAL: COMPLETE variant-specific image fields for color-based image selection
-    { name: 'all_images', type: 'string', optional: true }, // Complete images array JSON
-    { name: 'option_images', type: 'string', optional: true }, // Product-level option→image mappings
-    { name: 'variant_images', type: 'string', optional: true }, // Product-level variant→image mappings
-    { name: 'variant_specific_image_option', type: 'string', optional: true }, // Image option settings
-    { name: 'fulfillment_type', type: 'string', optional: true }, // Additional metadata
+    // CRITICAL: Complete variant-specific image fields for color-based image selection
+    { name: 'all_images', type: 'string', optional: true },
+    { name: 'option_images', type: 'string', optional: true },
+    { name: 'variant_images', type: 'string', optional: true },
+    { name: 'variant_specific_image_option', type: 'string', optional: true },
+    { name: 'fulfillment_type', type: 'string', optional: true },
     
-    // ✅ CRITICAL: Complete variant and options data with METADATA preservation
-    { name: 'variants_data', type: 'string', optional: true }, // Complete variants with variant.metadata
-    { name: 'options_data', type: 'string', optional: true }, // Complete options with values
+    // CRITICAL: Complete variant and options data with METADATA preservation
+    { name: 'variants_data', type: 'string', optional: true },
+    { name: 'options_data', type: 'string', optional: true },
     
     // Search optimization
     { name: 'search_text', type: 'string', optional: true },
@@ -76,7 +82,7 @@ const productSchema = {
 }
 
 class TypesenseService {
-  public client: Typesense.Client
+  public client: Client
 
   constructor() {
     this.client = client
@@ -84,7 +90,6 @@ class TypesenseService {
 
   async initializeSchema() {
     try {
-      // Delete existing collection to recreate with new schema
       try {
         await this.client.collections('products').delete()
         console.log('🗑️ Deleted existing products collection')
@@ -92,7 +97,6 @@ class TypesenseService {
         console.log('ℹ️ No existing collection to delete')
       }
 
-      // Create new collection with enhanced schema
       await this.client.collections().create(productSchema)
       console.log('✅ Products collection created with COMPLETE variant-specific image support')
     } catch (createError) {
@@ -101,7 +105,7 @@ class TypesenseService {
     }
   }
 
-  // ✅ ENHANCED: Extract vendor information from product
+  // Extract vendor information from product
   private extractVendorData(product: any) {
     const vendor = product.vendor || null
     
@@ -120,7 +124,7 @@ class TypesenseService {
     }
   }
 
-  // ✅ ENHANCED: Extract price information from variants
+  // Extract price information from variants
   private extractPriceData(product: any, region?: any) {
     const variants = product.variants || []
     
@@ -158,7 +162,7 @@ class TypesenseService {
     }
   }
 
-  // ✅ ENHANCED: Extract complete metadata with ALL variant-specific image data
+  // Extract complete metadata with ALL variant-specific image data
   private extractMetadata(product: any) {
     const metadata = product.metadata || {}
     
@@ -169,7 +173,6 @@ class TypesenseService {
     let variantSpecificImageOption = ''
     let fulfillmentType = ''
     
-    // Extract colors from metadata
     if (metadata.color_hex_values) {
       try {
         const colors = typeof metadata.color_hex_values === 'string' 
@@ -183,44 +186,36 @@ class TypesenseService {
         }
       } catch (error) {
         console.warn('Error parsing color metadata:', error)
-        // Store as string if JSON parsing fails
         if (typeof metadata.color_hex_values === 'string') {
           colorHexValues = metadata.color_hex_values
         }
       }
     }
 
-    // ✅ CRITICAL: Extract option_images for color-based image switching
     if (metadata.option_images) {
       try {
         const optionImagesData = typeof metadata.option_images === 'string' 
           ? JSON.parse(metadata.option_images)
           : metadata.option_images
         optionImages = JSON.stringify(optionImagesData)
-        console.log('🎨 [INDEXING] Extracted option_images:', optionImagesData)
       } catch (error) {
         console.warn('Error parsing option_images metadata:', error)
-        // Store as string if JSON parsing fails
         optionImages = String(metadata.option_images || '')
       }
     }
 
-    // ✅ CRITICAL: Extract variant_images mapping (product-level)
     if (metadata.variant_images) {
       try {
         const variantImagesData = typeof metadata.variant_images === 'string' 
           ? JSON.parse(metadata.variant_images)
           : metadata.variant_images
         variantImages = JSON.stringify(variantImagesData)
-        console.log('🎨 [INDEXING] Extracted variant_images:', variantImagesData)
       } catch (error) {
         console.warn('Error parsing variant_images metadata:', error)
-        // Store as string if JSON parsing fails
         variantImages = String(metadata.variant_images || '')
       }
     }
 
-    // ✅ ENHANCED: Extract variant_specific_image_option
     if (metadata.variant_specific_image_option) {
       try {
         const variantSpecificData = typeof metadata.variant_specific_image_option === 'string' 
@@ -233,7 +228,6 @@ class TypesenseService {
       }
     }
 
-    // ✅ ENHANCED: Extract fulfillment_type
     if (metadata.fulfillment_type) {
       try {
         const fulfillmentData = typeof metadata.fulfillment_type === 'string' 
@@ -256,11 +250,10 @@ class TypesenseService {
     }
   }
 
-  // ✅ ENHANCED: Extract complete image data for color-based switching
+  // Extract complete image data for color-based switching
   private extractImageData(product: any) {
     const images = product.images || []
     
-    // All product images with complete structure
     const allImages = images.map((img: any) => ({
       id: img.id,
       url: img.url,
@@ -277,12 +270,11 @@ class TypesenseService {
     }
   }
 
-  // ✅ CRITICAL: Extract complete variant and options data with FULL metadata preservation
+  // Extract complete variant and options data with FULL metadata preservation
   private extractVariantAndOptionsData(product: any) {
     const variants = product.variants || []
     const options = product.options || []
 
-    // ✅ CRITICAL: Complete variant data with ALL metadata (including variant_images!)
     const variantsData = variants.map((variant: any) => ({
       id: variant.id,
       title: variant.title,
@@ -294,11 +286,7 @@ class TypesenseService {
       manage_inventory: variant.manage_inventory || false,
       inventory_quantity: variant.inventory_quantity || 0,
       variant_rank: variant.variant_rank || 0,
-      
-      // ✅ CRITICAL: COMPLETE metadata preservation including variant-specific images!
-      metadata: variant.metadata || {}, // This includes variant_images and variant_image_ids!
-      
-      // ✅ CRITICAL: Complete options with option details
+      metadata: variant.metadata || {},
       options: (variant.options || []).map((opt: any) => ({
         id: opt.id,
         value: opt.value,
@@ -314,12 +302,8 @@ class TypesenseService {
         updated_at: opt.updated_at,
         deleted_at: opt.deleted_at
       })),
-      
-      // ✅ CRITICAL: Complete pricing data
       calculated_price: variant.calculated_price,
       prices: variant.prices || [],
-      
-      // Additional variant fields
       weight: variant.weight,
       length: variant.length,
       height: variant.height,
@@ -328,14 +312,11 @@ class TypesenseService {
       origin_country: variant.origin_country,
       mid_code: variant.mid_code,
       material: variant.material,
-      
-      // Timestamps
       created_at: variant.created_at,
       updated_at: variant.updated_at,
       deleted_at: variant.deleted_at
     }))
 
-    // ✅ CRITICAL: Complete options data with full values
     const optionsData = options.map((option: any) => ({
       id: option.id,
       title: option.title,
@@ -344,8 +325,6 @@ class TypesenseService {
       created_at: option.created_at,
       updated_at: option.updated_at,
       deleted_at: option.deleted_at,
-      
-      // ✅ CRITICAL: Complete values array
       values: (option.values || []).map((value: any) => ({
         id: value.id,
         value: value.value,
@@ -357,30 +336,13 @@ class TypesenseService {
       }))
     }))
 
-    // ✅ DEBUG: Log variant-specific image data during indexing
-    const variantsWithImages = variantsData.filter(v => 
-      v.metadata && (v.metadata.variant_images || v.metadata.variant_image_ids)
-    )
-    
-    if (variantsWithImages.length > 0) {
-      console.log(`🎨 [INDEXING] Product ${product.id} has ${variantsWithImages.length} variants with image metadata:`)
-      variantsWithImages.forEach(variant => {
-        console.log(`  - Variant ${variant.id} (${variant.title}):`, {
-          has_variant_images: !!variant.metadata.variant_images,
-          has_variant_image_ids: !!variant.metadata.variant_image_ids,
-          variant_images: variant.metadata.variant_images,
-          variant_image_ids: variant.metadata.variant_image_ids
-        })
-      })
-    }
-
     return {
       variants_data: JSON.stringify(variantsData),
       options_data: JSON.stringify(optionsData)
     }
   }
 
-  // ✅ ENHANCED: Extract categories and tags
+  // Extract categories and tags
   private extractTaxonomyData(product: any) {
     const categories = product.categories || []
     const tags = product.tags || []
@@ -401,7 +363,7 @@ class TypesenseService {
     }
   }
 
-  // ✅ ENHANCED: Build comprehensive search text
+  // Build comprehensive search text
   private buildSearchText(product: any, vendorData: any, taxonomyData: any) {
     const searchParts = [
       product.title,
@@ -416,80 +378,51 @@ class TypesenseService {
     return searchParts.join(' ').toLowerCase()
   }
 
-  // ✅ ENHANCED: Index single product with COMPLETE variant-specific image data
+  // Transform a single product into a Typesense document
+  private buildDocument(product: any, region?: any) {
+    const vendorData = this.extractVendorData(product)
+    const priceData = this.extractPriceData(product, region)
+    const metadataData = this.extractMetadata(product)
+    const imageData = this.extractImageData(product)
+    const variantOptionsData = this.extractVariantAndOptionsData(product)
+    const taxonomyData = this.extractTaxonomyData(product)
+    const searchText = this.buildSearchText(product, vendorData, taxonomyData)
+
+    return {
+      id: String(product.id || ''),
+      title: String(product.title || ''),
+      description: String(product.description || '').replace(/<[^>]*>/g, ''),
+      handle: String(product.handle || ''),
+      status: String(product.status || 'draft'),
+      thumbnail: String(product.thumbnail || ''),
+      first_image_url: String(product.images?.[0]?.url || product.thumbnail || ''),
+      collection_id: String(product.collection?.id || ''),
+      collection_title: String(product.collection?.title || ''),
+      collection_handle: String(product.collection?.handle || ''),
+      ...vendorData,
+      ...priceData,
+      ...metadataData,
+      ...imageData,
+      ...variantOptionsData,
+      ...taxonomyData,
+      variant_count: product.variants ? product.variants.length : 0,
+      variant_titles: product.variants 
+        ? product.variants.map((v: any) => String(v.title || '')).join(', ') 
+        : '',
+      has_variants: product.variants ? product.variants.length > 1 : false,
+      search_text: searchText,
+      created_at: Math.floor(new Date(product.created_at || new Date()).getTime() / 1000),
+      updated_at: Math.floor(new Date(product.updated_at || new Date()).getTime() / 1000),
+    }
+  }
+
+  // Index a single product
   async indexProduct(product: any, region?: any) {
     try {
-      console.log(`🔄 [INDEXING] Processing product with COMPLETE variant-specific images: ${product.title} (${product.id})`)
-
-      // Extract all data including COMPLETE variant-specific images
-      const vendorData = this.extractVendorData(product)
-      const priceData = this.extractPriceData(product, region)
-      const metadataData = this.extractMetadata(product)
-      const imageData = this.extractImageData(product)
-      const variantOptionsData = this.extractVariantAndOptionsData(product)
-      const taxonomyData = this.extractTaxonomyData(product)
-      const searchText = this.buildSearchText(product, vendorData, taxonomyData)
-
-      // ✅ ENHANCED: Transform to complete flat structure with ALL variant-specific image support
-      const typesenseDoc = {
-        id: String(product.id || ''),
-        title: String(product.title || ''),
-        description: String(product.description || '').replace(/<[^>]*>/g, ''),
-        handle: String(product.handle || ''),
-        status: String(product.status || 'draft'),
-        
-        // Image info
-        thumbnail: String(product.thumbnail || ''),
-        first_image_url: String(product.images?.[0]?.url || product.thumbnail || ''),
-        
-        // Collection info
-        collection_id: String(product.collection?.id || ''),
-        collection_title: String(product.collection?.title || ''),
-        collection_handle: String(product.collection?.handle || ''),
-        
-        // Vendor data
-        ...vendorData,
-        
-        // Price data
-        ...priceData,
-        
-        // Variant info
-        variant_count: product.variants ? product.variants.length : 0,
-        variant_titles: product.variants ? 
-          product.variants.map((variant: any) => String(variant.title || '')).join(', ') : '',
-        has_variants: product.variants ? product.variants.length > 1 : false,
-        
-        // ✅ CRITICAL: Complete metadata with ALL variant-specific image mappings
-        ...metadataData,
-        
-        // ✅ CRITICAL: Complete image data for color-based switching
-        ...imageData,
-        
-        // ✅ CRITICAL: COMPLETE variant and options data with variant.metadata preservation
-        ...variantOptionsData,
-        
-        // Categories and tags
-        ...taxonomyData,
-        
-        // Search optimization
-        search_text: searchText,
-        
-        // Timestamps
-        created_at: Math.floor(new Date(product.created_at || new Date()).getTime() / 1000),
-        updated_at: Math.floor(new Date(product.updated_at || new Date()).getTime() / 1000),
-      }
-
-      console.log(`🎨 [INDEXING] Product variant-specific image data:`)
-      console.log(`  - has_option_images: ${!!metadataData.option_images}`)
-      console.log(`  - has_variant_images: ${!!metadataData.variant_images}`)
-      console.log(`  - variant_count: ${typesenseDoc.variant_count}`)
-      console.log(`  - has_variants_data: ${!!variantOptionsData.variants_data}`)
-      console.log(`  - has_options_data: ${!!variantOptionsData.options_data}`)
-
-      // Index the document
+      console.log(`🔄 [INDEXING] Processing product: ${product.title} (${product.id})`)
+      const typesenseDoc = this.buildDocument(product, region)
       await this.client.collections('products').documents().upsert(typesenseDoc)
-      console.log(`✅ [INDEXING] Product ${product.id} indexed successfully with COMPLETE variant-specific image support`)
-      
+      console.log(`✅ [INDEXING] Product ${product.id} indexed successfully`)
       return typesenseDoc
     } catch (error) {
       console.error(`❌ [INDEXING] Error indexing product ${product.id}:`, error)
@@ -497,95 +430,79 @@ class TypesenseService {
     }
   }
 
-  // ✅ ENHANCED: Batch index products with COMPLETE variant-specific image data
+  // ✅ FIX: Batch index products in chunks to prevent 504 timeouts
   async indexProducts(products: any[], region?: any) {
     try {
-      console.log(`🔄 [BATCH INDEXING] Starting batch indexing of ${products.length} products with COMPLETE variant-specific image support...`)
+      console.log(`🔄 [BATCH INDEXING] Starting batch indexing of ${products.length} products (batch size: ${IMPORT_BATCH_SIZE})...`)
 
-      const documents = products.map(product => {
-        const vendorData = this.extractVendorData(product)
-        const priceData = this.extractPriceData(product, region)
-        const metadataData = this.extractMetadata(product)
-        const imageData = this.extractImageData(product)
-        const variantOptionsData = this.extractVariantAndOptionsData(product)
-        const taxonomyData = this.extractTaxonomyData(product)
-        const searchText = this.buildSearchText(product, vendorData, taxonomyData)
+      // Build all documents first (CPU only, no network)
+      const documents = products.map(product => this.buildDocument(product, region))
 
-        return {
-          id: String(product.id || ''),
-          title: String(product.title || ''),
-          description: String(product.description || '').replace(/<[^>]*>/g, ''),
-          handle: String(product.handle || ''),
-          status: String(product.status || 'draft'),
-          
-          thumbnail: String(product.thumbnail || ''),
-          first_image_url: String(product.images?.[0]?.url || product.thumbnail || ''),
-          
-          collection_id: String(product.collection?.id || ''),
-          collection_title: String(product.collection?.title || ''),
-          collection_handle: String(product.collection?.handle || ''),
-          
-          // Enhanced data with COMPLETE variant-specific images
-          ...vendorData,
-          ...priceData,
-          ...metadataData,
-          ...imageData,
-          ...variantOptionsData,
-          ...taxonomyData,
-          
-          variant_count: product.variants ? product.variants.length : 0,
-          variant_titles: product.variants ? 
-            product.variants.map((variant: any) => String(variant.title || '')).join(', ') : '',
-          has_variants: product.variants ? product.variants.length > 1 : false,
-          
-          search_text: searchText,
-          
-          created_at: Math.floor(new Date(product.created_at || new Date()).getTime() / 1000),
-          updated_at: Math.floor(new Date(product.updated_at || new Date()).getTime() / 1000),
-        }
-      })
-
-      console.log('📋 [BATCH INDEXING] Sample enhanced product with COMPLETE variant-specific images:')
-      console.log(JSON.stringify({
-        id: documents[0]?.id,
-        title: documents[0]?.title,
-        has_option_images: !!documents[0]?.option_images,
-        has_variant_images: !!documents[0]?.variant_images,
-        has_variants_data: !!documents[0]?.variants_data,
-        has_options_data: !!documents[0]?.options_data,
-        has_all_images: !!documents[0]?.all_images,
-        vendor: documents[0]?.vendor_name
-      }, null, 2))
-
-      // Count products with various data types
+      // Log data quality summary
       const withVendor = documents.filter(doc => doc.vendor_name).length
       const withPrice = documents.filter(doc => doc.min_price_amount > 0).length
       const withOptionImages = documents.filter(doc => doc.option_images).length
       const withVariantImages = documents.filter(doc => doc.variant_images).length
       const withCompleteVariantData = documents.filter(doc => doc.variants_data && doc.options_data).length
       
-      console.log(`📊 [BATCH INDEXING] Data quality analysis:`)
-      console.log(`  - Products with vendor data: ${withVendor}/${documents.length}`)
-      console.log(`  - Products with price data: ${withPrice}/${documents.length}`)
-      console.log(`  - Products with option images: ${withOptionImages}/${documents.length}`)
-      console.log(`  - Products with variant images: ${withVariantImages}/${documents.length}`)
-      console.log(`  - Products with complete variant data: ${withCompleteVariantData}/${documents.length}`)
+      console.log(`📊 [BATCH INDEXING] Data quality:`)
+      console.log(`  - With vendor:          ${withVendor}/${documents.length}`)
+      console.log(`  - With price:           ${withPrice}/${documents.length}`)
+      console.log(`  - With option images:   ${withOptionImages}/${documents.length}`)
+      console.log(`  - With variant images:  ${withVariantImages}/${documents.length}`)
+      console.log(`  - With variant data:    ${withCompleteVariantData}/${documents.length}`)
 
-      // Batch import
-      const importResults = await this.client
-        .collections('products')
-        .documents()
-        .import(documents, { action: 'upsert' })
+      // ✅ FIX: Import in batches instead of one giant request
+      let totalIndexed = 0
+      const errors: Array<{ batch: number; error: string }> = []
 
-      console.log(`✅ [BATCH INDEXING] Complete indexing finished: ${products.length} products with FULL variant-specific image support`)
-      return importResults
+      for (let i = 0; i < documents.length; i += IMPORT_BATCH_SIZE) {
+        const batch = documents.slice(i, i + IMPORT_BATCH_SIZE)
+        const batchNumber = Math.floor(i / IMPORT_BATCH_SIZE) + 1
+        const totalBatches = Math.ceil(documents.length / IMPORT_BATCH_SIZE)
+
+        try {
+          const results = await this.client
+            .collections('products')
+            .documents()
+            .import(batch, { action: 'upsert' })
+
+          // Check for per-document errors in the response
+          const failedDocs = results.filter((r: any) => !r.success)
+          if (failedDocs.length > 0) {
+            console.warn(`⚠️ [BATCH INDEXING] Batch ${batchNumber}: ${failedDocs.length} documents failed`)
+            failedDocs.forEach((doc: any) => {
+              console.warn(`  - Error: ${doc.error} | Doc ID: ${doc.document?.id}`)
+            })
+          }
+
+          totalIndexed += batch.length - failedDocs.length
+          console.log(`✅ [BATCH INDEXING] Batch ${batchNumber}/${totalBatches} done — ${totalIndexed}/${documents.length} total indexed`)
+        } catch (batchError: any) {
+          console.error(`❌ [BATCH INDEXING] Batch ${batchNumber} failed:`, batchError.message)
+          errors.push({ batch: batchNumber, error: batchError.message })
+          // Continue with next batch instead of crashing everything
+        }
+      }
+
+      if (errors.length > 0) {
+        console.warn(`⚠️ [BATCH INDEXING] Completed with ${errors.length} failed batches:`, errors)
+      } else {
+        console.log(`✅ [BATCH INDEXING] All ${totalIndexed} products indexed successfully`)
+      }
+
+      return { 
+        success: errors.length === 0, 
+        total_indexed: totalIndexed,
+        total_products: documents.length,
+        failed_batches: errors
+      }
     } catch (error) {
-      console.error('❌ [BATCH INDEXING] Error indexing products:', error)
+      console.error('❌ [BATCH INDEXING] Fatal error during batch indexing:', error)
       throw error
     }
   }
 
-  // Keep existing search, delete, clear, stats, and health check methods...
   async searchProducts(query: string, options: any = {}) {
     try {
       const {
@@ -600,16 +517,13 @@ class TypesenseService {
         facet_by = 'vendor_name,collection_title,color_names,currency_code,status'
       } = options
 
-      // Build enhanced filters
       const filters = [filter_by].filter(Boolean)
       
-      // Add vendor filter
       if (vendor_names.length > 0) {
         const vendorFilter = vendor_names.map((name: string) => `vendor_name:=${name}`).join(' || ')
         filters.push(`(${vendorFilter})`)
       }
       
-      // Add price range filter
       if (price_range.min !== undefined || price_range.max !== undefined) {
         const priceFilters = []
         if (price_range.min !== undefined) {
@@ -623,13 +537,11 @@ class TypesenseService {
         }
       }
       
-      // Add color filter
       if (colors.length > 0) {
         const colorFilter = colors.map((color: string) => `color_names:${color}`).join(' || ')
         filters.push(`(${colorFilter})`)
       }
       
-      // Add collection filter
       if (collections.length > 0) {
         const collectionFilter = collections.map((col: string) => `collection_handle:=${col}`).join(' || ')
         filters.push(`(${collectionFilter})`)
@@ -649,14 +561,14 @@ class TypesenseService {
         drop_tokens_threshold: 0,
       }
 
-      console.log('🔍 [SEARCH] Enhanced Typesense search with COMPLETE variant-specific image support:', searchParameters)
+      console.log('🔍 [SEARCH] Typesense search params:', searchParameters)
 
       const searchResults = await this.client
         .collections('products')
         .documents()
         .search(searchParameters)
 
-      console.log(`✅ [SEARCH] Search completed: ${searchResults.found} results found in ${searchResults.search_time_ms}ms`)
+      console.log(`✅ [SEARCH] ${searchResults.found} results found in ${searchResults.search_time_ms}ms`)
 
       return searchResults
     } catch (error) {
@@ -688,11 +600,10 @@ class TypesenseService {
   async getStats() {
     try {
       const stats = await this.client.collections('products').retrieve()
-      console.log('📊 [STATS] Complete collection stats with variant-specific images:', {
+      console.log('📊 [STATS] Collection stats:', {
         name: stats.name,
         num_documents: stats.num_documents,
-        fields: stats.fields.map(f => f.name),
-        has_complete_variant_image_fields: stats.fields.some(f => 
+        has_variant_image_fields: stats.fields.some((f: any) => 
           ['option_images', 'variant_images', 'variants_data', 'options_data', 'all_images'].includes(f.name)
         )
       })
@@ -706,7 +617,7 @@ class TypesenseService {
   async healthCheck() {
     try {
       const health = await this.client.health.retrieve()
-      console.log('✅ [HEALTH] Typesense health check:', health)
+      console.log('✅ [HEALTH] Typesense health:', health)
       return health
     } catch (error) {
       console.error('❌ [HEALTH] Typesense health check failed:', error)
@@ -715,21 +626,17 @@ class TypesenseService {
   }
 }
 
-// ✅ ENHANCED: Export complete service with variant-specific image support
 export const typesenseService = new TypesenseService()
 export const typesenseClient = client
 export { client }
 export default typesenseService
 
-// ✅ ENHANCED: Reindexing utility for COMPLETE variant-specific image data
 export async function reindexAllProductsWithCompleteVariantImages() {
-  console.log('🔄 [REINDEX] Starting complete product reindexing with FULL variant-specific image support...')
+  console.log('🔄 [REINDEX] Starting complete product reindexing...')
   
   try {
-    // Initialize complete schema
     await typesenseService.initializeSchema()
     
-    // TODO: Fetch products with COMPLETE variant-specific image data
     const { products, region } = await fetchProductsWithCompleteVariantImageData()
     
     if (products.length === 0) {
@@ -737,34 +644,20 @@ export async function reindexAllProductsWithCompleteVariantImages() {
       return
     }
     
-    console.log(`📦 [REINDEX] Found ${products.length} products to index with COMPLETE variant-specific image support`)
+    console.log(`📦 [REINDEX] Found ${products.length} products to index`)
     
-    // Batch index with complete data
     await typesenseService.indexProducts(products, region)
     
-    console.log('✅ [REINDEX] Complete reindexing finished with FULL variant-specific image support!')
+    console.log('✅ [REINDEX] Complete reindexing finished!')
     
   } catch (error) {
-    console.error('❌ [REINDEX] Complete reindexing failed:', error)
+    console.error('❌ [REINDEX] Reindexing failed:', error)
     throw error
   }
 }
 
-// ✅ TODO: Implement this function based on your Medusa setup
 async function fetchProductsWithCompleteVariantImageData() {
   console.log('⚠️ [REINDEX] fetchProductsWithCompleteVariantImageData not implemented yet')
-  console.log('📝 [REINDEX] You need to implement this function to fetch products with COMPLETE data:')
-  console.log('   - vendor.* fields with ALL vendor properties')
-  console.log('   - variants.* with metadata.variant_images AND metadata.variant_image_ids (CRITICAL!)')
-  console.log('   - variants.calculated_price fields') 
-  console.log('   - metadata.option_images field with color->image mappings')
-  console.log('   - metadata.variant_images field with variant->image mappings')
-  console.log('   - metadata.variant_specific_image_option field')
-  console.log('   - metadata.fulfillment_type field')
-  console.log('   - complete images array with all properties')
-  console.log('   - options.* with values.* (complete option structure)')
-  console.log('   - categories.* and tags.* with all properties')
-  
   return {
     products: [],
     region: { currency_code: 'INR' }

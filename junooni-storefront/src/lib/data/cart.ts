@@ -321,6 +321,33 @@ export async function applyPromotions(codes: string[]) {
     .catch(medusaError)
 }
 
+export const addCodFee = async (cartId: string) => {
+  const headers = { ...(await getAuthHeaders()) }
+  return sdk.client
+    .fetch("/store/carts/cod-fee", {
+      method: "POST",
+      headers,
+      body: { cart_id: cartId },
+    })
+    .catch((e) => {
+      console.error("Failed to add COD fee:", e)
+      return null
+    })
+}
+
+export const removeCodFee = async (cartId: string) => {
+  const headers = { ...(await getAuthHeaders()) }
+  return sdk.client
+    .fetch(`/store/carts/cod-fee?cart_id=${cartId}`, {
+      method: "DELETE",
+      headers,
+    })
+    .catch((e) => {
+      console.error("Failed to remove COD fee:", e)
+      return null
+    })
+}
+
 export async function applyGiftCard(code: string) {
   //   const cartId = getCartId()
   //   if (!cartId) return "No cartId cookie found"

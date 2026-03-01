@@ -96,7 +96,12 @@ export default async function OrderCompletedTemplate({
             Summary
           </Heading>
           <Items order={order} />
-          <CartTotals totals={order} />
+          <CartTotals totals={{
+            ...order,
+            items: order.items,
+            selectedPaymentMethod: order.payment_collections?.[0]?.payment_sessions?.[0]?.provider_id
+          }} />
+          {/* <CartTotals totals={order} /> */}
           <ShippingDetails order={order} />
           <PaymentDetails order={order} />
           <Help />

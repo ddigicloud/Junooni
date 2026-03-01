@@ -314,9 +314,9 @@ const calculatePaymentProcessingFee = (totalAmount: number, paymentStatus: strin
   // For COD or manual payments - flat ₹35 fee
   if (paymentMethod === 'cod' || paymentMethod === 'manual' || paymentMethod === 'cash_on_delivery') {
     return {
-      gatewayFee: 35,
+      gatewayFee: 0,
       gstOnFee: 0,
-      totalProcessingFee: 35,
+      totalProcessingFee: 0,
       feeType: 'flat_cod'
     };
   }

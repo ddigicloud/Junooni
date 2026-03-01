@@ -27,11 +27,11 @@ enum Templates {
 }
 
 const templates: {[key in Templates]?: (props: unknown) => React.ReactNode} = {
-  [Templates.ORDER_PLACED]: orderPlacedEmail,
+  // [Templates.ORDER_PLACED]: orderPlacedEmail,
   [Templates.RESET_PASSWORD]: resetPasswordEmail,
   [Templates.ONBOARDING_REMINDER]: onboardingReminderEmail,  // ← ADD THIS
-  [Templates.VENDOR_ORDER_PLACED]: vendorOrderPlacedEmail,
-[Templates.ADMIN_ORDER_PLACED]: adminOrderPlacedEmail,
+//   [Templates.VENDOR_ORDER_PLACED]: vendorOrderPlacedEmail,
+// [Templates.ADMIN_ORDER_PLACED]: adminOrderPlacedEmail,
 
 }
 
