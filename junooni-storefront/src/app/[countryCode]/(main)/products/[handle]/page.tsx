@@ -167,14 +167,14 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
   return {
     title: `${product.title} | Junooni`,
-    description:
-      product.description ||
-      `Buy ${product.title} — exclusive creator merchandise on Junooni.`,
-    openGraph: {
+    description: product.description
+    ? product.description.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim()
+    : `Buy ${product.title} — exclusive creator merchandise on Junooni.`,
+      openGraph: {
       title: `${product.title} | Junooni`,
-      description:
-        product.description ||
-        `Buy ${product.title} — exclusive creator merchandise on Junooni.`,
+      description: product.description
+    ? product.description.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim()
+    : `Buy ${product.title} — exclusive creator merchandise on Junooni.`,
       images: product.thumbnail ? [product.thumbnail] : [],
     },
   }
@@ -219,14 +219,18 @@ export default async function ProductPage(props: Props) {
         v.inventory_quantity == null || v.inventory_quantity > 0
     ) ?? true
 
+  const cleanDescription = (html: string | null | undefined, fallback: string) =>
+  html ? html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim() || fallback : fallback
+
   // ── Build Product schema ───────────────────────────────────────────────────
   const productSchema: Record<string, any> = {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": pricedProduct.title,
-    "description":
-      pricedProduct.description ||
-      `Buy ${pricedProduct.title} — exclusive creator merchandise on Junooni.`,
+    "description": cleanDescription(
+      pricedProduct.description,
+      `Buy ${pricedProduct.title} — exclusive creator merchandise on Junooni.`
+    ),
     "image": images.length > 0 ? images : undefined,
     "sku": pricedProduct.id,
     "brand": {

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import ChatwootWidget from '@/components/ChatwootWidget'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
+import AdminImpersonationBanner from '@/components/AdminImpersonationBanner'
 import { 
   CircleUser, 
   Package, 
@@ -68,25 +69,28 @@ const BRAND = {
 // Simple token validation
 const validateToken = (): boolean => {
   const token = localStorage.getItem("vendorToken");
+  if (!token) return false;
+
+  // If it's an impersonation token (JWT), validate via expiry in the payload
+  if (localStorage.getItem("isAdminImpersonation") === "true") {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]))
+      return payload.exp * 1000 > Date.now()
+    } catch {
+      return false
+    }
+  }
+
+  // Original timestamp-based check for normal vendor tokens
   const tokenTimestamp = localStorage.getItem("vendorTokenTimestamp");
-  
-  if (!token || !tokenTimestamp) {
+  if (!tokenTimestamp) return false;
+  const tokenAge = Date.now() - parseInt(tokenTimestamp);
+  const THREE_HOURS = 3 * 60 * 60 * 1000;
+  if (tokenAge > THREE_HOURS) {
     localStorage.removeItem("vendorToken");
     localStorage.removeItem("vendorTokenTimestamp");
     return false;
   }
-  
-  const now = Date.now();
-  const tokenAge = now - parseInt(tokenTimestamp);
-  const ONE_HOUR = 3 * 60 * 60 * 1000; // 1 hour in milliseconds
-  
-  // If token is older than 1 hour, clear it
-  if (tokenAge > ONE_HOUR) {
-    localStorage.removeItem("vendorToken");
-    localStorage.removeItem("vendorTokenTimestamp");
-    return false;
-  }
-  
   return true;
 };
 
@@ -1473,6 +1477,7 @@ const DashboardPage = () => {
         backgroundColor: "white"
       }}
     >
+      <AdminImpersonationBanner />
       {/* Header */}
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90">

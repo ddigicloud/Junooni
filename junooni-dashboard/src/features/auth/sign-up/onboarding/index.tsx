@@ -233,6 +233,17 @@ const checkTokenForActorId = () => {
   }
 };
 
+const getEmailFromToken = (): string => {
+  try {
+    const token = localStorage.getItem('vendorToken')
+    if (!token) return ''
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.email || payload.app_metadata?.email || payload.entity_id || ''
+  } catch {
+    return ''
+  }
+}
+
 // Mock component for the forms - in reality these would be your actual form components
 const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toast, setVendorData, stepCompletion ,setCurrentStep, handleFileUpload, isUploading,  uploadType,  termsAgreed, setTermsAgreed,  openDialog, setOpenDialog  }) => {
   
@@ -374,7 +385,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                         vendorData.vendor.admins.length > 0 && 
                         vendorData.vendor.admins[0].email
                           ? vendorData.vendor.admins[0].email
-                          : localStorage.getItem('vendorEmail') || "vendor@example.com"
+                          : localStorage.getItem('vendorEmail') || getEmailFromToken() || "vendor@example.com"
                       ) : (
                         "Loading email..."
                       )}
@@ -936,7 +947,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         
         if (!vendorData.vendor.admins || !Array.isArray(vendorData.vendor.admins) || vendorData.vendor.admins.length === 0) {
           //console.log('admins data missing, initializing...');
-          const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+          const userEmail = localStorage.getItem('vendorEmail') || getEmailFromToken() || "vendor@example.com";
           
           vendorData.vendor.admins = [{
             email: userEmail,
@@ -1146,7 +1157,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
         
         if (!vendorData.vendor.admins || !Array.isArray(vendorData.vendor.admins) || vendorData.vendor.admins.length === 0) {
           //console.log('admins data missing, initializing...');
-          const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+          const userEmail = localStorage.getItem('vendorEmail') || getEmailFromToken() || "vendor@example.com";
           
           vendorData.vendor.admins = [{
             email: userEmail,
@@ -1311,7 +1322,7 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
   
   if (!vendorData.vendor.admins || !Array.isArray(vendorData.vendor.admins) || vendorData.vendor.admins.length === 0) {
     //console.log('admins data missing, initializing...');
-    const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+    const userEmail = localStorage.getItem('vendorEmail') || getEmailFromToken() || "vendor@example.com";
     
     vendorData.vendor.admins = [{
       email: userEmail,
@@ -1954,7 +1965,7 @@ useEffect(() => {
   let isActive = true;
 
   const setupInitialState = () => {
-    const userEmail = localStorage.getItem('vendorEmail') || "vendor@example.com";
+   const userEmail = localStorage.getItem('vendorEmail') || getEmailFromToken() || "vendor@example.com";
     
     const defaultData = {
       vendor: {
@@ -2100,7 +2111,7 @@ useEffect(() => {
 useEffect(() => {
   if (vendorData && vendorData.vendor && (!vendorData.vendor.admins || !Array.isArray(vendorData.vendor.admins))) {
     //console.log('Normalizing admins data structure...');
-    const userEmail = localStorage.getItem('vendorEmail') || "vendor@digicloud.com";
+    const userEmail = localStorage.getItem('vendorEmail') || getEmailFromToken() || "vendor@example.com";
     
     setVendorData(prevData => ({
       ...prevData,
