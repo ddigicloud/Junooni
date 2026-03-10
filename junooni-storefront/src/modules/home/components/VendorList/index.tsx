@@ -40,14 +40,15 @@ const VendorList: React.FC = () => {
 
   // Helper function to check if vendor is featured
   const isFeaturedVendor = (vendor: Vendor): boolean => {
-    // Check multiple possible locations for featured_vendor flag
-    return !!(
-      vendor.metafield?.featured_vendor ||
-      vendor.metadata?.featured_vendor ||
-      vendor.featured_vendor ||
-      (vendor as any).featured_vendor === true ||
-      (vendor as any).metafields?.featured_vendor === true
-    );
+  const val =
+      vendor.metafield?.featured_vendor ??
+      vendor.metadata?.featured_vendor ??
+      vendor.featured_vendor ??
+      (vendor as any).metafields?.featured_vendor;
+
+    // Handle string "true"/"false" as well as actual booleans
+    if (typeof val === "string") return val.toLowerCase() === "true";
+    return !!val;
   };
 
   useEffect(() => {

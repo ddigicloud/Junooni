@@ -10,6 +10,7 @@ import ChatwootWidget from '@/components/ChatwootWidget'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 import AdminImpersonationBanner from '@/components/AdminImpersonationBanner'
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { 
   CircleUser, 
   Package, 
@@ -475,12 +476,22 @@ const checkOnboardingCompletion = (vendorData: any): OnboardingStatus => {
   }
 
   // Check Business Details (optional but recommended)
-  const businessDetailFields = {
-    'GSTIN': vendor.GSTIN,
-    'Company Name': vendor.companyname,
-    'PAN Number': vendor.pan_number
-  };
+  // const businessDetailFields = {
+  //   'GSTIN': vendor.GSTIN,
+  //   'Company Name': vendor.companyname,
+  //   'PAN Number': vendor.pan_number
+  // };
   
+  // Check Business Details (optional but recommended)
+// _hasGst is stored on vendorData root (not vendor), so we check vendorData directly
+const shouldCheckGST = vendorData._hasGst === true;
+
+const businessDetailFields = {
+  ...(shouldCheckGST ? { 'GSTIN': vendor.GSTIN } : {}),
+  'Company Name': vendor.companyname,
+  'PAN Number': vendor.pan_number
+};
+
   const missingBusinessFields = Object.entries(businessDetailFields)
     .filter(([key, value]) => !value)
     .map(([key]) => key);
@@ -569,111 +580,167 @@ const checkOnboardingCompletion = (vendorData: any): OnboardingStatus => {
   };
 };
 
-// Onboarding Progress Banner
 const OnboardingProgressBanner = ({ onboardingStatus, vendorName }: { 
   onboardingStatus: OnboardingStatus, 
   vendorName: string 
 }) => {
   const navigate = useNavigate();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(() => {
+    return localStorage.getItem('onboarding_banner_dismissed') === 'true';
+  });
 
-  if (onboardingStatus.isComplete) {
-    return null;
-  }
+  if (onboardingStatus.isComplete) return null;
 
   const getStepIcon = (step: string) => {
     switch (step) {
-      case 'basic-info':
-        return <User className="w-4 h-4" />;
-      case 'business-details':
-        return <Building className="w-4 h-4" />;
-      case 'banking-info':
-        return <Banknote className="w-4 h-4" />;
-      case 'creator-profile':
-        return <FileText className="w-4 h-4" />;
-      default:
-        return <AlertCircle className="w-4 h-4" />;
+      case 'basic-info': return <User className="w-4 h-4" />;
+      case 'business-details': return <Building className="w-4 h-4" />;
+      case 'banking-info': return <Banknote className="w-4 h-4" />;
+      case 'creator-profile': return <FileText className="w-4 h-4" />;
+      default: return <AlertCircle className="w-4 h-4" />;
     }
   };
 
   const getStepName = (step: string) => {
     switch (step) {
-      case 'basic-info':
-        return 'Basic Information';
-      case 'business-details':
-        return 'Business Details';
-      case 'banking-info':
-        return 'Banking Information';
-      case 'creator-profile':
-        return 'Creator Profile';
-      default:
-        return step;
+      case 'basic-info': return 'Basic Information';
+      case 'business-details': return 'Business Details';
+      case 'banking-info': return 'Banking Information';
+      case 'creator-profile': return 'Creator Profile';
+      default: return step;
     }
   };
 
-  const getStepPriority = (step: string) => {
-    return step === 'basic-info' || step === 'banking-info' ? 'Required' : 'Recommended';
-  };
+  const getStepPriority = (step: string) => 
+    step === 'basic-info' || step === 'banking-info' ? 'Required' : 'Recommended';
 
-  const getStepPriorityColor = (step: string) => {
-    return step === 'basic-info' || step === 'banking-info' ? 'text-red-600' : 'text-amber-600';
-  };
+  const getStepPriorityColor = (step: string) => 
+    step === 'basic-info' || step === 'banking-info' ? 'text-red-600' : 'text-amber-600';
+
+  // Dismissed state — show a slim persistent bar instead of nothing
+  if (isDismissed) {
+    return (
+      <div 
+        className="flex items-center justify-between px-4 py-2 mb-6 border rounded-lg cursor-pointer border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors"
+        onClick={() => {
+          setIsDismissed(false);
+          localStorage.removeItem('onboarding_banner_dismissed');
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+          <span className="text-sm font-medium text-amber-800">
+            Complete your onboarding
+          </span>
+          <div className="w-20 h-1.5 bg-white rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${onboardingStatus.completionPercentage}%`, backgroundColor: BRAND.primary }}
+            />
+          </div>
+          <span className="text-xs text-amber-600">{onboardingStatus.completionPercentage}%</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            className="h-7 text-xs px-3"
+            style={{ backgroundColor: BRAND.primary }}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ to: '/onboarding' });
+            }}
+          >
+            Resume
+          </Button>
+          <ChevronDown className="w-4 h-4 text-amber-500" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Alert className="mb-6 border-amber-200 bg-amber-50">
-      <AlertCircle className="w-4 h-4 text-amber-600" />
-      <AlertDescription>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex-1">
-              <h3 className="font-semibold text-amber-800">
-                Complete Your Onboarding ({onboardingStatus.completionPercentage}% Complete)
-              </h3>
-              <p className="mt-1 text-sm text-amber-700">
-                Hi {vendorName.split(' ')[0]}! You're almost ready to start selling. Complete the remaining steps to unlock all features.
-              </p>
-            </div>
-            
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              {/* Progress bar */}
-              <div className="flex items-center gap-2">
-                <div className="w-20 h-2 bg-white rounded-full">
-                  <div
-                    className="h-2 rounded-full"
-                    style={{
-                      width: `${onboardingStatus.completionPercentage}%`,
-                      backgroundColor: BRAND.primary
-                    }}
-                  />
-                </div>
-                <span className="text-xs font-medium text-amber-700">
-                  {onboardingStatus.completionPercentage}%
-                </span>
-              </div>
-              
-              <Button
-                size="sm"
-                onClick={() => navigate({ to: '/onboarding' })}
-                style={{ backgroundColor: BRAND.primary }}
-                className="whitespace-nowrap"
-              >
-                Complete Onboarding
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
+    <div className="mb-6 overflow-hidden border border-amber-200 rounded-xl shadow-sm">
+      {/* Header — always visible, click to collapse */}
+      <div 
+        className="flex items-center justify-between px-4 py-3 cursor-pointer bg-amber-50 hover:bg-amber-100 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+          <div>
+            <span className="text-sm font-semibold text-amber-800">
+              Complete Your Onboarding
+            </span>
+            <span className="ml-2 text-xs text-amber-600">
+              {onboardingStatus.completionPercentage}% done · {onboardingStatus.missingSteps.length} step{onboardingStatus.missingSteps.length !== 1 ? 's' : ''} remaining
+            </span>
+          </div>
+          {/* Inline mini progress */}
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="w-24 h-1.5 bg-orange-200 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${onboardingStatus.completionPercentage}%`, backgroundColor: BRAND.primary }}
+              />
             </div>
           </div>
-          
-          {/* Detailed missing steps with specific fields */}
-          <div className="pt-2 space-y-3 border-t border-amber-200">
-            {onboardingStatus.missingSteps.slice(0, 2).map((step) => {
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            className="h-7 text-xs px-3 hidden sm:flex"
+            style={{ backgroundColor: BRAND.primary }}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ to: '/onboarding' });
+            }}
+          >
+            Continue
+            <ArrowRight className="w-3 h-3 ml-1" />
+          </Button>
+          {/* Dismiss */}
+          <button
+            className="p-1 text-orange-400 rounded hover:text-amber-700 hover:bg-amber-200 transition-colors"
+            title="Dismiss for now"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDismissed(true);
+              localStorage.setItem('onboarding_banner_dismissed', 'true');
+            }}
+          >
+            <X className="w-4 h-4" />
+          </button>
+          {/* Expand/collapse chevron */}
+          <span className="text-orange-400">
+            {isExpanded 
+              ? <ChevronUp className="w-4 h-4" /> 
+              : <ChevronDown className="w-4 h-4" />
+            }
+          </span>
+        </div>
+      </div>
+
+      {/* Expandable detail section */}
+      {isExpanded && (
+        <div className="px-4 py-4 bg-white border-t border-amber-100">
+          <p className="mb-4 text-sm text-gray-600">
+            Hi {vendorName.split(' ')[0]}! Complete these steps to unlock all selling features.
+          </p>
+
+          <div className="space-y-3">
+            {onboardingStatus.missingSteps.map((step) => {
               const stepDetail = onboardingStatus.stepDetails[step];
               if (!stepDetail) return null;
-              
+              const isRequired = step === 'basic-info' || step === 'banking-info';
+
               return (
-                <div key={step} className="p-3 bg-white border rounded-lg border-amber-200">
+                <div key={step} className="p-3 border rounded-lg border-amber-100 bg-amber-50">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       {getStepIcon(step)}
-                      <span className="font-medium text-amber-800">{getStepName(step)}</span>
+                      <span className="text-sm font-medium text-amber-800">{getStepName(step)}</span>
                       <Badge 
                         variant="outline" 
                         className={`text-xs ${getStepPriorityColor(step)} border-current`}
@@ -681,23 +748,25 @@ const OnboardingProgressBanner = ({ onboardingStatus, vendorName }: {
                         {getStepPriority(step)}
                       </Badge>
                     </div>
-                    <span className="text-xs text-amber-600">
-                      {stepDetail.missingFields.length} of {stepDetail.requiredFields.length} missing
-                    </span>
+                    <button
+                      className="text-xs font-medium underline"
+                      style={{ color: BRAND.primary }}
+                      onClick={() => navigate({ to: `/onboarding?step=${step}` })}
+                    >
+                      Fix →
+                    </button>
                   </div>
-                  
-                  {/* Show missing fields */}
                   <div className="flex flex-wrap gap-1">
-                    {stepDetail.missingFields.slice(0, 3).map((field, index) => (
+                    {stepDetail.missingFields.slice(0, 3).map((field) => (
                       <span 
                         key={field}
-                        className="inline-flex items-center px-2 py-1 text-xs text-red-700 border border-red-200 rounded-md bg-red-50"
+                        className="inline-flex items-center px-2 py-0.5 text-xs text-red-700 border border-red-200 rounded-md bg-red-50"
                       >
                         {field}
                       </span>
                     ))}
                     {stepDetail.missingFields.length > 3 && (
-                      <span className="inline-flex items-center px-2 py-1 text-xs text-gray-600 border border-gray-200 rounded-md bg-gray-50">
+                      <span className="inline-flex items-center px-2 py-0.5 text-xs text-gray-500 border border-gray-200 rounded-md bg-gray-50">
                         +{stepDetail.missingFields.length - 3} more
                       </span>
                     )}
@@ -705,18 +774,19 @@ const OnboardingProgressBanner = ({ onboardingStatus, vendorName }: {
                 </div>
               );
             })}
-            
-            {onboardingStatus.missingSteps.length > 2 && (
-              <div className="p-2 text-center bg-white border rounded-lg border-amber-200">
-                <span className="text-sm text-amber-700">
-                  +{onboardingStatus.missingSteps.length - 2} more steps to complete
-                </span>
-              </div>
-            )}
           </div>
+
+          <Button
+            className="w-full mt-4"
+            style={{ backgroundColor: BRAND.primary }}
+            onClick={() => navigate({ to: '/onboarding' })}
+          >
+            Complete Onboarding
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
-      </AlertDescription>
-    </Alert>
+      )}
+    </div>
   );
 };
 

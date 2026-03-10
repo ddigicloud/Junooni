@@ -732,101 +732,150 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
               <div className="flex">
                 <IconAlertCircle className="w-5 h-5 mt-0.5 mr-3 text-amber-500" />
                 <div>
-                <p className="text-sm font-medium text-amber-800">
-                  {!vendorData.vendor.id 
-                    ? "Let's add your business details for tax and verification purposes."
-                    : "We use this information for tax reporting and verification purposes only."}
-                </p>
+                  <p className="text-sm font-medium text-amber-800">
+                    Business details are optional — fill in only what applies to you.
+                  </p>
                   <p className="mt-1 text-xs text-amber-700">All your business information is securely stored and protected.</p>
                 </div>
               </div>
             </div>
-            
+
+            {/* ===== GST SECTION ===== */}
+            <div className="p-5 border border-gray-200 rounded-xl">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-gray-800">GST Registration</h3>
+                  <p className="mt-0.5 text-sm text-gray-500">Required only if you have a GST Number</p>
+                </div>
+                <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">Optional</span>
+              </div>
+
+              {/* Yes/No Toggle */}
+              {!vendorData._gstAnswered ? (
+                <div>
+                  <p className="mb-3 text-sm font-medium text-gray-700">Do you have a GST number?</p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVendorData(prev => ({
+                          ...prev,
+                          _gstAnswered: true,
+                          _hasGst: true
+                        }));
+                      }}
+                      className="flex items-center gap-2 px-5 py-3 text-sm font-medium text-white transition-all rounded-lg hover:shadow-md"
+                      style={{ background: `linear-gradient(135deg, ${brandColors.primary} 0%, ${brandColors.secondary} 100%)` }}
+                    >
+                      <IconCircleCheck className="w-4 h-4" />
+                      Yes, I have GST
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVendorData(prev => ({
+                          ...prev,
+                          _gstAnswered: true,
+                          _hasGst: false,
+                          vendor: { ...prev.vendor, GSTIN: null }
+                        }));
+                      }}
+                      className="flex items-center gap-2 px-5 py-3 text-sm font-medium text-gray-700 transition-all bg-gray-100 rounded-lg hover:bg-gray-200"
+                    >
+                      <IconX className="w-4 h-4" />
+                      No, I don't have GST
+                    </button>
+                  </div>
+                </div>
+              ) : vendorData._hasGst ? (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      GSTIN <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setVendorData(prev => ({ ...prev, _gstAnswered: false, _hasGst: false }))}
+                      className="text-xs text-gray-400 hover:text-gray-600"
+                    >
+                      Change answer
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 p-3 mb-2 text-xs text-blue-700 rounded-lg bg-blue-50">
+                    <IconInfoCircle className="w-4 h-4 shrink-0" />
+                    Format: 22AAAAA0000A1Z5 — 15 character alphanumeric GST number
+                  </div>
+                  <input
+                    type="text"
+                    value={vendorData.vendor.GSTIN || ''}
+                    onChange={(e) => updateVendorData('GSTIN', e.target.value.toUpperCase())}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
+                    placeholder="22AAAAA0000A1Z5"
+                    maxLength={15}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-green-50">
+                  <IconCircleCheck className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-800">No GST — that's perfectly fine!</p>
+                    <p className="mt-1 text-xs text-green-700">
+                      You can still sell on Junooni without a GST number. If you register for GST later, you can update this anytime.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setVendorData(prev => ({ ...prev, _gstAnswered: false, _hasGst: false }))}
+                    className="text-xs text-green-600 underline hover:text-green-800 shrink-0"
+                  >
+                    Change
+                  </button>
+                </div>
+              )}
+            </div>
+            {/* ===== END GST SECTION ===== */}
+
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <div className="flex justify-between mb-2">
-                  <div className="flex items-center">
-                    <label className="block text-sm font-medium">GSTIN </label>
-                    <div className="relative ml-1 group">
-                      <IconHelpCircle className="w-4 h-4 text-gray-400" />
-                      <div className="absolute left-0 z-10 px-2 py-1 -mt-1 text-xs text-white transition-opacity bg-gray-800 rounded-lg opacity-0 pointer-events-none w-60 group-hover:opacity-100">
-                        {FIELD_EXPLANATIONS.GSTIN}
-                      </div>
+                <div className="flex items-center mb-2">
+                  <label className="block text-sm font-medium">PAN Number</label>
+                  <div className="relative ml-1 group">
+                    <IconHelpCircle className="w-4 h-4 text-gray-400" />
+                    <div className="absolute left-0 z-10 px-2 py-1 -mt-1 text-xs text-white transition-opacity bg-gray-800 rounded-lg opacity-0 pointer-events-none w-60 group-hover:opacity-100">
+                      {FIELD_EXPLANATIONS.pan_number}
                     </div>
                   </div>
-                  {/* <span className="text-xs text-gray-400">Required</span> */}
-                </div>
-                <input
-                  type="text"
-                  value={vendorData.vendor.GSTIN || ''}
-                  onChange={(e) => updateVendorData('GSTIN', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
-                  style={{ focusRing: brandColors.primary }}
-                  placeholder="22AAAAA0000A1Z5"
-                />
-                {/* <div className="flex items-center mt-1.5 h-4">
-                  {vendorData.vendor.GSTIN && vendorData.vendor.gst_verification_status === "verified" && (
-                    <div className="flex items-center">
-                      <IconCircleCheck className="w-4 h-4 mr-1 text-green-500" />
-                      <span className="text-xs text-green-600">Verified</span>
-                    </div>
-                  )}
-                  {vendorData.vendor.GSTIN && vendorData.vendor.gst_verification_status === "pending" && (
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-amber-500 mr-1.5"></div>
-                      <span className="text-xs text-amber-600">Verification in progress</span>
-                    </div>
-                  )}
-                </div> */}
-              </div>
-              
-              <div>
-                <div className="flex justify-between mb-2">
-                  <div className="flex items-center">
-                    <label className="block text-sm font-medium">PAN Number</label>
-                    <div className="relative ml-1 group">
-                      <IconHelpCircle className="w-4 h-4 text-gray-400" />
-                      <div className="absolute left-0 z-10 px-2 py-1 -mt-1 text-xs text-white transition-opacity bg-gray-800 rounded-lg opacity-0 pointer-events-none w-60 group-hover:opacity-100">
-                        {FIELD_EXPLANATIONS.pan_number}
-                      </div>
-                    </div>
-                  </div>
-                  {/* <span className="text-xs text-gray-400">Required</span> */}
                 </div>
                 <input
                   type="text"
                   value={vendorData.vendor.pan_number || ''}
-                  onChange={(e) => updateVendorData('pan_number', e.target.value)}
+                  onChange={(e) => updateVendorData('pan_number', e.target.value.toUpperCase())}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
-                  style={{ focusRing: brandColors.primary }}
                   placeholder="ABCDE1234F"
+                  maxLength={10}
                 />
               </div>
 
               <div>
-                <div className="flex justify-between mb-2">
-                  <div className="flex items-center">
-                    <label className="block text-sm font-medium">TAN Number</label>
-                    <div className="relative ml-1 group">
-                      <IconHelpCircle className="w-4 h-4 text-gray-400" />
-                      <div className="absolute left-0 z-10 px-2 py-1 -mt-1 text-xs text-white transition-opacity bg-gray-800 rounded-lg opacity-0 pointer-events-none w-60 group-hover:opacity-100">
-                        {FIELD_EXPLANATIONS.tan_number}
-                      </div>
+                <div className="flex items-center mb-2">
+                  <label className="block text-sm font-medium">TAN Number</label>
+                  <div className="relative ml-1 group">
+                    <IconHelpCircle className="w-4 h-4 text-gray-400" />
+                    <div className="absolute left-0 z-10 px-2 py-1 -mt-1 text-xs text-white transition-opacity bg-gray-800 rounded-lg opacity-0 pointer-events-none w-60 group-hover:opacity-100">
+                      {FIELD_EXPLANATIONS.tan_number}
                     </div>
                   </div>
-                  {/* <span className="text-xs text-gray-400">Required</span> */}
                 </div>
                 <input
                   type="text"
                   value={vendorData.vendor.tan_number || ''}
-                  onChange={(e) => updateVendorData('tan_number', e.target.value)}
+                  onChange={(e) => updateVendorData('tan_number', e.target.value.toUpperCase())}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
-                  style={{ focusRing: brandColors.primary }}
                   placeholder="ABCDE1234F"
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block mb-2 text-sm font-medium">Company Name</label>
               <input
@@ -834,14 +883,12 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                 value={vendorData.vendor.companyname || ''}
                 onChange={(e) => updateVendorData('companyname', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2"
-                style={{ focusRing: brandColors.primary }}
-                placeholder="Your registered company name"
+                placeholder="Your registered company name (if applicable)"
               />
             </div>
-            
+
             <div className="space-y-4">
               <h3 className="font-medium">Address Information</h3>
-              
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="block mb-1 text-sm font-medium">Address</label>
@@ -853,7 +900,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                     placeholder="Street address"
                   />
                 </div>
-                
                 <div>
                   <label className="block mb-1 text-sm font-medium">City</label>
                   <input
@@ -865,7 +911,6 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                   />
                 </div>
               </div>
-              
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="block mb-1 text-sm font-medium">State</label>
@@ -898,14 +943,13 @@ const FormComponent = ({ stepId, vendorData, updateVendorData, brandColors, toas
                     <option value="Rajasthan">Rajasthan</option>
                     <option value="Sikkim">Sikkim</option>
                     <option value="Tamil Nadu">Tamil Nadu</option>
-                    <option value="Telangana">Telangana</option>
+                  <option value="Telangana">Telangana</option>
                     <option value="Tripura">Tripura</option>
                     <option value="Uttar Pradesh">Uttar Pradesh</option>
                     <option value="Uttarakhand">Uttarakhand</option>
                     <option value="West Bengal">West Bengal</option>
                   </select>
                 </div>
-                
                 <div>
                   <label className="block mb-1 text-sm font-medium">PIN Code</label>
                   <input

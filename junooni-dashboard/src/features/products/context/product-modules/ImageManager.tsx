@@ -16,13 +16,15 @@ export const StreamlinedImageManager: React.FC<{
   variants: Variant[];
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>, variantInfo?: VariantInfo | null) => void;
+  onImageChange?: () => void; // ← ADD THIS
 }> = ({
   mediaItems,
   setMediaItems,
   options,
   variants,
   fileInputRef,
-  handleFileChange
+  handleFileChange,
+  onImageChange 
 }) => {
   // State for selected variant or option values
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -271,6 +273,7 @@ export const StreamlinedImageManager: React.FC<{
 
   // Remove an image
   const handleRemoveImage = (index: number) => {
+     onImageChange?.(); 
     setMediaItems((prev) => {
       const removed = prev[index];
       if (removed.file) {
@@ -285,7 +288,8 @@ export const StreamlinedImageManager: React.FC<{
   // Move image up in order
   const handleMoveImageUp = (index: number) => {
     if (index === 0) return; // Already at the top
-    
+    onImageChange?.(); // ← ADD THIS
+
     setMediaItems((prev) => {
       const newMedia = [...prev];
       const temp = newMedia[index - 1];
@@ -298,6 +302,7 @@ export const StreamlinedImageManager: React.FC<{
   // Move image down in order
   const handleMoveImageDown = (index: number) => {
     if (index === mediaItems.length - 1) return; // Already at the bottom
+     onImageChange?.(); 
     
     setMediaItems((prev) => {
       const newMedia = [...prev];

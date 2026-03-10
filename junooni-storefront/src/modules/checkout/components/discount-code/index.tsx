@@ -19,8 +19,10 @@ type DiscountCodeProps = {
 
 const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   const [isOpen, setIsOpen] = React.useState(false)
+  const [promoError, setPromoError] = React.useState<string | null>(null)
 
   const { items = [], promotions = [] } = cart
+
   const removePromotionCode = async (code: string) => {
     const validPromotions = promotions.filter(
       (promotion) => promotion.code !== code
@@ -36,16 +38,30 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
     if (!code) {
       return
     }
+
+    setPromoError(null)
+
     const input = document.getElementById("promotion-input") as HTMLInputElement
     const codes = promotions
       .filter((p) => p.code === undefined)
       .map((p) => p.code!)
     codes.push(code.toString())
 
-    await applyPromotions(codes)
-
-    if (input) {
-      input.value = ""
+    try {
+      await applyPromotions(codes)
+      if (input) {
+        input.value = ""
+      }
+    } catch (err: any) {
+      const msg: string = err?.message ?? ""
+      if (
+        msg.toLowerCase().includes("invalid") ||
+        msg.toLowerCase().includes("promotion")
+      ) {
+        setPromoError("Invalid promotion code. Please try again.")
+      } else {
+        setPromoError("Something went wrong. Please try again.")
+      }
     }
   }
 
@@ -64,10 +80,6 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
             >
               Add Promotion Code(s)
             </button>
-
-            {/* <Tooltip content="You can add multiple promotion codes">
-              <InformationCircleSolid color="var(--fg-muted)" />
-            </Tooltip> */}
           </Label>
 
           {isOpen && (
@@ -88,6 +100,12 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                   Apply
                 </SubmitButton>
               </div>
+
+              {promoError && (
+                <p className="txt-small text-rose-500 mt-2" data-testid="discount-error-message">
+                  {promoError}
+                </p>
+              )}
 
               <ErrorMessage
                 error={message}
@@ -136,11 +154,6 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                             </>
                           )}
                         )
-                        {/* {promotion.is_automatic && (
-                          <Tooltip content="This promotion is automatically applied">
-                            <InformationCircleSolid className="inline text-zinc-400" />
-                          </Tooltip>
-                        )} */}
                       </span>
                     </Text>
                     {!promotion.is_automatic && (
@@ -150,7 +163,6 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                           if (!promotion.code) {
                             return
                           }
-
                           removePromotionCode(promotion.code)
                         }}
                         data-testid="remove-discount-button"

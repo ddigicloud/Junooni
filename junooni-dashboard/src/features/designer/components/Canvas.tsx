@@ -5018,34 +5018,44 @@ const extractDesignImages = useCallback(() => {
           return;
         }
 
-        // Calculate center position in canvas space FIRST (using UNSCALED dimensions)
-        const centerInCanvasX = element.x + element.width / 2;
-        const centerInCanvasY = element.y + element.height / 2;
+        // ── Get original pixel dimensions (what we want to preserve) ──────
+        const origW = element.originalImageWidth 
+          || element.image.naturalWidth 
+          || element.image.width;
+        const origH = element.originalImageHeight 
+          || element.image.naturalHeight 
+          || element.image.height;
 
-        // Transform center to output canvas space (relative to cropped bounding box)
+        // ── The display size on canvas (element.width * scaleX = how big it looks) ──
+        const displayW = element.width * (element.scaleX || 1);
+        const displayH = element.height * (element.scaleY || 1);
+
+        // ── Center of element in canvas space ─────────────────────────────
+        // element.x/y is top-left of the UNSCALED rect; center accounts for scale
+        const centerInCanvasX = element.x + displayW / 2;
+        const centerInCanvasY = element.y + displayH / 2;
+
+        // ── Map center into output canvas coordinate space ─────────────────
         const centerX = (centerInCanvasX - minX) * outputScale;
         const centerY = (centerInCanvasY - minY) * outputScale;
 
-        // Calculate final dimensions (with all scales applied)
-        const elementWidth = element.width * outputScale * (element.scaleX || 1);
-        const elementHeight = element.height * outputScale * (element.scaleY || 1);
-        
         mergedCtx.translate(centerX, centerY);
-        
+
         if (element.rotation) {
           mergedCtx.rotate((element.rotation * Math.PI) / 180);
         }
-        
-        // Set element opacity (default to 1 if not specified)
+
         mergedCtx.globalAlpha = element.opacity || 1;
-        
-        // Draw design image
+
+        // ── Draw at ORIGINAL pixel dimensions to preserve DPI ─────────────
+        // We do NOT multiply by outputScale here — the image carries its own
+        // pixel density; only its position is scaled.
         mergedCtx.drawImage(
           element.image,
-          -elementWidth / 2,
-          -elementHeight / 2,
-          elementWidth,
-          elementHeight
+          -origW / 2,
+          -origH / 2,
+          origW,
+          origH
         );
         
         mergedCtx.restore();

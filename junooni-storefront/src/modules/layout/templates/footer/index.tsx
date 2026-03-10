@@ -236,7 +236,7 @@ export default async function Footer() {
       {/* Footer Bottom */}
       <div className="flex-col px-4 py-4 text-sm text-gray-400 border-t border-gray-700 md:flex-row">
         <div className="flex justify-center mx-auto max-w-7xl">
-          <Text>© {new Date().getFullYear()} Junooni Store. All rights reserved.</Text>
+          <Text>© {new Date().getFullYear()} Junooni All rights reserved.</Text>
           {/* <div className="flex gap-6 md:mt-0">
             <LocalizedClientLink href="/privacy-policy" className="text-base hover:text-orange-400">
               Privacy Policy

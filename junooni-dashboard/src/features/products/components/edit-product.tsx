@@ -119,6 +119,7 @@ const EditProduct = () => {
   const [technologyName, setTechnologyName] = useState<string>('');
   const [payloadProductName, setPayloadProductName] = useState<string>(''); // ADD THIS LINE
   const [sourceProductId, setSourceProductId] = useState<number | null>(null); // ADD THIS LINE
+  const [hasImageChanges, setHasImageChanges] = useState(false);
 
   
   // For the product URL
@@ -2041,6 +2042,7 @@ loadProduct();
         
         // Add the new media items to the existing ones
         setMediaItems(prev => [...prev, ...newMedia]);
+         setHasImageChanges(true); // ← ADD THIS
         
         // Clear the file input
         fileInput.value = '';
@@ -2136,6 +2138,7 @@ loadProduct();
         }
       ]);
       
+      setHasImageChanges(true); // ← ADD THIS
       // Clear the input
       setNewImageUrl('');
       
@@ -2163,20 +2166,23 @@ loadProduct();
 
   // Remove an image and revoke its object URL if necessary
   const handleRemoveImage = (index: number) => {
+  console.log("=== handleRemoveImage called ===");
+  console.log("index:", index);
+  console.log("hasImageChanges BEFORE:", hasImageChanges);
+  
+  setHasImageChanges(true);
+  
+  console.log("setHasImageChanges(true) called");
+
   setMediaItems((prev) => {
     const removed = prev[index];
     
-    console.log("=== REMOVING IMAGE ===");
-    console.log("Image to remove:", {
-      index,
-      id: removed.id,
-      url: removed.url,
-      isNew: removed.isNew
-    });
-    
-    // Only track for deletion if it has a proper img_ ID
+    console.log("removed image:", removed);
+    console.log("removed.id:", removed?.id);
+    console.log("removed.isNew:", removed?.isNew);
+
     if (removed.id && removed.id.startsWith('img_') && !removed.isNew) {
-      console.log(`✅ Valid image ID, marking for deletion: ${removed.id}`);
+      console.log("✅ Adding to deletedImageIds:", removed.id);
       setDeletedImageIds(prevDeleted => {
         if (!prevDeleted.includes(removed.id)) {
           return [...prevDeleted, removed.id];
@@ -2184,25 +2190,25 @@ loadProduct();
         return prevDeleted;
       });
     } else {
-      console.log(`Skipping deletion - invalid or missing ID:`, removed.id);
+      console.log("⚠️ NOT adding to deletedImageIds - reason:", {
+        hasId: !!removed?.id,
+        startsWithImg: removed?.id?.startsWith('img_'),
+        isNew: removed?.isNew
+      });
     }
-    
-    // Revoke blob URL if it's a local file
+
     if (removed.file && removed.url.startsWith('blob:')) {
       URL.revokeObjectURL(removed.url);
     }
-    
-    console.log("=== END REMOVE IMAGE ===\n");
-    
-    // Return filtered array
+
     const filtered = prev.filter((_, i) => i !== index);
     return filtered.map((item, i) => ({ ...item, rank: i }));
   });
 };
-
   // Move image up in order
   const handleMoveImageUp = (index: number) => {
     if (index === 0) return; // Already at the top
+     setHasImageChanges(true); // ← ADD THIS
     
     setMediaItems((prev) => {
       const newMedia = [...prev];
@@ -2216,6 +2222,7 @@ loadProduct();
   // Move image down in order
   const handleMoveImageDown = (index: number) => {
     if (index === mediaItems.length - 1) return; // Already at the bottom
+     setHasImageChanges(true); // ← ADD THIS
     
     setMediaItems((prev) => {
       const newMedia = [...prev];
@@ -3107,6 +3114,7 @@ const onSubmit = async (values: ProductFormValues) => {
                         // --- STEP 10: Handle Success ---
                         // Reset unsaved changes flag
                         setHasUnsavedVariantChanges(false);
+                        setHasImageChanges(false); // ← ADD THIS
 
                         // ✅ ADD THIS: Update mediaItems state to remove deleted images
                         if (deletedImageIds.length > 0) {
@@ -3573,6 +3581,14 @@ const handleApiError = (apiError: any) => {
     </div>
   );
 }
+
+const isFormDirty = 
+    form.formState.isDirty ||
+    hasUnsavedVariantChanges ||
+    hasImageChanges ||
+    deletedImageIds.length > 0;
+
+
   // Main component render
   return (
   <div className="px-3 py-8 sm:px-6 bg-gray-50">
@@ -3625,11 +3641,14 @@ const handleApiError = (apiError: any) => {
       <Button
         type="button"
         onClick={handleManualSubmit}
-        disabled={isSubmitting}
-        className="flex-1 md:flex-none bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
+        disabled={isSubmitting || !isFormDirty}
+        className={`flex-1 md:flex-none shadow-sm text-white transition-colors ${
+          isFormDirty && !isSubmitting
+            ? 'bg-[#e65100] hover:bg-[#d84315] cursor-pointer' 
+            : 'bg-gray-300 cursor-not-allowed'
+        }`}
       >
-        <span className="hidden sm:inline">{isSubmitting ? 'Saving...' : 'Save Changes'}</span>
-        <span className="sm:hidden">{isSubmitting ? 'Saving...' : 'Save Changes'}</span>
+        {isSubmitting ? 'Saving...' : 'Save Changes'}
       </Button>
     </div>
   </div>
@@ -3829,6 +3848,7 @@ const handleApiError = (apiError: any) => {
                           handleVariantImageUpload={handleDirectVariantUpload}
                           handleOptionImageUpload={handleDirectOptionUpload}
                           getImageDisplayUrl={getImageDisplayUrl}
+                          onImageChange={() => setHasImageChanges(true)}
                         />
                         ) : (
                           // Show standard upload interface
@@ -4885,11 +4905,15 @@ const handleApiError = (apiError: any) => {
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="button" 
-                  onClick={handleManualSubmit} 
-                  disabled={isSubmitting}
-                  className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
+                <Button
+                  type="button"
+                  onClick={handleManualSubmit}
+                  disabled={isSubmitting || !isFormDirty}
+                  className={`flex-1 md:flex-none shadow-sm text-white transition-colors ${
+                    isFormDirty && !isSubmitting
+                      ? 'bg-[#e65100] hover:bg-[#d84315] cursor-pointer' 
+                      : 'bg-gray-300 cursor-not-allowed'
+                  }`}
                 >
                   {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </Button>
