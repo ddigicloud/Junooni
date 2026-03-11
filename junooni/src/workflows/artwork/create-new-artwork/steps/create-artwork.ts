@@ -27,12 +27,16 @@ import {
       })
     },
     
-    async ({ vendor_artwork }, { container }) => {
+   async (data, {container}) => {
+  
+    if (!data){
+      return
+  }
       const vendorArtworkModuleService: VendorArtworkModuleService = 
         container.resolve(VENDOR_ARTWORK_MODULE)
       
       await vendorArtworkModuleService.deleteVendorArtworks(
-        vendor_artwork.id
+        data.vendor_artwork.id
       )
     }
   )

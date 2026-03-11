@@ -37,13 +37,18 @@ const createArtworkMediasStep = createStep(
       vendor_artwork_media: artworkMedias,
     })
   },
-  async ({ vendor_artwork_media }, { container }) => {
+  async (data, {container}) => {
+  
+    if (!data){
+      return
+  }
+  
     const vendorArtworkModuleService: VendorArtworkModuleService = 
       container.resolve(VENDOR_ARTWORK_MODULE)
     
     // Fixed: Use deleteVendorArtworkMedias instead of deleteVendorArtworks
     await vendorArtworkModuleService.deleteVendorArtworkMedias(
-      vendor_artwork_media.map((media) => media.id)
+      data.vendor_artwork_media.map((media) => media.id)
     )
   }
 )
