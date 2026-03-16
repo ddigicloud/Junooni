@@ -1765,6 +1765,92 @@ const Create: React.FC = () => {
   const searchParams = useSearch({
     from: undefined as any,
   }) as SearchParams;
+
+  // 🔥 Synchronous sessionStorage merge - runs during render before any useEffect
+ // 🔥 Synchronous sessionStorage merge - runs during render before any useEffect
+const mergedLocationStateRef = useRef<LocationState | null>(null);
+
+if (!mergedLocationStateRef.current && location.state) {
+  const sessionKey = (location.state as any)?.sessionKey
+    || (location.state as any)?.navigationContext?.sessionStorageKey;
+
+  if (sessionKey) {
+    try {
+      // 🔥 Chunked loading helper
+      const loadChunked = (key: string, fallback: any): any => {
+        try {
+          const chunksStr = sessionStorage.getItem(`${key}_chunks`);
+          if (!chunksStr) return fallback;
+
+          const totalChunks = parseInt(chunksStr);
+
+          if (totalChunks === 1) {
+            const data = sessionStorage.getItem(key);
+            if (!data) return fallback;
+            sessionStorage.removeItem(key);
+            sessionStorage.removeItem(`${key}_chunks`);
+            return JSON.parse(data);
+          }
+
+          // Reassemble chunks
+          let fullData = '';
+          for (let i = 0; i < totalChunks; i++) {
+            const chunk = sessionStorage.getItem(`${key}_chunk_${i}`);
+            if (!chunk) {
+              console.error(`Missing chunk ${i} for ${key}`);
+              return fallback;
+            }
+            fullData += chunk;
+            sessionStorage.removeItem(`${key}_chunk_${i}`);
+          }
+          sessionStorage.removeItem(`${key}_chunks`);
+          return JSON.parse(fullData);
+
+        } catch {
+          return fallback;
+        }
+      };
+
+      // ✅ Load from sessionStorage (only what was saved there)
+      const colorSpecificImages = loadChunked(`${sessionKey}_colorSpecificImages`, {});
+      const colorSpecificMockups = loadChunked(`${sessionKey}_colorSpecificMockups`, []);
+      const canvasImages = loadChunked(`${sessionKey}_canvasImages`, []);
+
+      // ✅ These come from navigation state directly (not sessionStorage)
+      const mockupImages = (location.state as any)?.mockupImages || {};
+      const designImages = (location.state as any)?.designImages || [];
+
+      mergedLocationStateRef.current = {
+        ...(location.state as any),
+        mockupImages,
+        colorSpecificImages,
+        designImages,
+        canvasImages,
+        designData: {
+          ...(location.state as any).designData,
+          mockupData: {
+            ...(location.state as any).designData?.mockupData,
+            colorSpecificMockups,
+          }
+        }
+      };
+
+      console.log('✅ Merged synchronously during render:', {
+        mockups: Object.keys(mockupImages).length,
+        colorSpecific: Object.keys(colorSpecificImages).length,
+        designImages: designImages.length,
+        canvasImages: canvasImages.length,
+      });
+
+    } catch (error) {
+      console.error('❌ sessionStorage merge failed, using original state:', error);
+      mergedLocationStateRef.current = location.state as LocationState;
+    }
+  } else {
+    // No sessionKey - use location.state directly (no sessionStorage involved)
+    mergedLocationStateRef.current = location.state as LocationState;
+  }
+}
   
   // ===== COMPONENT INITIALIZATION LOG =====
   
@@ -2044,15 +2130,17 @@ const [importedCanvasImages, setImportedCanvasImages] = useState<Array<{
     return totalImages > 0;
   }, []);
 
+  // 🔥 NEW: Load heavy image data from sessionStorage FIRST (before other effects)
+
   // ===== ENHANCED DESIGNER DATA HANDLING =====
   // Replace your existing useEffect with this corrected version
 useEffect(() => {
-  let isProcessing = false; // Add this line
+  let isProcessing = false;
   const processLocationState = async () => {
     
-    if (location.state) {
-      isProcessing = true; // Add this line
-      const locationState = location.state as LocationState;
+    if (mergedLocationStateRef.current) {
+      isProcessing = true;
+      const locationState = mergedLocationStateRef.current;
       // console.log("Location state", locationState);
       
       // STEP 1: Extract and store pre-generated images FIRST
@@ -4991,24 +5079,17 @@ useEffect(() => {
   }, []);
 
 useEffect(() => {
-  // Early return if there's no location state to process
-  if (!location.state) return;
+  if (!mergedLocationStateRef.current) return;
 
-  // If we've already populated once this mount, skip (extra safety in addition to hasProcessedInitialData)
   if (didPopulateRef.current) {
-    //console.log('🚫 Skipping population — already processed for this mount');
     return;
   }
 
-  // Timer handle so we can clear it if component unmounts or deps change
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   const processLocationState = async () => {
-    //console.log('🎯 CREATE DEBUG: Starting location state processing (effect)');
-
-    // We'll only mark hasProcessedInitialData = true after successful full processing
     try {
-      const locationState = location.state as LocationState;
+      const locationState = mergedLocationStateRef.current as LocationState;
       //console.log('🎯 CREATE DEBUG: Location state found:', locationState);
        //console.log('🔍 Checking for areas in location state:');
       //console.log('- availableMockups:', locationState.availableMockups?.all_available_areas);
@@ -5070,8 +5151,16 @@ useEffect(() => {
             }
 
             // Process mockup images AFTER form is populated
-            if (hasPreGeneratedImages || Object.keys(locationState.mockupImages || {}).length > 0) {
-              //console.log('🎯 CREATE DEBUG: Processing mockup images');
+            // Process mockup images AFTER form is populated
+            // 🔥 Also check colorSpecificImages since mockupImages is now always empty {}
+            const hasMockupData = hasPreGeneratedImages 
+              || Object.keys(locationState.mockupImages || {}).length > 0
+              || Object.keys(locationState.colorSpecificImages || {}).length > 0;
+
+            if (hasMockupData) {
+              console.log('🎯 CREATE DEBUG: Processing mockup images, colorSpecific:', 
+                Object.keys(locationState.colorSpecificImages || {}).length
+              );
               handleMockupImagesEnhanced(locationState, imageSettings);
             }
 
@@ -5111,7 +5200,7 @@ useEffect(() => {
     }
   };
   // note: we depend on location.state here
-}, [location.state]);
+}, []);
 
 
 // Add this debug function before your onSubmit function

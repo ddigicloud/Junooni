@@ -20,24 +20,21 @@ import {CheckHandleSchema} from "./vendors/check-handle/route"
 import { PostAdminCreateSizeChartType } from "./admin/size-chart/validators"
 import {createVendorArtworkSchema} from "./validation-schemas"
 import artwork from "src/modules/artwork"
-
-
 import { PostCreateBlank } from "./blank/route"
 import multer from "multer"
-
 
 const upload = multer({ storage: multer.memoryStorage() })
 
 const allowedOrigins = [
-  "http://localhost:8000", // Storefront
-  "http://localhost:3000", //Blanks
+  "http://localhost:8000",
+  "http://localhost:3000",
   "http://localhost:5173",
   "https://chat.junooni.com/",
-  "http://localhost:9000"  // Vendor Dashboard
- 
+  "http://localhost:9000"
 ];
 
 export const GetBrandsSchema = createFindParams()
+
 export default defineMiddlewares({
   routes: [
     {
@@ -46,18 +43,14 @@ export default defineMiddlewares({
       middlewares: [
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule");
-    
-          // Define multiple origins
           const allowedOrigins = [
             ...parseCorsOrigins(configModule.projectConfig.http.storeCors),
-            "http://localhost:5173","http://localhost:9000" // Add vendor dashboard origin here
+            "http://localhost:5173","http://localhost:9000"
           ];
-    
-          // CORS middleware with dynamic origin handling
           cors({
             origin: (origin, callback) => {
               if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true); // Allow the request
+                callback(null, true);
               } else {
                 callback(new Error("Not allowed by CORS"));
               }
@@ -69,34 +62,22 @@ export default defineMiddlewares({
     },
     {
       matcher: "/vendors",
-      method: ["OPTIONS", "POST"], // Handle preflight OPTIONS and POST
+      method: ["OPTIONS", "POST"],
       middlewares: [
-        // CORS Middleware
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule");
           cors({
             origin:true,
             credentials: true,
-            methods: ["POST", "OPTIONS"], // Allow specific methods
-            allowedHeaders: [
-              "Content-Type",
-              "Authorization",
-              "x-publishable-api-key",
-            ], // Add necessary headers
+            methods: ["POST", "OPTIONS"],
+            allowedHeaders: ["Content-Type", "Authorization", "x-publishable-api-key"],
           })(req, res, next);
         },
-        // Preflight Response for OPTIONS
         (req, res, next) => {
-          if (req.method === "OPTIONS") {
-            res.status(204).end(); // Respond to OPTIONS preflight
-            return;
-          }
+          if (req.method === "OPTIONS") { res.status(204).end(); return; }
           next();
         },
-        // Authentication Middleware
-        authenticate("vendor", ["session", "bearer"], {
-          allowUnregistered: true, // Allow unauthenticated requests
-        }),
+        authenticate("vendor", ["session", "bearer"], { allowUnregistered: true }),
         validateAndTransformBody(PostVendorCreateSchema),
       ],
     },
@@ -106,41 +87,24 @@ export default defineMiddlewares({
       middlewares: [
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule");
-          cors({
-            origin: true,
-            credentials: true,
-          })(req, res, next);
+          cors({ origin: true, credentials: true })(req, res, next);
         },
         upload.array("files"),
-        authenticate("vendor", ["session", "bearer"], {
-          allowUnregistered: true, // Allow unauthenticated requests
-        })
-       
+        authenticate("vendor", ["session", "bearer"], { allowUnregistered: true })
       ],
     },
-   {
+    {
       matcher: "/vendors/products*",
       method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
       middlewares: [
-        // CORS
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule")
-          cors({
-            origin: true,
-            credentials: true,
-          })(req, res, next)
+          cors({ origin: true, credentials: true })(req, res, next)
         },
-    
-        // Auth
         authenticate(["vendor", "user"], ["session", "bearer"]),
-    
-        // Conditional Validation
         (req, res, next) => {
           const isModifying = ["POST"].includes(req.method)
-    
-          // Check if path is EXACTLY /vendors/products or /vendors/products/:id
           const isMainProductRoute = /^\/vendors\/products(\/[^\/]+)?$/.test(req.path)
-    
           if (isModifying && isMainProductRoute) {
             validateAndTransformBody(AdminCreateProduct)(req, res, next)
           } else {
@@ -152,231 +116,205 @@ export default defineMiddlewares({
         brand_id: z.string().optional(),
         size_chart_id: z.string().optional(),
         vendor_artwork_id: z.string().optional(),
-
       },
-    },    
-    
-     {
+    },
+    {
       matcher: "/admin/artwork",
       method: ["POST"],
-      middlewares: [
-        validateAndTransformBody(createVendorArtworkSchema),
-      ],
+      middlewares: [validateAndTransformBody(createVendorArtworkSchema)],
     },
     {
       matcher: "/admin/artwork/upload",
       method: "POST",
+      middlewares: [upload.array("files")],
+    },
+    // ─── Google Account Linking ───────────────────────────────────────────────
+    // IMPORTANT: Must be before /vendors/* wildcard
+    // allowUnregistered: true → lets Google token through even with actor_id = ""
+    {
+      matcher: "/vendors/google-link",
+      method: ["OPTIONS", "POST"],
       middlewares: [
-        upload.array("files"),
+        (req, res, next) => {
+          cors({ origin: true, credentials: true })(req, res, next)
+        },
+        (req, res, next) => {
+          if (req.method === "OPTIONS") { res.status(204).end(); return; }
+          next();
+        },
+        authenticate("vendor", ["bearer"], {
+          allowUnregistered: true,
+        }),
       ],
     },
     {
       matcher: "/vendors/artwork",
       method: "POST",
-      middlewares: [
-        validateAndTransformBody(createVendorArtworkSchema),
-      ],
+      middlewares: [validateAndTransformBody(createVendorArtworkSchema)],
     },
     {
       matcher: "/vendors/artwork/upload",
       method: "POST",
-      middlewares: [
-        upload.array("files"),
-      ],
+      middlewares: [upload.array("files")],
     },
     {
       matcher: "/vendors/size-chart",
       method: "POST",
-      middlewares: [
-        validateAndTransformBody(PostAdminCreateSizeChartType),
-      ],
+      middlewares: [validateAndTransformBody(PostAdminCreateSizeChartType)],
     },
     {
       matcher: "/admin/size-chart",
       method: ["POST"],
-      middlewares: [
-        validateAndTransformBody(PostAdminCreateSizeChartType),
-      ],
-      
+      middlewares: [validateAndTransformBody(PostAdminCreateSizeChartType)],
     },
-
-     {
+    {
       matcher: "/admin/incomplete-vendors",
       middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
     },
-
     {
       matcher: "/admin/send-onboarding-reminder",
       middlewares: [authenticate("user", ["session", "bearer", "api-key"])],
     },
-    
     {
       matcher: "/vendors/me",
       method: ["GET","PUT"],
       middlewares: [
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule");
-          cors({
-            origin: true,
-            credentials: true,
-          })(req, res, next);
+          cors({ origin: true, credentials: true })(req, res, next);
         },
-       
         authenticate(["vendor","user"], ["session", "bearer"])
-       
       ],
     },
     {
       matcher: "/vendors/check-handle",
-      method: ["OPTIONS", "POST"], // Handle preflight OPTIONS and POST
+      method: ["OPTIONS", "POST"],
       middlewares: [
-        // CORS Middleware
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule");
           cors({
-            origin:true,
-            credentials: true,
-            methods: ["POST", "OPTIONS"], // Allow specific methods
-            allowedHeaders: [
-              "Content-Type",
-              "Authorization",
-              "x-publishable-api-key",
-            ], // Add necessary headers
+            origin:true, credentials: true,
+            methods: ["POST", "OPTIONS"],
+            allowedHeaders: ["Content-Type", "Authorization", "x-publishable-api-key"],
           })(req, res, next);
         },
-        // Preflight Response for OPTIONS
         (req, res, next) => {
-          if (req.method === "OPTIONS") {
-            res.status(204).end(); // Respond to OPTIONS preflight
-            return;
-          }
+          if (req.method === "OPTIONS") { res.status(204).end(); return; }
           next();
         },
-        // Authentication Middleware
-        authenticate("vendor", ["session", "bearer"], {
-          allowUnregistered: true, // Allow unauthenticated requests
-        }),
+        authenticate("vendor", ["session", "bearer"], { allowUnregistered: true }),
         validateAndTransformBody(CheckHandleSchema),
       ],
     },
     {
-  matcher: "/vendors/*",
-  method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
-  middlewares: [
-    (req, res, next) => {
-      const configModule = req.scope.resolve("configModule");
-      cors({
-        origin: true,
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: [
-          "Content-Type",
-          "Authorization",
-          "x-publishable-api-key"
-        ]
-      })(req, res, next);
+      matcher: "/vendors/*",
+      method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
+      middlewares: [
+        (req, res, next) => {
+          const configModule = req.scope.resolve("configModule");
+          cors({
+            origin: true, credentials: true,
+            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            allowedHeaders: ["Content-Type", "Authorization", "x-publishable-api-key"]
+          })(req, res, next);
+        },
+        (req, res, next) => {
+          const publicPaths = [
+            /^\/vendors\/[^/]+\/followers$/,
+            /^\/vendors\/check-handle$/,
+            /^\/vendors\/uploads$/,
+            /^\/vendors\/payout$/,
+            /^\/vendors\/me$/,
+            /^\/vendors\/google-link$/, // ← ADD THIS: skip wildcard auth for google-link
+          ];
+          const isPublic = publicPaths.some((pattern) => pattern.test(req.path));
+          if (isPublic) return next();
+          return authenticate(["vendor", "user"], ["session", "bearer"])(req, res, next);
+        }
+      ]
     },
-    (req, res, next) => {
-      const publicPaths = [
-        /^\/vendors\/[^/]+\/followers$/, // Regex to match /vendors/[id]/followers
-        /^\/vendors\/check-handle$/,      // /vendors/check-handle
-        /^\/vendors\/uploads$/,  
-        /^\/vendors\/payout$/,
-         /^\/vendors\/me$/,         // /vendors/uploads
-      ];
-
-      const isPublic = publicPaths.some((pattern) => pattern.test(req.path));
-      if (isPublic) {
-        return next(); // Allow without auth
-      }
-
-      // Else apply auth
-      return authenticate(["vendor", "user"], ["session", "bearer"])(req, res, next);
-    }
-  ]
-},
-{
+    {
       matcher: "/store/razorpay/authorize",
       method: "POST",
       middlewares: [
-         (req, res, next) => {
+        (req, res, next) => {
           const configModule = req.scope.resolve("configModule")
-          cors({
-            origin: true,
-            credentials: true,
-          })(req, res, next)
+          cors({ origin: true, credentials: true })(req, res, next)
         },
-       
       ],
     },
     {
       matcher: "/admin/brand",
       method: "POST",
-      middlewares: [
-        validateAndTransformBody(PostAdminCreateBrand),
-      ],
+      middlewares: [validateAndTransformBody(PostAdminCreateBrand)],
     },
     {
       matcher: "/admin/brand",
       method: "GET",
       middlewares: [
-        validateAndTransformQuery(
-          GetBrandsSchema,
-          {
-            defaults: [
-              "id",
-              "name",
-              "products.*",
-            ],
-            isList: true,
-          }
-        ),
+        validateAndTransformQuery(GetBrandsSchema, {
+          defaults: ["id", "name", "products.*"],
+          isList: true,
+        }),
       ],
     },
     {
       matcher: "/vendors/brand",
       method: "POST",
-      middlewares: [
-        validateAndTransformBody(PostAdminCreateBrand),
-      ],
+      middlewares: [validateAndTransformBody(PostAdminCreateBrand)],
     },
     {
       matcher: "/vendors/brand",
       method: "GET",
       middlewares: [
-        validateAndTransformQuery(
-          GetBrandsSchema,
-          {
-            defaults: [
-              "id",
-              "name",
-              "products.*",
-            ],
-            isList: true,
-          }
-        ),
+        validateAndTransformQuery(GetBrandsSchema, {
+          defaults: ["id", "name", "products.*"],
+          isList: true,
+        }),
       ],
     },
+  {
+  matcher: "/customers/google-link",
+  method: ["OPTIONS", "POST"],
+  middlewares: [
+    (req, res, next) => {
+      // Handle OPTIONS preflight immediately before anything else
+      if (req.method === "OPTIONS") {
+        res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
+        res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-publishable-api-key")
+        res.setHeader("Access-Control-Allow-Credentials", "true")
+        res.status(204).end()
+        return
+      }
+      next()
+    },
+    (req, res, next) => {
+      cors({ 
+        origin: true, 
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization", "x-publishable-api-key"],
+      })(req, res, next)
+    },
+    authenticate("customer", ["bearer"], {
+      allowUnregistered: true,
+    }),
+  ],
+},
     {
       matcher: "/store/customers/me/wishlists/items",
       method: "POST",
-      middlewares: [
-        validateAndTransformBody(PostStoreCreateWishlistItem),
-      ],
+      middlewares: [validateAndTransformBody(PostStoreCreateWishlistItem)],
     },
     {
       matcher: "/store/customers/me/loyalty-points",
       method: "GET",
-      middlewares: [
-        
-      ],
+      middlewares: [],
     },
     {
       matcher: "/store/customers/me/follow/lists",
       method: "POST",
-      middlewares: [
-        validateAndTransformBody(PostStoreCreateFollowList),
-      ],
+      middlewares: [validateAndTransformBody(PostStoreCreateFollowList)],
     },
     {
       matcher: "/store/customers/me/orders/:order_id/invoice",
@@ -384,10 +322,7 @@ export default defineMiddlewares({
       middlewares: [
         (req, res, next) => {
           const configModule = req.scope.resolve("configModule")
-          cors({
-            origin: true,
-            credentials: true,
-          })(req, res, next)
+          cors({ origin: true, credentials: true })(req, res, next)
         },
         authenticate("customer", ["session", "bearer"]),
       ],
@@ -395,23 +330,17 @@ export default defineMiddlewares({
     {
       matcher: "/store/products/search",
       method: ["POST"],
-      middlewares: [
-        validateAndTransformBody(SearchSchema),
-      ],
+      middlewares: [validateAndTransformBody(SearchSchema)],
     },
     {
       matcher: "/store/customers/me/follow",
       method: "POST",
-      middlewares: [
-       
-      ],
+      middlewares: [],
     },
     {
       matcher: "/vendors/payout",
       method: "GET",
-      middlewares: [
-       
-      ],
+      middlewares: [],
     },
     {
       matcher: "/admin/reviews",
@@ -419,40 +348,24 @@ export default defineMiddlewares({
       middlewares: [
         validateAndTransformQuery(GetAdminReviewsSchema, {
           isList: true,
-          defaults: [
-            "id",
-            "title",
-            "content",
-            "rating",
-            "product_id",
-            "customer_id",
-            "status",
-            "created_at",
-            "updated_at",
-            "product.*",
-          ],
+          defaults: ["id","title","content","rating","product_id","customer_id","status","created_at","updated_at","product.*"],
         }),
       ],
     },
     {
       matcher: "/admin/reviews/status",
       method: ["POST"],
-      middlewares: [
-        validateAndTransformBody(PostAdminUpdateReviewsStatusSchema),
-      ],
+      middlewares: [validateAndTransformBody(PostAdminUpdateReviewsStatusSchema)],
     },
     {
       matcher: "/store/reviews",
       method: ["POST"],
-      middlewares: [
-        validateAndTransformBody(PostStoreReviewSchema),
-      ],
+      middlewares: [validateAndTransformBody(PostStoreReviewSchema)],
     },
-    
     {
       matcher: "/admin/orders/*",
       method: "POST",
-      middlewares: [ authenticate(["vendor","user"], ["session", "bearer"])],
+      middlewares: [authenticate(["vendor","user"], ["session", "bearer"])],
     },
     {
       matcher: "/admin/products",
@@ -463,6 +376,5 @@ export default defineMiddlewares({
         artwork_id: z.string().optional(),
       },
     }
-   ],
-  
+  ],
 });

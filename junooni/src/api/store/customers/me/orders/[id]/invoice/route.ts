@@ -212,7 +212,7 @@ export async function POST(
         entity: "order",
         fields: [
           "id",
-          "display_id", 
+          "custom_display_id", 
           "customer_id",
           "status",
           "total",
@@ -530,7 +530,7 @@ export async function POST(
             order_id: orderId,
             customer_id: customerId,
             status: statusValue,
-            display_id: generateSafeDisplayId(order.display_id),
+            custom_display_id: generateSafeDisplayId(order.custom_display_id),
             pdfContent: {}
           }])
           createdInvoice = invoiceResult
@@ -545,7 +545,7 @@ export async function POST(
         const [invoiceResult] = await invoiceGeneratorService.createInvoices([{
           order_id: orderId,
           customer_id: customerId,
-          display_id: generateSafeDisplayId(order.display_id),
+          custom_display_id: generateSafeDisplayId(order.custom_display_id),
           pdfContent: {}
         }])
         createdInvoice = invoiceResult
@@ -558,7 +558,7 @@ export async function POST(
 
     const orderData = {
       id: order.id,
-      display_id: order.display_id,
+      custom_display_id: order.custom_display_id,
       created_at: order.created_at,
       subtotal: extractNumeric(order.subtotal),
       tax_total: extractNumeric(order.tax_total),
@@ -611,7 +611,7 @@ export async function POST(
     }
 
     res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', `attachment; filename="invoice_${order.display_id}.pdf"`)
+    res.setHeader('Content-Disposition', `attachment; filename="invoice_${order.custom_display_id}.pdf"`)
     res.setHeader('Content-Length', pdfBuffer.length.toString())
 
     console.log('\n=== INVOICE GENERATION COMPLETED ===\n')
@@ -646,7 +646,7 @@ export async function GET(
     
     const { data: orders } = await query.graph({
       entity: "order",
-      fields: ["id", "display_id", "customer_id", "status", "total", "currency_code", "created_at"],
+      fields: ["id", "custom_display_id", "customer_id", "status", "total", "currency_code", "created_at"],
       filters: { id: orderId }
     })
 
@@ -673,7 +673,7 @@ export async function GET(
         invoice: invoice || null,
         order: {
           id: order.id,
-          display_id: order.display_id,
+          custom_display_id: order.custom_display_id,
           status: order.status,
           created_at: order.created_at,
           total: order.total,
@@ -686,7 +686,7 @@ export async function GET(
         invoice: null,
         order: {
           id: order.id,
-          display_id: order.display_id,
+          custom_display_id: order.custom_display_id,
           status: order.status,
           created_at: order.created_at,
           total: order.total,

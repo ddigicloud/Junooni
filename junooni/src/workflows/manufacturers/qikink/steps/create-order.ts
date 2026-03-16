@@ -29,7 +29,7 @@ export const createQikinkOrderStep = createStep(
     console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     console.log("🎯 Starting Qikink Order Creation")
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    console.log(`📦 Order: ${input.order.display_id}`)
+    console.log(`📦 Order: ${input.order.custom_display_id}`)
     console.log(`📦 Items: ${input.items.length}`)
 
     try {
@@ -50,8 +50,8 @@ export const createQikinkOrderStep = createStep(
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       console.log("\n📦 Building Qikink payload...")
 
-      // Use original order number (display_id)
-      const orderNumber = input.order.display_id || input.order.id
+      // Use original order number (custom_display_id)
+      const orderNumber = input.order.custom_display_id || input.order.id
 
       console.log(`📋 Order number: ${orderNumber}`)
 
@@ -355,7 +355,7 @@ export const createQikinkOrderStep = createStep(
       // console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
       // console.log("🎉 SUCCESS!")
       // console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-      // console.log(`✅ Medusa Order: ${input.order.display_id}`)
+      // console.log(`✅ Medusa Order: ${input.order.custom_display_id}`)
       // console.log(`✅ Qikink Order: ${qikinkOrderNumber} (ID: ${qikinkOrderId})`)
       if (trackingInfo.tracking_number) {
         // console.log(`✅ Tracking Number: ${trackingInfo.tracking_number}`)

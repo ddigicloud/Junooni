@@ -64,13 +64,28 @@ interface InventoryLevel {
 export async function fetchProduct({ id }: { id: string }): Promise<Product> {
   const token = localStorage.getItem("vendorToken");
   try {
-    const response = await axios.get(`${API_BASE_URL}/vendors/products/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'x-publishable-api-key': `${API_KEY}`,
-
-      }
-    });
+   const response = await axios.get(`${API_BASE_URL}/vendors/products/${id}`, {
+  headers: {
+    Authorization: `Bearer ${token}`,
+    'x-publishable-api-key': `${API_KEY}`,
+  },
+  params: {
+    fields: [
+      'id','title','subtitle','handle','description','status',
+      'thumbnail','discountable','weight','length','width','height',
+      'material','origin_country','metadata',
+      'options.id','options.title','options.values.id','options.values.value',
+      'variants.id','variants.title','variants.sku','variants.allow_backorder',
+      'variants.manage_inventory','variants.inventory_quantity',
+      'variants.prices.amount','variants.prices.currency_code',
+      'variants.options.option_id','variants.options.value','variants.options.option.id','variants.options.option.title',
+      'variants.inventory_items.inventory_item_id',
+      'variants.metadata',
+      'images.id','images.url','images.rank','images.metadata',
+      'categories.id','categories.name',
+    ].join(',')
+  }
+});
     //console.log("Product fetched:", response.data.product);
     return response.data.product;
   } catch (error) {
@@ -127,77 +142,33 @@ export function extractInventoryItemId(variant) {
  * @returns Promise resolving to the inventory creation result
  */
 export async function handleInventoryCreation(result, formVariants, defaultLocationId) {
-  // Make sure we have variants in the result
   if (!result || !result.variants || !Array.isArray(result.variants) || result.variants.length === 0) {
-    //console.warn("No variants found in product creation result");
     return null;
   }
-  
-  //console.log(`Processing inventory for ${result.variants.length} variants`);
-  
-  // Create array to store inventory creation operations
-  const inventoryCreations = [];
-  
-  // Process each variant from the API response
-  for (const variant of result.variants) {
-    //console.log(`Processing variant ${variant.id}:`, variant.title);
-    
-    // Examine inventory_items structure in detail for debugging
-    if (variant.inventory_items) {
-      //console.log(`Variant has ${variant.inventory_items.length} inventory items`);
-    } else {
-      //console.log("Variant has no inventory_items array");
-    }
-    
-    // Extract inventory item ID using our extraction function
-    const inventoryItemId = extractInventoryItemId(variant);
-    
-    if (!inventoryItemId) {
-      //console.warn(`No inventory item ID found for variant ${variant.id}, skipping inventory creation`);
-      continue;
-    }
-    
-    //console.log(`Found inventory_item_id for variant ${variant.id}: ${inventoryItemId}`);
-    
-    // Find the matching form variant to get the stock quantity
-    // Match by title (most reliable in this case)
-    const formVariant = formVariants.find(v => v.title === variant.title) || formVariants[0];
-    const stockQuantity = parseInt(formVariant?.stock || 0);
-    
-    //console.log(`Using stock quantity ${stockQuantity} for variant "${variant.title}"`);
-    
-    inventoryCreations.push({
-      inventory_item_id: inventoryItemId,
-      location_id: defaultLocationId,
-      stocked_quantity: stockQuantity,
-      incoming_quantity: 0
-    });
-  }
-  
-  // Log the final payload for debugging
-  //console.log(`Prepared ${inventoryCreations.length} inventory creation operations`);
-  
-  if (inventoryCreations.length === 0) {
-    //console.warn("No inventory creations to submit");
-    return null;
-  }
-  
+
+  // Build a lookup map once — O(1) per lookup instead of O(n) per variant
+  const formVariantMap = new Map(formVariants.map(v => [v.title, v]));
+
+  const inventoryCreations = result.variants
+    .map(variant => {
+      const inventoryItemId = extractInventoryItemId(variant);
+      if (!inventoryItemId) return null;
+
+      const formVariant = formVariantMap.get(variant.title) || formVariants[0];
+      return {
+        inventory_item_id: inventoryItemId,
+        location_id: defaultLocationId,
+        stocked_quantity: parseInt(formVariant?.stock || 0),
+        incoming_quantity: 0
+      };
+    })
+    .filter(Boolean);
+
+  if (inventoryCreations.length === 0) return null;
+
   try {
-    // Prepare the payload for the API
-    const inventoryPayload = {
-      create: inventoryCreations
-    };
-    
-    //console.log("Submitting inventory batch creation payload:", inventoryPayload);
-    
-    // Call the batch update function with the prepared payload
-    const response = await batchUpdateInventoryLevels(inventoryPayload);
-    
-    //console.log("Inventory batch creation successful:", response);
-    return response;
+    return await batchUpdateInventoryLevels({ create: inventoryCreations });
   } catch (error) {
-    //console.error("Failed to create inventory levels:", error);
-    //console.error("Error details:", error.response?.data || error.message);
     throw error;
   }
 }
@@ -509,14 +480,16 @@ export async function fetchProducts(): Promise<Product[]> {
   const token = localStorage.getItem("vendorToken");
   try {
     const response = await axios.get(`${API_BASE_URL}/vendors/products`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      params: {
-        currency_code: 'inr' // Add currency_code to params to avoid pricing context issues
-      },
-      withCredentials: true,
-    });
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    params: {
+      currency_code: 'inr',
+      fields: 'id,title,subtitle,status,thumbnail,handle,variants.id,variants.prices.amount,variants.prices.currency_code,categories.id,categories.name',
+      limit: 100,
+    },
+    withCredentials: true,
+  });
     return response.data.products || response.data;
   } catch (error) {
     //console.error('Error fetching products:', error);

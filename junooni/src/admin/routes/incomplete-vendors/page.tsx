@@ -11,6 +11,7 @@ const IncompleteVendorsPage = () => {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState<string | null>(null)
   const [impersonating, setImpersonating] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/admin/incomplete-vendors", { credentials: "include" })
@@ -38,10 +39,6 @@ const IncompleteVendorsPage = () => {
     }
   }
 
-  // ── NEW: Impersonate an incomplete vendor ──────────────────────────────────
-  // These vendors registered but never completed onboarding.
-  // We generate a token from their auth_identity_id and drop them into
-  // the onboarding flow directly — no password needed.
   const loginAsIncompleteVendor = async (auth_identity_id: string, email: string) => {
     setImpersonating(auth_identity_id)
     try {
@@ -59,9 +56,6 @@ const IncompleteVendorsPage = () => {
 
       const { token } = await response.json()
 
-      // Redirect to sign-in page with ?impersonate= param.
-      // The sign-in page detects it, stores it, and because actor_id is empty
-      // it routes to /onboarding instead of /dashboard.
       const url = new URL(`${VENDOR_DASHBOARD_URL}/sign-in`)
       url.searchParams.set("impersonate", token)
       window.open(url.toString(), "_blank", "noopener,noreferrer")
@@ -76,7 +70,43 @@ const IncompleteVendorsPage = () => {
       setImpersonating(null)
     }
   }
-  // ──────────────────────────────────────────────────────────────────────────
+const deleteVendor = async (auth_identity_id: string, email: string) => {
+  if (!window.confirm(`Are you sure you want to delete the signup for ${email}? This cannot be undone.`)) {
+    return
+  }
+
+  setDeleting(auth_identity_id)
+  try {
+    const adminToken = localStorage.getItem("adminAuthToken")
+
+    const response = await fetch(`/admin/incomplete-vendors`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": adminToken ? `Bearer ${adminToken}` : "",
+        "x-medusa-admin": "true",
+      },
+      body: JSON.stringify({ auth_identity_id }),
+    })
+
+    if (!response.ok) {
+      const err = await response.json()
+      throw new Error(err.message ?? "Failed to delete")
+    }
+
+    setData(prev => prev.filter(row => row.auth_identity_id !== auth_identity_id))
+
+    toast.success("Signup deleted", {
+      description: `Account for ${email} has been removed`,
+    })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    toast.error("Delete failed", { description: message })
+  } finally {
+    setDeleting(null)
+  }
+}
 
   return (
     <div className="p-8">
@@ -112,7 +142,6 @@ const IncompleteVendorsPage = () => {
                 </Table.Cell>
                 <Table.Cell>
                   <div className="flex items-center gap-2">
-                    {/* Existing button — unchanged */}
                     <Button
                       size="small"
                       variant="secondary"
@@ -122,7 +151,6 @@ const IncompleteVendorsPage = () => {
                       Send Reminder
                     </Button>
 
-                    {/* NEW: Login as this vendor directly into onboarding */}
                     <Button
                       size="small"
                       variant="primary"
@@ -130,6 +158,15 @@ const IncompleteVendorsPage = () => {
                       onClick={() => loginAsIncompleteVendor(row.auth_identity_id, row.email)}
                     >
                       Login as Vendor
+                    </Button>
+
+                    <Button
+                      size="small"
+                      variant="danger"
+                      isLoading={deleting === row.auth_identity_id}
+                      onClick={() => deleteVendor(row.auth_identity_id, row.email)}
+                    >
+                      Delete
                     </Button>
                   </div>
                 </Table.Cell>

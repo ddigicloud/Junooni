@@ -14,7 +14,7 @@ export const generateInvoicePdfWorkflow = createWorkflow(
       entity: "order",
       fields: [
         "id",
-        "display_id",
+        "custom_display_id",
         "created_at",
         "currency_code",
         "total",

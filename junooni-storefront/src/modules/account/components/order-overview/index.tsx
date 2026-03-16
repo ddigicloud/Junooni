@@ -339,7 +339,7 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
               className="text-lg font-semibold text-gray-900"
               data-testid="order-display-id"
             >
-              Order #{order.display_id}
+              Order #{order.custom_display_id}
             </span>
             {getDisplayStatus(order) && (
               <span>{getStatusBadge(order)}</span>

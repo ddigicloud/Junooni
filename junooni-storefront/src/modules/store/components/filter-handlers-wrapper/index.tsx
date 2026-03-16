@@ -513,7 +513,7 @@ export default function FilterHandlersWrapper({
             {(currentMinPrice !== undefined || currentMaxPrice !== undefined) && (
               <div className="flex items-center gap-2 px-3 py-1 text-sm bg-white border border-gray-200 rounded-full">
                 <span>
-                  Price: ${currentMinPrice || 0} - ${currentMaxPrice || 1000}
+                  Price: ₹{currentMinPrice || 0} - ₹{currentMaxPrice || 1000}
                 </span>
                 <button 
                   onClick={() => handleRemovePriceFilter()}

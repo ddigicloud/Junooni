@@ -760,7 +760,7 @@ const DashboardTab = ({
   
   if (!displayOrder) return null
 
-  const orderId = displayOrder.display_id || displayOrder.id
+  const orderId = displayOrder.custom_display_id || displayOrder.id
   const orderDate = displayOrder.created_at
     ? new Date(displayOrder.created_at).toLocaleDateString()
     : "Recent"
@@ -883,7 +883,7 @@ const DashboardTab = ({
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Track Your Order</h2>
             <span className="text-sm text-gray-500">
-              #{orderForTracking.display_id || orderForTracking.id}
+              #{orderForTracking.custom_display_id || orderForTracking.id}
             </span>
           </div>
 

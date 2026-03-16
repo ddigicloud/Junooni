@@ -727,6 +727,129 @@ const getSizeAwareImage = () => {
 // with this fixed version that properly blends designs into fabric
 // =====================================================================
 
+// Add this utility near your other utility functions in Canvas.tsx
+// REPLACE the existing saveToSessionStorage function in Canvas.tsx
+const saveToSessionStorage = (key: string, data: any): boolean => {
+  try {
+    // 🔥 Clear any existing chunks for this key first
+    const existingChunks = sessionStorage.getItem(`${key}_chunks`);
+    if (existingChunks) {
+      const count = parseInt(existingChunks);
+      for (let i = 0; i < count; i++) {
+        sessionStorage.removeItem(`${key}_chunk_${i}`);
+      }
+      sessionStorage.removeItem(`${key}_chunks`);
+      sessionStorage.removeItem(key);
+    }
+
+    const serialized = JSON.stringify(data);
+    const sizeInMB = serialized.length / 1024 / 1024;
+    console.log(`💾 Saving ${key}: ${sizeInMB.toFixed(2)}MB`);
+
+    // Use 2MB chunks to be safe (not 3MB)
+    const chunkSize = 2 * 1024 * 1024;
+
+    if (serialized.length <= chunkSize) {
+      sessionStorage.setItem(key, serialized);
+      sessionStorage.setItem(`${key}_chunks`, '1');
+      console.log(`✅ Saved ${key} as single chunk`);
+      return true;
+    }
+
+    const totalChunks = Math.ceil(serialized.length / chunkSize);
+    console.log(`🔪 Splitting ${key} into ${totalChunks} chunks of 2MB`);
+
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = serialized.slice(i * chunkSize, (i + 1) * chunkSize);
+      sessionStorage.setItem(`${key}_chunk_${i}`, chunk);
+    }
+
+    sessionStorage.setItem(`${key}_chunks`, totalChunks.toString());
+    console.log(`✅ Saved ${key} in ${totalChunks} chunks`);
+    return true;
+
+  } catch (error) {
+    console.error(`❌ SessionStorage save failed for ${key}:`, error);
+    // 🔥 Clean up partial writes on failure
+    try {
+      const chunksStr = sessionStorage.getItem(`${key}_chunks`);
+      if (chunksStr) {
+        const count = parseInt(chunksStr);
+        for (let i = 0; i < count; i++) {
+          sessionStorage.removeItem(`${key}_chunk_${i}`);
+        }
+        sessionStorage.removeItem(`${key}_chunks`);
+      }
+      sessionStorage.removeItem(key);
+    } catch {}
+    return false;
+  }
+};
+
+// Add this utility function near other utility functions in Canvas.tsx
+const compressMockupImage = (base64Data: string, quality: number = 0.6, maxDimension: number = 800): Promise<string> => {
+  return new Promise((resolve) => {
+    if (!base64Data || base64Data.length < 100) {
+      resolve(base64Data);
+      return;
+    }
+    
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      
+      let width = img.naturalWidth || img.width;
+      let height = img.naturalHeight || img.height;
+      
+      // Scale down if larger than maxDimension
+      if (width > maxDimension || height > maxDimension) {
+        const ratio = Math.min(maxDimension / width, maxDimension / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      const ctx = canvas.getContext('2d')!;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Convert to JPEG (much smaller than PNG)
+      const compressed = canvas.toDataURL('image/jpeg', quality);
+      resolve(compressed);
+    };
+    
+    img.onerror = () => resolve(base64Data); // fallback to original
+    img.src = base64Data;
+  });
+};
+
+const compressAllMockupImages = async (
+  mockupImages: Record<string, string>,
+  quality: number = 0.6,
+  maxDimension: number = 800
+): Promise<Record<string, string>> => {
+  const compressed: Record<string, string> = {};
+  const keys = Object.keys(mockupImages);
+  
+  console.log(`🗜️ Compressing ${keys.length} mockup images...`);
+  const originalTotal = keys.reduce((sum, k) => sum + (mockupImages[k]?.length || 0), 0);
+  
+  await Promise.all(
+    keys.map(async (key) => {
+      compressed[key] = await compressMockupImage(mockupImages[key], quality, maxDimension);
+    })
+  );
+  
+  const compressedTotal = keys.reduce((sum, k) => sum + (compressed[k]?.length || 0), 0);
+  const reduction = ((1 - compressedTotal / originalTotal) * 100).toFixed(1);
+  console.log(`✅ Compression complete: ${(originalTotal/1024/1024).toFixed(1)}MB → ${(compressedTotal/1024/1024).toFixed(1)}MB (${reduction}% reduction)`);
+  
+  return compressed;
+};
+
 const renderMockupDirectly = async (
   mockup: DynamicMockupPhoto,
   designElements: Record<string, DesignElement[]>,
@@ -4355,7 +4478,42 @@ useEffect(() => {
     return !productData?.surfConf?.No_Mockup_Compatible;
   }, [productData]);
 
+// ADD this helper in Canvas.tsx
+const loadFromSessionStorage = (key: string): any | null => {
+  try {
+    const chunksStr = sessionStorage.getItem(`${key}_chunks`);
+    if (!chunksStr) return null;
 
+    const totalChunks = parseInt(chunksStr);
+
+    if (totalChunks === 1) {
+      const data = sessionStorage.getItem(key);
+      if (!data) return null;
+      sessionStorage.removeItem(key);
+      sessionStorage.removeItem(`${key}_chunks`);
+      return JSON.parse(data);
+    }
+
+    // Reassemble chunks
+    let fullData = '';
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = sessionStorage.getItem(`${key}_chunk_${i}`);
+      if (!chunk) {
+        console.error(`Missing chunk ${i} for ${key}`);
+        return null;
+      }
+      fullData += chunk;
+      sessionStorage.removeItem(`${key}_chunk_${i}`);
+    }
+
+    sessionStorage.removeItem(`${key}_chunks`);
+    return JSON.parse(fullData);
+
+  } catch (error) {
+    console.error(`❌ SessionStorage load failed for ${key}:`, error);
+    return null;
+  }
+};
 
 const handlePanelDragStart = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
   // Don't handle on desktop if isMobile check is active
@@ -7469,59 +7627,133 @@ const restoreDesignElementsFromBase64 = useCallback(async (elementsData: Record<
 
 
 
-const navigateToCreatePage = useCallback((transformedData) => {
+const navigateToCreatePage = useCallback(async (transformedData) => {
+  setShowStoreImportModal(false);
 
-  // Log detailed element information for each area
-  if (transformedData.designMetrics?.elementDetails) {
-    Object.entries(transformedData.designMetrics.elementDetails).forEach(([areaId, elements]) => {
-    });
+  // 🔥 Clear ALL old store_import keys from sessionStorage first
+  try {
+    const keysToDelete: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('store_import_')) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach(key => sessionStorage.removeItem(key));
+    console.log(`🧹 Cleared ${keysToDelete.length} old sessionStorage keys`);
+  } catch (e) {
+    console.warn('Could not clear old sessionStorage:', e);
   }
 
+  let finalMockupImages = transformedData.mockupImages || {};
+  let finalColorSpecificImages = transformedData.colorSpecificImages || {};
+  let finalColorSpecificMockups = transformedData.designData?.mockupData?.colorSpecificMockups || [];
+
+  try {
+    const mockupCount = Object.keys(finalColorSpecificImages).length;
+
+    if (mockupCount > 0) {
+      const quality = mockupCount > 20 ? 0.45 : mockupCount > 10 ? 0.55 : 0.65;
+      const maxDimension = mockupCount > 20 ? 700 : mockupCount > 10 ? 800 : 900;
+
+      console.log(`🗜️ Compressing ${mockupCount} color groups (quality: ${quality}, maxDim: ${maxDimension})...`);
+
+      // Compress colorSpecificImages
+      const compressedColorSpecific: Record<string, any[]> = {};
+      await Promise.all(
+        Object.keys(finalColorSpecificImages).map(async (colorHex) => {
+          const colorMockups = finalColorSpecificImages[colorHex] || [];
+          compressedColorSpecific[colorHex] = await Promise.all(
+            colorMockups.map(async (mockupObj: any) => {
+              if (mockupObj?.imageData) {
+                return {
+                  ...mockupObj,
+                  imageData: await compressMockupImage(mockupObj.imageData, quality, maxDimension)
+                };
+              }
+              return mockupObj;
+            })
+          );
+        })
+      );
+      finalColorSpecificImages = compressedColorSpecific;
+
+      // Compress colorSpecificMockups inside designData
+      finalColorSpecificMockups = await Promise.all(
+        finalColorSpecificMockups.map(async (group: any) => ({
+          ...group,
+          mockups: await Promise.all(
+            (group.mockups || []).map(async (m: any) => ({
+              ...m,
+              imageData: m.imageData
+                ? await compressMockupImage(m.imageData, quality, maxDimension)
+                : m.imageData
+            }))
+          )
+        }))
+      );
+    }
+  } catch (compressionError) {
+    console.warn('⚠️ Compression failed, using originals:', compressionError);
+  }
+
+  // 🔥 Save ONLY heavy image data to sessionStorage
+  // designImages stays in navigation state (already compressed, can't reduce further)
+  // mockupImages is empty {} so no need to save
+  const sessionKey = `store_import_${Date.now()}`;
+
+  saveToSessionStorage(`${sessionKey}_colorSpecificImages`, finalColorSpecificImages);
+  saveToSessionStorage(`${sessionKey}_colorSpecificMockups`, finalColorSpecificMockups);
+  saveToSessionStorage(`${sessionKey}_canvasImages`, transformedData.canvasImages || []);
 
   // Log mockup images by area
   const mockupsByArea = {};
-  Object.keys(transformedData.mockupImages || {}).forEach(key => {
+  Object.keys(finalMockupImages).forEach(key => {
     const [area] = key.split('_');
     if (!mockupsByArea[area]) mockupsByArea[area] = 0;
     mockupsByArea[area]++;
   });
 
-
-  setShowStoreImportModal(false);
-
   navigate({
     to: '/designer/create',
     state: {
-      // Core Design Data
-      designData: transformedData.designData,
-      mockupImages: transformedData.mockupImages,
-      colorSpecificImages: transformedData.colorSpecificImages,
+      // ✅ Session key - create.tsx uses this to retrieve from sessionStorage
+      sessionKey,
+
+      // ✅ designData without heavy mockup data
+      designData: {
+        ...transformedData.designData,
+        mockupData: {
+          ...transformedData.designData?.mockupData,
+          colorSpecificMockups: [], // loaded from sessionStorage in create.tsx
+          mockupPreview: null,
+        }
+      },
+
+      // ✅ These are empty or lightweight - keep in state
+      mockupImages: {},
+      colorSpecificImages: {},
+
+      // ✅ designImages stays in navigation state directly (too large for sessionStorage)
+      designImages: transformedData.designImages || [],
+
+      // ✅ All lightweight data stays in navigation state
       enhancedProductData: transformedData.enhancedProductData,
       filteredProductData: transformedData.filteredProductData,
-      
-      // Image Data
-      designImages: transformedData.designImages,
-      canvasImages: transformedData.canvasImages,
       uploadedFiles: [],
-      
-      // Complete Calculated Data
       pricingData: transformedData.pricingData,
       availableMockups: transformedData.availableMockups,
       imageAreaAnalysis: transformedData.imageAreaAnalysis,
-      
-      // Enhanced Area Analysis
       detailedAreaAnalysis: transformedData.detailedAreaAnalysis,
       enhancedImageAreaAnalysis: transformedData.enhancedImageAreaAnalysis,
       designMetrics: transformedData.designMetrics,
-      
-      // Additional Store Metadata
       storeMetadata: transformedData.storeMetadata,
-      
-      // Navigation Context
+
       navigationContext: {
         sourceComponent: 'EnhancedCanvas',
         importTimestamp: new Date().toISOString(),
-        totalDataSize: JSON.stringify(transformedData).length,
+        sessionStorageKey: sessionKey,
+        compressionApplied: true,
         hasCompleteData: {
           designImages: !!transformedData.designImages?.length,
           canvasImages: !!transformedData.canvasImages?.length,
@@ -7533,7 +7765,7 @@ const navigateToCreatePage = useCallback((transformedData) => {
           areaBreakdown: !!transformedData.designMetrics?.areaBreakdown
         },
         dataVerification: {
-          totalMockupImages: Object.keys(transformedData.mockupImages || {}).length,
+          totalMockupImages: Object.keys(finalMockupImages).length,
           areasWithElements: transformedData.designMetrics?.areasWithElements || [],
           areasWithoutElements: transformedData.designMetrics?.areasWithoutElements || [],
           totalElements: transformedData.designMetrics?.totalElements || 0,
@@ -7543,9 +7775,8 @@ const navigateToCreatePage = useCallback((transformedData) => {
       }
     }
   });
-  
-}, [navigate]);
 
+}, [navigate]);
 
 // Complete Fixed generateComprehensiveMockups Function
 
@@ -7998,7 +8229,7 @@ const handleImportToStore = useCallback(async () => {
       const transformedData = transformStoreDataForCreate(dataWithoutMockups, filteredProductData);
       
       // Navigate directly to Create page
-      navigateToCreatePage(transformedData);
+      await navigateToCreatePage(transformedData);
       
     } catch (error) {
       alert(`Failed to prepare product data: ${error.message}`);
@@ -8366,7 +8597,7 @@ selectedColors.forEach(color => {
   // Transform the data
   const transformedData = transformStoreDataForCreate(comprehensiveImportData, filteredProductData);
 
-     navigateToCreatePage(transformedData);
+     await navigateToCreatePage(transformedData);
 
   } catch (error) {
     

@@ -22,7 +22,7 @@ export default async function orderPlacedNotificationSubscriber({
     const { result: orders } = await getOrdersListWorkflow(container).run({
       input: {
         fields: [
-          "id", "display_id", "created_at", "metadata", "status",
+          "id", "custom_display_id", "created_at", "metadata", "status",
           "total", "subtotal", "shipping_total", "tax_total",
           "currency_code", "email",
           "items.*", "items.tax_lines", "items.variant",
@@ -45,7 +45,7 @@ export default async function orderPlacedNotificationSubscriber({
       return
     }
 
-    logger.info(`✅ Order ${order.display_id} fetched, processing notifications...`)
+    logger.info(`✅ Order ${order.custom_display_id} fetched, processing notifications...`)
 
     // ─── 2. Get all vendor IDs from order metadata ────────────────────────────
     const vendorOrders: any[] = order.metadata?.vendor_orders || []
@@ -108,7 +108,7 @@ export default async function orderPlacedNotificationSubscriber({
           template: "vendor-order-placed",
           data: {
             vendor_name: vendor.name || "Creator",
-            order_id: order.display_id,
+            order_id: order.custom_display_id,
             order_date: new Date(order.created_at).toLocaleDateString("en-IN", {
               day: "numeric", month: "long", year: "numeric",
             }),
@@ -181,7 +181,7 @@ export default async function orderPlacedNotificationSubscriber({
       channel: "email",
       template: "admin-order-placed",
       data: {
-        order_id: order.display_id,
+        order_id: order.custom_display_id,
         order_date: new Date(order.created_at).toLocaleDateString("en-IN", {
           day: "numeric", month: "long", year: "numeric",
         }),

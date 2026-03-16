@@ -1709,7 +1709,7 @@ for (const metaItem of vendorMetadataItems) {
  const finalPaymentStatus = ensureVendorPaymentStatus(vendorPaymentData, order.payment_status);
   return {
     id: order.id,
-    display_id: order.display_id,
+    custom_display_id: order.custom_display_id,
     status: order.status,
     payment_status: finalPaymentStatus, // ✅ FIXED: Use the ensured status
     fulfillment_status: vendorFulfillmentData.status, // ✅ NOW VENDOR-SPECIFIC!
@@ -1988,7 +1988,7 @@ export const GET = async (
       input: {
         fields: [
           "id",
-          "display_id",
+          "custom_display_id",
           "metadata",
           "created_at",
           "total",

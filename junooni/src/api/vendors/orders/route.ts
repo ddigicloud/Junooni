@@ -1116,7 +1116,7 @@ const filterOrderForVendor = async (order: any, vendorId: string, scope: any) =>
 
   return {
     id: order.id,
-    display_id: order.display_id,
+    custom_display_id: order.custom_display_id,
     status: order.status,
     payment_status: vendorPaymentData.status,
     fulfillment_status: vendorFulfillmentData.status,
@@ -1266,7 +1266,7 @@ export const GET = async (
       input: {
         fields: [
           "id",
-          "display_id",
+          "custom_display_id",
           "created_at",        // ✅ ADD THIS LINE
           "updated_at",        // ✅ ADD THIS LINE (optional but useful)
           "metadata",

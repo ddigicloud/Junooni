@@ -21,7 +21,7 @@
 //         entryPoint: "order",
 //         fields: [
 //           "id",
-//           "display_id",
+//           "custom_display_id",
 //           "email",
 //           "total",
 //           "subtotal",
@@ -53,7 +53,7 @@
 
 //       console.log("✅ Fetched order:", {
 //         id: order.id,
-//         display_id: order.display_id,
+//         custom_display_id: order.custom_display_id,
 //         email: order.email,
 //         items_count: order.items?.length || 0,
 //       })
@@ -88,7 +88,7 @@ export const getOrderStep = createStep(
         entryPoint: "order",
         fields: [
           "id",
-          "display_id",
+          "custom_display_id",
           "email",
           "total",
           "subtotal",
@@ -120,7 +120,7 @@ export const getOrderStep = createStep(
 
       console.log("✅ Fetched order:", {
         id: order.id,
-        display_id: order.display_id,
+        custom_display_id: order.custom_display_id,
         email: order.email,
         items_count: order.items?.length || 0,
         has_payment_collections: !!order.payment_collections,

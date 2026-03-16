@@ -14,7 +14,7 @@ export const sendOrderConfirmationWorkflow = createWorkflow(
       entity: "order",
       fields: [
         "id",
-        "display_id",
+        "custom_display_id",
         "email",
         "currency_code",
         "total",

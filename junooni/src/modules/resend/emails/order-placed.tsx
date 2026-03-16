@@ -52,13 +52,13 @@
 //       <Html className="font-sans bg-gray-100">
 //         <Head />
 //         <Preview>Thank you for your order from Junooni</Preview>
-//         <Body className="bg-white my-10 mx-auto w-full max-w-2xl">
+//         <Body className="w-full max-w-2xl mx-auto my-10 bg-white">
 //           {/* Header */}
 //           <Section className="bg-[#e65100] text-white px-6 py-5">
 //             <Row>
 //               <Column align="center">
-//                 <Text className="text-2xl font-bold tracking-wide m-0">JUNOONI</Text>
-//                 <Text className="text-xs uppercase tracking-widest m-0 mt-1">Premium Lifestyle</Text>
+//                 <Text className="m-0 text-2xl font-bold tracking-wide">JUNOONI</Text>
+//                 <Text className="m-0 mt-1 text-xs tracking-widest uppercase">Premium Lifestyle</Text>
 //               </Column>
 //             </Row>
 //           </Section>
@@ -68,7 +68,7 @@
 //             <Heading className="text-2xl font-bold text-center text-gray-800">
 //               Thank you for your order, {order.customer?.first_name || order.shipping_address?.first_name}
 //             </Heading>
-//             <Text className="text-center text-gray-600 mt-3">
+//             <Text className="mt-3 text-center text-gray-600">
 //               We're processing your order and will notify you when it ships. Your estimated delivery date is 3-5 business days from today.
 //             </Text>
 //           </Container>
@@ -84,10 +84,10 @@
 //               <Section>
 //                 <Row>
 //                   <Column align="left">
-//                     <Heading className="text-white text-xl font-semibold">
+//                     <Heading className="text-xl font-semibold text-white">
 //                       {email_banner.title}
 //                     </Heading>
-//                     <Text className="text-white mt-2">{email_banner.body}</Text>
+//                     <Text className="mt-2 text-white">{email_banner.body}</Text>
 //                   </Column>
 //                   <Column align="right">
 //                     <Link 
@@ -104,31 +104,31 @@
 
 //           {/* Order Items */}
 //           <Container className="px-8">
-//             <Heading className="text-xl font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
+//             <Heading className="pb-2 mb-4 text-xl font-semibold text-gray-800 border-b border-gray-200">
 //               Your Items
 //             </Heading>
 //             <Row>
 //               <Column>
-//                 <Text className="text-sm m-0 my-2 text-gray-500">Order ID: #{order.display_id} • Placed on {new Date().toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'})}</Text>
+//                 <Text className="m-0 my-2 text-sm text-gray-500">Order ID: #{order.custom_display_id} • Placed on {new Date().toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'})}</Text>
 //               </Column>
 //             </Row>
 //             {order.items?.map((item) => (
-//               <Section key={item.id} className="border-b border-gray-200 py-6">
+//               <Section key={item.id} className="py-6 border-b border-gray-200">
 //                 <Row>
 //                   <Column className="w-1/3">
 //                     <Img
 //                       src={item.thumbnail ?? ''}
 //                       alt={item.product_title ?? ''}
-//                       className="rounded-lg border border-gray-200"
+//                       className="border border-gray-200 rounded-lg"
 //                       width="100%"
 //                     />
 //                   </Column>
 //                   <Column className="w-2/3 pl-6">
-//                     <Text className="text-lg font-semibold text-gray-800 m-0">
+//                     <Text className="m-0 text-lg font-semibold text-gray-800">
 //                       {item.product_title}
 //                     </Text>
-//                     <Text className="text-gray-600 m-0 mt-1">Size: {item.variant_title}</Text>
-//                     <Text className="text-gray-600 m-0 mt-1">Quantity: {item.quantity}</Text>
+//                     <Text className="m-0 mt-1 text-gray-600">Size: {item.variant_title}</Text>
+//                     <Text className="m-0 mt-1 text-gray-600">Quantity: {item.quantity}</Text>
 //                     <Text className="text-[#e65100] mt-3 font-bold m-0">
 //                       {formatPrice(item.total)}
 //                     </Text>
@@ -138,11 +138,11 @@
 //             ))}
 
 //             {/* Order Summary */}
-//             <Section className="mt-8 bg-gray-50 rounded-lg p-6">
-//               <Heading className="text-xl font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
+//             <Section className="p-6 mt-8 rounded-lg bg-gray-50">
+//               <Heading className="pb-2 mb-4 text-xl font-semibold text-gray-800 border-b border-gray-200">
 //                 Order Summary
 //               </Heading>
-//               <Row className="text-gray-600 py-2">
+//               <Row className="py-2 text-gray-600">
 //                 <Column className="w-1/2">
 //                   <Text className="m-0">Subtotal</Text>
 //                 </Column>
@@ -153,7 +153,7 @@
 //                 </Column>
 //               </Row>
 //               {order.shipping_methods?.map((method) => (
-//                 <Row className="text-gray-600 py-2" key={method.id}>
+//                 <Row className="py-2 text-gray-600" key={method.id}>
 //                   <Column className="w-1/2">
 //                     <Text className="m-0">{method.name}</Text>
 //                   </Column>
@@ -162,7 +162,7 @@
 //                   </Column>
 //                 </Row>
 //               ))}
-//               <Row className="text-gray-600 py-2">
+//               <Row className="py-2 text-gray-600">
 //                 <Column className="w-1/2">
 //                   <Text className="m-0">Tax</Text>
 //                 </Column>
@@ -170,9 +170,9 @@
 //                   <Text className="m-0">{formatPrice(order.tax_total || 0)}</Text>
 //                 </Column>
 //               </Row>
-//               <Row className="border-t border-gray-200 mt-4 pt-4 text-gray-800 font-bold">
+//               <Row className="pt-4 mt-4 font-bold text-gray-800 border-t border-gray-200">
 //                 <Column className="w-1/2">
-//                   <Text className="text-lg m-0">Total</Text>
+//                   <Text className="m-0 text-lg">Total</Text>
 //                 </Column>
 //                 <Column className="w-1/2 text-right">
 //                   <Text className="text-lg m-0 text-[#e65100]">{formatPrice(order.total)}</Text>
@@ -182,14 +182,14 @@
 //           </Container>
 
 //           {/* Footer */}
-//           <Section className="bg-gray-50 p-6 mt-10">
-//             <Text className="text-center text-gray-500 text-sm">
+//           <Section className="p-6 mt-10 bg-gray-50">
+//             <Text className="text-sm text-center text-gray-500">
 //               If you have any questions, Please contact our support team at support@junooni.com.
 //             </Text>
-//             <Text className="text-center text-gray-500 text-sm">
+//             <Text className="text-sm text-center text-gray-500">
 //               Order Token: {order.id}
 //             </Text>
-//             <Text className="text-center text-gray-400 text-xs mt-4">
+//             <Text className="mt-4 text-xs text-center text-gray-400">
 //               © {new Date().getFullYear()} Junooni, Inc. All rights reserved.
 //             </Text>
 //           </Section>
@@ -207,7 +207,7 @@
 // const mockOrder = {
 //   "order": {
 //     "id": "order_01JSNXDH9BPJWWKVW03B9E9KW8",
-//     "display_id": 1,
+//     "custom_display_id": 1,
 //     "email": "customer@example.com",
 //     "currency_code": "eur",
 //     "total": 20,
@@ -591,7 +591,7 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
     <Tailwind>
       <Html>
         <Head />
-        <Preview>Order #{String(order.display_id)} confirmed! Your items are on their way.</Preview>
+        <Preview>Order #{String(order.custom_display_id)} confirmed! Your items are on their way.</Preview>
         <Body style={{ backgroundColor: '#f5f3f0', margin: 0, padding: '32px 16px', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" }}>
           <Container style={{ maxWidth: '520px', margin: '0 auto' }}>
             
@@ -693,7 +693,7 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                           margin: 0,
                           letterSpacing: '0.5px'
                         }}>
-                          ORDER #{order.display_id}
+                          ORDER #{order.custom_display_id}
                         </Text>
                       </td>
                     </tr>
@@ -1128,7 +1128,7 @@ export const orderPlacedEmail = (props: OrderPlacedEmailProps) => (
 const mockOrder = {
   "order": {
     "id": "order_01K8QYSV2PDYB2DVT5TF1DWH11",
-    "display_id": 1042,
+    "custom_display_id": 1042,
     "email": "customer@example.com",
     "currency_code": "inr",
     "total": 1299,

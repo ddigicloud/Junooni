@@ -536,7 +536,7 @@ export async function POST(
       entity: "order",
       fields: [
         "id",
-        "display_id",
+        "custom_display_id",
         "total",
         "currency_code",
         "metadata",
@@ -559,7 +559,7 @@ export async function POST(
 
     console.log(`📄 Order Details:`)
     console.log(`   - Order ID: ${order.id}`)
-    console.log(`   - Display ID: ${order.display_id}`)
+    console.log(`   - Display ID: ${order.custom_display_id}`)
     console.log(`   - Payment Status: ${order.payment_status}`)
     console.log(`   - Total: ₹${order.total}`)
     console.log(`   - Currency: ${order.currency_code}`)

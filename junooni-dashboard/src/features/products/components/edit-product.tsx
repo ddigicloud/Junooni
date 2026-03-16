@@ -425,901 +425,387 @@ const isNewVariant = (variant) => {
     if (!id || productLoaded) return;
     
     async function loadProduct() {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // Fetch product data
-        const response = await fetchProduct({id});
-        
-        // Parse response if it's a string (JSON)
-        let product;
-        if (typeof response === 'string') {
-          try {
-            product = JSON.parse(response);
-            // The actual product might be nested under a 'product' key
-            if (product.product) {
-              product = product.product;
-            }
-          } catch (parseError) {
-            ////console.error('Error parsing product data:', parseError);
-            throw new Error('Invalid product data format');
-          }
-        } else {
-          product = response;
-        }
-        
-        // Defensive check to ensure we have a valid product
-        if (!product) {
-          throw new Error('Product data is empty or invalid');
-        }
-        
-        // ===== STEP 2A: Extract Technology Name =====
-        // Access the technology name from product.metadata.print_technology_name
-        const techName = product.metadata?.print_technology_name || '';
-        
-        // Optional: Log for debugging
-        // console.log("Extracted Technology Name:", techName);
-        // console.log("Full metadata:", product.metadata);
-        
-        // Store in state
-        setTechnologyName(techName);
-        const payloadProdName = product.metadata?.payload_product_name || '';
-        setPayloadProductName(payloadProdName);
+  const t0 = performance.now();
+  const lap = (label: string) => console.log(`⏱ ${label}: ${(performance.now() - t0).toFixed(0)}ms`);
 
-        if (product.metadata?.payload_integration) {
+  setIsLoading(true);
+  setError(null);
+
+  try {
+    lap('START');
+
+    // Fetch product data
+    const response = await fetchProduct({id});
+    lap('fetchProduct DONE');
+
+    let product;
+    if (typeof response === 'string') {
+      try {
+        product = JSON.parse(response);
+        if (product.product) product = product.product;
+      } catch (parseError) {
+        throw new Error('Invalid product data format');
+      }
+    } else {
+      product = response;
+    }
+
+    if (!product) throw new Error('Product data is empty or invalid');
+    lap('product parsed');
+
+    console.log(`📦 Product has: ${product.variants?.length} variants, ${product.images?.length} images, ${product.options?.length} options`);
+
+    const techName = product.metadata?.print_technology_name || '';
+    setTechnologyName(techName);
+    const payloadProdName = product.metadata?.payload_product_name || '';
+    setPayloadProductName(payloadProdName);
+
+    if (product.metadata?.payload_integration) {
+      try {
+        const payloadIntegration = typeof product.metadata.payload_integration === 'string'
+          ? JSON.parse(product.metadata.payload_integration)
+          : product.metadata.payload_integration;
+        if (payloadIntegration?.source_product_id) {
+          setSourceProductId(payloadIntegration.source_product_id);
+        }
+      } catch (e) {
+        console.error("Failed to parse payload_integration:", e);
+      }
+    }
+
+    setProductViewUrl(`${STOREFRONT_DOMAIN}/products/${product.handle}`);
+
+    const metadata = product.metadata || {};
+    setFulfillmentType(metadata.fulfillment_type || '');
+
+    if (metadata.fulfillment_type) {
+      try {
+        const fulfillmentDataObj = parseFulfillmentData(metadata.fulfillment_type);
+        setFulfillmentData(fulfillmentDataObj);
+      } catch (e) {}
+    }
+
+    setOriginalData({
+      options: product.options,
+      variants: product.variants,
+      metadata: product.metadata || {}
+    });
+
+    const originalIds = product.variants?.map((v: any) => v.id) || [];
+    setOriginalVariantIds(originalIds);
+    setHasVariants(product.variants && product.variants.length > 1);
+    lap('metadata + state setup DONE');
+
+    // Transform options
+    let transformedOptions: Option[] = [];
+    if (product.options && product.options.length > 0) {
+      transformedOptions = product.options.map((opt: any) => {
+        const optionValues = opt.values?.map((value: any) =>
+          typeof value === 'object' ? value.value : value
+        ) || [];
+
+        const result: Option = {
+          id: opt.id,
+          title: opt.title,
+          optionValues: optionValues,
+          imageAssociation: false
+        };
+
+        if (isColorOption(opt.title)) {
+          const colorHexValues: Record<string, string> = {};
+          if (product.metadata && product.metadata.color_hex_values) {
+            try {
+              const colorHexArray = JSON.parse(product.metadata.color_hex_values);
+              if (Array.isArray(colorHexArray)) {
+                colorHexArray.forEach(item => {
+                  if (item.name && item.hex) colorHexValues[item.name] = item.hex;
+                });
+              }
+            } catch (e) {}
+          }
+          if (Object.keys(colorHexValues).length === 0 && product.metadata) {
+            Object.entries(product.metadata).forEach(([key, value]) => {
+              if (key.startsWith('colorhex_') && typeof value === 'string') {
+                const colorName = key.replace('colorhex_', '').replace(/_/g, ' ');
+                const normalizedOptionValues = optionValues.map(v => v.toLowerCase());
+                if (normalizedOptionValues.includes(colorName.toLowerCase())) {
+                  colorHexValues[colorName] = value;
+                }
+              }
+            });
+          }
+          if (Object.keys(colorHexValues).length > 0) result.colorHexValues = colorHexValues;
+        }
+        return result;
+      });
+
+      if (product.metadata && product.metadata.variant_specific_image_option) {
         try {
-          const payloadIntegration = typeof product.metadata.payload_integration === 'string'
-            ? JSON.parse(product.metadata.payload_integration)
-            : product.metadata.payload_integration;
-          
-          if (payloadIntegration?.source_product_id) {
-            setSourceProductId(payloadIntegration.source_product_id);
+          let imageAssociationSettings;
+          if (typeof product.metadata.variant_specific_image_option === 'string') {
+            imageAssociationSettings = JSON.parse(product.metadata.variant_specific_image_option);
+          } else {
+            imageAssociationSettings = product.metadata.variant_specific_image_option;
+          }
+          if (Array.isArray(imageAssociationSettings)) {
+            transformedOptions = transformedOptions.map(opt => {
+              let setting = imageAssociationSettings.find(s => {
+                if (s.option_id === opt.id) return true;
+                const normalizedSettingId = s.option_id.replace(/^opt_/, '');
+                const normalizedOptId = opt.id.replace(/^opt_/, '');
+                if (normalizedSettingId === normalizedOptId) return true;
+                if (s.option_name && opt.title &&
+                    s.option_name.toLowerCase() === opt.title.toLowerCase()) return true;
+                return false;
+              });
+              if (setting) {
+                return { ...opt, imageAssociation: setting.enabled === true || setting.enabled === "true" };
+              }
+              return { ...opt, imageAssociation: false };
+            });
           }
         } catch (e) {
-          console.error("Failed to parse payload_integration:", e);
+          transformedOptions = transformedOptions.map(opt => ({ ...opt, imageAssociation: false }));
         }
+      } else {
+        transformedOptions = transformedOptions.map(opt => ({ ...opt, imageAssociation: false }));
       }
-        // ===== END EXTRACTION =====
-        
-        ////console.log("Loaded product data:", product);
-        
-        // Set product view URL
-        setProductViewUrl(`${STOREFRONT_DOMAIN}/products/${product.handle}`);
-        
-        // Parse metadata for fulfillment info
-        const metadata = product.metadata || {};
-        ////console.log("Product metadata:", metadata);
-        setFulfillmentType(metadata.fulfillment_type || '');
-        
-        // Parse fulfillment data from metadata
-        if (metadata.fulfillment_type) {
-          let fulfillmentDataObj;
-          try {
-            fulfillmentDataObj = parseFulfillmentData(metadata.fulfillment_type);
-            setFulfillmentData(fulfillmentDataObj);
-          } catch (e) {
-            ////console.error("Error parsing fulfillment data:", e);
+    } else {
+      transformedOptions = [
+        { id: generateUUID(), title: 'Color', optionValues: [], imageAssociation: false },
+        { id: generateUUID(), title: 'Size', optionValues: [], imageAssociation: false }
+      ];
+    }
+
+    if (transformedOptions.length === 0) {
+      transformedOptions.push({ id: generateUUID(), title: '', optionValues: [], imageAssociation: false });
+    }
+    lap('options transformed');
+
+    // Extract shipping info
+    let shippingDays = '7-10';
+    let handlingTime = '2-3';
+    if (product.metadata && product.metadata.fulfillment_type) {
+      try {
+        const fulfillmentInfo = JSON.parse(product.metadata.fulfillment_type);
+        if (typeof fulfillmentInfo === 'object') {
+          if (fulfillmentInfo.shipping_time) {
+            const shippingMatch = fulfillmentInfo.shipping_time.match(/(\d+-?\d*)/);
+            shippingDays = shippingMatch ? shippingMatch[1] : '7-10';
+          }
+          if (fulfillmentInfo.handling_time) {
+            const handlingMatch = fulfillmentInfo.handling_time.match(/(\d+-?\d*)/);
+            handlingTime = handlingMatch ? handlingMatch[1] : '2-3';
           }
         }
-        
-        // Save original data for reference
-        setOriginalData({
-          options: product.options,
-          variants: product.variants,
-          metadata: product.metadata || {} // Store original metadata
-        });
-        
-        // Store original variant IDs for tracking changes
-        const originalIds = product.variants?.map((v: any) => v.id) || [];
-        setOriginalVariantIds(originalIds);
+      } catch (e) {}
+    }
 
-        // Check if the product has variants
-        setHasVariants(product.variants && product.variants.length > 1);
+    // ✅ FIX: No per-variant inventory fetch — use inventory_quantity directly
+    const transformedVariants: Variant[] = [];
+    if (product.variants && product.variants.length > 0) {
+      const optionMap: Record<string, string> = {};
+      if (product.options) {
+        product.options.forEach((opt: any) => { optionMap[opt.id] = opt.title; });
+      }
 
-        // Transform options to match component format
-        let transformedOptions: Option[] = [];
-        
-        if (product.options && product.options.length > 0) {
-          // Transform options to match component format with array-based values
-          transformedOptions = product.options.map((opt: any) => {
-            // Extract values from option
-            const optionValues = opt.values?.map((value: any) => 
-              typeof value === 'object' ? value.value : value
-            ) || [];
-            
-            // Initialize with explicitly false imageAssociation (will be updated later)
-            const result: Option = {
-              id: opt.id, // Keep the original option ID
-              title: opt.title,
-              optionValues: optionValues,
-              imageAssociation: false // Default value, will be updated from metadata
-            };
-            
-            // Extract color hex values from metadata if this is a color option
-            if (isColorOption(opt.title)) {
-              const colorHexValues: Record<string, string> = {};
-              
-              // Look for color hex values in metadata
-              if (product.metadata && product.metadata.color_hex_values) {
-                try {
-                  const colorHexArray = JSON.parse(product.metadata.color_hex_values);
-                  if (Array.isArray(colorHexArray)) {
-                    colorHexArray.forEach(item => {
-                      if (item.name && item.hex) {
-                        colorHexValues[item.name] = item.hex;
-                      }
-                    });
-                  }
-                } catch (e) {
-                  ////console.error("Failed to parse color_hex_values:", e);
-                }
-              }
-              
-              // FALLBACK: Look for legacy colorhex_ entries if no values found
-              if (Object.keys(colorHexValues).length === 0 && product.metadata) {
-                Object.entries(product.metadata).forEach(([key, value]) => {
-                  // Look for keys like "colorhex_red", "colorhex_blue", etc.
-                  if (key.startsWith('colorhex_') && typeof value === 'string') {
-                    const colorName = key.replace('colorhex_', '').replace(/_/g, ' ');
-                    
-                    // Only add colors that are in this option's values
-                    const normalizedOptionValues = optionValues.map(v => v.toLowerCase());
-                    const normalizedColorName = colorName.toLowerCase();
-                    
-                    if (normalizedOptionValues.includes(normalizedColorName)) {
-                      colorHexValues[colorName] = value;
-                    }
-                  }
-                });
-              }
-              
-              // Add color hex values to the option if any were found
-              if (Object.keys(colorHexValues).length > 0) {
-                result.colorHexValues = colorHexValues;
-              }
-            }
-            
-            return result;
-          });
-          
-          // Parse image association settings from metadata
-          if (product.metadata && product.metadata.variant_specific_image_option) {
-            try {
-              let imageAssociationSettings;
-              
-              // Handle string or object format
-              if (typeof product.metadata.variant_specific_image_option === 'string') {
-                imageAssociationSettings = JSON.parse(product.metadata.variant_specific_image_option);
-              } else {
-                imageAssociationSettings = product.metadata.variant_specific_image_option;
-              }
-              
-              ////console.log("Image association settings from metadata:", imageAssociationSettings);
-              
-              if (Array.isArray(imageAssociationSettings)) {
-                // Update each option with its image association setting
-                transformedOptions = transformedOptions.map(opt => {
-                  // Try different ways to match the option with its setting
-                  let setting = imageAssociationSettings.find(s => {
-                    // 1. Exact ID match
-                    if (s.option_id === opt.id) return true;
-                    
-                    // 2. Normalize IDs by removing potential prefixes
-                    const normalizedSettingId = s.option_id.replace(/^opt_/, '');
-                    const normalizedOptId = opt.id.replace(/^opt_/, '');
-                    if (normalizedSettingId === normalizedOptId) return true;
-                    
-                    // 3. Name match (case insensitive)
-                    if (s.option_name && opt.title && 
-                        s.option_name.toLowerCase() === opt.title.toLowerCase()) return true;
-                    
-                    return false;
-                  });
-                  // ADD THESE DEBUG LOGS RIGHT AFTER THE ABOVE PROCESSING:
-                  // //console.log("Image association settings being loaded:", imageAssociationSettings);
-                  // //console.log("Options with image associations:", transformedOptions.filter(opt => opt.imageAssociation));
-                  // //console.log(`Option ${opt.title} (${opt.id}) association setting:`, setting);
-                  
-                  if (setting) {
-                    // Convert to explicit boolean to avoid any "undefined" issues
-                    const isEnabled = setting.enabled === true || setting.enabled === "true";
-                    return {
-                      ...opt,
-                      imageAssociation: isEnabled
-                    };
-                  }
-                  
-                  // Explicitly set to false if no setting found
-                  return {
-                    ...opt,
-                    imageAssociation: false
-                  };
-                });
-              }
-            } catch (e) {
-              ////console.error("Failed to parse image association settings:", e);
-              
-              // Ensure all options have explicit imageAssociation value
-              transformedOptions = transformedOptions.map(opt => ({
-                ...opt,
-                imageAssociation: false
-              }));
-            }
-          } else {
-            // If no image association settings found, ensure all options have explicit imageAssociation set to false
-            transformedOptions = transformedOptions.map(opt => ({
-              ...opt,
-              imageAssociation: false
+      for (const variant of product.variants) {
+        let price = 0;
+        let prices: any[] = [];
+
+        if (variant.calculated_price && variant.calculated_price.calculated_amount) {
+          price = variant.calculated_price.calculated_amount;
+          prices = [{ amount: price, currency_code: variant.calculated_price.currency_code || 'inr' }];
+        } else if (variant.prices && Array.isArray(variant.prices) && variant.prices.length > 0) {
+          prices = variant.prices.map((p: any) => ({ amount: p.amount, currency_code: p.currency_code || 'inr' }));
+          const inrPrice = prices.find(p => p.currency_code === 'inr');
+          price = inrPrice ? inrPrice.amount : prices[0].amount;
+        } else {
+          price = 0;
+          prices = [{ amount: 0, currency_code: 'inr' }];
+        }
+
+        // ✅ Use inventory_quantity directly — no API call needed
+        const inventoryItemId = variant.inventory_items?.[0]?.inventory_item_id || null;
+        const stock = variant.inventory_quantity ?? 0;
+
+        let optionValues: OptionValue[] = [];
+        if (variant.options) {
+          if (Array.isArray(variant.options)) {
+            optionValues = variant.options.map((optVal: any) => ({
+              optionId: optVal.option_id || (optVal.option && optVal.option.id),
+              optionName: (optVal.option && optVal.option.title) || optionMap[optVal.option_id] || 'Option',
+              value: optVal.value
+            }));
+          } else if (typeof variant.options === 'object') {
+            optionValues = Object.entries(variant.options).map(([key, value]) => {
+              const matchingOption = transformedOptions.find(opt => opt.title === key);
+              return { optionId: matchingOption?.id || '', optionName: key, value: String(value) };
+            });
+          }
+        } else {
+          const titleParts = variant.title.split(/\s*\/\s*/).map((part: string) => part.trim());
+          if (transformedOptions.length === titleParts.length) {
+            optionValues = transformedOptions.map((option, index) => ({
+              optionId: option.id, optionName: option.title, value: titleParts[index]
             }));
           }
-          
-          
-          // Log all options after processing
-          ////console.log("Transformed options with association settings:", transformedOptions);
-        } else {
-          // Create default Color and Size options if none exist
-          transformedOptions = [
-            {
-              id: generateUUID(),
-              title: 'Color',
-              optionValues: [],
-              imageAssociation: false
-            },
-            {
-              id: generateUUID(),
-              title: 'Size',
-              optionValues: [],
-              imageAssociation: false
-            }
-          ];
         }
-        
-        // Add at least one empty option if none exist
-        if (transformedOptions.length === 0) {
-          transformedOptions.push({
-            id: generateUUID(),
-            title: '',
-            optionValues: [],
-            imageAssociation: false
-          });
+
+        let cost_Price = 0;
+        if (variant.metadata && variant.metadata.cost_price) {
+          cost_Price = typeof variant.metadata.cost_price === 'string'
+            ? parseFloat(variant.metadata.cost_price) || 0
+            : variant.metadata.cost_price || 0;
         }
-        
-        // Extract shipping info from metadata
-        // let shippingDays = '7-10';
-        // let handlingTime = '2-3';
-        
-        // if (product.metadata && product.metadata.fulfillment_type) {
-        //   try {
-        //     const fulfillmentInfo = JSON.parse(product.metadata.fulfillment_type);
-        //     if (typeof fulfillmentInfo === 'object') {
-        //       shippingDays = fulfillmentInfo.shipping_time || '7-10';
-        //       handlingTime = fulfillmentInfo.handling_time || '2-3';
-        //     }
-        //   } catch (e) {
-        //     ////console.error("Error parsing fulfillment_type:", e);
-        //   }
-        // }
 
-        // Extract shipping info from metadata
-        let shippingDays = '7-10';
-        let handlingTime = '2-3';
-        
-        if (product.metadata && product.metadata.fulfillment_type) {
-          try {
-            const fulfillmentInfo = JSON.parse(product.metadata.fulfillment_type);
-            if (typeof fulfillmentInfo === 'object') {
-              // Extract just the numeric part from strings like "2-3 business days"
-              if (fulfillmentInfo.shipping_time) {
-                const shippingMatch = fulfillmentInfo.shipping_time.match(/(\d+-?\d*)/);
-                shippingDays = shippingMatch ? shippingMatch[1] : '7-10';
-              }
-              
-              if (fulfillmentInfo.handling_time) {
-                const handlingMatch = fulfillmentInfo.handling_time.match(/(\d+-?\d*)/);
-                handlingTime = handlingMatch ? handlingMatch[1] : '2-3';
-              }
-            }
-          } catch (e) {
-            console.error("Error parsing fulfillment_type:", e);
-          }
-        }
-        // Transform variants to match component format
-        const transformedVariants: Variant[] = [];
-
-        
-        
-        if (product.variants && product.variants.length > 0) {
-          // Create a mapping of option IDs to their titles for easier reference
-          const optionMap: Record<string, string> = {};
-          if (product.options) {
-            product.options.forEach((opt: any) => {
-              optionMap[opt.id] = opt.title;
-            });
-          }
-
-          const newInventoryLevels: Record<string, any[]> = {};
-          
-          // Now process each variant
-          for (const variant of product.variants) {
-            // Extract price from the calculated_price in the variant
-            let price = 0;
-            let prices: any[] = [];
-
-            // Add this right after processing each variant to see the metadata structure
-            //console.log(`Variant ${variant.id} metadata:`, variant.metadata);
-            if (variant.metadata && variant.metadata.cost_price) {
-              //console.log(`Found cost_price in metadata: ${variant.metadata.cost_price}`);
-            }
-            
-            // Check for calculated_price structure first
-            if (variant.calculated_price && variant.calculated_price.calculated_amount) {
-              price = variant.calculated_price.calculated_amount;
-              prices = [{
-                amount: price,
-                currency_code: variant.calculated_price.currency_code || 'inr'
-              }];
-            } 
-            // Fall back to direct prices array if available
-            else if (variant.prices && Array.isArray(variant.prices) && variant.prices.length > 0) {
-              prices = variant.prices.map((p: any) => ({
-                amount: p.amount,
-                currency_code: p.currency_code || 'inr'
-              }));
-              
-              // Find the INR price if possible
-              const inrPrice = prices.find(p => p.currency_code === 'inr');
-              if (inrPrice) {
-                price = inrPrice.amount;
-              } else {
-                price = prices[0].amount;
-              }
-            } else {
-              price = 0;
-              prices = [{
-                amount: 0,
-                currency_code: 'inr'
-              }];
-            }
-            
-            // Extract inventory/stock quantity from proper field
-            let stock = 0;          
-            const inventoryItemId = variant.inventory_items?.[0]?.inventory_item_id || null;
-
-            if (inventoryItemId) {
-              try {
-                const invRes = await fetchInventoryLevels({ inventoryItemId });
-                const invLevel = invRes.inventory_levels?.[0];
-                if (invLevel) {
-                  stock = invLevel.stocked_quantity ?? 0;
-
-                  // Track inventory level for later sync
-                  newInventoryLevels[inventoryItemId] = [invLevel];
-                }
-              } catch (invErr) {
-                ////console.log(`Failed to fetch inventory for variant ${variant.id}:`, invErr);
-              }
-            } else if (variant.inventory_quantity !== undefined) {
-              stock = variant.inventory_quantity;
-            }
-            
-            // Extract option values from the variant - handle different API formats
-            let optionValues: OptionValue[] = [];
-            
-            if (variant.options) {
-              if (Array.isArray(variant.options)) {
-                optionValues = variant.options.map((optVal: any) => {
-                  return {
-                    optionId: optVal.option_id || (optVal.option && optVal.option.id),
-                    optionName: (optVal.option && optVal.option.title) || 
-                              optionMap[optVal.option_id] || 'Option',
-                    value: optVal.value
-                  };
-                });
-              } else if (typeof variant.options === 'object') {
-                // Handle object format of options
-                optionValues = Object.entries(variant.options).map(([key, value]) => {
-                  const matchingOption = transformedOptions.find(opt => opt.title === key);
-                  return {
-                    optionId: matchingOption?.id || '',
-                    optionName: key,
-                    value: String(value)
-                  };
-                });
-              }
-            } else {
-              // Try to parse from the variant title if needed
-              const titleParts = variant.title.split(/\s*\/\s*/).map((part: string) => part.trim());
-              
-              if (transformedOptions.length === titleParts.length) {
-                optionValues = transformedOptions.map((option, index) => {
-                  return {
-                    optionId: option.id,
-                    optionName: option.title,
-                    value: titleParts[index]
-                  };
-                });
-              }
-            }
-            
-            let cost_Price = 0;
-            if (variant.metadata && variant.metadata.cost_price) {
-              cost_Price = typeof variant.metadata.cost_price === 'string' 
-                ? parseFloat(variant.metadata.cost_price) || 0 
-                : variant.metadata.cost_price || 0;
-            }
-            
-            transformedVariants.push({
-              id: variant.id,
-              title: variant.title,
-              price: price,
-              prices: prices,
-              stock: stock,
-              sku: variant.sku || '',
-              allowBackorder: Boolean(variant.allow_backorder),
-              manageInventory: variant.manage_inventory !== false,
-              optionValues,
-              inventoryItemId,
-               cost_price: cost_Price,
-              metadata: variant.metadata || {} // Store original metadata
-            });
-          }
-        }
-        
-        // Make sure all option values discovered in variants are added to options
-        const completeTransformedOptions = addMissingOptionValues(transformedOptions, transformedVariants);
-
-        // Transform images (regular product images)
-        const transformedMedia: MediaItem[] = product.images?.map((img: any, index: number) => {
-          // Ensure we have the full URL for each image
-          let imgUrl = img.url;
-          
-          ////console.log(`Processing image ${index}:`, img);
-          
-          return {
-            file: null,
-            url: imgUrl,
-            rank: img.rank || index,
-            id: img.id, // Keep the image ID
-            isNew: false,
-            colorValue: img.metadata?.color // Add color association if available
-          };
-        }) || [];
-
-        // ✅ ADD THESE DEBUG LOGS HERE (after transformedMedia is created)
-        console.log("=== IMAGE ID DEBUGGING ===");
-        console.log("Product images from API:", product.images);
-        console.log("Transformed media items:", transformedMedia);
-        transformedMedia.forEach((item, i) => {
-          console.log(`Image ${i}:`, {
-            id: item.id,
-            url: item.url,
-            isNew: item.isNew
-          });
+        transformedVariants.push({
+          id: variant.id,
+          title: variant.title,
+          price,
+          prices,
+          stock,
+          sku: variant.sku || '',
+          allowBackorder: Boolean(variant.allow_backorder),
+          manageInventory: variant.manage_inventory !== false,
+          optionValues,
+          inventoryItemId,
+          cost_price: cost_Price,
+          metadata: variant.metadata || {}
         });
-        console.log("=== END IMAGE DEBUGGING ===");
-        // //console.log("Product Images:", product.images);
-        // //console.log("Transformed Media Initial:", transformedMedia);
-        // Process variant-specific image associations
-        const variantSpecificImages: MediaItem[] = [];
+      }
+    }
+    lap('variants transformed (NO inventory fetches)');
 
-        if (product.variants && Array.isArray(product.variants)) {
-          // Process each variant to look for image associations
-          product.variants.forEach(variant => {
-            ////console.log(`Processing variant ${variant.id} for image associations:`, variant);
-            
-            // First check if this variant has any direct image associations in its metadata
-            let variantImageIds: string[] = [];
-            let variantImageUrls: string[] = [];
-            
-            if (variant.metadata) {
-              ////console.log(`Variant ${variant.id} metadata:`, variant.metadata);
-              
-              // Try to get image IDs first (preferred)
-              if (variant.metadata.variant_image_ids) {
-                try {
-                  const parsedIds = typeof variant.metadata.variant_image_ids === 'string' 
-                    ? JSON.parse(variant.metadata.variant_image_ids) 
-                    : variant.metadata.variant_image_ids;
-                    
-                  if (Array.isArray(parsedIds)) {
-                    variantImageIds = parsedIds;
-                  }
-                } catch (e) {
-                  ////console.error(`Failed to parse variant_image_ids for variant ${variant.id}:`, e);
-                }
-              }
-              
-              // Fall back to URLs if IDs not available
-              if (variant.metadata.variant_images) {
-                try {
-                  const parsedUrls = typeof variant.metadata.variant_images === 'string' 
-                    ? JSON.parse(variant.metadata.variant_images) 
-                    : variant.metadata.variant_images;
-                    
-                  if (Array.isArray(parsedUrls)) {
-                    variantImageUrls = parsedUrls;
-                  }
-                } catch (e) {
-                  ////console.error(`Failed to parse variant_images for variant ${variant.id}:`, e);
-                }
-              }
-              
-              // Handle color_images array
-              if (variant.metadata.color_images) {
-                try {
-                  let colorImages;
-                  
-                  if (typeof variant.metadata.color_images === 'string') {
-                    colorImages = JSON.parse(variant.metadata.color_images);
-                  } else {
-                    colorImages = variant.metadata.color_images;
-                  }
-                  
-                  ////console.log(`Color images for variant ${variant.id}:`, colorImages);
-                  
-                  if (Array.isArray(colorImages)) {
-                    // Extract the image IDs and URLs
-                    colorImages.forEach(colorImg => {
-                      if (colorImg.imageId) {
-                        // Find a matching option value for this color
-                        const colorOption = variant.options?.find(ov => 
-                          isColorOption(ov.option?.title || ov.option_name || '') && 
-                          ov.value === colorImg.color
-                        );
-                        
-                        const colorOptionName = colorOption?.option?.title || 
-                                              colorOption?.option_name || 
-                                              'Color';
-                        
-                        if (colorOption) {
-                          ////console.log(`Found color option match for ${colorImg.color}:`, colorOption);
-                          
-                          // Try to find a matching image in the main images array first
-                          let matchingImage = transformedMedia.find(img => {
-                            // Try various match methods
-                            if (img.id && colorImg.imageId) {
-                              return imageIdsMatch(img.id, colorImg.imageId);
-                            }
-                            
-                            // If URLs are available, try matching by URL
-                            if (img.url && colorImg.url) {
-                              return img.url === colorImg.url;
-                            }
-                            
-                            return false;
-                          });
-                          
-                          if (matchingImage) {
-                            ////console.log(`Found matching image for color ${colorImg.color}:`, matchingImage);
-                            
-                            // Add option association to existing image
-                            matchingImage.variantInfo = matchingImage.variantInfo || {};
-                            matchingImage.variantInfo.optionName = colorOptionName;
-                            matchingImage.variantInfo.optionValues = [colorImg.color];
-                            matchingImage.colorValue = colorImg.color;
-                          } else {
-                            ////console.log(`No matching image found for color ${colorImg.color}, adding as new`);
-                            
-                            // Use imageId from colorImg if available, otherwise use a URL
-                            let imageUrl = colorImg.url || '';
-                            
-                            // Skip blob URLs or construct a proper URL
-                            if (imageUrl.startsWith('blob:')) {
-                              // Try to find a server URL in product.images
-                              const serverImage = product.images?.find(img => {
-                                return img.id === colorImg.imageId;
-                              });
-                              
-                              if (serverImage) {
-                                imageUrl = serverImage.url;
-                              } else {
-                                ////console.warn(`Could not find server URL for color image ${colorImg.imageId}`);
-                                // Try to construct URL from image ID
-                                imageUrl = `${API_BASE_URL}/static/${colorImg.imageId}`;
-                              }
-                            }
-                            
-                            if (imageUrl && !imageUrl.startsWith('blob:')) {
-                              variantSpecificImages.push({
-                                file: null,
-                                url: imageUrl,
-                                rank: transformedMedia.length + variantSpecificImages.length,
-                                id: colorImg.imageId || `color-${colorImg.color}-${Date.now()}`,
-                                isNew: false,
-                                colorValue: colorImg.color,
-                                variantInfo: {
-                                  optionName: colorOptionName,
-                                  optionValues: [colorImg.color]
-                                }
-                              });
-                            }
-                          }
-                        }
-                      }
-                    });
-                  }
-                } catch (e) {
-                  //console.error("Failed to parse color images:", e);
-                }
-              }
+    const completeTransformedOptions = addMissingOptionValues(transformedOptions, transformedVariants);
+    lap('options completed');
 
-              // ===== NEW CODE: Handle option_images array (for all option types) =====
-              if (variant.metadata.option_images) {
-                try {
-                  let optionImages;
-                  
-                  if (typeof variant.metadata.option_images === 'string') {
-                    optionImages = JSON.parse(variant.metadata.option_images);
-                  } else {
-                    optionImages = variant.metadata.option_images;
-                  }
-                  
-                  ////console.log(`Option images for variant ${variant.id}:`, optionImages);
-                  
-                  if (Array.isArray(optionImages)) {
-                    // Process each option image entry
-                    // REPLACE the option images processing section in edit-product.tsx (around line 720-750)
-                    // Find this section and replace it:
+    // Transform images
+    const transformedMedia: MediaItem[] = product.images?.map((img: any, index: number) => ({
+      file: null,
+      url: img.url,
+      rank: img.rank || index,
+      id: img.id,
+      isNew: false,
+      colorValue: img.metadata?.color
+    })) || [];
+    lap(`images transformed (${transformedMedia.length} images)`);
 
-                    optionImages.forEach(optImg => {
-                      if (optImg.imageId) {
-                        const optionName = optImg.option_name;
-                        const optionValue = optImg.option_value;
-                        
-                        if (optionName && optionValue) {
-                          // ADD THIS DEBUG LOG:
-                          // console.log(`Attempting to match image ID: "${optImg.imageId}" with available images:`, 
-                          //   transformedMedia.map(img => ({id: img.id, url: img.url}))
-                          // );
-                          
-                          ////console.log(`Processing option image for ${optionName}: ${optionValue}`, optImg);
-                          
-                          // Find the matching image by ID first
-                          let matchingImage = transformedMedia.find(img => img.id === optImg.imageId);
-                          
-                          // If not found by ID, try to match by URL
-                          if (!matchingImage) {
-                            const targetUrl = optImg.url;
-                            matchingImage = transformedMedia.find(img => img.url === targetUrl);
-                            ////console.log(`Image ${optImg.imageId} not found by ID, searching by URL: ${targetUrl}`);
-                            
-                            if (matchingImage) {
-                              ////console.log(`Found matching image by URL:`, matchingImage);
-                            }
-                          }
-                          
-                          if (matchingImage) {
-                            // CRITICAL FIX: Set the colorValue and variantInfo on the existing image
-                            matchingImage.colorValue = optionValue;
-                            matchingImage.variantInfo = {
-                              optionName: optionName,
-                              optionValues: [optionValue]
-                            };
-                            
-                            ////console.log(`Successfully set colorValue "${optionValue}" on image:`, matchingImage.id);
-                          } else {
-                            ////console.log(`No matching image found for ID: ${optImg.imageId}, URL: ${optImg.url}`);
-                            
-                            // If we can't find the image by ID or URL, create a new media item
-                            const newMediaItem: MediaItem = {
-                              id: optImg.imageId,
-                              url: optImg.url,
-                              rank: transformedMedia.length,
-                              isNew: false,
-                              colorValue: optionValue,
-                              variantInfo: {
-                                optionName: optionName,
-                                optionValues: [optionValue]
-                              }
-                            };
-                            
-                            transformedMedia.push(newMediaItem);
-                            ////console.log(`Created new media item for missing image:`, newMediaItem);
-                          }
-                        }
-                      }
-                    });
-                  }
-                } catch (e) {
-                  ////console.error("Failed to parse option images:", e);
+    // Process variant image associations
+    const variantSpecificImages: MediaItem[] = [];
+    if (product.variants && Array.isArray(product.variants)) {
+      product.variants.forEach(variant => {
+        if (!variant.metadata) return;
+
+        if (variant.metadata.option_images) {
+          try {
+            let optionImages = typeof variant.metadata.option_images === 'string'
+              ? JSON.parse(variant.metadata.option_images)
+              : variant.metadata.option_images;
+
+            if (Array.isArray(optionImages)) {
+              optionImages.forEach(optImg => {
+                if (!optImg.imageId) return;
+                const optionName = optImg.option_name;
+                const optionValue = optImg.option_value;
+                if (!optionName || !optionValue) return;
+
+                // Skip if already associated
+                let matchingImage = transformedMedia.find(img => img.id === optImg.imageId);
+                if (!matchingImage) {
+                  matchingImage = transformedMedia.find(img => img.url === optImg.url);
                 }
-              }
-              // ===== END NEW CODE =====
-            }
-            
-            // //console.log(`Variant ${variant.id} image associations:`, {
-            //   ids: variantImageIds,
-            //   urls: variantImageUrls
-            // });
-            
-            // Process direct variant-specific image IDs
-            if (variantImageIds.length > 0) {
-              variantImageIds.forEach(imageId => {
-                if (!imageId) return;
-                
-                // Find the image in the already loaded images by ID or pattern match
-                const matchingImage = transformedMedia.find(img => {
-                  if (!img.id || !imageId) return false;
-                  return imageIdsMatch(img.id, imageId);
-                });
-                
                 if (matchingImage) {
-                  // Add variant association to this image
-                  matchingImage.variantInfo = matchingImage.variantInfo || {};
-                  matchingImage.variantInfo.variantId = variant.id;
-                  ////console.log(`Associated image ${imageId} with variant ${variant.id}`);
-                } else {
-                  ////console.warn(`Image ${imageId} not found in loaded images, will check URLs instead`);
-                  
-                  // Try to find this image in the product images by ID
-                  const serverImage = product.images?.find(img => imageIdsMatch(img.id, imageId));
-                  
-                  if (serverImage) {
-                    // Add as a new media item
-                    variantSpecificImages.push({
-                      file: null,
-                      url: serverImage.url,
-                      rank: transformedMedia.length + variantSpecificImages.length,
-                      id: serverImage.id,
-                      isNew: false,
-                      variantInfo: { variantId: variant.id }
-                    });
+                  if (!matchingImage.variantInfo) {
+                    matchingImage.colorValue = optionValue;
+                    matchingImage.variantInfo = { optionName, optionValues: [optionValue] };
                   }
+                } else {
+                  transformedMedia.push({
+                    id: optImg.imageId, url: optImg.url, rank: transformedMedia.length,
+                    isNew: false, colorValue: optionValue,
+                    variantInfo: { optionName, optionValues: [optionValue] }
+                  });
                 }
               });
             }
+          } catch (e) {}
+        }
+      });
+    }
+    lap('variant image associations DONE');
 
-   // Fall back to URLs if IDs didn't match or aren't available
-   if (variantImageUrls.length > 0) {
-    variantImageUrls.forEach(imageUrl => {
-      if (!imageUrl) return;
-      
-      // Skip blob URLs as they won't be valid anymore
-      if (imageUrl.startsWith('blob:')) {
-        ////console.warn(`Skipping blob URL: ${imageUrl}`);
-        return;
-      }
-      
-      // Find the image in the already loaded images by URL
-      const matchingImage = transformedMedia.find(img => img.url === imageUrl);
-      
-      if (matchingImage) {
-        // Add variant association to this image
-        matchingImage.variantInfo = matchingImage.variantInfo || {};
-        matchingImage.variantInfo.variantId = variant.id;
-        ////console.log(`Associated image with URL ${imageUrl} with variant ${variant.id}`);
-      } else {
-        // If the image isn't in the gallery, add it as a new item
-        ////console.log(`Adding new image with URL ${imageUrl} for variant ${variant.id}`);
-        
-        // Try to find a proper image ID from product.images
-        const serverImage = product.images?.find(img => img.url === imageUrl);
-        
-        variantSpecificImages.push({
-          file: null,
-          url: imageUrl,
-          rank: transformedMedia.length + variantSpecificImages.length,
-          id: serverImage?.id || `variant-${variant.id}-${Date.now()}`,
-          isNew: false,
-          variantInfo: { variantId: variant.id }
-        });
+    const allMediaItems = [...transformedMedia];
+    variantSpecificImages.forEach(vsImage => {
+      if (!allMediaItems.some(item => item.url === vsImage.url)) {
+        allMediaItems.push(vsImage);
       }
     });
-  }
-});
-}
+    setMediaItems(allMediaItems);
+    lap(`mediaItems set (${allMediaItems.length} total)`);
 
-// Combine regular images with variant-specific images, avoiding duplicates
-const allMediaItems = [...transformedMedia];
-
-// Only add variant-specific images that don't already exist in the gallery
-variantSpecificImages.forEach(vsImage => {
-// Check if this image URL already exists in allMediaItems
-const exists = allMediaItems.some(item => item.url === vsImage.url);
-if (!exists) {
-  allMediaItems.push(vsImage);
-}
-});
-
-////console.log("Final media items after processing:", allMediaItems);
-
-// Set the combined images to the state
-setMediaItems(allMediaItems);
-
-// ADD THESE DEBUG LOGS RIGHT AFTER setMediaItems:
-////console.log("=== EDIT PRODUCT LOAD DEBUG ===");
-// //console.log("Product variants metadata:", product.variants?.map(v => ({
-//   id: v.id,
-//   title: v.title,
-//   metadata: v.metadata
-// })));
-// //console.log("Final media items loaded:", allMediaItems.map(item => ({
-//   id: item.id,
-//   url: item.url,
-//   variantInfo: item.variantInfo,
-//   colorValue: item.colorValue
-// })));
-
-// Process product details from metadata
-let productDetails: ProductDetail[] = [{ id: generateUUID(), text: '' }];
-let storyBehindDesign = '';
-
-if (product.metadata) {
-// Extract product details
-if (product.metadata.product_details) {
-  try {
-    const parsedDetails = JSON.parse(product.metadata.product_details);
-    if (Array.isArray(parsedDetails) && parsedDetails.length > 0) {
-      productDetails = parsedDetails.map(detail => ({
-        id: generateUUID(),
-        text: detail
-      }));
+    // Process product details
+    let productDetails: ProductDetail[] = [{ id: generateUUID(), text: '' }];
+    let storyBehindDesign = '';
+    if (product.metadata) {
+      if (product.metadata.product_details) {
+        try {
+          const parsedDetails = JSON.parse(product.metadata.product_details);
+          if (Array.isArray(parsedDetails) && parsedDetails.length > 0) {
+            productDetails = parsedDetails.map(detail => ({ id: generateUUID(), text: detail }));
+          }
+        } catch (e) {}
+      }
+      if (product.metadata.description_story) {
+        storyBehindDesign = product.metadata.description_story;
+      }
     }
-  } catch (e) {
-    ////console.error("Failed to parse product details:", e);
+
+    form.reset({
+      title: product.title || '',
+      subtitle: product.subtitle || '',
+      handle: product.handle || '',
+      description: product.description || '',
+      status: product.status || 'published',
+      thumbnail: product.thumbnail || '',
+      discountable: product.discountable ?? true,
+      options: completeTransformedOptions,
+      variants: transformedVariants,
+      weight: product.weight?.toString() || '',
+      length: product.length?.toString() || '',
+      width: product.width?.toString() || '',
+      height: product.height?.toString() || '',
+      material: product.material || '',
+      origin_country: product.origin_country || '',
+      category_ids: product.categories?.map(cat => cat.id) || [],
+      productDetails,
+      storyBehindDesign,
+      shippingDays,
+      handlingTime,
+      locationId: DEFAULT_LOCATION_ID
+    });
+    lap('form.reset DONE');
+
+    const associatedOptions = getImageAssociatedOptions();
+    setImageAssociatedOptions(associatedOptions);
+    if (associatedOptions.length > 0) {
+      setSelectedOption(associatedOptions[0]);
+      if (associatedOptions[0].optionValues?.length > 0) {
+        setSelectedOptionValue(associatedOptions[0].optionValues[0]);
+      }
+    }
+
+    setHasUnsavedVariantChanges(false);
+    setProductLoaded(true);
+    setIsLoading(false);
+    lap('✅ FULLY LOADED');
+    console.log(`🏁 Total load time: ${(performance.now() - t0).toFixed(0)}ms`);
+
+  } catch (error: any) {
+    console.error('Error loading product:', error);
+    setError('Failed to load product. Please try again.');
+    setIsLoading(false);
   }
-}
-
-// Extract story behind design
-if (product.metadata.description_story) {
-  storyBehindDesign = product.metadata.description_story;
-}
-}
-
-// Reset form with fetched values
-form.reset({
-title: product.title || '',
-subtitle: product.subtitle || '',
-handle: product.handle || '',
-description: product.description || '',
-status: product.status || 'published',
-thumbnail: product.thumbnail || '',
-discountable: product.discountable ?? true,
-options: completeTransformedOptions,
-variants: transformedVariants,
-weight: product.weight?.toString() || '',
-length: product.length?.toString() || '',
-width: product.width?.toString() || '',
-height: product.height?.toString() || '',
-material: product.material || '',
-origin_country: product.origin_country || '',
-category_ids: product.categories?.map(cat => cat.id) || [], // Load all category IDs
-//category_id: product.categories && product.categories.length > 0 ? product.categories[0].id : '',
-productDetails,
-storyBehindDesign,
-shippingDays,
-handlingTime,
-locationId: DEFAULT_LOCATION_ID
-});
-
-// Log the options after form reset
-////console.log("Options after form reset:", form.getValues('options'));
-
-// Log the image association options
-const associatedOptions = getImageAssociatedOptions();
-////console.log("Image associated options after load:", associatedOptions);
-setImageAssociatedOptions(associatedOptions);
-
-// Set initial selected option and value if we have options with image associations
-if (associatedOptions.length > 0) {
-setSelectedOption(associatedOptions[0]);
-if (associatedOptions[0].optionValues && associatedOptions[0].optionValues.length > 0) {
-  setSelectedOptionValue(associatedOptions[0].optionValues[0]);
-}
-}
-
-// Reset the unsaved changes flag after loading
-setHasUnsavedVariantChanges(false);
-
-// Mark product as loaded to prevent multiple fetches
-setProductLoaded(true);
-setIsLoading(false);
-} catch (error: any) {
-////console.error('Error loading product:', error);
-setError('Failed to load product. Please try again.');
-setIsLoading(false);
-}
 }
 
 if (id) {
@@ -2534,33 +2020,29 @@ const onSubmit = async (values: ProductFormValues) => {
       const updatedMedia = [...mediaItems];
       
       // Upload each new image file first and update IDs
-      for (let i = 0; i < updatedMedia.length; i++) {
-        const item = updatedMedia[i];
-        
-        if (item && item.file) {
-          try {
-            //console.log(`Uploading image ${i} with variant info:`, item.variantInfo);
+      // ✅ FIX: Upload all new images in parallel instead of one-by-one
+      try {
+        const uploadResults = await Promise.all(
+          updatedMedia.map(async (item, i) => {
+            if (!item?.file) return item; // already on server, skip
             const uploadResult = await uploadFile(item.file, item.variantInfo);
-            
-            // Update the media item with server values
-            updatedMedia[i] = {
-              ...updatedMedia[i],
+            return {
+              ...item,
               url: uploadResult.url,
               id: uploadResult.id,
               file: null,
-              isNew: false
+              isNew: false,
             };
-            
-            //console.log(`Updated image ${i} with new ID: ${uploadResult.id}`);
-          } catch (uploadError) {
-            //console.error(`Failed to upload image ${i}:`, uploadError);
-            setError(`Failed to upload image: ${uploadError.message || 'Unknown error'}`);
-            setIsSubmitting(false);
-            return;
-          }
-        }
+          })
+        );
+        // Write results back into updatedMedia in-place so the rest of onSubmit still works
+        uploadResults.forEach((result, i) => { updatedMedia[i] = result; });
+      } catch (uploadError: any) {
+        setError(`Failed to upload image: ${uploadError.message || 'Unknown error'}`);
+        setIsSubmitting(false);
+        return;
       }
-      
+
       // Update mediaItems with the uploaded images
       setMediaItems(updatedMedia);
       
@@ -2996,28 +2478,15 @@ const onSubmit = async (values: ProductFormValues) => {
                     //console.log("Updating product with data:", productData);
                     
                     // --- STEP 8.5: Delete images from server ---
-                      try {
-                        if (deletedImageIds && deletedImageIds.length > 0) {
-                          console.log(`Deleting ${deletedImageIds.length} images from server...`);
-                          
-                          // Delete each image individually
-                          for (const imageId of deletedImageIds) {
-                            try {
-                              await uploadProductImage({
-                                productId: id,
-                                imageId: imageId,
-                                action: 'delete'
-                              });
-                              console.log(`Successfully deleted image: ${imageId}`);
-                            } catch (deleteError) {
-                              console.error(`Failed to delete image ${imageId}:`, deleteError);
-                              // Continue deleting other images even if one fails
-                            }
-                          }
-                        }
-                      } catch (imageDeleteError) {
-                        console.error('Error deleting images:', imageDeleteError);
-                        // Don't fail the entire save operation if image deletion fails
+                      // ✅ FIX: Delete all images in parallel instead of one-by-one
+                      if (deletedImageIds && deletedImageIds.length > 0) {
+                        console.log(`Deleting ${deletedImageIds.length} images in parallel...`);
+                        await Promise.allSettled(
+                          deletedImageIds.map(imageId =>
+                            uploadProductImage({ productId: id, imageId, action: 'delete' })
+                              .catch(err => console.error(`Failed to delete image ${imageId}:`, err))
+                          )
+                        );
                       }
                     // --- STEP 9: Make API Calls ---
                     try {

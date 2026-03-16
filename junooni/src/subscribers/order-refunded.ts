@@ -21,7 +21,7 @@ export default async function orderRefundedHandler({
       entity: "order",
       fields: [
         "id",
-        "display_id",
+        "custom_display_id",
         "customer.*",
         "total",
         "original_total",
@@ -45,7 +45,7 @@ export default async function orderRefundedHandler({
 
     const order = orders[0];
     
-    console.log(`📋 Processing refund for order ${order.display_id}:`);
+    console.log(`📋 Processing refund for order ${order.custom_display_id}:`);
     console.log(`   Customer: ${order.customer?.id}`);
     console.log(`   Original Total: ${order.total}`);
     console.log(`   Refunded Total: ${order.summary?.refunded_total}`);
@@ -83,7 +83,7 @@ export default async function orderRefundedHandler({
         }
         
       } catch (deductError) {
-        console.error(`❌ Error deducting points for refunded order ${order.display_id}:`, deductError);
+        console.error(`❌ Error deducting points for refunded order ${order.custom_display_id}:`, deductError);
       }
     } else {
       console.log(`⏭️ No points to deduct: delivered=${wasDelivered}, loyaltyPromo=${hadLoyaltyPromo}, total=${originalTotal}`);

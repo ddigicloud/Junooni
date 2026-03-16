@@ -185,7 +185,7 @@ class InvoiceGeneratorService extends MedusaService({
     const vendorGroups = this.groupItemsByVendor(safeItems)
     const totalVendorPages = vendorGroups.size
 
-    const invoiceId = `INV-${invoice.display_id.toString().padStart(6, '0')}`
+    const invoiceId = `INV-${invoice.custom_display_id.toString().padStart(6, '0')}`
     const invoiceDate = new Date(invoice.created_at).toLocaleDateString()
 
     // Get company name from first vendor for header
@@ -528,7 +528,7 @@ class InvoiceGeneratorService extends MedusaService({
               width: '50%',
               stack: [
                 { text: `Invoice Number: ${invoiceId}`, style: 'invoiceDetailLeft', margin: [0, 0, 0, 4] },
-                { text: `Order Number: #${params.order.display_id}`, style: 'invoiceDetailLeft', margin: [0, 0, 0, 4] },
+                { text: `Order Number: #${params.order.custom_display_id}`, style: 'invoiceDetailLeft', margin: [0, 0, 0, 4] },
                 { text: `Nature of Transaction: ${gstBreakdown.isIntraState ? 'Intra-State' : 'Inter-State'}`, style: 'invoiceDetailLeft', margin: [0, 0, 0, 4] },
                 { text: `Place of Supply: ${params.order.shipping_address?.province?.toUpperCase() || 'N/A'}`, style: 'invoiceDetailLeft', margin: [0, 0, 0, 0] }
               ]

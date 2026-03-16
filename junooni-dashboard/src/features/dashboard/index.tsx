@@ -125,7 +125,7 @@ interface VendorOrderItem {
 
 interface VendorOrder {
   id: string
-  display_id: number
+  custom_display_id: number
   customer: {
     first_name: string
     last_name: string
@@ -622,7 +622,7 @@ const OnboardingProgressBanner = ({ onboardingStatus, vendorName }: {
   if (isDismissed) {
     return (
       <div 
-        className="flex items-center justify-between px-4 py-2 mb-6 border rounded-lg cursor-pointer border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors"
+        className="flex items-center justify-between px-4 py-2 mb-6 transition-colors border rounded-lg cursor-pointer border-amber-200 bg-amber-50 hover:bg-amber-100"
         onClick={() => {
           setIsDismissed(false);
           localStorage.removeItem('onboarding_banner_dismissed');
@@ -644,7 +644,7 @@ const OnboardingProgressBanner = ({ onboardingStatus, vendorName }: {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            className="h-7 text-xs px-3"
+            className="px-3 text-xs h-7"
             style={{ backgroundColor: BRAND.primary }}
             onClick={(e) => {
               e.stopPropagation();
@@ -660,10 +660,10 @@ const OnboardingProgressBanner = ({ onboardingStatus, vendorName }: {
   }
 
   return (
-    <div className="mb-6 overflow-hidden border border-amber-200 rounded-xl shadow-sm">
+    <div className="mb-6 overflow-hidden border shadow-sm border-amber-200 rounded-xl">
       {/* Header — always visible, click to collapse */}
       <div 
-        className="flex items-center justify-between px-4 py-3 cursor-pointer bg-amber-50 hover:bg-amber-100 transition-colors"
+        className="flex items-center justify-between px-4 py-3 transition-colors cursor-pointer bg-amber-50 hover:bg-amber-100"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
@@ -677,10 +677,10 @@ const OnboardingProgressBanner = ({ onboardingStatus, vendorName }: {
             </span>
           </div>
           {/* Inline mini progress */}
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="items-center hidden gap-2 sm:flex">
             <div className="w-24 h-1.5 bg-orange-200 rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full transition-all"
+                className="h-full transition-all rounded-full"
                 style={{ width: `${onboardingStatus.completionPercentage}%`, backgroundColor: BRAND.primary }}
               />
             </div>
@@ -690,7 +690,7 @@ const OnboardingProgressBanner = ({ onboardingStatus, vendorName }: {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            className="h-7 text-xs px-3 hidden sm:flex"
+            className="hidden px-3 text-xs h-7 sm:flex"
             style={{ backgroundColor: BRAND.primary }}
             onClick={(e) => {
               e.stopPropagation();
@@ -702,7 +702,7 @@ const OnboardingProgressBanner = ({ onboardingStatus, vendorName }: {
           </Button>
           {/* Dismiss */}
           <button
-            className="p-1 text-orange-400 rounded hover:text-amber-700 hover:bg-amber-200 transition-colors"
+            className="p-1 text-orange-400 transition-colors rounded hover:text-amber-700 hover:bg-amber-200"
             title="Dismiss for now"
             onClick={(e) => {
               e.stopPropagation();
@@ -850,7 +850,7 @@ const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: P
   // console.log('\n--- Filtering orders for today ---');
   const todayOrders = orders.filter(order => {
     const orderDate = new Date(order.created_at);
-    // console.log(`\nOrder #${order.display_id}:`);
+    // console.log(`\nOrder #${order.custom_display_id}:`);
     // console.log('  created_at string:', order.created_at);
     // console.log('  Order date object:', orderDate.toString());
     // console.log('  Order date ISO:', orderDate.toISOString());
@@ -995,19 +995,19 @@ const DashboardPage = () => {
     return ordersArray.map((order: any, index: number) => {
       try {
         
-        // Get display_id with better extraction
-        let display_id = 0;
-        if (order.display_id !== undefined && order.display_id !== null) {
-          display_id = parseInt(String(order.display_id)) || 0;
+        // Get custom_display_id with better extraction
+        let custom_display_id = 0;
+        if (order.custom_display_id !== undefined && order.custom_display_id !== null) {
+          custom_display_id = parseInt(String(order.custom_display_id)) || 0;
         } else {
           const numbers = order.id?.match(/\d+/g);
           if (numbers && numbers.length > 0) {
-            display_id = parseInt(numbers[numbers.length - 1]) || 0;
+            custom_display_id = parseInt(numbers[numbers.length - 1]) || 0;
           }
         }
 
-        if (display_id === 0) {
-          display_id = index + 1;
+        if (custom_display_id === 0) {
+          custom_display_id = index + 1;
         }
 
         // Safer customer data extraction
@@ -1081,7 +1081,7 @@ const DashboardPage = () => {
         
         const transformedOrder: VendorOrder = {
           id: order.id || `order_${index}`,
-          display_id: display_id,
+          custom_display_id: custom_display_id,
           customer: customer,
           created_at: created_at,
           
@@ -1122,7 +1122,7 @@ const DashboardPage = () => {
         // Return a minimal order object to prevent complete failure
         return {
           id: order.id || `order_${index}`,
-          display_id: index + 1,
+          custom_display_id: index + 1,
           customer: { first_name: "Guest", last_name: "", email: "customer@example.com" },
           created_at: new Date().toISOString(),
           vendor_total: 0,
@@ -1279,7 +1279,7 @@ const DashboardPage = () => {
               // console.log(`\n=== TRANSFORMING ORDER ${index + 1} ===`);
               // console.log('Raw order data:', order);
               // console.log('Order ID:', order.id);
-              // console.log('Order display_id:', order.display_id);
+              // console.log('Order custom_display_id:', order.custom_display_id);
               // console.log('Raw created_at:', order.created_at);
               // console.log('Type of created_at:', typeof order.created_at);
               
@@ -1299,7 +1299,7 @@ const DashboardPage = () => {
               
               const transformedOrder = {
                 id: order.id || `order_${index}`,
-                display_id: order.display_id || index + 1,
+                custom_display_id: order.custom_display_id || index + 1,
                 customer: {
                   first_name: order.customer?.first_name || order.billing_address?.first_name || "Guest",
                   last_name: order.customer?.last_name || order.billing_address?.last_name || "",
@@ -1678,7 +1678,7 @@ const DashboardPage = () => {
                                 className="text-sm font-semibold"
                                 style={{ color: BRAND.primary }}
                               >
-                                Order #{order.display_id}
+                                Order #{order.custom_display_id}
                               </span>
                               <span className="text-xs text-gray-500">{formatDate(order.created_at)}</span>
                             </div>
@@ -1698,12 +1698,12 @@ const DashboardPage = () => {
                               <StatusBadge status={order.fulfillment_status} />
                               <PaymentBadge status={order.payment_status} />
                               {order.has_returns && (
-                                <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50 border-orange-200">
+                                <Badge variant="outline" className="text-xs text-orange-600 border-orange-200 bg-orange-50">
                                   Return
                                 </Badge>
                               )}
                               {order.has_claims && (
-                                <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50 border-blue-200">
+                                <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50">
                                   Claim
                                 </Badge>
                               )}
@@ -1726,13 +1726,13 @@ const DashboardPage = () => {
                             <div className="flex-1 min-w-0">
                               {/* Order Header - Desktop */}
                               <div className="flex flex-col gap-2 mb-2 md:flex-row md:items-center md:justify-between">
-                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex items-center min-w-0 gap-2">
                                   <p className="text-sm font-medium">
                                     <span 
                                       className="font-semibold"
                                       style={{ color: BRAND.primary }}
                                     >
-                                      #{order.display_id}
+                                      #{order.custom_display_id}
                                     </span>
                                     <span className="mx-1">-</span>
                                     <span>{order.customer.first_name} {order.customer.last_name}</span>
@@ -1747,12 +1747,12 @@ const DashboardPage = () => {
                                   <StatusBadge status={order.fulfillment_status} />
                                   <PaymentBadge status={order.payment_status} />
                                   {order.has_returns && (
-                                    <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50 border-orange-200">
+                                    <Badge variant="outline" className="text-xs text-orange-600 border-orange-200 bg-orange-50">
                                       Return
                                     </Badge>
                                   )}
                                   {order.has_claims && (
-                                    <Badge variant="outline" className="text-xs text-blue-600 bg-blue-50 border-blue-200">
+                                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50">
                                       Claim
                                     </Badge>
                                   )}
@@ -1764,7 +1764,7 @@ const DashboardPage = () => {
                                       {formatPrice(order.vendor_total)}
                                     </p>
 
-                                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                                    <p className="flex items-center gap-1 text-xs text-gray-500">
                                       {order.vendor_items.reduce((acc, item) => acc + item.quantity, 0)}
                                       <span>
                                         item{order.vendor_items.reduce((acc, item) => acc + item.quantity, 0) !== 1 ? 's' : ''}

@@ -21,6 +21,7 @@ import { Route as auth500Import } from './routes/(auth)/500'
 
 // Create Virtual Routes
 
+const AuthCallbackIndexLazyImport = createFileRoute('/auth-callback/')()
 const errors503LazyImport = createFileRoute('/(errors)/503')()
 const errors500LazyImport = createFileRoute('/(errors)/500')()
 const errors404LazyImport = createFileRoute('/(errors)/404')()
@@ -135,6 +136,14 @@ const AuthenticatedRouteRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRoute,
 } as any)
+
+const AuthCallbackIndexLazyRoute = AuthCallbackIndexLazyImport.update({
+  id: '/auth-callback/',
+  path: '/auth-callback/',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/auth-callback/index.lazy').then((d) => d.Route),
+)
 
 const AuthenticatedIndexRoute = AuthenticatedIndexImport.update({
   id: '/',
@@ -707,6 +716,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexImport
       parentRoute: typeof AuthenticatedRouteImport
     }
+    '/auth-callback/': {
+      id: '/auth-callback/'
+      path: '/auth-callback'
+      fullPath: '/auth-callback'
+      preLoaderRoute: typeof AuthCallbackIndexLazyImport
+      parentRoute: typeof rootRoute
+    }
     '/_authenticated/designer/$id': {
       id: '/_authenticated/designer/$id'
       path: '/designer/$id'
@@ -1037,6 +1053,7 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404LazyRoute
   '/503': typeof errors503LazyRoute
   '/': typeof AuthenticatedIndexRoute
+  '/auth-callback': typeof AuthCallbackIndexLazyRoute
   '/designer/$id': typeof AuthenticatedDesignerIdLazyRoute
   '/designer/create': typeof AuthenticatedDesignerCreateLazyRoute
   '/orders/$id': typeof AuthenticatedOrdersIdLazyRoute
@@ -1087,6 +1104,7 @@ export interface FileRoutesByTo {
   '/404': typeof errors404LazyRoute
   '/503': typeof errors503LazyRoute
   '/': typeof AuthenticatedIndexRoute
+  '/auth-callback': typeof AuthCallbackIndexLazyRoute
   '/designer/$id': typeof AuthenticatedDesignerIdLazyRoute
   '/designer/create': typeof AuthenticatedDesignerCreateLazyRoute
   '/orders/$id': typeof AuthenticatedOrdersIdLazyRoute
@@ -1141,6 +1159,7 @@ export interface FileRoutesById {
   '/(errors)/500': typeof errors500LazyRoute
   '/(errors)/503': typeof errors503LazyRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/auth-callback/': typeof AuthCallbackIndexLazyRoute
   '/_authenticated/designer/$id': typeof AuthenticatedDesignerIdLazyRoute
   '/_authenticated/designer/create': typeof AuthenticatedDesignerCreateLazyRoute
   '/_authenticated/orders/$id': typeof AuthenticatedOrdersIdLazyRoute
@@ -1195,6 +1214,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/503'
     | '/'
+    | '/auth-callback'
     | '/designer/$id'
     | '/designer/create'
     | '/orders/$id'
@@ -1244,6 +1264,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/503'
     | '/'
+    | '/auth-callback'
     | '/designer/$id'
     | '/designer/create'
     | '/orders/$id'
@@ -1296,6 +1317,7 @@ export interface FileRouteTypes {
     | '/(errors)/500'
     | '/(errors)/503'
     | '/_authenticated/'
+    | '/auth-callback/'
     | '/_authenticated/designer/$id'
     | '/_authenticated/designer/create'
     | '/_authenticated/orders/$id'
@@ -1348,6 +1370,7 @@ export interface RootRouteChildren {
   errors404LazyRoute: typeof errors404LazyRoute
   errors500LazyRoute: typeof errors500LazyRoute
   errors503LazyRoute: typeof errors503LazyRoute
+  AuthCallbackIndexLazyRoute: typeof AuthCallbackIndexLazyRoute
   PagesAboutUsIndexLazyRoute: typeof PagesAboutUsIndexLazyRoute
   PagesCareersIndexLazyRoute: typeof PagesCareersIndexLazyRoute
   PagesCreatingProductsIndexLazyRoute: typeof PagesCreatingProductsIndexLazyRoute
@@ -1376,6 +1399,7 @@ const rootRouteChildren: RootRouteChildren = {
   errors404LazyRoute: errors404LazyRoute,
   errors500LazyRoute: errors500LazyRoute,
   errors503LazyRoute: errors503LazyRoute,
+  AuthCallbackIndexLazyRoute: AuthCallbackIndexLazyRoute,
   PagesAboutUsIndexLazyRoute: PagesAboutUsIndexLazyRoute,
   PagesCareersIndexLazyRoute: PagesCareersIndexLazyRoute,
   PagesCreatingProductsIndexLazyRoute: PagesCreatingProductsIndexLazyRoute,
@@ -1413,6 +1437,7 @@ export const routeTree = rootRoute
         "/(errors)/404",
         "/(errors)/500",
         "/(errors)/503",
+        "/auth-callback/",
         "/pages/about-us/",
         "/pages/careers/",
         "/pages/creating-products/",
@@ -1508,6 +1533,9 @@ export const routeTree = rootRoute
     "/_authenticated/": {
       "filePath": "_authenticated/index.tsx",
       "parent": "/_authenticated"
+    },
+    "/auth-callback/": {
+      "filePath": "auth-callback/index.lazy.tsx"
     },
     "/_authenticated/designer/$id": {
       "filePath": "_authenticated/designer/$id.lazy.tsx",

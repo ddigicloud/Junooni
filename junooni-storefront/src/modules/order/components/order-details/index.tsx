@@ -314,7 +314,7 @@ const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
               className="font-medium text-indigo-600"
               data-testid="order-id"
             >
-              #{order.display_id}
+              #{order.custom_display_id}
             </span>
           </p>
         </div>

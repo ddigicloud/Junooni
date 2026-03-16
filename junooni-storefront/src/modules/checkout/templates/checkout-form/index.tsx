@@ -18,25 +18,26 @@ export default async function CheckoutForm({
     return null
   }
 
-  const shippingMethods = await listCartShippingMethods(cart.id)
-  const paymentMethods = await listCartPaymentMethods(cart.region?.id ?? "")
+  // ✅ Don't let shipping failure kill the whole form
+  const [shippingMethods, paymentMethods] = await Promise.allSettled([
+    listCartShippingMethods(cart.id),
+    listCartPaymentMethods(cart.region?.id ?? ""),
+  ])
 
-  if (!shippingMethods || !paymentMethods) {
-    return null
-  }
+  const resolvedShipping =
+    shippingMethods.status === "fulfilled" ? shippingMethods.value : []
+  const resolvedPayment =
+    paymentMethods.status === "fulfilled" ? paymentMethods.value : []
 
   return (
+    <div className="space-y-6">
+      <StepIndicator cart={cart} />
       <div className="space-y-6">
-        {/* Step Indicator */}
-        <StepIndicator cart={cart} />
-        
-        {/* Form Steps */}
-        <div className="space-y-6">
-          <Addresses cart={cart} customer={customer} />
-          <Shipping cart={cart} availableShippingMethods={shippingMethods} />
-          <Payment cart={cart} availablePaymentMethods={paymentMethods} />
-          <Review cart={cart} />
-        </div>
+        <Addresses cart={cart} customer={customer} />
+        <Shipping cart={cart} availableShippingMethods={resolvedShipping} />
+        <Payment cart={cart} availablePaymentMethods={resolvedPayment} />
+        <Review cart={cart} />
       </div>
+    </div>
   )
 }

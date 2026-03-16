@@ -53,7 +53,7 @@ export const POST = async (
       files: input?.map((f) => ({
         filename: f.originalname,
         mimeType: f.mimetype,
-        content: f.buffer.toString("binary"),
+        content: f.buffer.toString("base64"),
         access: "public", // or "private" depending on your needs
       })),
     },

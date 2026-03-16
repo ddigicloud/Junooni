@@ -30,7 +30,7 @@ export async function POST(
         "total",
         "original_total",
         "currency_code",
-        "display_id",
+        "custom_display_id",
         "created_at",
         "summary.*",
         "fulfillments.*",
@@ -61,7 +61,7 @@ export async function POST(
         totalPointsFromOrders += pointsEarned;
         deliveredOrdersCount++;
         
-        console.log(`✅ Order ${order.display_id}: ${pointsEarned} points (total: ${orderTotal})`);
+        console.log(`✅ Order ${order.custom_display_id}: ${pointsEarned} points (total: ${orderTotal})`);
       }
     }
 

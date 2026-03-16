@@ -1124,26 +1124,28 @@ const PRICE_MAX = dynamicPriceRange.maxPrice
       )}
       
       {/* Price Range */}
-      <div>
-        <button
-          className="flex items-center justify-between w-full mb-3"
-          onClick={() => toggleSection('price')}
-        >
-          <h3 className="font-medium">Price Range</h3>
-          {expandedSections.price ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
-        
-        {expandedSections.price && (
-          <PriceFilter
-            min={dynamicPriceRange.minPrice}  // Use dynamic min instead of hardcoded
-            max={dynamicPriceRange.maxPrice}
-            currentMin={minPrice || dynamicPriceRange.minPrice}
-            currentMax={maxPrice || dynamicPriceRange.maxPrice}
-            setQueryParams={setQueryParams}
-            data-testid={`${dataTestId}-price`}
-          />
-        )}
-      </div>
+      {PRICE_MAX > 0 && (
+        <div>
+          <button
+            className="flex items-center justify-between w-full mb-3"
+            onClick={() => toggleSection('price')}
+          >
+            <h3 className="font-medium">Price Range</h3>
+            {expandedSections.price ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          
+          {expandedSections.price && (
+            <PriceFilter
+              min={dynamicPriceRange.minPrice}
+              max={dynamicPriceRange.maxPrice}
+              currentMin={minPrice || dynamicPriceRange.minPrice}
+              currentMax={maxPrice || dynamicPriceRange.maxPrice}
+              setQueryParams={setQueryParams}
+              data-testid={`${dataTestId}-price`}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }

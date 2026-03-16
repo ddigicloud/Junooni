@@ -268,7 +268,7 @@ const MarkAsShippedModal = ({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Order ID:</span>
-                <span className="font-mono">{order.display_id}</span>
+                <span className="font-mono">{order.custom_display_id}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Fulfillment ID:</span>
@@ -543,7 +543,7 @@ interface PaymentCollection {
 // ✅ Updated Order interface for vendor-filtered data
 interface VendorOrder {
   id: string
-  display_id: number
+  custom_display_id: number
   status: string  // ✅ This captures "canceled" status
   canceled_at?: string  // ✅ Add this field
   customer: {
@@ -1581,7 +1581,7 @@ const CreateShipmentModal = ({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Order ID:</span>
-                <span className="font-mono">{order.display_id}</span>
+                <span className="font-mono">{order.custom_display_id}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Fulfillment ID:</span>
@@ -1826,7 +1826,7 @@ const ConfirmOrderModal = ({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Order ID:</span>
-                <span className="font-mono">{order.display_id}</span>
+                <span className="font-mono">{order.custom_display_id}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Order Date:</span>
@@ -2367,13 +2367,13 @@ if (itemFulfillment) {
   }
     
     // Get display ID
-  let display_id = 0;
-  if (orderData.display_id) {
-    display_id = orderData.display_id;
+  let custom_display_id = 0;
+  if (orderData.custom_display_id) {
+    custom_display_id = orderData.custom_display_id;
   } else {
     const allNumbers = orderData.id.match(/\d+/g);
     if (allNumbers && allNumbers.length > 0) {
-      display_id = parseInt(allNumbers[allNumbers.length - 1]);
+      custom_display_id = parseInt(allNumbers[allNumbers.length - 1]);
     }
   }
   
@@ -2387,7 +2387,7 @@ if (itemFulfillment) {
     
      return {
     id: orderData.id,
-    display_id: display_id,
+    custom_display_id: custom_display_id,
     customer: customer,
     shipping_address: shippingAddress,
     created_at: orderData.created_at || new Date().toISOString(),
@@ -2780,7 +2780,7 @@ const generateInvoice = () => {
       // ✅ UPDATED: Larger invoice number
       doc.setFontSize(headerFontSize);
       doc.setFont("helvetica", "bold");
-      doc.text(`VENDOR INVOICE #${order.display_id}`, pageWidth - 20, 22, { align: "right" });
+      doc.text(`VENDOR INVOICE #${order.custom_display_id}`, pageWidth - 20, 22, { align: "right" });
       
       // ✅ UPDATED: Larger vendor info
       doc.setFontSize(normalFontSize);
@@ -3111,7 +3111,7 @@ const generateInvoice = () => {
     }
     
     // Save the PDF
-    doc.save(`Junooni_Vendor_Invoice_${order.display_id}_${order.vendor_handle}.pdf`);
+    doc.save(`Junooni_Vendor_Invoice_${order.custom_display_id}_${order.vendor_handle}.pdf`);
   } catch (error) {
     ////console.error("Error generating invoice:", error);
     alert("Failed to generate invoice. Please try again.");
@@ -3233,7 +3233,7 @@ const generateInvoice = () => {
               </div>
               <div>
                 <h1 className="text-lg font-bold" style={{ color: BRAND.secondary }}>
-                  Order #{order.display_id}
+                  Order #{order.custom_display_id}
                 </h1>
                 {/* <div className="flex items-center mt-1 text-sm text-gray-600">
                   <span className="px-2 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded">
@@ -3281,7 +3281,7 @@ const generateInvoice = () => {
             <div className="flex items-center">
               <Info className="w-4 h-4 mr-2 text-blue-600" />
               <span className="text-sm text-blue-800">
-                This shows only your products and your portion of the payment from order #{order.display_id}
+                This shows only your products and your portion of the payment from order #{order.custom_display_id}
               </span>
             </div>
           </div> */}
@@ -3999,7 +3999,7 @@ const generateInvoice = () => {
                     // ✅ DEBUGGING: Log all the data
                     //console.log('=== ORDER DEBUG START ===');
                     //console.log('1. Order created_at:', order.created_at);
-                    //console.log('2. Order display_id:', order.display_id);
+                    //console.log('2. Order custom_display_id:', order.custom_display_id);
                     //console.log('3. Order fulfillment_status:', order.fulfillment_status);
                     //console.log('4. Total fulfillments:', order.fulfillments?.length || 0);
                     
@@ -4097,7 +4097,7 @@ const generateInvoice = () => {
                             <div className="text-sm font-medium">Order Placed</div>
                             <div className="text-xs text-gray-500">{formatDate(order.created_at)}</div>
                             <div className="mt-1 text-sm">
-                              Your products were ordered in order #{order.display_id}
+                              Your products were ordered in order #{order.custom_display_id}
                             </div>
                           </div>
                         </div>

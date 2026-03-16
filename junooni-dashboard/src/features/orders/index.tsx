@@ -110,7 +110,7 @@ interface VendorOrderItem {
 
 interface VendorOrder {
   id: string
-  display_id: number
+  custom_display_id: number
   customer: {
     first_name: string
     last_name: string
@@ -264,7 +264,7 @@ const PaymentBadge = ({ status, paymentCollections, vendorPaymentDetails, orderS
   // ✅ CHECK FOR REFUNDED OR CANCELED STATUS FIRST
   if (status === "refunded" || orderStatus === "canceled" || canceledAt) {
     return (
-      <Badge variant="outline" className="text-red-700 bg-red-50 border-red-200 font-medium">
+      <Badge variant="outline" className="font-medium text-red-700 border-red-200 bg-red-50">
         <XCircle className="w-3 h-3 mr-1" />
         Refunded
       </Badge>
@@ -772,18 +772,18 @@ export default function OrdersPage() {
         const transformedOrders = ordersArray.map((order: any, index: number) => {
           try {
 
-            let display_id = 0;
-            if (order.display_id !== undefined && order.display_id !== null) {
-              display_id = parseInt(String(order.display_id)) || 0;
+            let custom_display_id = 0;
+            if (order.custom_display_id !== undefined && order.custom_display_id !== null) {
+              custom_display_id = parseInt(String(order.custom_display_id)) || 0;
             } else {
               const numbers = order.id.match(/\d+/g);
               if (numbers && numbers.length > 0) {
-                display_id = parseInt(numbers[numbers.length - 1]) || 0;
+                custom_display_id = parseInt(numbers[numbers.length - 1]) || 0;
               }
             }
 
-            if (display_id === 0) {
-              display_id = (page - 1) * limit + index + 1;
+            if (custom_display_id === 0) {
+              custom_display_id = (page - 1) * limit + index + 1;
             }
 
             // ✅ Safer customer data extraction
@@ -863,7 +863,7 @@ export default function OrdersPage() {
             
             const transformedOrder: VendorOrder = {
             id: order.id || `order_${index}`,
-            display_id: display_id,
+            custom_display_id: custom_display_id,
             customer: customer,
             created_at: created_at,
             
@@ -910,7 +910,7 @@ export default function OrdersPage() {
             // Return a minimal order object to prevent complete failure
             return {
               id: order.id || `order_${index}`,
-              display_id: (page - 1) * limit + index + 1,
+              custom_display_id: (page - 1) * limit + index + 1,
               customer: { first_name: "Guest", last_name: "", email: "customer@example.com" },
               created_at: new Date().toISOString(),
               vendor_total: 0,
@@ -970,7 +970,7 @@ const filteredOrders = orders.filter(order => {
       const customerName = `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.trim().toLowerCase();
       const searchFields = [
         order.id.toLowerCase(),
-        String(order.display_id),
+        String(order.custom_display_id),
         customerName,
         order.customer?.email?.toLowerCase() || ''
       ];
@@ -1172,7 +1172,7 @@ useEffect(() => {
       order.vendor_items.forEach(item => {
         exportData.push({
           // Order Information
-          'Order ID': `#${order.display_id}`,
+          'Order ID': `#${order.custom_display_id}`,
           'Order Date': formatDate(order.created_at),
           'Order Status': order.fulfillment_status?.replace(/_/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || 'N/A',
           'Payment Status': order.payment_status?.replace(/_/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || 'N/A',
@@ -1792,14 +1792,14 @@ useEffect(() => {
                       </TableHeader>
                       <TableBody>
                         {filteredOrders.map((order) => (
-                          <TableRow key={order.id} className=" group hover:bg-gray-50 cursor-pointer"  onClick={() => viewOrderDetails(order.id)}>
+                          <TableRow key={order.id} className="cursor-pointer  group hover:bg-gray-50"  onClick={() => viewOrderDetails(order.id)}>
                             <TableCell className="text-sm font-medium">
                               <Button 
                                 variant="link" 
                                 className="h-auto p-0 ml-2 font-medium"
                                 style={{ color: BRAND.primary }}
                               >
-                                #{order.display_id}
+                                #{order.custom_display_id}
                               </Button>
                              
                             </TableCell>
@@ -2090,7 +2090,7 @@ useEffect(() => {
                               style={{ color: BRAND.primary }}
                               onClick={() => viewOrderDetails(order.id)}
                             >
-                              #{order.display_id}
+                              #{order.custom_display_id}
                             </span> - {order.customer.first_name} {order.customer.last_name}
                           </p>
                           <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
