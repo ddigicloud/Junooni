@@ -367,6 +367,20 @@ export default defineMiddlewares({
       method: "POST",
       middlewares: [authenticate(["vendor","user"], ["session", "bearer"])],
     },
+    // Add these two entries to your routes array in middlewares.ts
+
+      {
+        matcher: "/store/transfer-confirm/resend",
+        method: ["POST"],
+        middlewares: [
+          authenticate("customer", ["session", "bearer"]),
+        ],
+      },
+      {
+        matcher: "/store/transfer-confirm",
+        method: ["POST"],
+        middlewares: [], // public — token is the auth proof
+      },
     {
       matcher: "/admin/products",
       method: ["POST"],

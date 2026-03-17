@@ -741,6 +741,9 @@ interface LocationState {
       };
     }>>;
   };
+  originalMockupImages?: Record<string, string[]>; // 🔥 ADD THIS
+  originalColorSpecificImages?: Record<string, any[]>; // 🔥 ADD
+  uploadQualityColorSpecificImages?: Record<string, any[]>; // 🔥 ADD
 }
 
 // Add the missing interface
@@ -1776,14 +1779,11 @@ if (!mergedLocationStateRef.current && location.state) {
 
   if (sessionKey) {
     try {
-      // 🔥 Chunked loading helper
       const loadChunked = (key: string, fallback: any): any => {
         try {
           const chunksStr = sessionStorage.getItem(`${key}_chunks`);
           if (!chunksStr) return fallback;
-
           const totalChunks = parseInt(chunksStr);
-
           if (totalChunks === 1) {
             const data = sessionStorage.getItem(key);
             if (!data) return fallback;
@@ -1791,39 +1791,43 @@ if (!mergedLocationStateRef.current && location.state) {
             sessionStorage.removeItem(`${key}_chunks`);
             return JSON.parse(data);
           }
-
-          // Reassemble chunks
           let fullData = '';
           for (let i = 0; i < totalChunks; i++) {
             const chunk = sessionStorage.getItem(`${key}_chunk_${i}`);
-            if (!chunk) {
-              console.error(`Missing chunk ${i} for ${key}`);
-              return fallback;
-            }
+            if (!chunk) return fallback;
             fullData += chunk;
             sessionStorage.removeItem(`${key}_chunk_${i}`);
           }
           sessionStorage.removeItem(`${key}_chunks`);
           return JSON.parse(fullData);
-
         } catch {
           return fallback;
         }
       };
 
-      // ✅ Load from sessionStorage (only what was saved there)
-      const colorSpecificImages = loadChunked(`${sessionKey}_colorSpecificImages`, {});
+      // Load transfer quality from sessionStorage (for display)
+      const colorSpecificImagesFromStorage = loadChunked(`${sessionKey}_colorSpecificImages`, {});
       const colorSpecificMockups = loadChunked(`${sessionKey}_colorSpecificMockups`, []);
       const canvasImages = loadChunked(`${sessionKey}_canvasImages`, []);
 
-      // ✅ These come from navigation state directly (not sessionStorage)
+      // From navigation state
       const mockupImages = (location.state as any)?.mockupImages || {};
       const designImages = (location.state as any)?.designImages || [];
+
+      // 🔥 Upload quality comes from navigation state directly
+      const uploadQualityColorSpecificImages =
+        (location.state as any)?.uploadQualityColorSpecificImages || {};
+
+      // Fallbacks
+      const finalColorSpecificImages = Object.keys(colorSpecificImagesFromStorage).length > 0
+        ? colorSpecificImagesFromStorage
+        : ((location.state as any)?.colorSpecificImages || {});
 
       mergedLocationStateRef.current = {
         ...(location.state as any),
         mockupImages,
-        colorSpecificImages,
+        colorSpecificImages: finalColorSpecificImages,           // transfer quality - for display
+        uploadQualityColorSpecificImages,                        // upload quality - for product images
         designImages,
         canvasImages,
         designData: {
@@ -1836,18 +1840,17 @@ if (!mergedLocationStateRef.current && location.state) {
       };
 
       console.log('✅ Merged synchronously during render:', {
-        mockups: Object.keys(mockupImages).length,
-        colorSpecific: Object.keys(colorSpecificImages).length,
+        colorSpecific: Object.keys(finalColorSpecificImages).length,
+        uploadQuality: Object.keys(uploadQualityColorSpecificImages).length,
         designImages: designImages.length,
         canvasImages: canvasImages.length,
       });
 
     } catch (error) {
-      console.error('❌ sessionStorage merge failed, using original state:', error);
+      console.error('❌ Merge failed:', error);
       mergedLocationStateRef.current = location.state as LocationState;
     }
   } else {
-    // No sessionKey - use location.state directly (no sessionStorage involved)
     mergedLocationStateRef.current = location.state as LocationState;
   }
 }
@@ -2788,179 +2791,122 @@ const processColorSpecificImages = async (
   extractedAreas?: string[]
 ) => {
   try {
+    // 🔥 Get originals for upload quality
+    const uploadQualityImages =
+    (mergedLocationStateRef.current as any)?.uploadQualityColorSpecificImages || {};
+
+   console.log('📸 Upload quality mockups available:',
+      Object.keys(uploadQualityImages).length, 'colors'
+    );
+
     const processedImages: MediaItem[] = [];
     let currentRank = 1000;
-    
-    // Get all available sizes
-    const sizeOption = designData.options?.find(opt => 
+
+    const sizeOption = designData.options?.find(opt =>
       opt.title.toLowerCase().includes('size')
     );
     const allSizes = sizeOption?.optionValues || [];
-    
-    // console.log('🔍 SIZE DEBUG: Processing with settings:', {
-    //   size_Images: imageSettings.size_Images,
-    //   color_Images: imageSettings.color_Images,
-    //   availableSizes: allSizes
-    // });
-    
-    // Iterate through each color group
-    for (const [colorHex, mockups] of Object.entries(colorSpecificImages)) {
-      const colorDetail = designData.colorDetails?.find(c => c.value.toLowerCase() === colorHex.toLowerCase());
-      const colorName = colorDetail?.name || colorHex;
-      
-      //console.log(`\n🎨 Processing color: ${colorName} (${mockups.length} mockups)`);
-      
-      // 🔥 CASE 1: size_Images TRUE, color_Images FALSE - Size-specific images
-      // 🔥 CASE 1: size_Images TRUE, color_Images FALSE - Size-specific images
-if (imageSettings.size_Images && !imageSettings.color_Images && allSizes.length > 0) {
-  // console.log(`🔧 SIZE MODE: Creating entries for color ${colorName}`);
-  // console.log(`  Available mockups:`, mockups.length);
-  // console.log(`  Available sizes:`, allSizes);
-  
-  // 🔥 CRITICAL FIX: Each mockup is ALREADY size-specific!
-  // Extract size from mockupTitle or storageKey
-  for (const mockup of mockups) {
-    // console.log(`\n  📸 Processing mockup:`, {
-    //   mockupTitle: mockup.mockupTitle,
-    //   storageKey: mockup.storageKey
-    // });
-    
-    // Extract size from mockupTitle: "Front (Galaxy 5)" -> "Galaxy 5"
-    let extractedSize: string | null = null;
-    
-    // Method 1: Extract from mockupTitle
-    const titleMatch = mockup.mockupTitle?.match(/\(([^)]+)\)/);
-    if (titleMatch && titleMatch[1]) {
-      extractedSize = titleMatch[1];
-      //console.log(`    ✅ Extracted size from mockupTitle: "${extractedSize}"`);
-    }
-    
-    // Method 2: Fallback - Extract from storageKey
-    if (!extractedSize && mockup.storageKey) {
-      // storageKey format: "68e215378637855a3783bbd5_front_ffffff_galaxy_5"
-      const keyParts = mockup.storageKey.split('_');
-      // Find which part matches a size
-      for (const part of keyParts) {
-        const matchingSize = allSizes.find(size => 
-          size.toLowerCase().replace(/\s+/g, '_') === part.toLowerCase()
-        );
-        if (matchingSize) {
-          extractedSize = matchingSize;
-          //console.log(`    ✅ Extracted size from storageKey: "${extractedSize}"`);
-          break;
-        }
-      }
-      
-      // Try multi-part match (e.g., "galaxy_5" -> "Galaxy 5")
-      if (!extractedSize) {
-        for (let i = 0; i < keyParts.length - 1; i++) {
-          const combined = `${keyParts[i]}_${keyParts[i + 1]}`;
-          const matchingSize = allSizes.find(size => 
-            size.toLowerCase().replace(/\s+/g, '_') === combined.toLowerCase()
-          );
-          if (matchingSize) {
-            extractedSize = matchingSize;
-            //console.log(`    ✅ Extracted size from storageKey (combined): "${extractedSize}"`);
-            break;
-          }
-        }
-      }
-    }
-    
-    // If we couldn't extract size, log warning and skip
-    if (!extractedSize) {
-      //console.log(`    ⚠️ WARNING: Could not extract size from mockup, skipping!`);
-      continue;
-    }
-    
-    // Verify extracted size is in allSizes
-    if (!allSizes.includes(extractedSize)) {
-      //console.log(`    ⚠️ WARNING: Extracted size "${extractedSize}" not in allSizes:`, allSizes);
-      continue;
-    }
-    
-    const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-${extractedSize.toLowerCase().replace(/\s+/g, '_')}.png`;
-    
-    //console.log(`    🔧 Creating entry for extracted size: ${extractedSize}`);
-    
-    const processedImage = await processBase64ToFile(
-      mockup.imageData,
-      fileName,
-      colorName
-    );
-    
-    if (processedImage) {
-      // 🔥 FIX: Use the EXTRACTED size, not loop through all sizes
-      const variantInfo = {
-        optionName: 'Size',
-        optionValues: [extractedSize],  // ✅ Use extracted size
-        secondaryOptionName: 'Color',
-        secondaryOptionValues: [colorName]
-      };
-      
-      const mediaItem: MediaItem = {
-        file: processedImage.file,
-        url: processedImage.url,
-        rank: currentRank++,
-        isNew: true,
-        variantInfo: variantInfo,
-        colorValue: colorName,
-        metadata: {
-          mockupId: mockup.mockupId,
-          viewAngle: mockup.viewAngle,
-          hasDesign: mockup.hasDesign,
-          extractedColorName: colorName,
-          extractedSizeName: extractedSize,  // ✅ Use extracted size
-          originalMockupTitle: mockup.mockupTitle,
-          originalStorageKey: mockup.storageKey,
-          payloadSettings: { ...imageSettings }
-        }
-      };
-      
-      processedImages.push(mediaItem);
-      
-      // console.log('    ✅ SIZE DEBUG: Created size-specific media item:', {
-      //   size: extractedSize,
-      //   colorName,
-      //   viewAngle: mockup.viewAngle,
-      //   mockupTitle: mockup.mockupTitle,
-      //   primaryOption: mediaItem.variantInfo.optionName,
-      //   primaryValue: mediaItem.variantInfo.optionValues[0],
-      //   fileName: mediaItem.file?.name
-      // });
-    } else {
-      //console.log('    ❌ Failed to process image for size:', extractedSize);
-    }
-  }
 
-      } 
-      // 🔥 CASE 2: color_Images TRUE, size_Images FALSE - Color-specific, size-shared images
-      else if (imageSettings.color_Images && !imageSettings.size_Images) {
-        //console.log(`🎨 COLOR MODE: Creating color-specific images for ${colorName}`);
-        
+    for (const [colorHex, mockups] of Object.entries(colorSpecificImages)) {
+      const colorDetail = designData.colorDetails?.find(
+        c => c.value.toLowerCase() === colorHex.toLowerCase()
+      );
+      const colorName = colorDetail?.name || colorHex;
+
+      // 🔥 Get originals for this color
+      const uploadQualityForColor = uploadQualityImages[colorHex] || [];
+      //console.log(`🎨 ${colorName}: ${mockups.length} mockups, ${originalsForColor.length} originals`);
+
+      if (imageSettings.size_Images && !imageSettings.color_Images && allSizes.length > 0) {
         for (const mockup of mockups) {
-          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.png`;
-          
-          const processedImage = await processBase64ToFile(
-            mockup.imageData,
-            fileName,
-            colorName
-          );
-          
+          let extractedSize: string | null = null;
+
+          const titleMatch = mockup.mockupTitle?.match(/\(([^)]+)\)/);
+          if (titleMatch && titleMatch[1]) extractedSize = titleMatch[1];
+
+          if (!extractedSize && mockup.storageKey) {
+            const keyParts = mockup.storageKey.split('_');
+            for (const part of keyParts) {
+              const matchingSize = allSizes.find(
+                size => size.toLowerCase().replace(/\s+/g, '_') === part.toLowerCase()
+              );
+              if (matchingSize) { extractedSize = matchingSize; break; }
+            }
+            if (!extractedSize) {
+              for (let i = 0; i < keyParts.length - 1; i++) {
+                const combined = `${keyParts[i]}_${keyParts[i + 1]}`;
+                const matchingSize = allSizes.find(
+                  size => size.toLowerCase().replace(/\s+/g, '_') === combined.toLowerCase()
+                );
+                if (matchingSize) { extractedSize = matchingSize; break; }
+              }
+            }
+          }
+
+          if (!extractedSize || !allSizes.includes(extractedSize)) continue;
+
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-${extractedSize.toLowerCase().replace(/\s+/g, '_')}.png`;
+
+          // 🔥 Use original quality for upload
+          const mockupIndex = mockups.indexOf(mockup);
+          const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
+            || uploadQualityForColor[mockupIndex]  // handle both object and string formats
+            || mockup.imageData;
+          const imageDataToUse = uploadQualityData;
+
+          const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
+
           if (processedImage) {
-            const variantInfo = {
-              optionName: 'Color',
-              optionValues: [colorName],
-              isSharedAcrossSizes: true,
-              coversSizes: allSizes
-            };
-            
-            const mediaItem: MediaItem = {
+            processedImages.push({
               file: processedImage.file,
               url: processedImage.url,
               rank: currentRank++,
               isNew: true,
-              variantInfo: variantInfo,
+              variantInfo: {
+                optionName: 'Size',
+                optionValues: [extractedSize],
+                secondaryOptionName: 'Color',
+                secondaryOptionValues: [colorName]
+              },
+              colorValue: colorName,
+              metadata: {
+                mockupId: mockup.mockupId,
+                viewAngle: mockup.viewAngle,
+                hasDesign: mockup.hasDesign,
+                extractedColorName: colorName,
+                extractedSizeName: extractedSize,
+                originalMockupTitle: mockup.mockupTitle,
+                originalStorageKey: mockup.storageKey,
+                payloadSettings: { ...imageSettings },
+                usedOriginalQuality: !!uploadQualityForColor [mockupIndex]
+              }
+            });
+          }
+        }
+
+      } else if (imageSettings.color_Images && !imageSettings.size_Images) {
+        for (const mockup of mockups) {
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.png`;
+          const mockupIndex = mockups.indexOf(mockup);
+          const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
+            || uploadQualityForColor[mockupIndex]  // handle both object and string formats
+            || mockup.imageData;
+          const imageDataToUse = uploadQualityData;
+
+          const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
+
+          if (processedImage) {
+            processedImages.push({
+              file: processedImage.file,
+              url: processedImage.url,
+              rank: currentRank++,
+              isNew: true,
+              variantInfo: {
+                optionName: 'Color',
+                optionValues: [colorName],
+                isSharedAcrossSizes: true,
+                coversSizes: allSizes
+              },
               colorValue: colorName,
               metadata: {
                 mockupId: mockup.mockupId,
@@ -2969,129 +2915,97 @@ if (imageSettings.size_Images && !imageSettings.color_Images && allSizes.length 
                 extractedColorName: colorName,
                 extractedSizeNames: allSizes,
                 coversAllSizes: true,
-                payloadSettings: { ...imageSettings }
+                payloadSettings: { ...imageSettings },
+                usedOriginalQuality: !!uploadQualityForColor [mockupIndex]
               }
-            };
-            
-            processedImages.push(mediaItem);
-            
-            // console.log('✅ COLOR DEBUG: Created color-specific media item:', {
-            //   colorName,
-            //   viewAngle: mockup.viewAngle,
-            //   primaryOption: mediaItem.variantInfo.optionName,
-            //   coversSizes: mediaItem.variantInfo.coversSizes
-            // });
+            });
           }
         }
-      }
-      // 🔥 CASE 3: BOTH color_Images and size_Images TRUE
-      else if (imageSettings.color_Images && imageSettings.size_Images) {
-        //console.log(`🔄 BOTH MODE: Creating color+size specific images for ${colorName}`);
-        
-        // In this mode, we'd ideally need separate images per color-size combination
-        // For now, we'll create entries covering all sizes per color
+
+      } else if (imageSettings.color_Images && imageSettings.size_Images) {
         for (const mockup of mockups) {
           const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-all-sizes.png`;
-          
-          const processedImage = await processBase64ToFile(
-            mockup.imageData,
-            fileName,
-            colorName
-          );
-          
+          const mockupIndex = mockups.indexOf(mockup);
+          const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
+            || uploadQualityForColor[mockupIndex]  // handle both object and string formats
+            || mockup.imageData;
+          const imageDataToUse = uploadQualityData;
+
+          const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
+
           if (processedImage) {
-            const variantInfo = {
-              optionName: 'Color',
-              optionValues: [colorName],
-              secondaryOptionName: 'Size',
-              secondaryOptionValues: allSizes,
-              coversSizes: allSizes
-            };
-            
-            const mediaItem: MediaItem = {
+            processedImages.push({
               file: processedImage.file,
               url: processedImage.url,
               rank: currentRank++,
               isNew: true,
-              variantInfo: variantInfo,
+              variantInfo: {
+                optionName: 'Color',
+                optionValues: [colorName],
+                secondaryOptionName: 'Size',
+                secondaryOptionValues: allSizes,
+                coversSizes: allSizes
+              },
               colorValue: colorName,
               metadata: {
                 mockupId: mockup.mockupId,
                 viewAngle: mockup.viewAngle,
-                hasDesign: mockup.hasDesign,
                 extractedColorName: colorName,
                 extractedSizeNames: allSizes,
                 coversAllSizes: true,
-                payloadSettings: { ...imageSettings }
+                payloadSettings: { ...imageSettings },
+                usedOriginalQuality: !!originalsForColor[mockupIndex]
               }
-            };
-            
-            processedImages.push(mediaItem);
-            
-            // console.log('✅ BOTH DEBUG: Created color+size media item:', {
-            //   colorName,
-            //   viewAngle: mockup.viewAngle,
-            //   primaryOption: mediaItem.variantInfo.optionName,
-            //   coversSizes: mediaItem.variantInfo.coversSizes
-            // });
+            });
           }
         }
-      }
-      // 🔥 CASE 4: Neither enabled (default/fallback)
-      else {
-        //console.log(`⚙️ DEFAULT MODE: Creating basic images for ${colorName}`);
-        
+
+      } else {
         for (const mockup of mockups) {
           const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.png`;
-          
-          const processedImage = await processBase64ToFile(
-            mockup.imageData,
-            fileName,
-            colorName
-          );
-          
+          const mockupIndex = mockups.indexOf(mockup);
+          const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
+            || uploadQualityForColor[mockupIndex]  // handle both object and string formats
+            || mockup.imageData;
+          const imageDataToUse = uploadQualityData;
+
+          const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
+
           if (processedImage) {
-            const variantInfo = {
-              optionName: 'Color',
-              optionValues: [colorName],
-              isSharedAcrossSizes: true
-            };
-            
-            const mediaItem: MediaItem = {
+            processedImages.push({
               file: processedImage.file,
               url: processedImage.url,
               rank: currentRank++,
               isNew: true,
-              variantInfo: variantInfo,
+              variantInfo: {
+                optionName: 'Color',
+                optionValues: [colorName],
+                isSharedAcrossSizes: true
+              },
               colorValue: colorName,
               metadata: {
                 mockupId: mockup.mockupId,
                 viewAngle: mockup.viewAngle,
-                hasDesign: mockup.hasDesign,
                 extractedColorName: colorName,
-                payloadSettings: { ...imageSettings }
+                payloadSettings: { ...imageSettings },
+                usedOriginalQuality: !!originalsForColor[mockupIndex]
               }
-            };
-            
-            processedImages.push(mediaItem);
+            });
           }
         }
       }
     }
-    
-    //console.log(`\n📦 SIZE DEBUG: Total processed images: ${processedImages.length}`);
-    
+
     if (processedImages.length > 0) {
       setMediaItems(prev => [...prev, ...processedImages]);
       setTimeout(() => setActiveImageTab('upload'), 100);
-      
-      //console.log('✅ Images added to mediaItems state');
-    } else {
-      //console.log('⚠️ No images were processed');
+      console.log(`✅ Processed ${processedImages.length} mockup images`);
+      const usingOriginals = processedImages.filter(i => i.metadata?.usedOriginalQuality).length;
+      console.log(`📸 Using original quality: ${usingOriginals}/${processedImages.length}`);
     }
-    
+
   } catch (error) {
-    //console.error('❌ Error processing color-specific images:', error);
+    console.error('❌ Error processing color-specific images:', error);
     setError('Failed to process mockup images');
   }
 };
@@ -3475,9 +3389,9 @@ const debugImageTagging = () => {
 };
 
 // Call it when Size tab is selected
-useEffect(() => {
-  debugImageTagging();
-}, [mediaItems, payloadImageSettings]);
+// useEffect(() => {
+//   debugImageTagging();
+// }, [mediaItems, payloadImageSettings]);
 
   // ===== ENHANCED: GET IMAGES FOR COLOR-SIZE COMBINATION =====
   const getImagesForColorSizeCombination = (colorValue: string, sizeValue: string): MediaItem[] => {
@@ -4238,9 +4152,9 @@ const processSharedImagesByColor = async (
     setError('Failed to create any shared images. Check console for details.');
   }
 };
-setTimeout(() => {
-  debugImagesByColor();
-}, 3000);
+// setTimeout(() => {
+//   debugImagesByColor();
+// }, 3000);
 
 
 
@@ -4293,11 +4207,11 @@ const processIndividualImages = async (
    try {
       // 🔥 PASS the extracted areas
       const parsedInfo = parseVariantKeyEnhanced(variantKey, designData, areasToUse);
-    console.log('🔍 Parsing result for', variantKey, ':', {
-    extracted: parsedInfo,
-    availableSizes: isSizeOption?.optionValues,
-    keyParts: variantKey.split(/[-_]+/)
-  });
+  //   console.log('🔍 Parsing result for', variantKey, ':', {
+  //   extracted: parsedInfo,
+  //   availableSizes: isSizeOption?.optionValues,
+  //   keyParts: variantKey.split(/[-_]+/)
+  // });
       
       //console.log(`🔍 Processing ${variantKey}:`, parsedInfo);
       
@@ -4332,7 +4246,7 @@ const processIndividualImages = async (
           secondaryOptionValues: [parsedInfo.colorName]
         };
       } else if (imageSettings.color_Images && parsedInfo.colorName) {
-        console.warn(`⚠️ Missing size for image: ${fileName}, falling back to Color primary`);
+        //console.warn(`⚠️ Missing size for image: ${fileName}, falling back to Color primary`);
         // Color images enabled and we have color data - make Color primary
         return {
           optionName: 'Color',
@@ -4583,9 +4497,9 @@ const debugMediaItemsByArea = () => {
 };
 
 // Call this after your image processing to see what you actually have
-setTimeout(() => {
-  debugMediaItemsByArea();
-}, 2000);
+// setTimeout(() => {
+//   debugMediaItemsByArea();
+// }, 2000);
 
   // ===== FILE HANDLING =====
   const handleFileChange = (
@@ -5365,7 +5279,7 @@ const processDesignImagesArray = async (designImagesArray) => {
 
 const processCanvasImagesForArtwork = async (canvasImages: Array<{
   area_id: string;
-  image_data: string | Promise<string>; // Updated type to handle Promise
+  image_data: string | Promise<string>;
   metadata: any;
   description: string;
 }>): Promise<Array<{
@@ -5374,7 +5288,7 @@ const processCanvasImagesForArtwork = async (canvasImages: Array<{
   areaId: string;
   description: string;
 }>> => {
-  //console.log('🖼️ Processing', canvasImages.length, 'canvas images for artwork');
+  //console.log('🖼️ processCanvasImagesForArtwork called with:', canvasImages.length, 'images');
   
   const processedCanvasImages = [];
   
@@ -5382,25 +5296,33 @@ const processCanvasImagesForArtwork = async (canvasImages: Array<{
     const canvasImage = canvasImages[i];
     
     try {
-      // 🔥 FIX: Await the Promise if image_data is a Promise
+      // 🔥 Resolve Promise if needed
       let resolvedImageData: string;
       
       if (canvasImage.image_data instanceof Promise) {
-        //console.log(`⏳ Awaiting Promise for canvas image area: ${canvasImage.area_id}`);
+        //console.log(`⏳ Awaiting Promise for area: ${canvasImage.area_id}`);
         resolvedImageData = await canvasImage.image_data;
-      } else {
+      } else if (typeof canvasImage.image_data === 'string') {
         resolvedImageData = canvasImage.image_data;
-      }
-      
-      //console.log(`✅ Resolved image data for area: ${canvasImage.area_id}, length: ${resolvedImageData.length}`);
-      
-      // Additional validation
-      if (!resolvedImageData || !resolvedImageData.startsWith('data:image/')) {
-        //console.error(`❌ Invalid image data for area: ${canvasImage.area_id}`);
+      } else {
+        //console.error(`❌ Invalid image_data type: ${typeof canvasImage.image_data} for area: ${canvasImage.area_id}`);
         continue;
       }
       
-      // Convert base64 to file
+      // 🔥 Validate
+      if (!resolvedImageData) {
+        //console.error(`❌ Empty image data for area: ${canvasImage.area_id}`);
+        continue;
+      }
+      
+      if (!resolvedImageData.startsWith('data:image/')) {
+        //console.error(`❌ Invalid image data format for area: ${canvasImage.area_id}, starts with: ${resolvedImageData.substring(0, 50)}`);
+        continue;
+      }
+      
+      //console.log(`✅ Valid image data for area: ${canvasImage.area_id}, length: ${resolvedImageData.length}`);
+      
+      // Convert to file
       const processedImage = await processBase64ToFile(
         resolvedImageData,
         `canvas-${canvasImage.area_id}-complete-layout.png`,
@@ -5408,13 +5330,18 @@ const processCanvasImagesForArtwork = async (canvasImages: Array<{
       );
       
       if (!processedImage?.file) {
-        //console.error(`❌ Failed to process canvas image for area: ${canvasImage.area_id}`);
+        console.error(`❌ processBase64ToFile failed for area: ${canvasImage.area_id}`);
         continue;
       }
       
-      // Upload canvas image file
-      //console.log(`⬆️ Uploading canvas image for area: ${canvasImage.area_id}`);
+      //console.log(`⬆️ Uploading canvas image for area: ${canvasImage.area_id}, size: ${processedImage.file.size} bytes`);
+      
       const uploadResult = await uploadArtworkFile(processedImage.file);
+      
+      if (!uploadResult) {
+        //console.error(`❌ Upload failed for area: ${canvasImage.area_id}`);
+        continue;
+      }
       
       processedCanvasImages.push({
         uploadResult,
@@ -5423,13 +5350,14 @@ const processCanvasImagesForArtwork = async (canvasImages: Array<{
         description: canvasImage.description
       });
       
-      //console.log(`✅ Canvas image uploaded for area: ${canvasImage.area_id}`);
+      //console.log(`✅ Canvas image uploaded for area: ${canvasImage.area_id}`, uploadResult);
       
     } catch (error) {
-      //console.error(`❌ Error processing canvas image for area ${canvasImage.area_id}:`, error);
+      console.error(`❌ Error processing canvas image for area ${canvasImage.area_id}:`, error);
     }
   }
   
+  //console.log(`📦 processCanvasImagesForArtwork complete: ${processedCanvasImages.length}/${canvasImages.length} uploaded`);
   return processedCanvasImages;
 };
 
@@ -5590,6 +5518,18 @@ if (validDesignImages.length > 0 || importedCanvasImages.length > 0) {
         }
       }
     }
+
+    // console.log('🖼️ Canvas images to process:', canvasImagesToUse.length);
+    // canvasImagesToUse.forEach((img, i) => {
+    //   console.log(`  Canvas ${i + 1}:`, {
+    //     area_id: img.area_id,
+    //     hasImageData: !!img.image_data,
+    //     imageDataType: typeof img.image_data,
+    //     isString: typeof img.image_data === 'string',
+    //     isPromise: img.image_data instanceof Promise,
+    //     lengthIfString: typeof img.image_data === 'string' ? img.image_data.length : 'N/A'
+    //   });
+    // });
     
     // 🔥 NEW: PROCESS CANVAS IMAGES
     if (importedCanvasImages.length > 0) {
@@ -7594,7 +7534,7 @@ if (!printTechId || !printTechName) {
                  {(() => {
                   // Get the CANVAS-SELECTED technology from filteredProductData
                   const locationState = location.state as LocationState;
-                  console.log('locationState:', locationState);
+                  //console.log('locationState:', locationState);
                   const canvasSelectedTech = locationState?.filteredProductData?.printT?.[0]?.technologyName;
                   const payloadBaseTech = designData?.printingTechnology || enhancedProductData?.printT?.[0]?.technologyName;
                   const displayTech = canvasSelectedTech || payloadBaseTech;
