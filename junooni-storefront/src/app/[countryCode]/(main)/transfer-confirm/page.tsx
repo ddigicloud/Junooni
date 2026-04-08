@@ -27,7 +27,7 @@ export default function TransferConfirmPage() {
         // then redirect to their account orders
         setTimeout(() => {
           router.push("/in/account/orders")
-        }, 2500)
+        }, 1500)
       })
       .catch((err) => {
         setErrorMsg(err.message)

@@ -99,7 +99,7 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
 
   // ✅ Add proper API headers helper
   const getApiHeaders = () => {
-    const apiKey = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "pk_de22a6e19195388f210f847b142371b1bb3723cd97526e110fbe0bf5f44d9929"
+    const apiKey = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY 
     
     return {
       "Content-Type": "application/json",
@@ -108,43 +108,37 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
   }
 
   // ✅ Load filter data with proper headers
-  useEffect(() => {
-    const loadFilterData = async () => {
-      setFiltersLoading(true)
-      try {
-        const backendUrl = process.env.MEDUSA_BACKEND_URL
-        const headers = getApiHeaders()
-
-        const [categoriesResponse, vendorsResponse] = await Promise.all([
-          fetch(`${backendUrl}/store/categories`, { headers }),
-          fetch(`${backendUrl}/store/vendors`, { headers }).catch(() => ({ json: () => ({ vendors: [] }) }))
-        ])
-
-        const categoriesResult = await categoriesResponse.json()
-        let vendorsResult = { vendors: [] }
-        
+    useEffect(() => {
+      const loadFilterData = async () => {
+        setFiltersLoading(true)
         try {
-          vendorsResult = await vendorsResponse.json()
-        } catch (e) {
-          // //console.warn('Vendors endpoint not available, will extract from search results')
+          const backendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
+          const headers = getApiHeaders()
+
+          // Fetch categories only — vendors will be extracted from search results
+          const categoriesResponse = await fetch(`${backendUrl}/store/product-categories?limit=100`, { headers })
+          
+          if (categoriesResponse.ok) {
+            const categoriesResult = await categoriesResponse.json()
+            setCategoriesData(categoriesResult.product_categories || categoriesResult.categories || [])
+          } else {
+            setCategoriesData([])
+          }
+
+          setVendorsData([])
+          setAvailableColors([])
+
+        } catch (error) {
+          setCategoriesData([])
+          setVendorsData([])
+          setAvailableColors([])
+        } finally {
+          setFiltersLoading(false)
         }
-
-        setCategoriesData(categoriesResult.categories || [])
-        setVendorsData(vendorsResult.vendors || [])
-        setAvailableColors([])
-        
-      } catch (error) {
-        // //console.error('Error loading filter data:', error)
-        setCategoriesData([])
-        setVendorsData([])
-        setAvailableColors([])
-      } finally {
-        setFiltersLoading(false)
       }
-    }
 
-    loadFilterData()
-  }, [])
+      loadFilterData()
+    }, [])
 
   // ✅ Apply filters CLIENT-SIDE - ENHANCED with StoreTemplate's EXACT color logic
   const applyFilters = (allProducts: any[]) => {
@@ -367,7 +361,7 @@ export default function SearchResultsPage({ countryCode, region }: Props) {
 
   // ✅ ENHANCED: Direct use of backend products (no transformation needed since backend now returns complete format)
   const performSearch = async (searchQuery: string) => {
-    const backendUrl = process.env.MEDUSA_BACKEND_URL
+    const backendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
     const searchUrl = `${backendUrl}/store/products/search`
     
     const requestBody = {

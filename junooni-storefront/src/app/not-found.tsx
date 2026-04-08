@@ -1,34 +1,3 @@
-// import { ArrowUpRightMini } from "@medusajs/icons"
-// import { Text } from "@medusajs/ui"
-// import { Metadata } from "next"
-// import Link from "next/link"
-
-// export const metadata: Metadata = {
-//   title: "404",
-//   description: "Something went wrong",
-// }
-
-// export default function NotFound() {
-//   return (
-//     <div className="flex flex-col gap-4 items-center justify-center min-h-[calc(100vh-64px)]">
-//       <h1 className="text-2xl-semi text-ui-fg-base">Page not found</h1>
-//       <p className="text-small-regular text-ui-fg-base">
-//         The page you tried to access does not exist.
-//       </p>
-//       <Link
-//         className="flex gap-x-1 items-center group"
-//         href="/"
-//       >
-//         <Text className="text-ui-fg-interactive">Go to frontpage</Text>
-//         <ArrowUpRightMini
-//           className="group-hover:rotate-45 ease-in-out duration-150"
-//           color="var(--fg-interactive)"
-//         />
-//       </Link>
-//     </div>
-//   )
-// }
-
 "use client"
 
 import { Text, Button } from "@medusajs/ui"
@@ -78,7 +47,7 @@ export default function NotFound() {
         </div>
 
         <div className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4">
-          <div className="max-w-md w-full text-center space-y-8">
+          <div className="w-full max-w-md space-y-8 text-center">
             {/* Animated Icon */}
             <div className="flex justify-center">
               <div className="relative">
@@ -101,7 +70,7 @@ export default function NotFound() {
 
             {/* Action Button with Hover Effects */}
             <div className="space-y-4">
-              <Link href="/account" className="w-full block">
+              <Link href="/account" className="block w-full">
                 <Button 
                   className="w-full bg-gradient-to-r from-[#e65100] to-[#ff8a50] hover:from-[#d84315] hover:to-[#e65100] transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl" 
                   size="large"
@@ -160,7 +129,7 @@ export default function NotFound() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4">
-        <div className="max-w-2xl w-full text-center space-y-12">
+        <div className="w-full max-w-2xl space-y-12 text-center">
           {/* Creative 404 Animation */}
           <div className="space-y-6">
             <div className="relative">
@@ -185,14 +154,14 @@ export default function NotFound() {
               <h1 className="text-4xl font-bold text-gray-800 animate-fade-in">
                 Oops! Page Not Found
               </h1>
-              <p className="text-xl text-gray-600 max-w-lg mx-auto animate-fade-in" style={{animationDelay: '0.3s'}}>
+              <p className="max-w-lg mx-auto text-xl text-gray-600 animate-fade-in" style={{animationDelay: '0.3s'}}>
                 The page you're looking for seems to have gone on an adventure. Let's get you back on track!
               </p>
             </div>
           </div>
 
           {/* Enhanced Action Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-md mx-auto">
+          <div className="grid max-w-md grid-cols-1 gap-6 mx-auto sm:grid-cols-2">
             <Link href="/" className="w-full">
               <Button 
                 variant="default" 
@@ -216,36 +185,11 @@ export default function NotFound() {
             </Link>
           </div>
 
-          {/* Enhanced Categories */}
-          {/* <div className="space-y-6">
-            <Text className="text-lg font-semibold text-gray-700">
-              Explore Popular Categories
-            </Text>
-            <div className="flex flex-wrap justify-center gap-3">
-              {[
-                { href: "/collections/men", label: "Men", icon: "👔" },
-                { href: "/collections/women", label: "Women", icon: "👗" },
-                { href: "/collections/kids", label: "Kids", icon: "🧒" },
-                { href: "/collections/merch", label: "Official", icon: "⭐" }
-              ].map((item, index) => (
-                <Link 
-                  key={item.href}
-                  href={item.href} 
-                  className="group px-6 py-3 bg-white border-2 border-[#e65100] border-opacity-20 hover:border-[#e65100] hover:bg-gradient-to-r hover:from-[#e65100] hover:to-[#ff8a50] hover:text-white rounded-full text-sm font-medium text-gray-700 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
-                  style={{animationDelay: `${index * 0.1}s`}}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="text-lg">{item.icon}</span>
-                    {item.label}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div> */}
+          
 
           {/* Customer Account Links */}
           {customer && (
-            <div className="space-y-6 pt-8 border-t border-gray-200">
+            <div className="pt-8 space-y-6 border-t border-gray-200">
               <Text className="text-lg font-semibold text-gray-700">
                 Your Account
               </Text>
@@ -272,7 +216,7 @@ export default function NotFound() {
 
           {/* Help Section */}
           <div className="pt-8 border-t border-gray-200">
-            <Text className="text-gray-600 mb-4">
+            <Text className="mb-4 text-gray-600">
               Need help? Our support team is here for you
             </Text>
             <div className="flex justify-center gap-6">

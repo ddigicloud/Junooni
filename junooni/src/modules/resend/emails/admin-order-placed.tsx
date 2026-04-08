@@ -53,7 +53,8 @@ export const adminOrderPlacedEmail = (props: unknown): React.ReactNode => {
 
   // Group items by vendor
   const vendorGroups: Record<string, Item[]> = {}
-  items.forEach(item => {
+  const codItem = (items as any[]).find((item: any) => item.metadata?.is_cod_fee)
+  items.filter((item: any) => !item.metadata?.is_cod_fee).forEach(item => {
     const key = item.vendor_handle || item.vendor_id || "unknown"
     if (!vendorGroups[key]) vendorGroups[key] = []
     vendorGroups[key].push(item)
@@ -87,7 +88,9 @@ export const adminOrderPlacedEmail = (props: unknown): React.ReactNode => {
                   </td>
                   <td style={{ width: "4px" }} />
                   <td style={{ width: "33%", textAlign: "center", padding: "16px", background: "#fafafa", borderRadius: "8px" }}>
-                    <div style={{ fontSize: "20px", fontWeight: 700, color: "#1a1a1a" }}>{items.length}</div>
+                    <div style={{ fontSize: "20px", fontWeight: 700, color: "#1a1a1a" }}>
+                      {items.filter((item: any) => !item.metadata?.is_cod_fee).length}
+                    </div>
                     <div style={{ fontSize: "12px", color: "#999", marginTop: "2px" }}>Items</div>
                   </td>
                   <td style={{ width: "4px" }} />
@@ -163,10 +166,16 @@ export const adminOrderPlacedEmail = (props: unknown): React.ReactNode => {
                     <td style={{ fontSize: "13px", color: "#777", paddingBottom: "8px" }}>Shipping</td>
                     <td style={{ fontSize: "13px", color: "#1a1a1a", textAlign: "right", paddingBottom: "8px" }}>{formatPrice(shipping_total)}</td>
                   </tr>
-                  <tr>
+                  {codItem && (
+                    <tr>
+                      <td style={{ fontSize: "13px", color: "#777", paddingBottom: "8px" }}>Cash on Delivery Fee</td>
+                      <td style={{ fontSize: "13px", color: "#1a1a1a", textAlign: "right", paddingBottom: "8px" }}>{formatPrice((codItem as any).total)}</td>
+                    </tr>
+                  )}
+                  {/* <tr>
                     <td style={{ fontSize: "13px", color: "#777", paddingBottom: "8px" }}>Tax</td>
                     <td style={{ fontSize: "13px", color: "#1a1a1a", textAlign: "right", paddingBottom: "8px" }}>{formatPrice(tax_total)}</td>
-                  </tr>
+                  </tr> */}
                   <tr style={{ borderTop: "1px solid #ebebeb" }}>
                     <td style={{ fontSize: "15px", fontWeight: 700, color: "#1a1a1a", paddingTop: "10px" }}>Total</td>
                     <td style={{ fontSize: "15px", fontWeight: 700, color: "#e65100", textAlign: "right", paddingTop: "10px" }}>{formatPrice(order_total)}</td>

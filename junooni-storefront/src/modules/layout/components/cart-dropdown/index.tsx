@@ -147,7 +147,7 @@ const totalItems =
                               thumbnail={item.thumbnail}
                               images={item.variant?.product?.images}
                               variantId={item.variant_id}
-                              variantMetadata={item.variant?.metadata}
+                              variantThumbnail={item.variant?.thumbnail ?? null}
                               size="square"
                             />
 

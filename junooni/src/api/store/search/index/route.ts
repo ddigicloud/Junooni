@@ -2,7 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { typesenseService } from "../../../../../lib/typesense"
 
 const PRODUCTION_REGION_ID = 'reg_01K4890NFNFQ6MQ9YPKBT2P001'
-const BATCH_SIZE = 50
+const BATCH_SIZE = 20  // ✅ Reduced from 50 — each product is heavy with images/variants
 
 // ─── Job state (poll via GET) ────────────────────────────────────────────────
 const reindexJobState: {
@@ -22,38 +22,48 @@ const reindexJobState: {
 }
 
 // ─── Trimmed fields — only what typesense.ts actually reads ──────────────────
+// ✅ REMOVED: variants.calculated_price, variants.prices.* — these trigger
+//    Medusa's pricing engine per-variant and are the main cause of OOM.
+//    extractPriceData() falls back to prices[0].amount which we keep below.
+// ✅ REMOVED: variants.weight/length/height/width/hs_code/origin_country/mid_code/material
+//    — stored in variants_data but never used in Typesense schema fields
+// ✅ REMOVED: images.product_id/created_at/updated_at/deleted_at — not needed
+// ✅ REMOVED: options timestamps — not needed
+// ✅ REMOVED: vendor.logo/creator_bio/creator_title/verified/city/state — not in schema
 const PRODUCT_FIELDS = [
   "id", "title", "description", "handle", "status",
   "thumbnail", "created_at", "updated_at", "metadata",
 
+  // Vendor — only what schema uses
   "vendor.id", "vendor.name", "vendor.handle",
-  "vendor.logo", "vendor.creator_bio", "vendor.creator_title",
-  "vendor.creator_category", "vendor.verified", "vendor.city", "vendor.state",
+  "vendor.creator_category",
 
+  // Variants — NO calculated_price, NO prices.* (saves massive memory)
+  // Keep prices.amount + prices.currency_code only for extractPriceData fallback
   "variants.id", "variants.title", "variants.sku",
   "variants.allow_backorder", "variants.manage_inventory",
   "variants.inventory_quantity", "variants.variant_rank",
   "variants.metadata",
-  "variants.weight", "variants.length", "variants.height", "variants.width",
-  "variants.hs_code", "variants.origin_country", "variants.mid_code", "variants.material",
-  "variants.calculated_price", "variants.prices.*",
-  "variants.options.*", "variants.options.option.*",
-  "variants.created_at", "variants.updated_at", "variants.deleted_at",
+  "variants.prices.amount", "variants.prices.currency_code",
+  "variants.options.id", "variants.options.value", "variants.options.metadata",
+  "variants.options.option_id",
+  "variants.options.option.id", "variants.options.option.title",
+  "variants.options.option.metadata", "variants.options.option.product_id",
 
+  // Collection
   "collection.id", "collection.title", "collection.handle",
 
-  "categories.id", "categories.name", "categories.handle", "categories.is_active",
-
+  // Categories + tags
+  "categories.id", "categories.name", "categories.handle",
   "tags.id", "tags.value",
 
+  // Images — only what extractImageData uses
   "images.id", "images.url", "images.metadata", "images.rank",
-  "images.product_id", "images.created_at", "images.updated_at", "images.deleted_at",
 
+  // Options
   "options.id", "options.title", "options.metadata", "options.product_id",
-  "options.created_at", "options.updated_at", "options.deleted_at",
   "options.values.id", "options.values.value", "options.values.metadata",
-  "options.values.option_id", "options.values.created_at",
-  "options.values.updated_at", "options.values.deleted_at",
+  "options.values.option_id",
 ]
 
 // ─── Collection schema ────────────────────────────────────────────────────────
@@ -138,8 +148,6 @@ async function runReindex(query: any, regionId?: string) {
     console.log('✅ [REINDEX] New schema created')
 
     // STEP 3: Fetch + index in batches
-    // Each batch is fetched, immediately indexed, then released for GC.
-    // We never accumulate all products in memory at once.
     console.log(`🔄 [REINDEX] STEP 3: Batched fetch + index (batch size: ${BATCH_SIZE})...`)
 
     let totalIndexed = 0
@@ -169,7 +177,7 @@ async function runReindex(query: any, regionId?: string) {
         break
       }
 
-      // Index this batch immediately — don't accumulate
+      // Index immediately — don't accumulate
       await typesenseService.indexProducts(batch, regionData)
       totalIndexed += batch.length
 
@@ -179,7 +187,7 @@ async function runReindex(query: any, regionId?: string) {
       hasMore = batch.length === BATCH_SIZE
 
       // Give Node.js GC breathing room between batches
-      await new Promise(resolve => setTimeout(resolve, 150))
+      await new Promise(resolve => setTimeout(resolve, 300))
     }
 
     if (totalIndexed === 0) {

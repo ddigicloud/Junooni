@@ -5,11 +5,9 @@ import { retriveVendors } from "@lib/data/vendors"
 import { Suspense } from "react"
 import JsonLd from "./components/JsonLd"
 
-// Fast components - load immediately  
+// Fast components - load immediately
 import Hero from "@modules/home/components/hero"
 import Features from "@modules/home/components/Features"
-import FanContent from "@modules/home/components/FanContent"
-import NewsLetter from "@modules/home/components/NewsLetter"
 import VendorList from "@modules/home/components/VendorList"
 import CreatorInstagram from "@modules/home/components/CreatorInstagram"
 import HomeCategories from "@modules/home/components/HomeCategories"
@@ -22,32 +20,81 @@ import FeaturedProducts from "@modules/home/components/featured-products"
 export const metadata: Metadata = {
   title: "Junooni | India's #1 Creator Merchandise Marketplace",
   description:
-    "Shop exclusive creator merchandise from your favorite Indian content creators. Discover unique apparel, prints, tech accessories & keepsakes. Support creators, wear your passion.",
+    "Shop exclusive merchandise from your favourite Indian creators, influencers & personalities. Discover unique apparel, accessories, prints & keepsakes. Authentic. Limited edition. Delivered across India.",
+  alternates: {
+    // ✅ FIX 1: Canonical URL prevents duplicate indexing between / and /in
+    canonical: "https://junooni.com/in",
+  },
   openGraph: {
     title: "Junooni | India's #1 Creator Merchandise Marketplace",
     description:
-      "Shop exclusive merchandise from India's top content creators. Unique designs, quality products, direct creator support.",
+      "Shop exclusive merchandise from India's top creators & influencers. Authentic designs, quality products, direct creator support.",
     type: "website",
     siteName: "Junooni",
+    url: "https://junooni.com/in",
+    // ✅ FIX 2: OG image added — WhatsApp/Twitter previews now show a proper card
+    images: [
+      {
+        url: "https://junooni.com/_next/static/media/header-banner.fee7e3c0.webp",
+        width: 1200,
+        height: 630,
+        alt: "Junooni — India's #1 Creator Merchandise Marketplace",
+      },
+    ],
+    locale: "en_IN",
   },
   twitter: {
     card: "summary_large_image",
     title: "Junooni | India's #1 Creator Merchandise Marketplace",
     description:
-      "Shop exclusive merchandise from India's top content creators.",
+      "Shop exclusive merchandise from India's top creators & influencers.",
+    // ✅ FIX 3: Twitter image added
+    images: ["https://junooni.com/_next/static/media/header-banner.fee7e3c0.webp"],
   },
   keywords: [
     "creator merchandise India",
     "Indian creator merch",
-    "content creator products",
-    "custom apparel India",
-    "creator merchandise marketplace",
+    "influencer merchandise India",
+    "buy creator merch online India",
+    "official creator merchandise marketplace",
     "support Indian creators",
-    "unique creator designs",
+    "limited edition creator drops India",
+    "celebrity merch India",
   ],
   robots: {
     index: true,
     follow: true,
+  },
+}
+
+// ── Organization Schema ────────────────────────────────────────────────────────
+// ✅ FIX 4: Added Organization schema — the most important AEO signal.
+// AI engines (ChatGPT, Perplexity, Google AI Overview) use this to understand
+// what Junooni is and cite it when answering questions about creator merch in India.
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Junooni",
+  "url": "https://junooni.com",
+  "logo": "https://junooni.com/_next/static/media/JUNOONI_logo.703fd026.ico",
+  "description":
+    "Junooni is India's #1 creator merchandise marketplace where fans can buy exclusive official merchandise from their favourite Indian creators, influencers, and personalities.",
+  "foundingLocation": {
+    "@type": "Place",
+    "addressCountry": "IN",
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "email": "bejunooni@gmail.com",
+    "availableLanguage": ["English", "Hindi"],
+  },
+  "sameAs": [
+    "https://studio.junooni.com",
+  ],
+  "address": {
+    "@type": "PostalAddress",
+    "addressCountry": "IN",
   },
 }
 
@@ -61,7 +108,8 @@ const faqSchema = {
       "name": "What is Junooni?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Junooni is India's #1 creator merchandise marketplace where fans can buy exclusive custom merchandise designed by their favourite Indian content creators.",
+        "text":
+          "Junooni is India's #1 creator merchandise marketplace where fans can buy exclusive official merchandise from their favourite Indian creators, influencers, and personalities across platforms like Instagram, YouTube, and more.",
       },
     },
     {
@@ -69,7 +117,8 @@ const faqSchema = {
       "name": "How does creator merchandise work on Junooni?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Creators design and list their merchandise on Junooni. When a fan purchases, the creator earns up to 90% commission. Junooni handles payments, and optionally, production and shipping through Junooni Fulfillment.",
+        "text":
+          "Creators list their official merchandise on Junooni. When a fan purchases, the creator earns commission. Junooni handles payments, production, and shipping through its fulfillment service.",
       },
     },
     {
@@ -77,7 +126,8 @@ const faqSchema = {
       "name": "What products can I buy on Junooni?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Junooni offers a wide range of custom merchandise including t-shirts, hoodies, mugs, phone cases, prints, and more — all designed exclusively by Indian creators.",
+        "text":
+          "Junooni offers a wide range of official creator merchandise including t-shirts, hoodies, sweatshirts, mugs, phone cases, sticker sheets, prints, and accessories — all designed exclusively by Indian creators and influencers.",
       },
     },
     {
@@ -85,7 +135,9 @@ const faqSchema = {
       "name": "How long does delivery take?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Delivery typically takes 5–10 business days depending on your location and the fulfillment method chosen by the creator.",
+        // ✅ FIX 5: Consistent delivery time — matches product page (5–7 days)
+        "text":
+          "Delivery typically takes 5–7 business days depending on your location across India.",
       },
     },
     {
@@ -93,7 +145,8 @@ const faqSchema = {
       "name": "Is Junooni available across India?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes, Junooni ships across India. We support all major pin codes through our fulfillment partners.",
+        "text":
+          "Yes, Junooni ships across India with free shipping on orders above ₹200. We support all major pin codes through our fulfillment partners.",
       },
     },
     {
@@ -101,7 +154,9 @@ const faqSchema = {
       "name": "How can I become a creator on Junooni?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "You can apply to become a creator on Junooni by signing up on our platform. Once approved, you can start designing and selling your own custom merchandise to your fans.",
+        // ✅ FIX 6: Now mentions studio.junooni.com specifically
+        "text":
+          "Any Indian creator, influencer, or public personality can apply to sell official merchandise on Junooni. Visit studio.junooni.com to sign up and start designing your own merch for fans.",
       },
     },
     {
@@ -109,24 +164,26 @@ const faqSchema = {
       "name": "What payment methods does Junooni accept?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Junooni accepts all major payment methods including UPI, credit/debit cards, and net banking through our secure Razorpay payment gateway.",
+        "text":
+          "Junooni accepts all major payment methods including UPI, credit/debit cards, and net banking through our secure Razorpay payment gateway.",
       },
     },
   ],
 }
 
-// ── WebPage schema ─────────────────────────────────────────────────────────────
+// ── WebPage Schema ─────────────────────────────────────────────────────────────
 const webPageSchema = {
   "@context": "https://schema.org",
   "@type": "WebPage",
   "name": "Junooni | India's #1 Creator Merchandise Marketplace",
   "description":
-    "Shop exclusive creator merchandise from your favorite Indian content creators.",
+    "Shop exclusive merchandise from your favourite Indian creators, influencers & personalities.",
   "url": "https://junooni.com/in",
   "isPartOf": {
     "@type": "WebSite",
     "name": "Junooni",
-    "url": "https://junooni.com/in",
+    // ✅ FIX 7: Was pointing to /in — WebSite should always be root domain
+    "url": "https://junooni.com",
   },
 }
 
@@ -150,7 +207,13 @@ export default async function Home(props: {
 
   return (
     <>
+      {/* ✅ Organization schema — tells AI engines what Junooni is */}
+      <JsonLd data={organizationSchema} />
+
+      {/* ✅ FAQ schema — gets Junooni cited in AI-generated answers */}
       <JsonLd data={faqSchema} />
+
+      {/* ✅ WebPage schema — reinforces page identity for search engines */}
       <JsonLd data={webPageSchema} />
 
       {/* TIER 1: Critical above-the-fold content */}
@@ -176,37 +239,21 @@ export default async function Home(props: {
           {/* 4. CollectionBanner - Fast component, loads immediately */}
           <CollectionBanner />
 
+          {/* 5. Bestsellers - Heavy component (API calls) */}
           <Bestsellers collections={collections} region={region} />
-
-          {/* 5. Bestsellers - Heavy component (API calls), wrapped in Suspense */}
-          {/* <Suspense fallback={<ProductsSkeleton title="Bestsellers" />}>
-            <div className="pt-12">
-              <ul className="flex flex-col gap-x-6">
-                <Bestsellers collections={collections} region={region} />
-              </ul>
-            </div>
-          </Suspense> */}
-
-          {/* 6-9. Fast components - All load immediately after heavy sections */}
 
           {/* 6. Features - Fast component, loads immediately */}
           <Features />
 
           {/* 7. CreatorInstagram - Fast component, loads immediately */}
           <CreatorInstagram vendorsList={vendorsList} />
-
-          {/* 8. FanContent - Fast component, loads immediately */}
-          {/* <FanContent /> */}
-
-          {/* 9. NewsLetter - Fast component, loads immediately */}
-          {/* <NewsLetter /> */}
         </main>
       </div>
     </>
   )
 }
 
-// Reusable skeleton components (Only for heavy components)
+// Reusable skeleton for heavy components wrapped in Suspense
 function ProductsSkeleton({ title }: { title: string }) {
   return (
     <div className="pt-12">

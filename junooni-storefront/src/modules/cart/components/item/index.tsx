@@ -59,7 +59,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
             thumbnail={item.thumbnail}
             images={item.variant?.product?.images || item.product?.images}
             variantId={item.variant?.id ?? item.variant_id}
-            variantMetadata={item.variant?.metadata ?? null}
+            variantThumbnail={item.variant?.thumbnail ?? null}
             size="square"
           />
         </LocalizedClientLink>

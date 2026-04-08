@@ -57,7 +57,7 @@ export async function POST(
     },
   })
 
-  const confirmUrl = `${process.env.STORE_URL}/in/transfer-confirm?token=${newToken}`
+  const confirmUrl = `${process.env.STOREFRONT_URL}/in/transfer-confirm?token=${newToken}`
 
   await notificationModuleService.createNotifications({
     to: customer.email,

@@ -75,7 +75,8 @@ import {
   batchUpdateVariants, 
   fetchInventoryLevels, 
   batchUpdateInventoryLevels,
-  getVariantInventoryItemId
+  getVariantInventoryItemId,
+  updateVariantImages
 } from '../context/fetchApi';
 import HierarchicalCategorySelector from '../context/HierarchicalCategorySelector';
 
@@ -692,48 +693,122 @@ const isNewVariant = (variant) => {
     lap(`images transformed (${transformedMedia.length} images)`);
 
     // Process variant image associations
-    const variantSpecificImages: MediaItem[] = [];
-    if (product.variants && Array.isArray(product.variants)) {
-      product.variants.forEach(variant => {
-        if (!variant.metadata) return;
+    // Process variant image associations
+// PRIMARY: Read from native variant.images array (Medusa v2 native association)
+// FALLBACK: Read from variant.metadata.option_images (legacy metadata approach)
+const variantSpecificImages: MediaItem[] = [];
+if (product.variants && Array.isArray(product.variants)) {
+  console.log('=== product.variants[0].images:', product.variants?.[0]?.images);
+  product.variants.forEach(variant => {
 
-        if (variant.metadata.option_images) {
-          try {
-            let optionImages = typeof variant.metadata.option_images === 'string'
-              ? JSON.parse(variant.metadata.option_images)
-              : variant.metadata.option_images;
+    // Find what color/option value this variant represents
+    const colorOptVal = variant.options?.find((o: any) =>
+      o.option?.title?.toLowerCase() === 'color'
+    );
+    const variantColorName = colorOptVal?.value || null;
+    const variantColorOptionName = colorOptVal?.option?.title || 'Color';
 
-            if (Array.isArray(optionImages)) {
-              optionImages.forEach(optImg => {
-                if (!optImg.imageId) return;
-                const optionName = optImg.option_name;
-                const optionValue = optImg.option_value;
-                if (!optionName || !optionValue) return;
+    // PRIMARY PATH: Use native variant.images if present
+    if (
+      variant.images &&
+      Array.isArray(variant.images) &&
+      variant.images.length > 0 &&
+      variantColorName
+    ) {
+      variant.images.forEach((varImg: any) => {
+        if (!varImg.id || !varImg.url) return;
 
-                // Skip if already associated
-                let matchingImage = transformedMedia.find(img => img.id === optImg.imageId);
-                if (!matchingImage) {
-                  matchingImage = transformedMedia.find(img => img.url === optImg.url);
-                }
-                if (matchingImage) {
-                  if (!matchingImage.variantInfo) {
-                    matchingImage.colorValue = optionValue;
-                    matchingImage.variantInfo = { optionName, optionValues: [optionValue] };
-                  }
-                } else {
-                  transformedMedia.push({
-                    id: optImg.imageId, url: optImg.url, rank: transformedMedia.length,
-                    isNew: false, colorValue: optionValue,
-                    variantInfo: { optionName, optionValues: [optionValue] }
-                  });
-                }
-              });
+        console.log('=== variant.images item:', varImg.id, '| existingIndex:', 
+          transformedMedia.findIndex(img => img.id === varImg.id || img.url === varImg.url)
+        );
+         console.log('=== varImg:', varImg.id, varImg.url);
+        console.log('=== transformedMedia ids:', transformedMedia.map(m => m.id));
+        const testIndex = transformedMedia.findIndex(img => img.id === varImg.id || img.url === varImg.url);
+        console.log('=== findIndex result:', testIndex);
+        // Check if this image already exists in transformedMedia
+        const existingIndex = transformedMedia.findIndex(
+          img => img.id === varImg.id || img.url === varImg.url
+        );
+
+        if (existingIndex >= 0) {
+          // Image already exists — stamp it with variantInfo if not already set
+          if (!transformedMedia[existingIndex].variantInfo) {
+            transformedMedia[existingIndex].variantInfo = {
+              optionName: variantColorOptionName,
+              optionValues: [variantColorName]
+            };
+            transformedMedia[existingIndex].colorValue = variantColorName;
+          } else {
+            // variantInfo already set — just make sure this color value is included
+            const existing = transformedMedia[existingIndex].variantInfo!;
+            if (
+              existing.optionValues &&
+              !existing.optionValues.includes(variantColorName)
+            ) {
+              existing.optionValues.push(variantColorName);
             }
-          } catch (e) {}
+          }
+        } else {
+          // Image is on the variant but not in product.images — add it fresh
+          transformedMedia.push({
+            file: null,
+            id: varImg.id,
+            url: varImg.url,
+            rank: transformedMedia.length,
+            isNew: false,
+            colorValue: variantColorName,
+            variantInfo: {
+              optionName: variantColorOptionName,
+              optionValues: [variantColorName]
+            }
+          });
         }
       });
+
+    } else if (variant.metadata?.option_images) {
+      // FALLBACK PATH: legacy metadata.option_images for older products
+      // that were saved before native variant.images association was implemented
+      try {
+        let optionImages =
+          typeof variant.metadata.option_images === 'string'
+            ? JSON.parse(variant.metadata.option_images)
+            : variant.metadata.option_images;
+
+        if (Array.isArray(optionImages)) {
+          optionImages.forEach((optImg: any) => {
+            if (!optImg.imageId) return;
+            const optionName = optImg.option_name;
+            const optionValue = optImg.option_value;
+            if (!optionName || !optionValue) return;
+
+            let matchingImage = transformedMedia.find(img => img.id === optImg.imageId);
+            if (!matchingImage) {
+              matchingImage = transformedMedia.find(img => img.url === optImg.url);
+            }
+
+            if (matchingImage) {
+              if (!matchingImage.variantInfo) {
+                matchingImage.colorValue = optionValue;
+                matchingImage.variantInfo = { optionName, optionValues: [optionValue] };
+              }
+            } else {
+              transformedMedia.push({
+                file: null,
+                id: optImg.imageId,
+                url: optImg.url,
+                rank: transformedMedia.length,
+                isNew: false,
+                colorValue: optionValue,
+                variantInfo: { optionName, optionValues: [optionValue] }
+              });
+            }
+          });
+        }
+      } catch (e) {}
     }
-    lap('variant image associations DONE');
+  });
+}
+lap('variant image associations DONE');
 
     const allMediaItems = [...transformedMedia];
     variantSpecificImages.forEach(vsImage => {
@@ -2295,111 +2370,14 @@ const onSubmit = async (values: ProductFormValues) => {
                       //console.log("Processing variant:", variant.id, "with cost price:", costPrice);
                     
                     // Get associated images - without complex filtering
-                    const variantImageIds = [];
-                    const variantImageUrls = [];
-                    const optionTypeImages = {};
-                    
-                    // Only process if we have media
-                    if (updatedMedia && Array.isArray(updatedMedia)) {
-                      for (let i = 0; i < updatedMedia.length; i++) {
-                        const item = updatedMedia[i];
-                        if (!item || !item.id) continue;
-                        
-                        let isAssociated = false;
-                        
-                        // Check for direct variant association
-                        if (item.variantInfo && item.variantInfo.variantId === variant.id) {
-                          isAssociated = true;
-                        }
-                        
-                        // Check for option value association
-                        if (item.variantInfo && item.variantInfo.optionName && 
-                            item.variantInfo.optionValues && Array.isArray(item.variantInfo.optionValues)) {
-                          
-                          // Check each option value in the variant
-                          if (variant.optionValues && Array.isArray(variant.optionValues)) {
-                            for (let j = 0; j < variant.optionValues.length; j++) {
-                              const optVal = variant.optionValues[j];
-                              if (optVal && optVal.optionName === item.variantInfo.optionName) {
-                                // Check if this option value is in the image's associated values
-                                if (item.variantInfo.optionValues.includes(optVal.value)) {
-                                  isAssociated = true;
-                                  
-                                  // Add to option-specific images
-                                  if (!optionTypeImages[optVal.optionName]) {
-                                    optionTypeImages[optVal.optionName] = [];
-                                  }
-                                  
-                                  optionTypeImages[optVal.optionName].push({
-                                    option_name: optVal.optionName,
-                                    option_value: optVal.value,
-                                    url: item.url,
-                                    imageId: item.id
-                                  });
-                                  
-                                  // No break here - we want to check all option values
-                                }
-                              }
-                            }
-                          }
-                        }
-                        
-                        // If associated, add to lists
-                        if (isAssociated) {
-                          if (item.id && typeof item.id === 'string') {
-                            variantImageIds.push(item.id);
-                          }
-                          
-                          if (item.url && !item.url.startsWith('blob:')) {
-                            variantImageUrls.push(item.url);
-                          }
-                        }
-                      }
-                    }
-                    
-                    // Build the variant metadata
+                    // Variant images now handled natively via updateVariantImages() after product update
                     const variantMetadata = {
-                      ...(variant.metadata || {}) // Preserve existing metadata
+                      ...(variant.metadata || {})
                     };
 
-                    // CRITICAL FIX: Preserve cost_price in metadata
-                  // Add cost_price to metadata
-                  if (costPrice !== undefined && costPrice !== null) {
-                    variantMetadata.cost_price = costPrice;
-                  }
-                    
-                    // Add images to metadata
-                    if (variantImageUrls.length > 0) {
-                      variantMetadata.variant_images = JSON.stringify(variantImageUrls);
-                    }
-                    
-                    if (variantImageIds.length > 0) {
-                      variantMetadata.variant_image_ids = JSON.stringify(variantImageIds);
-                    }
-                    
-                    // Add option images to metadata
-                    const allOptionImages = [];
-                    Object.keys(optionTypeImages).forEach(optName => {
-                      const images = optionTypeImages[optName];
-                      if (Array.isArray(images)) {
-                        allOptionImages.push(...images);
-                      }
-                    });
-                    
-                    if (allOptionImages.length > 0) {
-                      variantMetadata.option_images = JSON.stringify(allOptionImages);
-                    }
-                    
-                    // Add color images (for backward compatibility)
-                    const colorImages = optionTypeImages['Color'] || optionTypeImages['Colour'] || [];
-                    if (colorImages.length > 0) {
-                      const legacyColorImages = colorImages.map(img => ({
-                        color: img.option_value,
-                        url: img.url,
-                        imageId: img.imageId
-                      }));
-                      
-                      variantMetadata.color_images = JSON.stringify(legacyColorImages);
+                    // Preserve cost_price in metadata
+                    if (costPrice !== undefined && costPrice !== null) {
+                      variantMetadata.cost_price = costPrice;
                     }
                     
                     return {
@@ -2501,9 +2479,9 @@ const onSubmit = async (values: ProductFormValues) => {
                       //console.log("Product update result:", result);
                       
                       // Then, handle variants separately with batch API
+                      // Then, handle variants separately with batch API
                       if (createdVariants.length > 0 || updatedVariants.length > 0 || 
                           (deletedVariantIds && deletedVariantIds.length > 0)) {
-                        // For the batchUpdateVariants function, include currency_code
                         const variantResult = await batchUpdateVariants({
                           productId: id,
                           variantChanges: {
@@ -2512,8 +2490,82 @@ const onSubmit = async (values: ProductFormValues) => {
                             delete: deletedVariantIds && deletedVariantIds.length > 0 ? deletedVariantIds : undefined,
                           }
                         });
-                        
-                        //console.log("Variant update result:", variantResult);
+                      }
+
+                      // Associate variant images natively (Medusa v2.11.2+)
+                      // Uses variantInfo metadata from mediaItems — works for both existing and newly uploaded images
+                      try {
+                        const refreshedProduct = await fetchProduct({ id });
+                        if (refreshedProduct?.variants && refreshedProduct?.images) {
+
+                          // Step 1: Build a map of optionValue → image IDs using variantInfo metadata
+                          // This is reliable for new uploads because variantInfo is preserved through the upload process
+                          const optionValueToImageIds: Record<string, string[]> = {};
+
+                          for (const item of updatedMedia) {
+                            // Skip items without an ID or without variant association metadata
+                            if (!item.id || !item.variantInfo) continue;
+                            const { optionName, optionValues } = item.variantInfo;
+                            if (!optionName || !optionValues?.length) continue;
+
+                            for (const val of optionValues) {
+                              const key = val.toLowerCase().replace(/\s+/g, '_');
+                              if (!optionValueToImageIds[key]) optionValueToImageIds[key] = [];
+                              if (!optionValueToImageIds[key].includes(item.id)) {
+                                optionValueToImageIds[key].push(item.id);
+                              }
+                            }
+                          }
+
+                          console.log("Option value → image ID map:", optionValueToImageIds);
+
+                          // Step 2: For each variant, find its matching images and associate them
+                          for (const completedVariant of refreshedProduct.variants) {
+                            const colorOpt = completedVariant.options?.find((o: any) =>
+                              o.option?.title?.toLowerCase() === 'color'
+                            );
+                            const variantColor = colorOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
+
+                            // Primary: use metadata-based map (works for new uploads)
+                            let matchingImageIds: string[] = optionValueToImageIds[variantColor] || [];
+
+                            // Fallback: if no metadata match, try URL-based matching for older existing images
+                            // that were uploaded before variantInfo tracking was implemented
+                            if (matchingImageIds.length === 0 && variantColor) {
+                              matchingImageIds = (refreshedProduct.images || [])
+                                .filter((img: any) => img.url.toLowerCase().includes(variantColor))
+                                .map((img: any) => img.id);
+                              console.log(`Fallback URL match for ${variantColor}:`, matchingImageIds);
+                            }
+
+                            if (matchingImageIds.length > 0) {
+                              // Find front image preferring metadata, then URL hint
+                              const frontItem = updatedMedia.find(item =>
+                                item.id && matchingImageIds.includes(item.id) &&
+                                item.url.toLowerCase().includes('front')
+                              );
+                              const thumbnailUrl = frontItem?.url
+                                || refreshedProduct.images?.find((img: any) => matchingImageIds.includes(img.id))?.url;
+
+                              try {
+                                await updateVariantImages({
+                                  productId: id,
+                                  variantId: completedVariant.id,
+                                  imageIds: matchingImageIds,
+                                  thumbnailUrl,
+                                });
+                                console.log(`✅ Associated ${matchingImageIds.length} images to variant: ${completedVariant.title}`);
+                              } catch (err) {
+                                console.error(`Failed variant image association for ${completedVariant.title}:`, err);
+                              }
+                            } else {
+                              console.log(`⚠️ No images found for variant: ${completedVariant.title} (color: ${variantColor})`);
+                            }
+                          }
+                        }
+                      } catch (err) {
+                        console.error('Failed to associate variant images after update:', err);
+                        // Non-fatal — product still updated
                       }
                       
                       // Process inventory operations (wrap with try/catch)

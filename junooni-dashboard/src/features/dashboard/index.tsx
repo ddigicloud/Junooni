@@ -11,9 +11,11 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 import AdminImpersonationBanner from '@/components/AdminImpersonationBanner'
 import { ChevronDown, ChevronUp, X } from "lucide-react";
+import StoreTypeModal, { StoreModeBadge, type StorePreference,} from "@/features/dashboard/components/StoreTypeModal"
 import { 
   CircleUser, 
   Package, 
+  Globe ,
   CreditCard, 
   ShoppingBag, 
   PlusSquare,
@@ -962,6 +964,8 @@ const DashboardPage = () => {
   const { toast } = useToast();
   const [showGSTVerificationMessage, setShowGSTVerificationMessage] = useState(false);
   const popupButtonsRef = useRef<ProductsPrimaryButtonsHandle>(null);
+  const [storePreference, setStorePreference] = useState<StorePreference | null>(null)
+  const [showStoreTypeModal, setShowStoreTypeModal] = useState(false)
   
   // Onboarding status
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>({
@@ -1235,6 +1239,21 @@ const DashboardPage = () => {
       setVendor(transformedVendor);
       //console.log('Vendor set:', transformedVendor);
 
+      const rawStoreType = vendorData?.vendor?.store_type as StoreType | undefined
+ 
+      const hasSellPreference =
+        vendorData?.vendor?.sell_on_marketplace !== undefined ||
+        vendorData?.vendor?.sell_on_own_store !== undefined
+      
+      if (hasSellPreference) {
+        setStorePreference({
+          sell_on_marketplace: vendorData.vendor.sell_on_marketplace ?? true,
+          sell_on_own_store: vendorData.vendor.sell_on_own_store ?? false,
+        })
+      } else {
+        // First time — show the modal after page settles
+        setTimeout(() => setShowStoreTypeModal(true), 800)
+      }
       // Fetch recent orders (only 5 for dashboard)
       //console.log('Fetching recent orders...');
       try {
@@ -1575,7 +1594,13 @@ const DashboardPage = () => {
                 style={{ color: BRAND.primary }}
               >
                 Dashboard
-              </Button>
+              </Button>           
+              {storePreference && (
+                <StoreModeBadge
+                  pref={storePreference}
+                  onChangeClick={() => setShowStoreTypeModal(true)}
+                />
+              )}
               <Button variant="ghost" className="hidden md:flex" asChild>
                 <Link to="/products">Products</Link>
               </Button>
@@ -1893,7 +1918,7 @@ const DashboardPage = () => {
                     </Link>
                   </Button>
                   
-                  <Button 
+                  {/* <Button 
                     variant="outline" 
                     className="flex flex-col items-center justify-center h-auto py-4 hover:border-[#e65100]"
                     asChild
@@ -1902,7 +1927,7 @@ const DashboardPage = () => {
                       <HelpCircle className="w-6 h-6 mb-2 text-blue-600" />
                       <span>Help & Guides</span>
                     </Link>
-                  </Button>
+                  </Button> */}
                   
                   <Button 
                     variant="outline" 
@@ -1913,6 +1938,14 @@ const DashboardPage = () => {
                       <Settings className="w-6 h-6 mb-2 text-gray-600" />
                       <span>Settings</span>
                     </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex flex-col items-center justify-center h-auto py-4 hover:border-[#e65100]"
+                    onClick={() => setShowStoreTypeModal(true)}
+                  >
+                    <ShoppingBag className="w-6 h-6 mb-2" style={{ color: "#e65100" }} />
+                    <span>Store mode</span>
                   </Button>
                 </div>
               </CardContent>
@@ -1930,6 +1963,29 @@ const DashboardPage = () => {
         </div>
         <ChatwootWidget />
       </div>
+
+      {showStoreTypeModal && vendor && (
+        <StoreTypeModal
+          vendorId={vendor.id}
+          currentPreference={storePreference ?? undefined}
+          onComplete={(pref) => {
+            setStorePreference(pref)
+            setShowStoreTypeModal(false)
+            const both = pref.sell_on_marketplace && pref.sell_on_own_store
+            toast({
+              title: both
+                ? "You're on both — marketplace + own store!"
+                : pref.sell_on_marketplace
+                ? "You're on the Junooni marketplace!"
+                : "Own store selected — we'll be in touch!",
+              description: pref.sell_on_own_store
+                ? "Our team will help set up your branded storefront and domain."
+                : undefined,
+            })
+          }}
+          onSkip={() => setShowStoreTypeModal(false)}
+        />
+      )}
     </div>
   );
 };

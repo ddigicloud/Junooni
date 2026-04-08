@@ -27,7 +27,7 @@ function RouteComponent() {
     const path = router.state.location.pathname
     
     // Define the list of routes where sidebar should be hidden
-    const hideSidebarRoutes = ['/productCatalog','/designer']
+    const hideSidebarRoutes = ['/productCatalog','/designer', '/store/editor']
     
     // Check if the current path starts with any of the hide routes
     const shouldHideSidebar = hideSidebarRoutes.some(route => 

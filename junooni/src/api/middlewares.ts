@@ -128,6 +128,15 @@ export default defineMiddlewares({
       method: "POST",
       middlewares: [upload.array("files")],
     },
+     {
+        matcher: "/admin/blog*",  // covers /admin/blog, /admin/blog/1, /admin/blog/create etc
+        middlewares: [
+          (req, res, next) => {
+            cors({ origin: true, credentials: true })(req, res, next)
+          },
+          authenticate("user", ["session", "bearer"]),
+        ],
+      },
     // ─── Google Account Linking ───────────────────────────────────────────────
     // IMPORTANT: Must be before /vendors/* wildcard
     // allowUnregistered: true → lets Google token through even with actor_id = ""
@@ -204,6 +213,16 @@ export default defineMiddlewares({
         },
         authenticate("vendor", ["session", "bearer"], { allowUnregistered: true }),
         validateAndTransformBody(CheckHandleSchema),
+      ],
+    },
+    {
+      matcher: "/vendors/me/store",
+      method: ["GET", "POST", "PUT", "OPTIONS"],
+      middlewares: [
+        (req, res, next) => {
+          cors({ origin: true, credentials: true })(req, res, next)
+        },
+        authenticate(["vendor", "user"], ["session", "bearer"]),
       ],
     },
     {
@@ -336,6 +355,15 @@ export default defineMiddlewares({
       matcher: "/store/customers/me/follow",
       method: "POST",
       middlewares: [],
+    },
+    {
+      matcher: "/store-front/:handle",
+      method: ["GET", "OPTIONS"],
+      middlewares: [
+        (req, res, next) => {
+          cors({ origin: true, credentials: false })(req, res, next)
+        },
+      ],
     },
     {
       matcher: "/vendors/payout",

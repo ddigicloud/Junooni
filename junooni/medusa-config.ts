@@ -1,97 +1,3 @@
-// import { loadEnv, defineConfig, Modules } from '@medusajs/framework/utils'
-// import { OrderTypes, Context } from "@medusajs/framework/types"
-
-// loadEnv(process.env.NODE_ENV || 'development', process.cwd())
-
-// module.exports = defineConfig({
-//   projectConfig: {
-//     databaseUrl: process.env.DATABASE_URL,
-//     http: {
-//       storeCors: process.env.STORE_CORS || "http://localhost:8000,http://localhost:5173",
-//       adminCors: process.env.ADMIN_CORS || "http://localhost:9000,http://localhost:3000,http://localhost:5173",
-//       authCors: process.env.AUTH_CORS || "http://localhost:8000,http://localhost:9000,http://localhost:3000,http://localhost:5173,https://chat.junooni.com/",
-//       jwtSecret: process.env.JWT_SECRET || "supersecret",
-//       cookieSecret: process.env.COOKIE_SECRET || "supersecret",
-//     }
-//   },
-//   featureFlags: {
-//     view_configurations: true,
-//   },
-//   modules: [
-//     // {
-//     //   resolve: "@medusajs/medusa/file",
-//     //   options: {
-//     //     providers: [
-//     //       {
-//     //         resolve: "@medusajs/medusa/file-local",
-//     //         id: "local",
-//     //         options: {
-//     //           upload_dir: "static",
-//     //           backend_url: `${process.env.BACKEND_URL || "http://localhost:9000"}/static`,
-//     //         },
-//     //       },
-//     //     ],
-//     //   },
-//     // },
-//     {
-//       key: Modules.ORDER,
-//       resolve: "@medusajs/medusa/order",
-//       options: {
-//         generateCustomDisplayId: async (
-//           order: OrderTypes.CreateOrderDTO,
-//           sharedContext: Context
-//         ): Promise<string> => {
-//           const year = new Date().getFullYear()
-//           const random = Math.floor(Math.random() * 900000) + 100000
-//           return `JN-${year}-${random}`
-//         },
-//       },
-//     },
-//     {
-//       resolve: "@medusajs/medusa/notification",
-//       options: {
-//         providers: [
-//           {
-//             resolve: "./src/modules/resend",
-//             id: "resend",
-//             options: {
-//               channels: ["email"],
-//               api_key: process.env.RESEND_API_KEY,
-//               from: process.env.RESEND_FROM_EMAIL,
-//             },
-//           },
-//         ],
-//       },
-//     },
-//     {
-//       resolve: "@medusajs/medusa/payment",
-//       options: {
-//         providers: [
-//           {
-//             resolve: "./src/modules/payment-razorpay",
-//             id: "razorpay",
-//             options: {
-//               key_id: process.env.RAZORPAY_ID,
-//               key_secret: process.env.RAZORPAY_SECRET,
-//             },
-//           },
-//         ],
-//       },
-//     },
-//     { resolve: "./src/modules/marketplace" },
-//     { resolve: "./src/modules/brand" },
-//     { resolve: "./src/modules/blank" },
-//     { resolve: "./src/modules/size-chart" },
-//     { resolve: "./src/modules/artwork" },
-//     { resolve: "./src/modules/wishlist" },
-//     { resolve: "./src/modules/product-review" },
-//     { resolve: "./src/modules/follow" },
-//     { resolve: "./src/modules/payout" },
-//     { resolve: "./src/modules/invoice-generator" },
-//     { resolve: "./src/modules/loyalty" },
-//   ]
-// })
-
 import { loadEnv, defineConfig, Modules } from '@medusajs/framework/utils'
 import { OrderTypes, Context } from "@medusajs/framework/types"
 
@@ -101,6 +7,7 @@ module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
     http: {
+      
       storeCors: process.env.STORE_CORS || "http://localhost:8000,http://localhost:5173",
       adminCors: process.env.ADMIN_CORS || "http://localhost:9000,http://localhost:3000,http://localhost:5173",
       authCors: process.env.AUTH_CORS || "http://localhost:8000,http://localhost:9000,http://localhost:3000,http://localhost:5173,https://chat.junooni.com,http://localhost:8000/in/account-callback,https://junooni.in/in/account-callback,https://junooni.com/in/account-callback,http://localhost:5173/auth-callback,https://studio.junooni.com/auth-callback",
@@ -210,6 +117,7 @@ module.exports = defineConfig({
     { resolve: "./src/modules/wishlist" },
     { resolve: "./src/modules/product-review" },
     { resolve: "./src/modules/follow" },
+    {resolve: "./src/modules/blog" },
     { resolve: "./src/modules/payout" },
     { resolve: "./src/modules/invoice-generator" },
     { resolve: "./src/modules/loyalty" },

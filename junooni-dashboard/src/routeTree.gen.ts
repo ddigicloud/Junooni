@@ -18,6 +18,9 @@ import { Route as AuthenticatedIndexImport } from './routes/_authenticated/index
 import { Route as authSignInImport } from './routes/(auth)/sign-in'
 import { Route as authOtpImport } from './routes/(auth)/otp'
 import { Route as auth500Import } from './routes/(auth)/500'
+import { Route as AuthenticatedStoreMembershipRouteImport } from './routes/_authenticated/store/membership/route'
+import { Route as AuthenticatedStoreEditorRouteImport } from './routes/_authenticated/store/editor/route'
+import { Route as AuthenticatedStoreCollectionsRouteImport } from './routes/_authenticated/store/collections/route'
 
 // Create Virtual Routes
 
@@ -60,6 +63,9 @@ const PagesCreatingProductsIndexLazyImport = createFileRoute(
 )()
 const PagesCareersIndexLazyImport = createFileRoute('/pages/careers/')()
 const PagesAboutUsIndexLazyImport = createFileRoute('/pages/about-us/')()
+const AuthenticatedStoreIndexLazyImport = createFileRoute(
+  '/_authenticated/store/',
+)()
 const AuthenticatedSettingsIndexLazyImport = createFileRoute(
   '/_authenticated/settings/',
 )()
@@ -116,6 +122,15 @@ const AuthenticatedDesignerCreateLazyImport = createFileRoute(
 )()
 const AuthenticatedDesignerIdLazyImport = createFileRoute(
   '/_authenticated/designer/$id',
+)()
+const AuthenticatedStoreMembershipIndexLazyImport = createFileRoute(
+  '/_authenticated/store/membership/',
+)()
+const AuthenticatedStoreEditorIndexLazyImport = createFileRoute(
+  '/_authenticated/store/editor/',
+)()
+const AuthenticatedStoreCollectionsIndexLazyImport = createFileRoute(
+  '/_authenticated/store/collections/',
 )()
 const AuthenticatedProductCatalogProductsIndexLazyImport = createFileRoute(
   '/_authenticated/productCatalog/products/',
@@ -356,6 +371,15 @@ const PagesAboutUsIndexLazyRoute = PagesAboutUsIndexLazyImport.update({
   import('./routes/pages/about-us/index.lazy').then((d) => d.Route),
 )
 
+const AuthenticatedStoreIndexLazyRoute =
+  AuthenticatedStoreIndexLazyImport.update({
+    id: '/store/',
+    path: '/store/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/store/index.lazy').then((d) => d.Route),
+  )
+
 const AuthenticatedSettingsIndexLazyRoute =
   AuthenticatedSettingsIndexLazyImport.update({
     id: '/',
@@ -542,6 +566,60 @@ const AuthenticatedDesignerIdLazyRoute =
     import('./routes/_authenticated/designer/$id.lazy').then((d) => d.Route),
   )
 
+const AuthenticatedStoreMembershipRouteRoute =
+  AuthenticatedStoreMembershipRouteImport.update({
+    id: '/store/membership',
+    path: '/store/membership',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+
+const AuthenticatedStoreEditorRouteRoute =
+  AuthenticatedStoreEditorRouteImport.update({
+    id: '/store/editor',
+    path: '/store/editor',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+
+const AuthenticatedStoreCollectionsRouteRoute =
+  AuthenticatedStoreCollectionsRouteImport.update({
+    id: '/store/collections',
+    path: '/store/collections',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+
+const AuthenticatedStoreMembershipIndexLazyRoute =
+  AuthenticatedStoreMembershipIndexLazyImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedStoreMembershipRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/store/membership/index.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
+const AuthenticatedStoreEditorIndexLazyRoute =
+  AuthenticatedStoreEditorIndexLazyImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedStoreEditorRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/store/editor/index.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
+const AuthenticatedStoreCollectionsIndexLazyRoute =
+  AuthenticatedStoreCollectionsIndexLazyImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedStoreCollectionsRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/store/collections/index.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
 const AuthenticatedProductCatalogProductsIndexLazyRoute =
   AuthenticatedProductCatalogProductsIndexLazyImport.update({
     id: '/productCatalog/products/',
@@ -723,6 +801,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackIndexLazyImport
       parentRoute: typeof rootRoute
     }
+    '/_authenticated/store/collections': {
+      id: '/_authenticated/store/collections'
+      path: '/store/collections'
+      fullPath: '/store/collections'
+      preLoaderRoute: typeof AuthenticatedStoreCollectionsRouteImport
+      parentRoute: typeof AuthenticatedRouteImport
+    }
+    '/_authenticated/store/editor': {
+      id: '/_authenticated/store/editor'
+      path: '/store/editor'
+      fullPath: '/store/editor'
+      preLoaderRoute: typeof AuthenticatedStoreEditorRouteImport
+      parentRoute: typeof AuthenticatedRouteImport
+    }
+    '/_authenticated/store/membership': {
+      id: '/_authenticated/store/membership'
+      path: '/store/membership'
+      fullPath: '/store/membership'
+      preLoaderRoute: typeof AuthenticatedStoreMembershipRouteImport
+      parentRoute: typeof AuthenticatedRouteImport
+    }
     '/_authenticated/designer/$id': {
       id: '/_authenticated/designer/$id'
       path: '/designer/$id'
@@ -856,6 +955,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsIndexLazyImport
       parentRoute: typeof AuthenticatedSettingsRouteLazyImport
     }
+    '/_authenticated/store/': {
+      id: '/_authenticated/store/'
+      path: '/store'
+      fullPath: '/store'
+      preLoaderRoute: typeof AuthenticatedStoreIndexLazyImport
+      parentRoute: typeof AuthenticatedRouteImport
+    }
     '/pages/about-us/': {
       id: '/pages/about-us/'
       path: '/pages/about-us'
@@ -933,6 +1039,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProductCatalogProductsIndexLazyImport
       parentRoute: typeof AuthenticatedRouteImport
     }
+    '/_authenticated/store/collections/': {
+      id: '/_authenticated/store/collections/'
+      path: '/'
+      fullPath: '/store/collections/'
+      preLoaderRoute: typeof AuthenticatedStoreCollectionsIndexLazyImport
+      parentRoute: typeof AuthenticatedStoreCollectionsRouteImport
+    }
+    '/_authenticated/store/editor/': {
+      id: '/_authenticated/store/editor/'
+      path: '/'
+      fullPath: '/store/editor/'
+      preLoaderRoute: typeof AuthenticatedStoreEditorIndexLazyImport
+      parentRoute: typeof AuthenticatedStoreEditorRouteImport
+    }
+    '/_authenticated/store/membership/': {
+      id: '/_authenticated/store/membership/'
+      path: '/'
+      fullPath: '/store/membership/'
+      preLoaderRoute: typeof AuthenticatedStoreMembershipIndexLazyImport
+      parentRoute: typeof AuthenticatedStoreMembershipRouteImport
+    }
     '/_authenticated/productCatalog/category/$slug/$id': {
       id: '/_authenticated/productCatalog/category/$slug/$id'
       path: '/productCatalog/category/$slug/$id'
@@ -978,9 +1105,57 @@ const AuthenticatedSettingsRouteLazyRouteWithChildren =
     AuthenticatedSettingsRouteLazyRouteChildren,
   )
 
+interface AuthenticatedStoreCollectionsRouteRouteChildren {
+  AuthenticatedStoreCollectionsIndexLazyRoute: typeof AuthenticatedStoreCollectionsIndexLazyRoute
+}
+
+const AuthenticatedStoreCollectionsRouteRouteChildren: AuthenticatedStoreCollectionsRouteRouteChildren =
+  {
+    AuthenticatedStoreCollectionsIndexLazyRoute:
+      AuthenticatedStoreCollectionsIndexLazyRoute,
+  }
+
+const AuthenticatedStoreCollectionsRouteRouteWithChildren =
+  AuthenticatedStoreCollectionsRouteRoute._addFileChildren(
+    AuthenticatedStoreCollectionsRouteRouteChildren,
+  )
+
+interface AuthenticatedStoreEditorRouteRouteChildren {
+  AuthenticatedStoreEditorIndexLazyRoute: typeof AuthenticatedStoreEditorIndexLazyRoute
+}
+
+const AuthenticatedStoreEditorRouteRouteChildren: AuthenticatedStoreEditorRouteRouteChildren =
+  {
+    AuthenticatedStoreEditorIndexLazyRoute:
+      AuthenticatedStoreEditorIndexLazyRoute,
+  }
+
+const AuthenticatedStoreEditorRouteRouteWithChildren =
+  AuthenticatedStoreEditorRouteRoute._addFileChildren(
+    AuthenticatedStoreEditorRouteRouteChildren,
+  )
+
+interface AuthenticatedStoreMembershipRouteRouteChildren {
+  AuthenticatedStoreMembershipIndexLazyRoute: typeof AuthenticatedStoreMembershipIndexLazyRoute
+}
+
+const AuthenticatedStoreMembershipRouteRouteChildren: AuthenticatedStoreMembershipRouteRouteChildren =
+  {
+    AuthenticatedStoreMembershipIndexLazyRoute:
+      AuthenticatedStoreMembershipIndexLazyRoute,
+  }
+
+const AuthenticatedStoreMembershipRouteRouteWithChildren =
+  AuthenticatedStoreMembershipRouteRoute._addFileChildren(
+    AuthenticatedStoreMembershipRouteRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteLazyRoute: typeof AuthenticatedSettingsRouteLazyRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedStoreCollectionsRouteRoute: typeof AuthenticatedStoreCollectionsRouteRouteWithChildren
+  AuthenticatedStoreEditorRouteRoute: typeof AuthenticatedStoreEditorRouteRouteWithChildren
+  AuthenticatedStoreMembershipRouteRoute: typeof AuthenticatedStoreMembershipRouteRouteWithChildren
   AuthenticatedDesignerIdLazyRoute: typeof AuthenticatedDesignerIdLazyRoute
   AuthenticatedDesignerCreateLazyRoute: typeof AuthenticatedDesignerCreateLazyRoute
   AuthenticatedOrdersIdLazyRoute: typeof AuthenticatedOrdersIdLazyRoute
@@ -995,6 +1170,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPayoutsIndexLazyRoute: typeof AuthenticatedPayoutsIndexLazyRoute
   AuthenticatedProductCatalogIndexLazyRoute: typeof AuthenticatedProductCatalogIndexLazyRoute
   AuthenticatedProductsIndexLazyRoute: typeof AuthenticatedProductsIndexLazyRoute
+  AuthenticatedStoreIndexLazyRoute: typeof AuthenticatedStoreIndexLazyRoute
   AuthenticatedProductCatalogProductsIdLazyRoute: typeof AuthenticatedProductCatalogProductsIdLazyRoute
   AuthenticatedProductCatalogProductsIndexLazyRoute: typeof AuthenticatedProductCatalogProductsIndexLazyRoute
   AuthenticatedProductCatalogCategorySlugIdLazyRoute: typeof AuthenticatedProductCatalogCategorySlugIdLazyRoute
@@ -1005,6 +1181,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteLazyRoute:
     AuthenticatedSettingsRouteLazyRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedStoreCollectionsRouteRoute:
+    AuthenticatedStoreCollectionsRouteRouteWithChildren,
+  AuthenticatedStoreEditorRouteRoute:
+    AuthenticatedStoreEditorRouteRouteWithChildren,
+  AuthenticatedStoreMembershipRouteRoute:
+    AuthenticatedStoreMembershipRouteRouteWithChildren,
   AuthenticatedDesignerIdLazyRoute: AuthenticatedDesignerIdLazyRoute,
   AuthenticatedDesignerCreateLazyRoute: AuthenticatedDesignerCreateLazyRoute,
   AuthenticatedOrdersIdLazyRoute: AuthenticatedOrdersIdLazyRoute,
@@ -1022,6 +1204,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProductCatalogIndexLazyRoute:
     AuthenticatedProductCatalogIndexLazyRoute,
   AuthenticatedProductsIndexLazyRoute: AuthenticatedProductsIndexLazyRoute,
+  AuthenticatedStoreIndexLazyRoute: AuthenticatedStoreIndexLazyRoute,
   AuthenticatedProductCatalogProductsIdLazyRoute:
     AuthenticatedProductCatalogProductsIdLazyRoute,
   AuthenticatedProductCatalogProductsIndexLazyRoute:
@@ -1054,6 +1237,9 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503LazyRoute
   '/': typeof AuthenticatedIndexRoute
   '/auth-callback': typeof AuthCallbackIndexLazyRoute
+  '/store/collections': typeof AuthenticatedStoreCollectionsRouteRouteWithChildren
+  '/store/editor': typeof AuthenticatedStoreEditorRouteRouteWithChildren
+  '/store/membership': typeof AuthenticatedStoreMembershipRouteRouteWithChildren
   '/designer/$id': typeof AuthenticatedDesignerIdLazyRoute
   '/designer/create': typeof AuthenticatedDesignerCreateLazyRoute
   '/orders/$id': typeof AuthenticatedOrdersIdLazyRoute
@@ -1073,6 +1259,7 @@ export interface FileRoutesByFullPath {
   '/productCatalog': typeof AuthenticatedProductCatalogIndexLazyRoute
   '/products': typeof AuthenticatedProductsIndexLazyRoute
   '/settings/': typeof AuthenticatedSettingsIndexLazyRoute
+  '/store': typeof AuthenticatedStoreIndexLazyRoute
   '/pages/about-us': typeof PagesAboutUsIndexLazyRoute
   '/pages/careers': typeof PagesCareersIndexLazyRoute
   '/pages/creating-products': typeof PagesCreatingProductsIndexLazyRoute
@@ -1084,6 +1271,9 @@ export interface FileRoutesByFullPath {
   '/pages/privacy': typeof PagesPrivacyIndexLazyRoute
   '/productCatalog/products/$id': typeof AuthenticatedProductCatalogProductsIdLazyRoute
   '/productCatalog/products': typeof AuthenticatedProductCatalogProductsIndexLazyRoute
+  '/store/collections/': typeof AuthenticatedStoreCollectionsIndexLazyRoute
+  '/store/editor/': typeof AuthenticatedStoreEditorIndexLazyRoute
+  '/store/membership/': typeof AuthenticatedStoreMembershipIndexLazyRoute
   '/productCatalog/category/$slug/$id': typeof AuthenticatedProductCatalogCategorySlugIdLazyRoute
   '/productCatalog/category/$slug': typeof AuthenticatedProductCatalogCategorySlugIndexLazyRoute
 }
@@ -1124,6 +1314,7 @@ export interface FileRoutesByTo {
   '/productCatalog': typeof AuthenticatedProductCatalogIndexLazyRoute
   '/products': typeof AuthenticatedProductsIndexLazyRoute
   '/settings': typeof AuthenticatedSettingsIndexLazyRoute
+  '/store': typeof AuthenticatedStoreIndexLazyRoute
   '/pages/about-us': typeof PagesAboutUsIndexLazyRoute
   '/pages/careers': typeof PagesCareersIndexLazyRoute
   '/pages/creating-products': typeof PagesCreatingProductsIndexLazyRoute
@@ -1135,6 +1326,9 @@ export interface FileRoutesByTo {
   '/pages/privacy': typeof PagesPrivacyIndexLazyRoute
   '/productCatalog/products/$id': typeof AuthenticatedProductCatalogProductsIdLazyRoute
   '/productCatalog/products': typeof AuthenticatedProductCatalogProductsIndexLazyRoute
+  '/store/collections': typeof AuthenticatedStoreCollectionsIndexLazyRoute
+  '/store/editor': typeof AuthenticatedStoreEditorIndexLazyRoute
+  '/store/membership': typeof AuthenticatedStoreMembershipIndexLazyRoute
   '/productCatalog/category/$slug/$id': typeof AuthenticatedProductCatalogCategorySlugIdLazyRoute
   '/productCatalog/category/$slug': typeof AuthenticatedProductCatalogCategorySlugIndexLazyRoute
 }
@@ -1160,6 +1354,9 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503LazyRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/auth-callback/': typeof AuthCallbackIndexLazyRoute
+  '/_authenticated/store/collections': typeof AuthenticatedStoreCollectionsRouteRouteWithChildren
+  '/_authenticated/store/editor': typeof AuthenticatedStoreEditorRouteRouteWithChildren
+  '/_authenticated/store/membership': typeof AuthenticatedStoreMembershipRouteRouteWithChildren
   '/_authenticated/designer/$id': typeof AuthenticatedDesignerIdLazyRoute
   '/_authenticated/designer/create': typeof AuthenticatedDesignerCreateLazyRoute
   '/_authenticated/orders/$id': typeof AuthenticatedOrdersIdLazyRoute
@@ -1179,6 +1376,7 @@ export interface FileRoutesById {
   '/_authenticated/productCatalog/': typeof AuthenticatedProductCatalogIndexLazyRoute
   '/_authenticated/products/': typeof AuthenticatedProductsIndexLazyRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexLazyRoute
+  '/_authenticated/store/': typeof AuthenticatedStoreIndexLazyRoute
   '/pages/about-us/': typeof PagesAboutUsIndexLazyRoute
   '/pages/careers/': typeof PagesCareersIndexLazyRoute
   '/pages/creating-products/': typeof PagesCreatingProductsIndexLazyRoute
@@ -1190,6 +1388,9 @@ export interface FileRoutesById {
   '/pages/privacy/': typeof PagesPrivacyIndexLazyRoute
   '/_authenticated/productCatalog/products/$id': typeof AuthenticatedProductCatalogProductsIdLazyRoute
   '/_authenticated/productCatalog/products/': typeof AuthenticatedProductCatalogProductsIndexLazyRoute
+  '/_authenticated/store/collections/': typeof AuthenticatedStoreCollectionsIndexLazyRoute
+  '/_authenticated/store/editor/': typeof AuthenticatedStoreEditorIndexLazyRoute
+  '/_authenticated/store/membership/': typeof AuthenticatedStoreMembershipIndexLazyRoute
   '/_authenticated/productCatalog/category/$slug/$id': typeof AuthenticatedProductCatalogCategorySlugIdLazyRoute
   '/_authenticated/productCatalog/category/$slug/': typeof AuthenticatedProductCatalogCategorySlugIndexLazyRoute
 }
@@ -1215,6 +1416,9 @@ export interface FileRouteTypes {
     | '/503'
     | '/'
     | '/auth-callback'
+    | '/store/collections'
+    | '/store/editor'
+    | '/store/membership'
     | '/designer/$id'
     | '/designer/create'
     | '/orders/$id'
@@ -1234,6 +1438,7 @@ export interface FileRouteTypes {
     | '/productCatalog'
     | '/products'
     | '/settings/'
+    | '/store'
     | '/pages/about-us'
     | '/pages/careers'
     | '/pages/creating-products'
@@ -1245,6 +1450,9 @@ export interface FileRouteTypes {
     | '/pages/privacy'
     | '/productCatalog/products/$id'
     | '/productCatalog/products'
+    | '/store/collections/'
+    | '/store/editor/'
+    | '/store/membership/'
     | '/productCatalog/category/$slug/$id'
     | '/productCatalog/category/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -1284,6 +1492,7 @@ export interface FileRouteTypes {
     | '/productCatalog'
     | '/products'
     | '/settings'
+    | '/store'
     | '/pages/about-us'
     | '/pages/careers'
     | '/pages/creating-products'
@@ -1295,6 +1504,9 @@ export interface FileRouteTypes {
     | '/pages/privacy'
     | '/productCatalog/products/$id'
     | '/productCatalog/products'
+    | '/store/collections'
+    | '/store/editor'
+    | '/store/membership'
     | '/productCatalog/category/$slug/$id'
     | '/productCatalog/category/$slug'
   id:
@@ -1318,6 +1530,9 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/'
     | '/auth-callback/'
+    | '/_authenticated/store/collections'
+    | '/_authenticated/store/editor'
+    | '/_authenticated/store/membership'
     | '/_authenticated/designer/$id'
     | '/_authenticated/designer/create'
     | '/_authenticated/orders/$id'
@@ -1337,6 +1552,7 @@ export interface FileRouteTypes {
     | '/_authenticated/productCatalog/'
     | '/_authenticated/products/'
     | '/_authenticated/settings/'
+    | '/_authenticated/store/'
     | '/pages/about-us/'
     | '/pages/careers/'
     | '/pages/creating-products/'
@@ -1348,6 +1564,9 @@ export interface FileRouteTypes {
     | '/pages/privacy/'
     | '/_authenticated/productCatalog/products/$id'
     | '/_authenticated/productCatalog/products/'
+    | '/_authenticated/store/collections/'
+    | '/_authenticated/store/editor/'
+    | '/_authenticated/store/membership/'
     | '/_authenticated/productCatalog/category/$slug/$id'
     | '/_authenticated/productCatalog/category/$slug/'
   fileRoutesById: FileRoutesById
@@ -1454,6 +1673,9 @@ export const routeTree = rootRoute
       "children": [
         "/_authenticated/settings",
         "/_authenticated/",
+        "/_authenticated/store/collections",
+        "/_authenticated/store/editor",
+        "/_authenticated/store/membership",
         "/_authenticated/designer/$id",
         "/_authenticated/designer/create",
         "/_authenticated/orders/$id",
@@ -1468,6 +1690,7 @@ export const routeTree = rootRoute
         "/_authenticated/payouts/",
         "/_authenticated/productCatalog/",
         "/_authenticated/products/",
+        "/_authenticated/store/",
         "/_authenticated/productCatalog/products/$id",
         "/_authenticated/productCatalog/products/",
         "/_authenticated/productCatalog/category/$slug/$id",
@@ -1536,6 +1759,27 @@ export const routeTree = rootRoute
     },
     "/auth-callback/": {
       "filePath": "auth-callback/index.lazy.tsx"
+    },
+    "/_authenticated/store/collections": {
+      "filePath": "_authenticated/store/collections/route.tsx",
+      "parent": "/_authenticated",
+      "children": [
+        "/_authenticated/store/collections/"
+      ]
+    },
+    "/_authenticated/store/editor": {
+      "filePath": "_authenticated/store/editor/route.tsx",
+      "parent": "/_authenticated",
+      "children": [
+        "/_authenticated/store/editor/"
+      ]
+    },
+    "/_authenticated/store/membership": {
+      "filePath": "_authenticated/store/membership/route.tsx",
+      "parent": "/_authenticated",
+      "children": [
+        "/_authenticated/store/membership/"
+      ]
     },
     "/_authenticated/designer/$id": {
       "filePath": "_authenticated/designer/$id.lazy.tsx",
@@ -1613,6 +1857,10 @@ export const routeTree = rootRoute
       "filePath": "_authenticated/settings/index.lazy.tsx",
       "parent": "/_authenticated/settings"
     },
+    "/_authenticated/store/": {
+      "filePath": "_authenticated/store/index.lazy.tsx",
+      "parent": "/_authenticated"
+    },
     "/pages/about-us/": {
       "filePath": "pages/about-us/index.lazy.tsx"
     },
@@ -1647,6 +1895,18 @@ export const routeTree = rootRoute
     "/_authenticated/productCatalog/products/": {
       "filePath": "_authenticated/productCatalog/products/index.lazy.tsx",
       "parent": "/_authenticated"
+    },
+    "/_authenticated/store/collections/": {
+      "filePath": "_authenticated/store/collections/index.lazy.tsx",
+      "parent": "/_authenticated/store/collections"
+    },
+    "/_authenticated/store/editor/": {
+      "filePath": "_authenticated/store/editor/index.lazy.tsx",
+      "parent": "/_authenticated/store/editor"
+    },
+    "/_authenticated/store/membership/": {
+      "filePath": "_authenticated/store/membership/index.lazy.tsx",
+      "parent": "/_authenticated/store/membership"
     },
     "/_authenticated/productCatalog/category/$slug/$id": {
       "filePath": "_authenticated/productCatalog/category/$slug/$id.lazy.tsx",

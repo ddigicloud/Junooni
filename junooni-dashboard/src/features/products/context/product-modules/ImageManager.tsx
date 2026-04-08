@@ -95,26 +95,61 @@ export const StreamlinedImageManager: React.FC<{
 
   // Function to filter images based on selected criteria
   const getFilteredImages = useCallback(() => {
-    if (associationMode === 'none') {
-      return mediaItems;
-    } else if (associationMode === 'single') {
-      // Filter for a single option value
-      const option = imageAssociatedOptions[0];
-      const value = selectedOptionValues[option?.title];
-      if (!value) return [];
-      
-      return mediaItems.filter(item => 
-        item.variantInfo?.optionName === option.title && 
-        item.variantInfo?.optionValues?.includes(value)
-      );
-    } else if (associationMode === 'combination' && selectedVariantId) {
-      // Filter for specific variant combination
-      return mediaItems.filter(item => 
-        item.variantInfo?.variantId === selectedVariantId
-      );
-    }
-    return [];
-  }, [associationMode, imageAssociatedOptions, mediaItems, selectedOptionValues, selectedVariantId]);
+  if (associationMode === 'none') {
+    return mediaItems;
+  } else if (associationMode === 'single') {
+    const option = imageAssociatedOptions[0];
+    const value = selectedOptionValues[option?.title];
+    if (!value) return [];
+
+    return mediaItems.filter(item => {
+      // PRIORITY 1: Native variant association — img.variants[] contains variant IDs
+      // Check if any variant associated with this image has the matching color/option value
+      if ((item as any).variants && Array.isArray((item as any).variants)) {
+        const associatedVariantIds = (item as any).variants.map((v: any) => v.id);
+        const matchingVariant = variants.find(v =>
+          associatedVariantIds.includes(v.id) &&
+          v.optionValues?.some(ov =>
+            ov.optionName?.toLowerCase() === option.title?.toLowerCase() &&
+            ov.value?.toLowerCase() === value.toLowerCase()
+          )
+        );
+        if (matchingVariant) return true;
+      }
+
+      // PRIORITY 2: URL-based matching (color name in filename)
+      if (isColorOption(option.title)) {
+        const urlLower = item.url.toLowerCase();
+        const valueLower = value.toLowerCase().replace(/\s+/g, '_');
+        const valueDash = value.toLowerCase().replace(/\s+/g, '-');
+        if (urlLower.includes(valueLower) || urlLower.includes(valueDash)) return true;
+      }
+
+     // PRIORITY 3: variantInfo metadata + colorValue shorthand
+    if (
+      item.variantInfo?.optionName?.toLowerCase() === option.title?.toLowerCase() &&
+      item.variantInfo?.optionValues?.some(v => v.toLowerCase() === value.toLowerCase())
+    ) return true;
+
+    if (isColorOption(option.title) && item.colorValue?.toLowerCase() === value.toLowerCase()) return true;
+
+    return false;
+    });
+
+  } else if (associationMode === 'combination' && selectedVariantId) {
+    return mediaItems.filter(item => {
+      // PRIORITY 1: Native variant association
+      if ((item as any).variants && Array.isArray((item as any).variants)) {
+        return (item as any).variants.some((v: any) => v.id === selectedVariantId);
+      }
+
+      // PRIORITY 2: Legacy metadata-based variantInfo fallback
+      return item.variantInfo?.variantId === selectedVariantId;
+    });
+  }
+
+  return [];
+}, [associationMode, imageAssociatedOptions, mediaItems, selectedOptionValues, selectedVariantId, variants]);
 
   // Pre-select first value and handle option changes properly
   useEffect(() => {
@@ -314,17 +349,51 @@ export const StreamlinedImageManager: React.FC<{
   };
 
   // Get count of images
-  const countImagesForOptionValue = (optionName: string, value: string): number => {
-    return mediaItems.filter(item => 
-      item.variantInfo?.optionName === optionName && 
-      item.variantInfo?.optionValues?.includes(value)
-    ).length;
-  };
+ const countImagesForOptionValue = (optionName: string, value: string): number => {
+  return mediaItems.filter(item => {
+    // Native association check
+    if ((item as any).variants && Array.isArray((item as any).variants)) {
+      const associatedVariantIds = (item as any).variants.map((v: any) => v.id);
+      const matchingVariant = variants.find(v =>
+        associatedVariantIds.includes(v.id) &&
+        v.optionValues?.some(ov =>
+          ov.optionName?.toLowerCase() === optionName?.toLowerCase() &&
+          ov.value?.toLowerCase() === value.toLowerCase()
+        )
+      );
+      if (matchingVariant) return true;
+    }
+
+    // URL-based fallback
+    if (isColorOption(optionName)) {
+      const urlLower = item.url.toLowerCase();
+      const valueLower = value.toLowerCase().replace(/\s+/g, '_');
+      if (urlLower.includes(valueLower)) return true;
+    }
+
+   // Legacy metadata fallback
+    if (
+      item.variantInfo?.optionName?.toLowerCase() === optionName?.toLowerCase() &&
+      item.variantInfo?.optionValues?.some(v => v.toLowerCase() === value.toLowerCase())
+    ) return true;
+
+    if (isColorOption(optionName) && item.colorValue?.toLowerCase() === value.toLowerCase()) return true;
+
+    return false;
+  }).length;
+};
 
   // Count images for a specific variant
-  const countImagesForVariant = (variantId: string): number => {
-    return mediaItems.filter(item => item.variantInfo?.variantId === variantId).length;
-  };
+const countImagesForVariant = (variantId: string): number => {
+  return mediaItems.filter(item => {
+    // Native association check
+    if ((item as any).variants && Array.isArray((item as any).variants)) {
+      return (item as any).variants.some((v: any) => v.id === variantId);
+    }
+    // Legacy metadata fallback
+    return item.variantInfo?.variantId === variantId;
+  }).length;
+};
 
   // Render the filtered images
   const filteredImages = getFilteredImages();
@@ -378,7 +447,7 @@ export const StreamlinedImageManager: React.FC<{
                           ${imageCount > 0 ? 'shadow-md' : ''}`}
                         style={{ backgroundColor: hexValue }}
                       />
-                      <span className="block text-xs mt-1 max-w-[60px] truncate">
+                      <span className="block text-xs mt-1 max-w-[60px] truncate"  title={imageCount > 0 ? `${value} (${imageCount})` : value}>
                         {value}
                         {imageCount > 0 && <span className="ml-1 text-[#e65100]">({imageCount})</span>}
                       </span>

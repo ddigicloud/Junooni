@@ -132,9 +132,9 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
   
   return (
     <div className="flex flex-col gap-y-3">
-      <span className="text-m font-semibold">Select {title}</span>
+      <span className="font-semibold text-m">Select {title}</span>
       <div
-        className="flex gap-3"
+        className="flex flex-wrap gap-3"
         data-testid={dataTestId}
       >
         {filteredOptions.map((v) => {

@@ -352,6 +352,7 @@ export const GET = async (
         "variants.options.option_id", "variants.options.value",
         "variants.options.option.id", "variants.options.option.title",
         "variants.inventory_items.inventory_item_id",
+        "variants.images.id", "variants.images.url",
         "images.id", "images.url", "images.rank", "images.metadata",
         "options.id", "options.title",
         "options.values.id", "options.values.value",

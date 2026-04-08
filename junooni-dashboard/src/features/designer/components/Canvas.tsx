@@ -4283,6 +4283,11 @@ const [isDraggingPanel, setIsDraggingPanel] = useState(false);
 const dragStartRef = useRef({ x: 0, y: 0, panelX: 0, panelY: 0 });
 const panelRef = useRef<HTMLDivElement>(null); // ADD THIS
 const originalMockupImagesRef = useRef<Record<string, string[]>>({});
+const [isProcessingImage, setIsProcessingImage] = useState(false);
+const [imageProcessingStep, setImageProcessingStep] = useState('Processing image...');
+const [imageProcessingPct, setImageProcessingPct] = useState(0);
+// Add this state at the top of EnhancedCanvas component with other states
+const [isImageLoading, setIsImageLoading] = useState(false);
 
   // 2. STATE MANAGEMENT SECTION - Add these state variables after existing state declarations
 
@@ -7659,60 +7664,49 @@ const navigateToCreatePage = useCallback(async (transformedData) => {
 
   // 🔥 STEP 1: Create upload-quality version (high quality, just resize)
   // This is what gets uploaded to the store - good quality
-  let uploadQualityImages = { ...originalColorSpecificImages };
-  try {
-    const colorCount = Object.keys(originalColorSpecificImages).length;
-    if (colorCount > 0) {
-      console.log(`🗜️ Creating upload-quality version (0.85 quality)...`);
-      const uploadCompressed: Record<string, any[]> = {};
-      await Promise.all(
-        Object.keys(originalColorSpecificImages).map(async (colorHex) => {
-          const mockups = originalColorSpecificImages[colorHex] || [];
-          uploadCompressed[colorHex] = await Promise.all(
-            mockups.map(async (m: any) => ({
-              ...m,
-              imageData: m.imageData
-                ? await compressMockupImage(m.imageData, 0.85, 1200) // High quality
-                : m.imageData
-            }))
-          );
-        })
-      );
-      uploadQualityImages = uploadCompressed;
-      const sizeMB = JSON.stringify(uploadQualityImages).length / 1024 / 1024;
-      console.log(`✅ Upload quality: ${sizeMB.toFixed(2)}MB`);
-    }
-  } catch (e) {
-    console.warn('Upload quality compression failed:', e);
-  }
+  let uploadQualityImages: Record<string, any[]> = {};
+let transferQualityImages: Record<string, any[]> = {};
 
-  // 🔥 STEP 2: Create transfer-quality version (low quality for sessionStorage)
-  let transferQualityImages = { ...originalColorSpecificImages };
-  try {
-    const colorCount = Object.keys(originalColorSpecificImages).length;
-    if (colorCount > 0) {
-      console.log(`🗜️ Creating transfer-quality version (0.4 quality)...`);
-      const transferCompressed: Record<string, any[]> = {};
-      await Promise.all(
-        Object.keys(originalColorSpecificImages).map(async (colorHex) => {
-          const mockups = originalColorSpecificImages[colorHex] || [];
-          transferCompressed[colorHex] = await Promise.all(
-            mockups.map(async (m: any) => ({
-              ...m,
-              imageData: m.imageData
-                ? await compressMockupImage(m.imageData, 0.4, 600)
-                : m.imageData
-            }))
-          );
-        })
-      );
-      transferQualityImages = transferCompressed;
-      const sizeMB = JSON.stringify(transferQualityImages).length / 1024 / 1024;
-      console.log(`✅ Transfer quality: ${sizeMB.toFixed(2)}MB`);
-    }
-  } catch (e) {
-    console.warn('Transfer compression failed:', e);
+try {
+  const colorCount = Object.keys(originalColorSpecificImages).length;
+  if (colorCount > 0) {
+    console.log(`🗜️ Compressing ${colorCount} color groups to WebP...`);
+
+    await Promise.all(
+      Object.keys(originalColorSpecificImages).map(async (colorHex) => {
+        const mockups = originalColorSpecificImages[colorHex] || [];
+
+        const compressed = await Promise.all(
+          mockups.map(async (m: any) => {
+            if (!m.imageData) return { upload: m, transfer: m };
+
+            const [uploadData, transferData] = await Promise.all([
+              compressMockupImage(m.imageData, 0.85, 1200),
+              compressMockupImage(m.imageData, 0.4, 600),
+            ]);
+
+            return {
+              upload:   { ...m, imageData: uploadData },
+              transfer: { ...m, imageData: transferData },
+            };
+          })
+        );
+
+        uploadQualityImages[colorHex]   = compressed.map(c => c.upload);
+        transferQualityImages[colorHex] = compressed.map(c => c.transfer);
+      })
+    );
+
+    const uploadMB   = JSON.stringify(uploadQualityImages).length / 1024 / 1024;
+    const transferMB = JSON.stringify(transferQualityImages).length / 1024 / 1024;
+    console.log(`✅ Upload WebP 0.85: ${uploadMB.toFixed(2)}MB`);
+    console.log(`✅ Transfer WebP 0.4: ${transferMB.toFixed(2)}MB`);
   }
+} catch (e) {
+  console.warn('Compression failed, falling back to originals:', e);
+  uploadQualityImages   = { ...originalColorSpecificImages };
+  transferQualityImages = { ...originalColorSpecificImages };
+}
 
   // Compress colorSpecificMockups for transfer
   try {
@@ -7841,7 +7835,11 @@ const generateComprehensiveMockups = async (
   const mockupVariants: StoreImportData['mockup_variants'] = [];
 
   // Calculate total combinations for ALL areas
-  totalCombinations = allMockups.length * (productData.size_Images ? selectedSizes.length : 1);
+  //totalCombinations = allMockups.length * (productData.size_Images ? selectedSizes.length : 1);
+  // totalCombinations = productData.size_Images
+  //   ? allMockups.length  // Each mockup is already size-specific
+  //   : allMockups.length * selectedSizes.length;
+  totalCombinations = allMockups.length;
 
   try {
   // ðŸ”¥ AROUND LINE 2970 - REPLACE THIS SECTION
@@ -8399,7 +8397,11 @@ selectedColors.forEach(color => {
     setStoreImportData(null);
     
     // Calculate total mockups for progress tracking
-    const customMockupsNeeded = allMockupsForTech.length * (productData.size_Images ? selectedSizes.length : 1);
+    //const customMockupsNeeded = allMockupsForTech.length * (productData.size_Images ? selectedSizes.length : 1);
+    // const customMockupsNeeded = productData.size_Images 
+    // ? allMockupsForTech.length  // Each mockup already maps to one specific size
+    // : allMockupsForTech.length * selectedSizes.length;
+    const customMockupsNeeded = allMockupsForTech.length;
     
     setStoreGenerationProgress({
       total: customMockupsNeeded,
@@ -8881,96 +8883,142 @@ const renderUploadPanel = () => {
   // FILE HANDLING
   // =====================================
   
-const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageName, targetArea, base64Data) => {
+const addImageToCanvasWithStateProtection = useCallback(async (
+  imageSrc,
+  imageName,
+  targetArea,
+  base64Data,
+  overlayAlreadyShowing = false
+) => {
+  if (!overlayAlreadyShowing) {
+    setIsProcessingImage(true);
+    setImageProcessingStep('Loading image...');
+    setImageProcessingPct(10);
+    await new Promise(resolve => setTimeout(resolve, 16));
+  }
+
   const areaToUse = targetArea || activeArea;
-  
+
+  let processingDone = false;
+  const hardTimeoutId = setTimeout(() => {
+    if (!processingDone) {
+      setIsProcessingImage(false);
+      setImageProcessingPct(0);
+      setImageProcessingStep('');
+      processingDone = true;
+    }
+  }, 45000);
+
+  const cleanup = () => {
+  if (processingDone) return;
+  processingDone = true;
+  clearTimeout(hardTimeoutId);
+  setIsProcessingImage(false);
+  setImageProcessingPct(0);
+  setImageProcessingStep('');
+  setIsImageLoading(false); // ✅ ADD THIS
+};
+
   return new Promise(async (resolve, reject) => {
+
+    // ✅ Decode the image from base64 (already in memory from FileReader)
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    
+
+    const imgLoadTimeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Image decode timeout'));
+    }, 20000);
+
     img.onload = async () => {
+      clearTimeout(imgLoadTimeout);
+
       try {
         let finalImage = img;
-        let finalBase64 = base64Data;
-        
-        // 🚀 NEW: Optimize high-quality images for performance
+        let finalBase64 = base64Data || imageSrc;
+
         const imageSize = (img.naturalWidth || img.width) * (img.naturalHeight || img.height);
-        const isMegapixel = imageSize > 2000000; // ~2MP threshold
-        
+        const isMegapixel = imageSize > 2000000;
+
+        setImageProcessingStep('Optimizing...');
+        setImageProcessingPct(60);
+        await new Promise(resolve => setTimeout(resolve, 16));
+
         if (isMegapixel) {
-          //console.log('🔧 Optimizing large image for canvas performance...');
-          
           try {
-            const optimized = await optimizeImage(img, 1500, 0.85);
-            finalImage = optimized.optimizedImage;
-            finalBase64 = optimized.optimizedBase64;
-            
-            //console.log(`✅ Image optimized successfully`);
+            const optimizeResult = await Promise.race([
+              optimizeImage(img, 1500, 0.85),
+              new Promise<never>((_, rej) =>
+                setTimeout(() => rej(new Error('Optimize timeout')), 12000)
+              )
+            ]);
+            finalImage = optimizeResult.optimizedImage;
+            finalBase64 = optimizeResult.optimizedBase64;
           } catch (optimizeError) {
-            //console.warn('⚠️ Could not optimize image, using original', optimizeError);
+            console.warn('Optimization skipped:', optimizeError.message);
           }
         }
-        
-        // 🔥 Crop transparent pixels
+
+        setImageProcessingStep('Processing transparency...');
+        setImageProcessingPct(80);
+        await new Promise(resolve => setTimeout(resolve, 16));
+
         let croppedBounds = null;
-        
         try {
           const cropResult = cropTransparentPixels(finalImage);
-          
-          const originalArea = (finalImage.naturalWidth || finalImage.width) * 
-                              (finalImage.naturalHeight || finalImage.height);
+          const originalArea = (finalImage.naturalWidth || finalImage.width) *
+                               (finalImage.naturalHeight || finalImage.height);
           const croppedArea = cropResult.bounds.width * cropResult.bounds.height;
           const reduction = 1 - (croppedArea / originalArea);
-          
+
           if (reduction > 0.05) {
             const croppedImg = new Image();
             croppedImg.src = cropResult.croppedBase64;
             await new Promise((res) => { croppedImg.onload = res; });
-            
             finalImage = croppedImg;
             finalBase64 = cropResult.croppedBase64;
             croppedBounds = cropResult.bounds;
-            
-            //console.log(`✂️ Cropped transparent areas: ${(reduction * 100).toFixed(1)}% reduction`);
           }
         } catch (cropError) {
-          //console.warn('Could not crop transparent areas, using current image', cropError);
+          console.warn('Crop skipped');
         }
-        
+
+        setImageProcessingStep('Placing on canvas...');
+        setImageProcessingPct(95);
+        await new Promise(resolve => setTimeout(resolve, 16));
+
         const canvasConfig = getCanvasConfig(areaToUse);
         const printableArea = getPrintableAreaFromPhoto(areaToUse, activeColor);
-        
-        // Calculate size using the final image
+
         const maxWidth = printableArea.width * 0.8;
         const maxHeight = printableArea.height * 0.8;
-        const aspectRatio = (finalImage.naturalWidth || finalImage.width) / 
-                           (finalImage.naturalHeight || finalImage.height);
-        
+        const aspectRatio = (finalImage.naturalWidth || finalImage.width) /
+                            (finalImage.naturalHeight || finalImage.height);
+
         let width = maxWidth;
         let height = maxWidth / aspectRatio;
         if (height > maxHeight) {
           height = maxHeight;
           width = maxHeight * aspectRatio;
         }
-        
+
         const centerX = printableArea.x + (printableArea.width - width) / 2;
         const centerY = printableArea.y + (printableArea.height - height) / 2;
-        
-        // Create element
+
         const element = {
           id: `img-${Date.now()}-${Math.random()}`,
           type: 'image',
-          x: centerX, 
-          y: centerY, 
-          width, 
+          x: centerX,
+          y: centerY,
+          width,
           height,
-          rotation: 0, 
-          scaleX: 1, 
+          rotation: 0,
+          scaleX: 1,
           scaleY: 1,
-          draggable: true, 
-          selected: false, 
+          draggable: true,
+          selected: false,
           zIndex: 1,
-          image: finalImage, 
+          image: finalImage,
           imageName: imageName || 'Uploaded Image',
           imageUrl: imageSrc,
           imageBase64: finalBase64,
@@ -8984,39 +9032,41 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
             },
             croppedBounds
           } : null,
-          opacity: 1, 
-          visible: true, 
+          opacity: 1,
+          visible: true,
           locked: false
         };
-        
-        // Atomic state update
+
         setDesignElements(currentState => {
           const updatedState = { ...currentState };
-          if (!updatedState[areaToUse]) {
-            updatedState[areaToUse] = [];
-          }
-          
+          if (!updatedState[areaToUse]) updatedState[areaToUse] = [];
           const existingElements = updatedState[areaToUse] || [];
-          const maxZIndex = existingElements.reduce((max, el) => Math.max(max, el.zIndex || 0), 0);
+          const maxZIndex = existingElements.reduce(
+            (max, el) => Math.max(max, el.zIndex || 0), 0
+          );
           element.zIndex = maxZIndex + 1;
-          
           updatedState[areaToUse] = [...existingElements, element];
-          
           return updatedState;
         });
-        
+
+        // ✅ Dismiss overlay immediately when element is placed
+        cleanup();
         resolve(true);
-        
+
       } catch (error) {
+        cleanup();
         reject(error);
       }
     };
-    
-    img.onerror = (error) => {
-      reject(error);
+
+    img.onerror = () => {
+      clearTimeout(imgLoadTimeout);
+      cleanup();
+      reject(new Error('Failed to load image'));
     };
-    
-    img.src = imageSrc;
+
+    // ✅ Use base64 as src — already decoded by FileReader, no second network/decode wait
+    img.src = base64Data || imageSrc;
   });
 }, [activeArea, getCanvasConfig, getPrintableAreaFromPhoto, activeColor]);
 
@@ -9024,85 +9074,85 @@ const addImageToCanvasWithStateProtection = useCallback(async (imageSrc, imageNa
 
 const handleFileUpload = useCallback(async (files) => {
   if (!files || files.length === 0) return;
-  
-  //console.log(`📁 Uploading ${files.length} file(s)...`);
-  
+
+   setIsImageLoading(true);
+
   for (const file of Array.from(files)) {
     try {
-      // Validate file
       const validation = validateImageFile(file);
       if (!validation.valid) {
         alert(`❌ ${file.name}: ${validation.error}`);
         continue;
       }
-      
-      // Convert to base64
-      const base64Data = await new Promise((resolve, reject) => {
+
+      // ✅ Show overlay FIRST before anything else
+      setIsProcessingImage(true);
+      setImageProcessingStep('Reading file...');
+      setImageProcessingPct(10);
+      // ✅ Force browser to paint the overlay NOW
+      await new Promise(resolve => setTimeout(resolve, 16));
+
+      setImageProcessingStep('Loading image...');
+      setImageProcessingPct(20);
+
+      const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
+        reader.onload = (e) => resolve(e.target.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      
-      // Create unique blob URL with timestamp to allow duplicates
+
+      setImageProcessingStep('Processing...');
+      setImageProcessingPct(40);
+      await new Promise(resolve => setTimeout(resolve, 16));
+
       const uniqueBlob = new Blob([file], { type: file.type });
       const blobUrl = URL.createObjectURL(uniqueBlob);
-      
-      // 🔥 NEW: Generate unique ID for duplicate files
       const uniqueFileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Add to uploaded files list (allows duplicates)
+
       setUploadedFiles(prev => [...prev, {
         id: uniqueFileId,
-        file, 
-        url: blobUrl, 
+        file,
+        url: blobUrl,
         base64Data,
-        name: file.name, 
-        size: file.size, 
+        name: file.name,
+        size: file.size,
         type: file.type,
-        uploadProgress: 100, 
-        isUploading: false, 
+        uploadProgress: 100,
+        isUploading: false,
         targetArea: activeArea
       }]);
-      
-      //console.log(`✅ Added ${file.name} to upload list (ID: ${uniqueFileId})`);
-      
-      // Add image to canvas
+
+      // ✅ Pass base64Data as the src so no second decode happens
       const success = await addImageToCanvasWithStateProtection(
-        blobUrl, 
-        file.name, 
-        activeArea, 
-        base64Data
+        base64Data,  // ← use base64 directly, not blobUrl
+        file.name,
+        activeArea,
+        base64Data,
+        true // overlay already showing
       );
-      
+
       if (success) {
-        //console.log(`✅ Successfully added ${file.name} to canvas`);
-        
-        // Close mobile bottom sheet after successful upload
         if (isMobile) {
-          setTimeout(() => {
-            setShowMobileBottomSheet(false);
-          }, 500);
+          setTimeout(() => setShowMobileBottomSheet(false), 500);
         }
-        
-        // Trigger pricing calculation
-        setTimeout(() => {
-          updatePricingData();
-        }, 500);
+        setTimeout(() => updatePricingData(), 500);
       }
-      
+
     } catch (error) {
-      //console.error(`❌ Error uploading ${file.name}:`, error);
+      setIsProcessingImage(false);
+      setImageProcessingPct(0);
+      setImageProcessingStep('');
       alert(`Failed to upload ${file.name}: ${error.message}`);
     }
   }
-  
-  // 🔥 CRITICAL FIX: Reset file input to allow same file upload
+
+   setIsImageLoading(false);
+
   if (fileInputRef.current) {
     fileInputRef.current.value = '';
-    //console.log('🔄 File input reset - ready for duplicate uploads');
   }
-  
+
 }, [activeArea, addImageToCanvasWithStateProtection, updatePricingData, isMobile]);
 
 
@@ -10252,6 +10302,7 @@ const renderCanvas = useCallback(() => {
   const scale = Math.min(maxWidth / baseWidth, maxHeight / baseHeight, 1);
   const displayWidth = baseWidth * scale;
   const displayHeight = baseHeight * scale;
+  
 
   return (
     <div className="relative">
@@ -10476,7 +10527,94 @@ const renderCanvas = useCallback(() => {
             </Layer>
           </>
         )}
+
+        {isImageLoading && (
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        borderRadius: '0.5rem',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '12px',
+        zIndex: 9999,
+        pointerEvents: 'none'
+      }}>
+        {/* Spinner */}
+        <div style={{
+          width: 48,
+          height: 48,
+          border: '4px solid rgba(255,255,255,0.2)',
+          borderTop: '4px solid #e65100',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite'
+        }} />
+        <p style={{
+          color: 'white',
+          fontWeight: 600,
+          fontSize: 15,
+          margin: 0
+        }}>
+          Processing image...
+        </p>
+        <p style={{
+          color: 'rgba(255,255,255,0.6)',
+          fontSize: 12,
+          margin: 0
+        }}>
+          Large images take a moment
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )}
+
       </Stage>
+
+      {isProcessingImage && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(0,0,0,0.55)',
+          borderRadius: '0.5rem',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: '14px', zIndex: 50
+        }}>
+          {/* Spinner ring */}
+          <div style={{ position: 'relative', width: 52, height: 52 }}>
+            <svg width="52" height="52" viewBox="0 0 52 52"
+              style={{ animation: 'spin 1.1s linear infinite' }}>
+              <circle cx="26" cy="26" r="22" fill="none"
+                stroke="rgba(255,255,255,0.15)" strokeWidth="4"/>
+              <circle cx="26" cy="26" r="22" fill="none"
+                stroke="#e65100" strokeWidth="4"
+                strokeDasharray="80 60" strokeLinecap="round"/>
+            </svg>
+            <Upload size={18} color="white"
+              style={{ position:'absolute', top:'50%', left:'50%',
+                transform:'translate(-50%,-50%)' }} />
+          </div>
+
+          {/* Text */}
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ color:'white', fontWeight:500, fontSize:14, margin:'0 0 3px' }}>
+              {imageProcessingStep}
+            </p>
+            <p style={{ color:'rgba(255,255,255,0.6)', fontSize:12, margin:0 }}>
+              Large images take a moment
+            </p>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ width:140, height:3, background:'rgba(255,255,255,0.15)',
+            borderRadius:99, overflow:'hidden' }}>
+            <div style={{ height:'100%', width:`${imageProcessingPct}%`,
+              background:'#e65100', borderRadius:99,
+              transition:'width 0.3s ease' }}/>
+          </div>
+        </div>
+      )}
 
       {/* Dragging overlay indicator */}
       {isDraggingPanel && !isMobile && (

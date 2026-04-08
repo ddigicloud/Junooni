@@ -7,7 +7,7 @@ type ItemsProps = {
   showStatus?: boolean
 }
 
-const Items = ({order, showStatus = false }: ItemsProps) => {
+const Items = ({ order, showStatus = false }: ItemsProps) => {
   const getAmount = (amount?: number) => {
     if (!amount) {
       return "0"
@@ -19,68 +19,60 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
     })
   }
 
-  //const items = order.items || []
-
   const items = (order.items || []).filter(
     (item: any) => !item.metadata?.is_cod_fee
   )
 
-  // Helper function to get the correct variant image
   const getItemImage = (item: HttpTypes.StoreOrderLineItem) => {
-    // First priority: Check variant metadata for variant_images
-    if (item.variant?.metadata?.variant_images) {
-      try {
-        const variantImages = JSON.parse(item.variant.metadata.variant_images as string)
-        if (Array.isArray(variantImages) && variantImages.length > 0) {
-          return variantImages[0]
-        }
-      } catch (e) {
-        // Silently fail and continue to next fallback
-      }
-    }
-
-    // Second priority: Check variant metadata for color_images
-    if (item.variant?.metadata?.color_images) {
-      try {
-        const colorImages = JSON.parse(item.variant.metadata.color_images as string)
-        if (Array.isArray(colorImages) && colorImages.length > 0) {
-          const colorImage = colorImages[0]?.url
-          if (colorImage) {
-            return colorImage
-          }
-        }
-      } catch (e) {
-        // Silently fail and continue to next fallback
-      }
-    }
-
-    // Third priority: Check variant metadata for option_images
-    if (item.variant?.metadata?.option_images) {
-      try {
-        const optionImages = JSON.parse(item.variant.metadata.option_images as string)
-        if (Array.isArray(optionImages) && optionImages.length > 0) {
-          const optionImage = optionImages[0]?.url
-          if (optionImage) {
-            return optionImage
-          }
-        }
-      } catch (e) {
-        // Silently fail and continue to next fallback
-      }
-    }
-
-    // Fourth priority: line item thumbnail
-    if (item.thumbnail) {
-      return item.thumbnail
-    }
-
-    // Fifth priority: variant thumbnail (if it exists)
+    // 1. PRIORITY: Native variant thumbnail (Medusa v2.11.2+)
     const variantThumbnail = (item.variant as any)?.thumbnail
     if (variantThumbnail) {
       return variantThumbnail
     }
 
-    // Last priority: product thumbnail
+    // 2. Native variant images — find first image associated with this variant
+    const variantId = item.variant?.id
+    const productImages = (item.variant as any)?.product?.images || []
+    if (variantId && productImages.length) {
+      const variantImage = productImages.find((img: any) =>
+        img.variants?.some((v: any) => v.id === variantId)
+      )
+      if (variantImage?.url) {
+        return variantImage.url
+      }
+    }
+
+    // 3. Legacy: variant metadata variant_images
+    if (item.variant?.metadata?.variant_images) {
+      try {
+        const variantImages = JSON.parse(
+          item.variant.metadata.variant_images as string
+        )
+        if (Array.isArray(variantImages) && variantImages.length > 0) {
+          return variantImages[0]
+        }
+      } catch {}
+    }
+
+    // 4. Legacy: variant metadata color_images
+    if (item.variant?.metadata?.color_images) {
+      try {
+        const colorImages = JSON.parse(
+          item.variant.metadata.color_images as string
+        )
+        if (Array.isArray(colorImages) && colorImages.length > 0) {
+          const colorImage = colorImages[0]?.url
+          if (colorImage) return colorImage
+        }
+      } catch {}
+    }
+
+    // 5. Line item thumbnail
+    if (item.thumbnail) {
+      return item.thumbnail
+    }
+
+    // 6. Product thumbnail
     if (item.product?.thumbnail) {
       return item.product.thumbnail
     }
@@ -88,13 +80,11 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
     return null
   }
 
-  // Helper function to get tracking info for a specific item
   const getItemTrackingInfo = (itemId: string) => {
     if (!order.fulfillments || order.fulfillments.length === 0) {
       return null
     }
 
-    // Find the fulfillment that contains this specific item
     for (const fulfillment of order.fulfillments) {
       if (fulfillment.items && fulfillment.items.length > 0) {
         const hasItem = fulfillment.items.some(
@@ -103,7 +93,7 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
 
         if (hasItem && fulfillment.labels && fulfillment.labels.length > 0) {
           const label = fulfillment.labels[0]
-          if (label.tracking_number && label.tracking_number.trim() !== '') {
+          if (label.tracking_number && label.tracking_number.trim() !== "") {
             return {
               trackingNumber: label.tracking_number,
               trackingUrl: label.tracking_url || label.tracking_number,
@@ -136,7 +126,7 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
           {items.map((item) => {
             const itemImage = getItemImage(item)
             const trackingInfo = getItemTrackingInfo(item.id)
-            
+
             return (
               <div
                 key={item.id}
@@ -163,18 +153,24 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
                       <h3 className="text-base font-medium text-gray-900">
                         {item.product_title}
                       </h3>
-                      {item.variant?.options?.length && item.product?.options?.length ? (
+                      {item.variant?.options?.length &&
+                      item.product?.options?.length ? (
                         <p className="mt-1 text-sm text-gray-500">
                           {item.variant.options
                             .map((opt) => {
                               const title =
-                                item.product?.options?.find((o) => o.id === opt.option_id)?.title || "Option"
+                                item.product?.options?.find(
+                                  (o) => o.id === opt.option_id
+                                )?.title || "Option"
                               return `${title}: ${opt.value}`
                             })
                             .join(" / ")}
                         </p>
-                      ) : item.variant?.title && item.variant.title !== "Default Variant" ? (
-                        <p className="mt-1 text-sm text-gray-500">{item.variant.title}</p>
+                      ) : item.variant?.title &&
+                        item.variant.title !== "Default Variant" ? (
+                        <p className="mt-1 text-sm text-gray-500">
+                          {item.variant.title}
+                        </p>
                       ) : null}
 
                       <p className="mt-1 text-sm text-gray-500">
@@ -188,7 +184,8 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
                             ${
                               item.fulfillment_status === "fulfilled"
                                 ? "bg-green-100 text-green-800"
-                                : item.fulfillment_status === "partially_fulfilled"
+                                : item.fulfillment_status ===
+                                  "partially_fulfilled"
                                 ? "bg-blue-100 text-blue-800"
                                 : "bg-gray-100 text-gray-800"
                             }`}
@@ -198,7 +195,7 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex flex-col items-end mt-4 sm:mt-0 sm:ml-4">
                       <div className="text-right">
                         <p className="text-base font-medium text-gray-900">
@@ -209,7 +206,6 @@ const Items = ({order, showStatus = false }: ItemsProps) => {
                         </p>
                       </div>
 
-                      {/* Track Now Button */}
                       {trackingInfo && trackingInfo.trackingNumber && (
                         <div className="mt-3">
                           <a

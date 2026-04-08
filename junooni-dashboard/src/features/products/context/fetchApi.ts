@@ -71,19 +71,20 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
   },
   params: {
     fields: [
-      'id','title','subtitle','handle','description','status',
-      'thumbnail','discountable','weight','length','width','height',
-      'material','origin_country','metadata',
-      'options.id','options.title','options.values.id','options.values.value',
-      'variants.id','variants.title','variants.sku','variants.allow_backorder',
-      'variants.manage_inventory','variants.inventory_quantity',
-      'variants.prices.amount','variants.prices.currency_code',
-      'variants.options.option_id','variants.options.value','variants.options.option.id','variants.options.option.title',
-      'variants.inventory_items.inventory_item_id',
-      'variants.metadata',
-      'images.id','images.url','images.rank','images.metadata',
-      'categories.id','categories.name',
-    ].join(',')
+    'id','title','subtitle','handle','description','status',
+    'thumbnail','discountable','weight','length','width','height',
+    'material','origin_country','metadata',
+    'options.id','options.title','options.values.id','options.values.value',
+    'variants.id','variants.title','variants.sku','variants.allow_backorder',
+    'variants.manage_inventory','variants.inventory_quantity',
+    'variants.prices.amount','variants.prices.currency_code',
+    'variants.options.option_id','variants.options.value','variants.options.option.id','variants.options.option.title',
+    'variants.inventory_items.inventory_item_id',
+    'variants.metadata',
+    'variants.images.id','variants.images.url',
+    'images.id','images.url','images.rank','images.metadata',
+    'categories.id','categories.name',
+  ].join(',')
   }
 });
     //console.log("Product fetched:", response.data.product);
@@ -701,6 +702,43 @@ export async function batchUpdateInventoryLevels(payload: {
     return response.data;
   } catch (error) {
     //console.error('❌ Error in inventory operation:', error);
+    throw error;
+  }
+}
+
+/**
+ * Associate product images with specific variants (Medusa v2.11.2+)
+ * Called AFTER product creation
+ */
+export async function updateVariantImages({
+  productId,
+  variantId,
+  imageIds,
+  thumbnailUrl,  // ← rename from thumbnailId to thumbnailUrl
+}: {
+  productId: string;
+  variantId: string;
+  imageIds: string[];
+  thumbnailUrl?: string;  // ← URL string now
+}): Promise<any> {
+  const token = localStorage.getItem("vendorToken");
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/vendors/products/${productId}/variants/${variantId}`,
+      { 
+        images: imageIds.map(id => ({ id })),
+        thumbnail_url: thumbnailUrl  // ← send URL directly
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('❌ updateVariantImages failed:', error.response?.data || error.message);
     throw error;
   }
 }

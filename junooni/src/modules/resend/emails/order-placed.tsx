@@ -1,532 +1,3 @@
-// import { 
-//   Text, 
-//   Column, 
-//   Container, 
-//   Heading, 
-//   Html, 
-//   Img, 
-//   Row, 
-//   Section, 
-//   Tailwind, 
-//   Head, 
-//   Preview, 
-//   Body, 
-//   Link 
-// } from "@react-email/components"
-// import { BigNumberValue, CustomerDTO, OrderDTO } from "@medusajs/framework/types"
-
-// type OrderPlacedEmailProps = {
-//   order: OrderDTO & {
-//     customer: CustomerDTO
-//   }
-//   email_banner?: {
-//     body: string
-//     title: string
-//     url: string
-//   }
-// }
-
-// function OrderPlacedEmailComponent({ order, email_banner }: OrderPlacedEmailProps) {
-//   const shouldDisplayBanner = email_banner && "title" in email_banner
-
-//   const formatter = new Intl.NumberFormat([], {
-//     style: "currency",
-//     currencyDisplay: "narrowSymbol",
-//     currency: order.currency_code,
-//   })
-
-//   const formatPrice = (price: BigNumberValue) => {
-//     if (typeof price === "number") {
-//       return formatter.format(price)
-//     }
-
-//     if (typeof price === "string") {
-//       return formatter.format(parseFloat(price))
-//     }
-
-//     return price?.toString() || ""
-//   }
-
-//   return (
-//     <Tailwind>
-//       <Html className="font-sans bg-gray-100">
-//         <Head />
-//         <Preview>Thank you for your order from Junooni</Preview>
-//         <Body className="w-full max-w-2xl mx-auto my-10 bg-white">
-//           {/* Header */}
-//           <Section className="bg-[#e65100] text-white px-6 py-5">
-//             <Row>
-//               <Column align="center">
-//                 <Text className="m-0 text-2xl font-bold tracking-wide">JUNOONI</Text>
-//                 <Text className="m-0 mt-1 text-xs tracking-widest uppercase">Premium Lifestyle</Text>
-//               </Column>
-//             </Row>
-//           </Section>
-
-//           {/* Thank You Message */}
-//           <Container className="p-8">
-//             <Heading className="text-2xl font-bold text-center text-gray-800">
-//               Thank you for your order, {order.customer?.first_name || order.shipping_address?.first_name}
-//             </Heading>
-//             <Text className="mt-3 text-center text-gray-600">
-//               We're processing your order and will notify you when it ships. Your estimated delivery date is 3-5 business days from today.
-//             </Text>
-//           </Container>
-
-//           {/* Promotional Banner */}
-//           {shouldDisplayBanner && (
-//             <Container
-//               className="mb-6 rounded-lg p-7"
-//               style={{
-//                 background: 'linear-gradient(135deg, #e65100, #ff9800)'
-//               }}
-//             >
-//               <Section>
-//                 <Row>
-//                   <Column align="left">
-//                     <Heading className="text-xl font-semibold text-white">
-//                       {email_banner.title}
-//                     </Heading>
-//                     <Text className="mt-2 text-white">{email_banner.body}</Text>
-//                   </Column>
-//                   <Column align="right">
-//                     <Link 
-//                       href={email_banner.url} 
-//                       className="bg-white text-[#e65100] py-2 px-4 rounded font-semibold no-underline inline-block"
-//                     >
-//                       Shop Now
-//                     </Link>
-//                   </Column>
-//                 </Row>
-//               </Section>
-//             </Container>
-//           )}
-
-//           {/* Order Items */}
-//           <Container className="px-8">
-//             <Heading className="pb-2 mb-4 text-xl font-semibold text-gray-800 border-b border-gray-200">
-//               Your Items
-//             </Heading>
-//             <Row>
-//               <Column>
-//                 <Text className="m-0 my-2 text-sm text-gray-500">Order ID: #{order.custom_display_id} • Placed on {new Date().toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'})}</Text>
-//               </Column>
-//             </Row>
-//             {order.items?.map((item) => (
-//               <Section key={item.id} className="py-6 border-b border-gray-200">
-//                 <Row>
-//                   <Column className="w-1/3">
-//                     <Img
-//                       src={item.thumbnail ?? ''}
-//                       alt={item.product_title ?? ''}
-//                       className="border border-gray-200 rounded-lg"
-//                       width="100%"
-//                     />
-//                   </Column>
-//                   <Column className="w-2/3 pl-6">
-//                     <Text className="m-0 text-lg font-semibold text-gray-800">
-//                       {item.product_title}
-//                     </Text>
-//                     <Text className="m-0 mt-1 text-gray-600">Size: {item.variant_title}</Text>
-//                     <Text className="m-0 mt-1 text-gray-600">Quantity: {item.quantity}</Text>
-//                     <Text className="text-[#e65100] mt-3 font-bold m-0">
-//                       {formatPrice(item.total)}
-//                     </Text>
-//                   </Column>
-//                 </Row>
-//               </Section>
-//             ))}
-
-//             {/* Order Summary */}
-//             <Section className="p-6 mt-8 rounded-lg bg-gray-50">
-//               <Heading className="pb-2 mb-4 text-xl font-semibold text-gray-800 border-b border-gray-200">
-//                 Order Summary
-//               </Heading>
-//               <Row className="py-2 text-gray-600">
-//                 <Column className="w-1/2">
-//                   <Text className="m-0">Subtotal</Text>
-//                 </Column>
-//                 <Column className="w-1/2 text-right">
-//                   <Text className="m-0">
-//                     {formatPrice(order.item_total)}
-//                   </Text>
-//                 </Column>
-//               </Row>
-//               {order.shipping_methods?.map((method) => (
-//                 <Row className="py-2 text-gray-600" key={method.id}>
-//                   <Column className="w-1/2">
-//                     <Text className="m-0">{method.name}</Text>
-//                   </Column>
-//                   <Column className="w-1/2 text-right">
-//                     <Text className="m-0">{formatPrice(method.total)}</Text>
-//                   </Column>
-//                 </Row>
-//               ))}
-//               <Row className="py-2 text-gray-600">
-//                 <Column className="w-1/2">
-//                   <Text className="m-0">Tax</Text>
-//                 </Column>
-//                 <Column className="w-1/2 text-right">
-//                   <Text className="m-0">{formatPrice(order.tax_total || 0)}</Text>
-//                 </Column>
-//               </Row>
-//               <Row className="pt-4 mt-4 font-bold text-gray-800 border-t border-gray-200">
-//                 <Column className="w-1/2">
-//                   <Text className="m-0 text-lg">Total</Text>
-//                 </Column>
-//                 <Column className="w-1/2 text-right">
-//                   <Text className="text-lg m-0 text-[#e65100]">{formatPrice(order.total)}</Text>
-//                 </Column>
-//               </Row>
-//             </Section>
-//           </Container>
-
-//           {/* Footer */}
-//           <Section className="p-6 mt-10 bg-gray-50">
-//             <Text className="text-sm text-center text-gray-500">
-//               If you have any questions, Please contact our support team at support@junooni.com.
-//             </Text>
-//             <Text className="text-sm text-center text-gray-500">
-//               Order Token: {order.id}
-//             </Text>
-//             <Text className="mt-4 text-xs text-center text-gray-400">
-//               © {new Date().getFullYear()} Junooni, Inc. All rights reserved.
-//             </Text>
-//           </Section>
-//         </Body>
-//       </Html>
-//     </Tailwind >
-//   )
-// }
-
-// export const orderPlacedEmail = (props: OrderPlacedEmailProps) => (
-//   <OrderPlacedEmailComponent {...props} />
-// )
-
-
-// const mockOrder = {
-//   "order": {
-//     "id": "order_01JSNXDH9BPJWWKVW03B9E9KW8",
-//     "custom_display_id": 1,
-//     "email": "customer@example.com",
-//     "currency_code": "eur",
-//     "total": 20,
-//     "subtotal": 20,
-//     "discount_total": 0,
-//     "shipping_total": 10,
-//     "tax_total": 0,
-//     "item_subtotal": 10,
-//     "item_total": 10,
-//     "item_tax_total": 0,
-//     "customer_id": "cus_01JSNXD6VQC1YH56E4TGC81NWX",
-//     "items": [
-//       {
-//         "id": "ordli_01JSNXDH9C47KZ43WQ3TBFXZA9",
-//         "title": "L",
-//         "subtitle": "Junooni T-Shirt",
-//         "thumbnail": "https://example.com/images/tshirt-front.png",
-//         "variant_id": "variant_01JSNXAQCZ5X81A3NRSVFJ3ZHQ",
-//         "product_id": "prod_01JSNXAQBQ6MFV5VHKN420NXQW",
-//         "product_title": "Junooni T-Shirt",
-//         "product_description": "Express your unique style with our premium cotton t-shirt. Comfortable, durable, and designed for everyday wear.",
-//         "product_subtitle": null,
-//         "product_type": null,
-//         "product_type_id": null,
-//         "product_collection": null,
-//         "product_handle": "tshirt",
-//         "variant_sku": "TSHIRT-L",
-//         "variant_barcode": null,
-//         "variant_title": "L",
-//         "variant_option_values": null,
-//         "requires_shipping": true,
-//         "is_giftcard": false,
-//         "is_discountable": true,
-//         "is_tax_inclusive": false,
-//         "is_custom_price": false,
-//         "metadata": {},
-//         "raw_compare_at_unit_price": null,
-//         "raw_unit_price": {
-//           "value": "10",
-//           "precision": 20
-//         },
-//         "created_at": new Date(),
-//         "updated_at": new Date(),
-//         "deleted_at": null,
-//         "tax_lines": [],
-//         "adjustments": [],
-//         "compare_at_unit_price": null,
-//         "unit_price": 10,
-//         "quantity": 1,
-//         "raw_quantity": {
-//           "value": "1",
-//           "precision": 20
-//         },
-//         "detail": {
-//           "id": "orditem_01JSNXDH9DK1XMESEZPADYFWKY",
-//           "version": 1,
-//           "metadata": null,
-//           "order_id": "order_01JSNXDH9BPJWWKVW03B9E9KW8",
-//           "raw_unit_price": null,
-//           "raw_compare_at_unit_price": null,
-//           "raw_quantity": {
-//             "value": "1",
-//             "precision": 20
-//           },
-//           "raw_fulfilled_quantity": {
-//             "value": "0",
-//             "precision": 20
-//           },
-//           "raw_delivered_quantity": {
-//             "value": "0",
-//             "precision": 20
-//           },
-//           "raw_shipped_quantity": {
-//             "value": "0",
-//             "precision": 20
-//           },
-//           "raw_return_requested_quantity": {
-//             "value": "0",
-//             "precision": 20
-//           },
-//           "raw_return_received_quantity": {
-//             "value": "0",
-//             "precision": 20
-//           },
-//           "raw_return_dismissed_quantity": {
-//             "value": "0",
-//             "precision": 20
-//           },
-//           "raw_written_off_quantity": {
-//             "value": "0",
-//             "precision": 20
-//           },
-//           "created_at": new Date(),
-//           "updated_at": new Date(),
-//           "deleted_at": null,
-//           "item_id": "ordli_01JSNXDH9C47KZ43WQ3TBFXZA9",
-//           "unit_price": null,
-//           "compare_at_unit_price": null,
-//           "quantity": 1,
-//           "fulfilled_quantity": 0,
-//           "delivered_quantity": 0,
-//           "shipped_quantity": 0,
-//           "return_requested_quantity": 0,
-//           "return_received_quantity": 0,
-//           "return_dismissed_quantity": 0,
-//           "written_off_quantity": 0
-//         },
-//         "subtotal": 10,
-//         "total": 10,
-//         "original_total": 10,
-//         "discount_total": 0,
-//         "discount_subtotal": 0,
-//         "discount_tax_total": 0,
-//         "tax_total": 0,
-//         "original_tax_total": 0,
-//         "refundable_total_per_unit": 10,
-//         "refundable_total": 10,
-//         "fulfilled_total": 0,
-//         "shipped_total": 0,
-//         "return_requested_total": 0,
-//         "return_received_total": 0,
-//         "return_dismissed_total": 0,
-//         "write_off_total": 0,
-//         "raw_subtotal": {
-//           "value": "10",
-//           "precision": 20
-//         },
-//         "raw_total": {
-//           "value": "10",
-//           "precision": 20
-//         },
-//         "raw_original_total": {
-//           "value": "10",
-//           "precision": 20
-//         },
-//         "raw_discount_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_discount_subtotal": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_discount_tax_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_tax_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_original_tax_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_refundable_total_per_unit": {
-//           "value": "10",
-//           "precision": 20
-//         },
-//         "raw_refundable_total": {
-//           "value": "10",
-//           "precision": 20
-//         },
-//         "raw_fulfilled_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_shipped_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_return_requested_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_return_received_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_return_dismissed_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_write_off_total": {
-//           "value": "0",
-//           "precision": 20
-//         }
-//       }
-//     ],
-//     "shipping_address": {
-//       "id": "caaddr_01JSNXD6W0TGPH2JQD18K97B25",
-//       "customer_id": null,
-//       "company": "",
-//       "first_name": "John",
-//       "last_name": "Doe",
-//       "address_1": "123 Main St",
-//       "address_2": "",
-//       "city": "New York",
-//       "country_code": "us",
-//       "province": "NY",
-//       "postal_code": "10001",
-//       "phone": "",
-//       "metadata": null,
-//       "created_at": "2025-04-25T07:25:48.801Z",
-//       "updated_at": "2025-04-25T07:25:48.801Z",
-//       "deleted_at": null
-//     },
-//     "billing_address": {
-//       "id": "caaddr_01JSNXD6W0V7RNZH63CPG26K5W",
-//       "customer_id": null,
-//       "company": "",
-//       "first_name": "John",
-//       "last_name": "Doe",
-//       "address_1": "123 Main St",
-//       "address_2": "",
-//       "city": "New York",
-//       "country_code": "us",
-//       "province": "NY",
-//       "postal_code": "10001",
-//       "phone": "",
-//       "metadata": null,
-//       "created_at": "2025-04-25T07:25:48.801Z",
-//       "updated_at": "2025-04-25T07:25:48.801Z",
-//       "deleted_at": null
-//     },
-//     "shipping_methods": [
-//       {
-//         "id": "ordsm_01JSNXDH9B9DDRQXJT5J5AE5V1",
-//         "name": "Standard Shipping",
-//         "description": null,
-//         "is_tax_inclusive": false,
-//         "is_custom_amount": false,
-//         "shipping_option_id": "so_01JSNXAQA64APG6BNHGCMCTN6V",
-//         "data": {},
-//         "metadata": null,
-//         "raw_amount": {
-//           "value": "10",
-//           "precision": 20
-//         },
-//         "created_at": new Date(),
-//         "updated_at": new Date(),
-//         "deleted_at": null,
-//         "tax_lines": [],
-//         "adjustments": [],
-//         "amount": 10,
-//         "order_id": "order_01JSNXDH9BPJWWKVW03B9E9KW8",
-//         "detail": {
-//           "id": "ordspmv_01JSNXDH9B5RAF4FH3M1HH3TEA",
-//           "version": 1,
-//           "order_id": "order_01JSNXDH9BPJWWKVW03B9E9KW8",
-//           "return_id": null,
-//           "exchange_id": null,
-//           "claim_id": null,
-//           "created_at": new Date(),
-//           "updated_at": new Date(),
-//           "deleted_at": null,
-//           "shipping_method_id": "ordsm_01JSNXDH9B9DDRQXJT5J5AE5V1"
-//         },
-//         "subtotal": 10,
-//         "total": 10,
-//         "original_total": 10,
-//         "discount_total": 0,
-//         "discount_subtotal": 0,
-//         "discount_tax_total": 0,
-//         "tax_total": 0,
-//         "original_tax_total": 0,
-//         "raw_subtotal": {
-//           "value": "10",
-//           "precision": 20
-//         },
-//         "raw_total": {
-//           "value": "10",
-//           "precision": 20
-//         },
-//         "raw_original_total": {
-//           "value": "10",
-//           "precision": 20
-//         },
-//         "raw_discount_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_discount_subtotal": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_discount_tax_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_tax_total": {
-//           "value": "0",
-//           "precision": 20
-//         },
-//         "raw_original_tax_total": {
-//           "value": "0",
-//           "precision": 20
-//         }
-//       }
-//     ],
-//     "customer": {
-//       "id": "cus_01JSNXD6VQC1YH56E4TGC81NWX",
-//       "company_name": null,
-//       "first_name": "John",
-//       "last_name": "Doe",
-//       "email": "customer@example.com",
-//       "phone": null,
-//       "has_account": false,
-//       "metadata": null,
-//       "created_by": null,
-//       "created_at": "2025-04-25T07:25:48.791Z",
-//       "updated_at": "2025-04-25T07:25:48.791Z",
-//       "deleted_at": null
-//     }
-//   }
-// }
-// // @ts-ignore
-// export default () => <OrderPlacedEmailComponent {...mockOrder} />
-
 import { 
   Text, 
   Column, 
@@ -820,10 +291,10 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
               {/* Order Items */}
               <Section style={{ padding: '24px 32px' }}>
                 <Text style={{ fontSize: '11px', color: '#888888', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 16px 0' }}>
-                  Your Items ({order.items?.length || 0})
+                  Your Items ({order.items?.filter((item: any) => !item.metadata?.is_cod_fee).length || 0})
                 </Text>
                 
-                {order.items?.map((item, index) => {
+                {order.items?.filter((item: any) => !item.metadata?.is_cod_fee).map((item, index) => {
                   console.log('=== EMAIL TEMPLATE DEBUG START ===')
                   console.log('📧 Item ID:', item.id)
                   console.log('📧 Product Title:', item.product_title)
@@ -974,7 +445,11 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                   </Column>
                   <Column style={{ textAlign: 'right' }}>
                     <Text style={{ fontSize: '13px', color: '#1a1a1a', margin: 0 }}>
-                      {formatPrice(order.item_total)}
+                      {(() => {
+                        const codItem = (order.items as any[])?.find((item: any) => item.metadata?.is_cod_fee)
+                        const codAmount = codItem ? Number(codItem.total) : 0
+                        return formatPrice(Number(order.item_total) - codAmount)
+                      })()}
                     </Text>
                   </Column>
                 </Row>
@@ -991,8 +466,28 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                     </Column>
                   </Row>
                 ))}
+
+                {/* COD Fee line item */}
+                {(() => {
+                  const codItem = (order.items as any[])?.find((item: any) => item.metadata?.is_cod_fee)
+                  if (!codItem) return null
+                  return (
+                    <Row style={{ paddingBottom: '8px' }}>
+                      <Column>
+                        <Text style={{ fontSize: '13px', color: '#666666', margin: 0 }}>
+                          Cash on Delivery Fee
+                        </Text>
+                      </Column>
+                      <Column style={{ textAlign: 'right' }}>
+                        <Text style={{ fontSize: '13px', color: '#1a1a1a', margin: 0 }}>
+                          {formatPrice(codItem.total)}
+                        </Text>
+                      </Column>
+                    </Row>
+                  )
+                })()}
                 
-                {order.tax_total && Number(order.tax_total) > 0 && (
+                {/* {order.tax_total && Number(order.tax_total) > 0 && (
                   <Row style={{ paddingBottom: '8px' }}>
                     <Column>
                       <Text style={{ fontSize: '13px', color: '#666666', margin: 0 }}>Tax</Text>
@@ -1003,7 +498,7 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                       </Text>
                     </Column>
                   </Row>
-                )}
+                )} */}
                 
                 <Hr style={{ borderTop: '1px solid #e0e0e0', margin: '12px 0' }} />
                 
@@ -1079,24 +574,24 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                 <tbody>
                   <tr>
                     <td style={{ padding: '0 8px' }}>
-                      <Link href="https://www.instagram.com/junooni">
+                      <Link href="https://www.instagram.com/bejunooni?utm_source=qr&igsh=YmI4eTJhazMxMHo0">
                         <Img 
                           src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" 
                           alt="Instagram" 
                           width="22" 
                           height="22"
-                          style={{ opacity: 0.5 }}
+                          style={{ opacity: 0.9 }}
                         />
                       </Link>
                     </td>
                     <td style={{ padding: '0 8px' }}>
-                      <Link href="https://www.facebook.com/profile.php?id=61577994639087">
+                      <Link href="https://www.facebook.com/p/Junooni-61577994639087">
                         <Img 
                           src="https://cdn-icons-png.flaticon.com/512/733/733547.png" 
                           alt="Facebook" 
                           width="22" 
                           height="22"
-                          style={{ opacity: 0.5 }}
+                          style={{ opacity: 0.9 }}
                         />
                       </Link>
                     </td>

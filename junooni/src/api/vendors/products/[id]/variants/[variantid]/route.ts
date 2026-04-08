@@ -1,5 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
 export const GET = async (
   req: MedusaRequest,
@@ -16,7 +16,6 @@ export const GET = async (
           id: variantid,
           $and: [{ product_id: { $eq: productId } }],
         },
-        // Optional: remove this if not using it
         fields: (req.query?.fields as string[]) ?? [],
       },
       { throwIfKeyNotFound: false }
@@ -34,5 +33,51 @@ export const GET = async (
     return res.status(500).json({
       message: "Internal server error",
     })
+  }
+}
+
+export const POST = async (
+  req: MedusaRequest,
+  res: MedusaResponse
+) => {
+  const { id: productId, variantid } = req.params
+
+  try {
+    const { images, thumbnail_url } = req.body as { 
+      images: { id: string }[]
+      thumbnail_url?: string  // ← matches what fetchApi sends
+    }
+
+    if (!images || !Array.isArray(images)) {
+      return res.status(400).json({ message: "images array is required" })
+    }
+
+    const productModule = req.scope.resolve(Modules.PRODUCT) as any
+
+    // Associate all images with variant
+    await productModule.addImageToVariant(
+      images.map(img => ({
+        variant_id: variantid,
+        image_id: img.id
+      }))
+    )
+
+    // Set thumbnail URL directly — no extra query needed
+    if (thumbnail_url) {
+      await productModule.updateProductVariants(
+        { id: variantid },
+        { thumbnail: thumbnail_url }
+      )
+      console.log(`✅ Thumbnail set: ${thumbnail_url}`)
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      variant_id: variantid, 
+      images_count: images.length 
+    })
+  } catch (err) {
+    console.error("Error updating variant images:", err)
+    return res.status(500).json({ message: err.message || "Internal server error" })
   }
 }

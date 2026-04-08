@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo  } from 'react';
 import { useNavigate, useSearch, useLocation } from '@tanstack/react-router';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, useWatch  } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   IconCirclePlus, 
@@ -48,7 +48,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { StreamlinedImageManager } from '../../products/context/product-modules/ImageManager';
 import { EnhancedOptionComponent } from '../../products/context/product-modules/OptionComponents';
 import { ProductSchema } from '../../products/data/schema';
-import { createProduct, uploadProductImage, fetchCategories, batchUpdateInventoryLevels, fetchProduct, submitArtwork, uploadArtworkFile, createArtworkPayload } from '../../products/context/fetchApi';
+import { createProduct, uploadProductImage, fetchCategories, batchUpdateInventoryLevels, fetchProduct, submitArtwork, uploadArtworkFile, createArtworkPayload, updateVariantImages } from '../../products/context/fetchApi';
 import HierarchicalCategorySelector from '../../products/context/HierarchicalCategorySelector';
 
 // Import rich text editor component
@@ -1597,91 +1597,43 @@ const removeDuplicateDesignImages = (designImages: MediaItem[]): MediaItem[] => 
  * Process base64 image data to File object
  */
 const processBase64ToFile = async (
-  base64Data: string, 
-  fileName: string, 
+  base64Data: string,
+  fileName: string,
   colorName?: string
 ): Promise<ProcessedImage | null> => {
   try {
-    
-    if (!base64Data) {
-      throw new Error('Base64 data is empty');
+    if (!base64Data?.startsWith('data:image/') || !base64Data.includes('base64,')) {
+      return null;
     }
-    
-    if (!base64Data.startsWith('data:image/')) {
-      throw new Error('Invalid data URL format - must start with data:image/');
-    }
-    
-    if (!base64Data.includes('base64,')) {
-      throw new Error('Invalid data URL format - missing base64 marker');
-    }
-    
-    const [header, base64Content] = base64Data.split('base64,');
-    
-    if (!header || !base64Content) {
-      throw new Error('Failed to split base64 data URL');
-    }
-    
-    const mimeType = header.split(':')[1]?.split(';')[0];
-    
-    if (!mimeType || !mimeType.startsWith('image/')) {
-      throw new Error(`Invalid MIME type: ${mimeType}`);
-    }
-    
-    if (base64Content.length < 100) {
-      throw new Error(`Base64 content too short: ${base64Content.length} characters`);
-    }
-    
-    let binaryString: string;
-    try {
-      binaryString = atob(base64Content);
-    } catch (atobError) {
-      throw new Error(`Failed to decode base64: ${atobError.message}`);
-    }
-    
-    if (binaryString.length < 100) {
-      throw new Error(`Decoded binary too short: ${binaryString.length} bytes`);
-    }
-    
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    
-    const blob = new Blob([bytes], { type: mimeType });
-    
-    if (blob.size < 1000) {
-      throw new Error(`Generated blob too small: ${blob.size} bytes`);
-    }
-    
+
+    // Native browser decoding — no JS byte loop, does not block main thread
+    const blob = await fetch(base64Data).then(r => r.blob());
+
+    if (blob.size < 1000) return null;
+
     const cleanFileName = fileName.replace(/[^a-z0-9.-]/gi, '_');
-    const file = new File([blob], cleanFileName, { 
-      type: mimeType,
+    const file = new File([blob], cleanFileName, {
+      type: blob.type,
       lastModified: Date.now()
     });
-    
-    
+
     const objectUrl = URL.createObjectURL(file);
-    let dimensions: { width: number; height: number };
-    
+
     try {
-      dimensions = await validateImageDimensions(objectUrl);
-    } catch (validationError) {
+      const dimensions = await validateImageDimensions(objectUrl);
+      return {
+        file,
+        url: objectUrl,
+        colorValue: colorName,
+        size: file.size,
+        dimensions,
+        quality: file.size > 100000 ? 'high' : file.size > 50000 ? 'medium' : 'low'
+      };
+    } catch {
       URL.revokeObjectURL(objectUrl);
-      throw new Error(`Image validation failed: ${validationError.message}`);
+      return null;
     }
-    
-    const result: ProcessedImage = {
-      file,
-      url: objectUrl,
-      colorValue: colorName,
-      size: file.size,
-      dimensions,
-      quality: file.size > 100000 ? 'high' : file.size > 50000 ? 'medium' : 'low'
-    };
-    
-    return result;
-    
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -1760,6 +1712,120 @@ const DesignImportSuccessNotification: React.FC<{
 
 // Default location ID for inventory management
 //const defaultLocationId = "sloc_01JKWDDGKGCQFJANXV0CVJN2QW";
+const VariantRow = React.memo(({
+  index,
+  vf,
+  onRemove,
+  bulkEditMode,
+  isSelected,
+  onToggleSelect,
+  costPrice,
+  control,
+  register,
+}: {
+  index: number;
+  vf: any;
+  onRemove: (i: number) => void;
+  bulkEditMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+  costPrice: number;
+  control: any;
+  register: any;
+}) => {
+  const variant = useWatch({ control, name: `variants.${index}` });
+  const title = variant?.title ?? '';
+  const price = variant?.price ?? 0;
+  const optionValues = variant?.optionValues ?? [];
+  const profit = price - costPrice;
+
+  return (
+    <tr className={`
+      ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+      ${bulkEditMode && isSelected ? 'bg-orange-50' : ''}
+      hover:bg-orange-50 transition-colors duration-150
+    `}>
+      {bulkEditMode && (
+        <td className="p-3 text-center border-r border-gray-200">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect(vf.id)}
+            className="w-4 h-4 rounded border-gray-300 text-[#e65100] focus:ring-[#e65100]"
+          />
+        </td>
+      )}
+      <td className="p-3 border-r border-gray-200">
+        <div className="flex flex-col">
+          <span className="font-medium text-gray-800">{title}</span>
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {(optionValues || []).map((optVal: any, optIndex: number) => (
+              <Badge
+                key={optIndex}
+                variant="outline"
+                className="text-xs text-[#e65100] border-orange-200 bg-orange-50"
+              >
+                {optVal.optionName}: {optVal.value}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </td>
+      <td className="p-3 border-r border-gray-200">
+        <Input
+          {...register(`variants.${index}.sku`)}
+          className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+        />
+      </td>
+      <td className="p-3 border-r border-gray-200">
+        <div className="text-center">
+          <span className="font-medium text-orange-600">
+            ₹{costPrice > 0 ? costPrice.toFixed(2) : '--'}
+          </span>
+        </div>
+      </td>
+      <td className="p-3 border-r border-gray-200">
+        <div className="relative">
+          <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            {...register(`variants.${index}.price`, { valueAsNumber: true })}
+            className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
+          />
+        </div>
+      </td>
+      <td className="p-3 border-r border-gray-200">
+        <div className="text-center">
+          <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            ₹{profit.toFixed(2)}
+          </span>
+        </div>
+      </td>
+      <td className="px-0 py-3 text-center">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onRemove(index)}
+          className="px-0 text-red-500 hover:bg-red-50"
+        >
+          <IconX size={16} />
+        </Button>
+      </td>
+    </tr>
+  );
+}, (prev, next) => {
+  return (
+    prev.index === next.index &&
+    prev.costPrice === next.costPrice &&
+    prev.bulkEditMode === next.bulkEditMode &&
+    prev.isSelected === next.isSelected
+  );
+});
+
+VariantRow.displayName = 'VariantRow';
 
 // ===== MAIN CREATE COMPONENT =====
 const Create: React.FC = () => {
@@ -1780,30 +1846,40 @@ if (!mergedLocationStateRef.current && location.state) {
   if (sessionKey) {
     try {
       const loadChunked = (key: string, fallback: any): any => {
-        try {
-          const chunksStr = sessionStorage.getItem(`${key}_chunks`);
-          if (!chunksStr) return fallback;
-          const totalChunks = parseInt(chunksStr);
-          if (totalChunks === 1) {
-            const data = sessionStorage.getItem(key);
-            if (!data) return fallback;
-            sessionStorage.removeItem(key);
-            sessionStorage.removeItem(`${key}_chunks`);
-            return JSON.parse(data);
-          }
-          let fullData = '';
-          for (let i = 0; i < totalChunks; i++) {
-            const chunk = sessionStorage.getItem(`${key}_chunk_${i}`);
-            if (!chunk) return fallback;
-            fullData += chunk;
-            sessionStorage.removeItem(`${key}_chunk_${i}`);
-          }
-          sessionStorage.removeItem(`${key}_chunks`);
-          return JSON.parse(fullData);
-        } catch {
-          return fallback;
-        }
-      };
+  try {
+    const chunksStr = sessionStorage.getItem(`${key}_chunks`);
+    if (!chunksStr) return fallback;
+    const totalChunks = parseInt(chunksStr);
+    
+    if (totalChunks === 1) {
+      const data = sessionStorage.getItem(key);
+      if (!data) return fallback;
+      
+      // ❌ REMOVE THESE LINES - don't delete after reading
+      // sessionStorage.removeItem(key);
+      // sessionStorage.removeItem(`${key}_chunks`);
+      
+      return JSON.parse(data);
+    }
+    
+    let fullData = '';
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = sessionStorage.getItem(`${key}_chunk_${i}`);
+      if (!chunk) return fallback;
+      fullData += chunk;
+      
+      // ❌ REMOVE THIS LINE - don't delete after reading
+      // sessionStorage.removeItem(`${key}_chunk_${i}`);
+    }
+    
+    // ❌ REMOVE THIS LINE
+    // sessionStorage.removeItem(`${key}_chunks`);
+    
+    return JSON.parse(fullData);
+  } catch {
+    return fallback;
+  }
+};
 
       // Load transfer quality from sessionStorage (for display)
       const colorSpecificImagesFromStorage = loadChunked(`${sessionKey}_colorSpecificImages`, {});
@@ -1874,11 +1950,12 @@ const didPopulateRef = useRef(false);
   const [imageAreaAnalysis, setImageAreaAnalysis] = useState<any>(null);
   // Add this state variable with your other state declarations
 const [availableAreas, setAvailableAreas] = useState<string[]>([]);
-
+// Add this alongside your other state/hooks declarations
   // Add these with your other state declarations
 const [isProcessingDesignImages, setIsProcessingDesignImages] = useState<boolean>(false);
 const [hasProcessedInitialData, setHasProcessedInitialData] = useState<boolean>(false);
 const [isSubmittingForm, setIsSubmittingForm] = useState<boolean>(false);
+
 // ✅ ADD: New state for PayloadCMS fulfillment data
 const [payloadFulfillmentData, setPayloadFulfillmentData] = useState<{
   shippingTime: string | null;
@@ -1912,6 +1989,7 @@ const [importedCanvasImages, setImportedCanvasImages] = useState<Array<{
 
   // Main state
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageTab, setActiveImageTab] = useState<string>("upload");
   const [newImageUrl, setNewImageUrl] = useState<string>("");
@@ -1994,6 +2072,8 @@ const [importedCanvasImages, setImportedCanvasImages] = useState<Array<{
       // handlingTime: '2-3',
     },
   });
+  const watchedVariants = useWatch({control: form.control,name: 'variants',defaultValue: [],});
+  const watchedOptions = useWatch({control: form.control,name: 'options',defaultValue: [],});
 
   // Field arrays for options and variants.
   const {
@@ -2025,6 +2105,104 @@ const [importedCanvasImages, setImportedCanvasImages] = useState<Array<{
     control: form.control,
     name: 'productDetails',
   });
+
+const imagesByOptionValueMap = useMemo(() => {
+  const map = new Map<string, MediaItem[]>();
+
+  const mockupItems = mediaItems.filter(item => {
+    return !(
+      item.metadata?.isRawDesignImage === true ||
+      item.variantInfo?.isRawDesignImage === true ||
+      item.metadata?.debugInfo?.source === 'canvas_design_element'
+    );
+  });
+
+  const normalize = (str: string) =>
+    str.toLowerCase().replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+
+  mockupItems.forEach(item => {
+    const colorCandidates: string[] = [];
+    const sizeCandidates: string[] = [];
+
+    // Collect color candidates
+    if (item.variantInfo?.optionName?.toLowerCase() === 'color') {
+      item.variantInfo.optionValues?.forEach(v => colorCandidates.push(v));
+    }
+    if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'color') {
+      item.variantInfo.secondaryOptionValues?.forEach(v => colorCandidates.push(v));
+    }
+    if (item.metadata?.extractedColorName) colorCandidates.push(item.metadata.extractedColorName);
+    if (item.colorValue) colorCandidates.push(item.colorValue);
+
+    // Collect size candidates
+    if (item.variantInfo?.optionName?.toLowerCase() === 'size') {
+      item.variantInfo.optionValues?.forEach(v => sizeCandidates.push(v));
+    }
+    if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'size') {
+      item.variantInfo.secondaryOptionValues?.forEach(v => sizeCandidates.push(v));
+    }
+    if (item.metadata?.extractedSizeName) sizeCandidates.push(item.metadata.extractedSizeName);
+
+    // Index by color if color_Images enabled
+    if (payloadImageSettings.color_Images) {
+      colorCandidates.forEach(color => {
+        const key = `color:${normalize(color)}`;
+        const existing = map.get(key) || [];
+        if (!existing.some(img => img.url === item.url)) {
+          map.set(key, [...existing, item]);
+        }
+      });
+    }
+
+    // Index by size if size_Images enabled
+    if (payloadImageSettings.size_Images) {
+      sizeCandidates.forEach(size => {
+        const key = `size:${normalize(size)}`;
+        const existing = map.get(key) || [];
+        if (!existing.some(img => img.url === item.url)) {
+          map.set(key, [...existing, item]);
+        }
+      });
+    }
+
+    // If both enabled, also index by color+size combination
+    if (payloadImageSettings.color_Images && payloadImageSettings.size_Images) {
+      colorCandidates.forEach(color => {
+        sizeCandidates.forEach(size => {
+          const key = `color:${normalize(color)}+size:${normalize(size)}`;
+          const existing = map.get(key) || [];
+          if (!existing.some(img => img.url === item.url)) {
+            map.set(key, [...existing, item]);
+          }
+        });
+      });
+    }
+  });
+
+  return map;
+}, [
+  mediaItems,
+  payloadImageSettings.color_Images,
+  payloadImageSettings.size_Images,
+  payloadImageSettings.material_Images,
+  payloadImageSettings.style_Images,
+]);
+
+const precomputedCostPrices = useMemo(() => {
+  const baseCost = canvasPricingData?.final_price_per_unit || enhancedProductData?.cost || 0;
+  return watchedVariants.map((variant: any) => {
+    if (!variant?.optionValues || !enhancedProductData?.sizeOptions) return baseCost;
+    const sizeOpt = variant.optionValues.find(
+      (opt: any) => opt.optionName?.toLowerCase() === 'size'
+    );
+    if (!sizeOpt) return baseCost;
+    const matchingSize = enhancedProductData.sizeOptions.find(
+      (s: any) => s.sizeName?.toLowerCase() === sizeOpt.value?.toLowerCase()
+    );
+    const extra = matchingSize?.ExtraCost ? parseFloat(matchingSize.ExtraCost) : 0;
+    return baseCost + (isNaN(extra) ? 0 : extra);
+  });
+}, [watchedVariants, canvasPricingData, enhancedProductData]);
 
   // ===== NEW: PRE-GENERATED IMAGE LOOKUP FUNCTION =====
   const getPreGeneratedImage = useCallback((mockupTitle: string, colorName: string, sizeName?: string): string | null => {
@@ -2792,12 +2970,32 @@ const processColorSpecificImages = async (
 ) => {
   try {
     // 🔥 Get originals for upload quality
-    const uploadQualityImages =
-    (mergedLocationStateRef.current as any)?.uploadQualityColorSpecificImages || {};
+  //   const uploadQualityImages =
+  //   (mergedLocationStateRef.current as any)?.uploadQualityColorSpecificImages || {};
 
-   console.log('📸 Upload quality mockups available:',
-      Object.keys(uploadQualityImages).length, 'colors'
-    );
+  //  console.log('📸 Upload quality mockups available:',
+  //     Object.keys(uploadQualityImages).length, 'colors'
+  //   );
+
+  const uploadQualityImages: Record<string, any[]> =
+  (mergedLocationStateRef.current as any)?.uploadQualityColorSpecificImages || {};
+
+  console.log('📸 Upload quality available:', 
+    Object.keys(uploadQualityImages).length, 'colors,',
+    Object.values(uploadQualityImages).flat().length, 'total mockups'
+  );
+
+  const getExt = (base64: string): string => {
+  if (base64?.startsWith('data:image/webp')) return 'webp';
+  if (base64?.startsWith('data:image/jpeg') || base64?.startsWith('data:image/jpg')) return 'jpg';
+  return 'png';
+};
+
+// Verify first entry to confirm WebP
+const firstEntry = Object.values(uploadQualityImages).flat()[0] as any;
+console.log('📸 First upload quality image format:', 
+  firstEntry?.imageData?.substring(0, 30) || 'none'
+);
 
     const processedImages: MediaItem[] = [];
     let currentRank = 1000;
@@ -2845,14 +3043,21 @@ const processColorSpecificImages = async (
 
           if (!extractedSize || !allSizes.includes(extractedSize)) continue;
 
-          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-${extractedSize.toLowerCase().replace(/\s+/g, '_')}.png`;
-
+        
           // 🔥 Use original quality for upload
-          const mockupIndex = mockups.indexOf(mockup);
-          const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
-            || uploadQualityForColor[mockupIndex]  // handle both object and string formats
-            || mockup.imageData;
-          const imageDataToUse = uploadQualityData;
+          // const mockupIndex = mockups.indexOf(mockup);
+          // const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
+          //   || uploadQualityForColor[mockupIndex]  // handle both object and string formats
+          //   || mockup.imageData;
+          // const imageDataToUse = uploadQualityData;
+
+          const uploadQualityMockup = uploadQualityForColor.find(
+            (m: any) => m?.storageKey === mockup.storageKey || m?.mockupId === mockup.mockupId
+          );
+          const imageDataToUse = uploadQualityMockup?.imageData || mockup.imageData;
+
+          const ext = getExt(imageDataToUse);
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-${extractedSize.toLowerCase().replace(/\s+/g, '_')}.${ext}`;
 
           const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
 
@@ -2878,7 +3083,7 @@ const processColorSpecificImages = async (
                 originalMockupTitle: mockup.mockupTitle,
                 originalStorageKey: mockup.storageKey,
                 payloadSettings: { ...imageSettings },
-                usedOriginalQuality: !!uploadQualityForColor [mockupIndex]
+               usedOriginalQuality: !!uploadQualityMockup
               }
             });
           }
@@ -2886,12 +3091,20 @@ const processColorSpecificImages = async (
 
       } else if (imageSettings.color_Images && !imageSettings.size_Images) {
         for (const mockup of mockups) {
-          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.png`;
-          const mockupIndex = mockups.indexOf(mockup);
-          const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
-            || uploadQualityForColor[mockupIndex]  // handle both object and string formats
-            || mockup.imageData;
-          const imageDataToUse = uploadQualityData;
+    
+          // const mockupIndex = mockups.indexOf(mockup);
+          // const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
+          //   || uploadQualityForColor[mockupIndex]  // handle both object and string formats
+          //   || mockup.imageData;
+          // const imageDataToUse = uploadQualityData;
+
+          const uploadQualityMockup = uploadQualityForColor.find(
+            (m: any) => m?.storageKey === mockup.storageKey || m?.mockupId === mockup.mockupId
+          );
+          const imageDataToUse = uploadQualityMockup?.imageData || mockup.imageData;
+
+          const ext = getExt(imageDataToUse);
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.${ext}`;
 
           const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
 
@@ -2916,7 +3129,7 @@ const processColorSpecificImages = async (
                 extractedSizeNames: allSizes,
                 coversAllSizes: true,
                 payloadSettings: { ...imageSettings },
-                usedOriginalQuality: !!uploadQualityForColor [mockupIndex]
+                usedOriginalQuality: !!uploadQualityMockup
               }
             });
           }
@@ -2924,12 +3137,20 @@ const processColorSpecificImages = async (
 
       } else if (imageSettings.color_Images && imageSettings.size_Images) {
         for (const mockup of mockups) {
-          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-all-sizes.png`;
-          const mockupIndex = mockups.indexOf(mockup);
-          const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
-            || uploadQualityForColor[mockupIndex]  // handle both object and string formats
-            || mockup.imageData;
-          const imageDataToUse = uploadQualityData;
+          
+          // const mockupIndex = mockups.indexOf(mockup);
+          // const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
+          //   || uploadQualityForColor[mockupIndex]  // handle both object and string formats
+          //   || mockup.imageData;
+          // const imageDataToUse = uploadQualityData;
+
+          const uploadQualityMockup = uploadQualityForColor.find(
+            (m: any) => m?.storageKey === mockup.storageKey || m?.mockupId === mockup.mockupId
+          );
+          const imageDataToUse = uploadQualityMockup?.imageData || mockup.imageData;
+
+          const ext = getExt(imageDataToUse);
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-all-sizes.${ext}`;
 
           const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
 
@@ -2954,7 +3175,7 @@ const processColorSpecificImages = async (
                 extractedSizeNames: allSizes,
                 coversAllSizes: true,
                 payloadSettings: { ...imageSettings },
-                usedOriginalQuality: !!originalsForColor[mockupIndex]
+                usedOriginalQuality: !!uploadQualityMockup
               }
             });
           }
@@ -2962,12 +3183,19 @@ const processColorSpecificImages = async (
 
       } else {
         for (const mockup of mockups) {
-          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.png`;
-          const mockupIndex = mockups.indexOf(mockup);
-          const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
-            || uploadQualityForColor[mockupIndex]  // handle both object and string formats
-            || mockup.imageData;
-          const imageDataToUse = uploadQualityData;
+          // const mockupIndex = mockups.indexOf(mockup);
+          // const uploadQualityData = uploadQualityForColor[mockupIndex]?.imageData 
+          //   || uploadQualityForColor[mockupIndex]  // handle both object and string formats
+          //   || mockup.imageData;
+          // const imageDataToUse = uploadQualityData;
+
+          const uploadQualityMockup = uploadQualityForColor.find(
+            (m: any) => m?.storageKey === mockup.storageKey || m?.mockupId === mockup.mockupId
+          );
+          const imageDataToUse = uploadQualityMockup?.imageData || mockup.imageData;
+
+          const ext = getExt(imageDataToUse);
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.${ext}`;
 
           const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
 
@@ -2988,7 +3216,7 @@ const processColorSpecificImages = async (
                 viewAngle: mockup.viewAngle,
                 extractedColorName: colorName,
                 payloadSettings: { ...imageSettings },
-                usedOriginalQuality: !!originalsForColor[mockupIndex]
+                usedOriginalQuality: !!uploadQualityMockup
               }
             });
           }
@@ -3095,269 +3323,41 @@ const getLocationId = (enhancedProductData?: PayloadProductData): string => {
   };
 
   // REPLACE the entire getImagesForOptionValue function
-const getImagesForOptionValue = (optionName: string, optionValue: string): MediaItem[] => {
-  // console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  // console.log('🔍 FILTER: getImagesForOptionValue called');
-  // console.log('  optionName:', optionName);
-  // console.log('  optionValue:', optionValue);
-  // console.log('  payloadImageSettings:', payloadImageSettings);
-  // console.log('  Total mediaItems:', mediaItems.length);
-  
-  const filteredImages = mediaItems.filter(item => {
-    // Skip design images
-    const isDesign = item.metadata?.isRawDesignImage === true || 
-                   item.variantInfo?.isRawDesignImage === true||
-                   item.metadata?.debugInfo?.source === 'canvas_design_element';
-    if (isDesign) return false;
-    
-    const isColorOption = optionName.toLowerCase() === 'color';
-    const isSizeOption = optionName.toLowerCase() === 'size';
-    const optionValueLower = optionValue.toLowerCase();
-    
-    // console.log('\n🔍 FILTER: Checking image:', item.file?.name);
-    // console.log('  variantInfo:', {
-    //   optionName: item.variantInfo?.optionName,
-    //   optionValues: item.variantInfo?.optionValues,
-    //   secondaryOptionName: item.variantInfo?.secondaryOptionName,
-    //   secondaryOptionValues: item.variantInfo?.secondaryOptionValues
-    // });
-    // console.log('  metadata:', {
-    //   extractedSizeName: item.metadata?.extractedSizeName,
-    //   extractedColorName: item.metadata?.extractedColorName
-    // });
-    
-    // CASE 1: color_Images TRUE, size_Images FALSE
-    if (payloadImageSettings.color_Images && !payloadImageSettings.size_Images) {
-      if (!isColorOption) {
-        //console.log('  ❌ FILTER: Not a color option, skipping');
-        return false;
-      }
-      
-      //console.log('  🎨 COLOR MODE: Checking color match');
-      
-      const matchesColor = (colorToCheck: string | undefined): boolean => {
-        if (!colorToCheck) return false;
-        
-        const colorLower = colorToCheck.toLowerCase();
-        const normalizedColor = colorLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
-        const normalizedOptionValue = optionValueLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
-        
-        if (colorLower === optionValueLower) return true;
-        if (normalizedColor === normalizedOptionValue) return true;
-        if (colorLower.includes(optionValueLower) || optionValueLower.includes(colorLower)) return true;
-        
-        return false;
-      };
-      
-      if (matchesColor(item.variantInfo?.optionValues?.[0])) {
-        //console.log('  ✅ FILTER: Matched via primary optionValues');
-        return true;
-      }
-      
-      if (matchesColor(item.variantInfo?.secondaryOptionValues?.[0])) {
-        //console.log('  ✅ FILTER: Matched via secondary optionValues');
-        return true;
-      }
-      
-      if (matchesColor(item.metadata?.extractedColorName)) {
-        //console.log('  ✅ FILTER: Matched via extractedColorName');
-        return true;
-      }
-      
-      if (matchesColor(item.colorValue)) {
-        //console.log('  ✅ FILTER: Matched via colorValue');
-        return true;
-      }
-      
-      if (item.metadata?.isSharedImage) {
-        const sharedImageColor = item.colorValue || item.metadata?.extractedColorName;
-        if (matchesColor(sharedImageColor)) {
-          //console.log('  ✅ FILTER: Matched shared image for color:', sharedImageColor);
-          return true;
-        }
-      }
-      
-      //console.log('  ❌ FILTER: No color match found');
-      return false;
+const getImagesForOptionValue = useCallback((
+  optionName: string,
+  optionValue: string
+): MediaItem[] => {
+  const normalize = (str: string) =>
+    str.toLowerCase().replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+
+  const isColorOpt = optionName.toLowerCase() === 'color';
+  const isSizeOpt = optionName.toLowerCase() === 'size';
+
+  // CASE 1: color_Images TRUE, size_Images FALSE
+  if (payloadImageSettings.color_Images && !payloadImageSettings.size_Images) {
+    if (!isColorOpt) return [];
+    return imagesByOptionValueMap.get(`color:${normalize(optionValue)}`) || [];
+  }
+
+  // CASE 2: color_Images FALSE, size_Images TRUE
+  if (!payloadImageSettings.color_Images && payloadImageSettings.size_Images) {
+    if (!isSizeOpt) return [];
+    return imagesByOptionValueMap.get(`size:${normalize(optionValue)}`) || [];
+  }
+
+  // CASE 3: BOTH enabled
+  if (payloadImageSettings.color_Images && payloadImageSettings.size_Images) {
+    if (isColorOpt) {
+      return imagesByOptionValueMap.get(`color:${normalize(optionValue)}`) || [];
     }
-    
-    // CASE 2: color_Images FALSE, size_Images TRUE
-    if (!payloadImageSettings.color_Images && payloadImageSettings.size_Images) {
-      if (!isSizeOption) {
-        //console.log('  ❌ FILTER: Not a size option, skipping');
-        return false;
-      }
-      
-      // console.log('  📏 SIZE MODE: Checking size match');
-      // console.log('    Looking for:', optionValueLower);
-      // console.log('    Image primary option:', item.variantInfo?.optionName?.toLowerCase());
-      // console.log('    Image primary values:', item.variantInfo?.optionValues?.map(v => v.toLowerCase()));
-      
-      // Helper function for flexible size matching
-      const matchesSize = (sizeToCheck: string | undefined): boolean => {
-        if (!sizeToCheck) return false;
-        
-        const sizeLower = sizeToCheck.toLowerCase();
-        const normalizedSize = sizeLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
-        const normalizedOptionValue = optionValueLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
-        
-        // Exact match
-        if (sizeLower === optionValueLower) return true;
-        
-        // Normalized match (no spaces/hyphens/underscores)
-        if (normalizedSize === normalizedOptionValue) return true;
-        
-        // Partial match for compound names
-        if (sizeLower.includes(optionValueLower) || optionValueLower.includes(sizeLower)) return true;
-        
-        return false;
-      };
-      
-      // Check primary option (Size)
-      if (item.variantInfo?.optionName?.toLowerCase() === 'size') {
-        //console.log('    ✓ Primary option IS size');
-        
-        const primaryMatch = item.variantInfo?.optionValues?.some(val => {
-          const match = matchesSize(val);
-          //console.log(`      Comparing "${val.toLowerCase()}" with "${optionValueLower}": ${match}`);
-          return match;
-        });
-        
-        if (primaryMatch) {
-          //console.log('  ✅ FILTER: MATCH via primary size option');
-          return true;
-        } else {
-          //console.log('  ❌ NO MATCH in primary values');
-        }
-      } else {
-        //console.log('    ✗ Primary option is NOT size, it is:', item.variantInfo?.optionName);
-      }
-      
-      // Check secondary option (Size)
-      if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'size') {
-        //console.log('    ✓ Secondary option IS size');
-        
-        const secondaryMatch = item.variantInfo?.secondaryOptionValues?.some(val => {
-          const match = matchesSize(val);
-          //console.log(`      Comparing "${val.toLowerCase()}" with "${optionValueLower}": ${match}`);
-          return match;
-        });
-        
-        if (secondaryMatch) {
-          //console.log('  ✅ FILTER: MATCH via secondary size option');
-          return true;
-        } else {
-          //console.log('  ❌ NO MATCH in secondary values');
-        }
-      } else {
-        //console.log('    ✗ Secondary option is NOT size, it is:', item.variantInfo?.secondaryOptionName);
-      }
-      
-      // Check extracted size metadata
-      if (item.metadata?.extractedSizeName) {
-        const metadataMatch = matchesSize(item.metadata.extractedSizeName);
-        //console.log(`    Checking metadata: "${item.metadata.extractedSizeName.toLowerCase()}" with "${optionValueLower}": ${metadataMatch}`);
-        
-        if (metadataMatch) {
-          //console.log('  ✅ FILTER: MATCH via extractedSizeName');
-          return true;
-        }
-      } else {
-        //console.log('    ✗ No extractedSizeName in metadata');
-      }
-      
-      //console.log('  ❌ FILTER: NO MATCH FOUND');
-      return false;
+    if (isSizeOpt) {
+      return imagesByOptionValueMap.get(`size:${normalize(optionValue)}`) || [];
     }
-    
-    // CASE 3: BOTH color_Images and size_Images are TRUE
-    if (payloadImageSettings.color_Images && payloadImageSettings.size_Images) {
-      //console.log('  🔄 BOTH MODE: Checking for color+size combination');
-      
-      const matchesColor = (colorToCheck: string | undefined): boolean => {
-        if (!colorToCheck) return false;
-        const colorLower = colorToCheck.toLowerCase();
-        return colorLower === optionValueLower || 
-               colorLower.includes(optionValueLower) || 
-               optionValueLower.includes(colorLower);
-      };
-      
-      const matchesSize = (sizeToCheck: string | undefined): boolean => {
-        if (!sizeToCheck) return false;
-        const sizeLower = sizeToCheck.toLowerCase();
-        const normalizedSize = sizeLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
-        const normalizedOptionValue = optionValueLower.replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
-        
-        return sizeLower === optionValueLower || 
-               normalizedSize === normalizedOptionValue ||
-               sizeLower.includes(optionValueLower) || 
-               optionValueLower.includes(sizeLower);
-      };
-      
-      if (isColorOption) {
-        if (item.variantInfo?.optionName?.toLowerCase() === 'color' &&
-            item.variantInfo?.optionValues?.some(val => matchesColor(val))) {
-          //console.log('  ✅ FILTER: MATCH via primary color');
-          return true;
-        }
-        
-        if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'color' &&
-            item.variantInfo?.secondaryOptionValues?.some(val => matchesColor(val))) {
-          //console.log('  ✅ FILTER: MATCH via secondary color');
-          return true;
-        }
-        
-        if (matchesColor(item.metadata?.extractedColorName) ||
-            matchesColor(item.colorValue)) {
-          //console.log('  ✅ FILTER: MATCH via color metadata');
-          return true;
-        }
-      }
-      
-      if (isSizeOption) {
-        if (item.variantInfo?.optionName?.toLowerCase() === 'size' &&
-            item.variantInfo?.optionValues?.some(val => matchesSize(val))) {
-          //console.log('  ✅ FILTER: MATCH via primary size');
-          return true;
-        }
-        
-        if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'size' &&
-            item.variantInfo?.secondaryOptionValues?.some(val => matchesSize(val))) {
-          //console.log('  ✅ FILTER: MATCH via secondary size');
-          return true;
-        }
-        
-        if (matchesSize(item.metadata?.extractedSizeName)) {
-          //console.log('  ✅ FILTER: MATCH via size metadata');
-          return true;
-        }
-      }
-      
-      //console.log('  ❌ FILTER: NO MATCH in both mode');
-      return false;
-    }
-    
-    // No specific image association settings enabled
-    //console.log('  ⚠️ FILTER: No image association settings enabled');
-    return false;
-  });
-  
-  // Deduplicate
-  const uniqueImages = filteredImages.filter((item, index, self) => {
-    return self.findIndex(img => img.url === item.url) === index;
-  });
-  
-  //console.log('\n🎯 FILTER: Result:', uniqueImages.length, 'images matched (after deduplication)');
-  // uniqueImages.forEach((img, i) => {
-  //   console.log(`  ${i + 1}. ${img.file?.name}`, {
-  //     primaryOption: img.variantInfo?.optionName,
-  //     primaryValue: img.variantInfo?.optionValues?.[0]
-  //   });
-  // });
-  // console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-  
-  return uniqueImages;
-};
+    return [];
+  }
+
+  return [];
+}, [imagesByOptionValueMap, payloadImageSettings]);
 
 // ADD THIS DEBUG FUNCTION
 const debugImageTagging = () => {
@@ -3394,46 +3394,16 @@ const debugImageTagging = () => {
 // }, [mediaItems, payloadImageSettings]);
 
   // ===== ENHANCED: GET IMAGES FOR COLOR-SIZE COMBINATION =====
-  const getImagesForColorSizeCombination = (colorValue: string, sizeValue: string): MediaItem[] => {
-    
-    const filteredImages = mediaItems.filter(item => {
-      let colorMatch = false;
-      let sizeMatch = false;
-      
-      const colorLower = colorValue.toLowerCase();
-      const sizeLower = sizeValue.toLowerCase();
-      
-      // Check color match (multiple strategies)
-      if (item.variantInfo?.optionName?.toLowerCase() === 'color' && 
-          item.variantInfo?.optionValues?.some(val => val.toLowerCase() === colorLower)) {
-        colorMatch = true;
-      } else if (item.metadata?.extractedColorName?.toLowerCase() === colorLower) {
-        colorMatch = true;
-      } else if (item.colorValue?.toLowerCase() === colorLower) {
-        colorMatch = true;
-      }
-      
-      // Check size match (multiple strategies)
-      if (item.variantInfo?.secondaryOptionName?.toLowerCase() === 'size' && 
-          item.variantInfo?.secondaryOptionValues?.some(val => val.toLowerCase() === sizeLower)) {
-        sizeMatch = true;
-      } else if (item.variantInfo?.optionName?.toLowerCase() === 'size' && 
-                 item.variantInfo?.optionValues?.some(val => val.toLowerCase() === sizeLower)) {
-        sizeMatch = true;
-      } else if (item.metadata?.extractedSizeName?.toLowerCase() === sizeLower) {
-        sizeMatch = true;
-      }
-      
-      const result = colorMatch && sizeMatch;
-      
-      if (result) {
-      }
-      
-      return result;
-    });
-    
-    return filteredImages;
-  };
+  const getImagesForColorSizeCombination = useCallback((
+  colorValue: string,
+  sizeValue: string
+): MediaItem[] => {
+  const normalize = (str: string) =>
+    str.toLowerCase().replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '');
+
+  const key = `color:${normalize(colorValue)}+size:${normalize(sizeValue)}`;
+  return imagesByOptionValueMap.get(key) || [];
+}, [imagesByOptionValueMap]);
 
   // ===== PAYLOADCMS DATA CONVERTER =====
   const convertPayloadCMSToFormData = (payloadProduct: PayloadCMSProduct): {
@@ -4597,34 +4567,35 @@ const debugMediaItemsByArea = () => {
     );
   };
   
-  const [imageAssociatedOptions, setImageAssociatedOptions] = useState<Option[]>([]);
+  // const [imageAssociatedOptions, setImageAssociatedOptions] = useState<Option[]>([]);
   
-  useEffect(() => {
-    const subscription = form.watch((formValues, { name, type }) => {
-      if (name && (name.includes('options') || name.includes('imageAssociation'))) {
-        const newImageAssociatedOptions = getImageAssociatedOptions();
-        setImageAssociatedOptions(newImageAssociatedOptions);
-        
-      }
-    });
-    
-    setImageAssociatedOptions(getImageAssociatedOptions());
-    
-    return () => subscription.unsubscribe();
-  }, [form, payloadImageSettings]);
+ const imageAssociatedOptions = useMemo(() => {
+  return watchedOptions.filter((opt: any) =>
+    opt?.title &&
+    Array.isArray(opt.optionValues) &&
+    opt.optionValues.length > 0 &&
+    shouldOptionHaveImages(opt.title, payloadImageSettings)
+  );
+}, [
+  watchedOptions,
+  payloadImageSettings.color_Images,
+  payloadImageSettings.size_Images,
+  payloadImageSettings.material_Images,
+  payloadImageSettings.style_Images,
+]);
 
   // ✅ ADD: Temporary debug effect to track option changes
-useEffect(() => {
-  const currentOptions = form.getValues('options');
-  //console.log('👀 WATCH: Options changed, current count:', currentOptions.length);
-  currentOptions.forEach((opt, index) => {
-    // console.log(`👀 WATCH: Option ${index}:`, {
-    //   title: opt.title,
-    //   valueCount: opt.optionValues?.length || 0,
-    //   values: opt.optionValues
-    // });
-  });
-}, [form.watch('options')]);
+// useEffect(() => {
+//   const currentOptions = form.getValues('options');
+//   //console.log('👀 WATCH: Options changed, current count:', currentOptions.length);
+//   currentOptions.forEach((opt, index) => {
+//     // console.log(`👀 WATCH: Option ${index}:`, {
+//     //   title: opt.title,
+//     //   valueCount: opt.optionValues?.length || 0,
+//     //   values: opt.optionValues
+//     // });
+//   });
+// }, [form.watch('options')]);
 
   // useEffect(() => {
   //   const currentOptions = form.getValues('options');
@@ -4947,6 +4918,12 @@ useEffect(() => {
   };
 }, [form, handleGenerateVariants, isSubmittingForm]);
 
+useEffect(() => {
+  const fallback = setTimeout(() => {
+    setIsPageLoading(false);
+  }, 15000);
+  return () => clearTimeout(fallback);
+}, []);
 
   useEffect(() => {
     const initialOptionValues: Record<number, string> = {};
@@ -5084,6 +5061,9 @@ useEffect(() => {
             // Mark success: prevents further runs for this mount
             didPopulateRef.current = true;
             setHasProcessedInitialData(true);
+            setTimeout(() => {
+              setIsPageLoading(false);
+            }, 6000);
           } catch (populationError) {
             //console.error('🎯 CREATE ERROR: Form population failed:', populationError);
             setError('Failed to populate form with imported data');
@@ -5095,6 +5075,9 @@ useEffect(() => {
         //console.log('🎯 CREATE DEBUG: No designData present — marking processed');
         didPopulateRef.current = true;
         setHasProcessedInitialData(true);
+         setTimeout(() => {
+              setIsPageLoading(false);
+            }, 6000);
       }
     } catch (error) {
       //console.error('🎯 CREATE ERROR: Location state processing failed:', error);
@@ -5872,118 +5855,134 @@ const combinedArtworkPayload = {
         }
 
         // Get ALL images associated with this variant
-        const directVariantImages = mediaItems.filter(item => 
-          item.variantInfo?.variantId === variant.id && item.id
-        );
+        // const directVariantImages = mediaItems.filter(item => 
+        //   item.variantInfo?.variantId === variant.id && item.id
+        // );
 
-        const optionValueImages = mediaItems.filter(item => {
-          if (!item.variantInfo?.optionName || !item.variantInfo?.optionValues || !variant.optionValues) {
-            return false;
-          }
+        // const optionValueImages = mediaItems.filter(item => {
+        //   if (!item.variantInfo?.optionName || !item.variantInfo?.optionValues || !variant.optionValues) {
+        //     return false;
+        //   }
           
-          return variant.optionValues.some(optVal => 
-            optVal.optionName.toLowerCase() === item.variantInfo!.optionName!.toLowerCase() && 
-            item.variantInfo!.optionValues!.includes(optVal.value)
-          );
-        });
+        //   return variant.optionValues.some(optVal => 
+        //     optVal.optionName.toLowerCase() === item.variantInfo!.optionName!.toLowerCase() && 
+        //     item.variantInfo!.optionValues!.includes(optVal.value)
+        //   );
+        // });
 
-        // Combine all variant-associated images, avoiding duplicates
-        const allVariantImages = [...directVariantImages];
-        optionValueImages.forEach(img => {
-          if (!allVariantImages.some(existing => existing.id === img.id)) {
-            allVariantImages.push(img);
-          }
-        });
+        // // Combine all variant-associated images, avoiding duplicates
+        // const allVariantImages = [...directVariantImages];
+        // optionValueImages.forEach(img => {
+        //   if (!allVariantImages.some(existing => existing.id === img.id)) {
+        //     allVariantImages.push(img);
+        //   }
+        // });
 
-        // METADATA KEY 1: variant_images (array of URLs)
-        const variantImageUrls = allVariantImages
-          .map(item => {
-            if (item.url && item.url.startsWith('blob:') && item.id) {
-              return getStaticUrl(item.id);
-            }
-            return item.url;
-          })
-          .filter(url => url);
+        // // METADATA KEY 1: variant_images (array of URLs)
+        // const variantImageUrls = allVariantImages
+        //   .map(item => {
+        //     if (item.url && item.url.startsWith('blob:') && item.id) {
+        //       return getStaticUrl(item.id);
+        //     }
+        //     return item.url;
+        //   })
+        //   .filter(url => url);
 
-        if (variantImageUrls.length > 0) {
-          variantMetadata.variant_images = JSON.stringify(variantImageUrls);
-        }
+        // if (variantImageUrls.length > 0) {
+        //   variantMetadata.variant_images = JSON.stringify(variantImageUrls);
+        // }
 
-        // METADATA KEY 2: variant_image_ids (array of image IDs)
-        const variantImageIds = allVariantImages
-          .map(item => item.id)
-          .filter(id => id && typeof id === 'string');
+        // // METADATA KEY 2: variant_image_ids (array of image IDs)
+        // const variantImageIds = allVariantImages
+        //   .map(item => item.id)
+        //   .filter(id => id && typeof id === 'string');
 
-        if (variantImageIds.length > 0) {
-          variantMetadata.variant_image_ids = JSON.stringify(variantImageIds);
-        }
+        // if (variantImageIds.length > 0) {
+        //   variantMetadata.variant_image_ids = JSON.stringify(variantImageIds);
+        // }
 
-        // METADATA KEY 3: color_images and option_images - DYNAMIC based on PayloadCMS
-        const colorImages: any[] = [];
-        const allOptionImages: any[] = [];
+        // // METADATA KEY 3: color_images and option_images - DYNAMIC based on PayloadCMS
+        // const colorImages: any[] = [];
+        // const allOptionImages: any[] = [];
 
-        if (variant.optionValues) {
-          variant.optionValues.forEach(optVal => {
-            // Check if this option type should have images based on PayloadCMS
-            const shouldHaveImages = shouldOptionHaveImages(optVal.optionName, payloadImageSettings);
+        // if (variant.optionValues) {
+        //   variant.optionValues.forEach(optVal => {
+        //     // Check if this option type should have images based on PayloadCMS
+        //     const shouldHaveImages = shouldOptionHaveImages(optVal.optionName, payloadImageSettings);
 
-            if (!shouldHaveImages) {
-               return;
-            }
+        //     if (!shouldHaveImages) {
+        //        return;
+        //     }
             
             
-            // Get images associated with this option value
-            const optionSpecificImages = mediaItems.filter(item => 
-              item.variantInfo?.optionName && 
-              item.variantInfo.optionName.toLowerCase() === optVal.optionName.toLowerCase() && 
-              item.variantInfo?.optionValues?.includes(optVal.value) &&
-              item.url
-            );
+        //     // Get images associated with this option value
+        //     const optionSpecificImages = mediaItems.filter(item => 
+        //       item.variantInfo?.optionName && 
+        //       item.variantInfo.optionName.toLowerCase() === optVal.optionName.toLowerCase() && 
+        //       item.variantInfo?.optionValues?.includes(optVal.value) &&
+        //       item.url
+        //     );
             
-            optionSpecificImages.forEach(item => {
-              let url = item.url;
-              const STATIC_BASE_URL = import.meta.env.VITE_STATIC_BASE_URL || 'https://yourdomain.com/static';
-                if (url.startsWith('blob:') && item.id) {
-                  url = `${STATIC_BASE_URL}/${item.id}`;
-                }
+        //     optionSpecificImages.forEach(item => {
+        //       let url = item.url;
+        //       const STATIC_BASE_URL = import.meta.env.VITE_STATIC_BASE_URL || 'https://yourdomain.com/static';
+        //         if (url.startsWith('blob:') && item.id) {
+        //           url = `${STATIC_BASE_URL}/${item.id}`;
+        //         }
               
-              // Add to general option images
-              allOptionImages.push({
-                option_name: optVal.optionName,
-                option_value: optVal.value,
-                url: url,
-                imageId: item.id || ''
-              });
+        //       // Add to general option images
+        //       allOptionImages.push({
+        //         option_name: optVal.optionName,
+        //         option_value: optVal.value,
+        //         url: url,
+        //         imageId: item.id || ''
+        //       });
               
-              // If this is a color option AND color_Images is enabled, add to color_images
-              if (isColorOption(optVal.optionName) && imageAssociationSettings.color_Images) {
-                colorImages.push({
-                  color: optVal.value,
-                  url: url,
-                  imageId: item.id || ''
-                });
-              }
-            });
-          });
-        }
+        //       // If this is a color option AND color_Images is enabled, add to color_images
+        //       if (isColorOption(optVal.optionName) && imageAssociationSettings.color_Images) {
+        //         colorImages.push({
+        //           color: optVal.value,
+        //           url: url,
+        //           imageId: item.id || ''
+        //         });
+        //       }
+        //     });
+        //   });
+        // }
 
-        // Add color_images metadata if we have color images
-        if (colorImages.length > 0) {
-          variantMetadata.color_images = JSON.stringify(colorImages);
-           }
+        // // Add color_images metadata if we have color images
+        // if (colorImages.length > 0) {
+        //   variantMetadata.color_images = JSON.stringify(colorImages);
+        //    }
 
-        // Add option_images metadata for all enabled option types
-        if (allOptionImages.length > 0) {
-          variantMetadata.option_images = JSON.stringify(allOptionImages);
-          }
+        // // Add option_images metadata for all enabled option types
+        // if (allOptionImages.length > 0) {
+        //   variantMetadata.option_images = JSON.stringify(allOptionImages);
+        //   }
 
         // Return formatted variant with complete metadata
+        // return {
+        //   title: variant.title || `Variant ${index + 1}`,
+        //   sku: variant.sku || `sku-${timestamp}-${index}`,
+        //   manage_inventory: Boolean(variant.manageInventory),
+        //   allow_backorder: Boolean(variant.allowBackorder),
+        //   options: variantOptions,
+        //   prices: [{
+        //     amount: price,
+        //     currency_code: 'inr'
+        //   }],
+        //   metadata: variantMetadata
+        // };
         return {
           title: variant.title || `Variant ${index + 1}`,
           sku: variant.sku || `sku-${timestamp}-${index}`,
           manage_inventory: Boolean(variant.manageInventory),
           allow_backorder: Boolean(variant.allowBackorder),
           options: variantOptions,
+          // Native variant fields — moved out of metadata
+          hs_code: enhancedProductData?.HSNCode || undefined,
+          origin_country: formValues.origin_country || 'IN',
+          material: enhancedProductData?.materials?.primary || undefined,
           prices: [{
             amount: price,
             currency_code: 'inr'
@@ -6311,27 +6310,23 @@ if (!printTechId || !printTechName) {
     if (result && result.id) {
       setCreatedProductId(result.id);
       
-      // Handle inventory creation (unchanged)
       setTimeout(async () => {
         try {
           const completeProduct = await fetchProduct({ id: result.id });
           
           if (completeProduct && completeProduct.variants) {
+            // STEP A: Inventory creation
             const inventoryCreations = [];
-
             const locationIdToUse = getLocationId(enhancedProductData);
             
-            // ✅ NEW: Validate location ID exists
             if (!locationIdToUse || locationIdToUse.trim() === '') {
-              //console.error('❌ CRITICAL ERROR: No location ID available for inventory creation');
               setError('Location ID not configured. Contact administrator.');
               return;
             }
             
             for (const variant of completeProduct.variants) {
-              if (variant.inventory_items && Array.isArray(variant.inventory_items) && variant.inventory_items.length > 0) {
+              if (variant.inventory_items?.length > 0) {
                 const inventoryItemId = variant.inventory_items[0].inventory_item_id;
-                
                 if (inventoryItemId) {
                   inventoryCreations.push({
                     inventory_item_id: inventoryItemId,
@@ -6344,12 +6339,64 @@ if (!printTechId || !printTechName) {
             }
             
             if (inventoryCreations.length > 0) {
-              //console.log('📦 Creating inventory at location:', locationIdToUse, 'Variants:', inventoryCreations.length);
               await batchUpdateInventoryLevels({ create: inventoryCreations });
+            }
+
+            // STEP B: Associate variant images natively (Medusa v2.11.2+)
+            // STEP B: Associate variant images natively using real Medusa image IDs
+            for (const completedVariant of completeProduct.variants) {
+              const colorOpt = completedVariant.options?.find(o =>
+                o.option?.title?.toLowerCase() === 'color'
+              );
+              const sizeOpt = completedVariant.options?.find(o =>
+                o.option?.title?.toLowerCase() === 'size'
+              );
+
+              const variantColor = colorOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
+              const variantSize = sizeOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
+
+              // Match using completeProduct.images which have real img_ IDs AND correct URLs
+              const matchingImageIds = (completeProduct.images || [])
+                .filter(img => {
+                  const urlLower = img.url.toLowerCase();
+                  const colorMatch = !variantColor || urlLower.includes(variantColor);
+                  const sizeMatch = !payloadImageSettings.size_Images ||
+                                    !variantSize ||
+                                    urlLower.includes(variantSize);
+                  return colorMatch && sizeMatch;
+                })
+                .map(img => img.id); // ← real img_01KN1... IDs from Medusa
+
+              console.log(`🎯 ${completedVariant.title}: color="${variantColor}", matched ${matchingImageIds.length} images:`, matchingImageIds);
+
+              if (matchingImageIds.length > 0) {
+                try {
+                  // Find the front-view image URL to use as thumbnail
+                  const frontImage = (completeProduct.images || []).find(img => {
+                    const urlLower = img.url.toLowerCase();
+                    const colorMatch = !variantColor || urlLower.includes(variantColor);
+                    return colorMatch && urlLower.includes('front');
+                  });
+
+                  const thumbnailUrl = frontImage?.url 
+                    || completeProduct.images?.find(img => matchingImageIds.includes(img.id))?.url;
+
+                  await updateVariantImages({
+                    productId: result.id,
+                    variantId: completedVariant.id,
+                    imageIds: matchingImageIds,
+                    thumbnailUrl: thumbnailUrl,  // ← URL not ID
+                  });
+                  
+                  // console.log(`✅ Associated images + thumbnail for ${completedVariant.title}`);
+                } catch (err) {
+                  console.error(`❌ Failed for ${completedVariant.title}:`, err);
+                }
+              }
             }
           }
         } catch (inventoryError) {
-          //console.error('Inventory creation error:', inventoryError);
+          console.error('Post-creation error:', inventoryError);
         }
       }, 2000);
       
@@ -6439,6 +6486,30 @@ if (!printTechId || !printTechName) {
   // ===== MAIN RENDER =====
   return (
     <div className="px-3 py-8 sm:px-6 bg-gray-50">
+      {/* Page Loading Overlay */}
+      {isPageLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 p-8 bg-white border border-gray-100 rounded-2xl shadow-xl">
+            {/* Spinner */}
+            <div className="relative w-14 h-14">
+              <div className="absolute inset-0 rounded-full border-4 border-orange-100"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#e65100] animate-spin"></div>
+            </div>
+            <div className="text-center">
+              <p className="text-base font-semibold text-gray-800">Setting up your product</p>
+              <p className="mt-1 text-sm text-gray-500">Loading design data and processing mockup images...</p>
+            </div>
+            {/* Progress dots */}
+            <div className="flex gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#e65100] animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-1.5 h-1.5 rounded-full bg-[#e65100] animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-1.5 h-1.5 rounded-full bg-[#e65100] animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       {/* Header Bar with Junooni branding */}
       <div className="flex flex-col justify-between gap-4 p-6 mb-6 bg-white border border-gray-100 rounded-lg shadow-sm md:flex-row md:items-center">
         <div>
@@ -7171,150 +7242,18 @@ if (!printTechId || !printTechName) {
                         </thead>
                         <tbody>
                           {variantFields.map((vf, index) => (
-                            <tr 
-                              key={vf.id} 
-                              className={`
-                                ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                                ${bulkEditMode && selectedVariants.includes(vf.id) ? "bg-orange-50" : ""}
-                                hover:bg-orange-50 transition-colors duration-150
-                              `}
-                            >
-                              {bulkEditMode && (
-                                <td className="p-3 text-center border-r border-gray-200">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={selectedVariants.includes(vf.id)} 
-                                    onChange={() => handleToggleVariantSelection(vf.id)}
-                                    className="w-4 h-4 rounded border-gray-300 text-[#e65100] focus:ring-[#e65100]"
-                                  />
-                                </td>
-                              )}
-                              <td className="p-3 border-r border-gray-200">
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-gray-800">{form.watch(`variants.${index}.title`)}</span>
-                                  <div className="flex flex-wrap gap-1 mt-1.5">
-                                    {form.watch(`variants.${index}.optionValues`, []).map((optVal: OptionValue, optIndex: number) => (
-                                      <Badge 
-                                        key={optIndex} 
-                                        variant="outline" 
-                                        className="text-xs text-[#e65100] border-orange-200 bg-orange-50"
-                                      >
-                                        {optVal.optionName}: {optVal.value}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="p-3 border-r border-gray-200">
-                                <Input
-                                  {...form.register(`variants.${index}.sku`)}
-                                  onChange={(e) => handleVariantFieldChange(index, 'sku', e.target.value)}
-                                  className="w-full border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                                />
-                              </td>
-                              <td className="p-3 border-r border-gray-200">
-                                <div className="text-center">
-                                  {(() => {
-                                    const costPrice = getVariantCostPrice(index);
-                                    return (
-                                      <>
-                                        <span className="font-medium text-orange-600">
-                                          ₹{costPrice > 0 ? costPrice.toFixed(2) : '--'}
-                                        </span>
-                                        {/* {costPrice > 0 && (
-                                          <div className="mt-1 text-xs text-gray-500">
-                                            {(() => {
-                                              const baseCost = canvasPricingData?.final_price_per_unit || 
-                                                              enhancedProductData?.cost || 
-                                                              0;
-                                              const extraCost = costPrice - baseCost;
-                                              console.log('Base Cost:', baseCost, 'Extra Cost:', extraCost);
-                                              
-                                              if (extraCost > 0) {
-                                                  return `Base: ₹${baseCost.toFixed(2)} + ₹${extraCost.toFixed(2)}`;
-                                                }
-                                                return 'Base Cost';
-                                              })()}
-                                            </div>
-                                          )} */}
-                                        </>
-                                      );
-                                    })()}
-                                  </div>
-                              </td>
-                             <td className="p-3 border-r border-gray-200">
-                                <div className="relative">
-                                  <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
-                                  {/* <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={form.watch(`variants.${index}.price`) || ''}
-                                    onChange={(e) => {
-                                      const value = e.target.value === '' ? '' : parseFloat(e.target.value);
-                                      handleVariantFieldChange(index, 'price', value === '' ? 0 : value);
-                                    }}
-                                    className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                                  /> */}
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    {...form.register(`variants.${index}.price`, {
-                                      valueAsNumber: true
-                                    })}
-                                    className="w-full pl-7 border-gray-300 focus:border-[#e65100] focus:ring-[#e65100]"
-                                  />
-                                </div>
-                              </td>
-                              <td className="p-3 border-r border-gray-200">
-                                <div className="text-center">
-                                  {(() => {
-                                    const price = form.watch(`variants.${index}.price`) || 0;
-                                    const costPrice = getVariantCostPrice(index);
-                                    const profit = price - costPrice;
-                                    
-                                    return (
-                                      <>
-                                        <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                          ₹{profit.toFixed(2)}
-                                        </span>
-                                        {/* {costPrice > 0 && (
-                                          <div className="mt-1 text-xs text-gray-500">
-                                            Margin: {price > 0 ? ((profit / price) * 100).toFixed(1) : '0'}%
-                                          </div>
-                                        )} */}
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-                              </td>
-                              <td className="px-0 py-3 text-center">
-                                <div className="flex justify-center space-x-0">
-                                  {/* <Button 
-                                    type="button"
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => handleDuplicateVariant(index)}
-                                    className="text-gray-600 hover:bg-gray-100"
-                                    title="Duplicate variant"
-                                  >
-                                    <IconCopy size={16} />
-                                  </Button> */}
-                                  
-                                  <Button 
-                                    type="button"
-                                    variant="ghost" 
-                                    size="sm" 
-                                    onClick={() => removeVariant(index)}
-                                    className="px-0 text-red-500 hover:bg-red-50"
-                                    title="Remove variant"
-                                  >
-                                    <IconX size={16} />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
+                            <VariantRow
+                              key={vf.id}
+                              index={index}
+                              vf={vf}
+                              onRemove={removeVariant}
+                              bulkEditMode={bulkEditMode}
+                              isSelected={selectedVariants.includes(vf.id)}
+                              onToggleSelect={handleToggleVariantSelection}
+                              costPrice={precomputedCostPrices[index] ?? (canvasPricingData?.final_price_per_unit || enhancedProductData?.cost || 0)}
+                              control={form.control}
+                              register={form.register}
+                            />
                           ))}
                         </tbody>
                       </table>

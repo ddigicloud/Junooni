@@ -48,7 +48,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { StreamlinedImageManager } from '../context/product-modules/ImageManager';
 import { EnhancedOptionComponent } from '../context/product-modules/OptionComponents';
 import { ProductSchema } from '../data/schema';
-import { createProduct, uploadProductImage, fetchCategories, batchUpdateInventoryLevels, fetchProduct } from '../context/fetchApi';
+import { createProduct, uploadProductImage, fetchCategories, batchUpdateInventoryLevels, fetchProduct, updateVariantImages } from '../context/fetchApi';
 import HierarchicalCategorySelector from '../context/HierarchicalCategorySelector';
 
 // Import rich text editor component
@@ -977,105 +977,9 @@ if (variant.optionValues && variant.optionValues.length > 0) {
 // Prepare variant-specific metadata
 const variantMetadata: Record<string, any> = {};
 
-// CRITICAL FIX 1: Get ALL images associated with this variant - direct or via option values
-const directVariantImages = mediaItems.filter(item => 
-  item.variantInfo?.variantId === variant.id && item.id
-);
+// Variant images now handled natively via updateVariantImages() after product creation
+//const variantMetadata: Record<string, any> = {};
 
-// Get images associated through option values
-const optionValueImages = mediaItems.filter(item => {
-  if (!item.variantInfo?.optionName || !item.variantInfo?.optionValues || !variant.optionValues) {
-    return false;
-  }
-  
-  return variant.optionValues.some(optVal => 
-    optVal.optionName.toLowerCase() === item.variantInfo.optionName.toLowerCase() && 
-    item.variantInfo.optionValues.includes(optVal.value)
-  );
-});
-
-// Combine all variant-associated images, avoiding duplicates
-const allVariantImages = [...directVariantImages];
-optionValueImages.forEach(img => {
-  if (!allVariantImages.some(existing => existing.id === img.id)) {
-    allVariantImages.push(img);
-  }
-});
-
-// CRITICAL FIX 2: Always store variant_images as URLs for all associated images
-const variantImageUrls = allVariantImages
-.map(item => {
-  // If URL is a blob URL and we have an ID, use the server URL format instead
-  if (item.url && item.url.startsWith('blob:') && item.id) {
-    return `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/${item.id}`;
-  }
-  return item.url;
-})
-.filter(url => url);
-
-variantMetadata.variant_images = JSON.stringify(variantImageUrls);
-
-// Store image IDs for backend association
-const variantImageIds = allVariantImages
-  .map(item => item.id)
-  .filter(id => id && typeof id === 'string');
-
-variantMetadata.variant_image_ids = JSON.stringify(variantImageIds);
-
-// NEW FIX: Process option_images for ALL option types, not just colors
-// Process option_images for ALL option types
-const allOptionImages = [];
-let colorImages = [];
-
-if (variant.optionValues) {
-  // Process each option value for image associations
-  variant.optionValues.forEach(optVal => {
-    // Get images associated with this option value
-    const optionSpecificImages = mediaItems.filter(item => 
-      item.variantInfo?.optionName && 
-      item.variantInfo.optionName.toLowerCase() === optVal.optionName.toLowerCase() && 
-      item.variantInfo?.optionValues?.includes(optVal.value) &&
-      item.url
-    );
-    
-    // Process each image for this option value
-    optionSpecificImages.forEach(item => {
-      // Transform blob URLs to server URLs
-      let url = item.url;
-      if (url.startsWith('blob:') && item.id) {
-        url = `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/static/${item.id}`;
-      }
-      
-      // Create option image entry for ALL option types
-      allOptionImages.push({
-        option_name: optVal.optionName,
-        option_value: optVal.value,
-        url: url,
-        imageId: item.id || ''
-      });
-      
-      // If this is a color option, also add to color_images for backward compatibility
-      if (isColorOption(optVal.optionName)) {
-        colorImages.push({
-          color: optVal.value,
-          url: url,
-          imageId: item.id || ''
-        });
-      }
-    });
-  });
-}
-
-
-// Add option_images metadata for ALL option types
-if (allOptionImages.length > 0) {
-  variantMetadata.option_images = JSON.stringify(allOptionImages);
-}
-
-// FIXED: Only add color_images if there are actually color options
-if (colorImages.length > 0) {
-  variantMetadata.color_images = JSON.stringify(colorImages);
-}
 // Return a minimal variant with only fields we know are accepted
 return {
   title: variant.title,
@@ -1159,71 +1063,93 @@ return {
         
         // Store the created product ID
      // After successful product creation
-if (result && result.id) {
-  setCreatedProductId(result.id);
-  
-  //console.log("Product created successfully with ID:", result.id);
-  
-  // Add a slight delay to allow backend processing
-  setTimeout(async () => {
-    try {
-      // Fetch the complete product with inventory information
-      //console.log("Fetching complete product data to retrieve inventory items...");
-      const completeProduct = await fetchProduct({ id: result.id });
+    if (result && result.id) {
+      setCreatedProductId(result.id);
       
-      if (completeProduct && completeProduct.variants) {
-        //console.log("Processing inventory for variants from complete product data");
-        const inventoryCreations = [];
-        
-        for (const variant of completeProduct.variants) {
-          //console.log(`Processing variant ${variant.id}: ${variant.title}`);
-          
-          // Check if inventory_items exists and has data
-          if (variant.inventory_items && Array.isArray(variant.inventory_items) && variant.inventory_items.length > 0) {
-            const inventoryItemId = variant.inventory_items[0].inventory_item_id;
-            
-            if (inventoryItemId) {
-              //console.log(`Found inventory_item_id: ${inventoryItemId} for variant ${variant.title}`);
-              
-              // Find matching form variant to get stock
-              const formVariant = variants.find(v => v.title === variant.title) || variants[0];
-              const stockQuantity = parseInt(String(formVariant?.stock || '0'));
-              
-              inventoryCreations.push({
-                inventory_item_id: inventoryItemId,
-                location_id: defaultLocationId,
-                stocked_quantity: stockQuantity,
-                incoming_quantity: 0
-              });
+      //console.log("Product created successfully with ID:", result.id);
+      
+      // Add a slight delay to allow backend processing
+      setTimeout(async () => {
+      try {
+        const completeProduct = await fetchProduct({ id: result.id });
+
+        if (completeProduct && completeProduct.variants) {
+          // STEP A: Inventory creation
+          const inventoryCreations = [];
+
+          for (const variant of completeProduct.variants) {
+            if (variant.inventory_items?.length > 0) {
+              const inventoryItemId = variant.inventory_items[0].inventory_item_id;
+              if (inventoryItemId) {
+                const formVariant = variants.find(v => v.title === variant.title) || variants[0];
+                const stockQuantity = parseInt(String(formVariant?.stock || '0'));
+                inventoryCreations.push({
+                  inventory_item_id: inventoryItemId,
+                  location_id: defaultLocationId,
+                  stocked_quantity: stockQuantity,
+                  incoming_quantity: 0
+                });
+              }
             }
-          } else {
-            //console.warn(`No inventory_items found for variant: ${variant.title}`);
+          }
+
+          if (inventoryCreations.length > 0) {
+            try {
+              await batchUpdateInventoryLevels({ create: inventoryCreations });
+            } catch (inventoryError) {
+              console.error('Inventory creation failed:', inventoryError);
+            }
+          }
+
+          // STEP B: Associate variant images natively (Medusa v2.11.2+)
+          for (const completedVariant of completeProduct.variants) {
+            const colorOpt = completedVariant.options?.find((o: any) =>
+              o.option?.title?.toLowerCase() === 'color'
+            );
+            const sizeOpt = completedVariant.options?.find((o: any) =>
+              o.option?.title?.toLowerCase() === 'size'
+            );
+
+            const variantColor = colorOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
+            const variantSize = sizeOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
+
+            // Match using completeProduct.images which have real img_ IDs
+            const matchingImageIds = (completeProduct.images || [])
+              .filter((img: any) => {
+                const urlLower = img.url.toLowerCase();
+                const colorMatch = !variantColor || urlLower.includes(variantColor);
+                const sizeMatch = !variantSize || urlLower.includes(variantSize);
+                return colorMatch && sizeMatch;
+              })
+              .map((img: any) => img.id);
+
+            if (matchingImageIds.length > 0) {
+              const frontImage = (completeProduct.images || []).find((img: any) => {
+                const urlLower = img.url.toLowerCase();
+                return (!variantColor || urlLower.includes(variantColor)) && urlLower.includes('front');
+              });
+
+              const thumbnailUrl = frontImage?.url
+                || completeProduct.images?.find((img: any) => matchingImageIds.includes(img.id))?.url;
+
+              try {
+                await updateVariantImages({
+                  productId: result.id,
+                  variantId: completedVariant.id,
+                  imageIds: matchingImageIds,
+                  thumbnailUrl,
+                });
+                console.log(`✅ Images associated for ${completedVariant.title}`);
+              } catch (err) {
+                console.error(`Failed variant image association for ${completedVariant.title}:`, err);
+              }
+            }
           }
         }
-        
-        // Only proceed if we have inventory operations to perform
-        if (inventoryCreations.length > 0) {
-          //console.log(`Submitting ${inventoryCreations.length} inventory creation operations`);
-          
-          try {
-            const inventoryResult = await batchUpdateInventoryLevels({
-              create: inventoryCreations
-            });
-            
-            //console.log("Inventory creation successful:", inventoryResult);
-          } catch (inventoryError) {
-            //console.error("Failed to create inventory levels:", inventoryError);
-            // Don't set error - continue showing success message for product creation
-          }
-        } else {
-          //console.warn("No valid inventory items found to create");
-        }
+      } catch (fetchError) {
+        console.error('Post-creation error:', fetchError);
       }
-    } catch (fetchError) {
-      //console.error("Failed to fetch complete product data:", fetchError);
-      // Still show success for product creation even if inventory failed
-    }
-  }, 2000); // 2-second delay to allow backend processing
+    }, 2000);
   
   // Show success message for product creation
   setShowSuccess(true);

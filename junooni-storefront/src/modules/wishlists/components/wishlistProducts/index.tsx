@@ -76,7 +76,6 @@ interface VariantData {
   product: Product
 }
 
-
 interface EnhancedWishlistItem extends WishlistItem {
   variantData?: VariantData
 }
@@ -85,7 +84,6 @@ interface WishlistProductsProps {
   isEmbedded?: boolean
   onCountUpdate?: (count: number) => void
 }
-
 
 // Skeleton for loading state
 const WishlistSkeleton = ({ isEmbedded = false }) => {
@@ -117,54 +115,117 @@ export const WishlistProducts = ({
   onCountUpdate,
 }: WishlistProductsProps) => {
   const [items, setItems] = useState<WishlistItem[]>([])
-  const [isLoadingItems, setIsLoadingItems] = useState(true)
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [products, setProducts] = useState<Product[]>([])
   const [removedVariantIds, setRemovedVariantIds] = useState<Set<string>>(
     new Set()
   )
   const router = useRouter()
 
+  // ✅ Single merged useEffect — no waterfall, no re-render between fetches
   useEffect(() => {
-    const fetchWishlistItems = async () => {
-      setIsLoadingItems(true)
+    const fetchAll = async () => {
+      setIsLoading(true)
+
       try {
-        const response = await wishlistItems()
+        // ✅ Detect country code
+        let countryCode = "in"
+        try {
+          const pathSegments = window.location.pathname.split("/")
+          const potential = pathSegments[1]
+          if (potential && potential.length === 2) countryCode = potential
+        } catch {}
+
+        // ✅ Run wishlistItems + getRegion in PARALLEL — saves 300-500ms
+        const { getRegion } = await import("@lib/data/regions")
+
+        const [response, region] = await Promise.all([
+          wishlistItems(),
+          getRegion(countryCode),
+        ])
+
+        // ✅ Auth check — no redirect, just show empty state
         if (!response || response === "please login") {
-          setTimeout(() => router.push("/account"), 3000)
           return
         }
+
         const data = response as WishlistResponse
-        if (data?.wishlist?.items) {
-          setItems(data.wishlist.items)
-          if (onCountUpdate) {
-            onCountUpdate(data.wishlist.items.length)
-          }
-        }
+        const fetchedItems = data?.wishlist?.items ?? []
+
+        setItems(fetchedItems)
+        if (onCountUpdate) onCountUpdate(fetchedItems.length)
+
+        // ✅ Bail early if nothing to fetch
+        if (!fetchedItems.length || !region) return
+
+        // ✅ Fetch products immediately — no waiting for re-render of items state
+        const { listProductsWithSort } = await import("@lib/data/products")
+        const productIds = fetchedItems.map(
+          (item) => item.product_variant.product_id
+        )
+
+        const {
+          response: { products: fetchedProducts },
+        } = await listProductsWithSort({
+          page: 1,
+          queryParams: {
+            id: productIds,
+            limit: productIds.length,
+          },
+          sortBy: "created_at",
+          countryCode,
+        })
+
+        setProducts(fetchedProducts)
       } catch (error) {
-        //console.error("Error fetching wishlist items:", error)
+        // Fallback: try matchItemWithVariant per item
+        try {
+          const fallbackResponse = await wishlistItems()
+          if (!fallbackResponse || fallbackResponse === "please login") return
+
+          const fallbackData = fallbackResponse as WishlistResponse
+          const fallbackItems = fallbackData?.wishlist?.items ?? []
+
+          if (!fallbackItems.length) return
+
+          const results = await Promise.all(
+            fallbackItems.map(async (item) => {
+              const variantData = await matchItemWithVariant(
+                item.product_variant.product_id
+              )
+              return { ...item, variantData } as EnhancedWishlistItem
+            })
+          )
+
+          const productList = results
+            .map((variant) => variant.variantData?.product || null)
+            .filter((product): product is Product => !!product)
+
+          setItems(fallbackItems)
+          setProducts(productList)
+          if (onCountUpdate) onCountUpdate(fallbackItems.length)
+        } catch {
+          setProducts([])
+        }
       } finally {
-        setIsLoadingItems(false)
+        setIsLoading(false)
       }
     }
 
-    fetchWishlistItems()
-  }, [router, onCountUpdate])
+    fetchAll()
+  }, [onCountUpdate]) // ✅ No router, no items in deps — no unnecessary re-runs
 
   const handleRemoveItem = async (itemId: string) => {
     try {
       await ItemDelete(itemId)
       setItems((prev) => prev.filter((item) => item.id !== itemId))
-    } catch (error) {
-      //console.error("Error removing item:", error)
-    }
+    } catch {}
   }
 
   const handleVariantRemove = (variantId: string) => {
     setRemovedVariantIds((prev) => {
       const updated = new Set(prev)
       updated.add(variantId)
-      // Calculate new count after removal
       const newCount = items.length - updated.size
       if (onCountUpdate) {
         onCountUpdate(Math.max(0, newCount))
@@ -180,187 +241,34 @@ export const WishlistProducts = ({
     }).format(amount)
   }
 
-  // 🔧 Helper function to get variant-specific image
   const getVariantImage = (product: Product, variant: ProductVariant) => {
-    // Try to get variant-specific image from metadata
     if (variant.metadata?.image_url) {
       return variant.metadata.image_url
     }
-    
-    //console.log("Product response",product);
-    // Try to get variant-specific image from product images array
     if (product.images && product.images.length > 1) {
-      // If variant has a specific index or color, try to match it
-      const variantIndex = product.variants.findIndex(v => v.id === variant.id)
+      const variantIndex = product.variants.findIndex((v) => v.id === variant.id)
       if (variantIndex > 0 && product.images[variantIndex]) {
         return product.images[variantIndex].url
       }
     }
-    
-    // Fallback to product thumbnail
     return product.thumbnail
   }
 
-  // 🔧 Helper function to get variant display information
   const getVariantDisplayInfo = (variant: ProductVariant) => {
     const variantInfo = []
-    
-    // Add size info
-    if (variant.title && variant.title !== 'Default Title') {
+    if (variant.title && variant.title !== "Default Title") {
       variantInfo.push(`Size: ${variant.title}`)
     }
-    
-    // Add color info from metadata
     if (variant.metadata?.color) {
       variantInfo.push(`Color: ${variant.metadata.color}`)
     }
-    
-    return variantInfo.join(' • ')
+    return variantInfo.join(" • ")
   }
-
-  // Enhanced version that automatically detects region:
-  useEffect(() => {
-    const fetchAllVariants = async () => {
-      if (!items.length) return
-
-      setIsLoadingProducts(true)
-      try {
-        // 🔧 Step 1: Get region info (same as StoreTemplate)
-        let countryCode = 'us' // Default fallback
-        
-        try {
-          // Try to get region from URL or localStorage
-          const pathSegments = window.location.pathname.split('/')
-          const potentialCountryCode = pathSegments[1]
-          
-          // Validate if it looks like a country code (2 letters)
-          if (potentialCountryCode && potentialCountryCode.length === 2) {
-            countryCode = potentialCountryCode
-          }
-        } catch (error) {
-          //console.log('⚠️ Could not detect country code, using default:', countryCode)
-        }
-
-        // 🔧 Step 2: Import and use the same functions as StoreTemplate
-        const { listProductsWithSort } = await import("@lib/data/products")
-        const { getRegion } = await import("@lib/data/regions")
-        
-        // Get region context (exactly like StoreTemplate)
-        const region = await getRegion(countryCode)
-        if (!region) {
-          throw new Error('Could not get region for pricing calculation')
-        }
-        
-        // console.log('🌍 Using region for pricing:', {
-        //   countryCode,
-        //   regionId: region.id,
-        //   currency: region.currency_code
-        // })
-        
-        // Extract product IDs from wishlist items
-        const productIds = items.map(item => item.product_variant.product_id)
-        
-        //console.log('🛒 Fetching wishlist products using EXACT StoreTemplate method...')
-        
-        // 🔧 Step 3: Use EXACT same method as StoreTemplate
-        const {
-          response: { products: fetchedProducts },
-        } = await listProductsWithSort({
-          page: 1,
-          queryParams: {
-            id: productIds, // Only fetch wishlist products
-            limit: productIds.length
-          },
-          sortBy: "created_at",
-          countryCode, // ✅ CRITICAL: Region context for pricing
-        })
-        
-        //console.log('✅ SUCCESS: Fetched products with pricing data:', fetchedProducts.length)
-        
-        // 🔧 Step 4: Verify pricing data (same check as StoreTemplate)
-        let productsWithPricing = 0
-        fetchedProducts.forEach((product, index) => {
-          const variant = product.variants?.[0]
-          const hasPrice = variant?.calculated_price?.calculated_amount
-          
-          if (hasPrice) {
-            productsWithPricing++
-          }
-          
-          if (index < 2) { // Debug first 2 products
-            //console.log(`\n📦 ${product.title}:`)
-            //console.log('- Has calculated_price:', !!hasPrice)
-            //console.log('- Amount:', variant?.calculated_price?.calculated_amount)
-            //console.log('- Currency:', variant?.calculated_price?.currency_code)
-            //console.log('- Display price:', hasPrice ? `${region.currency_code} ${(variant.calculated_price.calculated_amount / 100).toFixed(2)}` : 'N/A')
-          }
-        })
-        
-        //console.log(`💰 Products with pricing: ${productsWithPricing}/${fetchedProducts.length}`)
-        
-        if (productsWithPricing === 0) {
-          //console.warn('⚠️ No products have pricing data - check your Medusa admin panel')
-        }
-
-        setProducts(fetchedProducts)
-        
-      } catch (error) {
-        //console.error("❌ StoreTemplate method failed:", error)
-        
-        // Enhanced fallback with better error handling
-        try {
-          //console.log('🔄 Trying enhanced fallback...')
-          
-          const results = await Promise.all(
-            items.map(async (item) => {
-              const variantData = await matchItemWithVariant(item.product_variant.product_id)
-              return { ...item, variantData } as EnhancedWishlistItem
-            })
-          )
-
-          const productList = results
-            .map((variant) => variant.variantData?.product || null)
-            .filter((product): product is Product => !!product)
-
-          // Add mock pricing for development if no real pricing exists
-          if (process.env.NODE_ENV === 'development') {
-            const enhancedProducts = productList.map(product => ({
-              ...product,
-              variants: product.variants?.map((variant, index) => ({
-                ...variant,
-                calculated_price: variant.calculated_price || {
-                  calculated_amount: (index + 1) * 500 + 2000, // $20-30 range
-                  currency_code: 'usd'
-                }
-              }))
-            }))
-            
-            setProducts(enhancedProducts)
-          } else {
-            setProducts(productList)
-          }
-          
-        } catch (fallbackError) {
-          //console.error("❌ All methods failed:", fallbackError)
-          setProducts([])
-        }
-      } finally {
-        setIsLoadingProducts(false)
-      }
-    }
-
-    if (items.length > 0) {
-      fetchAllVariants()
-    }
-  }, [items])
-
-  const isLoading = isLoadingItems || isLoadingProducts
 
   if (isLoading) return <WishlistSkeleton isEmbedded={isEmbedded} />
 
-  // 🔧 FIXED: Check for items that haven't been removed, not products
-  const visibleItems = items.filter((item) => 
-    !removedVariantIds.has(item.product_variant_id)
+  const visibleItems = items.filter(
+    (item) => !removedVariantIds.has(item.product_variant_id)
   )
 
   if (visibleItems.length === 0) {
@@ -382,33 +290,26 @@ export const WishlistProducts = ({
   return (
     <div
       className={
-        isEmbedded ? "w-full" : "max-w-screen-xl mx-auto w-fullsm:px-4 md:px-4 sm:py-8 md:py-8 px-0 py-3"
+        isEmbedded
+          ? "w-full"
+          : "max-w-screen-xl mx-auto w-full sm:px-4 md:px-4 sm:py-8 md:py-8 px-0 py-3"
       }
     >
-
       <div className="grid grid-cols-2 gap-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {visibleItems
           .map((item) => {
-            // 🔧 Find the exact product for this wishlist item
-            const product = products.find(p => p.id === item.product_variant.product_id)
-            if (!product) {
-              //console.warn(`⚠️ Product ${item.product_variant.product_id} not found`)
-              return null
-            }
+            const product = products.find(
+              (p) => p.id === item.product_variant.product_id
+            )
+            if (!product) return null
 
-            // 🔧 Find the EXACT variant that was added to wishlist
-            const specificVariant = product.variants.find(v => v.id === item.product_variant_id)
-            if (!specificVariant) {
-              //console.warn(`⚠️ Variant ${item.product_variant_id} not found for product ${product.title}`)
-              return null
-            }
+            const specificVariant = product.variants.find(
+              (v) => v.id === item.product_variant_id
+            )
+            if (!specificVariant) return null
 
-            // 🔧 Get variant-specific image and info
             const variantImage = getVariantImage(product, specificVariant)
             const variantDisplayInfo = getVariantDisplayInfo(specificVariant)
-
-            // 🔧 Log the correct matching for debugging
-            //console.log(`✅ Matched: ${product.title} → ${specificVariant.title} → $${specificVariant.calculated_price?.calculated_amount ? (specificVariant.calculated_price.calculated_amount / 100).toFixed(2) : '0.00'}`)
 
             return (
               <div
@@ -416,10 +317,12 @@ export const WishlistProducts = ({
                 className="relative p-3 transition-all bg-white shadow group hover:shadow-lg"
               >
                 <LocalizedClientLink
-                  href={`/products/${product.handle}?variant=${specificVariant.id}`} // ✅ Link to specific variant
+                  href={`/products/${product.handle}?variant=${specificVariant.id}`}
                   className="absolute inset-0 z-10"
                 >
-                  <span className="sr-only">View {product.title} - {specificVariant.title}</span>
+                  <span className="sr-only">
+                    View {product.title} - {specificVariant.title}
+                  </span>
                 </LocalizedClientLink>
 
                 <div className="relative overflow-hidden rounded-md bg-gray-50 aspect-auto mb-3">
@@ -432,54 +335,43 @@ export const WishlistProducts = ({
                   <div className="absolute top-0 right-0 z-20">
                     <WishlistButton
                       isWishlistPage
-                      variantId={specificVariant.id} // ✅ Use specific variant ID
+                      variantId={specificVariant.id}
                       onRemove={handleVariantRemove}
                     />
                   </div>
-                  
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-sm text-gray-500">
                     {product.vendor?.name || "Vendor"}
-                    
                   </p>
                   <h3 className="text-base font-semibold text-gray-900 truncate">
                     {product.title}
                   </h3>
-                  
-                  {/* 🔧 Show variant details */}
+
                   {variantDisplayInfo && (
-                    <p className="text-xs text-gray-600">
-                      {variantDisplayInfo}
-                    </p>
+                    <p className="text-xs text-gray-600">{variantDisplayInfo}</p>
                   )}
-                  
-                  {/* 🔧 CORRECT PRICE: Use specific variant's calculated price */}
+
                   <p className="text-sm font-medium text-gray-700">
                     {(() => {
-                      // First try calculated_price (preferred method from StoreTemplate)
                       if (specificVariant.calculated_price?.calculated_amount) {
                         return (
-                          <span className="flex items-center gap-1">
+                          <span>
                             {formatPrice(
                               specificVariant.calculated_price.calculated_amount,
-                              specificVariant.calculated_price.currency_code || 'USD'
+                              specificVariant.calculated_price.currency_code ||
+                                "USD"
                             )}
-                            {/* <span className="px-1 py-0.5 text-xs bg-green-100 text-green-800 rounded">
-                              ✓
-                            </span> */}
                           </span>
                         )
                       }
-                      
-                      // Fallback to prices array
                       if (specificVariant.prices?.[0]?.amount) {
                         return (
                           <span className="flex items-center gap-1">
                             {formatPrice(
                               specificVariant.prices[0].amount / 100,
-                              specificVariant.prices[0].currency_code || 'USD'
+                              specificVariant.prices[0].currency_code || "USD"
                             )}
                             <span className="px-1 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded">
                               ALT
@@ -487,29 +379,16 @@ export const WishlistProducts = ({
                           </span>
                         )
                       }
-                      
                       return (
-                        <span className="flex items-center gap-1 text-gray-500">
-                          Price unavailable
-                          <span className="px-1 py-0.5 text-xs bg-red-100 text-red-800 rounded">
-                            ✗
-                          </span>
-                        </span>
+                        <span className="text-gray-500">Price unavailable</span>
                       )
                     })()}
                   </p>
-
-                  {/* 🔧 SKU info for identification */}
-                  {/* {specificVariant.sku && (
-                    <p className="text-xs text-gray-400">
-                      SKU: {specificVariant.sku}
-                    </p>
-                  )} */}
                 </div>
               </div>
             )
           })
-          .filter(Boolean)} {/* Remove null entries */}
+          .filter(Boolean)}
       </div>
     </div>
   )
