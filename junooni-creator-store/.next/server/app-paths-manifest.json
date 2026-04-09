@@ -1,5 +1,0 @@
-{
-  "/_not-found/page": "app/_not-found/page.js",
-  "/[handle]/page": "app/[handle]/page.js",
-  "/[handle]/collections/[collectionHandle]/page": "app/[handle]/collections/[collectionHandle]/page.js"
-}
