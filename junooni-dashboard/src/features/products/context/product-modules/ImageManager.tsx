@@ -100,6 +100,7 @@ export const StreamlinedImageManager: React.FC<{
   } else if (associationMode === 'single') {
     const option = imageAssociatedOptions[0];
     const value = selectedOptionValues[option?.title];
+    
     if (!value) return [];
 
     return mediaItems.filter(item => {
