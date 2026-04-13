@@ -48,7 +48,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { StreamlinedImageManager } from '../../products/context/product-modules/ImageManager';
 import { EnhancedOptionComponent } from '../../products/context/product-modules/OptionComponents';
 import { ProductSchema } from '../../products/data/schema';
-import { createProduct, uploadProductImage, fetchCategories, batchUpdateInventoryLevels, fetchProduct, submitArtwork, uploadArtworkFile, createArtworkPayload, updateVariantImages } from '../../products/context/fetchApi';
+import { createProduct, uploadProductImage, fetchCategories, batchUpdateInventoryLevels, fetchProduct, submitArtwork, uploadArtworkFile, createArtworkPayload, updateVariantImages, fetchCurrentVendor, assignProductSalesChannels} from '../../products/context/fetchApi';
 import HierarchicalCategorySelector from '../../products/context/HierarchicalCategorySelector';
 
 // Import rich text editor component
@@ -789,6 +789,10 @@ interface PreGeneratedImageData {
   sizeName?: string;
   key: string;
 }
+
+const SALES_CHANNEL_MARKETPLACE = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
+const SALES_CHANNEL_OWN_STORE   = 'sc_01KMAP3HD1EVDF9FT7EHHHV8HP';
+
 // Paste this AFTER the interfaces but BEFORE the ProductPage component (around line 300-400)
 const RichTextRenderer: React.FC<{ content: RichTextContent | string }> = ({ content }) => {
   if (typeof content === 'string') {
@@ -6394,6 +6398,55 @@ if (!printTechId || !printTechName) {
                 }
               }
             }
+
+              // STEP C: Assign sales channels based on vendor flags
+            // STEP C: Assign sales channels based on vendor flags
+            try {
+              const vendor = await fetchCurrentVendor();
+
+              if (!vendor) {
+                // Vendor hasn't completed onboarding — assign marketplace by default
+                console.warn('⚠️ Could not fetch vendor profile, assigning marketplace channel by default');
+                await assignProductSalesChannels({
+                  productId: result.id,
+                  salesChannelIds: [SALES_CHANNEL_MARKETPLACE],
+                });
+              } else {
+                console.log('🔍 Vendor flags:', {
+                  id: vendor?.id,
+                  name: vendor?.name,
+                  sell_on_marketplace: vendor?.sell_on_marketplace,
+                  sell_on_own_store: vendor?.sell_on_own_store,
+                });
+
+                const channelsToAssign: string[] = [];
+
+                if (vendor?.sell_on_marketplace === true) {
+                  channelsToAssign.push(SALES_CHANNEL_MARKETPLACE);
+                }
+                if (vendor?.sell_on_own_store === true) {
+                  channelsToAssign.push(SALES_CHANNEL_OWN_STORE);
+                }
+
+                if (channelsToAssign.length > 0) {
+                  await assignProductSalesChannels({
+                    productId: result.id,
+                    salesChannelIds: channelsToAssign,
+                  });
+                  console.log(`✅ Assigned ${channelsToAssign.length} sales channel(s):`, channelsToAssign);
+                } else {
+                  // Both flags false — still assign marketplace as safe default
+                  console.warn('⚠️ Both flags false, assigning marketplace as default');
+                  await assignProductSalesChannels({
+                    productId: result.id,
+                    salesChannelIds: [SALES_CHANNEL_MARKETPLACE],
+                  });
+                }
+              }
+            } catch (scError) {
+              console.error('❌ Sales channel assignment failed (non-fatal):', scError);
+            }
+
           }
         } catch (inventoryError) {
           console.error('Post-creation error:', inventoryError);
@@ -6489,10 +6542,10 @@ if (!printTechId || !printTechName) {
       {/* Page Loading Overlay */}
       {isPageLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-4 p-8 bg-white border border-gray-100 rounded-2xl shadow-xl">
+          <div className="flex flex-col items-center gap-4 p-8 bg-white border border-gray-100 shadow-xl rounded-2xl">
             {/* Spinner */}
             <div className="relative w-14 h-14">
-              <div className="absolute inset-0 rounded-full border-4 border-orange-100"></div>
+              <div className="absolute inset-0 border-4 border-orange-100 rounded-full"></div>
               <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#e65100] animate-spin"></div>
             </div>
             <div className="text-center">

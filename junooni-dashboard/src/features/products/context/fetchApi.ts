@@ -78,6 +78,7 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
     'variants.id','variants.title','variants.sku','variants.allow_backorder',
     'variants.manage_inventory','variants.inventory_quantity',
     'variants.prices.amount','variants.prices.currency_code',
+    '+sales_channels.id','+sales_channels.name', 
     'variants.options.option_id','variants.options.value','variants.options.option.id','variants.options.option.title',
     'variants.inventory_items.inventory_item_id',
     'variants.metadata',
@@ -763,3 +764,167 @@ export async function deleteProduct({ id }: { id: string }): Promise<void> {
   }
 }
 
+/**
+ * Fetch current vendor profile
+ */
+/**
+ * Fetch current vendor profile by decoding vendor ID from JWT token
+ */
+/**
+ * Fetch current vendor profile via /vendors/me
+ */
+export async function fetchCurrentVendor(): Promise<any> {
+  const token = localStorage.getItem("vendorToken");
+  if (!token) return null;
+
+  try {
+    const response = await axios.get(`${API_BASE_URL}/vendors/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      withCredentials: true,
+    });
+    return response.data.vendor;
+  } catch (error: any) {
+    const status = error?.response?.status;
+    if (status === 404) {
+      // vendor_admin record missing — try fetching vendor directly via token
+      try {
+        const parts = token.split('.');
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padding = base64.length % 4;
+        const payload = JSON.parse(
+          decodeURIComponent(
+            atob(padding ? base64 + '='.repeat(4 - padding) : base64)
+              .split('')
+              .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          )
+        );
+        const vendorId = payload?.app_metadata?.vendor_id;
+        if (!vendorId) return null;
+
+        const vendorResponse = await axios.get(
+          `${API_BASE_URL}/vendors/${vendorId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            withCredentials: true,
+          }
+        );
+        return vendorResponse.data.vendor;
+      } catch {
+        return null;
+      }
+    }
+    // 500 or other — return null silently
+    return null;
+  }
+}
+/**
+ * Assign sales channels to a product
+ */
+const DEFAULT_SALES_CHANNEL_ID = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
+
+export async function assignProductSalesChannels({
+  productId,
+  salesChannelIds,
+}: {
+  productId: string;
+  salesChannelIds: string[];
+}): Promise<any> {
+  const token = localStorage.getItem("vendorToken");
+
+  // Step 1: Assign the correct sales channels
+  const assignResults = await Promise.all(
+    salesChannelIds.map(channelId =>
+      axios.post(
+        `${API_BASE_URL}/vendors/sales-channels/${channelId}/products/batch`,
+        { product_ids: [{ id: productId }] },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          withCredentials: true,
+        }
+      )
+    )
+  );
+
+  // Step 2: Remove default sales channel if it's not in the assigned list
+  if (!salesChannelIds.includes(DEFAULT_SALES_CHANNEL_ID)) {
+    try {
+      await axios.delete(
+        `${API_BASE_URL}/vendors/sales-channels/${DEFAULT_SALES_CHANNEL_ID}/products/batch`,
+        {
+          data: { product_ids: [{ id: productId }] },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          withCredentials: true,
+        }
+      );
+      console.log('✅ Removed from default sales channel');
+    } catch (err) {
+      // Non-fatal — product may not have been in default channel
+      console.warn('⚠️ Could not remove from default sales channel:', err);
+    }
+  }
+
+  console.log('✅ Sales channels assigned:', salesChannelIds);
+  return assignResults.map(r => r.data);
+}
+
+/**
+ * Fetch sales channels assigned to a product
+ */
+export async function fetchProductSalesChannels(productId: string): Promise<string[]> {
+  const token = localStorage.getItem("vendorToken");
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/vendors/products/${productId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { 
+          fields: '+sales_channels.id,+sales_channels.name'
+        },
+        withCredentials: true,
+      }
+    );
+    const salesChannels = response.data.product?.sales_channels || [];
+    console.log('✅ Product sales channels:', salesChannels);
+    return salesChannels.map((sc: any) => sc.id);
+  } catch (error: any) {
+    console.error('❌ Error fetching product sales channels:', error?.response?.data || error.message);
+    return []; // Return empty array instead of throwing — non-fatal
+  }
+}
+
+/**
+ * Remove a product from a sales channel
+ */
+export async function removeProductFromSalesChannel({
+  productId,
+  salesChannelId,
+}: {
+  productId: string;
+  salesChannelId: string;
+}): Promise<any> {
+  const token = localStorage.getItem("vendorToken");
+  try {
+    const response = await axios.delete(
+      `${API_BASE_URL}/vendors/sales-channels/${salesChannelId}/products/batch`,
+      {
+        data: { product_ids: [{ id: productId }] },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error removing product from sales channel:', error);
+    throw error;
+  }
+}

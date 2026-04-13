@@ -48,7 +48,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { StreamlinedImageManager } from '../context/product-modules/ImageManager';
 import { EnhancedOptionComponent } from '../context/product-modules/OptionComponents';
 import { ProductSchema } from '../data/schema';
-import { createProduct, uploadProductImage, fetchCategories, batchUpdateInventoryLevels, fetchProduct, updateVariantImages } from '../context/fetchApi';
+import { createProduct, uploadProductImage, fetchCategories, batchUpdateInventoryLevels, fetchProduct, updateVariantImages, fetchCurrentVendor, assignProductSalesChannels, } from '../context/fetchApi';
 import HierarchicalCategorySelector from '../context/HierarchicalCategorySelector';
 
 // Import rich text editor component
@@ -78,6 +78,13 @@ import {
 
 // Default location ID for inventory management
 const defaultLocationId = "sloc_01JKWDDGKGCQFJANXV0CVJN2QW"; // Default location ID
+const SALES_CHANNEL_MARKETPLACE = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
+const SALES_CHANNEL_OWN_STORE   = 'sc_01KMAP3HD1EVDF9FT7EHHHV8HP';
+
+const SALES_CHANNEL_LABELS: Record<string, string> = {
+  [SALES_CHANNEL_MARKETPLACE]: 'Junooni Marketplace',
+  [SALES_CHANNEL_OWN_STORE]: 'My Own Store',
+};
 
 // Main Product Form Component
 const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = false }) => {
@@ -108,6 +115,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
   const [bulkPrice, setBulkPrice] = useState<string>("");
   const [bulkStock, setBulkStock] = useState<string>("");
   const [selectedVariants, setSelectedVariants] = useState<string[]>([]);
+  const [vendorSalesChannels, setVendorSalesChannels] = useState<string[]>([]);
+  const [selectedSalesChannels, setSelectedSalesChannels] = useState<string[]>([]);
+  const [isLoadingChannels, setIsLoadingChannels] = useState(false);
 
   // Ref for the hidden file input for drag-and-drop.
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -587,6 +597,40 @@ const handleFileChange = (
       setHasVariants(false);
     }
   };
+
+  useEffect(() => {
+  const loadVendorChannels = async () => {
+    setIsLoadingChannels(true);
+    try {
+      const vendor = await fetchCurrentVendor();
+      if (!vendor) {
+        // Fallback — assign marketplace only
+        setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+        setSelectedSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+        return;
+      }
+
+      const allowed: string[] = [];
+      if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
+      if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
+
+      // If no flags set, default to marketplace
+      if (allowed.length === 0) allowed.push(SALES_CHANNEL_MARKETPLACE);
+
+      setVendorSalesChannels(allowed);
+
+      // Auto-select all available channels by default
+      setSelectedSalesChannels([...allowed]);
+    } catch {
+      setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+      setSelectedSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+    } finally {
+      setIsLoadingChannels(false);
+    }
+  };
+
+  loadVendorChannels();
+}, []);
 
   // Monitor option changes to update variants and detect color options
   useEffect(() => {
@@ -1139,12 +1183,34 @@ return {
                   imageIds: matchingImageIds,
                   thumbnailUrl,
                 });
-                console.log(`✅ Images associated for ${completedVariant.title}`);
+                //console.log(`✅ Images associated for ${completedVariant.title}`);
               } catch (err) {
                 console.error(`Failed variant image association for ${completedVariant.title}:`, err);
               }
             }
           }
+
+           // STEP C: Assign sales channels based on vendor flags
+          // STEP C: Assign selected sales channels
+          try {
+            if (selectedSalesChannels.length > 0) {
+              await assignProductSalesChannels({
+                productId: result.id,
+                salesChannelIds: selectedSalesChannels,
+              });
+              //console.log(`✅ Assigned sales channels:`, selectedSalesChannels);
+            } else {
+              // Fallback if nothing selected
+              await assignProductSalesChannels({
+                productId: result.id,
+                salesChannelIds: [SALES_CHANNEL_MARKETPLACE],
+              });
+              console.warn('⚠️ No channels selected, defaulting to marketplace');
+            }
+          } catch (scError) {
+            console.error('❌ Sales channel assignment failed (non-fatal):', scError);
+          }
+
         }
       } catch (fetchError) {
         console.error('Post-creation error:', fetchError);
@@ -2194,6 +2260,78 @@ return {
                     </FormItem>
                   )}
                 />
+
+                {/* Sales Channel Selection */}
+                {vendorSalesChannels.length > 0 && (
+                  <div className="mt-5">
+                    <Separator className="mb-4" />
+                    <h3 className="mb-1 font-medium text-gray-700">Sales Channels</h3>
+                    <p className="mb-3 text-sm text-gray-500">
+                      Choose where this product will be available for sale
+                    </p>
+
+                    {isLoadingChannels ? (
+                      <p className="text-sm text-gray-400">Loading channels...</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {vendorSalesChannels.map(channelId => {
+                          const isChecked = selectedSalesChannels.includes(channelId);
+                          const isOnlyChannel = vendorSalesChannels.length === 1;
+                          const isLastSelected = isChecked && selectedSalesChannels.length === 1;
+                          const isDisabled = isOnlyChannel || isLastSelected;
+
+                          return (
+                            <div
+                              key={channelId}
+                              className={`flex items-center gap-3 p-3 border rounded-md ${
+                                isDisabled
+                                  ? 'border-gray-100 bg-gray-50 opacity-70'
+                                  : 'border-gray-200'
+                              }`}
+                            >
+                              <Checkbox
+                                id={`sc-create-${channelId}`}
+                                checked={isChecked}
+                                disabled={isDisabled}
+                                onCheckedChange={(checked) => {
+                                  if (isDisabled) return;
+                                  setSelectedSalesChannels(prev =>
+                                    checked
+                                      ? [...prev, channelId]
+                                      : prev.filter(id => id !== channelId)
+                                  );
+                                }}
+                                className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]"
+                              />
+                              <div className="flex-1">
+                                <label
+                                  htmlFor={`sc-create-${channelId}`}
+                                  className={`text-sm font-medium ${
+                                    isDisabled
+                                      ? 'text-gray-400 cursor-not-allowed'
+                                      : 'text-gray-700 cursor-pointer'
+                                  }`}
+                                >
+                                  {SALES_CHANNEL_LABELS[channelId] || channelId}
+                                </label>
+                                {isOnlyChannel && (
+                                  <p className="mt-0.5 text-xs text-gray-400">
+                                    Only available channel
+                                  </p>
+                                )}
+                                {isLastSelected && !isOnlyChannel && (
+                                  <p className="mt-0.5 text-xs text-gray-400">
+                                    At least one channel must be selected
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
               
               {/* Shipping & Fulfillment Info Card */}

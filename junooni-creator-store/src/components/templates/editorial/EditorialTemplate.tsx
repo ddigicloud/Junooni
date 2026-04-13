@@ -1,110 +1,120 @@
 "use client"
 import Image from "next/image"
 import Link from "next/link"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import type { PublicVendor, VendorStore, Product, StoreSection } from "@/lib/types"
+import type { PublicVendor, VendorStore, Product, StoreSection, CategoryMeta, CollectionMeta } from "@/lib/types"
 import ProductCard from "@/components/ui/ProductCard"
 import AnnouncementBar from "@/components/sections/AnnouncementBar"
 import SocialSection from "@/components/sections/SocialSection"
+import StoreHeader from "@/components/store/StoreHeader"
+import StoreFooter from "@/components/store/StoreFooter"
 
 interface Props {
   vendor: PublicVendor
   store: VendorStore | null
   products: Product[]
+  categories: CategoryMeta[]
+  collections: CollectionMeta[]
 }
 
-export default function EditorialTemplate({ vendor, store, products }: Props) {
+export default function EditorialTemplate({ vendor, store: initialStore, products, categories, collections }: Props) {
+  // Live editor override — receives store updates from parent editor via postMessage
+  const [liveStore, setLiveStore] = useState(initialStore)
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "STORE_UPDATE" && e.data.store) {
+        setLiveStore(e.data.store)
+        setSelectedSectionId(e.data.selectedId ?? null)
+      }
+    }
+    window.addEventListener("message", handler)
+    // Tell parent we are ready
+    window.parent?.postMessage({ type: "IFRAME_READY" }, "*")
+    return () => window.removeEventListener("message", handler)
+  }, [])
+
+  const store = liveStore
   const sections = store?.sections?.sections ?? defaultSections(vendor)
+  const brandPrimary = store?.primary_color ?? "#e65100"
   const fontClass = store?.font === "playfair" ? "font-playfair" : store?.font === "poppins" ? "font-poppins" : "font-inter"
+  const handle = vendor.handle
 
   return (
     <div className={`min-h-screen bg-[#fafaf8] ${fontClass}`}>
-      {sections.filter(s => s.type === "announcement").map((s, i) => (
-        <AnnouncementBar key={i} section={s as any} />
-      ))}
+      {/* ── HEADER + ANNOUNCEMENT — wrapped in single sticky container ── */}
+      {(() => {
+        const stickyHdr = (store as any)?.sticky_header !== false // default true
+        const stickyAnn = (store as any)?.sticky_announcement !== false
+        const wrapSticky = stickyHdr || stickyAnn
+        const annSections = sections.filter(s => s.type === "announcement" && !(s as any).hidden)
 
-      {/* Editorial header — big masthead style */}
-      <header className="border-b border-gray-200">
-        {/* Top bar */}
-        <div className="border-b border-gray-200 py-2 px-6">
-          <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-gray-400 uppercase tracking-widest">
-            <span>{vendor.creator_category ?? "Creator"}</span>
-            <a
-              href={`https://junooni.com/store/${vendor.handle}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-gray-700 transition-colors"
-            >
-              View on Junooni ↗
-            </a>
+        return (
+          <div className={wrapSticky ? "sticky top-0 z-40" : "relative"}>
+            {annSections.map((s, i) => (
+              <AnnouncementBar key={i} section={s as any} />
+            ))}
+            <StoreHeader vendor={vendor} store={store} categories={categories} collections={collections} products={products} />
           </div>
-        </div>
-        {/* Masthead */}
-        <div className="py-8 px-6 text-center">
-          <div className="max-w-6xl mx-auto">
-            {vendor.logo && (
-              <div className="w-16 h-16 rounded-full overflow-hidden mx-auto mb-4 border-2 border-gray-200">
-                <Image src={vendor.logo} alt={vendor.name} width={64} height={64} className="object-cover" />
+        )
+      })()}
+
+      {/* ── PAGE SECTIONS ────────────────────────────────────────────────────── */}
+      {sections.filter(s => !(s as any).hidden).map((section, i) => {
+        const secId = (section as any).id
+        const isSelected = secId && selectedSectionId === secId
+        const isEditorMode = typeof window !== "undefined" && window.parent !== window
+        return (
+          <div
+            key={i}
+            onClick={() => isEditorMode && secId && window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: secId }, "*")}
+            className={`relative transition-all ${isEditorMode && secId ? "cursor-pointer" : ""}`}
+            style={isSelected ? { outline: "2px solid #e65100", outlineOffset: "-2px" } : {}}
+          >
+            {isSelected && (
+              <div className="absolute top-0 left-0 z-50 px-2 py-0.5 text-[10px] font-bold text-white pointer-events-none"
+                style={{ background: "#e65100", borderBottomRightRadius: "6px" }}>
+                Editing
               </div>
             )}
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900" style={{ fontFamily: "var(--font-playfair)" }}>
-              {vendor.name}
-            </h1>
-            {(store?.tagline ?? vendor.creator_title) && (
-              <p className="mt-2 text-sm text-gray-500 uppercase tracking-widest">
-                {store?.tagline ?? vendor.creator_title}
-              </p>
-            )}
+            <EditorialSection
+              section={section}
+              vendor={vendor}
+              store={store}
+              products={products}
+              categories={categories}
+              collections={collections}
+              brandPrimary={brandPrimary}
+            />
           </div>
-        </div>
-        {/* Nav */}
-        <div className="border-t border-gray-200 py-3 px-6">
-          <nav className="max-w-6xl mx-auto flex items-center justify-center gap-8">
-            {[
-              { label: "Shop",  href: `/${vendor.handle}#products` },
-              { label: "About", href: `/${vendor.handle}#about` },
-              { label: "Social",href: `/${vendor.handle}#social` },
-            ].map(item => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="text-xs uppercase tracking-widest text-gray-600 hover:text-gray-900 transition-colors font-medium"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </header>
+        )
+      })}
 
-      {sections.map((section, i) => (
-        <EditorialSection key={i} section={section} vendor={vendor} products={products} store={store} />
-      ))}
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 py-10 px-6 mt-20">
-        <div className="max-w-6xl mx-auto text-center">
-          <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">{vendor.name}</p>
-          <p className="text-xs text-gray-300">
-            © {new Date().getFullYear()} · Powered by{" "}
-            <a href="https://junooni.com" style={{ color: "var(--brand-primary)" }} className="hover:opacity-70 transition-opacity">
-              Junooni
-            </a>
-          </p>
-        </div>
-      </footer>
+      {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
+      <StoreFooter vendor={vendor} store={store} categories={categories} collections={collections} />
     </div>
   )
 }
 
+// ── Section renderer ──────────────────────────────────────────────────────────
+
 function EditorialSection({
-  section, vendor, products, store
+  section, vendor, store, products, categories, collections, brandPrimary,
 }: {
   section: StoreSection
   vendor: PublicVendor
-  products: Product[]
   store: VendorStore | null
+  products: Product[]
+  categories: CategoryMeta[]
+  collections: CollectionMeta[]
+  brandPrimary: string
 }) {
+  const handle = vendor.handle
+
+  if ((section as any).hidden) return null
+
   switch (section.type) {
     case "announcement": return null
 
@@ -119,8 +129,8 @@ function EditorialSection({
             >
               {/* Editorial label */}
               <div className="flex items-center gap-3 mb-6">
-                <div className="h-px w-8" style={{ background: "var(--brand-primary)" }} />
-                <span className="text-xs uppercase tracking-[0.3em] font-medium" style={{ color: "var(--brand-primary)" }}>
+                <div className="h-px w-8" style={{ background: brandPrimary }} />
+                <span className="text-xs uppercase tracking-[0.3em] font-medium" style={{ color: brandPrimary }}>
                   Official Collection
                 </span>
               </div>
@@ -134,9 +144,9 @@ function EditorialSection({
               )}
               {section.cta_label && (
                 <Link
-                  href={section.cta_url ?? `/${vendor.handle}#products`}
+                  href={section.cta_url ?? `/${handle}#products`}
                   className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-widest border-b-2 pb-1 transition-opacity hover:opacity-70"
-                  style={{ borderColor: "var(--brand-primary)", color: "var(--brand-primary)" }}
+                  style={{ borderColor: brandPrimary, color: brandPrimary }}
                 >
                   {section.cta_label}
                   <span>→</span>
@@ -168,10 +178,9 @@ function EditorialSection({
 
     case "featured": {
       const featured = section.product_ids?.length
-        ? products.filter(p => section.product_ids.includes(p.id))
+        ? products.filter(p => section.product_ids!.includes(p.id))
         : products.slice(0, 3)
 
-      // Editorial featured: first product is large, rest are smaller
       const [first, ...rest] = featured
       return (
         <section id="products" className="py-16 px-6 border-t border-gray-100">
@@ -184,12 +193,10 @@ function EditorialSection({
             )}
             {first && (
               <div className="grid md:grid-cols-2 gap-8 mb-8">
-                {/* Large featured card */}
-                <ProductCard product={first} handle={vendor.handle} />
-                {/* Stack of smaller ones */}
+                <ProductCard product={first} handle={handle} />
                 <div className="grid grid-cols-2 gap-4">
                   {rest.slice(0, 4).map(p => (
-                    <ProductCard key={p.id} product={p} handle={vendor.handle} />
+                    <ProductCard key={p.id} product={p} handle={handle} />
                   ))}
                 </div>
               </div>
@@ -201,6 +208,7 @@ function EditorialSection({
 
     case "collection": {
       const limited = products.slice(0, section.limit ?? 12)
+      if (!limited.length) return null
       return (
         <section id="products" className="py-16 px-6 border-t border-gray-100">
           <div className="max-w-6xl mx-auto">
@@ -211,7 +219,80 @@ function EditorialSection({
               </div>
             )}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
-              {limited.map(p => <ProductCard key={p.id} product={p} handle={vendor.handle} />)}
+              {limited.map(p => <ProductCard key={p.id} product={p} handle={handle} />)}
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    // ── Collections showcase ───────────────────────────────────────────────────
+    case "featured_collections": {
+      const selectedIds: string[] = (section as any).collection_ids ?? []
+      const toShow = selectedIds.length
+        ? collections.filter(c => selectedIds.includes(c.id) || selectedIds.includes(c.handle))
+        : collections
+
+      if (!toShow.length) return null
+
+      const cols = (section as any).columns ?? 3
+      const gridClass = cols === 2
+        ? "grid-cols-1 sm:grid-cols-2"
+        : cols === 4
+          ? "grid-cols-2 sm:grid-cols-4"
+          : "grid-cols-1 sm:grid-cols-3"
+
+      return (
+        <section className="py-16 px-6 border-t border-gray-100">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center gap-4 mb-10">
+              <h2 className="text-xs uppercase tracking-[0.3em] font-semibold text-gray-500">
+                {(section as any).title ?? "Shop by Collection"}
+              </h2>
+              <div className="flex-1 h-px bg-gray-200" />
+              <Link href={`/${handle}/collections`} className="text-xs uppercase tracking-widest font-semibold" style={{ color: brandPrimary }}>
+                View all →
+              </Link>
+            </div>
+            <div className={`grid ${gridClass} gap-5`}>
+              {toShow.map(col => {
+                const thumb = (col as any).thumbnail
+                  ?? products.find(p => (p as any).collection?.handle === col.handle)?.thumbnail
+                  ?? products.find(p =>
+                      ((section as any).collection_ids ?? []).length === 0 ||
+                      (p as any).collection?.id === col.id
+                    )?.images?.[0]?.url
+
+                const productCount = products.filter(p => (p as any).collection?.handle === col.handle).length
+
+                return (
+                  <Link
+                    key={col.id}
+                    href={`/${handle}/collections/${col.handle}`}
+                    className="group relative overflow-hidden rounded-2xl bg-gray-100 aspect-[4/3] block"
+                  >
+                    {thumb ? (
+                      <Image src={thumb} alt={col.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                        <span className="text-4xl">🛍️</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                      <p className="text-white font-bold text-lg leading-tight">{col.title}</p>
+                      {productCount > 0 && (
+                        <p className="text-white/70 text-sm mt-0.5">{productCount} product{productCount !== 1 ? "s" : ""}</p>
+                      )}
+                    </div>
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-xs font-semibold text-white bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-full">
+                        Shop →
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           </div>
         </section>
@@ -223,7 +304,7 @@ function EditorialSection({
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-12">
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 mb-4">
-              <div className="h-px w-6" style={{ background: "var(--brand-primary)" }} />
+              <div className="h-px w-6" style={{ background: brandPrimary }} />
               <span className="text-xs uppercase tracking-[0.3em] font-semibold text-gray-400">
                 {section.title ?? "About"}
               </span>
@@ -254,9 +335,161 @@ function EditorialSection({
 
     case "divider": return <div className="border-t border-gray-100 mx-6 my-4" />
 
+    case "html": {
+      const htmlContent = (section as any).html_content
+      if (!htmlContent) return null
+      const isFullDoc = /<!DOCTYPE|<html/i.test(htmlContent)
+      const srcDoc = isFullDoc ? htmlContent : `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>*{box-sizing:border-box}body{margin:0;padding:0;font-family:system-ui,sans-serif}</style>
+</head><body>${htmlContent}</body></html>`
+      return (
+        <section className="w-full">
+          <iframe
+            srcDoc={srcDoc}
+            className="w-full border-0"
+            style={{ minHeight: "200px" }}
+            sandbox="allow-scripts allow-same-origin allow-forms"
+            onLoad={(e) => {
+              try {
+                const doc = (e.currentTarget as HTMLIFrameElement).contentDocument
+                if (doc?.body) {
+                  (e.currentTarget as HTMLIFrameElement).style.height = doc.body.scrollHeight + 32 + "px"
+                }
+              } catch {}
+            }}
+            title="Custom HTML section"
+          />
+        </section>
+      )
+    }
+
+    case "text": {
+      if (!(section as any).text) return null
+      return (
+        <section className="py-12 px-6 border-t border-gray-100">
+          <div className="max-w-3xl mx-auto prose prose-lg text-gray-700"
+            dangerouslySetInnerHTML={{
+              __html: (section as any).text
+                .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+                .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+                .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+                .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+                .replace(/\*(.+?)\*/g, "<em>$1</em>")
+                .replace(/^- (.+)$/gm, "<li>$1</li>")
+                .replace(/(<li>[\s\S]*?<\/li>?)+/g, (b: string) => `<ul>${b}</ul>`)
+                .replace(/^(?!<)(.+)$/gm, (l: string) => l.trim() ? `<p>${l}</p>` : "")
+            }}
+          />
+        </section>
+      )
+    }
+
+    case "image": {
+      if (!(section as any).image) return null
+      return (
+        <section className="w-full">
+          <img src={(section as any).image} alt={section.title ?? "Section image"} className="w-full object-cover max-h-[600px]" />
+        </section>
+      )
+    }
+
+    case "video": {
+      const rawUrl: string = (section as any).video_url ?? ""
+      if (!rawUrl) return null
+
+      const getEmbedUrl = (url: string): string | null => {
+        const ytMatch = url.match(
+          /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/
+        )
+        if (ytMatch) {
+          const autoplay = (section as any).video_autoplay ? "1" : "0"
+          return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=${autoplay}&mute=1&rel=0&modestbranding=1`
+        }
+        const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
+        if (vimeoMatch) {
+          const autoplay = (section as any).video_autoplay ? "1" : "0"
+          return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=${autoplay}&muted=1`
+        }
+        return null
+      }
+
+      const embedUrl = getEmbedUrl(rawUrl)
+      if (!embedUrl) return null
+
+      const isYouTube = rawUrl.includes("youtube") || rawUrl.includes("youtu.be")
+
+      return (
+        <section className="py-12 px-6 border-t border-gray-100">
+          <div className="max-w-4xl mx-auto">
+            {section.title && (
+              <div className="flex items-center gap-4 mb-8">
+                <h2 className="text-xs uppercase tracking-[0.3em] font-semibold text-gray-500">{section.title}</h2>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+            )}
+            <div className="relative w-full rounded-2xl overflow-hidden shadow-xl"
+              style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                src={embedUrl}
+                title={section.title ?? "Video"}
+                className="absolute inset-0 w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ border: 0 }}
+              />
+              {isYouTube && !(section as any).video_autoplay && (
+                <div className="absolute bottom-3 right-3 pointer-events-none">
+                  <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1">
+                    <svg viewBox="0 0 90 20" className="h-3 w-auto fill-white opacity-80">
+                      <path d="M27.9727 3.12324C27.6435 1.89323 26.6768 0.926623 25.4468 0.597366C23.2197 2.24288e-07 14.285 0 14.285 0C14.285 0 5.35042 2.24288e-07 3.12323 0.597366C1.89323 0.926623 0.926623 1.89323 0.597366 3.12324C2.24288e-07 5.35042 0 10 0 10C0 10 2.24288e-07 14.6496 0.597366 16.8768C0.926623 18.1068 1.89323 19.0734 3.12323 19.4026C5.35042 20 14.285 20 14.285 20C14.285 20 23.2197 20 25.4468 19.4026C26.6768 19.0734 27.6435 18.1068 27.9727 16.8768C28.5701 14.6496 28.5701 10 28.5701 10C28.5701 10 28.5701 5.35042 27.9727 3.12324ZM11.4253 14.2854V5.71458L18.8477 10.0001L11.4253 14.2854Z"/>
+                      <path d="M34.6024 13.0036L31.3945 1.41846H34.1932L35.3174 6.6242C35.6043 7.8785 35.8136 8.9 35.954 9.6893H36.0468C36.1813 8.7574 36.3905 7.7358 36.6773 6.6242L37.8641 1.41846H40.6627L37.3945 13.0036V18.561H34.6023V13.0036H34.6024ZM41.4697 18.561V6.08839H43.9675V7.77215H44.0604C44.6487 6.40806 45.5843 5.72598 46.8673 5.72598C47.9247 5.72598 48.6481 6.1401 49.0378 6.96833C49.4275 7.77277 49.6226 9.01684 49.6226 10.7006V18.561H47.0675V10.9045C47.0675 9.90776 46.9749 9.21135 46.7897 8.81518C46.6046 8.4191 46.2711 8.22104 45.7892 8.22104C45.4353 8.22104 45.1154 8.33802 44.8295 8.57197C44.5436 8.80592 44.3306 9.13281 44.1907 9.55263V18.561H41.4697ZM51.9353 3.02631V1.41846H54.6563V3.02631H51.9353ZM51.9353 18.561V6.08839H54.6563V18.561H51.9353ZM57.3801 13.0959C57.3801 13.6375 57.4122 14.0516 57.4764 14.3385C57.5405 14.6253 57.6654 14.8546 57.8508 15.026C58.0361 15.1974 58.3066 15.2832 58.6621 15.2832C59.175 15.2832 59.5227 15.097 59.7082 14.7246C59.8936 14.3522 59.9869 13.7564 59.9973 12.9368L62.4053 13.0876C62.4157 13.2386 62.4209 13.4362 62.4209 13.6803C62.4209 14.9187 62.0739 15.8507 61.3799 16.4762C60.686 17.1016 59.6863 17.4143 58.381 17.4143C56.8232 17.4143 55.7177 16.9603 55.0643 16.0524C54.411 15.1445 54.0843 13.7277 54.0843 11.8019V9.83501C54.0843 7.8364 54.4185 6.40468 55.0871 5.54074C55.7556 4.6768 56.8736 4.24483 58.441 4.24483C59.5508 4.24483 60.4147 4.45441 61.0325 4.87353C61.6503 5.29266 62.0826 5.93781 62.3295 6.80838C62.5765 7.67896 62.7 8.85891 62.7 10.3482V12.2842H57.3801V13.0959ZM59.9973 9.1545V8.04199C59.9973 7.28258 59.9084 6.71525 59.7305 6.33998C59.5527 5.96472 59.2374 5.77708 58.7844 5.77708C58.3508 5.77708 58.0444 5.96883 57.8647 6.35231C57.685 6.73579 57.5912 7.29899 57.5834 8.04199V9.1545H59.9973Z"/>
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    case "links": {
+      const links = (section as any).links ?? []
+      if (!links.length) return null
+      return (
+        <section className="py-12 px-6 border-t border-gray-100">
+          <div className="max-w-lg mx-auto">
+            {section.title && (
+              <div className="flex items-center gap-4 mb-8">
+                <h2 className="text-xs uppercase tracking-[0.3em] font-semibold text-gray-500">{section.title}</h2>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+            )}
+            <div className="space-y-3">
+              {links.map((link: any, i: number) => (
+                <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center w-full px-6 py-3.5 rounded-full font-semibold text-sm transition-all hover:scale-[1.02] hover:shadow-md active:scale-[0.98]"
+                  style={{ border: `2px solid ${brandPrimary}`, color: brandPrimary, background: "transparent" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = brandPrimary; (e.currentTarget as HTMLElement).style.color = "#fff" }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = brandPrimary }}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )
+    }
+
     default: return null
   }
 }
+
+// ── Default sections when no store config exists ──────────────────────────────
 
 function defaultSections(vendor: PublicVendor): StoreSection[] {
   return [

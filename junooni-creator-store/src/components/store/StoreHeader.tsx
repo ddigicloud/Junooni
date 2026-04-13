@@ -61,6 +61,17 @@ export default function StoreHeader({
     }
   }, [searchOpen])
 
+  // Close dropdowns on scroll
+  useEffect(() => {
+    const handler = () => {
+      setActiveDropdown(null)
+      setSearchOpen(false)
+      setSearchQuery("")
+    }
+    window.addEventListener("scroll", handler, { passive: true })
+    return () => window.removeEventListener("scroll", handler)
+  }, [])
+
   // Close search on route change
   useEffect(() => {
     setSearchOpen(false)

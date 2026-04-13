@@ -8,8 +8,14 @@ import { MARKETPLACE_MODULE } from "../../../../modules/marketplace"
 
 // ─── Validation schemas ───────────────────────────────────────────────────────
 
+// All section types including new ones added via store editor
 const StoreSectionSchema = z.object({
-  type: z.enum(["hero", "featured", "collection", "about", "social", "announcement", "divider"]),
+  type: z.enum([
+    "hero", "featured", "collection", "featured_collections",
+    "about", "social", "announcement", "divider",
+    "image", "text", "html", "video", "links",
+    "header", "footer",
+  ]),
 }).passthrough()
 
 const VendorCollectionSchema = z.object({
@@ -24,11 +30,12 @@ const VendorCollectionSchema = z.object({
   created_at: z.string(),
 }).passthrough()
 
+// All page templates including "links"
 const StorePageSchema = z.object({
   id: z.string(),
   title: z.string(),
   slug: z.string(),
-  template: z.enum(["blank", "about", "faq", "contact"]),
+  template: z.enum(["blank", "about", "faq", "contact", "links"]),
   content: z.string(),
   in_nav: z.boolean(),
   in_footer: z.boolean(),
@@ -48,29 +55,21 @@ export const VendorStoreSchema = z.object({
   // Branding
   primary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").nullable().optional(),
   secondary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").nullable().optional(),
-  font: z.enum(["inter", "poppins", "playfair"]).nullable().optional(),
+  accent_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").nullable().optional(),
+  font: z.enum(["inter", "poppins", "playfair", "dm-sans", "space-grotesk"]).nullable().optional(),
   hero_image: z.string().nullable().optional(),
   tagline: z.string().max(120).nullable().optional(),
   announcement_text: z.string().max(200).nullable().optional(),
 
-  // Sections
-  sections: z.object({
-    sections: z.array(StoreSectionSchema)
-  }).nullable().optional(),
+  // Sections & pages
+  sections: z.object({ sections: z.array(StoreSectionSchema) }).nullable().optional(),
+  pages: z.object({ pages: z.array(StorePageSchema) }).nullable().optional(),
+  collections: z.object({ collections: z.array(VendorCollectionSchema) }).nullable().optional(),
 
-  // Pages
-  pages: z.object({
-    pages: z.array(StorePageSchema)
-  }).nullable().optional(),
-
-  // Creator collections
-  collections: z.object({
-    collections: z.array(VendorCollectionSchema)
-  }).nullable().optional(),
-
-  // Store logo & favicon
+  // Assets
   store_logo: z.string().nullable().optional(),
   store_favicon: z.string().nullable().optional(),
+  og_image: z.string().nullable().optional(),
 
   // SEO
   seo_title: z.string().max(60).nullable().optional(),
@@ -79,11 +78,32 @@ export const VendorStoreSchema = z.object({
   // Header behaviour
   sticky_header: z.boolean().optional(),
   sticky_announcement: z.boolean().optional(),
+
+  // Social links (stored on store for the editor)
+  instagram_url: z.string().nullable().optional(),
+  youtube_url: z.string().nullable().optional(),
+  twitter_url: z.string().nullable().optional(),
+  facebook_url: z.string().nullable().optional(),
+  tiktok_url: z.string().nullable().optional(),
+  discord_url: z.string().nullable().optional(),
+
+  // Style settings (from store editor)
+  border_radius: z.enum(["none", "sm", "md", "lg", "full"]).nullable().optional(),
+  button_style: z.enum(["filled", "outline", "ghost"]).nullable().optional(),
+  product_card: z.object({
+    aspect_ratio: z.enum(["square", "portrait", "landscape"]).optional(),
+    show_price: z.boolean().optional(),
+    show_hover: z.boolean().optional(),
+    alignment: z.enum(["left", "center"]).optional(),
+    show_sold_out_badge: z.boolean().optional(),
+    columns_desktop: z.number().optional(),
+  }).nullable().optional(),
+  custom_css: z.string().nullable().optional(),
 })
 
 type StoreBody = z.infer<typeof VendorStoreSchema>
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── Helper: get vendor ID from auth context ──────────────────────────────────
 
 async function getVendorId(req: AuthenticatedMedusaRequest): Promise<string | null> {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
@@ -98,8 +118,7 @@ async function getVendorId(req: AuthenticatedMedusaRequest): Promise<string | nu
   }
 
   if (req.auth_context?.actor_type === "user") {
-    const vendorId = req.query.vendor_id as string | undefined
-    return vendorId ?? null
+    return (req.query.vendor_id as string) ?? null
   }
 
   return null
@@ -111,19 +130,15 @@ export const GET = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse
 ) => {
-  const marketplaceModuleService: MarketplaceModuleService =
-    req.scope.resolve(MARKETPLACE_MODULE)
+  const svc: MarketplaceModuleService = req.scope.resolve(MARKETPLACE_MODULE)
 
   const vendorId = await getVendorId(req)
   if (!vendorId) return res.status(404).json({ message: "Vendor not found" })
 
-  const vendor = await marketplaceModuleService.retrieveVendor(vendorId, {
-    relations: ["vendor_store"],
-  })
-
+  const vendor = await svc.retrieveVendor(vendorId, { relations: ["vendor_store"] })
   if (!vendor) return res.status(404).json({ message: "Vendor not found" })
 
-  // Fetch full store via query.graph to include all JSON columns (pages, sections)
+  // Use query.graph to get all JSON columns (sections, pages, collections etc.)
   let store = vendor.vendor_store ?? null
   if (store?.id) {
     try {
@@ -146,15 +161,12 @@ export const POST = async (
   req: AuthenticatedMedusaRequest<StoreBody>,
   res: MedusaResponse
 ) => {
-  const marketplaceModuleService: MarketplaceModuleService =
-    req.scope.resolve(MARKETPLACE_MODULE)
+  const svc: MarketplaceModuleService = req.scope.resolve(MARKETPLACE_MODULE)
 
   const vendorId = await getVendorId(req)
   if (!vendorId) return res.status(404).json({ message: "Vendor not found" })
 
-  const vendor = await marketplaceModuleService.retrieveVendor(vendorId, {
-    relations: ["vendor_store"],
-  })
+  const vendor = await svc.retrieveVendor(vendorId, { relations: ["vendor_store"] })
 
   if (vendor.vendor_store) {
     throw new MedusaError(
@@ -164,15 +176,14 @@ export const POST = async (
   }
 
   const body = req.validatedBody || req.body
-  const subdomain = body.subdomain ?? vendor.handle
 
-  const store = await marketplaceModuleService.createVendorStores({
+  const store = await svc.createVendorStores({
     vendor_id: vendorId,
-    subdomain,
+    subdomain: body.subdomain ?? vendor.handle,
     template: body.template ?? "minimal",
     status: body.status ?? "draft",
-    primary_color: body.primary_color ?? "#000000",
-    secondary_color: body.secondary_color ?? "#ffffff",
+    primary_color: body.primary_color ?? "#e65100",
+    secondary_color: body.secondary_color ?? "#ac1900",
     font: body.font ?? "inter",
     hero_image: body.hero_image ?? null,
     tagline: body.tagline ?? null,
@@ -186,12 +197,10 @@ export const POST = async (
     seo_description: body.seo_description ?? null,
     custom_domain: body.custom_domain ?? null,
     domain_verified: false,
-  })
+  } as any)
 
-  await marketplaceModuleService.updateVendors({
-    id: vendorId,
-    sell_on_own_store: true,
-  })
+  // Mark vendor as having own store
+  await svc.updateVendors({ id: vendorId, sell_on_own_store: true })
 
   return res.status(201).json({ store })
 }
@@ -202,15 +211,12 @@ export const PUT = async (
   req: AuthenticatedMedusaRequest<StoreBody>,
   res: MedusaResponse
 ) => {
-  const marketplaceModuleService: MarketplaceModuleService =
-    req.scope.resolve(MARKETPLACE_MODULE)
+  const svc: MarketplaceModuleService = req.scope.resolve(MARKETPLACE_MODULE)
 
   const vendorId = await getVendorId(req)
   if (!vendorId) return res.status(404).json({ message: "Vendor not found" })
 
-  const vendor = await marketplaceModuleService.retrieveVendor(vendorId, {
-    relations: ["vendor_store"],
-  })
+  const vendor = await svc.retrieveVendor(vendorId, { relations: ["vendor_store"] })
 
   if (!vendor.vendor_store) {
     throw new MedusaError(
@@ -221,11 +227,21 @@ export const PUT = async (
 
   const body = req.validatedBody || req.body
 
-  const updatePayload = Object.fromEntries(
+  // Strip undefined fields so existing values aren't overwritten with null
+  const updatePayload: Record<string, any> = Object.fromEntries(
     Object.entries(body).filter(([, v]) => v !== undefined)
   )
 
-  const store = await marketplaceModuleService.updateVendorStores({
+  // Auto-reset domain_verified if custom_domain is being changed
+  // (prevents old verification carrying over to a new domain)
+  if (
+    "custom_domain" in updatePayload &&
+    updatePayload.custom_domain !== vendor.vendor_store.custom_domain
+  ) {
+    updatePayload.domain_verified = false
+  }
+
+  const store = await svc.updateVendorStores({
     id: vendor.vendor_store.id,
     ...updatePayload,
   })

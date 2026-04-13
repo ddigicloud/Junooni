@@ -210,6 +210,8 @@ interface OnboardingStatus {
   };
 }
 
+const JUNOONI_ADMIN_VENDOR_ID = '01K4QZBPTTDMRYBME8S15Y576G'
+
 // Status Badge component with icons
 const StatusBadge = ({ status }: { status: string }) => {
   const normalizedStatus = status.toLowerCase();
@@ -1595,7 +1597,7 @@ const DashboardPage = () => {
               >
                 Dashboard
               </Button>           
-              {storePreference && (
+              {storePreference && vendor?.id === JUNOONI_ADMIN_VENDOR_ID && (
                 <StoreModeBadge
                   pref={storePreference}
                   onChangeClick={() => setShowStoreTypeModal(true)}

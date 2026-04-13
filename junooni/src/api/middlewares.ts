@@ -226,6 +226,16 @@ export default defineMiddlewares({
       ],
     },
     {
+      matcher: "/vendors/by-admin",
+      method: ["GET"],
+      middlewares: [
+        (req, res, next) => {
+          cors({ origin: true, credentials: true })(req, res, next)
+        },
+        authenticate(["vendor", "user"], ["session", "bearer"]),
+      ],
+    },
+    {
       matcher: "/vendors/*",
       method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
       middlewares: [

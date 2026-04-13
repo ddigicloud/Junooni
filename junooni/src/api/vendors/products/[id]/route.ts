@@ -12,9 +12,9 @@
 // import {
 //   UpdateProductDTO,
 // } from "@medusajs/framework/types";
-// import { QueryContext } from "@medusajs/framework/utils";
 
-// // ✅ OPTIMIZED: Query single product by ID, then verify ownership
+// // ✅ QueryContext import removed — no longer needed
+
 // export const GET = async (
 //   req: AuthenticatedMedusaRequest,
 //   res: MedusaResponse
@@ -25,63 +25,45 @@
 //     const marketplaceModuleService: MarketplaceModuleService =
 //       req.scope.resolve(MARKETPLACE_MODULE);
 
-//     // Get vendor admin
 //     const vendorAdmin = await marketplaceModuleService.retrieveVendorAdmin(
 //       req.auth_context.actor_id,
-//       {
-//         relations: ["vendor"],
-//       }
+//       { relations: ["vendor"] }
 //     );
 
-//     // 🚀 OPTIMIZED: Query ONLY the product we need by ID
 //     const { data: [product] } = await query.graph({
 //       entity: "product",
 //       fields: [
-//         "*",
-//         "variants.*",
-//         "variants.options.*",
-//         "variants.calculated_price.*",
-//         "variants.inventory_items.*",
+//         "id", "title", "subtitle", "handle", "description", "status",
+//         "thumbnail", "discountable", "weight", "length", "width", "height",
+//         "material", "origin_country", "metadata",
+//         "variants.id", "variants.title", "variants.sku",
+//         "variants.allow_backorder", "variants.manage_inventory",
+//         "variants.inventory_quantity", "variants.metadata",
+//         "variants.prices.amount", "variants.prices.currency_code",
+//         "variants.options.option_id", "variants.options.value",
+//         "variants.options.option.id", "variants.options.option.title",
 //         "variants.inventory_items.inventory_item_id",
-//         "variants.inventory_items.stocked_quantity",
-//         "images.*",
-//         "options.*",
-//         // "options.metadata.*",
-//         "options.values.*",
-//         "categories.*",
-//         // "brand.*",
-//         "tags.*",
-//         "vendor.*", // Include vendor to verify ownership
-//         //"size_chart.*",
-//         "metadata",
+//         "variants.images.id", "variants.images.url",
+//         "images.id", "images.url", "images.rank", "images.metadata",
+//         "options.id", "options.title",
+//         "options.values.id", "options.values.value",
+//         "categories.id", "categories.name",
+//         "vendor.id",
 //       ],
-//       filters: {
-//         id: id, // Only fetch this specific product
-//       },
-//       context: {
-//         variants: {
-//           calculated_price: QueryContext({
-//             currency_code: "inr"
-//           })
-//         }
-//       },
+//       filters: { id },
+//       // ✅ NO context block — calculated_price removed (was causing 81s load)
 //     });
 
-//     // Check if product exists
 //     if (!product) {
-//       return res.status(404).json({ 
-//         message: "Product not found" 
-//       });
+//       return res.status(404).json({ message: "Product not found" });
 //     }
 
-//     // 🔒 Verify ownership
 //     if (product.vendor?.id !== vendorAdmin.vendor.id) {
 //       return res.status(403).json({ 
 //         message: "You do not have permission to access this product" 
 //       });
 //     }
 
-//     // Enrich the product data
 //     const formattedProduct = {
 //       ...product,
 //       options: product.options?.map((option) => ({
@@ -102,7 +84,6 @@
 
 //     res.json({ product: formattedProduct });
 //   } catch (error) {
-//     //console.error("Error fetching product:", error);
 //     res.status(500).json({
 //       message: "Failed to fetch product",
 //       error: error instanceof Error ? error.message : "Unknown error",
@@ -110,7 +91,6 @@
 //   }
 // };
 
-// // ✅ OPTIMIZED PUT
 // export const PUT = async (
 //   req: AuthenticatedMedusaRequest<UpdateProductDTO>,
 //   res: MedusaResponse
@@ -131,46 +111,27 @@
 
 //     const vendorAdmin = await marketplaceModuleService.retrieveVendorAdmin(
 //       req.auth_context.actor_id,
-//       {
-//         relations: ["vendor"],
-//       }
+//       { relations: ["vendor"] }
 //     );
 
-//     // 🚀 OPTIMIZED: Query ONLY this product
+//     // Ownership check — minimal fields only
 //     const { data: [currentProduct] } = await query.graph({
 //       entity: "product",
-//       fields: [
-//         "*", 
-//         "images.*",
-//         "variants.*",
-//         "options.*",
-//         "options.values.*",
-//         "options.metadata.*",
-//         "vendor.*", // Include vendor for ownership check
-//         "metadata"
-//       ],
-//       filters: {
-//         id: id,
-//       },
+//       fields: ["id", "vendor.id"],
+//       filters: { id },
 //     });
 
 //     if (!currentProduct) {
-//       return res.status(404).json({
-//         message: "Product not found"
-//       });
+//       return res.status(404).json({ message: "Product not found" });
 //     }
 
-//     // 🔒 Verify ownership
 //     if (currentProduct.vendor?.id !== vendorAdmin.vendor.id) {
-//       return res.status(403).json({
-//         message: "You do not have permission to update this product"
+//       return res.status(403).json({ 
+//         message: "You do not have permission to update this product" 
 //       });
 //     }
 
-//     // Handle image updates properly
-//     const updateData: UpdateProductDTO = {
-//       ...req.body,
-//     };
+//     const updateData: UpdateProductDTO = { ...req.body };
 
 //     if (Array.isArray(updateData.images)) {
 //       updateData.images = updateData.images.map(image => ({
@@ -179,7 +140,6 @@
 //       }));
 //     }
 
-//     // Run the update workflow
 //     const { result: updatedProducts } = await updateProductsWorkflow(req.scope).run({
 //       input: {
 //         selector: { id },
@@ -197,44 +157,32 @@
 //       });
 //     }
 
-//     // 🚀 OPTIMIZED: Fetch ONLY the updated product
+//     // ✅ NO calculated_price — removed (was causing slow save)
 //     const { data: [finalProduct] } = await query.graph({
 //       entity: "product",
 //       fields: [
-//         "*",
-//         "variants.*",
-//         "variants.options.*",
-//         "variants.calculated_price.*",
-//         "variants.inventory_items.*",
+//         "id", "title", "subtitle", "handle", "description", "status",
+//         "thumbnail", "discountable", "weight", "length", "width", "height",
+//         "material", "origin_country", "metadata",
+//         "variants.id", "variants.title", "variants.sku",
+//         "variants.allow_backorder", "variants.manage_inventory",
+//         "variants.inventory_quantity", "variants.metadata",
+//         "variants.prices.amount", "variants.prices.currency_code",
+//         "variants.options.option_id", "variants.options.value",
+//         "variants.options.option.id", "variants.options.option.title",
 //         "variants.inventory_items.inventory_item_id",
-//         "variants.inventory_items.stocked_quantity",
-//         "images.*",
-//         "options.*",
-//         "options.metadata.*",
-//         "options.values.*",
-//         "categories.*",
-//         "brand.*",
-//         "tags.*",
-//         "vendor.*",
-//         "size_chart.*",
-        
-//         "metadata"
+//         "images.id", "images.url", "images.rank", "images.metadata",
+//         "options.id", "options.title",
+//         "options.values.id", "options.values.value",
+//         "categories.id", "categories.name",
+//         "vendor.id",
 //       ],
-//       filters: {
-//         id: id,
-//       },
-//       context: {
-//         variants: {
-//           calculated_price: QueryContext({ 
-//             currency_code: "inr" 
-//           }),
-//         },
-//       },
+//       filters: { id },
+//       // ✅ NO context block
 //     });
 
 //     res.status(200).json({ product: finalProduct });
 //   } catch (error) {
-//     //console.error("Error updating product:", error);
 //     res.status(500).json({
 //       message: "Failed to update product",
 //       error: error instanceof Error ? error.message : "Unknown error",
@@ -242,7 +190,6 @@
 //   }
 // };
 
-// // ✅ OPTIMIZED DELETE
 // export const DELETE = async (
 //   req: AuthenticatedMedusaRequest,
 //   res: MedusaResponse
@@ -259,54 +206,41 @@
 
 //     const vendorAdmin = await marketplaceModuleService.retrieveVendorAdmin(
 //       req.auth_context.actor_id,
-//       {
-//         relations: ["vendor"],
-//       }
+//       { relations: ["vendor"] }
 //     );
 
-//     // 🚀 OPTIMIZED: Query ONLY this product
 //     const { data: [product] } = await query.graph({
 //       entity: "product",
-//       fields: ["id", "vendor.*"],
-//       filters: {
-//         id: id,
-//       },
+//       fields: ["id", "vendor.id"],
+//       filters: { id },
 //     });
 
 //     if (!product) {
-//       return res.status(404).json({
-//         message: "Product not found"
-//       });
+//       return res.status(404).json({ message: "Product not found" });
 //     }
 
-//     // 🔒 Verify ownership
 //     if (product.vendor?.id !== vendorAdmin.vendor.id) {
-//       return res.status(403).json({
-//         message: "You do not have permission to delete this product"
+//       return res.status(403).json({ 
+//         message: "You do not have permission to delete this product" 
 //       });
 //     }
 
-//     // Run the delete workflow
 //     await deleteProductsWorkflow(req.scope).run({
-//       input: {
-//         ids: [id]
-//       }
+//       input: { ids: [id] }
 //     });
 
 //     res.status(200).json({
 //       message: "Product deleted successfully",
-//       id: id
+//       id,
 //     });
 
 //   } catch (error) {
-//     //console.error("Error deleting product:", error);
 //     res.status(500).json({
 //       message: "Failed to delete product",
 //       error: error instanceof Error ? error.message : "Unknown error",
 //     });
 //   }
 // };
-
 import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
@@ -321,8 +255,6 @@ import {
 import {
   UpdateProductDTO,
 } from "@medusajs/framework/types";
-
-// ✅ QueryContext import removed — no longer needed
 
 export const GET = async (
   req: AuthenticatedMedusaRequest,
@@ -357,10 +289,10 @@ export const GET = async (
         "options.id", "options.title",
         "options.values.id", "options.values.value",
         "categories.id", "categories.name",
+        "sales_channels.id", "sales_channels.name",  // ← ADDED
         "vendor.id",
       ],
       filters: { id },
-      // ✅ NO context block — calculated_price removed (was causing 81s load)
     });
 
     if (!product) {
@@ -375,6 +307,7 @@ export const GET = async (
 
     const formattedProduct = {
       ...product,
+      sales_channels: product.sales_channels || [],  // ← ADDED
       options: product.options?.map((option) => ({
         ...option,
         values: option.values || [],
@@ -423,7 +356,6 @@ export const PUT = async (
       { relations: ["vendor"] }
     );
 
-    // Ownership check — minimal fields only
     const { data: [currentProduct] } = await query.graph({
       entity: "product",
       fields: ["id", "vendor.id"],
@@ -466,7 +398,6 @@ export const PUT = async (
       });
     }
 
-    // ✅ NO calculated_price — removed (was causing slow save)
     const { data: [finalProduct] } = await query.graph({
       entity: "product",
       fields: [
@@ -484,10 +415,10 @@ export const PUT = async (
         "options.id", "options.title",
         "options.values.id", "options.values.value",
         "categories.id", "categories.name",
+        "sales_channels.id", "sales_channels.name",  // ← ADDED
         "vendor.id",
       ],
       filters: { id },
-      // ✅ NO context block
     });
 
     res.status(200).json({ product: finalProduct });

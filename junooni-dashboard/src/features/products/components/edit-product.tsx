@@ -76,7 +76,11 @@ import {
   fetchInventoryLevels, 
   batchUpdateInventoryLevels,
   getVariantInventoryItemId,
-  updateVariantImages
+  updateVariantImages,
+  fetchCurrentVendor,              // ← ADD
+  assignProductSalesChannels,      // ← ADD
+  fetchProductSalesChannels,       // ← ADD
+  removeProductFromSalesChannel,
 } from '../context/fetchApi';
 import HierarchicalCategorySelector from '../context/HierarchicalCategorySelector';
 
@@ -105,6 +109,13 @@ import {
 const API_BASE_URL = import.meta.env.VITE_MEDUSA_BACKEND_URL ;
 // Define the storefront domain for product view links
 const STOREFRONT_DOMAIN = 'https://www.junooni.com';
+const SALES_CHANNEL_MARKETPLACE = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
+const SALES_CHANNEL_OWN_STORE   = 'sc_01KMAP3HD1EVDF9FT7EHHHV8HP';
+
+const SALES_CHANNEL_LABELS: Record<string, string> = {
+  [SALES_CHANNEL_MARKETPLACE]: 'Junooni Marketplace',
+  [SALES_CHANNEL_OWN_STORE]: 'My Own Store',
+};
 // Default location ID for inventory management
 const DEFAULT_LOCATION_ID = "sloc_01JKWDDGKGCQFJANXV0CVJN2QW";
 const EditProduct = () => {
@@ -122,6 +133,11 @@ const EditProduct = () => {
   const [sourceProductId, setSourceProductId] = useState<number | null>(null); // ADD THIS LINE
   const [hasImageChanges, setHasImageChanges] = useState(false);
 
+  // Sales channel state
+  const [vendorSalesChannels, setVendorSalesChannels] = useState<string[]>([]); // channels vendor has access to
+  const [selectedSalesChannels, setSelectedSalesChannels] = useState<string[]>([]); // currently selected
+  const [isLoadingSalesChannels, setIsLoadingSalesChannels] = useState(false);
+  const [salesChannelsDirty, setSalesChannelsDirty] = useState(false);
   
   // For the product URL
   const [productViewUrl, setProductViewUrl] = useState("");
@@ -1988,6 +2004,44 @@ loadProduct();
     });
   }, [mediaItems, form]);
 
+  useEffect(() => {
+  if (!id || !productLoaded) return;
+
+    const loadSalesChannelData = async () => {
+    setIsLoadingSalesChannels(true);
+    try {
+      const vendor = await fetchCurrentVendor();
+      
+      // If vendor profile not found, don't show sales channel UI at all
+      if (!vendor) {
+        setVendorSalesChannels([]);
+        setIsLoadingSalesChannels(false);
+        return;
+      }
+
+      const allowed: string[] = [];
+      if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
+      if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
+      setVendorSalesChannels(allowed);
+
+      const product = await fetchProduct({ id });
+      //console.log('🔍 Product sales channels:', product?.sales_channels);
+      const currentChannelIds = (product?.sales_channels || []).map((sc: any) => sc.id);
+      // console.log('🔍 Current channel IDs:', currentChannelIds);
+      // console.log('🔍 Vendor allowed channels:', allowed);
+      // console.log('🔍 Filtered:', currentChannelIds.filter((sc: string) => allowed.includes(sc)));
+      setSelectedSalesChannels(currentChannelIds.filter((sc: string) => allowed.includes(sc)));
+    } catch (err) {
+      console.error('Failed to load sales channel data:', err);
+      setVendorSalesChannels([]);
+    } finally {
+      setIsLoadingSalesChannels(false);
+    }
+  };
+  
+  loadSalesChannelData();
+}, [id, productLoaded]);
+
   // FIXED: Helper function to prepare option-specific images metadata for all option types
   const prepareOptionImagesMetadata = (options: Option[], media: MediaItem[]) => {
   // Start with empty arrays for all options that have image associations
@@ -2651,6 +2705,37 @@ const onSubmit = async (values: ProductFormValues) => {
                         }
                         // ADD THIS: Reset deleted images tracking
                         setDeletedImageIds([]);
+
+                        // Save sales channel changes
+                        // Save sales channel changes
+                        if (salesChannelsDirty && vendorSalesChannels.length > 0) {
+                          try {
+                            // STEP 1: Remove ALL vendor-accessible channels first
+                            // This ensures clean state before re-adding selected ones
+                            const removeResults = await Promise.allSettled(
+                              vendorSalesChannels.map(sc =>
+                                removeProductFromSalesChannel({ productId: id, salesChannelId: sc })
+                              )
+                            );
+                            
+                            console.log('🔄 Removed all vendor channels:', removeResults);
+
+                            // STEP 2: Add only the selected channels
+                            // Sequential to avoid race conditions
+                            for (const sc of selectedSalesChannels) {
+                              await assignProductSalesChannels({ 
+                                productId: id, 
+                                salesChannelIds: [sc] 
+                              });
+                              console.log('✅ Added channel:', sc);
+                            }
+
+                            setSalesChannelsDirty(false);
+                            console.log('✅ Sales channels saved:', selectedSalesChannels);
+                          } catch (scErr) {
+                            console.error('❌ Sales channel update failed (non-fatal):', scErr);
+                          }
+                        }
                         
                         // Show success message
                         toast({
@@ -3107,7 +3192,8 @@ const isFormDirty =
     form.formState.isDirty ||
     hasUnsavedVariantChanges ||
     hasImageChanges ||
-    deletedImageIds.length > 0;
+    deletedImageIds.length > 0 ||
+    salesChannelsDirty;
 
 
   // Main component render
@@ -4104,6 +4190,81 @@ const isFormDirty =
                       </FormItem>
                     )}
                   />
+
+                  {/* Sales Channel Selection */}
+                  {vendorSalesChannels.length > 0 && (
+                    <div className="mt-5">
+                      <Separator className="mb-4" />
+                      <h3 className="mb-1 font-medium text-gray-700">Sales Channels</h3>
+                      <p className="mb-3 text-sm text-gray-500">
+                        Choose where this product is available for sale
+                      </p>
+
+                      {isLoadingSalesChannels ? (
+                        <p className="text-sm text-gray-400">Loading channels...</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {vendorSalesChannels.map(channelId => {
+                            const isChecked = selectedSalesChannels.includes(channelId);
+                            // Disabled if: only one channel available, OR this is the last checked one
+                            const isOnlyChannel = vendorSalesChannels.length === 1;
+                            const isLastSelected = isChecked && selectedSalesChannels.length === 1;
+                            const isDisabled = isOnlyChannel || isLastSelected;
+
+                            return (
+                              <div
+                                key={channelId}
+                                className={`flex items-center gap-3 p-3 border rounded-md ${
+                                  isDisabled
+                                    ? 'border-gray-100 bg-gray-50 opacity-70'
+                                    : 'border-gray-200'
+                                }`}
+                              >
+                                <Checkbox
+                                  id={`sc-${channelId}`}
+                                  checked={isChecked}
+                                  disabled={isDisabled}
+                                  onCheckedChange={(checked) => {
+                                    if (isDisabled) return;
+                                    setSelectedSalesChannels(prev =>
+                                      checked
+                                        ? [...prev, channelId]
+                                        : prev.filter(id => id !== channelId)
+                                    );
+                                    setSalesChannelsDirty(true);
+                                  }}
+                                  className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]"
+                                />
+                                <div className="flex-1">
+                                  <label
+                                    htmlFor={`sc-${channelId}`}
+                                    className={`text-sm font-medium ${
+                                      isDisabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 cursor-pointer'
+                                    }`}
+                                  >
+                                    {SALES_CHANNEL_LABELS[channelId] || channelId}
+                                  </label>
+                                  {isOnlyChannel && (
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                      Cannot be changed — only available channel
+                                    </p>
+                                  )}
+                                  {isLastSelected && !isOnlyChannel && (
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                      At least one channel must be selected
+                                    </p>
+                                  )}
+                                </div>
+                                {isChecked && (
+                                  <span className="text-xs text-[#e65100] font-medium">Active</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </section>
                 {/* Shipping & Fulfillment Info Card */}
                 {/* Shipping & Fulfillment Info Card */}

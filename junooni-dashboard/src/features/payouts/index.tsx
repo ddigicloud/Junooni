@@ -686,7 +686,7 @@ useEffect(() => {
         payout_details: payoutDetailsData.map((transaction: any) => ({
           id: transaction.id || `detail_${Date.now()}_${Math.random()}`,
           type: transaction.type || "earning",
-          amount: transaction.amount || 0,
+          amount: (transaction.amount || 0) / 100,
           reason: transaction.reason || "No description",
           notes: transaction.notes || undefined,
           order_id: transaction.order_id || undefined,
@@ -1563,19 +1563,19 @@ useEffect(() => {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => {
                                 const receiptText = `
-PAYOUT TRANSACTION RECEIPT
-==========================
+                                  PAYOUT TRANSACTION RECEIPT
+                                  ==========================
 
-Transaction ID: ${detail.id}
-Date: ${formatDate(detail.created_at)}
-Type: ${detail.type.charAt(0).toUpperCase() + detail.type.slice(1)}
-Amount: ${formatPrice(detail.amount)}
-Status: ${detail.status}
-${detail.order_id ? `Order ID: ${detail.order_id}` : ''}
-${detail.reason ? `Reason: ${detail.reason}` : ''}
+                                  Transaction ID: ${detail.id}
+                                  Date: ${formatDate(detail.created_at)}
+                                  Type: ${detail.type.charAt(0).toUpperCase() + detail.type.slice(1)}
+                                  Amount: ${formatPrice(detail.amount)}
+                                  Status: ${detail.status}
+                                  ${detail.order_id ? `Order ID: ${detail.order_id}` : ''}
+                                  ${detail.reason ? `Reason: ${detail.reason}` : ''}
 
-Thank you for using Junooni!
-                                `;
+                                  Thank you for using Junooni!
+                                                                  `;
                                 
                                 const blob = new Blob([receiptText], { type: 'text/plain' });
                                 const url = URL.createObjectURL(blob);
