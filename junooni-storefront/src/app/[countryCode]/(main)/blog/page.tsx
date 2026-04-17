@@ -108,11 +108,11 @@ export const metadata: Metadata = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function BlogPage({
-  searchParams,
+ searchParams,
 }: {
-  searchParams: { category?: string }
+  searchParams: Promise<{ category?: string }>
 }) {
-  const activeCategory = searchParams.category
+  const { category: activeCategory } = await searchParams
 
   // Fetch both in parallel
   const [posts, categories] = await Promise.all([

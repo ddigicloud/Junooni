@@ -2,6 +2,27 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { BLOG_MODULE } from "../../../modules/blog"
 import BlogModuleService from "../../../modules/blog/service"
 
+// All fields we want returned — must be explicit or Medusa drops custom columns
+const POST_FIELDS = [
+  "id",
+  "title",
+  "slug",
+  "content",
+  "excerpt",
+  "cover_image",
+  "author_name",
+  "author_avatar",
+  "category",
+  "tags",
+  "seo_title",
+  "seo_description",
+  "is_published",
+  "published_at",
+  "read_time_minutes",
+  "created_at",
+  "updated_at",
+]
+
 // GET /admin/blog - list all posts (published + drafts)
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const blogService: BlogModuleService = req.scope.resolve(BLOG_MODULE)
@@ -14,6 +35,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const posts = await blogService.listPosts(filters, {
+    select: POST_FIELDS,
     order: { created_at: "DESC" },
     take: parseInt(limit),
     skip: parseInt(offset),
@@ -30,17 +52,14 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const title   = body.title   as string
   const content = body.content as string || ""
 
-  // Auto-generate slug if not provided
   const slug = (body.slug as string) ||
     title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-")
 
-  // Auto-calculate read time (avg 200 words/min)
-  const wordCount    = content.split(/\s+/).filter(Boolean).length
+  const wordCount = content.split(/\s+/).filter(Boolean).length
   const read_time_minutes = (body.read_time_minutes as number) || Math.ceil(wordCount / 200)
 
   const is_published = (body.is_published as boolean) || false
 
-  // Explicitly map every field
   const post = await blogService.createPosts({
     title,
     slug,
@@ -58,5 +77,5 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     read_time_minutes,
   })
 
-  res.status(201).json({ post })
+  res.json({ post })
 }

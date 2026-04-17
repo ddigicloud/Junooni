@@ -49,10 +49,10 @@ function SidebarHeader() {
               </div>
               <button
                 onClick={handleClose}
-                className="ml-auto p-2 rounded-md hover:bg-gray-100 transition-colors md:hidden"
+                className="p-2 ml-auto transition-colors rounded-md hover:bg-gray-100 md:hidden"
                 aria-label="Close sidebar"
               >
-                <X className="h-5 w-5 text-muted-foreground" />
+                <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
           </>
@@ -66,23 +66,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [vendorId, setVendorId] = React.useState<string | undefined>()
 
   React.useEffect(() => {
-    const token = localStorage.getItem('vendorToken')
-    if (!token) return
+  const token = localStorage.getItem('vendorToken')
+  if (!token) return
 
-    try {
-      const parts = token.split('.')
-      if (parts.length !== 3) {
-        console.warn('[Sidebar] Token is not a JWT')
-        return
-      }
-      const payload = JSON.parse(atob(parts[1]))
-      const id = payload.actor_id ?? payload.app_metadata?.vendor_id
-      console.log('[Sidebar] resolved vendor_id:', id)
+  fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then(r => r.json())
+    .then(data => {
+      const id = data?.vendor?.id
+      //console.log('[Sidebar] vendor.id from API:', id)
       setVendorId(id)
-    } catch (e) {
-      console.warn('[Sidebar] JWT decode failed:', e)
-    }
-  }, [])
+    })
+    .catch(e => console.warn('[Sidebar] vendor fetch failed:', e))
+}, [])
 
   const sidebarData = getSidebarData(vendorId)
 

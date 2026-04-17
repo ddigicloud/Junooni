@@ -18,8 +18,6 @@ import {
 import { PencilSquare, Trash, Plus, Eye, ArrowLeft, BookOpen, XMark } from "@medusajs/icons"
 
 // ─── Authenticated fetch helper ───────────────────────────────────────────────
-// Medusa Admin stores the JWT in localStorage under "medusa_admin_token".
-// We attach it as Bearer so all admin/* routes pass authentication.
 
 function getAdminToken(): string {
   try {
@@ -131,7 +129,6 @@ function CategoryManager({
           boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
         }}
       >
-        {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <Heading level="h2">Manage Categories</Heading>
@@ -146,7 +143,6 @@ function CategoryManager({
           </button>
         </div>
 
-        {/* Add row */}
         <div style={{
           display: "flex", gap: 8, padding: "10px 12px",
           background: "#f3f4f6", borderRadius: 8, border: "1px solid #e5e7eb",
@@ -180,7 +176,6 @@ function CategoryManager({
           </button>
         </div>
 
-        {/* List */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
@@ -223,20 +218,97 @@ function CategoryManager({
   )
 }
 
-// ─── Rich Text Editor ─────────────────────────────────────────────────────────
+// ─── Rich Text Editor (with HTML/CSS Source mode) ─────────────────────────────
+
+type EditorMode = "visual" | "html" | "preview"
+
+/**
+ * Given arbitrary HTML (may include <style>, <meta>, <link>, <head>, <body>
+ * wrapper tags produced by full-page templates), extract only the visible
+ * body content so the Visual editor doesn't render leaked CSS or meta tags.
+ *
+ * Strategy:
+ *  1. If a <body> tag exists, grab its inner HTML.
+ *  2. Strip any remaining <style>, <script>, <meta>, <link>, <title>, <head>
+ *     tags plus their contents.
+ *  3. Return the cleaned fragment.
+ */
+function stripToBodyContent(html: string): string {
+  // 1. Extract <body>…</body> if present
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+  let content = bodyMatch ? bodyMatch[1] : html
+
+  // 2. Remove head-only tags (with their contents)
+  content = content
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<meta[^>]*\/?>/gi, "")
+    .replace(/<link[^>]*\/?>/gi, "")
+    .replace(/<title[\s\S]*?<\/title>/gi, "")
+    .replace(/<head[\s\S]*?<\/head>/gi, "")
+
+  return content.trim()
+}
+
+/** Returns true if the HTML contains custom CSS/head markup that must be preserved verbatim */
+function hasCustomMarkup(html: string): boolean {
+  return /<style[\s\S]*?>/i.test(html) ||
+    /<meta\s/i.test(html) ||
+    /<link\s/i.test(html) ||
+    /<head[\s\S]*?>/i.test(html)
+}
 
 function RichTextEditor({ value, onChange }: { value: string; onChange: (html: string) => void }) {
   const editorRef = useRef<HTMLDivElement | null>(null)
   const initialized = useRef(false)
 
+  // sourceValue is the authoritative full HTML (with <style> etc.) shown in the HTML tab.
+  const [sourceValue, setSourceValue] = useState(value)
+
+  // Track whether current content has custom CSS/head markup.
+  // When true: Visual tab is read-only (displays stripped preview), HTML tab is the only edit surface.
+  const [isCustomHtml, setIsCustomHtml] = useState(() => hasCustomMarkup(value))
+
+  // Default to HTML tab if the saved content already has custom markup.
+  const [mode, setMode] = useState<EditorMode>(() =>
+    hasCustomMarkup(value) ? "html" : "visual"
+  )
+
+  const handleModeChange = (newMode: EditorMode) => {
+    if (newMode === "visual" && mode === "html") {
+      // HTML → Visual: show stripped body content for preview.
+      // Do NOT call onChange — source is already saved on every keystroke.
+      if (editorRef.current) {
+        editorRef.current.innerHTML = stripToBodyContent(sourceValue)
+        initialized.current = true
+      }
+    }
+    if ((newMode === "html" || newMode === "preview") && mode === "visual" && !isCustomHtml) {
+      // Visual → HTML/Preview (only when no custom HTML): sync visual content into source.
+      const latest = editorRef.current?.innerHTML ?? value
+      setSourceValue(latest)
+      // onChange already up-to-date from handleVisualInput
+    }
+    setMode(newMode)
+  }
+
   const exec = (command: string, val?: string) => {
     document.execCommand(command, false, val)
     editorRef.current?.focus()
-    if (editorRef.current) onChange(editorRef.current.innerHTML)
+    if (editorRef.current && !isCustomHtml) onChange(editorRef.current.innerHTML)
   }
 
-  const handleInput = () => {
-    if (editorRef.current) onChange(editorRef.current.innerHTML)
+  // Only meaningful when isCustomHtml is false (contenteditable is editable).
+  const handleVisualInput = () => {
+    if (editorRef.current && !isCustomHtml) onChange(editorRef.current.innerHTML)
+  }
+
+  const handleSourceChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newVal = e.target.value
+    setSourceValue(newVal)
+    onChange(newVal) // always save the full source including <style> tags
+    const custom = hasCustomMarkup(newVal)
+    setIsCustomHtml(custom)
   }
 
   const toolbarButtons = [
@@ -255,34 +327,251 @@ function RichTextEditor({ value, onChange }: { value: string; onChange: (html: s
     { label: "⎏",  title: "Redo",            action: () => exec("redo"),                                                      style: "" },
   ]
 
-  const wordCount = value.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length
+  // Word count from the current HTML value
+  const currentHtml = mode === "html" ? sourceValue : (editorRef.current?.innerHTML ?? value)
+  const wordCount = currentHtml.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length
+
+  // Tab styles helper
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    padding: "5px 14px",
+    fontSize: 12,
+    fontWeight: active ? 600 : 400,
+    color: active ? "#111827" : "#6b7280",
+    background: active ? "#ffffff" : "transparent",
+    border: "none",
+    borderRadius: "5px 5px 0 0",
+    cursor: "pointer",
+    borderBottom: active ? "2px solid #111827" : "2px solid transparent",
+    transition: "all 0.15s",
+  })
 
   return (
     <div className="flex flex-col overflow-hidden border rounded-lg border-ui-border-base">
-      <div className="flex flex-wrap gap-0.5 p-2 bg-ui-bg-subtle border-b border-ui-border-base">
-        {toolbarButtons.map((btn) => (
-          <button key={btn.title} title={btn.title} type="button"
-            onMouseDown={(e) => { e.preventDefault(); btn.action() }}
-            className={`px-2 py-1 text-xs rounded hover:bg-ui-bg-base-hover text-ui-fg-base transition-colors min-w-[28px] ${btn.style}`}>
-            {btn.label}
+      {/* ── Top bar: mode tabs + (visual-only) format buttons ── */}
+      <div style={{
+        display: "flex", alignItems: "stretch", flexWrap: "wrap", gap: 0,
+        background: "var(--color-bg-subtle, #f9fafb)",
+        borderBottom: "1px solid var(--color-border-base, #e5e7eb)",
+        padding: "4px 6px 0",
+      }}>
+        {/* Mode tabs */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 2, marginRight: 12 }}>
+          <button type="button" style={tabStyle(mode === "visual")} onClick={() => handleModeChange("visual")}>
+            Visual
           </button>
-        ))}
-        <span className="self-center px-2 py-1 ml-auto text-xs text-ui-fg-muted">Rich Text</span>
+          <button type="button" style={tabStyle(mode === "html")} onClick={() => handleModeChange("html")}>
+            {"</>"}  HTML / CSS
+          </button>
+          <button type="button" style={tabStyle(mode === "preview")} onClick={() => handleModeChange("preview")}>
+            Preview
+          </button>
+        </div>
+
+        {/* Visual-mode toolbar — hidden when content has custom HTML/CSS */}
+        {mode === "visual" && !isCustomHtml && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center", paddingBottom: 4 }}>
+            {toolbarButtons.map((btn) => (
+              <button key={btn.title} title={btn.title} type="button"
+                onMouseDown={(e) => { e.preventDefault(); btn.action() }}
+                className={`px-2 py-1 text-xs rounded hover:bg-ui-bg-base-hover text-ui-fg-base transition-colors min-w-[28px] ${btn.style}`}>
+                {btn.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Visual read-only notice when custom HTML is present */}
+        {mode === "visual" && isCustomHtml && (
+          <div style={{ display: "flex", alignItems: "center", paddingBottom: 4 }}>
+            <span style={{
+              fontSize: 11, color: "#b45309", fontFamily: "monospace",
+              background: "#fef3c7", padding: "2px 10px", borderRadius: 4,
+              border: "1px solid #fcd34d",
+            }}>
+              ⚠ Read-only preview — this post has custom HTML/CSS. Edit in the HTML tab.
+            </span>
+          </div>
+        )}
+
+        {/* HTML-mode hint */}
+        {mode === "html" && (
+          <div style={{ display: "flex", alignItems: "center", paddingBottom: 4 }}>
+            <span style={{
+              fontSize: 11, color: "#6b7280", fontFamily: "monospace",
+              background: "#f3f4f6", padding: "2px 8px", borderRadius: 4, border: "1px solid #e5e7eb",
+            }}>
+              Raw HTML + inline CSS — changes saved on every keystroke
+            </span>
+          </div>
+        )}
+
+        <span style={{ marginLeft: "auto", fontSize: 11, color: "#9ca3af", padding: "6px 4px 4px", alignSelf: "flex-end" }}>
+          {mode === "visual" ? (isCustomHtml ? "Preview" : "Rich Text") : mode === "html" ? "Source" : "Preview"}
+        </span>
       </div>
-      <div
-        ref={(el) => {
-          editorRef.current = el
-          if (el && !initialized.current) { el.innerHTML = value; initialized.current = true }
-        }}
-        contentEditable suppressContentEditableWarning onInput={handleInput}
-        className="min-h-[320px] p-4 text-sm text-ui-fg-base focus:outline-none"
-        style={{ lineHeight: "1.7" }}
-      />
-      <div className="flex items-center justify-between p-2 border-t border-ui-border-base bg-ui-bg-subtle">
+
+      {/* ── Visual editor ── */}
+      {mode === "visual" && (
+        <div
+          ref={(el) => {
+            editorRef.current = el
+            if (el && !initialized.current) {
+              el.innerHTML = stripToBodyContent(sourceValue)
+              initialized.current = true
+            }
+          }}
+          contentEditable={!isCustomHtml}
+          suppressContentEditableWarning
+          onInput={handleVisualInput}
+          className="min-h-[320px] p-4 text-sm text-ui-fg-base focus:outline-none"
+          style={{
+            lineHeight: "1.7",
+            // Visual cue that this is not editable when custom HTML is present
+            ...(isCustomHtml ? {
+              cursor: "default",
+              background: "var(--color-bg-subtle, #f9fafb)",
+              color: "var(--color-fg-subtle, #6b7280)",
+              userSelect: "text",
+            } : {}),
+          }}
+        />
+      )}
+
+      {/* ── HTML / CSS source editor ── */}
+      {mode === "html" && (
+        <div style={{ position: "relative" }}>
+          <textarea
+            value={sourceValue}
+            onChange={handleSourceChange}
+            spellCheck={false}
+            style={{
+              width: "100%",
+              minHeight: 320,
+              padding: "16px",
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace",
+              fontSize: 13,
+              lineHeight: "1.65",
+              color: "#1e293b",
+              //background: "#0f172a",
+              border: "none",
+              outline: "none",
+              resize: "vertical",
+              boxSizing: "border-box",
+              tabSize: 2,
+              whiteSpace: "pre",
+              overflowX: "auto",
+            }}
+            placeholder={`<!-- Write HTML here, including inline <style> tags or inline CSS -->
+<style>
+  .my-highlight {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+  }
+</style>
+
+<div class="my-highlight">
+  <h2>Custom styled section</h2>
+  <p>Full HTML and CSS supported here.</p>
+</div>`}
+            onKeyDown={(e) => {
+              // Tab key inserts spaces instead of moving focus
+              if (e.key === "Tab") {
+                e.preventDefault()
+                const el = e.currentTarget
+                const start = el.selectionStart
+                const end = el.selectionEnd
+                const newVal = el.value.substring(0, start) + "  " + el.value.substring(end)
+                setSourceValue(newVal)
+                onChange(newVal)
+                // Restore cursor position after React re-render
+                requestAnimationFrame(() => {
+                  el.selectionStart = el.selectionEnd = start + 2
+                })
+              }
+            }}
+          />
+          {/* Line count gutter overlay (cosmetic) */}
+          <div style={{
+            position: "absolute", top: 0, left: 0, width: 40,
+            height: "100%", background: "rgba(255,255,255,0.03)",
+            borderRight: "1px solid rgba(255,255,255,0.06)",
+            pointerEvents: "none",
+          }} />
+        </div>
+      )}
+
+      {/* ── Preview mode ── */}
+      {mode === "preview" && (
+        <div style={{ position: "relative" }}>
+          {/* Label */}
+          <div style={{
+            position: "absolute", top: 8, right: 12,
+            fontSize: 11, color: "#9ca3af",
+            background: "#f3f4f6", padding: "2px 8px",
+            borderRadius: 4, border: "1px solid #e5e7eb", zIndex: 1,
+          }}>
+            Rendered preview
+          </div>
+          {/* Sandboxed iframe render */}
+          <iframe
+            key={sourceValue}  /* re-mount on content change */
+            srcDoc={`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px; line-height: 1.7;
+    color: #111827; padding: 20px 24px;
+    margin: 0;
+  }
+  h1,h2,h3,h4 { margin: 1.2em 0 0.5em; font-weight: 700; }
+  h2 { font-size: 1.4em; } h3 { font-size: 1.2em; }
+  p { margin: 0.75em 0; }
+  a { color: #3b82f6; }
+  blockquote { border-left: 3px solid #d1d5db; margin: 1em 0; padding: 0.5em 1em; color: #6b7280; }
+  ul,ol { padding-left: 1.5em; }
+  hr { border: none; border-top: 1px solid #e5e7eb; margin: 1.5em 0; }
+  img { max-width: 100%; border-radius: 6px; }
+  pre,code { font-family: monospace; background: #f3f4f6; padding: 0.2em 0.4em; border-radius: 3px; }
+</style>
+</head>
+<body>${sourceValue || "<p style='color:#9ca3af'>Nothing to preview yet.</p>"}</body>
+</html>`}
+            style={{
+              width: "100%", minHeight: 320,
+              border: "none", background: "#fff",
+              display: "block",
+            }}
+            sandbox="allow-same-origin"
+            title="Content preview"
+          />
+        </div>
+      )}
+
+      {/* ── Footer ── */}
+      <div style={{
+        borderTop: "1px solid var(--color-border-base, #e5e7eb)",
+        padding: "6px 12px",
+        background: "var(--color-bg-subtle, #f9fafb)",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
         <Text size="xsmall" className="text-ui-fg-subtle">
           {wordCount} words · ~{Math.ceil(wordCount / 200)} min read
         </Text>
-        <Text size="xsmall" className="text-ui-fg-muted">HTML supported</Text>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {mode === "html" && (
+            <span style={{ fontSize: 11, color: "#6b7280" }}>
+              {sourceValue.length.toLocaleString()} chars
+            </span>
+          )}
+          <Text size="xsmall" className="text-ui-fg-muted">
+            {mode === "html" ? "HTML + CSS" : mode === "preview" ? "Preview mode" : "Rich Text"}
+          </Text>
+        </div>
       </div>
     </div>
   )
@@ -299,14 +588,22 @@ function CoverImageUploader({ value, onChange }: { value: string; onChange: (url
     if (!file) return
     setUploading(true)
     try {
+      const token = getAdminToken()
       const formData = new FormData()
       formData.append("files", file)
-      if (!res.ok) throw new Error("Upload failed")
+      const res = await fetch("/admin/uploads", {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      })
+      if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
       const data = await res.json()
       const url = data.files?.[0]?.url ?? data.url ?? data[0]?.url
       if (url) onChange(url)
       else throw new Error("No URL in response")
-    } catch {
+    } catch (err) {
+      console.error("[BLOG] upload error:", err)
       toast.error("Upload failed — try pasting a URL instead")
     } finally {
       setUploading(false)
@@ -349,13 +646,11 @@ export default function BlogPage() {
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [showCatManager, setShowCatManager] = useState(false)
 
-  // ── Categories from backend ──
   const [categories, setCategories]     = useState<Category[]>([])
   const [loadingCats, setLoadingCats]   = useState(true)
 
   const dialog = usePrompt()
 
-  // ── Fetch categories from DB ──
   const fetchCategories = useCallback(async () => {
     setLoadingCats(true)
     try {
@@ -369,11 +664,9 @@ export default function BlogPage() {
     }
   }, [])
 
-  // ── Add category to DB ──
   const addCategory = async (label: string) => {
     const value = slugify(label)
     if (!value) { toast.error("Invalid category name"); return }
-
     try {
       const res = await adminFetch("/admin/blog/categories", {
         method: "POST",
@@ -381,11 +674,7 @@ export default function BlogPage() {
         body: JSON.stringify({ label, value, sort_order: categories.length }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.message || "Failed to create category")
-        return
-      }
-      // Optimistic update + refetch
+      if (!res.ok) { toast.error(data.message || "Failed to create category"); return }
       setCategories((prev) => [...prev, data.category])
       toast.success(`"${label}" saved to database`)
     } catch {
@@ -393,12 +682,9 @@ export default function BlogPage() {
     }
   }
 
-  // ── Delete category from DB ──
   const deleteCategory = async (id: string) => {
     try {
-      const res = await adminFetch(`/admin/blog/categories/${id}`, {
-        method: "DELETE",
-      })
+      const res = await adminFetch(`/admin/blog/categories/${id}`, { method: "DELETE" })
       if (!res.ok) throw new Error("Delete failed")
       setCategories((prev) => prev.filter((c) => c.id !== id))
       toast.success("Category deleted")
@@ -407,7 +693,6 @@ export default function BlogPage() {
     }
   }
 
-  // ── Fetch posts ──
   const fetchPosts = useCallback(async () => {
     setLoadingPosts(true)
     try {
@@ -457,7 +742,16 @@ export default function BlogPage() {
         <PostListView
           posts={posts} loading={loadingPosts} categories={categories}
           onNew={() => { setEditingPost(null); setView("create") }}
-          onEdit={(post) => { setEditingPost(post); setView("edit") }}
+          onEdit={async (post) => {
+            try {
+              const res  = await adminFetch(`/admin/blog/${post.id}`)
+              const data = await res.json()
+              setEditingPost(data.post || post)
+            } catch {
+              setEditingPost(post)
+            }
+            setView("edit")
+          }}
           onDelete={handleDelete}
           onRefresh={fetchPosts}
           onManageCategories={() => setShowCatManager(true)}
@@ -527,13 +821,13 @@ function PostListView({
           <Table.Body>
             {loading ? (
               <Table.Row>
-                <Table.Cell colSpan={6}>
+                <Table.Cell style={{ gridColumn: "1 / -1" }}>
                   <Text className="py-8 text-center text-ui-fg-subtle">Loading...</Text>
                 </Table.Cell>
               </Table.Row>
             ) : posts.length === 0 ? (
               <Table.Row>
-                <Table.Cell colSpan={6}>
+                <Table.Cell style={{ gridColumn: "1 / -1" }}>
                   <div className="flex flex-col items-center py-12 gap-y-2">
                     <BookOpen className="text-ui-fg-muted" style={{ width: 32, height: 32 }} />
                     <Text className="text-ui-fg-subtle">No blog posts yet</Text>
@@ -631,7 +925,6 @@ function PostFormView({
     seo_description: post?.seo_description  || "",
     is_published:    post?.is_published     || false,
   })
-
 
   const set = (field: keyof FormData) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>

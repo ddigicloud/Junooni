@@ -97,7 +97,7 @@ import {
 } from '@tabler/icons-react'
 import { type SidebarData } from '../types'
 
-const JUNOONI_ADMIN_VENDOR_ID = '01K4QZBPTTDMRYBME8S15Y576G'
+const JUNOONI_ADMIN_VENDOR_ID = '01KJ50176GDA5B0W7228VZNSR8'
 
 export const getSidebarData = (vendorId?: string): SidebarData => {
   const isJunooniAdmin = vendorId === JUNOONI_ADMIN_VENDOR_ID

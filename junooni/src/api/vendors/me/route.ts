@@ -224,10 +224,11 @@ export const UpdateVendorSchema = z.object({
   cancelled_checkque: z.string().optional(),
   creator_bio: z.string().optional(),
   creator_title: z.string().optional(),
+  // ── admins: now correctly typed as an object (one admin per request) ──
   admins: z.object({
-    email: z.string(),
+    email: z.string().email(),
     first_name: z.string().optional(),
-    last_name: z.string().optional()
+    last_name: z.string().optional(),
   }).strict().optional(),
 }).strict()
 
@@ -242,6 +243,7 @@ async function updateVendorForMe(
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const marketplaceModuleService: MarketplaceModuleService = req.scope.resolve(MARKETPLACE_MODULE)
 
+  // Look up the vendor this admin belongs to
   const { data: [vendorAdmin] } = await query.graph({
     entity: "vendor_admin",
     fields: ["vendor.id"],
@@ -254,15 +256,40 @@ async function updateVendorForMe(
     return res.status(404).json({ message: "Vendor not found" })
   }
 
-  const updateData = req.validatedBody || req.body
+  const body = req.validatedBody || req.body
 
+  // ── Split admins out — it's a relation, not a vendor column ──
+  const { admins, ...vendorFields } = body
+
+  // 1. Update vendor scalar fields
   const updatedVendor = await marketplaceModuleService.updateVendors({
     id: vendorAdmin.vendor.id,
-    ...updateData,
+    ...vendorFields,
+  })
+
+  // 2. Update the calling admin's name if provided
+  if (admins?.first_name !== undefined || admins?.last_name !== undefined) {
+    await marketplaceModuleService.updateVendorAdmins({
+      id: req.auth_context.actor_id,
+      ...(admins.first_name !== undefined && { first_name: admins.first_name }),
+      ...(admins.last_name  !== undefined && { last_name:  admins.last_name  }),
+    })
+  }
+
+  // 3. Re-fetch admins so the response is consistent with GET /vendors/me
+  const { data: adminData } = await query.graph({
+    entity: "vendor_admin",
+    fields: ["id", "email", "first_name", "last_name"],
+    filters: {
+      vendor_id: [vendorAdmin.vendor.id],
+    },
   })
 
   return res.json({
-    vendor: updatedVendor,
+    vendor: {
+      ...updatedVendor,
+      admins: adminData || [],
+    },
     message: "Vendor updated successfully",
   })
 }

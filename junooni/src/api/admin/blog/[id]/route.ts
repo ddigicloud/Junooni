@@ -2,10 +2,20 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { BLOG_MODULE } from "../../../../modules/blog"
 import BlogModuleService from "../../../../modules/blog/service"
 
-// GET /admin/blog/:id
+// GET /admin/blog/:id — returns all fields for editing
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const blogService: BlogModuleService = req.scope.resolve(BLOG_MODULE)
-  const post = await blogService.retrievePost(req.params.id)
+
+  const post = await blogService.retrievePost(req.params.id, {
+    select: [
+      "id", "title", "slug", "content", "excerpt",
+      "cover_image", "author_name", "author_avatar",
+      "category", "tags", "seo_title", "seo_description",
+      "is_published", "published_at", "read_time_minutes",
+      "created_at", "updated_at",
+    ],
+  })
+
   res.json({ post })
 }
 
@@ -15,7 +25,6 @@ export async function PUT(req: MedusaRequest, res: MedusaResponse) {
   const { id } = req.params
   const body = req.body as Record<string, unknown>
 
-  // If publishing for first time, stamp published_at
   let published_at = body.published_at as Date | null | undefined
   if (body.is_published && !published_at) {
     const existing = await blogService.retrievePost(id)
@@ -24,11 +33,9 @@ export async function PUT(req: MedusaRequest, res: MedusaResponse) {
     }
   }
 
-  // Recalculate read time if content changed
   const wordCount = ((body.content as string) || "").split(/\s+/).length
   const read_time_minutes = (body.read_time_minutes as number) || Math.ceil(wordCount / 200)
 
-  // Explicitly map every field — spread on updatePosts silently drops unknown fields
   const updateData: Record<string, unknown> = {
     id,
     title:           body.title,

@@ -36,78 +36,78 @@ export default function NotFound() {
   }
   
   // If user is not logged in, always show login prompt regardless of the page
-  if (!customer) {
-    return (
-      <div className="min-h-[calc(100vh-64px)] bg-gray-50 relative overflow-hidden">
-        {/* Very Subtle Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/3 left-1/6 w-2 h-2 bg-[#e65100] opacity-20 rounded-full animate-pulse"></div>
-          <div className="absolute top-2/3 right-1/5 w-3 h-3 bg-[#ff8a50] opacity-15 rounded-full animate-bounce" style={{animationDuration: '4s'}}></div>
-          <div className="absolute top-1/5 right-1/3 w-1 h-1 bg-[#e65100] opacity-30 rounded-full animate-ping" style={{animationDuration: '3s'}}></div>
-        </div>
+  // if (!customer) {
+  //   return (
+  //     <div className="min-h-[calc(100vh-64px)] bg-gray-50 relative overflow-hidden">
+  //       {/* Very Subtle Background Elements */}
+  //       <div className="absolute inset-0 overflow-hidden">
+  //         <div className="absolute top-1/3 left-1/6 w-2 h-2 bg-[#e65100] opacity-20 rounded-full animate-pulse"></div>
+  //         <div className="absolute top-2/3 right-1/5 w-3 h-3 bg-[#ff8a50] opacity-15 rounded-full animate-bounce" style={{animationDuration: '4s'}}></div>
+  //         <div className="absolute top-1/5 right-1/3 w-1 h-1 bg-[#e65100] opacity-30 rounded-full animate-ping" style={{animationDuration: '3s'}}></div>
+  //       </div>
 
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4">
-          <div className="w-full max-w-md space-y-8 text-center">
-            {/* Animated Icon */}
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="w-24 h-24 bg-gradient-to-r from-[#e65100] to-[#ff8a50] rounded-full flex items-center justify-center shadow-lg animate-bounce">
-                  <User className="w-12 h-12 text-white" />
-                </div>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-[#e65100] rounded-full animate-ping"></div>
-              </div>
-            </div>
+  //       <div className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4">
+  //         <div className="w-full max-w-md space-y-8 text-center">
+  //           {/* Animated Icon */}
+  //           <div className="flex justify-center">
+  //             <div className="relative">
+  //               <div className="w-24 h-24 bg-gradient-to-r from-[#e65100] to-[#ff8a50] rounded-full flex items-center justify-center shadow-lg animate-bounce">
+  //                 <User className="w-12 h-12 text-white" />
+  //               </div>
+  //               <div className="absolute -top-2 -right-2 w-6 h-6 bg-[#e65100] rounded-full animate-ping"></div>
+  //             </div>
+  //           </div>
             
-            {/* Heading with Animation */}
-            <div className="space-y-4">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-[#e65100] to-[#ff8a50] bg-clip-text text-transparent animate-pulse">
-                Welcome Back!
-              </h1>
-              <p className="text-lg text-gray-600 animate-fade-in">
-                Please sign in to access this page and unlock your personalized experience.
-              </p>
-            </div>
+  //           {/* Heading with Animation */}
+  //           <div className="space-y-4">
+  //             <h1 className="text-4xl font-bold bg-gradient-to-r from-[#e65100] to-[#ff8a50] bg-clip-text text-transparent animate-pulse">
+  //               Welcome Back!
+  //             </h1>
+  //             <p className="text-lg text-gray-600 animate-fade-in">
+  //               Please sign in to access this page and unlock your personalized experience.
+  //             </p>
+  //           </div>
 
-            {/* Action Button with Hover Effects */}
-            <div className="space-y-4">
-              <Link href="/account" className="block w-full">
-                <Button 
-                  className="w-full bg-gradient-to-r from-[#e65100] to-[#ff8a50] hover:from-[#d84315] hover:to-[#e65100] transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl" 
-                  size="large"
-                >
-                  <span className="flex items-center gap-2">
-                    Sign In to Your Account
-                    <Zap className="w-4 h-4 animate-pulse" />
-                  </span>
-                </Button>
-              </Link>
-            </div>
+  //           {/* Action Button with Hover Effects */}
+  //           <div className="space-y-4">
+  //             <Link href="/account" className="block w-full">
+  //               <Button 
+  //                 className="w-full bg-gradient-to-r from-[#e65100] to-[#ff8a50] hover:from-[#d84315] hover:to-[#e65100] transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl" 
+  //                 size="large"
+  //               >
+  //                 <span className="flex items-center gap-2">
+  //                   Sign In to Your Account
+  //                   <Zap className="w-4 h-4 animate-pulse" />
+  //                 </span>
+  //               </Button>
+  //             </Link>
+  //           </div>
 
-            {/* Additional Links */}
-            <div className="pt-6 space-y-4">
-              <Link
-                className="flex items-center justify-center gap-x-2 text-[#e65100] hover:text-[#d84315] transition-all duration-300 transform hover:scale-105"
-                href="/"
-              >
-                <Home className="w-5 h-5" />
-                <Text className="font-medium text-[#e65100]">Return to Homepage</Text>
-              </Link>
-            </div>
-          </div>
-        </div>
+  //           {/* Additional Links */}
+  //           <div className="pt-6 space-y-4">
+  //             <Link
+  //               className="flex items-center justify-center gap-x-2 text-[#e65100] hover:text-[#d84315] transition-all duration-300 transform hover:scale-105"
+  //               href="/"
+  //             >
+  //               <Home className="w-5 h-5" />
+  //               <Text className="font-medium text-[#e65100]">Return to Homepage</Text>
+  //             </Link>
+  //           </div>
+  //         </div>
+  //       </div>
 
-        <style jsx>{`
-          @keyframes fade-in {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fade-in {
-            animation: fade-in 1s ease-out;
-          }
-        `}</style>
-      </div>
-    )
-  }
+  //       <style jsx>{`
+  //         @keyframes fade-in {
+  //           from { opacity: 0; transform: translateY(20px); }
+  //           to { opacity: 1; transform: translateY(0); }
+  //         }
+  //         .animate-fade-in {
+  //           animation: fade-in 1s ease-out;
+  //         }
+  //       `}</style>
+  //     </div>
+  //   )
+  // }
 
   // User is logged in but page doesn't exist - show enhanced 404
   return (

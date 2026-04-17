@@ -168,6 +168,51 @@
           "nullable": true,
           "mappedType": "text"
         },
+        "author_avatar": {
+          "name": "author_avatar",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text[]",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "array"
+        },
+        "seo_title": {
+          "name": "seo_title",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
+        "seo_description": {
+          "name": "seo_description",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
         "is_published": {
           "name": "is_published",
           "type": "boolean",
@@ -188,14 +233,14 @@
           "length": 6,
           "mappedType": "datetime"
         },
-        "tags": {
-          "name": "tags",
-          "type": "text[]",
+        "read_time_minutes": {
+          "name": "read_time_minutes",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "mappedType": "array"
+          "mappedType": "integer"
         },
         "created_at": {
           "name": "created_at",
@@ -233,15 +278,6 @@
       "name": "post",
       "schema": "public",
       "indexes": [
-        {
-          "keyName": "IDX_post_slug_unique",
-          "columnNames": [],
-          "composite": false,
-          "constraint": false,
-          "primary": false,
-          "unique": false,
-          "expression": "CREATE UNIQUE INDEX IF NOT EXISTS \"IDX_post_slug_unique\" ON \"post\" (\"slug\") WHERE deleted_at IS NULL"
-        },
         {
           "keyName": "IDX_post_deleted_at",
           "columnNames": [],

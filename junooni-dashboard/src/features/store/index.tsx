@@ -237,7 +237,7 @@ export default function StorePage() {
               if (payoutInfo) {
                 // total_earned is in paise — divide by 100 for rupees
                 const totalEarnedPaise = payoutInfo.total_earned ?? 0
-                const revenueInRupees = Math.round(totalEarnedPaise / 100)
+                const revenueInRupees = Math.round(totalEarnedPaise)
                 setStats(p => ({ ...p, totalRevenue: revenueInRupees }))
               }
             }
@@ -339,8 +339,8 @@ export default function StorePage() {
   if (!sellOnOwnStore) return (
     <div className="min-h-screen bg-gray-50">
       <AdminImpersonationBanner />
-      <header className="sticky top-0 z-30 border-b bg-white/90 backdrop-blur-md border-gray-200 shadow-sm">
-        <div className="container px-4 py-3 mx-auto flex items-center justify-between">
+      <header className="sticky top-0 z-30 border-b border-gray-200 shadow-sm bg-white/90 backdrop-blur-md">
+        <div className="container flex items-center justify-between px-4 py-3 mx-auto">
           <div className="flex items-center gap-3">
             <SidebarTrigger variant="outline" className="scale-125 sm:scale-100" />
             <Separator orientation="vertical" className="h-6" />
@@ -349,37 +349,40 @@ export default function StorePage() {
           <ProfileDropdown />
         </div>
       </header>
-      <div className="flex items-center justify-center min-h-[80vh] px-6">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: `${BRAND.primary}15` }}>
+      <div className="flex items-center justify-center min-h-[60vh] px-6 py-6">
+        <div className="w-full max-w-md">
+          <div className="mb-5 text-center">
+            <div className="flex items-center justify-center w-20 h-20 mx-auto mb-5 rounded-2xl" style={{ background: `${BRAND.primary}15` }}>
               <ShoppingBag className="w-9 h-9" style={{ color: BRAND.primary }} />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Launch your own merch store</h1>
-            <p className="text-gray-500 text-sm">Get a fully branded storefront at <span className="font-semibold">{vendorHandle || "yourname"}.junooni.com</span> — free, no upfront cost.</p>
+            <h1 className="mb-2 text-2xl font-bold text-gray-900">Launch your own merch store</h1>
+            <p className="text-sm text-gray-500">Get a fully branded storefront at <span className="font-semibold">{vendorHandle || "yourname"}.junooni.com</span> — free, no upfront cost.</p>
           </div>
-          <div className="space-y-2.5 mb-7 p-5 rounded-2xl border border-gray-100 bg-white shadow-sm">
-            {[
-              { icon: "🌐", title: "Your own URL",         sub: `${vendorHandle || "yourname"}.junooni.com` },
-              { icon: "🎨", title: "Fully branded",        sub: "Your colors, fonts, logo" },
-              { icon: "📦", title: "Print-on-demand",      sub: "We handle printing & shipping" },
-              { icon: "💰", title: "You keep the margin",  sub: "Set your own prices" },
-              { icon: "📄", title: "Custom pages",         sub: "About, FAQ, Contact + more" },
-            ].map(item => (
-              <div key={item.title} className="flex items-center gap-3 py-1">
-                <span className="text-xl w-7 shrink-0">{item.icon}</span>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{item.title}</p>
-                  <p className="text-xs text-gray-400">{item.sub}</p>
+          <div className="p-4 mb-5 bg-white border border-gray-100 shadow-sm rounded-2xl">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              {[
+                { icon: "🌐", title: "Your own URL",        sub: `${vendorHandle || "yourname"}.junooni.com` },
+                { icon: "🎨", title: "Fully branded",       sub: "Your colors, fonts, logo" },
+                { icon: "📦", title: "Print-on-demand",     sub: "We handle printing & shipping" },
+                { icon: "💰", title: "You keep the margin", sub: "Set your own prices" },
+                { icon: "📄", title: "Custom pages",        sub: "About, FAQ, Contact + more" },
+                { icon: "🚀", title: "Go live free",        sub: "No upfront cost, ever" },
+              ].map(item => (
+                <div key={item.title} className="flex items-start gap-2.5">
+                  <span className="text-lg w-6 shrink-0 mt-0.5">{item.icon}</span>
+                  <div>
+                    <p className="text-sm font-semibold leading-tight text-gray-800">{item.title}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 leading-tight">{item.sub}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-          <Button onClick={handleEnableOwnStore} disabled={isEnabling} className="w-full py-5 text-base font-semibold gap-2"
+          <Button onClick={handleEnableOwnStore} disabled={isEnabling} className="w-full gap-2 py-5 text-base font-semibold"
             style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`, color: "white" }}>
             {isEnabling ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Rocket className="w-4 h-4" />Set up my store</>}
           </Button>
-          <button onClick={() => navigate({ to: "/dashboard" })} className="mt-4 block mx-auto text-xs underline text-gray-400 hover:text-gray-600 transition-colors">
+          <button onClick={() => navigate({ to: "/dashboard" })} className="block mx-auto mt-4 text-xs text-gray-400 underline transition-colors hover:text-gray-600">
             Back to dashboard
           </button>
         </div>
@@ -392,8 +395,8 @@ export default function StorePage() {
       <AdminImpersonationBanner />
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 border-b bg-white/90 backdrop-blur-md border-gray-200 shadow-sm">
-        <div className="container px-4 py-3 mx-auto flex items-center justify-between">
+      <header className="sticky top-0 z-30 border-b border-gray-200 shadow-sm bg-white/90 backdrop-blur-md">
+        <div className="container flex items-center justify-between px-4 py-3 mx-auto">
           <div className="flex items-center gap-3">
             <SidebarTrigger variant="outline" className="scale-125 sm:scale-100" />
             <Separator orientation="vertical" className="h-6" />
@@ -423,14 +426,14 @@ export default function StorePage() {
         </div>
       </header>
 
-      <div className="container px-4 py-8 mx-auto max-w-5xl">
+      <div className="container max-w-5xl px-4 py-8 mx-auto">
 
         {/* ── Hero banner ── */}
-        <div className="relative overflow-hidden rounded-2xl mb-8 p-6 sm:p-8"
+        <div className="relative p-6 mb-8 overflow-hidden rounded-2xl sm:p-8"
           style={{ background: `linear-gradient(135deg, ${BRAND.primary}18 0%, ${BRAND.secondary}10 100%)`, border: `1px solid ${BRAND.primary}25` }}>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
+              <h1 className="mb-1 text-xl font-bold text-gray-900 sm:text-2xl">
                 {isLive ? `🎉 Your store is live!` : `👋 Hey ${vendorName || "Creator"}!`}
               </h1>
               <p className="text-sm text-gray-600">
@@ -461,7 +464,7 @@ export default function StorePage() {
             </div>
           </div>
           {stats.totalProducts === 0 && !isLive && (
-            <p className="text-xs text-amber-700 bg-amber-100 border border-amber-200 rounded-lg px-3 py-2 mt-4 flex items-center gap-2">
+            <p className="flex items-center gap-2 px-3 py-2 mt-4 text-xs border rounded-lg text-amber-700 bg-amber-100 border-amber-200">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />Add at least one product before going live.
             </p>
           )}
@@ -476,13 +479,13 @@ export default function StorePage() {
                 <p className="text-xs text-gray-500 mt-0.5">{completedSteps} of {setupSteps.length} done — finish these to go live</p>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${(completedSteps / setupSteps.length) * 100}%`, background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.secondary})` }} />
+                <div className="w-24 h-2 overflow-hidden bg-gray-200 rounded-full">
+                  <div className="h-full transition-all rounded-full" style={{ width: `${(completedSteps / setupSteps.length) * 100}%`, background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.secondary})` }} />
                 </div>
                 <span className="text-xs font-semibold text-gray-500">{Math.round((completedSteps / setupSteps.length) * 100)}%</span>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {setupSteps.map((step, i) => {
                 const done = step.check(store, stats)
                 return (
@@ -519,8 +522,8 @@ export default function StorePage() {
               { label: "Revenue",  value: `₹${stats.totalRevenue.toLocaleString("en-IN")}`, icon: <TrendingUp className="w-4 h-4" />, link: "/payouts" },
             ].map(s => (
               <Link key={s.label} to={s.link as any}
-                className="flex flex-col items-center gap-1 p-4 rounded-xl bg-white border border-gray-200 hover:border-gray-400 hover:shadow-sm transition-all text-center group">
-                <div className="text-gray-400 group-hover:text-orange-500 transition-colors">{s.icon}</div>
+                className="flex flex-col items-center gap-1 p-4 text-center transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-400 hover:shadow-sm group">
+                <div className="text-gray-400 transition-colors group-hover:text-orange-500">{s.icon}</div>
                 <p className="text-xl font-bold text-gray-900">{s.value}</p>
                 <p className="text-xs text-gray-400">{s.label}</p>
               </Link>
@@ -529,79 +532,79 @@ export default function StorePage() {
         )}
 
         {/* ── Main action cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2">
 
           {/* Store editor */}
           <Link to="/store/editor"
-            className="group relative overflow-hidden flex flex-col p-5 rounded-2xl bg-white border border-gray-200 hover:border-orange-300 hover:shadow-md transition-all">
+            className="relative flex flex-col p-5 overflow-hidden transition-all bg-white border border-gray-200 group rounded-2xl hover:border-orange-300 hover:shadow-md">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${BRAND.primary}15`, color: BRAND.primary }}>
+              <div className="flex items-center justify-center w-11 h-11 rounded-xl" style={{ background: `${BRAND.primary}15`, color: BRAND.primary }}>
                 <Layout className="w-5 h-5" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-orange-500 transition-colors" />
+              <ArrowUpRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-orange-500" />
             </div>
-            <h3 className="font-bold text-gray-900 mb-1">Store editor</h3>
-            <p className="text-sm text-gray-500 flex-1">Drag-and-drop builder for your homepage layout, hero banner, product grids, and more.</p>
-            <div className="mt-4 flex items-center gap-1 text-xs font-semibold" style={{ color: BRAND.primary }}>
+            <h3 className="mb-1 font-bold text-gray-900">Store editor</h3>
+            <p className="flex-1 text-sm text-gray-500">Drag-and-drop builder for your homepage layout, hero banner, product grids, and more.</p>
+            <div className="flex items-center gap-1 mt-4 text-xs font-semibold" style={{ color: BRAND.primary }}>
               Open editor <ChevronRight className="w-3.5 h-3.5" />
             </div>
           </Link>
 
           {/* Branding */}
           <button onClick={() => setActiveModal("branding")}
-            className="group relative overflow-hidden flex flex-col p-5 rounded-2xl bg-white border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all text-left">
+            className="relative flex flex-col p-5 overflow-hidden text-left transition-all bg-white border border-gray-200 group rounded-2xl hover:border-purple-300 hover:shadow-md">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-purple-100 text-purple-600">
+              <div className="flex items-center justify-center text-purple-600 bg-purple-100 w-11 h-11 rounded-xl">
                 <Palette className="w-5 h-5" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-purple-500 transition-colors" />
+              <ArrowUpRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-purple-500" />
             </div>
-            <h3 className="font-bold text-gray-900 mb-1">Branding & identity</h3>
-            <p className="text-sm text-gray-500 flex-1">Logo, colors, tagline, announcement bar, and social links.</p>
-            <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-purple-600">
+            <h3 className="mb-1 font-bold text-gray-900">Branding & identity</h3>
+            <p className="flex-1 text-sm text-gray-500">Logo, colors, tagline, announcement bar, and social links.</p>
+            <div className="flex items-center gap-1 mt-4 text-xs font-semibold text-purple-600">
               Edit branding <ChevronRight className="w-3.5 h-3.5" />
             </div>
           </button>
 
           {/* Custom pages */}
           <button onClick={() => setActiveModal("pages")}
-            className="group relative overflow-hidden flex flex-col p-5 rounded-2xl bg-white border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all text-left">
+            className="relative flex flex-col p-5 overflow-hidden text-left transition-all bg-white border border-gray-200 group rounded-2xl hover:border-blue-300 hover:shadow-md">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-blue-100 text-blue-600">
+              <div className="flex items-center justify-center text-blue-600 bg-blue-100 w-11 h-11 rounded-xl">
                 <FileText className="w-5 h-5" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
+              <ArrowUpRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-blue-500" />
             </div>
-            <h3 className="font-bold text-gray-900 mb-1">Custom pages</h3>
-            <p className="text-sm text-gray-500 flex-1">Create About, FAQ, Contact pages — or anything custom with HTML.</p>
-            <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-blue-600">
+            <h3 className="mb-1 font-bold text-gray-900">Custom pages</h3>
+            <p className="flex-1 text-sm text-gray-500">Create About, FAQ, Contact pages — or anything custom with HTML.</p>
+            <div className="flex items-center gap-1 mt-4 text-xs font-semibold text-blue-600">
               {pages.length > 0 ? `${pages.length} page${pages.length !== 1 ? "s" : ""} created` : "Create a page"} <ChevronRight className="w-3.5 h-3.5" />
             </div>
           </button>
 
           {/* Domain & SEO */}
           <button onClick={() => setActiveModal("domain")}
-            className="group relative overflow-hidden flex flex-col p-5 rounded-2xl bg-white border border-gray-200 hover:border-green-300 hover:shadow-md transition-all text-left">
+            className="relative flex flex-col p-5 overflow-hidden text-left transition-all bg-white border border-gray-200 group rounded-2xl hover:border-green-300 hover:shadow-md">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-green-100 text-green-600">
+              <div className="flex items-center justify-center text-green-600 bg-green-100 w-11 h-11 rounded-xl">
                 <Globe className="w-5 h-5" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-green-500 transition-colors" />
+              <ArrowUpRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-green-500" />
             </div>
-            <h3 className="font-bold text-gray-900 mb-1">Domain & SEO</h3>
-            <p className="text-sm text-gray-500 flex-1">Connect a custom domain, set your meta title, and write your SEO description.</p>
-            <div className="mt-4 flex items-center gap-2">
+            <h3 className="mb-1 font-bold text-gray-900">Domain & SEO</h3>
+            <p className="flex-1 text-sm text-gray-500">Connect a custom domain, set your meta title, and write your SEO description.</p>
+            <div className="flex items-center gap-2 mt-4">
               {store.custom_domain
-                ? <Badge className="text-xs bg-green-100 text-green-800 border-green-200">{store.custom_domain}</Badge>
-                : <span className="text-xs font-semibold text-green-600 flex items-center gap-1">Configure <ChevronRight className="w-3.5 h-3.5" /></span>}
+                ? <Badge className="text-xs text-green-800 bg-green-100 border-green-200">{store.custom_domain}</Badge>
+                : <span className="flex items-center gap-1 text-xs font-semibold text-green-600">Configure <ChevronRight className="w-3.5 h-3.5" /></span>}
             </div>
           </button>
         </div>
 
         {/* ── Upgrade nudge (only show on free plan) ── */}
-        <div className="mb-8 p-5 rounded-2xl border border-amber-200 bg-amber-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col items-start justify-between gap-4 p-5 mb-8 border rounded-2xl border-amber-200 bg-amber-50 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-100 shrink-0">
               <Crown className="w-5 h-5 text-amber-600" />
             </div>
             <div>
@@ -615,7 +618,7 @@ export default function StorePage() {
         </div>
 
         {/* ── Quick links row ── */}
-        {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { icon: <Package className="w-4 h-4" />, label: "Products",   link: "/_authenticated/products",  color: "text-orange-600 bg-orange-50" },
             { icon: <ShoppingBag className="w-4 h-4" />, label: "Orders", link: "/_authenticated/orders",    color: "text-blue-600 bg-blue-50" },
@@ -669,7 +672,7 @@ export default function StorePage() {
           )}
           {activeModal === "product" && (
             <div className="flex flex-col items-center gap-6 py-4">
-              <p className="text-sm text-gray-500 text-center">Choose how you'd like to add your first product:</p>
+              <p className="text-sm text-center text-gray-500">Choose how you'd like to add your first product:</p>
               <ProductsPrimaryButtons />
             </div>
           )}
@@ -683,13 +686,13 @@ export default function StorePage() {
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center bg-black/40 backdrop-blur-sm" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <h2 className="text-base font-bold text-gray-900">{title}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
-        <div className="overflow-y-auto flex-1 px-5 py-5">{children}</div>
+        <div className="flex-1 px-5 py-5 overflow-y-auto">{children}</div>
       </div>
     </div>
   )
@@ -716,14 +719,14 @@ function TemplatePanel({ store, onChange, onSave, isSaving, vendorHandle, isLive
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">Choose template</p>
+        <p className="mb-3 text-sm font-semibold text-gray-700">Choose template</p>
         <div className="grid grid-cols-3 gap-3">
           {TEMPLATES.map(t => (
             <button key={t.id} onClick={() => onChange({ template: t.id })}
               className={`text-left p-3 rounded-xl border-2 transition-all ${store.template === t.id ? "shadow-sm" : "border-gray-200 hover:border-gray-300"}`}
               style={store.template === t.id ? { borderColor: BRAND.primary } : {}}>
               <div className={`w-full h-16 rounded-lg mb-2 ${t.preview} border border-gray-200 flex items-center justify-center`}>
-                <div className="space-y-1 w-10/12">
+                <div className="w-10/12 space-y-1">
                   <div className={`h-1.5 rounded w-2/3 mx-auto ${t.id === "bold" ? "bg-white/30" : "bg-gray-300"}`} />
                   <div className="grid grid-cols-3 gap-0.5">{[1,2,3].map(i => <div key={i} className={`h-3 rounded ${t.id === "bold" ? "bg-white/10" : "bg-gray-100"}`} />)}</div>
                 </div>
@@ -738,7 +741,7 @@ function TemplatePanel({ store, onChange, onSave, isSaving, vendorHandle, isLive
         </div>
       </div>
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">Font</p>
+        <p className="mb-3 text-sm font-semibold text-gray-700">Font</p>
         <div className="grid grid-cols-3 gap-2">
           {FONTS.map(f => (
             <button key={f.id} onClick={() => onChange({ font: f.id })}
@@ -790,7 +793,7 @@ function BrandingPanel({ store, onChange, onSave, isSaving, token, backendUrl }:
     <div className="space-y-5">
       {/* Colors */}
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">Brand colors</p>
+        <p className="mb-3 text-sm font-semibold text-gray-700">Brand colors</p>
         <div className="grid grid-cols-2 gap-4">
           {[
             { key: "primary_color",   label: "Primary", hint: "Buttons & links" },
@@ -807,7 +810,7 @@ function BrandingPanel({ store, onChange, onSave, isSaving, token, backendUrl }:
             </div>
           ))}
         </div>
-        <div className="mt-3 h-8 rounded-xl flex items-center justify-center text-white text-xs font-semibold"
+        <div className="flex items-center justify-center h-8 mt-3 text-xs font-semibold text-white rounded-xl"
           style={{ background: `linear-gradient(135deg, ${store.primary_color}, ${store.secondary_color})` }}>
           Color preview
         </div>
@@ -815,21 +818,21 @@ function BrandingPanel({ store, onChange, onSave, isSaving, token, backendUrl }:
 
       {/* Logo */}
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">Logo</p>
+        <p className="mb-3 text-sm font-semibold text-gray-700">Logo</p>
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden bg-gray-50 cursor-pointer hover:border-gray-400 transition-colors shrink-0"
+          <div className="flex items-center justify-center w-16 h-16 overflow-hidden transition-colors border-2 border-gray-200 border-dashed cursor-pointer rounded-xl bg-gray-50 hover:border-gray-400 shrink-0"
             onClick={() => logoRef.current?.click()}>
-            {store.store_logo ? <img src={store.store_logo} alt="logo" className="w-full h-full object-contain p-1" /> : <ImageIcon className="w-6 h-6 text-gray-300" />}
+            {store.store_logo ? <img src={store.store_logo} alt="logo" className="object-contain w-full h-full p-1" /> : <ImageIcon className="w-6 h-6 text-gray-300" />}
           </div>
           <div className="flex-1 space-y-1.5">
             <button onClick={() => logoRef.current?.click()} disabled={isUploadingLogo}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-gray-200 text-sm text-gray-700 hover:border-gray-400 transition-colors">
+              className="flex items-center justify-center w-full gap-2 px-3 py-2 text-sm text-gray-700 transition-colors border border-gray-200 rounded-lg hover:border-gray-400">
               {isUploadingLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
               {store.store_logo ? "Change logo" : "Upload logo"}
             </button>
             {store.store_logo && (
               <button onClick={() => onChange({ store_logo: null })}
-                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-red-200 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                className="flex items-center justify-center w-full gap-2 px-3 py-2 text-sm text-red-500 transition-colors border border-red-200 rounded-lg hover:bg-red-50">
                 <Trash2 className="w-3.5 h-3.5" />Remove
               </button>
             )}
@@ -843,14 +846,14 @@ function BrandingPanel({ store, onChange, onSave, isSaving, token, backendUrl }:
       <Field label="Tagline">
         <Input value={store.tagline ?? ""} onChange={e => onChange({ tagline: e.target.value || null })}
           placeholder="e.g. Official merch for my fans" maxLength={120} />
-        <p className="text-xs text-gray-400 mt-1">Shown below your name in the store header</p>
+        <p className="mt-1 text-xs text-gray-400">Shown below your name in the store header</p>
       </Field>
 
       {/* Announcement */}
       <Field label="Announcement bar">
         <Input value={store.announcement_text ?? ""} onChange={e => onChange({ announcement_text: e.target.value || null })}
           placeholder="Free shipping on orders above ₹999 🎉" maxLength={200} />
-        <p className="text-xs text-gray-400 mt-1">Appears as a banner across the top of your store</p>
+        <p className="mt-1 text-xs text-gray-400">Appears as a banner across the top of your store</p>
       </Field>
 
       <div className="flex gap-3 pt-2 border-t border-gray-100">
@@ -947,8 +950,8 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
       {/* ── Subdomain ─────────────────────────────────────────────────────── */}
       <div>
         <p className="text-sm font-semibold text-gray-700 mb-1.5">Your free subdomain</p>
-        <p className="text-xs text-gray-400 mb-2">Always available — no setup needed.</p>
-        <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+        <p className="mb-2 text-xs text-gray-400">Always available — no setup needed.</p>
+        <div className="flex items-center overflow-hidden border border-gray-200 rounded-xl bg-gray-50">
           <input
             value={store.subdomain ?? vendorHandle}
             onChange={e => onChange({ subdomain: e.target.value })}
@@ -969,17 +972,17 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
       <div>
         <div className="flex items-center justify-between mb-1">
           <p className="text-sm font-semibold text-gray-700">Custom domain</p>
-          <Badge className="text-xs bg-purple-100 text-purple-800 border-purple-200 flex items-center gap-1">
+          <Badge className="flex items-center gap-1 text-xs text-purple-800 bg-purple-100 border-purple-200">
             <Crown className="w-3 h-3" />Pro plan
           </Badge>
         </div>
-        <p className="text-xs text-gray-400 mb-3">Connect your own domain like <span className="font-mono text-gray-600">merch.yourname.com</span></p>
+        <p className="mb-3 text-xs text-gray-400">Connect your own domain like <span className="font-mono text-gray-600">merch.yourname.com</span></p>
 
         {/* Step 0 — idle / input */}
         {(step === "idle" || step === "entered") && (
           <div className="space-y-3">
             <div className="relative">
-              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Globe className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
               <input
                 value={domainInput}
                 onChange={e => handleDomainChange(e.target.value)}
@@ -988,8 +991,8 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
               />
             </div>
             {domainInput && (
-              <div className="text-xs text-gray-500 px-1">
-                Will connect: <span className="font-semibold text-gray-700 font-mono">{domainInput}</span>
+              <div className="px-1 text-xs text-gray-500">
+                Will connect: <span className="font-mono font-semibold text-gray-700">{domainInput}</span>
               </div>
             )}
             <Button
@@ -1007,48 +1010,48 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
         {(step === "dns" || step === "failed") && (
           <div className="space-y-4">
             {/* Current domain pill */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 border border-gray-200">
+            <div className="flex items-center justify-between px-3 py-2 border border-gray-200 rounded-xl bg-gray-50">
               <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-gray-400" />
-                <span className="text-sm font-mono font-semibold text-gray-800">{store.custom_domain || domainInput}</span>
+                <span className="font-mono text-sm font-semibold text-gray-800">{store.custom_domain || domainInput}</span>
               </div>
-              <button onClick={handleRemoveDomain} className="text-xs text-red-400 hover:text-red-600 transition-colors">Remove</button>
+              <button onClick={handleRemoveDomain} className="text-xs text-red-400 transition-colors hover:text-red-600">Remove</button>
             </div>
 
             {/* Step indicator */}
             <div className="flex items-center gap-2 text-xs text-gray-500">
-              <div className="w-5 h-5 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold shrink-0">1</div>
+              <div className="flex items-center justify-center w-5 h-5 font-bold text-white bg-orange-500 rounded-full shrink-0">1</div>
               <span>Add this DNS record at your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.)</span>
             </div>
 
             {/* DNS record card */}
-            <div className="rounded-xl border border-blue-200 bg-blue-50 overflow-hidden">
+            <div className="overflow-hidden border border-blue-200 rounded-xl bg-blue-50">
               <div className="flex items-center justify-between px-4 py-2 bg-blue-100 border-b border-blue-200">
-                <span className="text-xs font-semibold text-blue-800 uppercase tracking-wider">DNS Record to add</span>
+                <span className="text-xs font-semibold tracking-wider text-blue-800 uppercase">DNS Record to add</span>
                 <button
                   onClick={() => {
                     navigator.clipboard?.writeText(`${(store.custom_domain || domainInput).split(".")[0]}	${subdomain}.junooni.com`)
                   }}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                  className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800">
                   <Copy className="w-3 h-3" />Copy
                 </button>
               </div>
               <div className="p-4">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-xs text-blue-600 uppercase tracking-wider">
-                      <th className="text-left pb-2 font-semibold">Type</th>
-                      <th className="text-left pb-2 font-semibold">Host / Name</th>
-                      <th className="text-left pb-2 font-semibold">Value / Points to</th>
-                      <th className="text-left pb-2 font-semibold">TTL</th>
+                    <tr className="text-xs tracking-wider text-blue-600 uppercase">
+                      <th className="pb-2 font-semibold text-left">Type</th>
+                      <th className="pb-2 font-semibold text-left">Host / Name</th>
+                      <th className="pb-2 font-semibold text-left">Value / Points to</th>
+                      <th className="pb-2 font-semibold text-left">TTL</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td className="pr-4 py-1"><span className="px-2 py-0.5 rounded bg-blue-200 text-blue-900 font-mono font-bold text-xs">CNAME</span></td>
-                      <td className="pr-4 py-1 font-mono text-blue-900 font-semibold text-xs">{(store.custom_domain || domainInput).split(".")[0]}</td>
-                      <td className="pr-4 py-1 font-mono text-blue-900 text-xs">{subdomain}.junooni.com</td>
-                      <td className="py-1 text-blue-700 text-xs">3600</td>
+                      <td className="py-1 pr-4"><span className="px-2 py-0.5 rounded bg-blue-200 text-blue-900 font-mono font-bold text-xs">CNAME</span></td>
+                      <td className="py-1 pr-4 font-mono text-xs font-semibold text-blue-900">{(store.custom_domain || domainInput).split(".")[0]}</td>
+                      <td className="py-1 pr-4 font-mono text-xs text-blue-900">{subdomain}.junooni.com</td>
+                      <td className="py-1 text-xs text-blue-700">3600</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1057,7 +1060,7 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
 
             {/* Registrar guides */}
             <div>
-              <p className="text-xs text-gray-500 mb-2">Step-by-step guides for common registrars:</p>
+              <p className="mb-2 text-xs text-gray-500">Step-by-step guides for common registrars:</p>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { name: "GoDaddy",    url: "https://in.godaddy.com/help/add-a-cname-record-19236" },
@@ -1087,8 +1090,8 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
               </div>
             )}
 
-            <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-              <div className="w-5 h-5 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold shrink-0">2</div>
+            <div className="flex items-center gap-2 mb-1 text-xs text-gray-500">
+              <div className="flex items-center justify-center w-5 h-5 font-bold text-white bg-orange-500 rounded-full shrink-0">2</div>
               <span>Once the DNS record is added, click verify:</span>
             </div>
 
@@ -1102,7 +1105,7 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
                 : <><CheckCircle2 className="w-4 h-4" />Verify domain</>}
             </Button>
 
-            <p className="text-center text-xs text-gray-400">
+            <p className="text-xs text-center text-gray-400">
               Having trouble? Email <a href="mailto:support@junooni.com" className="underline" style={{ color: BRAND.primary }}>support@junooni.com</a> and we'll set it up for you.
             </p>
           </div>
@@ -1111,8 +1114,8 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
         {/* Step 2 — Verified */}
         {step === "verified" && (
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 border border-green-200">
-              <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-3 p-4 border border-green-200 rounded-xl bg-green-50">
+              <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-xl shrink-0">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
               </div>
               <div>
@@ -1120,11 +1123,11 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
                 <p className="text-xs text-green-700 font-mono mt-0.5">{store.custom_domain}</p>
               </div>
               <a href={`https://${store.custom_domain}`} target="_blank" rel="noopener noreferrer"
-                className="ml-auto text-xs text-green-700 hover:text-green-900 flex items-center gap-1 font-medium">
+                className="flex items-center gap-1 ml-auto text-xs font-medium text-green-700 hover:text-green-900">
                 Visit <ExternalLink className="w-3 h-3" />
               </a>
             </div>
-            <button onClick={handleRemoveDomain} className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-1">
+            <button onClick={handleRemoveDomain} className="w-full py-1 text-xs text-gray-400 transition-colors hover:text-red-500">
               Remove custom domain
             </button>
           </div>
@@ -1135,23 +1138,23 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
 
       {/* ── SEO ─────────────────────────────────────────────────────────── */}
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">SEO</p>
+        <p className="mb-3 text-sm font-semibold text-gray-700">SEO</p>
         <div className="space-y-3">
           <Field label="Page title">
             <Input value={store.seo_title ?? ""} onChange={e => onChange({ seo_title: e.target.value || null })}
               placeholder={`${vendorHandle} — Official Merch Store`} maxLength={60} />
-            <p className="text-xs text-gray-400 mt-1">{(store.seo_title ?? "").length}/60</p>
+            <p className="mt-1 text-xs text-gray-400">{(store.seo_title ?? "").length}/60</p>
           </Field>
           <Field label="Meta description">
             <Textarea value={store.seo_description ?? ""} onChange={e => onChange({ seo_description: e.target.value || null })}
               placeholder="Shop official merchandise..." maxLength={160} rows={3} />
-            <p className="text-xs text-gray-400 mt-1">{(store.seo_description ?? "").length}/160</p>
+            <p className="mt-1 text-xs text-gray-400">{(store.seo_description ?? "").length}/160</p>
           </Field>
           {/* Google preview */}
-          <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
+          <div className="p-3 border border-gray-100 rounded-xl bg-gray-50">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Google preview</p>
-            <p className="text-xs text-green-700 truncate font-mono">{store.custom_domain ?? `${subdomain}.junooni.com`} ›</p>
-            <p className="text-sm text-blue-700 font-medium truncate">{store.seo_title || `${vendorHandle} — Official Merch Store`}</p>
+            <p className="font-mono text-xs text-green-700 truncate">{store.custom_domain ?? `${subdomain}.junooni.com`} ›</p>
+            <p className="text-sm font-medium text-blue-700 truncate">{store.seo_title || `${vendorHandle} — Official Merch Store`}</p>
             <p className="text-xs text-gray-500 line-clamp-2">{store.seo_description || "Shop official merchandise. Powered by Junooni."}</p>
           </div>
         </div>
@@ -1205,10 +1208,10 @@ function PagesPanel({ pages, vendorHandle, onSave, onDelete, onClose }: {
               <span className="text-base">{PAGE_TEMPLATES_LIST.find(t => t.id === page.template)?.icon ?? "📄"}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-800 truncate">{page.title}</p>
-                <p className="text-xs text-gray-400 font-mono">/p/{page.slug}</p>
+                <p className="font-mono text-xs text-gray-400">/p/{page.slug}</p>
               </div>
               <div className="flex gap-1">
-                {page.in_nav && <Badge className="text-xs bg-blue-50 text-blue-700 border-blue-100">Nav</Badge>}
+                {page.in_nav && <Badge className="text-xs text-blue-700 border-blue-100 bg-blue-50">Nav</Badge>}
               </div>
               <button onClick={() => { setEditingPage(page); setIsNew(false) }} className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors">Edit</button>
               <button onClick={() => onDelete(page.id)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
@@ -1217,7 +1220,7 @@ function PagesPanel({ pages, vendorHandle, onSave, onDelete, onClose }: {
         </div>
       )}
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">Create a page</p>
+        <p className="mb-3 text-sm font-semibold text-gray-700">Create a page</p>
         <div className="grid grid-cols-2 gap-2">
           {PAGE_TEMPLATES_LIST.map(t => (
             <button key={t.id} onClick={() => startNew(t)}
@@ -1244,27 +1247,27 @@ function PageEditorInline({ page, isNew, vendorHandle, onSave, onCancel, onDelet
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <button onClick={onCancel} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+        <button onClick={onCancel} className="flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700">
           <ChevronRight className="w-3.5 h-3.5 rotate-180" />Back
         </button>
-        {onDelete && <button onClick={onDelete} className="text-xs text-red-500 hover:text-red-700 transition-colors">Delete page</button>}
+        {onDelete && <button onClick={onDelete} className="text-xs text-red-500 transition-colors hover:text-red-700">Delete page</button>}
       </div>
       <Field label="Page title">
         <Input value={draft.title} onChange={e => up({ title: e.target.value, ...(isNew ? { slug: slugify(e.target.value) } : {}) })} placeholder="e.g. About Me" />
       </Field>
       <Field label="URL slug">
         <div className="flex items-center">
-          <div className="px-3 py-2 bg-gray-100 border border-r-0 border-gray-200 rounded-l-lg text-xs text-gray-500 whitespace-nowrap">/p/</div>
-          <Input value={draft.slug} onChange={e => up({ slug: slugify(e.target.value) })} placeholder="about-me" className="rounded-l-none font-mono" />
+          <div className="px-3 py-2 text-xs text-gray-500 bg-gray-100 border border-r-0 border-gray-200 rounded-l-lg whitespace-nowrap">/p/</div>
+          <Input value={draft.slug} onChange={e => up({ slug: slugify(e.target.value) })} placeholder="about-me" className="font-mono rounded-l-none" />
         </div>
       </Field>
       <Field label="Content (Markdown or HTML)">
         <Textarea value={draft.content} onChange={e => up({ content: e.target.value })}
           placeholder={"## My heading\n\nYour content...\n\n(or start with < for HTML)"} rows={10} className="font-mono text-sm" />
-        <p className="text-xs text-gray-400 mt-1">Start with a <code>&lt;</code> tag to use HTML. Otherwise Markdown: ## h2, **bold**, - list</p>
+        <p className="mt-1 text-xs text-gray-400">Start with a <code>&lt;</code> tag to use HTML. Otherwise Markdown: ## h2, **bold**, - list</p>
       </Field>
       <label className="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" checked={draft.in_nav} onChange={e => up({ in_nav: e.target.checked })} className="w-4 h-4 accent-orange-500 rounded" />
+        <input type="checkbox" checked={draft.in_nav} onChange={e => up({ in_nav: e.target.checked })} className="w-4 h-4 rounded accent-orange-500" />
         <span className="text-sm text-gray-700">Show in navigation menu</span>
       </label>
       <div className="flex gap-3 pt-2 border-t border-gray-100">
