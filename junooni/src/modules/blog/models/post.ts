@@ -16,4 +16,6 @@ export const Post = model.define("post", {
   is_published: model.boolean().default(false),
   published_at: model.dateTime().nullable(),
   read_time_minutes: model.number().nullable(),
+  audience: model.text().nullable(),
+  is_featured: model.boolean().default(false),
 })

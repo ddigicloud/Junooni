@@ -121,5 +121,6 @@ module.exports = defineConfig({
     { resolve: "./src/modules/payout" },
     { resolve: "./src/modules/invoice-generator" },
     { resolve: "./src/modules/loyalty" },
+    { resolve: "@medusajs/index" },
   ]
 })

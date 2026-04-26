@@ -59,7 +59,7 @@ export default function StoreTypeModal({
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div
-        className="bg-white w-full rounded-2xl overflow-hidden shadow-2xl"
+        className="w-full overflow-hidden bg-white shadow-2xl rounded-2xl"
         style={{ maxWidth: 560, border: "1px solid rgba(0,0,0,0.08)" }}
       >
         {/* ── Header ── */}
@@ -69,10 +69,10 @@ export default function StoreTypeModal({
               <p className="text-xs font-semibold tracking-[0.15em] uppercase mb-1.5" style={{ color: BRAND.primary }}>
                 Store setup
               </p>
-              <h2 className="text-xl font-bold text-gray-900 leading-snug">
+              <h2 className="text-xl font-bold leading-snug text-gray-900">
                 Where do you want to sell?
               </h2>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="mt-1 text-sm text-gray-400">
                 Pick one or both. Change anytime from settings.
               </p>
             </div>
@@ -88,7 +88,7 @@ export default function StoreTypeModal({
         </div>
 
         {/* ── Cards ── */}
-        <div className="px-6 py-4 grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 px-6 py-4">
           {/* Marketplace */}
           <button
             onClick={() => toggle("sell_on_marketplace")}
@@ -108,15 +108,15 @@ export default function StoreTypeModal({
             </div>
 
             {/* Icon */}
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ background: "#fff0e8" }}>
+            <div className="flex items-center justify-center mb-3 rounded-lg w-9 h-9" style={{ background: "#fff0e8" }}>
               <ShoppingBag className="w-4.5 h-4.5" style={{ color: BRAND.primary, width: 18, height: 18 }} />
             </div>
 
             <p className="text-sm font-semibold text-gray-900 mb-0.5 pr-6">Junooni marketplace</p>
-            <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full mb-2" style={{ background: BRAND.primary, color: "white" }}>
+            {/* <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full mb-2" style={{ background: BRAND.primary, color: "white" }}>
               Most popular
-            </span>
-            <p className="text-xs text-gray-500 leading-relaxed mb-3">
+            </span> */}
+            <p className="mb-3 text-xs leading-relaxed text-gray-500">
               List your merch on junooni.com. Fans discover you through the platform.
             </p>
 
@@ -149,15 +149,15 @@ export default function StoreTypeModal({
             </div>
 
             {/* Icon */}
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ background: "#e8f5e9" }}>
+            <div className="flex items-center justify-center mb-3 rounded-lg w-9 h-9" style={{ background: "#e8f5e9" }}>
               <Globe className="w-4.5 h-4.5 text-emerald-600" style={{ width: 18, height: 18 }} />
             </div>
 
             <p className="text-sm font-semibold text-gray-900 mb-0.5 pr-6">Your own store</p>
-            <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full mb-2" style={{ background: "#e8f5e9", color: "#166534" }}>
+            {/* <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full mb-2" style={{ background: "#e8f5e9", color: "#166534" }}>
               Fourthwall-style
-            </span>
-            <p className="text-xs text-gray-500 leading-relaxed mb-3">
+            </span> */}
+            <p className="mb-3 text-xs leading-relaxed text-gray-500">
               Branded site at your own domain. JUNOONI handles fulfillment invisibly.
             </p>
 
@@ -185,11 +185,11 @@ export default function StoreTypeModal({
         )}
 
         {/* ── Footer ── */}
-        <div className="px-6 pb-6 pt-2 flex flex-col gap-2">
+        <div className="flex flex-col gap-2 px-6 pt-2 pb-6">
           <Button
             disabled={nothingSelected || isSaving}
             onClick={handleConfirm}
-            className="w-full h-11 text-sm font-semibold transition-all rounded-xl"
+            className="w-full text-sm font-semibold transition-all h-11 rounded-xl"
             style={!nothingSelected ? {
               background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
               color: "white",
@@ -207,7 +207,7 @@ export default function StoreTypeModal({
           {isInitialChoice && onSkip && (
             <button
               onClick={onSkip}
-              className="text-xs text-gray-400 hover:text-gray-600 transition-colors text-center py-1"
+              className="py-1 text-xs text-center text-gray-400 transition-colors hover:text-gray-600"
             >
               Decide later
             </button>

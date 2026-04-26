@@ -1,71 +1,107 @@
-// junooni-creator-store/middleware.ts  (root of the Next.js project)
+// junooni-creator-store/middleware.ts
 
 import { NextRequest, NextResponse } from "next/server"
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
-const STORE_PORT  = process.env.STORE_PORT ?? "3001"  // only used locally
+const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"
 
-export function middleware(req: NextRequest) {
-  const url  = req.nextUrl.clone()
-  const host = req.headers.get("host") ?? ""
+const domainCache = new Map<string, { handle: string; ts: number }>()
+const CACHE_TTL   = 5 * 60 * 1000
 
-  // ── 1. Strip port for localhost comparisons ──────────────────────────────
-  const hostname = host.replace(/:.*$/, "")
+async function resolveCustomDomain(hostname: string): Promise<string | null> {
+  const cached = domainCache.get(hostname)
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.handle
+  try {
+    const res = await fetch(
+      `${BACKEND_URL}/store-front/by-domain?domain=${encodeURIComponent(hostname)}`,
+      { cache: "no-store", signal: AbortSignal.timeout(3000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const handle = data?.handle ?? null
+    if (handle) domainCache.set(hostname, { handle, ts: Date.now() })
+    return handle
+  } catch {
+    return null
+  }
+}
 
-  // ── 2. Detect localhost dev mode ─────────────────────────────────────────
-  // Dev URL pattern:  http://localhost:3001/tanishkhandle
-  //   → handle comes from the URL path, not the subdomain
-  // Prod URL pattern: https://tanishk.junooni.com/
-  //   → handle comes from the subdomain
+export async function middleware(req: NextRequest) {
+  const url      = req.nextUrl.clone()
+  const host     = req.headers.get("host") ?? ""
+  const hostname = host.replace(/:.*$/, "").toLowerCase()
+  const pathname = url.pathname
 
-  const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1"
-
-  if (isLocalhost) {
-    // Dev: keep existing path-based routing — nothing to rewrite
+  // Never touch static files or Next.js internals
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api")   ||
+    pathname === "/favicon.ico"   ||
+    pathname === "/robots.txt"    ||
+    pathname === "/sitemap.xml"   ||
+    /\.(?:ico|png|jpg|jpeg|gif|svg|webp|css|js|woff2?)$/.test(pathname)
+  ) {
     return NextResponse.next()
   }
 
-  // ── 3. Production: extract subdomain ─────────────────────────────────────
-  // hostname = "tanishk.junooni.com"
-  // ROOT_DOMAIN = "junooni.com"
-  // subdomain  = "tanishk"
+  let handle: string | null = null
 
-  const subdomain = hostname.endsWith(`.${ROOT_DOMAIN}`)
-    ? hostname.slice(0, -(ROOT_DOMAIN.length + 1))   // "tanishk"
-    : null
-
-  // ── 4. If no subdomain (bare junooni.com) → main marketing site, skip ───
-  if (!subdomain || subdomain === "www") {
-    return NextResponse.next()
-  }
-
-  // ── 5. Rewrite: /  →  /[subdomain]  internally ───────────────────────────
-  // The browser still sees "tanishk.junooni.com"
-  // Next.js internally routes to /tanishk/...
-  //
-  // Only rewrite root + non-Next.js internal paths
-  // (leave /_next/, /api/, /favicon.ico alone)
-  const isInternal =
-    url.pathname.startsWith("/_next") ||
-    url.pathname.startsWith("/api")   ||
-    url.pathname === "/favicon.ico"
-
-  if (!isInternal) {
-    // Prepend the subdomain as the first path segment if not already there
-    if (!url.pathname.startsWith(`/${subdomain}`)) {
-      url.pathname = `/${subdomain}${url.pathname}`
+  // ── junooni.com subdomain: meenal.junooni.com ────────────────────────────
+  if (hostname.endsWith(`.${ROOT_DOMAIN}`)) {
+    const sub = hostname.slice(0, -(ROOT_DOMAIN.length + 1))
+    if (sub && sub !== "www" && sub !== "studio" && sub !== "api") {
+      handle = sub
     }
-
-    const res = NextResponse.rewrite(url)
-    // Pass handle to server components via header
-    res.headers.set("x-handle", subdomain)
-    return res
   }
 
-  return NextResponse.next()
+  // ── Dev: meenal.localhost:3001 ────────────────────────────────────────────
+  else if (hostname.endsWith(".localhost")) {
+    handle = hostname.replace(/\.localhost$/, "")
+  }
+
+  // ── Custom domain: sunozara.store ─────────────────────────────────────────
+  else if (
+    hostname !== "localhost" &&
+    hostname !== ROOT_DOMAIN &&
+    !hostname.startsWith("localhost:")
+  ) {
+    handle = await resolveCustomDomain(hostname)
+  }
+
+  // No handle found (root junooni.com or localhost dev) → pass through
+  if (!handle) return NextResponse.next()
+
+  // ── Rewrite browser URL path → internal Next.js path ─────────────────────
+  //
+  // Browser sees:   meenal.junooni.com/              (clean URL ✓)
+  // Browser sees:   meenal.junooni.com/products/mug  (clean URL ✓)
+  // Next.js routes: /meenal                          (internal)
+  // Next.js routes: /meenal/products/mug             (internal)
+  //
+  // NextResponse.rewrite() rewrites server-side only — browser URL stays clean.
+  // The handle NEVER appears in the browser URL bar.
+
+  // pathname from browser: "/" or "/products/mug" or "/about"
+  // Never includes the handle since it comes from subdomain/custom domain
+  const internalPath = pathname === "/"
+    ? `/${handle}`
+    : `/${handle}${pathname}`
+
+  url.pathname = internalPath
+
+  const res = NextResponse.rewrite(url)
+  res.headers.set("x-handle", handle)
+
+  if (url.searchParams.get("__preview") === "1") {
+    res.headers.set("x-vendor-preview", "1")
+  }
+
+  console.log(`[middleware] ${hostname}${pathname} → ${internalPath}`)
+  return res
 }
 
 export const config = {
-  // Run on all paths except static files
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.png$|.*\\.jpg$|.*\\.svg$|.*\\.ico$).*)",
+  ],
 }

@@ -608,6 +608,25 @@
           ],
           "mappedType": "enum"
         },
+        "password_enabled": {
+          "name": "password_enabled",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "default": "false",
+          "mappedType": "boolean"
+        },
+        "store_password": {
+          "name": "store_password",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
         "primary_color": {
           "name": "primary_color",
           "type": "text",
@@ -665,8 +684,44 @@
           "nullable": true,
           "mappedType": "text"
         },
+        "store_logo": {
+          "name": "store_logo",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
+        "store_favicon": {
+          "name": "store_favicon",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "text"
+        },
         "sections": {
           "name": "sections",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "json"
+        },
+        "pages": {
+          "name": "pages",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "mappedType": "json"
+        },
+        "collections": {
+          "name": "collections",
           "type": "jsonb",
           "unsigned": false,
           "autoincrement": false,
@@ -691,6 +746,26 @@
           "primary": false,
           "nullable": true,
           "mappedType": "text"
+        },
+        "sticky_header": {
+          "name": "sticky_header",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "default": "true",
+          "mappedType": "boolean"
+        },
+        "sticky_announcement": {
+          "name": "sticky_announcement",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "default": "true",
+          "mappedType": "boolean"
         },
         "vendor_id": {
           "name": "vendor_id",

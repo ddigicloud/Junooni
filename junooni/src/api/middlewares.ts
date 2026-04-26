@@ -93,6 +93,50 @@ export default defineMiddlewares({
         authenticate("vendor", ["session", "bearer"], { allowUnregistered: true })
       ],
     },
+    // ─── Add after the existing /store-front/:handle entry ───────────────────────
+
+{
+  matcher: "/store-front/:handle/verify-password",
+  method: ["POST", "OPTIONS"],
+  middlewares: [
+    (req, res, next) => {
+      // Public endpoint — no auth needed, just CORS
+      cors({ origin: true, credentials: false })(req, res, next)
+    },
+  ],
+},
+
+// ─── Add anywhere in the vendors section ─────────────────────────────────────
+
+{
+  matcher: "/vendors/me/store/verify-domain",
+  method: ["POST", "OPTIONS"],
+  middlewares: [
+    (req, res, next) => {
+      cors({ origin: true, credentials: true })(req, res, next)
+    },
+    authenticate(["vendor", "user"], ["session", "bearer"]),
+  ],
+},
+{
+  matcher: "/store-front/by-domain",
+  method: ["GET", "OPTIONS"],
+  middlewares: [
+    (req, res, next) => {
+      cors({ origin: true, credentials: false })(req, res, next)
+    },
+  ],
+},
+{
+  matcher: "/vendors/me/stats",
+  method: ["GET", "OPTIONS"],
+  middlewares: [
+    (req, res, next) => {
+      cors({ origin: true, credentials: true })(req, res, next)
+    },
+    authenticate(["vendor", "user"], ["session", "bearer"]),
+  ],
+},
     {
       matcher: "/vendors/products*",
       method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
@@ -228,6 +272,16 @@ export default defineMiddlewares({
     {
       matcher: "/vendors/by-admin",
       method: ["GET"],
+      middlewares: [
+        (req, res, next) => {
+          cors({ origin: true, credentials: true })(req, res, next)
+        },
+        authenticate(["vendor", "user"], ["session", "bearer"]),
+      ],
+    },
+    {
+      matcher: "/vendors/me/subscription",
+      method: ["GET", "POST", "OPTIONS"],
       middlewares: [
         (req, res, next) => {
           cors({ origin: true, credentials: true })(req, res, next)

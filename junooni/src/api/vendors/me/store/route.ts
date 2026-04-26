@@ -3,25 +3,22 @@
 import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
+import bcrypt from "bcryptjs"
 import MarketplaceModuleService from "../../../../modules/marketplace/service"
 import { MARKETPLACE_MODULE } from "../../../../modules/marketplace"
 
-// ─── Validation schemas ───────────────────────────────────────────────────────
+// ─── Schemas ──────────────────────────────────────────────────────────────────
 
-// All section types including new ones added via store editor
 const StoreSectionSchema = z.object({
   type: z.enum([
     "hero", "featured", "collection", "featured_collections",
     "about", "social", "announcement", "divider",
-    "image", "text", "html", "video", "links",
-    "header", "footer",
+    "image", "text", "html", "video", "links", "header", "footer",
   ]),
 }).passthrough()
 
 const VendorCollectionSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  handle: z.string(),
+  id: z.string(), title: z.string(), handle: z.string(),
   description: z.string().optional(),
   thumbnail: z.string().nullable().optional(),
   product_ids: z.array(z.string()),
@@ -30,16 +27,10 @@ const VendorCollectionSchema = z.object({
   created_at: z.string(),
 }).passthrough()
 
-// All page templates including "links"
 const StorePageSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  slug: z.string(),
+  id: z.string(), title: z.string(), slug: z.string(),
   template: z.enum(["blank", "about", "faq", "contact", "links"]),
-  content: z.string(),
-  in_nav: z.boolean(),
-  in_footer: z.boolean(),
-  created_at: z.string(),
+  content: z.string(), in_nav: z.boolean(), in_footer: z.boolean(), created_at: z.string(),
 }).passthrough()
 
 export const VendorStoreSchema = z.object({
@@ -52,10 +43,14 @@ export const VendorStoreSchema = z.object({
   template: z.enum(["minimal", "bold", "editorial"]).optional(),
   status: z.enum(["draft", "live", "paused"]).optional(),
 
+  // Password protection
+  password_enabled: z.boolean().optional(),
+  store_password: z.string().min(4).max(100).nullable().optional(), // plaintext input — hashed before saving
+
   // Branding
-  primary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").nullable().optional(),
-  secondary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").nullable().optional(),
-  accent_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").nullable().optional(),
+  primary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
+  secondary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
+  accent_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).nullable().optional(),
   font: z.enum(["inter", "poppins", "playfair", "dm-sans", "space-grotesk"]).nullable().optional(),
   hero_image: z.string().nullable().optional(),
   tagline: z.string().max(120).nullable().optional(),
@@ -75,11 +70,11 @@ export const VendorStoreSchema = z.object({
   seo_title: z.string().max(60).nullable().optional(),
   seo_description: z.string().max(160).nullable().optional(),
 
-  // Header behaviour
+  // Header
   sticky_header: z.boolean().optional(),
   sticky_announcement: z.boolean().optional(),
 
-  // Social links (stored on store for the editor)
+  // Social
   instagram_url: z.string().nullable().optional(),
   youtube_url: z.string().nullable().optional(),
   twitter_url: z.string().nullable().optional(),
@@ -87,7 +82,7 @@ export const VendorStoreSchema = z.object({
   tiktok_url: z.string().nullable().optional(),
   discord_url: z.string().nullable().optional(),
 
-  // Style settings (from store editor)
+  // Style
   border_radius: z.enum(["none", "sm", "md", "lg", "full"]).nullable().optional(),
   button_style: z.enum(["filled", "outline", "ghost"]).nullable().optional(),
   product_card: z.object({
@@ -103,11 +98,10 @@ export const VendorStoreSchema = z.object({
 
 type StoreBody = z.infer<typeof VendorStoreSchema>
 
-// ─── Helper: get vendor ID from auth context ──────────────────────────────────
+// ─── Helper ───────────────────────────────────────────────────────────────────
 
 async function getVendorId(req: AuthenticatedMedusaRequest): Promise<string | null> {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-
   if (req.auth_context?.actor_type === "vendor") {
     const { data: [vendorAdmin] } = await query.graph({
       entity: "vendor_admin",
@@ -116,66 +110,62 @@ async function getVendorId(req: AuthenticatedMedusaRequest): Promise<string | nu
     })
     return vendorAdmin?.vendor?.id ?? null
   }
-
   if (req.auth_context?.actor_type === "user") {
     return (req.query.vendor_id as string) ?? null
   }
-
   return null
+}
+
+// Strip store_password hash from response — never send it to client
+function sanitizeStore(store: any) {
+  if (!store) return store
+  const { store_password, ...safe } = store
+  return safe
 }
 
 // ─── GET /vendors/me/store ────────────────────────────────────────────────────
 
-export const GET = async (
-  req: AuthenticatedMedusaRequest,
-  res: MedusaResponse
-) => {
+export const GET = async (req: AuthenticatedMedusaRequest, res: MedusaResponse) => {
   const svc: MarketplaceModuleService = req.scope.resolve(MARKETPLACE_MODULE)
-
   const vendorId = await getVendorId(req)
   if (!vendorId) return res.status(404).json({ message: "Vendor not found" })
 
   const vendor = await svc.retrieveVendor(vendorId, { relations: ["vendor_store"] })
   if (!vendor) return res.status(404).json({ message: "Vendor not found" })
 
-  // Use query.graph to get all JSON columns (sections, pages, collections etc.)
   let store = vendor.vendor_store ?? null
   if (store?.id) {
     try {
       const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
       const { data: [fullStore] } = await query.graph({
-        entity: "vendor_store",
-        fields: ["*"],
-        filters: { id: store.id },
+        entity: "vendor_store", fields: ["*"], filters: { id: store.id },
       })
       if (fullStore) store = fullStore
     } catch {}
   }
 
-  return res.json({ store })
+  return res.json({ store: sanitizeStore(store) })
 }
 
 // ─── POST /vendors/me/store ───────────────────────────────────────────────────
 
-export const POST = async (
-  req: AuthenticatedMedusaRequest<StoreBody>,
-  res: MedusaResponse
-) => {
+export const POST = async (req: AuthenticatedMedusaRequest<StoreBody>, res: MedusaResponse) => {
   const svc: MarketplaceModuleService = req.scope.resolve(MARKETPLACE_MODULE)
-
   const vendorId = await getVendorId(req)
   if (!vendorId) return res.status(404).json({ message: "Vendor not found" })
 
   const vendor = await svc.retrieveVendor(vendorId, { relations: ["vendor_store"] })
-
   if (vendor.vendor_store) {
-    throw new MedusaError(
-      MedusaError.Types.INVALID_DATA,
-      "Store already exists. Use PUT to update."
-    )
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, "Store already exists. Use PUT to update.")
   }
 
   const body = req.validatedBody || req.body
+
+  // Hash password if provided
+  let hashedPassword: string | null = null
+  if (body.store_password) {
+    hashedPassword = await bcrypt.hash(body.store_password, 12)
+  }
 
   const store = await svc.createVendorStores({
     vendor_id: vendorId,
@@ -197,48 +187,48 @@ export const POST = async (
     seo_description: body.seo_description ?? null,
     custom_domain: body.custom_domain ?? null,
     domain_verified: false,
+    password_enabled: body.password_enabled ?? false,
+    store_password: hashedPassword,
   } as any)
 
-  // Mark vendor as having own store
   await svc.updateVendors({ id: vendorId, sell_on_own_store: true })
-
-  return res.status(201).json({ store })
+  return res.status(201).json({ store: sanitizeStore(store) })
 }
 
 // ─── PUT /vendors/me/store ────────────────────────────────────────────────────
 
-export const PUT = async (
-  req: AuthenticatedMedusaRequest<StoreBody>,
-  res: MedusaResponse
-) => {
+export const PUT = async (req: AuthenticatedMedusaRequest<StoreBody>, res: MedusaResponse) => {
   const svc: MarketplaceModuleService = req.scope.resolve(MARKETPLACE_MODULE)
-
   const vendorId = await getVendorId(req)
   if (!vendorId) return res.status(404).json({ message: "Vendor not found" })
 
   const vendor = await svc.retrieveVendor(vendorId, { relations: ["vendor_store"] })
-
   if (!vendor.vendor_store) {
-    throw new MedusaError(
-      MedusaError.Types.NOT_FOUND,
-      "No store found. Use POST to create one first."
-    )
+    throw new MedusaError(MedusaError.Types.NOT_FOUND, "No store found. Use POST to create one first.")
   }
 
   const body = req.validatedBody || req.body
 
-  // Strip undefined fields so existing values aren't overwritten with null
   const updatePayload: Record<string, any> = Object.fromEntries(
     Object.entries(body).filter(([, v]) => v !== undefined)
   )
 
-  // Auto-reset domain_verified if custom_domain is being changed
-  // (prevents old verification carrying over to a new domain)
-  if (
-    "custom_domain" in updatePayload &&
-    updatePayload.custom_domain !== vendor.vendor_store.custom_domain
-  ) {
+  // Auto-reset domain_verified if custom_domain changed
+  if ("custom_domain" in updatePayload &&
+      updatePayload.custom_domain !== vendor.vendor_store.custom_domain) {
     updatePayload.domain_verified = false
+  }
+
+  // Hash new password if provided
+  if (updatePayload.store_password) {
+    updatePayload.store_password = await bcrypt.hash(updatePayload.store_password, 12)
+  } else if (updatePayload.store_password === null) {
+    // Explicitly clearing the password
+    updatePayload.store_password = null
+    updatePayload.password_enabled = false
+  } else {
+    // No password change — remove from payload so existing hash isn't touched
+    delete updatePayload.store_password
   }
 
   const store = await svc.updateVendorStores({
@@ -246,5 +236,5 @@ export const PUT = async (
     ...updatePayload,
   })
 
-  return res.json({ store })
+  return res.json({ store: sanitizeStore(store) })
 }

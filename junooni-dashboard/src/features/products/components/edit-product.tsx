@@ -2008,37 +2008,39 @@ loadProduct();
   if (!id || !productLoaded) return;
 
     const loadSalesChannelData = async () => {
-    setIsLoadingSalesChannels(true);
-    try {
-      const vendor = await fetchCurrentVendor();
-      
-      // If vendor profile not found, don't show sales channel UI at all
-      if (!vendor) {
-        setVendorSalesChannels([]);
+      setIsLoadingSalesChannels(true);
+      try {
+        const [vendor, product] = await Promise.all([
+          fetchCurrentVendor(),
+          fetchProduct({ id })
+        ]);
+
+        let allowed: string[] = [];
+
+        if (!vendor) {
+          console.warn('Vendor profile not found, defaulting to marketplace channel');
+          allowed = [SALES_CHANNEL_MARKETPLACE];
+        } else {
+          if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
+          if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
+          
+          // Fallback if neither flag is set
+          if (allowed.length === 0) allowed = [SALES_CHANNEL_MARKETPLACE];
+        }
+
+        setVendorSalesChannels(allowed);
+
+        const currentChannelIds = (product?.sales_channels || []).map((sc: any) => sc.id);
+        setSelectedSalesChannels(currentChannelIds.filter((sc: string) => allowed.includes(sc)));
+
+      } catch (err) {
+        console.error('Failed to load sales channel data:', err);
+        setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+      } finally {
         setIsLoadingSalesChannels(false);
-        return;
       }
+    };
 
-      const allowed: string[] = [];
-      if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
-      if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
-      setVendorSalesChannels(allowed);
-
-      const product = await fetchProduct({ id });
-      //console.log('🔍 Product sales channels:', product?.sales_channels);
-      const currentChannelIds = (product?.sales_channels || []).map((sc: any) => sc.id);
-      // console.log('🔍 Current channel IDs:', currentChannelIds);
-      // console.log('🔍 Vendor allowed channels:', allowed);
-      // console.log('🔍 Filtered:', currentChannelIds.filter((sc: string) => allowed.includes(sc)));
-      setSelectedSalesChannels(currentChannelIds.filter((sc: string) => allowed.includes(sc)));
-    } catch (err) {
-      console.error('Failed to load sales channel data:', err);
-      setVendorSalesChannels([]);
-    } finally {
-      setIsLoadingSalesChannels(false);
-    }
-  };
-  
   loadSalesChannelData();
 }, [id, productLoaded]);
 
@@ -4192,79 +4194,92 @@ const isFormDirty =
                   />
 
                   {/* Sales Channel Selection */}
-                  {vendorSalesChannels.length > 0 && (
-                    <div className="mt-5">
-                      <Separator className="mb-4" />
-                      <h3 className="mb-1 font-medium text-gray-700">Sales Channels</h3>
-                      <p className="mb-3 text-sm text-gray-500">
-                        Choose where this product is available for sale
-                      </p>
+                <div className="mt-5">
+                  <Separator className="mb-4" />
+                  <h3 className="mb-1 font-medium text-gray-700">Sales Channels</h3>
+                  <p className="mb-3 text-sm text-gray-500">
+                    Choose where this product is available for sale
+                  </p>
 
-                      {isLoadingSalesChannels ? (
-                        <p className="text-sm text-gray-400">Loading channels...</p>
-                      ) : (
-                        <div className="space-y-3">
-                          {vendorSalesChannels.map(channelId => {
-                            const isChecked = selectedSalesChannels.includes(channelId);
-                            // Disabled if: only one channel available, OR this is the last checked one
-                            const isOnlyChannel = vendorSalesChannels.length === 1;
-                            const isLastSelected = isChecked && selectedSalesChannels.length === 1;
-                            const isDisabled = isOnlyChannel || isLastSelected;
+                  {isLoadingSalesChannels ? (
+                    <p className="text-sm text-gray-400">Loading channels...</p>
+                  ) : vendorSalesChannels.length === 0 ? (
+                    <p className="text-sm text-gray-400">
+                      No sales channels available
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {vendorSalesChannels.map((channelId) => {
+                        const isChecked = selectedSalesChannels.includes(channelId)
 
-                            return (
-                              <div
-                                key={channelId}
-                                className={`flex items-center gap-3 p-3 border rounded-md ${
+                        const isOnlyChannel = vendorSalesChannels.length === 1
+                        const isLastSelected =
+                          isChecked && selectedSalesChannels.length === 1
+
+                        const isDisabled = isOnlyChannel || isLastSelected
+
+                        return (
+                          <div
+                            key={channelId}
+                            className={`flex items-center gap-3 p-3 border rounded-md ${
+                              isDisabled
+                                ? "border-gray-100 bg-gray-50 opacity-70"
+                                : "border-gray-200"
+                            }`}
+                          >
+                            <Checkbox
+                              id={`sc-${channelId}`}
+                              checked={isChecked}
+                              disabled={isDisabled}
+                              onCheckedChange={(checked) => {
+                                if (isDisabled) return
+
+                                setSelectedSalesChannels((prev) =>
+                                  checked
+                                    ? [...prev, channelId]
+                                    : prev.filter((id) => id !== channelId)
+                                )
+                                setSalesChannelsDirty(true)
+                              }}
+                              className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]"
+                            />
+
+                            <div className="flex-1">
+                              <label
+                                htmlFor={`sc-${channelId}`}
+                                className={`text-sm font-medium ${
                                   isDisabled
-                                    ? 'border-gray-100 bg-gray-50 opacity-70'
-                                    : 'border-gray-200'
+                                    ? "text-gray-400 cursor-not-allowed"
+                                    : "text-gray-700 cursor-pointer"
                                 }`}
                               >
-                                <Checkbox
-                                  id={`sc-${channelId}`}
-                                  checked={isChecked}
-                                  disabled={isDisabled}
-                                  onCheckedChange={(checked) => {
-                                    if (isDisabled) return;
-                                    setSelectedSalesChannels(prev =>
-                                      checked
-                                        ? [...prev, channelId]
-                                        : prev.filter(id => id !== channelId)
-                                    );
-                                    setSalesChannelsDirty(true);
-                                  }}
-                                  className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]"
-                                />
-                                <div className="flex-1">
-                                  <label
-                                    htmlFor={`sc-${channelId}`}
-                                    className={`text-sm font-medium ${
-                                      isDisabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 cursor-pointer'
-                                    }`}
-                                  >
-                                    {SALES_CHANNEL_LABELS[channelId] || channelId}
-                                  </label>
-                                  {isOnlyChannel && (
-                                    <p className="text-xs text-gray-400 mt-0.5">
-                                      Cannot be changed — only available channel
-                                    </p>
-                                  )}
-                                  {isLastSelected && !isOnlyChannel && (
-                                    <p className="text-xs text-gray-400 mt-0.5">
-                                      At least one channel must be selected
-                                    </p>
-                                  )}
-                                </div>
-                                {isChecked && (
-                                  <span className="text-xs text-[#e65100] font-medium">Active</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                                {SALES_CHANNEL_LABELS[channelId] || channelId}
+                              </label>
+
+                              {isOnlyChannel && (
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  Cannot be changed — only available channel
+                                </p>
+                              )}
+
+                              {isLastSelected && !isOnlyChannel && (
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  At least one channel must be selected
+                                </p>
+                              )}
+                            </div>
+
+                            {isChecked && (
+                              <span className="text-xs text-[#e65100] font-medium">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
+                </div>
                 </section>
                 {/* Shipping & Fulfillment Info Card */}
                 {/* Shipping & Fulfillment Info Card */}

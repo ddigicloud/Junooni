@@ -139,7 +139,7 @@ export default async function BlogPostPage({
           </div>
         </div>
 
-        {post.cover_image && (
+        {/* {post.cover_image && (
           <div className="relative aspect-[16/9] rounded-2xl overflow-hidden mb-10 bg-gray-100">
             <Image
               src={post.cover_image} alt={post.title} fill
@@ -147,7 +147,7 @@ export default async function BlogPostPage({
               sizes="(max-width: 768px) 100vw, 800px" priority
             />
           </div>
-        )}
+        )} */}
 
         <div
           className="prose prose-lg prose-gray max-w-none"

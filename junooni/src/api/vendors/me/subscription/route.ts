@@ -1,17 +1,14 @@
 // src/api/vendors/me/subscription/route.ts
-// Handles GET (current), POST /create, POST /verify, POST /cancel
-
 import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework/http"
-import { MedusaError } from "@medusajs/framework/utils"
+import { MedusaError, ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { z } from "zod"
 import Razorpay from "razorpay"
 import crypto from "crypto"
 import MarketplaceModuleService from "../../../../modules/marketplace/service"
 import { MARKETPLACE_MODULE } from "../../../../modules/marketplace"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 // ── Plan config ───────────────────────────────────────────────────────────────
 
@@ -28,7 +25,6 @@ const PLANS: Record<string, {
   enterprise: { product_limit: -1,  custom_domain: true,  remove_branding: true,  priority_payouts: true,  store_live: true  },
 }
 
-// Razorpay plan IDs — set these in your Razorpay dashboard and add to env
 const RAZORPAY_PLAN_IDS: Record<string, string> = {
   starter_monthly: process.env.RAZORPAY_PLAN_STARTER_MONTHLY ?? "",
   starter_annual:  process.env.RAZORPAY_PLAN_STARTER_ANNUAL  ?? "",
@@ -52,30 +48,83 @@ async function getVendor(req: AuthenticatedMedusaRequest) {
   return vendorAdmin.vendor
 }
 
-// ── GET — current subscription ────────────────────────────────────────────────
+// helper — read vendor with custom columns directly from DB
+async function getVendorFromDB(req: AuthenticatedMedusaRequest) {
+  const vendorAdminId = req.auth_context?.actor_id
+  if (!vendorAdminId) throw new MedusaError(MedusaError.Types.UNAUTHORIZED, "Unauthorized")
+  const pgClient = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
+  const result = await pgClient.raw(
+    `SELECT v.* FROM "vendor_admin" va JOIN "vendor" v ON v.id = va.vendor_id WHERE va.id = ?`,
+    [vendorAdminId]
+  )
+  const vendor = result.rows?.[0]
+  if (!vendor) throw new MedusaError(MedusaError.Types.NOT_FOUND, "Vendor not found")
+  return vendor
+}
+
+// ── GET — current subscription + payment history ──────────────────────────────
 
 export const GET = async (req: AuthenticatedMedusaRequest, res: MedusaResponse) => {
-  const vendor = await getVendor(req)
-  const subscriptionId = (vendor as any).razorpay_subscription_id
+  const vendor = await getVendorFromDB(req)
+  const subscriptionId = vendor.razorpay_subscription_id
 
   if (!subscriptionId) {
-    return res.json({ subscription: null, plan: (vendor as any).plan ?? "free" })
+    return res.json({ subscription: null, payments: [], plan: vendor.plan ?? "free" })
   }
 
   try {
     const rzp = getRazorpay()
-    const sub = await rzp.subscriptions.fetch(subscriptionId)
-    return res.json({ subscription: sub, plan: (vendor as any).plan ?? "free" })
+
+    const [subResult, invoicesResult] = await Promise.allSettled([
+      rzp.subscriptions.fetch(subscriptionId),
+      (rzp as any).invoices.all({ subscription_id: subscriptionId, count: 100 }),
+    ])
+
+    const subscription = subResult.status === "fulfilled" ? subResult.value : null
+
+    if (subResult.status === "rejected") {
+      console.warn("[subscription] fetch failed:", subResult.reason)
+    }
+
+    if (invoicesResult.status === "rejected") {
+      console.warn("[subscription] invoices.all failed:", invoicesResult.reason)
+    }
+
+    const invoices = invoicesResult.status === "fulfilled"
+      ? ((invoicesResult.value as any)?.items ?? [])
+      : []
+
+    // Map invoices → payment shape the frontend expects
+    // Only include invoices that have an associated payment
+    const payments = invoices
+      .filter((inv: any) => inv.payment_id)
+      .map((inv: any) => ({
+        id:              inv.payment_id,
+        entity:          "payment",
+        amount:          inv.amount,
+        currency:        inv.currency ?? "INR",
+        status:          inv.status === "paid" ? "captured" : inv.status,
+        created_at:      inv.paid_at ?? inv.date,
+        method:          inv.payment?.method ?? null,
+        subscription_id: subscriptionId,
+        invoice_id:      inv.id,
+      }))
+
+    return res.json({
+      subscription,
+      payments,
+      plan: vendor.plan ?? "free",
+    })
   } catch (e) {
-    // Razorpay fetch failed — still return plan
-    return res.json({ subscription: null, plan: (vendor as any).plan ?? "free" })
+    console.error("[subscription] GET failed:", e)
+    return res.json({ subscription: null, payments: [], plan: vendor.plan ?? "free" })
   }
 }
 
-// ── POST /create — start Razorpay subscription ────────────────────────────────
+// ── POST — create / verify / cancel ──────────────────────────────────────────
 
 const CreateSchema = z.object({
-  plan_id:      z.enum(["starter", "pro"]),
+  plan_id:       z.enum(["starter", "pro"]),
   billing_cycle: z.enum(["monthly", "annual"]),
 })
 
@@ -85,23 +134,24 @@ export const POST = async (req: AuthenticatedMedusaRequest, res: MedusaResponse)
   if (action === "verify") return handleVerify(req, res)
   if (action === "cancel") return handleCancel(req, res)
 
-  // Default: create subscription
   const body = CreateSchema.parse(req.body)
   const vendor = await getVendor(req)
 
   const rzpPlanKey = `${body.plan_id}_${body.billing_cycle}`
   const rzpPlanId = RAZORPAY_PLAN_IDS[rzpPlanKey]
   if (!rzpPlanId) {
-    throw new MedusaError(MedusaError.Types.INVALID_DATA, `No Razorpay plan configured for ${rzpPlanKey}. Please set RAZORPAY_PLAN_${rzpPlanKey.toUpperCase()} in environment.`)
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      `No Razorpay plan configured for ${rzpPlanKey}. Please set RAZORPAY_PLAN_${rzpPlanKey.toUpperCase()} in environment.`
+    )
   }
 
   const rzp = getRazorpay()
 
-  // Create Razorpay subscription
   const subscription = await rzp.subscriptions.create({
-    plan_id:        rzpPlanId,
-    total_count:    body.billing_cycle === "annual" ? 12 : 120, // 1 year or 10 years
-    quantity:       1,
+    plan_id:         rzpPlanId,
+    total_count:     body.billing_cycle === "annual" ? 12 : 120,
+    quantity:        1,
     customer_notify: 1,
     notes: {
       vendor_id:   vendor.id,
@@ -120,25 +170,15 @@ export const POST = async (req: AuthenticatedMedusaRequest, res: MedusaResponse)
 // ── Verify payment ────────────────────────────────────────────────────────────
 
 async function handleVerify(req: AuthenticatedMedusaRequest, res: MedusaResponse) {
-  console.log("🔵 handleVerify START")
-  console.log("🔵 full body:", JSON.stringify(req.body))
-
-  const { 
-    razorpay_payment_id, 
-    razorpay_subscription_id, 
-    razorpay_signature, 
-    plan_id, 
-    billing_cycle 
+  const {
+    razorpay_payment_id,
+    razorpay_subscription_id,
+    razorpay_signature,
+    plan_id,
+    billing_cycle,
   } = req.body as any
 
-  console.log("🔵 plan_id:", plan_id)
-  console.log("🔵 billing_cycle:", billing_cycle)
-  console.log("🔵 payment_id:", razorpay_payment_id)
-  console.log("🔵 subscription_id:", razorpay_subscription_id)
-  console.log("🔵 signature:", razorpay_signature)
-
   if (!razorpay_payment_id || !razorpay_subscription_id || !razorpay_signature) {
-    console.log("❌ Missing fields — returning early")
     throw new MedusaError(MedusaError.Types.INVALID_DATA, "Missing payment verification fields")
   }
 
@@ -147,50 +187,30 @@ async function handleVerify(req: AuthenticatedMedusaRequest, res: MedusaResponse
     .update(`${razorpay_payment_id}|${razorpay_subscription_id}`)
     .digest("hex")
 
-  console.log("🔵 sig match?", expectedSig === razorpay_signature)
-
   if (expectedSig !== razorpay_signature) {
-    console.log("❌ Signature mismatch — verify failing")
     throw new MedusaError(MedusaError.Types.INVALID_DATA, "Payment signature verification failed")
   }
 
   const vendor = await getVendor(req)
-  console.log("🔵 vendor id:", vendor.id)
-  console.log("🔵 vendor current plan:", (vendor as any).plan)
-
   const pgClient = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
 
-  try {
-    const updateResult = await pgClient.raw(`
-      UPDATE "vendor"
-      SET
-        plan                     = ?,
-        plan_billing_cycle       = ?,
-        razorpay_subscription_id = ?,
-        razorpay_payment_id      = ?,
-        plan_activated_at        = ?
-      WHERE id = ?
-    `, [
-      plan_id,
-      billing_cycle,
-      razorpay_subscription_id,
-      razorpay_payment_id,
-      new Date().toISOString(),
-      vendor.id,
-    ])
-    console.log("✅ SQL update result:", JSON.stringify(updateResult))
-
-    // Immediately verify the update worked
-    const check = await pgClient.raw(
-      `SELECT plan, razorpay_subscription_id FROM "vendor" WHERE id = ?`,
-      [vendor.id]
-    )
-    console.log("✅ DB after update:", JSON.stringify(check.rows?.[0]))
-
-  } catch(sqlErr) {
-    console.error("❌ SQL UPDATE FAILED:", sqlErr)
-    throw sqlErr
-  }
+  await pgClient.raw(`
+    UPDATE "vendor"
+    SET
+      plan                     = ?,
+      plan_billing_cycle       = ?,
+      razorpay_subscription_id = ?,
+      razorpay_payment_id      = ?,
+      plan_activated_at        = ?
+    WHERE id = ?
+  `, [
+    plan_id,
+    billing_cycle,
+    razorpay_subscription_id,
+    razorpay_payment_id,
+    new Date().toISOString(),
+    vendor.id,
+  ])
 
   const rzp = getRazorpay()
   const subscription = await rzp.subscriptions.fetch(razorpay_subscription_id)
@@ -204,7 +224,6 @@ async function handleCancel(req: AuthenticatedMedusaRequest, res: MedusaResponse
   const vendor = await getVendor(req)
   const pgClient = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
 
-  // ✅ Read subscription ID via raw SQL
   const result = await pgClient.raw(
     `SELECT razorpay_subscription_id FROM "vendor" WHERE id = ?`,
     [vendor.id]

@@ -38,6 +38,12 @@ const Vendor = model.define("vendor", {
   admins: model.hasMany(() => VendorAdmin),
   sell_on_marketplace: model.boolean().default(true),
   sell_on_own_store: model.boolean().default(false),
+  // Subscription / billing fields
+  plan: model.text().default("free").nullable(),
+  plan_billing_cycle: model.enum(["monthly", "annual"]).nullable(),
+  plan_activated_at: model.dateTime().nullable(),
+  razorpay_subscription_id: model.text().nullable(),
+  razorpay_payment_id: model.text().nullable(),
 
   // 1:1 relation — created when vendor opts into own store
   vendor_store: model.hasOne(() => VendorStore, { mappedBy: "vendor" }).nullable(),

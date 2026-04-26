@@ -101,19 +101,19 @@
 //         <DropdownMenuGroup>
 //           <DropdownMenuItem asChild>
 //             <Link to='/profile' className='flex items-center gap-2'>
-//               <User className='h-4 w-4' />
+//               <User className='w-4 h-4' />
 //               Profile
 //             </Link>
 //           </DropdownMenuItem>
 //           <DropdownMenuItem asChild>
 //             <Link to='/payouts' className='flex items-center gap-2'>
-//               <CreditCard className='h-4 w-4' />
+//               <CreditCard className='w-4 h-4' />
 //               Payouts
 //             </Link>
 //           </DropdownMenuItem>
 //           <DropdownMenuItem asChild>
 //             <Link to='/help-center' className='flex items-center gap-2'>
-//               <HelpCircle className='h-4 w-4' />
+//               <HelpCircle className='w-4 h-4' />
 //               Help Center
 //             </Link>
 //           </DropdownMenuItem>
@@ -125,7 +125,7 @@
 //           onClick={handleLogout}
 //           className='flex items-center gap-2'
 //         >
-//           <LogOut className='h-4 w-4' />
+//           <LogOut className='w-4 h-4' />
 //           Log out
 //         </DropdownMenuItem>
 //       </DropdownMenuContent>
@@ -154,11 +154,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { StoreModeBadge, type StorePreference } from '@/features/dashboard/components/StoreTypeModal'
 
 type Vendor = {
   name: string
   handle: string
   logo?: string
+}
+
+// Update component signature
+type ProfileDropdownProps = {
+  storePreference?: StorePreference | null
+  onStoreChangeClick?: () => void
 }
 
 // Utility function to decode JWT token and check validity
@@ -187,7 +194,7 @@ const validateToken = () => {
   }
 };
 
-export function ProfileDropdown() {
+export function ProfileDropdown({ storePreference, onStoreChangeClick }: ProfileDropdownProps) {
   const [vendor, setVendor] = useState<Vendor | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
@@ -320,22 +327,30 @@ export function ProfileDropdown() {
 
         <DropdownMenuSeparator />
 
+        {/* Mobile-only store badge */}
+        {storePreference && onStoreChangeClick && (
+          <div className="px-2 py-2 md:hidden">
+            <StoreModeBadge pref={storePreference} onChangeClick={onStoreChangeClick} />
+          </div>
+        )}
+        <DropdownMenuSeparator className="md:hidden" />
+
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
             <Link to='/profile' className='flex items-center gap-2'>
-              <User className='h-4 w-4' />
+              <User className='w-4 h-4' />
               Profile
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link to='/payouts' className='flex items-center gap-2'>
-              <CreditCard className='h-4 w-4' />
+              <CreditCard className='w-4 h-4' />
               Payouts
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link to='/help-center' className='flex items-center gap-2'>
-              <HelpCircle className='h-4 w-4' />
+              <HelpCircle className='w-4 h-4' />
               Help Center
             </Link>
           </DropdownMenuItem>
@@ -347,7 +362,7 @@ export function ProfileDropdown() {
           onClick={handleLogout}
           className='flex items-center gap-2'
         >
-          <LogOut className='h-4 w-4' />
+          <LogOut className='w-4 h-4' />
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>

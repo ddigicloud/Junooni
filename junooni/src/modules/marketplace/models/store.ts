@@ -13,6 +13,10 @@ const VendorStore = model.define("vendor_store", {
   template: model.enum(["minimal", "bold", "editorial"]).default("minimal"),
   status: model.enum(["draft", "live", "paused"]).default("draft"),
 
+  // ── Password protection ───────────────────────────────────────────────────
+  password_enabled: model.boolean().default(false),
+  store_password: model.text().nullable(),   // bcrypt hash — never plaintext
+
   // ── Branding ──────────────────────────────────────────────────────────────
   primary_color: model.text().default("#000000").nullable(),
   secondary_color: model.text().default("#ffffff").nullable(),
@@ -32,8 +36,6 @@ const VendorStore = model.define("vendor_store", {
   pages: model.json().nullable(),
 
   // ── Creator collections (JSON) ────────────────────────────────────────────
-  // Stored as { collections: VendorCollection[] }
-  // Each collection has its own product_ids list (Medusa product IDs)
   collections: model.json().nullable(),
 
   // ── SEO ───────────────────────────────────────────────────────────────────

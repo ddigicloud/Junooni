@@ -338,9 +338,21 @@ export default async function StoreTemplate({
   if (!region) return null
 
   // Only fetch sidebar data here — fast, parallel
-  const [categoriesData, vendorsData] = await Promise.all([
+  // const [categoriesData, vendorsData] = await Promise.all([
+  //   listCategories(),
+  //   retriveVendors(),
+  // ])
+  const { listProductsWithSort } = await import("@lib/data/products")
+
+  const [categoriesData, vendorsData, { response: { products: sidebarProducts } }] = await Promise.all([
     listCategories(),
     retriveVendors(),
+    listProductsWithSort({
+      page: 1,
+      queryParams: { limit: 1000 },
+      sortBy: sort,
+      countryCode,
+    }),
   ])
 
   const hasAnyFilters = vendors?.length || colors?.length || collections?.length ||
@@ -348,7 +360,12 @@ export default async function StoreTemplate({
 
   // Provide minimal RefinementList props for the shell
   // (price range and colors will be updated once ProductsFetcher resolves)
-  const shellPriceRange = { minPrice: minPrice ?? 0, maxPrice: maxPrice ?? 1000 }
+  //const shellPriceRange = { minPrice: minPrice ?? 0, maxPrice: maxPrice ?? 1000 }
+  const calculatedRange = calculatePriceRange(sidebarProducts)
+  const shellPriceRange = {
+    minPrice: minPrice ?? calculatedRange.minPrice,
+    maxPrice: maxPrice ?? calculatedRange.maxPrice,
+  }
 
   return (
     <MobileStoreWrapper
@@ -361,7 +378,7 @@ export default async function StoreTemplate({
           search={true}
           vendors={vendorsData}
           categories={categoriesData}
-          products={[]}
+          products={sidebarProducts} 
           availableColors={[]}
           dynamicPriceRange={shellPriceRange}
         />
@@ -374,7 +391,7 @@ export default async function StoreTemplate({
             search={true}
             vendors={vendorsData}
             categories={categoriesData}
-            products={[]}
+            products={sidebarProducts} 
             availableColors={[]}
             dynamicPriceRange={shellPriceRange}
           />

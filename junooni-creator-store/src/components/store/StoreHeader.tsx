@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation"
 import { useState, useRef, useEffect, useMemo } from "react"
 import { Search, Menu, X, ChevronDown, ArrowRight, ShoppingBag } from "lucide-react"
 import CartIconButton from "@/components/cart/CartIconButton"
-import WishlistIconButton from "@/components/wishlist/WishlistIconButton"
 import { formatPrice } from "@/lib/api"
 import type { PublicVendor, VendorStore, CategoryMeta, CollectionMeta, Product } from "@/lib/types"
 
@@ -147,7 +146,7 @@ export default function StoreHeader({
     <div ref={headerRef}>
       {/* ── HEADER BAR ──────────────────────────────────────────────────────── */}
       <header className={`w-full backdrop-blur-md border-b shadow-sm ${bg}`}>
-        <div className="flex items-center justify-between h-16 max-w-6xl gap-6 px-4 mx-auto sm:px-6">
+        <div className="flex items-center justify-between h-16 gap-6 px-4 mx-auto max-w-7xl sm:px-6">
 
           {/* Logo */}
           <Link href={`/${handle}`} className="flex items-center gap-2.5 shrink-0">

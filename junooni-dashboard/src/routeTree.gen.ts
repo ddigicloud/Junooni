@@ -21,6 +21,7 @@ import { Route as auth500Import } from './routes/(auth)/500'
 import { Route as AuthenticatedStoreMembershipRouteImport } from './routes/_authenticated/store/membership/route'
 import { Route as AuthenticatedStoreEditorRouteImport } from './routes/_authenticated/store/editor/route'
 import { Route as AuthenticatedStoreCollectionsRouteImport } from './routes/_authenticated/store/collections/route'
+import { Route as AuthenticatedStoreBillingHistoryIndexImport } from './routes/_authenticated/store/billing-history/index'
 
 // Create Virtual Routes
 
@@ -631,6 +632,17 @@ const AuthenticatedProductCatalogProductsIndexLazyRoute =
     ),
   )
 
+const AuthenticatedStoreBillingHistoryIndexRoute =
+  AuthenticatedStoreBillingHistoryIndexImport.update({
+    id: '/store/billing-history/',
+    path: '/store/billing-history/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_authenticated/store/billing-history/index.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
 const AuthenticatedProductCatalogProductsIdLazyRoute =
   AuthenticatedProductCatalogProductsIdLazyImport.update({
     id: '/productCatalog/products/$id',
@@ -1032,6 +1044,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProductCatalogProductsIdLazyImport
       parentRoute: typeof AuthenticatedRouteImport
     }
+    '/_authenticated/store/billing-history/': {
+      id: '/_authenticated/store/billing-history/'
+      path: '/store/billing-history'
+      fullPath: '/store/billing-history'
+      preLoaderRoute: typeof AuthenticatedStoreBillingHistoryIndexImport
+      parentRoute: typeof AuthenticatedRouteImport
+    }
     '/_authenticated/productCatalog/products/': {
       id: '/_authenticated/productCatalog/products/'
       path: '/productCatalog/products'
@@ -1172,6 +1191,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProductsIndexLazyRoute: typeof AuthenticatedProductsIndexLazyRoute
   AuthenticatedStoreIndexLazyRoute: typeof AuthenticatedStoreIndexLazyRoute
   AuthenticatedProductCatalogProductsIdLazyRoute: typeof AuthenticatedProductCatalogProductsIdLazyRoute
+  AuthenticatedStoreBillingHistoryIndexRoute: typeof AuthenticatedStoreBillingHistoryIndexRoute
   AuthenticatedProductCatalogProductsIndexLazyRoute: typeof AuthenticatedProductCatalogProductsIndexLazyRoute
   AuthenticatedProductCatalogCategorySlugIdLazyRoute: typeof AuthenticatedProductCatalogCategorySlugIdLazyRoute
   AuthenticatedProductCatalogCategorySlugIndexLazyRoute: typeof AuthenticatedProductCatalogCategorySlugIndexLazyRoute
@@ -1207,6 +1227,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedStoreIndexLazyRoute: AuthenticatedStoreIndexLazyRoute,
   AuthenticatedProductCatalogProductsIdLazyRoute:
     AuthenticatedProductCatalogProductsIdLazyRoute,
+  AuthenticatedStoreBillingHistoryIndexRoute:
+    AuthenticatedStoreBillingHistoryIndexRoute,
   AuthenticatedProductCatalogProductsIndexLazyRoute:
     AuthenticatedProductCatalogProductsIndexLazyRoute,
   AuthenticatedProductCatalogCategorySlugIdLazyRoute:
@@ -1270,6 +1292,7 @@ export interface FileRoutesByFullPath {
   '/pages/make_your_brand': typeof PagesMakeyourbrandIndexLazyRoute
   '/pages/privacy': typeof PagesPrivacyIndexLazyRoute
   '/productCatalog/products/$id': typeof AuthenticatedProductCatalogProductsIdLazyRoute
+  '/store/billing-history': typeof AuthenticatedStoreBillingHistoryIndexRoute
   '/productCatalog/products': typeof AuthenticatedProductCatalogProductsIndexLazyRoute
   '/store/collections/': typeof AuthenticatedStoreCollectionsIndexLazyRoute
   '/store/editor/': typeof AuthenticatedStoreEditorIndexLazyRoute
@@ -1325,6 +1348,7 @@ export interface FileRoutesByTo {
   '/pages/make_your_brand': typeof PagesMakeyourbrandIndexLazyRoute
   '/pages/privacy': typeof PagesPrivacyIndexLazyRoute
   '/productCatalog/products/$id': typeof AuthenticatedProductCatalogProductsIdLazyRoute
+  '/store/billing-history': typeof AuthenticatedStoreBillingHistoryIndexRoute
   '/productCatalog/products': typeof AuthenticatedProductCatalogProductsIndexLazyRoute
   '/store/collections': typeof AuthenticatedStoreCollectionsIndexLazyRoute
   '/store/editor': typeof AuthenticatedStoreEditorIndexLazyRoute
@@ -1387,6 +1411,7 @@ export interface FileRoutesById {
   '/pages/make_your_brand/': typeof PagesMakeyourbrandIndexLazyRoute
   '/pages/privacy/': typeof PagesPrivacyIndexLazyRoute
   '/_authenticated/productCatalog/products/$id': typeof AuthenticatedProductCatalogProductsIdLazyRoute
+  '/_authenticated/store/billing-history/': typeof AuthenticatedStoreBillingHistoryIndexRoute
   '/_authenticated/productCatalog/products/': typeof AuthenticatedProductCatalogProductsIndexLazyRoute
   '/_authenticated/store/collections/': typeof AuthenticatedStoreCollectionsIndexLazyRoute
   '/_authenticated/store/editor/': typeof AuthenticatedStoreEditorIndexLazyRoute
@@ -1449,6 +1474,7 @@ export interface FileRouteTypes {
     | '/pages/make_your_brand'
     | '/pages/privacy'
     | '/productCatalog/products/$id'
+    | '/store/billing-history'
     | '/productCatalog/products'
     | '/store/collections/'
     | '/store/editor/'
@@ -1503,6 +1529,7 @@ export interface FileRouteTypes {
     | '/pages/make_your_brand'
     | '/pages/privacy'
     | '/productCatalog/products/$id'
+    | '/store/billing-history'
     | '/productCatalog/products'
     | '/store/collections'
     | '/store/editor'
@@ -1563,6 +1590,7 @@ export interface FileRouteTypes {
     | '/pages/make_your_brand/'
     | '/pages/privacy/'
     | '/_authenticated/productCatalog/products/$id'
+    | '/_authenticated/store/billing-history/'
     | '/_authenticated/productCatalog/products/'
     | '/_authenticated/store/collections/'
     | '/_authenticated/store/editor/'
@@ -1692,6 +1720,7 @@ export const routeTree = rootRoute
         "/_authenticated/products/",
         "/_authenticated/store/",
         "/_authenticated/productCatalog/products/$id",
+        "/_authenticated/store/billing-history/",
         "/_authenticated/productCatalog/products/",
         "/_authenticated/productCatalog/category/$slug/$id",
         "/_authenticated/productCatalog/category/$slug/"
@@ -1890,6 +1919,10 @@ export const routeTree = rootRoute
     },
     "/_authenticated/productCatalog/products/$id": {
       "filePath": "_authenticated/productCatalog/products/$id.lazy.tsx",
+      "parent": "/_authenticated"
+    },
+    "/_authenticated/store/billing-history/": {
+      "filePath": "_authenticated/store/billing-history/index.tsx",
       "parent": "/_authenticated"
     },
     "/_authenticated/productCatalog/products/": {

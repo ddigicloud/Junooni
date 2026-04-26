@@ -1710,6 +1710,7 @@ for (const metaItem of vendorMetadataItems) {
   return {
     id: order.id,
     custom_display_id: order.custom_display_id,
+     sales_channel: order.sales_channel || null, 
     status: order.status,
     payment_status: finalPaymentStatus, // ✅ FIXED: Use the ensured status
     fulfillment_status: vendorFulfillmentData.status, // ✅ NOW VENDOR-SPECIFIC!
@@ -2047,6 +2048,9 @@ export const GET = async (
           "fulfillments.labels.label_url",
           "fulfillments.labels.created_at",
           "customer.*",
+          "sales_channel",
+          "sales_channel.id",
+          "sales_channel.name",
           "shipping_address.*",
           "billing_address.*"
         ],

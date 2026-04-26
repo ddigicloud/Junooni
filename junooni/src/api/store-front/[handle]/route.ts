@@ -1,162 +1,172 @@
-// src/api/store-front/[handle]/route.ts
-
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { MedusaError, ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import MarketplaceModuleService from "../../../modules/marketplace/service"
 import { MARKETPLACE_MODULE } from "../../../modules/marketplace"
+
+const CREATOR_STORE_SC = process.env.CREATOR_STORE_SALES_CHANNEL_ID
+  ?? "sc_01KMAP3HD1EVDF9FT7EHHHV8HP"
+
+const PAGE_SIZE = 24
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const { handle } = req.params
+  const page = Math.max(1, parseInt((req.query.page as string) ?? "1"))
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-  const marketplaceModuleService: MarketplaceModuleService =
-    req.scope.resolve(MARKETPLACE_MODULE)
 
-  // ── 1. Find vendor by handle ───────────────────────────────────────────────
-  const vendors = await marketplaceModuleService.listVendors(
-    { handle },
-    { relations: ["vendor_store", "admins"] }
-  )
+  // ── 1. Fetch vendor + store ────────────────────────────────────────────
+  let vendor: any = null
+  let vendorStore: any = null
 
-  if (!vendors?.length) {
+  try {
+    const { data: [vendorData] } = await query.graph({
+      entity: "vendor",
+      fields: [
+        "id", "handle", "name", "logo", "coverphoto",
+        "creator_bio", "creator_title", "creator_category",
+        "instagram", "youtube", "xtwitter", "facebook", "othersocial",
+        "sell_on_own_store",
+        "vendor_store.id",
+        "vendor_store.subdomain",
+        "vendor_store.custom_domain",
+        "vendor_store.domain_verified",
+        "vendor_store.template",
+        "vendor_store.status",
+        "vendor_store.password_enabled",
+        "vendor_store.primary_color",
+        "vendor_store.secondary_color",
+        "vendor_store.font",
+        "vendor_store.hero_image",
+        "vendor_store.tagline",
+        "vendor_store.announcement_text",
+        "vendor_store.store_logo",
+        "vendor_store.store_favicon",
+        "vendor_store.sections",
+        "vendor_store.pages",
+        "vendor_store.collections",
+        "vendor_store.seo_title",
+        "vendor_store.seo_description",
+        "vendor_store.sticky_header",
+        "vendor_store.sticky_announcement",
+        "vendor_store.og_image",
+        "vendor_store.instagram_url",
+        "vendor_store.youtube_url",
+        "vendor_store.twitter_url",
+        "vendor_store.facebook_url",
+        "vendor_store.custom_css",
+      ],
+      filters: { handle },
+    })
+
+    vendor = vendorData
+    vendorStore = vendor?.vendor_store ?? null
+
+  } catch (err) {
+    console.error("[store-front] vendor lookup failed:", err)
     throw new MedusaError(MedusaError.Types.NOT_FOUND, `No creator found with handle "${handle}"`)
   }
 
-  const vendor = vendors[0]
+  if (!vendor) {
+    throw new MedusaError(MedusaError.Types.NOT_FOUND, `No creator found with handle "${handle}"`)
+  }
 
   if (!vendor.sell_on_own_store) {
     throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "This creator does not have an own store enabled")
   }
 
-  const vendorStore = vendor.vendor_store ?? null
-  const isDev = process.env.NODE_ENV === "development"
+  console.log(`[store-front] handle=${handle} status=${vendorStore?.status} password_enabled=${vendorStore?.password_enabled}`)
 
-  if (!isDev && vendorStore && vendorStore.status !== "live") {
-    throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "This store is not currently live")
+  // ── 2. Public vendor shape ─────────────────────────────────────────────
+  const publicVendor = {
+    id:               vendor.id,
+    handle:           vendor.handle,
+    name:             vendor.name,
+    logo:             vendor.logo,
+    coverphoto:       vendor.coverphoto,
+    creator_bio:      vendor.creator_bio,
+    creator_title:    vendor.creator_title,
+    creator_category: vendor.creator_category,
+    instagram:        vendor.instagram,
+    youtube:          vendor.youtube,
+    xtwitter:         vendor.xtwitter,
+    facebook:         vendor.facebook,
+    othersocial:      vendor.othersocial,
   }
 
-  // ── Fetch full vendor_store including pages column via query.graph ─────────
-  let fullVendorStore = vendorStore
-  if (vendorStore?.id) {
-    try {
-      const { data: storeData } = await query.graph({
-        entity: "vendor_store",
-        fields: ["*"],
-        filters: { id: vendorStore.id },
+  // ── 3. Password gate ───────────────────────────────────────────────────
+  if (vendorStore?.password_enabled === true) {
+    const accessToken = (req.headers["x-store-access"] as string) ?? ""
+    const hasAccess = accessToken.length > 10
+
+    console.log(`[store-front] password_enabled=true hasAccess=${hasAccess}`)
+
+    if (!hasAccess) {
+      return res.json({
+        vendor: publicVendor,
+        store: {
+          ...vendorStore,
+          pages: vendorStore.pages ?? { pages: [] },
+          password_enabled: true,
+          store_password: undefined,
+        },
+        products: [],
+        categories: [],
+        collections: [],
+        pagination: { page: 1, total: 0, totalPages: 0, hasMore: false },
       })
-      if (storeData?.[0]) {
-        fullVendorStore = storeData[0]
-      }
-    } catch (storeErr) {
-      console.warn("[store-front] Could not fetch full vendor_store:", storeErr)
     }
+
+    console.log(`[store-front] access granted — loading products`)
   }
 
-  // ── 2. Fetch products via vendor_admin ────────────────────────────────────
+  // ── 4. Fetch products via query.index (cross-module filtering) ─────────
   let products: any[] = []
+  let totalProducts = 0
+  const t1 = Date.now()
 
   try {
-    const adminId = vendor.admins?.[0]?.id
-    if (adminId) {
-      const { data: [vendorAdmin] } = await query.graph({
-        entity: "vendor_admin",
-        fields: [
-          "vendor.products.id",
-          "vendor.products.title",
-          "vendor.products.handle",
-          "vendor.products.description",
-          "vendor.products.thumbnail",
-          "vendor.products.status",
-          "vendor.products.created_at",
-          // variants
-          "vendor.products.variants.id",
-          "vendor.products.variants.title",
-          "vendor.products.variants.thumbnail",
-          "vendor.products.variants.metadata",
-          "vendor.products.variants.prices.*",
-          "vendor.products.variants.options.*",
-          "vendor.products.variants.images.id",
-          "vendor.products.variants.images.url",
-          // product images
-          "vendor.products.images.id",
-          "vendor.products.images.url",
-          // options
-          "vendor.products.options.id",
-          "vendor.products.options.title",
-          "vendor.products.options.values.id",
-          "vendor.products.options.values.value",
-          // categories
-          "vendor.products.categories.id",
-          "vendor.products.categories.name",
-          "vendor.products.categories.handle",
-          // collection
-          "vendor.products.collection.id",
-          "vendor.products.collection.title",
-          "vendor.products.collection.handle",
-        ],
-        filters: { id: [adminId] },
-        pagination: { take: 100 },
-      })
+    const offset = (page - 1) * PAGE_SIZE
 
-      const all = vendorAdmin?.vendor?.products ?? []
-      products = all.filter((p: any) => p.status === "published")
+    const { data: indexedProducts, metadata } = await query.index({
+      entity: "product",
+      fields: [
+        "id", "title", "handle", "thumbnail", "status", "description",
+        "variants.id", "variants.title",
+        "variants.prices.id", "variants.prices.amount", "variants.prices.currency_code",
+        "images.id", "images.url",
+        "options.id", "options.title",
+        "options.values.id", "options.values.value",
+        "categories.id", "categories.name", "categories.handle",
+      ],
+      filters: {
+        status: "published",
+        sales_channels: { id: [CREATOR_STORE_SC] },
+        vendor: { id: [vendor.id] },
+      },
+      pagination: {
+        take: PAGE_SIZE,
+        skip: offset,
+        order: { created_at: "DESC" },
+      },
+    })
 
-      // ── Fetch inventory via product_variant → inventory_items ──────────────
-      const variantIds = products.flatMap((p: any) =>
-        (p.variants ?? []).map((v: any) => v.id)
-      ).filter(Boolean)
+    totalProducts = metadata?.count ?? 0
 
-      if (variantIds.length) {
-        try {
-          const stockMap: Record<string, number> = {}
+    products = (indexedProducts ?? []).map((p: any) => ({
+      ...p,
+      variants: (p.variants ?? []).map((v: any) => ({
+        ...v,
+        inventory_quantity: 10, // checked at cart time
+      })),
+    }))
 
-          const { data: variantData } = await query.graph({
-            entity: "product_variant",
-            fields: [
-              "id",
-              "inventory_items.inventory.id",
-              "inventory_items.inventory.location_levels.stocked_quantity",
-              "inventory_items.inventory.location_levels.reserved_quantity",
-            ],
-            filters: { id: variantIds },
-          })
+    console.log(`[store-front] query.index: ${products.length}/${totalProducts} products in ${Date.now() - t1}ms`)
 
-          for (const vd of variantData ?? []) {
-            const links = vd.inventory_items ?? []
-            if (!links.length) {
-              stockMap[vd.id] = -1
-              continue
-            }
-            let total = 0
-            for (const link of links) {
-              for (const lvl of link.inventory?.location_levels ?? []) {
-                total += (lvl.stocked_quantity ?? 0) - (lvl.reserved_quantity ?? 0)
-              }
-            }
-            stockMap[vd.id] = total
-          }
-
-          console.log("[store-front] stockMap:", JSON.stringify(stockMap))
-
-          products = products.map((p: any) => ({
-            ...p,
-            variants: (p.variants ?? []).map((v: any) => ({
-              ...v,
-              inventory_quantity: v.id in stockMap ? stockMap[v.id] : -1,
-            })),
-          }))
-        } catch (invErr) {
-          console.warn("[store-front] Inventory fetch failed:", invErr)
-        }
-      }
-    }
   } catch (err) {
-    console.error("[store-front] Failed to fetch products:", err)
-    products = []
+    console.error("[store-front] query.index failed:", err)
+    // Don't crash — return store with empty products
   }
 
-  // ── 3. Derive categories from products + vendor collections from store ───────
+  // ── 5. Categories + collections ────────────────────────────────────────
   const categoriesMap = new Map<string, any>()
-
   for (const product of products) {
     for (const cat of product.categories ?? []) {
       if (!categoriesMap.has(cat.id)) {
@@ -166,9 +176,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     }
   }
 
-  // Vendor collections come from the store config, not product.collection
-  // Each vendor collection has product_ids — resolve actual product count
-  const rawVendorCollections: any[] = fullVendorStore?.collections?.collections ?? []
+  const rawVendorCollections: any[] = vendorStore?.collections?.collections ?? []
   const vendorCollections = rawVendorCollections
     .filter((c: any) => c.is_visible !== false)
     .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -179,35 +187,31 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
       ).length,
     }))
 
-  // ── 4. Public-safe vendor fields ──────────────────────────────────────────
-  const publicVendor = {
-    id: vendor.id,
-    handle: vendor.handle,
-    name: vendor.name,
-    logo: vendor.logo,
-    coverphoto: vendor.coverphoto,
-    creator_bio: vendor.creator_bio,
-    creator_title: vendor.creator_title,
-    creator_category: vendor.creator_category,
-    instagram: vendor.instagram,
-    youtube: vendor.youtube,
-    xtwitter: vendor.xtwitter,
-    facebook: vendor.facebook,
-    othersocial: vendor.othersocial,
-  }
-
-  // Ensure pages field is always present in store response
-  console.log("[store-front] fullVendorStore.pages raw:", JSON.stringify(fullVendorStore?.pages))
-  const storeWithPages = fullVendorStore ? {
-    ...fullVendorStore,
-    pages: fullVendorStore.pages ?? { pages: [] },
+  // ── 6. Build response ──────────────────────────────────────────────────
+  const storeResponse = vendorStore ? {
+    ...vendorStore,
+    pages:            vendorStore.pages ?? { pages: [] },
+    password_enabled: vendorStore.password_enabled ?? false,
+    store_password:   undefined,
   } : null
 
-  return res.json({
-    vendor: publicVendor,
-    store: storeWithPages,
+  const totalPages = Math.ceil(totalProducts / PAGE_SIZE)
+
+  const response = {
+    vendor:      publicVendor,
+    store:       storeResponse,
     products,
-    categories: Array.from(categoriesMap.values()),
+    categories:  Array.from(categoriesMap.values()),
     collections: vendorCollections,
-  })
+    pagination: {
+      page,
+      total:      totalProducts,
+      totalPages,
+      hasMore:    page < totalPages,
+    },
+  }
+
+  console.log(`[store-front] DONE — ${products.length} products, page ${page}/${totalPages}, ${Date.now() - t1}ms`)
+
+  return res.json(response)
 }

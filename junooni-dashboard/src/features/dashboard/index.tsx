@@ -1171,36 +1171,54 @@ const DashboardPage = () => {
       <AdminImpersonationBanner />
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/90">
-        <div className="container relative px-4 py-3 mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <SidebarTrigger variant='outline' className='mr-2 scale-125 sm:scale-100' />
-              <Separator orientation='vertical' className='h-6 ml-2' />
+        <div className="container px-4 py-2.5 mx-auto">
+          <div className="flex items-center justify-between gap-2">
+
+            {/* Left: sidebar trigger */}
+            <div className="flex items-center flex-shrink-0 gap-2">
+              <SidebarTrigger variant='outline' className='scale-125 sm:scale-100' />
+              <Separator orientation='vertical' className='h-5' />
             </div>
 
-            <div className="absolute -translate-x-1/2 left-1/2 md:hidden">
-              <Link to="/dashboard" className="flex items-center">
-                <img src={Junoonilogo} alt="Junooni Logo" className="h-8 sm:h-10" />
+            {/* Center: logo + badge together, no absolute positioning */}
+            <div className="flex items-center justify-center flex-1 min-w-0 gap-2 md:justify-end">
+              {/* Logo — mobile only */}
+              <Link to="/dashboard" className="flex items-center flex-shrink-0 md:hidden">
+                <img src={Junoonilogo} alt="Junooni Logo" className="h-7" />
               </Link>
+
+              {/* Badge — shown next to logo on mobile, in nav on desktop */}
+              {/* {storePreference && (
+                <div className="flex-shrink-0 md:hidden">
+                  <StoreModeBadge
+                    pref={storePreference}
+                    onChangeClick={() => setShowStoreTypeModal(true)}
+                  />
+                </div>
+              )} */}
+
+              {/* Desktop nav links */}
+              <div className="items-center hidden gap-2 md:flex">
+                <Button variant="ghost" className="font-medium" style={{ color: BRAND.primary }}>
+                  Dashboard
+                </Button>
+                {storePreference && (
+                  <StoreModeBadge pref={storePreference} onChangeClick={() => setShowStoreTypeModal(true)} />
+                )}
+                <Button variant="ghost" asChild><Link to="/products">Products</Link></Button>
+                <Button variant="ghost" asChild><Link to="/orders">Orders</Link></Button>
+                <Button variant="ghost" asChild><Link to="/help-center">Help</Link></Button>
+              </div>
             </div>
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" className="hidden font-medium md:flex" style={{ color: BRAND.primary }}>
-                Dashboard
-              </Button>           
-              {storePreference && (
-                <StoreModeBadge pref={storePreference} onChangeClick={() => setShowStoreTypeModal(true)} />
-              )}
-              <Button variant="ghost" className="hidden md:flex" asChild>
-                <Link to="/products">Products</Link>
-              </Button>
-              <Button variant="ghost" className="hidden md:flex" asChild>
-                <Link to="/orders">Orders</Link>
-              </Button>
-              <Button variant="ghost" className="hidden md:flex" asChild>
-                <Link to="/help-center">Help</Link>
-              </Button>
-              <ProfileDropdown />
+
+            {/* Right: profile only */}
+            <div className="flex-shrink-0">
+              <ProfileDropdown
+                storePreference={storePreference}
+                onStoreChangeClick={() => setShowStoreTypeModal(true)}
+              />
             </div>
+
           </div>
         </div>
       </div>

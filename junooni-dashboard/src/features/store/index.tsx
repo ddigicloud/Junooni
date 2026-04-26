@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { ProductsPrimaryButtons } from "@/features/products/components/ProductsPrimaryButtons"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Globe, Palette, Layout, Eye, Save, Trash2,
@@ -19,14 +18,13 @@ import {
   Rocket, Crown, BarChart2, Image as ImageIcon, Zap, Settings, Copy,
   ArrowUpRight, Package, Users, ShoppingBag, Check, ChevronRight,
   Star, TrendingUp, Radio, Megaphone, BookOpen, Link as LinkIcon,
-  Video, Share2,
+  Video, Share2, AlertTriangle,
 } from "lucide-react"
 import { ProfileDropdown } from "@/components/profile-dropdown"
 import AdminImpersonationBanner from "@/components/AdminImpersonationBanner"
 import { getStoreUrl, getPreviewUrl, getPageUrl } from "@/lib/store-urls"
 
 const BRAND = { primary: "#e65100", secondary: "#ac1900" }
-
 
 type StoreTemplate = "minimal" | "bold" | "editorial"
 type StoreStatus   = "draft" | "live" | "paused"
@@ -61,13 +59,8 @@ interface VendorStore {
   pages?: { pages: StorePage[] } | null
   seo_title: string | null; seo_description: string | null
   instagram_url?: string; youtube_url?: string; twitter_url?: string; facebook_url?: string
-}
-
-interface VendorStats {
-  totalProducts: number
-  totalOrders: number
-  totalRevenue: number
-  hasProducts?: boolean
+  password_enabled?: boolean
+  store_password?: string | null
 }
 
 const DEFAULT_STORE: VendorStore = {
@@ -84,55 +77,41 @@ const DEFAULT_STORE: VendorStore = {
   ]},
   pages: { pages: [] },
   seo_title: null, seo_description: null,
+  password_enabled: false, store_password: null,
 }
 
 function slugify(str: string) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
 }
 
-// ─── Onboarding steps ─────────────────────────────────────────────────────────
-
 interface SetupStep {
   id: string
   title: string
   desc: string
   icon: React.ReactNode
-  check: (store: VendorStore, stats: VendorStats) => boolean
+  check: (store: VendorStore) => boolean
   cta: string
   ctaLink?: string
   ctaAction?: "modal"
 }
 
-const SETUP_STEPS = (
-  store: VendorStore,
-  stats: VendorStats,
-  hasStore: boolean,
-): SetupStep[] => [
+const SETUP_STEPS = (store: VendorStore, hasStore: boolean): SetupStep[] => [
   {
     id: "template",
     title: "Pick your store look",
     desc: "Choose a template and your brand colors to give your store a personality.",
     icon: <Palette className="w-5 h-5" />,
-    check: (_s, _st) => hasStore,
+    check: (_s) => hasStore,
     cta: "Choose template",
     ctaAction: "modal",
   },
   {
     id: "branding",
     title: "Add your logo & tagline",
-    desc: "Add your logo and write a short tagline so fans know it\'s really you.",
+    desc: "Add your logo and write a short tagline so fans know it's really you.",
     icon: <ImageIcon className="w-5 h-5" />,
-    check: (s, _st) => !!(s.store_logo || s.tagline),
+    check: (s) => !!(s.store_logo || s.tagline),
     cta: "Add branding",
-    ctaAction: "modal",
-  },
-  {
-    id: "product",
-    title: "Add your first product",
-    desc: "Create at least one product — a t-shirt, hoodie, mug, or anything you love.",
-    icon: <Package className="w-5 h-5" />,
-    check: (_s, st) => st.totalProducts > 0 || st.hasProducts === true,
-    cta: "Add product",
     ctaAction: "modal",
   },
   {
@@ -140,13 +119,93 @@ const SETUP_STEPS = (
     title: "Go live",
     desc: "Your store is in Draft mode. Publish it so fans can find and buy from it.",
     icon: <Rocket className="w-5 h-5" />,
-    check: (s, _st) => s.status === "live",
+    check: (s) => s.status === "live",
     cta: "Publish store",
     ctaAction: "modal",
   },
 ]
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Confirm Dialog ──────────────────────────────────────────────────────────
+
+interface ConfirmDialogProps {
+  open: boolean
+  title: string
+  description: string
+  confirmLabel?: string
+  cancelLabel?: string
+  variant?: "danger" | "warning" | "info"
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+function ConfirmDialog({
+  open, title, description, confirmLabel = "Confirm", cancelLabel = "Cancel",
+  variant = "danger", onConfirm, onCancel
+}: ConfirmDialogProps) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!open) return
+      if (e.key === "Escape") onCancel()
+      if (e.key === "Enter") onConfirm()
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [open, onConfirm, onCancel])
+
+  if (!open) return null
+
+  const iconBg = variant === "danger" ? "bg-red-50" : variant === "warning" ? "bg-amber-50" : "bg-blue-50"
+  const iconColor = variant === "danger" ? "text-red-500" : variant === "warning" ? "text-amber-500" : "text-blue-500"
+  const btnBg = variant === "danger" ? "bg-red-600 hover:bg-red-700" : variant === "warning" ? "bg-amber-500 hover:bg-amber-600" : `bg-[${BRAND.primary}]`
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}
+      onClick={e => e.target === e.currentTarget && onCancel()}
+    >
+      <div
+        className="w-full max-w-sm overflow-hidden duration-200 bg-white shadow-2xl rounded-2xl animate-in zoom-in-95 fade-in"
+        style={{ border: "1px solid rgba(0,0,0,0.06)" }}
+      >
+        {/* Top accent line */}
+        <div className={`h-1 w-full ${variant === "danger" ? "bg-red-500" : variant === "warning" ? "bg-amber-400" : "bg-blue-500"}`} />
+
+        <div className="p-6">
+          {/* Icon */}
+          <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center mb-5`}>
+            <AlertTriangle className={`w-6 h-6 ${iconColor}`} />
+          </div>
+
+          {/* Content */}
+          <h3 className="mb-2 text-base font-bold leading-snug text-gray-900">{title}</h3>
+          <p className="text-sm leading-relaxed text-gray-500">{description}</p>
+
+          {/* Keyboard hint */}
+          <p className="text-[11px] text-gray-300 mt-4">Press <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-400 text-[10px] font-mono">Enter</kbd> to confirm · <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-400 text-[10px] font-mono">Esc</kbd> to cancel</p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 px-6 pb-6">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 py-2.5 text-sm font-bold text-white rounded-xl transition-colors ${btnBg}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function StorePage() {
   const navigate = useNavigate()
@@ -160,11 +219,11 @@ export default function StorePage() {
   const [hasStore, setHasStore] = useState(false)
   const [sellOnOwnStore, setSellOnOwnStore] = useState<boolean | null>(null)
   const [isEnabling, setIsEnabling] = useState(false)
-  const [stats, setStats] = useState<VendorStats>({ totalProducts: 0, totalOrders: 0, totalRevenue: 0, hasProducts: false })
   const [activeModal, setActiveModal] = useState<string | null>(null)
   const [editingPage, setEditingPage] = useState<StorePage | null>(null)
   const [isNewPage, setIsNewPage] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
+  const [currentPlan, setCurrentPlan] = useState<string>("free")
 
   const token = localStorage.getItem("vendorToken")
   const backendUrl = import.meta.env.VITE_MEDUSA_BACKEND_URL
@@ -173,11 +232,6 @@ export default function StorePage() {
   useEffect(() => {
     const load = async () => {
       if (!token) { navigate({ to: "/sign-in" }); return }
-
-      // Shared vendor ID used by multiple fetch blocks below
-      let vendorIdForStats: string | null = null
-
-      // Fetch vendor + store in parallel
       try {
         const [vRes, sRes] = await Promise.all([
           fetch(`${backendUrl}/vendors/me`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -188,75 +242,13 @@ export default function StorePage() {
           setVendorHandle(vd.vendor?.handle ?? "")
           setVendorName(vd.vendor?.name ?? "")
           setSellOnOwnStore(coerce(vd.vendor?.sell_on_own_store))
-          vendorIdForStats = vd.vendor?.id ?? null
+          setCurrentPlan(vd.vendor?.plan ?? "free")
         }
         if (sRes.ok) {
           const sd = await sRes.json()
           if (sd.store) { setStore({ ...DEFAULT_STORE, ...sd.store }); setHasStore(true) }
         }
       } catch (e) { console.error("Failed to load vendor/store:", e) }
-
-      // Fetch products separately so a failure here doesn't block the page
-      try {
-        // Try multiple endpoints — different Medusa versions use different routes
-        const productEndpoints = [
-          `${backendUrl}/vendors/product?limit=1`,
-          `${backendUrl}/vendors/me/products?limit=1`,
-          `${backendUrl}/vendors/products?limit=1`,
-        ]
-        let productCount = 0
-        for (const endpoint of productEndpoints) {
-          try {
-            const pRes = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } })
-            if (!pRes.ok) continue
-            const pd = await pRes.json()
-            const list = pd.products ?? pd.data ?? (Array.isArray(pd) ? pd : [])
-            const count = typeof pd.count === "number" ? pd.count
-              : typeof pd.total === "number" ? pd.total
-              : list.length
-            productCount = Math.max(count, list.length)
-            break // got a successful response
-          } catch {}
-        }
-        setStats(p => ({ ...p, totalProducts: productCount, hasProducts: productCount > 0 }))
-      } catch (e) { console.error("Failed to load products:", e) }
-
-      // Fetch orders count + revenue from payout endpoint (same as /payouts page — fast)
-      try {
-        // Reuse vendor ID captured above — no extra /vendors/me call needed
-        const vid = vendorIdForStats
-        if (vid) {
-            // Payout endpoint — same one the /payouts page uses
-            // Returns total_earned (paise), total_pending_payout, current_balance
-            const payRes = await fetch(`${backendUrl}/vendors/${vid}/payout`, {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-            if (payRes.ok) {
-              const pd = await payRes.json()
-              const payoutInfo = pd.payout
-              if (payoutInfo) {
-                // total_earned is in paise — divide by 100 for rupees
-                const totalEarnedPaise = payoutInfo.total_earned ?? 0
-                const revenueInRupees = Math.round(totalEarnedPaise)
-                setStats(p => ({ ...p, totalRevenue: revenueInRupees }))
-              }
-            }
-
-            // Step 3: order count — use limit=1 so backend returns just the count
-            const oRes = await fetch(`${backendUrl}/vendors/orders?limit=1`, {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-            if (oRes.ok) {
-              const od = await oRes.json()
-              // count/total field is always returned even with limit=1
-              const orderCount = typeof od.count === "number" ? od.count
-                : typeof od.total === "number" ? od.total
-                : (od.orders ?? od.data ?? []).length
-              setStats(p => ({ ...p, totalOrders: orderCount }))
-            }
-        }
-      } catch (e) { console.error("Failed to load orders/revenue:", e) }
-
       setIsLoading(false)
     }
     load()
@@ -288,7 +280,7 @@ export default function StorePage() {
       await saveStore({ status: newStatus })
       setStore(p => ({ ...p, status: newStatus }))
       if (newStatus === "live") {
-        toast({ title: "🎉 You\'re live!", description: `Shop at ${store.subdomain || vendorHandle}.junooni.com` })
+        toast({ title: "🎉 You're live!", description: `Shop at ${store.subdomain || vendorHandle}.junooni.com` })
       }
     } catch {} finally { setIsPublishing(false) }
   }
@@ -309,10 +301,10 @@ export default function StorePage() {
   }
 
   const pages = store.pages?.pages ?? []
-  const storeUrl = `${store.subdomain || vendorHandle}.junooni.com`
+  const storeUrl = `${vendorHandle}.junooni.com`
   const isLive = store.status === "live"
-  const setupSteps = SETUP_STEPS(store, stats, hasStore)
-  const completedSteps = setupSteps.filter(s => s.check(store, stats)).length
+  const setupSteps = SETUP_STEPS(store, hasStore)
+  const completedSteps = setupSteps.filter(s => s.check(store)).length
   const setupDone = completedSteps === setupSteps.length
 
   const savePage = (page: StorePage) => {
@@ -330,16 +322,24 @@ export default function StorePage() {
   }
 
   if (isLoading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Loader2 className="w-8 h-8 animate-spin" style={{ color: BRAND.primary }} />
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative w-14 h-14">
+          <div className="absolute inset-0 rounded-2xl opacity-20 animate-ping" style={{ background: BRAND.primary }} />
+          <div className="relative flex items-center justify-center w-14 h-14 rounded-2xl" style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
+            <ShoppingBag className="w-6 h-6 text-white" />
+          </div>
+        </div>
+        <p className="text-sm font-medium tracking-wide text-gray-400">Loading your store…</p>
+      </div>
     </div>
   )
 
-  // ── Gate: own store not enabled ───────────────────────────────────────────
+  // ── Gate: own store not enabled ──────────────────────────────────────
   if (!sellOnOwnStore) return (
     <div className="min-h-screen bg-gray-50">
       <AdminImpersonationBanner />
-      <header className="sticky top-0 z-30 border-b border-gray-200 shadow-sm bg-white/90 backdrop-blur-md">
+      <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
         <div className="container flex items-center justify-between px-4 py-3 mx-auto">
           <div className="flex items-center gap-3">
             <SidebarTrigger variant="outline" className="scale-125 sm:scale-100" />
@@ -349,40 +349,47 @@ export default function StorePage() {
           <ProfileDropdown />
         </div>
       </header>
-      <div className="flex items-center justify-center min-h-[60vh] px-6 py-6">
+
+      <div className="flex items-center justify-center min-h-[88vh] px-6">
         <div className="w-full max-w-md">
-          <div className="mb-5 text-center">
-            <div className="flex items-center justify-center w-20 h-20 mx-auto mb-5 rounded-2xl" style={{ background: `${BRAND.primary}15` }}>
-              <ShoppingBag className="w-9 h-9" style={{ color: BRAND.primary }} />
+          <div className="mb-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-5 shadow-sm rounded-2xl" style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
+              <ShoppingBag className="text-white w-7 h-7" />
             </div>
-            <h1 className="mb-2 text-2xl font-bold text-gray-900">Launch your own merch store</h1>
-            <p className="text-sm text-gray-500">Get a fully branded storefront at <span className="font-semibold">{vendorHandle || "yourname"}.junooni.com</span> — free, no upfront cost.</p>
+            <h1 className="mb-2 text-2xl font-bold text-gray-900">Launch your merch store</h1>
+            <p className="text-sm leading-relaxed text-gray-500">
+              Get a free storefront at{" "}
+              <span className="font-mono font-semibold text-gray-700">{vendorHandle || "yourname"}.junooni.com</span>
+              <br />Zero inventory. No upfront cost.
+            </p>
           </div>
-          <div className="p-4 mb-5 bg-white border border-gray-100 shadow-sm rounded-2xl">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-              {[
-                { icon: "🌐", title: "Your own URL",        sub: `${vendorHandle || "yourname"}.junooni.com` },
-                { icon: "🎨", title: "Fully branded",       sub: "Your colors, fonts, logo" },
-                { icon: "📦", title: "Print-on-demand",     sub: "We handle printing & shipping" },
-                { icon: "💰", title: "You keep the margin", sub: "Set your own prices" },
-                { icon: "📄", title: "Custom pages",        sub: "About, FAQ, Contact + more" },
-                { icon: "🚀", title: "Go live free",        sub: "No upfront cost, ever" },
-              ].map(item => (
-                <div key={item.title} className="flex items-start gap-2.5">
-                  <span className="text-lg w-6 shrink-0 mt-0.5">{item.icon}</span>
-                  <div>
-                    <p className="text-sm font-semibold leading-tight text-gray-800">{item.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 leading-tight">{item.sub}</p>
-                  </div>
+
+          <div className="mb-5 overflow-hidden bg-white border border-gray-200 rounded-2xl">
+            {[
+              { icon: "🌐", title: "Your own URL",        sub: `${vendorHandle || "yourname"}.junooni.com` },
+              { icon: "🎨", title: "Fully branded",       sub: "Your colors, fonts, logo" },
+              { icon: "📦", title: "Print-on-demand",     sub: "We handle printing & shipping" },
+              { icon: "💰", title: "You keep the margin", sub: "Set your own prices" },
+              { icon: "📄", title: "Custom pages",        sub: "About, FAQ, Contact + more" },
+            ].map((item, i, arr) => (
+              <div key={item.title} className={`flex items-center gap-3.5 px-5 py-3.5 ${i < arr.length - 1 ? "border-b border-gray-100" : ""}`}>
+                <span className="w-8 text-xl text-center shrink-0">{item.icon}</span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{item.sub}</p>
                 </div>
-              ))}
-            </div>
+                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+              </div>
+            ))}
           </div>
-          <Button onClick={handleEnableOwnStore} disabled={isEnabling} className="w-full gap-2 py-5 text-base font-semibold"
-            style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`, color: "white" }}>
-            {isEnabling ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Rocket className="w-4 h-4" />Set up my store</>}
-          </Button>
-          <button onClick={() => navigate({ to: "/dashboard" })} className="block mx-auto mt-4 text-xs text-gray-400 underline transition-colors hover:text-gray-600">
+
+          <button onClick={handleEnableOwnStore} disabled={isEnabling}
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 shadow-sm disabled:opacity-60"
+            style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
+            {isEnabling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+            {isEnabling ? "Setting up…" : "Set up my store — it's free"}
+          </button>
+          <button onClick={() => navigate({ to: "/dashboard" })} className="block mx-auto mt-4 text-xs text-gray-400 transition-colors hover:text-gray-600">
             Back to dashboard
           </button>
         </div>
@@ -395,29 +402,30 @@ export default function StorePage() {
       <AdminImpersonationBanner />
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 border-b border-gray-200 shadow-sm bg-white/90 backdrop-blur-md">
-        <div className="container flex items-center justify-between px-4 py-3 mx-auto">
+      <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
+        <div className="container flex items-center justify-between max-w-5xl px-4 py-3 mx-auto">
           <div className="flex items-center gap-3">
             <SidebarTrigger variant="outline" className="scale-125 sm:scale-100" />
             <Separator orientation="vertical" className="h-6" />
-            <span className="text-sm font-semibold text-gray-800">My Store</span>
-            <Badge className={isLive
-              ? "bg-green-100 text-green-800 border-green-200"
-              : "bg-gray-100 text-gray-500 border-gray-200"
-            }>
-              <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${isLive ? "bg-green-500" : "bg-gray-400"}`} />
-              {isLive ? "Live" : "Draft"}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-gray-900">My Store</span>
+              <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                isLive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-200"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`} />
+                {isLive ? "Live" : "Draft"}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {hasStore && (
+          <div className="flex items-center gap-6">
+            {/* {hasStore && (
               <a href={getStoreUrl(vendorHandle, store.custom_domain)} target="_blank" rel="noopener noreferrer"
-                className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors">
+                className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all font-medium">
                 <Eye className="w-3.5 h-3.5" />Preview
               </a>
-            )}
+            )} */}
             <Link to="/store/editor"
-              className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full text-white transition-colors"
+              className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg font-semibold text-white transition-all hover:opacity-90"
               style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
               <Layout className="w-3.5 h-3.5" />Store editor
             </Link>
@@ -426,86 +434,92 @@ export default function StorePage() {
         </div>
       </header>
 
-      <div className="container max-w-5xl px-4 py-8 mx-auto">
+      <div className="container max-w-5xl px-4 mx-auto py-7">
 
-        {/* ── Hero banner ── */}
-        <div className="relative p-6 mb-8 overflow-hidden rounded-2xl sm:p-8"
-          style={{ background: `linear-gradient(135deg, ${BRAND.primary}18 0%, ${BRAND.secondary}10 100%)`, border: `1px solid ${BRAND.primary}25` }}>
-          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        {/* ── Hero Banner ── */}
+        <div className="p-6 mb-6 bg-white border border-gray-200 rounded-2xl sm:p-8">
+          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
             <div>
-              <h1 className="mb-1 text-xl font-bold text-gray-900 sm:text-2xl">
-                {isLive ? `🎉 Your store is live!` : `👋 Hey ${vendorName || "Creator"}!`}
-              </h1>
-              <p className="text-sm text-gray-600">
+              <div className="flex items-center gap-2 mb-2">
                 {isLive
-                  ? `Fans can shop at `
-                  : `Your store is in draft mode. Complete the setup below to go live.`}
-                {isLive && <a href={getStoreUrl(vendorHandle, store.custom_domain)} target="_blank" rel="noopener noreferrer"
-                  className="font-semibold underline" style={{ color: BRAND.primary }}>{storeUrl}</a>}
+                  ? <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />Live
+                    </span>
+                  : <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                      <span className="w-1.5 h-1.5 bg-amber-400 rounded-full" />Draft
+                    </span>
+                }
+              </div>
+              <h1 className="mb-1 text-xl font-bold text-gray-900 sm:text-2xl">
+                {isLive ? `You're live, ${vendorName || "Creator"}! 🎉` : `Hey ${vendorName || "Creator"} 👋`}
+              </h1>
+              <p className="text-sm text-gray-500">
+                {isLive
+                  ? <>Your fans can shop at{" "}<a href={getStoreUrl(vendorHandle, store.custom_domain)} target="_blank" rel="noopener noreferrer" className="font-semibold underline decoration-dotted underline-offset-2" style={{ color: BRAND.primary }}>{storeUrl}</a></>
+                  : "Complete the setup below to publish your store and start selling."}
               </p>
             </div>
+
             <div className="flex items-center gap-2 shrink-0">
               {hasStore && (
                 <a href={getStoreUrl(vendorHandle, store.custom_domain)} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl border bg-white text-sm font-medium text-gray-700 hover:border-gray-400 transition-colors shadow-sm">
-                  <Eye className="w-3.5 h-3.5" />Preview
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 transition-all">
+                  <Eye className="w-4 h-4" />Preview
                 </a>
               )}
-              <Button onClick={handlePublish} disabled={isPublishing || stats.totalProducts === 0}
-                className="gap-2 px-5 py-2 text-sm font-semibold"
-                style={{
-                  background: isLive ? "#dc2626" : `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)`,
-                  color: "white", opacity: stats.totalProducts === 0 ? 0.6 : 1
-                }}>
+              <button onClick={handlePublish} disabled={isPublishing}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60"
+                style={{ background: isLive ? "#dc2626" : `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
                 {isPublishing
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : isLive ? <><Radio className="w-3.5 h-3.5" />Unpublish</> : <><Rocket className="w-3.5 h-3.5" />Go live</>}
-              </Button>
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : isLive
+                    ? <><Radio className="w-4 h-4" />Unpublish</>
+                    : <><Rocket className="w-4 h-4" />Go live</>}
+              </button>
             </div>
           </div>
-          {stats.totalProducts === 0 && !isLive && (
-            <p className="flex items-center gap-2 px-3 py-2 mt-4 text-xs border rounded-lg text-amber-700 bg-amber-100 border-amber-200">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />Add at least one product before going live.
-            </p>
-          )}
         </div>
 
-        {/* ── Setup checklist (only if not done) ── */}
+        {/* ── Setup Checklist ── */}
         {!setupDone && (
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-3">
+          <div className="mb-6 overflow-hidden bg-white border border-gray-200 rounded-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div>
-                <h2 className="text-base font-bold text-gray-900">Setup checklist</h2>
-                <p className="text-xs text-gray-500 mt-0.5">{completedSteps} of {setupSteps.length} done — finish these to go live</p>
+                <h2 className="text-sm font-bold text-gray-900">Store setup</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{completedSteps} of {setupSteps.length} steps completed</p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-24 h-2 overflow-hidden bg-gray-200 rounded-full">
-                  <div className="h-full transition-all rounded-full" style={{ width: `${(completedSteps / setupSteps.length) * 100}%`, background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.secondary})` }} />
-                </div>
-                <span className="text-xs font-semibold text-gray-500">{Math.round((completedSteps / setupSteps.length) * 100)}%</span>
+              <div className="w-32 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full transition-all duration-500 rounded-full"
+                  style={{ width: `${(completedSteps / setupSteps.length) * 100}%`, background: `linear-gradient(90deg, ${BRAND.primary}, ${BRAND.secondary})` }} />
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {setupSteps.map((step, i) => {
-                const done = step.check(store, stats)
+            <div className="divide-y divide-gray-50">
+              {setupSteps.map((step) => {
+                const done = step.check(store)
                 return (
-                  <div key={step.id} className={`flex items-start gap-3 p-4 rounded-xl border transition-all ${done ? "bg-green-50 border-green-200" : "bg-white border-gray-200 hover:border-gray-300"}`}>
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}>
-                      {done ? <Check className="w-4 h-4" /> : step.icon}
+                  <div key={step.id}
+                    className={`flex items-center gap-4 px-6 py-4 ${done ? "bg-gray-50/50" : ""}`}>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-emerald-100 text-emerald-600" : "bg-gray-100 text-gray-400"}`}>
+                      {done ? <CheckCircle2 className="w-4.5 h-4.5" /> : step.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className={`text-sm font-semibold ${done ? "text-green-800 line-through opacity-60" : "text-gray-900"}`}>{step.title}</p>
-                          <p className={`text-xs mt-0.5 ${done ? "text-green-700 opacity-60" : "text-gray-500"}`}>{step.desc}</p>
-                        </div>
-                        {!done && (
-                          step.ctaLink
-                            ? <Link to={step.ctaLink as any} className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg text-white" style={{ background: BRAND.primary }}>{step.cta}</Link>
-                            : <button onClick={() => setActiveModal(step.id)} className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg text-white" style={{ background: BRAND.primary }}>{step.cta}</button>
-                        )}
-                      </div>
+                      <p className={`text-sm font-semibold ${done ? "text-gray-400 line-through" : "text-gray-900"}`}>{step.title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{step.desc}</p>
                     </div>
+                    {!done && (
+                      step.ctaLink
+                        ? <Link to={step.ctaLink as any}
+                            className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-all hover:opacity-90"
+                            style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
+                            {step.cta}
+                          </Link>
+                        : <button onClick={() => setActiveModal(step.id)}
+                            className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-all hover:opacity-90"
+                            style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
+                            {step.cta}
+                          </button>
+                    )}
+                    {done && <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0" />}
                   </div>
                 )
               })}
@@ -513,125 +527,90 @@ export default function StorePage() {
           </div>
         )}
 
-        {/* ── Stats row (only when has products or orders) ── */}
-        {(stats.totalProducts > 0 || stats.totalOrders > 0) && (
-          <div className="grid grid-cols-3 gap-3 mb-8">
-            {[
-              { label: "Products", value: stats.totalProducts, icon: <Package className="w-4 h-4" />, link: "/products" },
-              { label: "Orders",   value: stats.totalOrders,   icon: <ShoppingBag className="w-4 h-4" />, link: "/orders" },
-              { label: "Revenue",  value: `₹${stats.totalRevenue.toLocaleString("en-IN")}`, icon: <TrendingUp className="w-4 h-4" />, link: "/payouts" },
-            ].map(s => (
-              <Link key={s.label} to={s.link as any}
-                className="flex flex-col items-center gap-1 p-4 text-center transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-400 hover:shadow-sm group">
-                <div className="text-gray-400 transition-colors group-hover:text-orange-500">{s.icon}</div>
-                <p className="text-xl font-bold text-gray-900">{s.value}</p>
-                <p className="text-xs text-gray-400">{s.label}</p>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* ── Main action cards ── */}
-        <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2">
+        {/* ── Action cards ── */}
+        <div className="grid grid-cols-1 gap-3 mb-5 sm:grid-cols-2">
 
           {/* Store editor */}
           <Link to="/store/editor"
-            className="relative flex flex-col p-5 overflow-hidden transition-all bg-white border border-gray-200 group rounded-2xl hover:border-orange-300 hover:shadow-md">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center justify-center w-11 h-11 rounded-xl" style={{ background: `${BRAND.primary}15`, color: BRAND.primary }}>
-                <Layout className="w-5 h-5" />
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-orange-500" />
+            className="flex items-center gap-4 p-5 transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
+            <div className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0" style={{ background: `${BRAND.primary}12`, color: BRAND.primary }}>
+              <Layout className="w-5 h-5" />
             </div>
-            <h3 className="mb-1 font-bold text-gray-900">Store editor</h3>
-            <p className="flex-1 text-sm text-gray-500">Drag-and-drop builder for your homepage layout, hero banner, product grids, and more.</p>
-            <div className="flex items-center gap-1 mt-4 text-xs font-semibold" style={{ color: BRAND.primary }}>
-              Open editor <ChevronRight className="w-3.5 h-3.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-900">Store editor</p>
+              <p className="text-xs text-gray-400 mt-0.5 truncate">Hero, product grids, sections layout</p>
             </div>
+            <ChevronRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-gray-500 shrink-0" />
           </Link>
 
           {/* Branding */}
           <button onClick={() => setActiveModal("branding")}
-            className="relative flex flex-col p-5 overflow-hidden text-left transition-all bg-white border border-gray-200 group rounded-2xl hover:border-purple-300 hover:shadow-md">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center justify-center text-purple-600 bg-purple-100 w-11 h-11 rounded-xl">
-                <Palette className="w-5 h-5" />
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-purple-500" />
+            className="flex items-center gap-4 p-5 text-left transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
+            <div className="flex items-center justify-center text-purple-600 w-11 h-11 rounded-xl shrink-0 bg-purple-50">
+              <Palette className="w-5 h-5" />
             </div>
-            <h3 className="mb-1 font-bold text-gray-900">Branding & identity</h3>
-            <p className="flex-1 text-sm text-gray-500">Logo, colors, tagline, announcement bar, and social links.</p>
-            <div className="flex items-center gap-1 mt-4 text-xs font-semibold text-purple-600">
-              Edit branding <ChevronRight className="w-3.5 h-3.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-900">Branding & identity</p>
+              <p className="text-xs text-gray-400 mt-0.5 truncate">Logo, colors, tagline, announcement</p>
             </div>
+            <ChevronRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-gray-500 shrink-0" />
           </button>
 
           {/* Custom pages */}
           <button onClick={() => setActiveModal("pages")}
-            className="relative flex flex-col p-5 overflow-hidden text-left transition-all bg-white border border-gray-200 group rounded-2xl hover:border-blue-300 hover:shadow-md">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center justify-center text-blue-600 bg-blue-100 w-11 h-11 rounded-xl">
-                <FileText className="w-5 h-5" />
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-blue-500" />
+            className="flex items-center gap-4 p-5 text-left transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
+            <div className="flex items-center justify-center text-blue-600 w-11 h-11 rounded-xl shrink-0 bg-blue-50">
+              <FileText className="w-5 h-5" />
             </div>
-            <h3 className="mb-1 font-bold text-gray-900">Custom pages</h3>
-            <p className="flex-1 text-sm text-gray-500">Create About, FAQ, Contact pages — or anything custom with HTML.</p>
-            <div className="flex items-center gap-1 mt-4 text-xs font-semibold text-blue-600">
-              {pages.length > 0 ? `${pages.length} page${pages.length !== 1 ? "s" : ""} created` : "Create a page"} <ChevronRight className="w-3.5 h-3.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-900">Custom pages</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {pages.length > 0
+                  ? <><span className="font-semibold text-blue-600">{pages.length} page{pages.length !== 1 ? "s" : ""}</span> created</>
+                  : "About, FAQ, Contact, or custom HTML"}
+              </p>
             </div>
+            <ChevronRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-gray-500 shrink-0" />
           </button>
 
           {/* Domain & SEO */}
           <button onClick={() => setActiveModal("domain")}
-            className="relative flex flex-col p-5 overflow-hidden text-left transition-all bg-white border border-gray-200 group rounded-2xl hover:border-green-300 hover:shadow-md">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center justify-center text-green-600 bg-green-100 w-11 h-11 rounded-xl">
-                <Globe className="w-5 h-5" />
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-green-500" />
+            className="flex items-center gap-4 p-5 text-left transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
+            <div className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0 bg-emerald-50 text-emerald-600">
+              <Globe className="w-5 h-5" />
             </div>
-            <h3 className="mb-1 font-bold text-gray-900">Domain & SEO</h3>
-            <p className="flex-1 text-sm text-gray-500">Connect a custom domain, set your meta title, and write your SEO description.</p>
-            <div className="flex items-center gap-2 mt-4">
-              {store.custom_domain
-                ? <Badge className="text-xs text-green-800 bg-green-100 border-green-200">{store.custom_domain}</Badge>
-                : <span className="flex items-center gap-1 text-xs font-semibold text-green-600">Configure <ChevronRight className="w-3.5 h-3.5" /></span>}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-900">Domain & SEO</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {store.custom_domain
+                  ? <span className="font-mono font-semibold text-emerald-600">{store.custom_domain}</span>
+                  : "Custom domain, meta title, description"}
+              </p>
             </div>
+            {store.domain_verified
+              ? <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0" />
+              : <ChevronRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-gray-500 shrink-0" />
+            }
           </button>
         </div>
 
-        {/* ── Upgrade nudge (only show on free plan) ── */}
-        <div className="flex flex-col items-start justify-between gap-4 p-5 mb-8 border rounded-2xl border-amber-200 bg-amber-50 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-100 shrink-0">
-              <Crown className="w-5 h-5 text-amber-600" />
+        {/* ── Upgrade nudge ── */}
+        <div className="flex flex-col gap-4 p-5 bg-white border sm:flex-row sm:items-center border-amber-200 rounded-2xl">
+          <div className="flex items-center flex-1 gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 shrink-0">
+              <Crown className="w-5 h-5 text-amber-500" />
             </div>
             <div>
-              <p className="text-sm font-bold text-amber-900">Unlock your full store potential</p>
-              <p className="text-xs text-amber-700 mt-0.5">Remove Junooni branding, go live, add a custom domain and get priority payouts.</p>
+              <p className="text-sm font-bold text-gray-900">Unlock your full store potential</p>
+              <p className="text-xs text-gray-500 mt-0.5">Remove Junooni branding, connect a custom domain, and get priority payouts.</p>
             </div>
           </div>
-          <Link to="/store/membership" className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 transition-colors">
+          <Link to="/store/membership"
+            className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 transition-colors">
             <Crown className="w-3.5 h-3.5" />View plans
           </Link>
         </div>
 
-        {/* ── Quick links row ── */}
-        {/* <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {[
-            { icon: <Package className="w-4 h-4" />, label: "Products",   link: "/_authenticated/products",  color: "text-orange-600 bg-orange-50" },
-            { icon: <ShoppingBag className="w-4 h-4" />, label: "Orders", link: "/_authenticated/orders",    color: "text-blue-600 bg-blue-50" },
-            { icon: <BarChart2 className="w-4 h-4" />, label: "Analytics", link: "/_authenticated/analytics", color: "text-green-600 bg-green-50" },
-            { icon: <Crown className="w-4 h-4" />, label: "Membership",   link: "/_authenticated/store/membership", color: "text-purple-600 bg-purple-50" },
-          ].map(item => (
-            <Link key={item.label} to={item.link as any}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-gray-200 hover:border-gray-400 hover:shadow-sm transition-all text-sm font-medium text-gray-700">
-              <span className={`p-1 rounded-lg ${item.color}`}>{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
-        </div> */}
       </div>
 
       {/* ── Modals ── */}
@@ -642,7 +621,6 @@ export default function StorePage() {
           : activeModal === "pages"    ? "Custom pages"
           : activeModal === "template" ? "Store look"
           : activeModal === "launch"   ? "Go live"
-          : activeModal === "product" ? "Add your first product"
           : ""
         } onClose={() => setActiveModal(null)}>
 
@@ -654,12 +632,12 @@ export default function StorePage() {
           {activeModal === "branding" && (
             <BrandingPanel store={store} onChange={patch => setStore(p => ({ ...p, ...patch }))}
               onSave={() => { saveStore(); setActiveModal(null) }} isSaving={isSaving}
-              token={token ?? ""} backendUrl={backendUrl} />
+              token={token ?? ""} backendUrl={backendUrl} vendorPlan={currentPlan} />
           )}
           {activeModal === "domain" && (
             <DomainSeoPanel store={store} onChange={patch => setStore(p => ({ ...p, ...patch }))}
-              onSave={() => saveStore()} isSaving={isSaving}
-              vendorHandle={vendorHandle} token={token ?? ""} backendUrl={backendUrl} />
+              onSave={(patch) => { if (patch) saveStore(patch); else saveStore(); }} isSaving={isSaving}
+              vendorHandle={vendorHandle} token={token ?? ""} backendUrl={backendUrl} vendorPlan={currentPlan} />
           )}
           {activeModal === "pages" && (
             <PagesPanel
@@ -670,44 +648,44 @@ export default function StorePage() {
               onClose={() => setActiveModal(null)}
             />
           )}
-          {activeModal === "product" && (
-            <div className="flex flex-col items-center gap-6 py-4">
-              <p className="text-sm text-center text-gray-500">Choose how you'd like to add your first product:</p>
-              <ProductsPrimaryButtons />
-            </div>
-          )}
         </Modal>
       )}
     </div>
   )
 }
 
-// ─── Modal wrapper ─────────────────────────────────────────────────────────────
+// ─── Modal wrapper ──────────────────────────────────────────────────────────
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center bg-black/40 backdrop-blur-sm" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="text-base font-bold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"><X className="w-4 h-4 text-gray-500" /></button>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+      style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(6px)" }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-2xl max-h-[92vh] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <h2 className="text-sm font-bold text-gray-900">{title}</h2>
+          <button onClick={onClose}
+            className="flex items-center justify-center w-8 h-8 text-gray-400 transition-colors rounded-lg hover:bg-gray-100 hover:text-gray-700">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <div className="flex-1 px-5 py-5 overflow-y-auto">{children}</div>
+        <div className="flex-1 px-6 py-6 overflow-y-auto">{children}</div>
       </div>
     </div>
   )
 }
 
-// ─── Template + Launch panel ───────────────────────────────────────────────────
+// ─── Template + Launch panel ────────────────────────────────────────────────
 
 const TEMPLATES = [
-  { id: "minimal" as StoreTemplate, name: "Minimal", desc: "Clean, white, product-focused. Great for fashion.", preview: "bg-white" },
-  { id: "bold" as StoreTemplate,    name: "Bold",    desc: "Dark background, big typography. For music artists.", preview: "bg-gray-900" },
-  { id: "editorial" as StoreTemplate, name: "Editorial", desc: "Magazine-style layout. For storytelling brands.", preview: "bg-stone-50" },
+  { id: "minimal"   as StoreTemplate, name: "Minimal",   desc: "Clean, white, product-focused.",  preview: "bg-white" },
+  { id: "bold"      as StoreTemplate, name: "Bold",      desc: "Dark, big typography.",            preview: "bg-gray-900" },
+  { id: "editorial" as StoreTemplate, name: "Editorial", desc: "Magazine-style layout.",           preview: "bg-stone-50" },
 ]
 const FONTS = [
-  { id: "inter" as StoreFont, name: "Inter", sample: "Clean & Modern" },
-  { id: "poppins" as StoreFont, name: "Poppins", sample: "Friendly & Round" },
+  { id: "inter"    as StoreFont, name: "Inter",    sample: "Clean & Modern" },
+  { id: "poppins"  as StoreFont, name: "Poppins",  sample: "Friendly & Round" },
   { id: "playfair" as StoreFont, name: "Playfair", sample: "Elegant & Serif" },
 ]
 
@@ -717,64 +695,71 @@ function TemplatePanel({ store, onChange, onSave, isSaving, vendorHandle, isLive
   vendorHandle: string; isLive: boolean; onPublish: () => void; isPublishing: boolean
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <div>
-        <p className="mb-3 text-sm font-semibold text-gray-700">Choose template</p>
+        <p className="mb-1 text-sm font-bold text-gray-800">Template</p>
+        <p className="mb-4 text-xs text-gray-400">Choose a layout style for your store homepage.</p>
         <div className="grid grid-cols-3 gap-3">
           {TEMPLATES.map(t => (
             <button key={t.id} onClick={() => onChange({ template: t.id })}
               className={`text-left p-3 rounded-xl border-2 transition-all ${store.template === t.id ? "shadow-sm" : "border-gray-200 hover:border-gray-300"}`}
               style={store.template === t.id ? { borderColor: BRAND.primary } : {}}>
-              <div className={`w-full h-16 rounded-lg mb-2 ${t.preview} border border-gray-200 flex items-center justify-center`}>
+              <div className={`w-full h-14 rounded-lg mb-2.5 ${t.preview} border border-gray-200 flex items-center justify-center overflow-hidden`}>
                 <div className="w-10/12 space-y-1">
                   <div className={`h-1.5 rounded w-2/3 mx-auto ${t.id === "bold" ? "bg-white/30" : "bg-gray-300"}`} />
                   <div className="grid grid-cols-3 gap-0.5">{[1,2,3].map(i => <div key={i} className={`h-3 rounded ${t.id === "bold" ? "bg-white/10" : "bg-gray-100"}`} />)}</div>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-gray-800">{t.name}</p>
-                {store.template === t.id && <CheckCircle2 className="w-3.5 h-3.5" style={{ color: BRAND.primary }} />}
+              <div className="flex items-center justify-between mb-0.5">
+                <p className="text-xs font-bold text-gray-800">{t.name}</p>
+                {store.template === t.id && <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ background: BRAND.primary }}><Check className="w-2 h-2 text-white" /></div>}
               </div>
-              <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{t.desc}</p>
+              <p className="text-[10px] text-gray-400 leading-tight">{t.desc}</p>
             </button>
           ))}
         </div>
       </div>
+
       <div>
-        <p className="mb-3 text-sm font-semibold text-gray-700">Font</p>
+        <p className="mb-1 text-sm font-bold text-gray-800">Font</p>
+        <p className="mb-4 text-xs text-gray-400">Sets the typeface across your entire storefront.</p>
         <div className="grid grid-cols-3 gap-2">
           {FONTS.map(f => (
             <button key={f.id} onClick={() => onChange({ font: f.id })}
-              className={`p-3 rounded-xl border-2 text-left transition-all ${store.font === f.id ? "" : "border-gray-200 hover:border-gray-300"}`}
+              className={`p-3.5 rounded-xl border-2 text-left transition-all ${store.font === f.id ? "shadow-sm" : "border-gray-200 hover:border-gray-300"}`}
               style={store.font === f.id ? { borderColor: BRAND.primary } : {}}>
-              <p className="text-sm font-semibold text-gray-900">{f.name}</p>
-              <p className="text-[10px] text-gray-400">{f.sample}</p>
+              <p className="text-sm font-bold text-gray-900">{f.name}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{f.sample}</p>
             </button>
           ))}
         </div>
       </div>
-      <div className="flex gap-3 pt-2 border-t border-gray-100">
-        <Button onClick={onSave} disabled={isSaving} className="flex-1 gap-2" style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})`, color: "white" }}>
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Save
-        </Button>
-        <Button onClick={onPublish} disabled={isPublishing} variant="outline" className="gap-2">
-          {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : isLive ? <><Radio className="w-4 h-4" />Unpublish</> : <><Rocket className="w-4 h-4" />Go live</>}
-        </Button>
+
+      <div className="flex gap-3 pt-4 border-t border-gray-100">
+        <button onClick={onSave} disabled={isSaving}
+          className="flex items-center justify-center flex-1 gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-60"
+          style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Save changes
+        </button>
+        <button onClick={onPublish} disabled={isPublishing}
+          className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 transition-all border border-gray-200 rounded-xl hover:border-gray-400 hover:bg-gray-50 disabled:opacity-60">
+          {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" />
+            : isLive ? <><Radio className="w-4 h-4 text-red-500" />Unpublish</>
+            : <><Rocket className="w-4 h-4" />Go live</>}
+        </button>
       </div>
     </div>
   )
 }
 
-// ─── Branding panel ────────────────────────────────────────────────────────────
+// ─── Branding panel ──────────────────────────────────────────────────────────
 
 function BrandingPanel({ store, onChange, onSave, isSaving, token, backendUrl }: {
   store: VendorStore; onChange: (p: Partial<VendorStore>) => void
   onSave: () => void; isSaving: boolean; token: string; backendUrl: string
 }) {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
-  const [isUploadingFav, setIsUploadingFav] = useState(false)
   const logoRef = useRef<HTMLInputElement>(null)
-  const favRef = useRef<HTMLInputElement>(null)
 
   const uploadFile = async (file: File, setLoading: (b: boolean) => void, key: "store_logo" | "store_favicon") => {
     setLoading(true)
@@ -790,27 +775,29 @@ function BrandingPanel({ store, onChange, onSave, isSaving, token, backendUrl }:
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Colors */}
       <div>
-        <p className="mb-3 text-sm font-semibold text-gray-700">Brand colors</p>
-        <div className="grid grid-cols-2 gap-4">
+        <p className="mb-1 text-sm font-bold text-gray-800">Brand colors</p>
+        <p className="mb-4 text-xs text-gray-400">Used on buttons, links, and accents across your store.</p>
+        <div className="grid grid-cols-2 gap-3 mb-3">
           {[
-            { key: "primary_color",   label: "Primary", hint: "Buttons & links" },
-            { key: "secondary_color", label: "Secondary", hint: "Gradients" },
+            { key: "primary_color",   label: "Primary",   hint: "Buttons & links" },
+            { key: "secondary_color", label: "Secondary",  hint: "Gradients" },
           ].map(({ key, label, hint }) => (
-            <div key={key}>
-              <label className="block text-xs text-gray-500 mb-1.5">{label} <span className="text-gray-400">— {hint}</span></label>
+            <div key={key} className="border border-gray-200 rounded-xl p-3.5">
+              <label className="block mb-2 text-xs font-semibold text-gray-600">{label} <span className="font-normal text-gray-400">· {hint}</span></label>
               <div className="flex items-center gap-2">
                 <input type="color" value={(store as any)[key] ?? "#000000"}
                   onChange={e => onChange({ [key]: e.target.value })}
-                  className="w-10 h-9 rounded-lg border border-gray-200 cursor-pointer p-0.5 shrink-0" />
-                <Input value={(store as any)[key] ?? ""} onChange={e => onChange({ [key]: e.target.value })} className="font-mono text-sm" />
+                  className="w-9 h-9 rounded-lg border border-gray-200 cursor-pointer p-0.5 shrink-0 bg-white" />
+                <Input value={(store as any)[key] ?? ""} onChange={e => onChange({ [key]: e.target.value })}
+                  className="font-mono text-sm h-9" />
               </div>
             </div>
           ))}
         </div>
-        <div className="flex items-center justify-center h-8 mt-3 text-xs font-semibold text-white rounded-xl"
+        <div className="flex items-center justify-center text-xs font-bold text-white h-9 rounded-xl"
           style={{ background: `linear-gradient(135deg, ${store.primary_color}, ${store.secondary_color})` }}>
           Color preview
         </div>
@@ -818,22 +805,26 @@ function BrandingPanel({ store, onChange, onSave, isSaving, token, backendUrl }:
 
       {/* Logo */}
       <div>
-        <p className="mb-3 text-sm font-semibold text-gray-700">Logo</p>
+        <p className="mb-1 text-sm font-bold text-gray-800">Logo</p>
+        <p className="mb-4 text-xs text-gray-400">PNG or SVG with transparent background recommended.</p>
         <div className="flex items-center gap-4">
-          <div className="flex items-center justify-center w-16 h-16 overflow-hidden transition-colors border-2 border-gray-200 border-dashed cursor-pointer rounded-xl bg-gray-50 hover:border-gray-400 shrink-0"
+          <div
+            className="flex items-center justify-center w-20 h-20 overflow-hidden transition-colors border-2 border-gray-200 border-dashed cursor-pointer rounded-xl bg-gray-50 hover:border-gray-400 shrink-0"
             onClick={() => logoRef.current?.click()}>
-            {store.store_logo ? <img src={store.store_logo} alt="logo" className="object-contain w-full h-full p-1" /> : <ImageIcon className="w-6 h-6 text-gray-300" />}
+            {store.store_logo
+              ? <img src={store.store_logo} alt="logo" className="object-contain w-full h-full p-2" />
+              : <ImageIcon className="w-6 h-6 text-gray-300" />}
           </div>
-          <div className="flex-1 space-y-1.5">
+          <div className="flex-1 space-y-2">
             <button onClick={() => logoRef.current?.click()} disabled={isUploadingLogo}
-              className="flex items-center justify-center w-full gap-2 px-3 py-2 text-sm text-gray-700 transition-colors border border-gray-200 rounded-lg hover:border-gray-400">
+              className="flex items-center justify-center w-full gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:border-gray-400 hover:bg-gray-50 transition-all disabled:opacity-60">
               {isUploadingLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
               {store.store_logo ? "Change logo" : "Upload logo"}
             </button>
             {store.store_logo && (
               <button onClick={() => onChange({ store_logo: null })}
-                className="flex items-center justify-center w-full gap-2 px-3 py-2 text-sm text-red-500 transition-colors border border-red-200 rounded-lg hover:bg-red-50">
-                <Trash2 className="w-3.5 h-3.5" />Remove
+                className="flex items-center justify-center w-full gap-2 px-4 py-2.5 text-sm font-medium text-red-500 border border-red-200 rounded-xl hover:bg-red-50 transition-all">
+                <Trash2 className="w-3.5 h-3.5" />Remove logo
               </button>
             )}
           </div>
@@ -843,34 +834,34 @@ function BrandingPanel({ store, onChange, onSave, isSaving, token, backendUrl }:
       </div>
 
       {/* Tagline */}
-      <Field label="Tagline">
+      <Field label="Tagline" hint="Shown below your name in the store header">
         <Input value={store.tagline ?? ""} onChange={e => onChange({ tagline: e.target.value || null })}
           placeholder="e.g. Official merch for my fans" maxLength={120} />
-        <p className="mt-1 text-xs text-gray-400">Shown below your name in the store header</p>
       </Field>
 
       {/* Announcement */}
-      <Field label="Announcement bar">
+      <Field label="Announcement bar" hint="Banner at the top of your store">
         <Input value={store.announcement_text ?? ""} onChange={e => onChange({ announcement_text: e.target.value || null })}
           placeholder="Free shipping on orders above ₹999 🎉" maxLength={200} />
-        <p className="mt-1 text-xs text-gray-400">Appears as a banner across the top of your store</p>
       </Field>
 
-      <div className="flex gap-3 pt-2 border-t border-gray-100">
-        <Button onClick={onSave} disabled={isSaving} className="flex-1 gap-2" style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})`, color: "white" }}>
+      <div className="flex gap-3 pt-4 border-t border-gray-100">
+        <button onClick={onSave} disabled={isSaving}
+          className="flex items-center justify-center flex-1 gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-60"
+          style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Save changes
-        </Button>
+        </button>
       </div>
     </div>
   )
 }
 
-// ─── Domain + SEO panel ────────────────────────────────────────────────────────
+// ─── Domain + SEO panel ──────────────────────────────────────────────────────
 
-function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token, backendUrl }: {
+function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token, backendUrl, vendorPlan }: {
   store: VendorStore; onChange: (p: Partial<VendorStore>) => void
-  onSave: () => void; isSaving: boolean; vendorHandle: string
-  token: string; backendUrl: string
+  onSave: (patch?: Partial<VendorStore>) => void; isSaving: boolean; vendorHandle: string
+  token: string; backendUrl: string; vendorPlan?: string
 }) {
   const [domainInput, setDomainInput] = useState(store.custom_domain ?? "")
   const [step, setStep] = useState<"idle" | "entered" | "dns" | "verifying" | "verified" | "failed">(
@@ -878,14 +869,13 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
   )
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifyError, setVerifyError] = useState("")
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   const subdomain = store.subdomain || vendorHandle
+  const isProPlan = vendorPlan === "pro" || vendorPlan === "enterprise"
+  const VPS_IP = "134.209.145.195"
 
-  // Remove protocol and trailing slash if user pastes full URL
-  const cleanDomain = (raw: string) => raw
-    .replace(/^https?:\/\//i, "")
-    .replace(/\/.*$/, "")
-    .trim()
+  const cleanDomain = (raw: string) => raw.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").trim()
 
   const handleDomainChange = (raw: string) => {
     const cleaned = cleanDomain(raw)
@@ -898,7 +888,6 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
     const cleaned = cleanDomain(domainInput)
     if (!cleaned) return
     onChange({ custom_domain: cleaned, domain_verified: false })
-    // Save to backend immediately
     await onSave()
     setStep("dns")
   }
@@ -910,7 +899,7 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
       const res = await fetch(`${backendUrl}/vendors/me/store/verify-domain`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ domain: domainInput }),
+        body: JSON.stringify({ domain: domainInput || store.custom_domain }),
       })
       if (res.ok) {
         const data = await res.json()
@@ -919,12 +908,11 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
           await onSave()
           setStep("verified")
         } else {
-          setVerifyError(data.message ?? "DNS record not found yet. Make sure the CNAME is saved with your domain registrar.")
+          setVerifyError(data.message ?? "DNS record not found yet. Make sure the A record is saved.")
           setStep("failed")
         }
       } else {
-        // Backend verify endpoint may not exist yet — check DNS manually as fallback
-        setVerifyError("Verification check unavailable. Contact support@junooni.com to manually activate your domain.")
+        setVerifyError("Verification check unavailable. Contact support@junooni.com to manually activate.")
         setStep("failed")
       }
     } catch {
@@ -935,248 +923,317 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
     }
   }
 
-  const handleRemoveDomain = async () => {
-    if (!confirm("Remove custom domain? Your store will revert to the junooni.com subdomain.")) return
+  // ConfirmDialog-driven removal
+  const confirmAndRemoveDomain = async () => {
+    setConfirmRemove(false)
     setDomainInput("")
     setStep("idle")
     setVerifyError("")
-    onChange({ custom_domain: null, domain_verified: false })
-    await onSave()
+    const patch = { custom_domain: null, domain_verified: false }
+    onChange(patch)
+    await onSave(patch)
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
 
-      {/* ── Subdomain ─────────────────────────────────────────────────────── */}
+      {/* Confirm dialog for domain removal */}
+      <ConfirmDialog
+        open={confirmRemove}
+        title="Remove custom domain?"
+        description={`Your store will fall back to ${subdomain}.junooni.com. You can reconnect a domain at any time.`}
+        confirmLabel="Yes, remove domain"
+        cancelLabel="Keep domain"
+        variant="danger"
+        onConfirm={confirmAndRemoveDomain}
+        onCancel={() => setConfirmRemove(false)}
+      />
+
+      {/* Junooni subdomain */}
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-1.5">Your free subdomain</p>
-        <p className="mb-2 text-xs text-gray-400">Always available — no setup needed.</p>
-        <div className="flex items-center overflow-hidden border border-gray-200 rounded-xl bg-gray-50">
+        <p className="mb-1 text-sm font-bold text-gray-800">Your Junooni subdomain</p>
+        <p className="mb-3 text-xs text-gray-400">Free on all plans — works automatically, no setup needed.</p>
+        <div className="flex items-center overflow-hidden transition-colors border-2 border-emerald-200 rounded-xl bg-emerald-50 focus-within:border-emerald-400">
           <input
-            value={store.subdomain ?? vendorHandle}
+            value={vendorHandle}
             onChange={e => onChange({ subdomain: e.target.value })}
-            className="flex-1 px-3 py-2.5 text-sm bg-transparent focus:outline-none font-mono"
+            className="flex-1 px-4 py-2.5 font-mono text-sm font-semibold bg-transparent focus:outline-none text-emerald-900"
             placeholder={vendorHandle}
           />
-          <span className="px-3 py-2.5 text-sm text-gray-400 bg-gray-100 border-l border-gray-200 whitespace-nowrap">.junooni.com</span>
+          <span className="px-4 py-2.5 text-sm font-semibold border-l text-emerald-700 bg-emerald-100 border-emerald-200 whitespace-nowrap">.junooni.com</span>
         </div>
-        <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
-          <Globe className="w-3 h-3" />
-          Store is live at: <span className="font-semibold text-gray-600">{subdomain}.junooni.com</span>
-        </p>
+        <div className="flex items-center gap-2 px-1 mt-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+          <p className="text-xs text-emerald-700">
+            Live at{" "}
+            <a href={`https://${vendorHandle}.junooni.com`} target="_blank" rel="noopener noreferrer"
+              className="font-bold underline">{vendorHandle}.junooni.com</a>
+          </p>
+        </div>
       </div>
 
       <div className="border-t border-gray-100" />
 
-      {/* ── Custom domain ─────────────────────────────────────────────────── */}
+      {/* Custom domain */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <p className="text-sm font-semibold text-gray-700">Custom domain</p>
-          <Badge className="flex items-center gap-1 text-xs text-purple-800 bg-purple-100 border-purple-200">
+          <p className="text-sm font-bold text-gray-800">Custom domain</p>
+          <span className="flex items-center gap-1 text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-full">
             <Crown className="w-3 h-3" />Pro plan
-          </Badge>
+          </span>
         </div>
-        <p className="mb-3 text-xs text-gray-400">Connect your own domain like <span className="font-mono text-gray-600">merch.yourname.com</span></p>
+        <p className="mb-4 text-xs text-gray-400">Connect <span className="font-mono text-gray-600">merch.yourname.com</span> to your store.</p>
 
-        {/* Step 0 — idle / input */}
-        {(step === "idle" || step === "entered") && (
-          <div className="space-y-3">
-            <div className="relative">
-              <Globe className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
-              <input
-                value={domainInput}
-                onChange={e => handleDomainChange(e.target.value)}
-                placeholder="merch.yourname.com"
-                className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 font-mono"
-              />
+        {!isProPlan && (
+          <div className="flex items-start gap-4 p-4 border border-purple-200 rounded-xl bg-purple-50">
+            <div className="flex items-center justify-center bg-purple-100 w-9 h-9 rounded-xl shrink-0">
+              <Crown className="w-4 h-4 text-purple-600" />
             </div>
-            {domainInput && (
-              <div className="px-1 text-xs text-gray-500">
-                Will connect: <span className="font-mono font-semibold text-gray-700">{domainInput}</span>
-              </div>
-            )}
-            <Button
-              onClick={handleSaveDomain}
-              disabled={!domainInput || isSaving}
-              className="w-full gap-2 text-sm font-semibold"
-              style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})`, color: "white" }}>
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-              Save & get DNS instructions
-            </Button>
+            <div className="flex-1">
+              <p className="mb-1 text-sm font-bold text-purple-900">Upgrade to Pro for a custom domain</p>
+              <p className="mb-3 text-xs leading-relaxed text-purple-700">
+                Your store lives at <span className="font-mono font-semibold">{subdomain}.junooni.com</span>. Pro lets you connect <span className="font-mono">merch.yourname.com</span>.
+              </p>
+              <Link to="/store/membership"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white transition-all hover:opacity-90"
+                style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}>
+                <Crown className="w-3 h-3" />View Pro plan
+              </Link>
+            </div>
           </div>
         )}
 
-        {/* Step 1 — DNS instructions */}
-        {(step === "dns" || step === "failed") && (
-          <div className="space-y-4">
-            {/* Current domain pill */}
-            <div className="flex items-center justify-between px-3 py-2 border border-gray-200 rounded-xl bg-gray-50">
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-gray-400" />
-                <span className="font-mono text-sm font-semibold text-gray-800">{store.custom_domain || domainInput}</span>
-              </div>
-              <button onClick={handleRemoveDomain} className="text-xs text-red-400 transition-colors hover:text-red-600">Remove</button>
-            </div>
-
-            {/* Step indicator */}
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <div className="flex items-center justify-center w-5 h-5 font-bold text-white bg-orange-500 rounded-full shrink-0">1</div>
-              <span>Add this DNS record at your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.)</span>
-            </div>
-
-            {/* DNS record card */}
-            <div className="overflow-hidden border border-blue-200 rounded-xl bg-blue-50">
-              <div className="flex items-center justify-between px-4 py-2 bg-blue-100 border-b border-blue-200">
-                <span className="text-xs font-semibold tracking-wider text-blue-800 uppercase">DNS Record to add</span>
-                <button
-                  onClick={() => {
-                    navigator.clipboard?.writeText(`${(store.custom_domain || domainInput).split(".")[0]}	${subdomain}.junooni.com`)
-                  }}
-                  className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800">
-                  <Copy className="w-3 h-3" />Copy
+        {isProPlan && (
+          <>
+            {(step === "idle" || step === "entered") && (
+              <div className="space-y-3">
+                <div className="relative">
+                  <Globe className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3.5 top-1/2" />
+                  <input
+                    value={domainInput}
+                    onChange={e => handleDomainChange(e.target.value)}
+                    placeholder="yourdomain.com or store.yourdomain.com"
+                    className="w-full py-2.5 pl-10 pr-4 font-mono text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-400 transition-colors"
+                  />
+                </div>
+                <button onClick={handleSaveDomain} disabled={!domainInput || isSaving}
+                  className="flex items-center justify-center w-full gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}>
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                  Save & get setup instructions
                 </button>
               </div>
-              <div className="p-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-xs tracking-wider text-blue-600 uppercase">
-                      <th className="pb-2 font-semibold text-left">Type</th>
-                      <th className="pb-2 font-semibold text-left">Host / Name</th>
-                      <th className="pb-2 font-semibold text-left">Value / Points to</th>
-                      <th className="pb-2 font-semibold text-left">TTL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="py-1 pr-4"><span className="px-2 py-0.5 rounded bg-blue-200 text-blue-900 font-mono font-bold text-xs">CNAME</span></td>
-                      <td className="py-1 pr-4 font-mono text-xs font-semibold text-blue-900">{(store.custom_domain || domainInput).split(".")[0]}</td>
-                      <td className="py-1 pr-4 font-mono text-xs text-blue-900">{subdomain}.junooni.com</td>
-                      <td className="py-1 text-xs text-blue-700">3600</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            )}
 
-            {/* Registrar guides */}
-            <div>
-              <p className="mb-2 text-xs text-gray-500">Step-by-step guides for common registrars:</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { name: "GoDaddy",    url: "https://in.godaddy.com/help/add-a-cname-record-19236" },
-                  { name: "Namecheap", url: "https://www.namecheap.com/support/knowledgebase/article.aspx/9646/2237/how-to-create-a-cname-record/" },
-                  { name: "Cloudflare",url: "https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/" },
-                  { name: "Google Domains", url: "https://support.google.com/domains/answer/3290350" },
-                  { name: "BigRock",   url: "https://manage.bigrock.in/kb/answer/1853" },
-                  { name: "Hostinger", url: "https://www.hostinger.in/tutorials/how-to-add-dns-records" },
-                ].map(r => (
-                  <a key={r.name} href={r.url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-colors text-center">
-                    {r.name} <ExternalLink className="w-2.5 h-2.5 shrink-0" />
-                  </a>
-                ))}
-              </div>
-            </div>
+            {(step === "dns" || step === "failed") && (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between px-4 py-3 border border-gray-200 rounded-xl bg-gray-50">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-gray-400" />
+                    <span className="font-mono text-sm font-bold text-gray-800">{store.custom_domain || domainInput}</span>
+                  </div>
+                  <button onClick={() => setConfirmRemove(true)} className="text-xs font-semibold text-red-400 transition-colors hover:text-red-600">Remove</button>
+                </div>
 
-            <div className="flex items-center gap-2 text-xs text-gray-500 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
-              <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-              <span>DNS changes can take <strong>5 minutes to 48 hours</strong> to propagate. Come back and click verify once you've added the record.</span>
-            </div>
+                <div className="flex items-center gap-2.5 text-xs font-semibold text-gray-700">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-white text-[10px]" style={{ background: "#7c3aed" }}>1</div>
+                  Add these DNS records at your domain registrar
+                </div>
 
-            {verifyError && (
-              <div className="flex items-start gap-2 text-xs bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
-                <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                <span className="text-red-700">{verifyError}</span>
+                <div className="overflow-hidden border border-purple-200 rounded-xl">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-purple-200 bg-purple-50">
+                    <span className="text-xs font-bold tracking-wider text-purple-800 uppercase">DNS Records</span>
+                    <button onClick={() => navigator.clipboard?.writeText(VPS_IP)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-800 transition-colors">
+                      <Copy className="w-3 h-3" />Copy IP
+                    </button>
+                  </div>
+                  <div className="p-4 bg-white">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-gray-400 uppercase tracking-wider text-[10px]">
+                          <th className="pb-2 font-bold text-left">Type</th>
+                          <th className="pb-2 font-bold text-left">Host / Name</th>
+                          <th className="pb-2 font-bold text-left">Points to</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {[
+                          {
+                            type: "A",
+                            host: (store.custom_domain || domainInput).split(".").length > 2
+                              ? (store.custom_domain || domainInput).split(".")[0] : "@",
+                            target: VPS_IP
+                          },
+                          { type: "A", host: "www", target: VPS_IP }
+                        ].map((row, i) => (
+                          <tr key={i}>
+                            <td className="py-2.5 pr-3"><span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 font-mono font-bold text-xs">{row.type}</span></td>
+                            <td className="py-2.5 pr-3 font-mono font-semibold text-gray-700">{row.host}</td>
+                            <td className="py-2.5 font-mono font-semibold text-gray-700">{row.target}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-gray-500">Setup guides by registrar:</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { name: "GoDaddy",        url: "https://in.godaddy.com/help/add-an-a-record-19238" },
+                      { name: "Namecheap",      url: "https://www.namecheap.com/support/knowledgebase/article.aspx/319/2237/how-can-i-set-up-an-a-address-record-for-my-domain/" },
+                      { name: "Cloudflare",     url: "https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/" },
+                      { name: "Google Domains", url: "https://support.google.com/domains/answer/3290350" },
+                      { name: "BigRock",        url: "https://manage.bigrock.in/kb/answer/1853" },
+                      { name: "Hostinger",      url: "https://www.hostinger.in/tutorials/how-to-point-domain-to-vps" },
+                    ].map(r => (
+                      <a key={r.name} href={r.url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium text-gray-600 transition-all border border-gray-200 rounded-lg hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50">
+                        {r.name} <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5 text-xs bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                  <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <span className="text-amber-800">DNS propagation takes <strong>5 min – 48 hours</strong> globally. Grab a coffee ☕</span>
+                </div>
+
+                {verifyError && (
+                  <div className="flex items-start gap-2.5 text-xs bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                    <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                    <span className="text-red-700">{verifyError}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2.5 text-xs font-semibold text-gray-700">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-white text-[10px]" style={{ background: "#7c3aed" }}>2</div>
+                  Once DNS is saved, verify here:
+                </div>
+
+                <button onClick={handleVerifyDomain} disabled={isVerifying}
+                  className="flex items-center justify-center w-full gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-60"
+                  style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}>
+                  {isVerifying
+                    ? <><Loader2 className="w-4 h-4 animate-spin" />Checking DNS…</>
+                    : <><CheckCircle2 className="w-4 h-4" />Verify domain</>}
+                </button>
+
+                <p className="text-xs text-center text-gray-400">
+                  Need help? <a href="mailto:support@junooni.com" className="font-medium text-purple-500 underline">support@junooni.com</a>
+                </p>
               </div>
             )}
 
-            <div className="flex items-center gap-2 mb-1 text-xs text-gray-500">
-              <div className="flex items-center justify-center w-5 h-5 font-bold text-white bg-orange-500 rounded-full shrink-0">2</div>
-              <span>Once the DNS record is added, click verify:</span>
-            </div>
-
-            <Button
-              onClick={handleVerifyDomain}
-              disabled={isVerifying}
-              className="w-full gap-2 text-sm font-semibold"
-              style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})`, color: "white" }}>
-              {isVerifying
-                ? <><Loader2 className="w-4 h-4 animate-spin" />Checking DNS...</>
-                : <><CheckCircle2 className="w-4 h-4" />Verify domain</>}
-            </Button>
-
-            <p className="text-xs text-center text-gray-400">
-              Having trouble? Email <a href="mailto:support@junooni.com" className="underline" style={{ color: BRAND.primary }}>support@junooni.com</a> and we'll set it up for you.
-            </p>
-          </div>
+            {step === "verified" && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-4 p-4 border border-emerald-200 rounded-xl bg-emerald-50">
+                  <div className="flex items-center justify-center w-10 h-10 bg-emerald-100 rounded-xl shrink-0">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-emerald-800">Custom domain connected!</p>
+                    <p className="text-xs text-emerald-700 font-mono mt-0.5">{store.custom_domain}</p>
+                  </div>
+                  <a href={`https://${store.custom_domain}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs font-semibold transition-colors text-emerald-700 hover:text-emerald-900">
+                    Visit <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <button onClick={() => setConfirmRemove(true)} className="w-full py-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors font-medium">
+                  Remove custom domain
+                </button>
+              </div>
+            )}
+          </>
         )}
+      </div>
 
-        {/* Step 2 — Verified */}
-        {step === "verified" && (
+      <div className="border-t border-gray-100" />
+
+      {/* Password protection */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-bold text-gray-800">Password protection</p>
+          <button
+            onClick={() => onChange({ password_enabled: !store.password_enabled })}
+            className="relative transition-colors rounded-full shrink-0 focus:outline-none"
+            style={{ width: "44px", height: "24px", background: store.password_enabled ? BRAND.primary : "#e5e7eb" }}
+            aria-label="Toggle password protection">
+            <span
+              className="absolute transition-transform duration-200 bg-white rounded-full shadow top-1"
+              style={{ width: "16px", height: "16px", left: "4px", transform: store.password_enabled ? "translateX(20px)" : "translateX(0)" }} />
+          </button>
+        </div>
+        <p className="mb-4 text-xs text-gray-400">Visitors must enter a password to view your store. Useful while setting up.</p>
+
+        {store.password_enabled && (
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-4 border border-green-200 rounded-xl bg-green-50">
-              <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-xl shrink-0">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-green-800">Domain connected!</p>
-                <p className="text-xs text-green-700 font-mono mt-0.5">{store.custom_domain}</p>
-              </div>
-              <a href={`https://${store.custom_domain}`} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 ml-auto text-xs font-medium text-green-700 hover:text-green-900">
-                Visit <ExternalLink className="w-3 h-3" />
-              </a>
+            <input
+              type="password"
+              value={store.store_password ?? ""}
+              onChange={e => onChange({ store_password: e.target.value || null })}
+              placeholder="Set a store password"
+              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 transition-colors"
+            />
+            <div className="flex items-start gap-2.5 text-xs bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <span className="text-amber-800">Password-protected stores are still indexed by Google if set to Live. Use Draft mode to hide from search entirely.</span>
             </div>
-            <button onClick={handleRemoveDomain} className="w-full py-1 text-xs text-gray-400 transition-colors hover:text-red-500">
-              Remove custom domain
-            </button>
           </div>
         )}
       </div>
 
       <div className="border-t border-gray-100" />
 
-      {/* ── SEO ─────────────────────────────────────────────────────────── */}
+      {/* SEO */}
       <div>
-        <p className="mb-3 text-sm font-semibold text-gray-700">SEO</p>
-        <div className="space-y-3">
-          <Field label="Page title">
+        <p className="mb-1 text-sm font-bold text-gray-800">SEO</p>
+        <p className="mb-4 text-xs text-gray-400">Control how your store appears in Google search results.</p>
+        <div className="space-y-4">
+          <Field label="Page title" hint="60 characters max">
             <Input value={store.seo_title ?? ""} onChange={e => onChange({ seo_title: e.target.value || null })}
               placeholder={`${vendorHandle} — Official Merch Store`} maxLength={60} />
             <p className="mt-1 text-xs text-gray-400">{(store.seo_title ?? "").length}/60</p>
           </Field>
-          <Field label="Meta description">
+          <Field label="Meta description" hint="160 characters max">
             <Textarea value={store.seo_description ?? ""} onChange={e => onChange({ seo_description: e.target.value || null })}
               placeholder="Shop official merchandise..." maxLength={160} rows={3} />
             <p className="mt-1 text-xs text-gray-400">{(store.seo_description ?? "").length}/160</p>
           </Field>
+
           {/* Google preview */}
-          <div className="p-3 border border-gray-100 rounded-xl bg-gray-50">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Google preview</p>
-            <p className="font-mono text-xs text-green-700 truncate">{store.custom_domain ?? `${subdomain}.junooni.com`} ›</p>
-            <p className="text-sm font-medium text-blue-700 truncate">{store.seo_title || `${vendorHandle} — Official Merch Store`}</p>
-            <p className="text-xs text-gray-500 line-clamp-2">{store.seo_description || "Shop official merchandise. Powered by Junooni."}</p>
+          <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Google preview</p>
+            <p className="font-mono text-xs text-emerald-700 truncate mb-0.5">
+              {store.custom_domain && store.domain_verified ? store.custom_domain : `${subdomain}.junooni.com`} ›
+            </p>
+            <p className="mb-1 text-sm font-semibold text-blue-700 truncate">{store.seo_title || `${vendorHandle} — Official Merch Store`}</p>
+            <p className="text-xs leading-relaxed text-gray-500 line-clamp-2">{store.seo_description || "Shop official merchandise. Powered by Junooni."}</p>
           </div>
         </div>
       </div>
 
-      <div className="pt-2 border-t border-gray-100">
-        <Button onClick={onSave} disabled={isSaving} className="w-full gap-2"
-          style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})`, color: "white" }}>
+      <div className="pt-4 border-t border-gray-100">
+        <button onClick={onSave} disabled={isSaving}
+          className="flex items-center justify-center w-full gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-60"
+          style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Save changes
-        </Button>
+        </button>
       </div>
     </div>
   )
 }
 
-
 // ─── Pages panel ──────────────────────────────────────────────────────────────
 
 const PAGE_TEMPLATES_LIST = [
-  { id: "blank" as PageTemplate,   label: "Blank",   icon: "📄", desc: "Start from scratch",         defaultContent: "" },
-  { id: "about" as PageTemplate,   label: "About",   icon: "👋", desc: "About me / my story",        defaultContent: "## About Me\n\nShare your story here..." },
-  { id: "faq" as PageTemplate,     label: "FAQ",     icon: "❓", desc: "Frequently asked questions", defaultContent: "## FAQ\n\n**Q: How long does shipping take?**\nA: 5-7 business days." },
+  { id: "blank"   as PageTemplate, label: "Blank",   icon: "📄", desc: "Start from scratch",         defaultContent: "" },
+  { id: "about"   as PageTemplate, label: "About",   icon: "👋", desc: "About me / my story",        defaultContent: "## About Me\n\nShare your story here..." },
+  { id: "faq"     as PageTemplate, label: "FAQ",     icon: "❓", desc: "Frequently asked questions", defaultContent: "## FAQ\n\n**Q: How long does shipping take?**\nA: 5-7 business days." },
   { id: "contact" as PageTemplate, label: "Contact", icon: "✉️", desc: "Contact / support page",     defaultContent: "## Contact Us\n\nReach out at your@email.com" },
 ]
 
@@ -1188,7 +1245,13 @@ function PagesPanel({ pages, vendorHandle, onSave, onDelete, onClose }: {
   const [isNew, setIsNew] = useState(false)
 
   const startNew = (tmpl: typeof PAGE_TEMPLATES_LIST[0]) => {
-    setEditingPage({ id: `page_${Date.now()}`, title: tmpl.label === "blank" ? "New Page" : tmpl.label, slug: tmpl.label === "blank" ? "new-page" : tmpl.id, template: tmpl.id, content: tmpl.defaultContent, in_nav: false, in_footer: true, created_at: new Date().toISOString() })
+    setEditingPage({
+      id: `page_${Date.now()}`,
+      title: tmpl.label === "blank" ? "New Page" : tmpl.label,
+      slug: tmpl.label === "blank" ? "new-page" : tmpl.id,
+      template: tmpl.id, content: tmpl.defaultContent,
+      in_nav: false, in_footer: true, created_at: new Date().toISOString()
+    })
     setIsNew(true)
   }
 
@@ -1200,33 +1263,49 @@ function PagesPanel({ pages, vendorHandle, onSave, onDelete, onClose }: {
   )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {pages.length > 0 && (
-        <div className="space-y-2">
-          {pages.map(page => (
-            <div key={page.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-200 bg-white hover:border-gray-300 transition-all">
-              <span className="text-base">{PAGE_TEMPLATES_LIST.find(t => t.id === page.template)?.icon ?? "📄"}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">{page.title}</p>
-                <p className="font-mono text-xs text-gray-400">/p/{page.slug}</p>
+        <div>
+          <p className="mb-3 text-xs font-bold tracking-widest text-gray-400 uppercase">Your pages</p>
+          <div className="space-y-2">
+            {pages.map(page => (
+              <div key={page.id}
+                className="flex items-center gap-3 px-4 py-3 transition-all bg-white border border-gray-200 rounded-xl hover:border-gray-300">
+                <span className="w-8 text-lg text-center shrink-0">{PAGE_TEMPLATES_LIST.find(t => t.id === page.template)?.icon ?? "📄"}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{page.title}</p>
+                  <p className="font-mono text-xs text-gray-400 mt-0.5">/p/{page.slug}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {page.in_nav && (
+                    <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">Nav</span>
+                  )}
+                  <button onClick={() => { setEditingPage(page); setIsNew(false) }}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-all">
+                    Edit
+                  </button>
+                  <button onClick={() => onDelete(page.id)}
+                    className="flex items-center justify-center w-8 h-8 transition-colors rounded-lg hover:bg-red-50">
+                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-1">
-                {page.in_nav && <Badge className="text-xs text-blue-700 border-blue-100 bg-blue-50">Nav</Badge>}
-              </div>
-              <button onClick={() => { setEditingPage(page); setIsNew(false) }} className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors">Edit</button>
-              <button onClick={() => onDelete(page.id)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
+
       <div>
-        <p className="mb-3 text-sm font-semibold text-gray-700">Create a page</p>
+        <p className="mb-3 text-xs font-bold tracking-widest text-gray-400 uppercase">Create a new page</p>
         <div className="grid grid-cols-2 gap-2">
           {PAGE_TEMPLATES_LIST.map(t => (
             <button key={t.id} onClick={() => startNew(t)}
-              className="flex items-start gap-2.5 p-3 rounded-xl border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all text-left">
+              className="flex items-start gap-3 p-4 text-left transition-all border border-gray-200 rounded-xl hover:border-gray-400 hover:bg-gray-50 group">
               <span className="text-xl mt-0.5">{t.icon}</span>
-              <div><p className="text-sm font-semibold text-gray-800">{t.label}</p><p className="text-xs text-gray-400">{t.desc}</p></div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">{t.label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t.desc}</p>
+              </div>
             </button>
           ))}
         </div>
@@ -1235,7 +1314,7 @@ function PagesPanel({ pages, vendorHandle, onSave, onDelete, onClose }: {
   )
 }
 
-// ─── Page editor (inline in modal) ────────────────────────────────────────────
+// ─── Page editor (inline in modal) ──────────────────────────────────────────
 
 function PageEditorInline({ page, isNew, vendorHandle, onSave, onCancel, onDelete }: {
   page: StorePage; isNew: boolean; vendorHandle: string
@@ -1245,43 +1324,72 @@ function PageEditorInline({ page, isNew, vendorHandle, onSave, onCancel, onDelet
   const up = (patch: Partial<StorePage>) => setDraft(p => ({ ...p, ...patch }))
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <button onClick={onCancel} className="flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700">
-          <ChevronRight className="w-3.5 h-3.5 rotate-180" />Back
+        <button onClick={onCancel}
+          className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors">
+          <ChevronRight className="w-3.5 h-3.5 rotate-180" />Back to pages
         </button>
-        {onDelete && <button onClick={onDelete} className="text-xs text-red-500 transition-colors hover:text-red-700">Delete page</button>}
+        {onDelete && (
+          <button onClick={onDelete}
+            className="flex items-center gap-1 text-xs font-semibold text-red-400 transition-colors hover:text-red-600">
+            <Trash2 className="w-3 h-3" />Delete page
+          </button>
+        )}
       </div>
+
       <Field label="Page title">
-        <Input value={draft.title} onChange={e => up({ title: e.target.value, ...(isNew ? { slug: slugify(e.target.value) } : {}) })} placeholder="e.g. About Me" />
+        <Input value={draft.title}
+          onChange={e => up({ title: e.target.value, ...(isNew ? { slug: slugify(e.target.value) } : {}) })}
+          placeholder="e.g. About Me" />
       </Field>
+
       <Field label="URL slug">
-        <div className="flex items-center">
-          <div className="px-3 py-2 text-xs text-gray-500 bg-gray-100 border border-r-0 border-gray-200 rounded-l-lg whitespace-nowrap">/p/</div>
-          <Input value={draft.slug} onChange={e => up({ slug: slugify(e.target.value) })} placeholder="about-me" className="font-mono rounded-l-none" />
+        <div className="flex items-center overflow-hidden transition-colors border border-gray-200 rounded-xl focus-within:border-gray-400">
+          <div className="px-3 py-2.5 text-xs font-mono text-gray-500 bg-gray-50 border-r border-gray-200 whitespace-nowrap shrink-0">/p/</div>
+          <input value={draft.slug} onChange={e => up({ slug: slugify(e.target.value) })} placeholder="about-me"
+            className="flex-1 px-3 py-2.5 text-sm font-mono focus:outline-none bg-white" />
         </div>
       </Field>
+
       <Field label="Content (Markdown or HTML)">
         <Textarea value={draft.content} onChange={e => up({ content: e.target.value })}
-          placeholder={"## My heading\n\nYour content...\n\n(or start with < for HTML)"} rows={10} className="font-mono text-sm" />
-        <p className="mt-1 text-xs text-gray-400">Start with a <code>&lt;</code> tag to use HTML. Otherwise Markdown: ## h2, **bold**, - list</p>
+          placeholder={"## My heading\n\nYour content here…\n\n(Prefix with < to write HTML)"}
+          rows={10} className="font-mono text-sm resize-none" />
+        <p className="mt-1.5 text-xs text-gray-400">Start with a <code className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">&lt;</code> tag to use raw HTML. Otherwise Markdown: <code className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">## h2</code>, <code className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">**bold**</code></p>
       </Field>
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" checked={draft.in_nav} onChange={e => up({ in_nav: e.target.checked })} className="w-4 h-4 rounded accent-orange-500" />
-        <span className="text-sm text-gray-700">Show in navigation menu</span>
+
+      <label className="flex items-center gap-2.5 cursor-pointer select-none">
+        <input type="checkbox" checked={draft.in_nav} onChange={e => up({ in_nav: e.target.checked })}
+          className="w-4 h-4 rounded accent-orange-500" />
+        <span className="text-sm font-medium text-gray-700">Show in navigation menu</span>
       </label>
-      <div className="flex gap-3 pt-2 border-t border-gray-100">
-        <Button onClick={() => onSave(draft)} className="flex-1 gap-2" style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})`, color: "white" }}>
+
+      <div className="flex gap-3 pt-4 border-t border-gray-100">
+        <button onClick={() => onSave(draft)}
+          className="flex items-center justify-center flex-1 gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90"
+          style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
           <Save className="w-4 h-4" />{isNew ? "Create page" : "Save changes"}
-        </Button>
-        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        </button>
+        <button onClick={onCancel}
+          className="px-5 py-2.5 text-sm font-semibold text-gray-700 border border-gray-200 rounded-xl hover:border-gray-400 hover:bg-gray-50 transition-all">
+          Cancel
+        </button>
       </div>
     </div>
   )
 }
 
-// ─── Shared ────────────────────────────────────────────────────────────────────
+// ─── Shared helpers ──────────────────────────────────────────────────────────
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>{children}</div>
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="flex items-baseline gap-2 mb-2">
+        <span className="text-xs font-bold text-gray-700">{label}</span>
+        {hint && <span className="text-xs text-gray-400">{hint}</span>}
+      </label>
+      {children}
+    </div>
+  )
 }

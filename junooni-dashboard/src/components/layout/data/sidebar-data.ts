@@ -100,8 +100,6 @@ import { type SidebarData } from '../types'
 const JUNOONI_ADMIN_VENDOR_ID = '01KJ50176GDA5B0W7228VZNSR8'
 
 export const getSidebarData = (vendorId?: string): SidebarData => {
-  const isJunooniAdmin = vendorId === JUNOONI_ADMIN_VENDOR_ID
-
   return {
     user: {
       name: 'satnaing',
@@ -127,30 +125,25 @@ export const getSidebarData = (vendorId?: string): SidebarData => {
             url: '/orders',
             icon: IconShoppingCart,
           },
-          ...(isJunooniAdmin
-            ? [
-                {
-                  title: 'My Store',
-                  url: '/store',
-                  icon: IconBuildingStore,
-                },
-                {
-                  title: 'My Collections',
-                  url: '/store/collections',
-                  icon: IconFolderOpen,
-                },
-                {
-                  title: 'Membership',
-                  url: '/store/membership',
-                  icon: IconCrown,
-                },
-              ]
-            : []),
+          {
+            title: 'My Store',
+            url: '/store',
+            icon: IconBuildingStore,
+          },
+          {
+            title: 'My Collections',
+            url: '/store/collections',
+            icon: IconFolderOpen,
+          },
+          {
+            title: 'Membership',
+            url: '/store/membership',
+            icon: IconCrown,
+          },
         ],
       },
     ],
   }
 }
 
-// Backward-compatible default export — used anywhere sidebarData is imported without args
 export const sidebarData = getSidebarData()

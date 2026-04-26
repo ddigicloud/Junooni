@@ -567,7 +567,6 @@ interface VendorOrder {
   vendor_subtotal: number
   vendor_shipping_total: number
   vendor_tax_total: number
-  
   vendor_items: OrderItem[] // ✅ Only vendor's items
   payment_status: string
   fulfillment_status: string
@@ -582,7 +581,10 @@ interface VendorOrder {
   vendor_handle: string
   original_order_id: string
   vendor_payment_amount: number
-  
+   sales_channel?: {
+    id: string
+    name: string
+  }
   // ✅ Claims and returns from backend
   claims?: any[]
   returns?: any[]
@@ -591,6 +593,11 @@ interface VendorOrder {
   has_claims?: boolean
   has_returns?: boolean
 }
+
+const isJunoonMarketplace = (order: VendorOrder) => {
+  const name = order.sales_channel?.name?.toLowerCase() || '';
+  return name.includes('default') || name === 'default sales channel';
+};
 
 const calculateCustomerTotalPayment = (order: VendorOrder, originalItems: OrderItem[], returnedItems: OrderItem[], replacementItems: OrderItem[]) => {
   
@@ -2405,7 +2412,7 @@ if (itemFulfillment) {
     currency_code: "INR",
     shipping_methods: [],
     payment_collections: orderData.payment_collections || [],  // ✅ ADD THIS LINE
-    
+    sales_channel: orderData.sales_channel || null,
     fulfillments: orderData.fulfillments || [],
     vendor_id: orderData.vendor_id || "",
     vendor_handle: orderData.vendor_handle || "unknown",
@@ -3244,6 +3251,19 @@ const generateInvoice = () => {
                   <Calendar className="w-4 h-4 mr-2" />
                   <span>{formatDate(order.created_at)}</span>
                 </div>
+                <div className="flex items-center gap-2 mt-1">
+                  {isJunoonMarketplace(order) ? (
+                    <Badge variant="outline" className="text-xs text-orange-700 border-orange-200 bg-orange-50">
+                      <ShoppingBag className="w-3 h-3 mr-1" />
+                      JUNOONI Marketplace Product
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs text-orange-700 border-orange-200 bg-orange-50">
+                      <Home className="w-3 h-3 mr-1" />
+                      Your Store Product
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex flex-col items-end">
@@ -3996,46 +4016,14 @@ const generateInvoice = () => {
               <div className="space-y-3">
                 <div className="space-y-3">
                   {(() => {
-                    // ✅ DEBUGGING: Log all the data
-                    //console.log('=== ORDER DEBUG START ===');
-                    //console.log('1. Order created_at:', order.created_at);
-                    //console.log('2. Order custom_display_id:', order.custom_display_id);
-                    //console.log('3. Order fulfillment_status:', order.fulfillment_status);
-                    //console.log('4. Total fulfillments:', order.fulfillments?.length || 0);
                     
-                    // Log each fulfillment
-                    if (order.fulfillments) {
-                      order.fulfillments.forEach((f, index) => {
-                        // console.log(`\nFulfillment ${index}:`, {
-                        //   id: f.id,
-                        //   packed_at: f.packed_at,
-                        //   shipped_at: f.shipped_at,
-                        //   delivered_at: f.delivered_at,
-                        //   canceled_at: f.canceled_at,
-                        //   deleted_at: f.deleted_at,
-                        //   items_count: f.items?.length || 0
-                        // });
-                      });
-                    }
+                   
+            
                     
                     // Filter active fulfillments
                     const activeFulfillments = order.fulfillments 
                       ? order.fulfillments.filter(f => !f.canceled_at && !f.deleted_at)
                       : [];
-                    
-                    //console.log('\n5. Active fulfillments count:', activeFulfillments.length);
-                    
-                    if (activeFulfillments.length > 0) {
-                      // console.log('6. Selected fulfillment (last active):', {
-                      //   id: activeFulfillments[activeFulfillments.length - 1].id,
-                      //   packed_at: activeFulfillments[activeFulfillments.length - 1].packed_at,
-                      //   shipped_at: activeFulfillments[activeFulfillments.length - 1].shipped_at,
-                      //   delivered_at: activeFulfillments[activeFulfillments.length - 1].delivered_at
-                      // });
-                    }
-                    
-                    // Check formatDate function
-                    //console.log('\n7. Formatted order date:', formatDate(order.created_at));
                     
                     const {
                       vendorHasClaims,
@@ -4052,26 +4040,10 @@ const generateInvoice = () => {
                       order.return_items
                     );
                     
-                    // console.log('\n8. Vendor claims/returns:', {
-                    //   vendorHasClaims,
-                    //   vendorHasReturns,
-                    //   vendorReturnItemCount,
-                    //   vendorReplacementItemCount
-                    // });
                     
                     const fulfillment = activeFulfillments.length > 0 
                       ? activeFulfillments[activeFulfillments.length - 1]
                       : null;
-                    
-                    // console.log('\n9. Final selected fulfillment:', fulfillment ? {
-                    //   id: fulfillment.id,
-                    //   has_packed_at: !!fulfillment.packed_at,
-                    //   has_shipped_at: !!fulfillment.shipped_at,
-                    //   has_delivered_at: !!fulfillment.delivered_at,
-                    //   packed_at: fulfillment.packed_at,
-                    //   shipped_at: fulfillment.shipped_at,
-                    //   delivered_at: fulfillment.delivered_at
-                    // } : 'No fulfillment found');
                     
                     const hasFulfillmentEvents = fulfillment && (
                       fulfillment.packed_at || 

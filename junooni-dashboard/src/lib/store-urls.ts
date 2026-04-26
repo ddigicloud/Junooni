@@ -16,10 +16,21 @@ export function getStoreUrl(handle: string, customDomain?: string | null): strin
   return `http://localhost:${STORE_PORT}/${handle}`
 }
 
-/** Iframe preview URL — includes __editor=1 flag for postMessage handshake */
+/** Iframe preview URL — includes __editor=1 + __preview=1 flags
+ *  __editor=1 = postMessage handshake for live editing
+ *  __preview=1 = bypasses password gate so creator sees their own store
+ */
 export function getPreviewUrl(handle: string): string {
-  if (import.meta.env.PROD) return `https://${handle}.${ROOT_DOMAIN}?__editor=1`
-  return `http://localhost:${STORE_PORT}/${handle}?__editor=1`
+  if (import.meta.env.PROD) return `https://${handle}.${ROOT_DOMAIN}?__editor=1&__preview=1`
+  return `http://localhost:${STORE_PORT}/${handle}?__editor=1&__preview=1`
+}
+
+/** Store URL for creator to visit their own store (bypasses password gate) */
+export function getCreatorStoreUrl(handle: string, customDomain?: string | null): string {
+  const base = customDomain ? `https://${customDomain}` :
+    import.meta.env.PROD ? `https://${handle}.${ROOT_DOMAIN}` :
+    `http://localhost:${STORE_PORT}/${handle}`
+  return `${base}?__preview=1`
 }
 
 /** URL for a specific custom page on a creator's store */
