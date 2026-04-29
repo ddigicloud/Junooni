@@ -1,7 +1,7 @@
 "use client"
 
-import { useFormState } from "react-dom"
 import { useTransition } from "react"
+import { useFormState } from "react-dom"
 import { useRouter, useSearchParams } from "next/navigation"
 import { setAddresses } from "@/lib/cart"
 import { Loader2, MapPin, CheckCircle2, ArrowRight } from "lucide-react"
@@ -33,31 +33,30 @@ export default function AddressForm({
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
 
-  const [message, formAction] = useFormState(
-    async (state: unknown, formData: FormData) => {
-      const err = await setAddresses(state, formData)
-      if (!err) {
-        window.location.href = `/${handle}/checkout?step=delivery`
-      }
-      return err
-    },
-    null
-  )
+  // ✅ Bind handle into setAddresses — was missing handle entirely
+  const boundSetAddresses = async (state: unknown, formData: FormData) => {
+    const err = await setAddresses(handle, state, formData)
+    if (!err) {
+      window.location.href = `/${handle}/checkout?step=delivery`
+    }
+    return err
+  }
+
+  // ✅ useActionState replaces deprecated useFormState
+  const [message, formAction] = useFormState(boundSetAddresses, null)
 
   const addr = cart?.shipping_address
   const hasAddress = !!addr?.first_name && !!addr?.address_1 && !!addr?.city
 
-  // Show form if: no address yet, OR user clicked Edit (step=address in URL)
   const isEditing = searchParams.get("step") === "address"
   const showForm = !hasAddress || isEditing
 
-  // ── Completed / summary view ─────────────────────────────────────────────────
   if (!showForm) {
     return (
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-6">
+      <div className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center"
+            <div className="flex items-center justify-center w-8 h-8 rounded-full"
               style={{ background: `${brandPrimary}20` }}>
               <CheckCircle2 className="w-4 h-4" style={{ color: brandPrimary }} />
             </div>
@@ -65,16 +64,14 @@ export default function AddressForm({
             <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white"
               style={{ background: brandPrimary }}>Done</span>
           </div>
-          <button
-            onClick={() => router.push(`/${handle}/checkout?step=address`)}
+          <button onClick={() => router.push(`/${handle}/checkout?step=address`)}
             className="text-sm font-medium underline underline-offset-2"
-            style={{ color: brandPrimary }}
-          >
+            style={{ color: brandPrimary }}>
             Edit
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600 mb-5">
+        <div className="grid grid-cols-1 gap-4 mb-5 text-sm text-gray-600 sm:grid-cols-2">
           <div>
             <p className="font-medium text-gray-900">{addr.first_name} {addr.last_name}</p>
             <p>{addr.address_1}</p>
@@ -87,39 +84,34 @@ export default function AddressForm({
           </div>
         </div>
 
-        <button
-          onClick={() => router.push(`/${handle}/checkout?step=delivery`)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90"
-          style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
-        >
+        <button onClick={() => router.push(`/${handle}/checkout?step=delivery`)}
+          className="flex items-center justify-center w-full gap-2 py-3 text-sm font-semibold text-white transition-all rounded-xl hover:opacity-90"
+          style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
           Continue to Shipping <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     )
   }
 
-  // ── Edit / entry form ────────────────────────────────────────────────────────
   return (
-    <div className="rounded-2xl border-2 bg-white shadow-sm overflow-hidden"
+    <div className="overflow-hidden bg-white border-2 shadow-sm rounded-2xl"
       style={{ borderColor: brandPrimary }}>
       <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center"
+        <div className="flex items-center justify-center w-8 h-8 rounded-full"
           style={{ background: brandPrimary }}>
           <MapPin className="w-4 h-4 text-white" />
         </div>
         <h2 className="text-base font-semibold text-gray-900">Shipping Address</h2>
         {hasAddress && (
-          <button
-            onClick={() => router.push(`/${handle}/checkout?step=delivery`)}
-            className="ml-auto text-sm text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={() => router.push(`/${handle}/checkout?step=delivery`)}
+            className="ml-auto text-sm text-gray-400 transition-colors hover:text-gray-600">
             Cancel
           </button>
         )}
       </div>
 
       <form action={formAction} className="p-6 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="First name" name="first_name" placeholder="Rahul" required brandPrimary={brandPrimary} defaultValue={addr?.first_name} />
           <Field label="Last name" name="last_name" placeholder="Sharma" required brandPrimary={brandPrimary} defaultValue={addr?.last_name} />
         </div>
@@ -127,25 +119,24 @@ export default function AddressForm({
         <Field label="Phone" name="phone" type="tel" placeholder="+91 98765 43210" required brandPrimary={brandPrimary} defaultValue={addr?.phone} />
         <Field label="Address" name="address_1" placeholder="House no, Street, Area" required brandPrimary={brandPrimary} defaultValue={addr?.address_1} />
         <Field label="Apartment / Floor (optional)" name="address_2" placeholder="Apt, Suite, Floor" brandPrimary={brandPrimary} defaultValue={addr?.address_2} />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="City" name="city" placeholder="Mumbai" required brandPrimary={brandPrimary} defaultValue={addr?.city} />
           <Field label="State" name="province" placeholder="Maharashtra" required brandPrimary={brandPrimary} defaultValue={addr?.province} />
           <Field label="Pincode" name="postal_code" placeholder="400001" required brandPrimary={brandPrimary} defaultValue={addr?.postal_code} />
         </div>
 
-        <label className="flex items-center gap-3 cursor-pointer py-1">
+        <label className="flex items-center gap-3 py-1 cursor-pointer">
           <input type="checkbox" name="same_as_billing" defaultChecked className="w-4 h-4 rounded accent-orange-500" />
           <span className="text-sm text-gray-600">Billing address same as shipping</span>
         </label>
 
         {message && (
-          <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl border border-red-100">{message}</p>
+          <p className="px-4 py-3 text-sm text-red-600 border border-red-100 bg-red-50 rounded-xl">{message}</p>
         )}
 
         <button type="submit" disabled={isPending}
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-60"
-          style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
-        >
+          style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
           {isPending
             ? <><Loader2 className="w-4 h-4 animate-spin" />Saving...</>
             : hasAddress ? <>Save changes</> : <>Continue to Shipping</>

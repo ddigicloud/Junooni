@@ -18,7 +18,7 @@ export default function StoreFooter({ vendor, store, categories, collections }: 
 
   return (
     <footer className={`border-t mt-20 ${isDark ? "border-white/10 bg-black text-white" : "border-gray-100 bg-white text-gray-900"}`}>
-      <div className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-2 md:grid-cols-5 gap-8">
+      <div className="grid max-w-6xl grid-cols-2 gap-8 px-6 py-12 mx-auto md:grid-cols-5">
 
         {/* Brand */}
         <div className="col-span-2 md:col-span-1">
@@ -29,12 +29,12 @@ export default function StoreFooter({ vendor, store, categories, collections }: 
                 alt={vendor.name}
                 width={120}
                 height={40}
-                className="h-9 w-auto object-contain"
+                className="object-contain w-auto h-9"
                 style={isDark ? { filter: "brightness(0) invert(1)" } : {}}
               />
             </div>
           ) : (
-            <p className="font-bold text-base mb-2">{vendor.name}</p>
+            <p className="mb-2 text-base font-bold">{vendor.name}</p>
           )}
           {vendor.creator_bio && (
             <p className={`text-sm leading-relaxed line-clamp-3 ${isDark ? "text-white/50" : "text-gray-500"}`}>
@@ -103,7 +103,7 @@ export default function StoreFooter({ vendor, store, categories, collections }: 
                 rel="noopener noreferrer"
                 className={`block text-sm ${isDark ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
               >
-                Our Junooni Store
+                Our JUNOONI Store
               </a>
             )}
           </div>
@@ -162,18 +162,18 @@ export default function StoreFooter({ vendor, store, categories, collections }: 
 
       {/* Bottom bar */}
       <div className={`border-t ${isDark ? "border-white/10" : "border-gray-100"} px-6 py-5`}>
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="flex flex-col items-center justify-between max-w-6xl gap-3 mx-auto text-xs sm:flex-row">
           <p className={isDark ? "text-white/30" : "text-gray-400"}>
             © {new Date().getFullYear()} {vendor.name}. All rights reserved.
           </p>
           <p className={isDark ? "text-white/30" : "text-gray-400"}>
             Powered by{" "}
             <a
-              href="https://junooni.com"
+              href="https://studio.junooni.com"
               style={{ color: brandPrimary }}
-              className="hover:opacity-70 transition-opacity font-medium"
+              className="font-medium transition-opacity hover:opacity-70"
             >
-              Junooni
+              JUNOONI
             </a>
           </p>
         </div>

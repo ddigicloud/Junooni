@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
+import { headers } from "next/headers"
 import { getStorefrontData } from "@/lib/api"
 import { retrieveCart, listCartShippingMethods, listCartPaymentMethods } from "@/lib/cart"
 import StepIndicator from "@/components/checkout/StepIndicator"
@@ -20,35 +21,50 @@ function formatPrice(amount: number) {
   }).format(amount)
 }
 
+// Resolve handle from middleware header or URL param
+function resolveHandle(paramHandle: string): string {
+  try {
+    return headers().get("x-handle") ?? paramHandle
+  } catch {
+    return paramHandle
+  }
+}
+
 export default async function CheckoutPage({ params, searchParams }: Props) {
-  const { handle } = params
+  const handle = resolveHandle(params.handle)
   const step = searchParams.step ?? "address"
 
+  console.log(`[checkout] handle=${handle} step=${step}`)
+
+  // ✅ Pass handle to retrieveCart so it reads the correct per-store cookie
   const [data, cart] = await Promise.all([
     getStorefrontData(handle),
-    retrieveCart(),
+    retrieveCart(handle),   // ← FIX: was retrieveCart() with no handle
   ])
 
+  console.log(`[checkout] cart=${cart?.id ?? "null"} items=${cart?.items?.length ?? 0}`)
+
   if (!data) notFound()
-  if (!cart || !cart.items?.length) redirect(`/${handle}`)
+  if (!cart || !cart.items?.length) {
+    console.log(`[checkout] no cart or empty cart — redirecting to /${handle}`)
+    redirect(`/${handle}`)
+  }
 
   const { vendor, store } = data
-  const brandPrimary = store?.primary_color ?? "#e65100"
+  const brandPrimary   = store?.primary_color   ?? "#e65100"
   const brandSecondary = store?.secondary_color ?? "#ac1900"
   const isDark = store?.template === "bold"
 
   const brandStyles = {
-    "--brand-primary": brandPrimary,
+    "--brand-primary":   brandPrimary,
     "--brand-secondary": brandSecondary,
   } as React.CSSProperties
 
-  // ── Fetch methods in parallel ────────────────────────────────────────────────
   const [shippingMethods, paymentMethods] = await Promise.all([
-    listCartShippingMethods(cart.id),
+    listCartShippingMethods(handle, cart.id),  // ✅ pass handle
     listCartPaymentMethods(cart.region?.id ?? ""),
   ])
 
-  // ── Completion checks ────────────────────────────────────────────────────────
   const addressComplete =
     !!cart.shipping_address?.first_name &&
     !!cart.shipping_address?.address_1 &&
@@ -62,17 +78,11 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
     (s: any) => s.status === "pending"
   )
 
-  // ── Auto-advance: if current step already complete, go to next ───────────────
-  if (step === "address" && addressComplete) {
-    // Don't auto-redirect — show completed address with Continue button
-    // This avoids redirect loops
-  }
-
   return (
     <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
       {/* Header */}
       <header className={`${isDark ? "bg-black/80 border-white/10" : "bg-white/90 border-gray-100"} backdrop-blur-md border-b sticky top-0 z-30`}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="flex items-center justify-between h-16 max-w-6xl px-4 mx-auto sm:px-6">
           <Link
             href={`/${handle}`}
             className={`text-sm ${isDark ? "text-white/60 hover:text-white" : "text-gray-500 hover:text-gray-900"} transition-colors`}
@@ -80,8 +90,8 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
             ← Back to store
           </Link>
           {vendor.logo && (
-            <div className="absolute left-1/2 -translate-x-1/2">
-              <div className="w-8 h-8 rounded-full overflow-hidden">
+            <div className="absolute -translate-x-1/2 left-1/2">
+              <div className="w-8 h-8 overflow-hidden rounded-full">
                 <Image src={vendor.logo} alt={vendor.name} width={32} height={32} className="object-cover" />
               </div>
             </div>
@@ -92,20 +102,16 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {/* Step indicator */}
+      <div className="max-w-6xl px-4 py-8 mx-auto sm:px-6">
         <div className="mb-8">
           <StepIndicator currentStep={step} brandPrimary={brandPrimary} />
         </div>
 
         <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
-          {/* ── Left: form steps ─────────────────────────────────────────────── */}
-          <div className="space-y-4 min-w-0">
-
-            {/* Address — always show */}
+          {/* Left: form steps */}
+          <div className="min-w-0 space-y-4">
             <AddressForm cart={cart} handle={handle} brandPrimary={brandPrimary} isDark={isDark} />
 
-            {/* Shipping — show when address done */}
             {(step === "delivery" || step === "payment" || step === "review") && addressComplete && (
               <ShippingForm
                 cart={cart}
@@ -115,7 +121,6 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
               />
             )}
 
-            {/* Payment — show when shipping done */}
             {(step === "payment" || step === "review") && shippingComplete && (
               <PaymentForm
                 cart={cart}
@@ -125,23 +130,21 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
               />
             )}
 
-            {/* Review — show when payment done */}
             {step === "review" && paymentComplete && (
               <ReviewForm cart={cart} handle={handle} brandPrimary={brandPrimary} />
             )}
-
           </div>
 
-          {/* ── Right: order summary ──────────────────────────────────────────── */}
+          {/* Right: order summary */}
           <div className={`rounded-2xl border ${isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"} shadow-sm p-6 sticky top-24`}>
             <h3 className={`text-xs font-semibold uppercase tracking-widest mb-4 ${isDark ? "text-white/40" : "text-gray-400"}`}>
               Order Summary
             </h3>
 
-            <div className="space-y-4 mb-4">
+            <div className="mb-4 space-y-4">
               {cart.items?.map((item: any) => (
                 <div key={item.id} className="flex items-center gap-3">
-                  <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                  <div className="relative overflow-hidden bg-gray-100 w-14 h-14 rounded-xl shrink-0">
                     {item.thumbnail && (
                       <Image src={item.thumbnail} alt={item.title} fill className="object-cover" />
                     )}
@@ -181,7 +184,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
               {(cart.shipping_total ?? 0) === 0 && shippingComplete && (
                 <div className={`flex justify-between text-sm ${isDark ? "text-white/50" : "text-gray-500"}`}>
                   <span>Shipping</span>
-                  <span className="text-green-600 font-medium">Free</span>
+                  <span className="font-medium text-green-600">Free</span>
                 </div>
               )}
               {(cart.tax_total ?? 0) > 0 && (

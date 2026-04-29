@@ -1,36 +1,23 @@
 import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import MarketplaceModuleService from "../../../modules/marketplace/service";
+import MarketplaceModuleService from "../../../modules/marketplace/service"
 import { z } from "zod"
-import { MARKETPLACE_MODULE } from "src/modules/marketplace";
+import { MARKETPLACE_MODULE } from "src/modules/marketplace"
 
-// ── Attach plan fields from raw SQL ──────────────────────────────────────────
+// ── Resolve vendor_id from actor_id ──────────────────────────────────────────
+// actor_id is always vendor_admin.id — we need vendor.id
+// Use explicit fields (no wildcard) to avoid query.graph join key bug
 
-async function attachPlanFields(pgClient: any, vendor: any): Promise<void> {
-  try {
-    const result = await pgClient.raw(`
-      SELECT
-        COALESCE(plan, 'free')      AS plan,
-        plan_billing_cycle,
-        plan_activated_at,
-        razorpay_subscription_id,
-        razorpay_payment_id
-      FROM "vendor"
-      WHERE id = ?
-    `, [vendor.id])
-
-    const row = result.rows?.[0]
-    if (row) {
-      vendor.plan                     = row.plan ?? "free"
-      vendor.plan_billing_cycle       = row.plan_billing_cycle ?? null
-      vendor.plan_activated_at        = row.plan_activated_at ?? null
-      vendor.razorpay_subscription_id = row.razorpay_subscription_id ?? null
-      vendor.razorpay_payment_id      = row.razorpay_payment_id ?? null
-    }
-  } catch(e) {
-    console.error("attachPlanFields error:", e)
-    vendor.plan = vendor.plan ?? "free"
-  }
+async function resolveVendorId(
+  query: any,
+  actorId: string
+): Promise<string | null> {
+  const { data: [va] } = await query.graph({
+    entity: "vendor_admin",
+    fields: ["id", "vendor.id"],
+    filters: { id: actorId },
+  })
+  return va?.vendor?.id ?? null
 }
 
 // ── GET /vendors/me ───────────────────────────────────────────────────────────
@@ -40,36 +27,39 @@ export const GET = async (
   res: MedusaResponse
 ) => {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-  const pgClient = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
 
-  const { data: [vendorAdmin] } = await query.graph({
-    entity: "vendor_admin",
-    fields: ["vendor.*"],
-    filters: {
-      id: [req.auth_context.actor_id],
-    },
+  const actorId = req.auth_context?.actor_id
+  if (!actorId) return res.status(401).json({ message: "Unauthorized" })
+
+  const vendorId = await resolveVendorId(query, actorId)
+  if (!vendorId) return res.status(404).json({ message: "Vendor not found" })
+
+  // Fetch full vendor — plan fields are columns on the vendor entity
+  const { data: [vendor] } = await query.graph({
+    entity: "vendor",
+    fields: [
+      "*",
+      "plan", "plan_billing_cycle", "plan_activated_at",
+      "razorpay_subscription_id", "razorpay_payment_id",
+    ],
+    filters: { id: vendorId },
   })
 
-  if (!vendorAdmin?.vendor?.id) {
-    return res.status(404).json({ message: "Vendor not found" })
-  }
+  if (!vendor) return res.status(404).json({ message: "Vendor not found" })
 
-  const { data: adminData } = await query.graph({
+  const { data: admins } = await query.graph({
     entity: "vendor_admin",
     fields: ["id", "email", "first_name", "last_name"],
-    filters: {
-      vendor_id: [vendorAdmin.vendor.id],
-    },
+    filters: { vendor_id: [vendorId] },
   })
 
-  const vendorWithAdmins = {
-    ...vendorAdmin.vendor,
-    admins: adminData || []
-  }
-
-  await attachPlanFields(pgClient, vendorWithAdmins)
-
-  return res.json({ vendor: vendorWithAdmins })
+  return res.json({
+    vendor: {
+      ...vendor,
+      plan: vendor.plan ?? "free",
+      admins: admins ?? [],
+    }
+  })
 }
 
 // ── Schema ────────────────────────────────────────────────────────────────────
@@ -101,7 +91,6 @@ export const UpdateVendorSchema = z.object({
   cancelled_checkque: z.string().optional(),
   creator_bio: z.string().optional(),
   creator_title: z.string().optional(),
-  // ── admins: now correctly typed as an object (one admin per request) ──
   admins: z.object({
     email: z.string().email(),
     first_name: z.string().optional(),
@@ -120,61 +109,40 @@ async function updateVendorForMe(
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const marketplaceModuleService: MarketplaceModuleService = req.scope.resolve(MARKETPLACE_MODULE)
 
-  // Look up the vendor this admin belongs to
-  const { data: [vendorAdmin] } = await query.graph({
-    entity: "vendor_admin",
-    fields: ["vendor.id"],
-    filters: {
-      id: [req.auth_context.actor_id],
-    },
-  })
-
-  if (!vendorAdmin?.vendor?.id) {
-    return res.status(404).json({ message: "Vendor not found" })
-  }
+  const actorId = req.auth_context?.actor_id
+  const vendorId = await resolveVendorId(query, actorId)
+  if (!vendorId) return res.status(404).json({ message: "Vendor not found" })
 
   const body = req.validatedBody || req.body
-
-  // ── Split admins out — it's a relation, not a vendor column ──
   const { admins, ...vendorFields } = body
 
-  // 1. Update vendor scalar fields
   const updatedVendor = await marketplaceModuleService.updateVendors({
-    id: vendorAdmin.vendor.id,
+    id: vendorId,
     ...vendorFields,
   })
 
-  // 2. Update the calling admin's name if provided
   if (admins?.first_name !== undefined || admins?.last_name !== undefined) {
     await marketplaceModuleService.updateVendorAdmins({
-      id: req.auth_context.actor_id,
+      id: actorId,
       ...(admins.first_name !== undefined && { first_name: admins.first_name }),
       ...(admins.last_name  !== undefined && { last_name:  admins.last_name  }),
     })
   }
 
-  // 3. Re-fetch admins so the response is consistent with GET /vendors/me
   const { data: adminData } = await query.graph({
     entity: "vendor_admin",
     fields: ["id", "email", "first_name", "last_name"],
-    filters: {
-      vendor_id: [vendorAdmin.vendor.id],
-    },
+    filters: { vendor_id: [vendorId] },
   })
 
   return res.json({
     vendor: {
       ...updatedVendor,
-      admins: adminData || [],
+      admins: adminData ?? [],
     },
     message: "Vendor updated successfully",
   })
 }
 
-// ── POST /vendors/me ──────────────────────────────────────────────────────────
-
 export const POST = updateVendorForMe
-
-// ── PUT /vendors/me ───────────────────────────────────────────────────────────
-
-export const PUT = updateVendorForMe
+export const PUT  = updateVendorForMe

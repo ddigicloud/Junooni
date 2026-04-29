@@ -21,9 +21,10 @@ import { getStoreUrl, getPreviewUrl, getPageUrl } from "@/lib/store-urls"
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SectionType = "header" | "hero" | "featured" | "collection" | "featured_collections" | "about" | "social" |
-  "announcement" | "divider" | "image" | "text" | "html" | "video" | "links" | "footer"
+  "announcement" | "divider" | "image" | "text" | "html" | "video" | "links" | "footer" |
+  "ticker" | "image_text" | "video_text" | "featured_product"
 type EditorTab = "layout" | "style" | "pages" | "theme"
-type PageTemplate = "blank" | "about" | "faq" | "contact" | "links"
+type PageTemplate = "blank" | "about" | "faq" | "contact" | "links" | "terms" | "privacy" | "returns"
 
 interface NavItem { id: string; label: string; url: string; external?: boolean; children?: NavItem[] }
 
@@ -31,7 +32,6 @@ interface StoreSection {
   id: string; type: SectionType; hidden?: boolean
   title?: string; headline?: string; subtext?: string
   cta_label?: string; cta_url?: string; cta_secondary_label?: string; cta_secondary_url?: string
-  // overlay_color / overlay_text_color = hero-only, independent from section override
   overlay_color?: string; overlay_text_color?: string
   background_image?: string; background_color?: string; text_color?: string
   text?: string; image?: string; image_position?: "left" | "right"
@@ -39,10 +39,18 @@ interface StoreSection {
   show_instagram?: boolean; show_youtube?: boolean; show_twitter?: boolean; show_facebook?: boolean
   html_content?: string; video_url?: string; video_autoplay?: boolean
   links?: { id: string; label: string; url: string; icon?: string }[]
-  // header-specific
   logo_position?: "left" | "center"; show_social_icons?: boolean; nav_items?: NavItem[]
-  // footer-specific
   footer_nav_items?: NavItem[]; show_newsletter?: boolean
+  // ticker
+  ticker_items?: string[]; ticker_speed?: number; ticker_separator?: string
+  // image_text / video_text
+  video_text_url?: string
+  // featured_product
+  featured_product_id?: string
+  featured_product_heading?: string
+  featured_product_show_title?: boolean
+  featured_product_show_price?: boolean
+  featured_product_show_colors?: boolean
 }
 
 interface StorePage {
@@ -92,7 +100,11 @@ const SECTION_BLOCKS = [
   { type: "social"       as SectionType, label: "Social Links",     icon: <Share2 className="w-3.5 h-3.5" />, desc: "Instagram, YouTube etc.", color: "#3b82f6", category: "content" },
   { type: "links"        as SectionType, label: "Link List",        icon: <LinkIcon className="w-3.5 h-3.5" />, desc: "Bio-style link buttons", color: "#0ea5e9", category: "content" },
   { type: "html"         as SectionType, label: "Custom HTML",      icon: <Settings className="w-3.5 h-3.5" />, desc: "Raw HTML / CSS / JS", color: "#ef4444", category: "advanced" },
-  { type: "divider"      as SectionType, label: "Divider",          icon: <Minus className="w-3.5 h-3.5" />, desc: "Visual separator", color: "#9ca3af", category: "layout" },
+  { type: "divider"          as SectionType, label: "Divider",            icon: <Minus className="w-3.5 h-3.5" />, desc: "Visual separator",                  color: "#9ca3af", category: "layout" },
+  { type: "ticker"           as SectionType, label: "Scrolling Ticker",   icon: <Radio className="w-3.5 h-3.5" />, desc: "Marquee text banner",                color: "#f59e0b", category: "layout" },
+  { type: "image_text"       as SectionType, label: "Image with Text",    icon: <Columns className="w-3.5 h-3.5" />, desc: "Image + rich text side by side",  color: "#8b5cf6", category: "content" },
+  { type: "video_text"       as SectionType, label: "Video with Text",    icon: <Video className="w-3.5 h-3.5" />, desc: "Video + rich text side by side",    color: "#f43f5e", category: "content" },
+  { type: "featured_product" as SectionType, label: "Featured Product",   icon: <Star className="w-3.5 h-3.5" />, desc: "Spotlight one product with text",   color: "#ec4899", category: "products" },
 ]
 
 const SECTION_CATEGORIES = [
@@ -122,6 +134,100 @@ const PAGE_TEMPLATES = [
   { id: "faq"     as PageTemplate, label: "FAQ",      icon: "❓", defaultContent: "## Frequently Asked Questions\n\n**Q: How long does shipping take?**\nA: 5-7 business days.\n\n**Q: Do you ship internationally?**\nA: Yes!" },
   { id: "contact" as PageTemplate, label: "Contact",  icon: "✉️", defaultContent: "## Contact Us\n\nReach out at your@email.com\n\nWe typically respond within 24 hours." },
   { id: "links"   as PageTemplate, label: "Links",    icon: "🔗", defaultContent: "" },
+  { id: "terms"   as PageTemplate, label: "Terms of Service", icon: "📋", defaultContent: `## Terms of Service
+
+*Last updated: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}*
+
+Welcome to **[Your Store Name]**. By accessing or purchasing from our store, you agree to the following terms.
+
+### 1. General
+These Terms of Service apply to all visitors, users, and customers of [Your Store Name] ("we", "us", or "our").
+
+### 2. Products
+All products are subject to availability. We reserve the right to discontinue any product at any time. Prices are subject to change without notice.
+
+### 3. Orders & Payment
+By placing an order, you confirm that the information you provide is accurate. We accept payment via the methods listed at checkout. Orders are processed only after payment is confirmed.
+
+### 4. Shipping
+We ship pan-India. Estimated delivery is 5–10 business days. We are not responsible for delays caused by shipping carriers or customs.
+
+### 5. Returns & Refunds
+Please refer to our [Returns & Refunds Policy](/p/returns-refunds) for details.
+
+### 6. Intellectual Property
+All content on this store — including logos, designs, and product images — is the property of [Your Store Name] and may not be reproduced without written permission.
+
+### 7. Limitation of Liability
+We shall not be liable for any indirect, incidental, or consequential damages arising from your use of our store or products.
+
+### 8. Contact
+For any questions, reach us at **[your@email.com]**` },
+
+  { id: "privacy" as PageTemplate, label: "Privacy Policy", icon: "🔒", defaultContent: `## Privacy Policy
+
+*Last updated: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}*
+
+At **[Your Store Name]**, your privacy is important to us. This policy explains what data we collect and how we use it.
+
+### 1. Information We Collect
+- **Personal information:** Name, email address, shipping address, and phone number when you place an order.
+- **Payment information:** We do not store card details. Payments are processed securely by our payment partner.
+- **Usage data:** Pages visited, browser type, and device information for improving our store experience.
+
+### 2. How We Use Your Information
+- To process and fulfil your orders
+- To send order confirmations and shipping updates
+- To respond to customer service queries
+- To improve our products and store experience
+
+### 3. Data Sharing
+We do not sell your personal information. We share data only with:
+- **Shipping partners** to deliver your orders
+- **Payment processors** to handle transactions securely
+- **Analytics tools** to understand store performance (data is anonymised)
+
+### 4. Cookies
+Our store uses cookies to keep your cart, remember preferences, and analyse traffic. You can disable cookies in your browser settings, though this may affect store functionality.
+
+### 5. Data Retention
+We retain your order data for up to 3 years for accounting and legal compliance purposes.
+
+### 6. Your Rights
+You have the right to access, correct, or delete your personal data. To make a request, email us at **[your@email.com]**.
+
+### 7. Contact
+Questions about this policy? Write to us at **[your@email.com]**` },
+
+  { id: "returns" as PageTemplate, label: "Returns & Refunds", icon: "↩️", defaultContent: `## Returns & Refunds Policy
+
+*Last updated: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}*
+
+We want you to love what you ordered. If something isn't right, here's how we handle it.
+
+### Eligibility for Returns
+- Items must be returned within **7 days** of delivery.
+- Products must be unused, unwashed, and in original packaging with tags intact.
+- The following are **not eligible** for return: sale items, digital products, and personalised/custom items.
+
+### How to Initiate a Return
+1. Email us at **[your@email.com]** with your order number and reason for return.
+2. Our team will respond within 48 hours with return instructions.
+3. Ship the item back to the address we provide. Return shipping costs are borne by the customer unless the item is defective.
+
+### Refunds
+- Once we receive and inspect the returned item, we will notify you of approval or rejection.
+- Approved refunds are processed within **5–7 business days** to your original payment method.
+- Shipping charges are non-refundable.
+
+### Exchanges
+We currently offer exchanges for size or colour issues, subject to availability. Please mention your preferred replacement when initiating a return.
+
+### Damaged or Wrong Items
+If you received a damaged, defective, or incorrect item, please email us at **[your@email.com]** within **48 hours of delivery** with photos. We will arrange a free replacement or full refund.
+
+### Contact
+For any return or refund queries, reach us at **[your@email.com]**` },
 ]
 
 // Built-in store routes for the page picker
@@ -247,6 +353,7 @@ export default function StoreEditorPage() {
   const [addSectionOpen, setAddSectionOpen] = useState(false)
   const [addSectionFilter, setAddSectionFilter] = useState("all")
   const [vendorCollections, setVendorCollections] = useState<{ id: string; title: string; handle: string }[]>([])
+  const [vendorProducts, setVendorProducts] = useState<{ id: string; title: string; handle: string; thumbnail?: string; variants?: any[]; options?: any[] }[]>([])
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
   const [leftPanelOpen, setLeftPanelOpen] = useState(false)
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
@@ -283,6 +390,24 @@ export default function StoreEditorPage() {
             setVendorCollections(cols.map((c: any) => ({ id: c.id ?? c.handle, title: c.title ?? c.name ?? c.handle, handle: c.handle ?? c.id })))
           }
         } catch (e) { console.warn("Could not load collections:", e) }
+        try {
+          const prodRes = await fetch(
+            `${backendUrl}/vendors/products?limit=200&status=published&store_only=true`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          )
+          if (prodRes.ok) {
+            const prodData = await prodRes.json()
+            const prods = prodData.products ?? []
+            setVendorProducts(prods.map((p: any) => ({
+              id: p.id,
+              title: p.title,
+              handle: p.handle,
+              thumbnail: p.thumbnail,
+              variants: p.variants,
+              options: p.options, // product-level options e.g. [{title:"Color", values:[{value:"Red"},...]}]
+            })))
+          }
+        } catch (e) { console.warn("Could not load products:", e) }
       } catch (e) { console.error(e) }
       finally { setIsLoading(false) }
     }
@@ -395,6 +520,10 @@ export default function StoreEditorPage() {
       ...(type === "featured_collections" ? { title: "Shop by Collection", collection_ids: [], columns: 3 } : {}),
       ...(type === "header" ? { logo_position: "left", show_social_icons: false, nav_items: [] } : {}),
       ...(type === "footer" ? { show_newsletter: false } : {}),
+      ...(type === "ticker" ? { ticker_items: ["Free shipping on orders above ₹999", "New drops every week", "Official creator merchandise"], ticker_speed: 40, ticker_separator: "✦", background_color: "#111827", text_color: "#ffffff" } : {}),
+      ...(type === "image_text" ? { title: "Our Story", text: "Share something meaningful about your brand, collection, or the story behind this product.", image_position: "left", cta_label: "Learn More", cta_url: "#about" } : {}),
+      ...(type === "video_text" ? { title: "Watch & Shop", text: "Tell your audience what this video is about. Keep it concise and engaging.", image_position: "left", video_text_url: "", cta_label: "Shop Now", cta_url: "/products" } : {}),
+      ...(type === "featured_product" ? { title: "Fan Favourite", text: "Describe why this product is special. Share the story, the craft, or the inspiration behind it.", image_position: "right", cta_label: "Get Yours", cta_url: "/products" } : {}),
     }
     patchStore(p => ({ ...p, sections: { sections: [...(p.sections?.sections ?? []), ns] } }))
     setSelectedId(ns.id); setAddSectionOpen(false); setActiveTab("layout"); setLeftPanelOpen(false); setRightPanelOpen(true)
@@ -865,21 +994,131 @@ export default function StoreEditorPage() {
           <div className="p-3 space-y-3">
             <p className={`text-[10px] uppercase tracking-wider ${textFaint}`}>Template</p>
             <div className="space-y-2">
-              {TEMPLATES.map(t => (
-                <button key={t.id} onClick={() => setStore(p => ({ ...p, template: t.id }))}
-                  className={`w-full text-left p-3 rounded-xl border transition-all ${store.template === t.id ? "border-orange-500/50 bg-orange-500/10" : `${isDark ? "border-gray-700 hover:border-gray-600 bg-gray-800/50" : "border-gray-200 hover:border-gray-300 bg-gray-50"}`}`}>
-                  <div className={`w-full h-14 rounded-lg mb-2 flex items-center justify-center ${t.id === "bold" ? "bg-gray-900" : t.id === "editorial" ? "bg-stone-700" : "bg-gray-200"}`}>
-                    <div className="w-full px-3 space-y-1">
-                      <div className={`h-1.5 rounded w-1/2 mx-auto ${t.id === "bold" ? "bg-white/40" : "bg-gray-400"}`} />
-                      <div className="grid grid-cols-3 gap-1">{[1,2,3].map(i => <div key={i} className={`h-4 rounded ${t.id === "bold" ? "bg-white/10" : "bg-gray-300"}`} />)}</div>
+              {TEMPLATES.map(t => {
+                const brandPrimary = store.primary_color ?? "#e65100"
+                const isSelected = store.template === t.id || (!store.template && t.id === "minimal")
+                return (
+                  <button key={t.id} onClick={() => setStore(p => ({ ...p, template: t.id }))}
+                    className={`w-full text-left rounded-xl border transition-all overflow-hidden ${
+                      isSelected
+                        ? "border-orange-500/60 ring-1 ring-orange-500/30"
+                        : isDark ? "border-gray-700 hover:border-gray-500" : "border-gray-200 hover:border-gray-400"
+                    }`}>
+
+                    {/* ── Mini store preview — Minimal ── */}
+                    {t.id === "minimal" && (
+                      <svg viewBox="0 0 220 130" xmlns="http://www.w3.org/2000/svg" className="w-full">
+                        {/* bg */}
+                        <rect width="220" height="130" fill="#ffffff"/>
+                        {/* header */}
+                        <rect width="220" height="18" fill="#ffffff"/>
+                        <rect x="8" y="6" width="28" height="6" rx="2" fill={brandPrimary}/>
+                        <rect x="140" y="6" width="20" height="6" rx="2" fill="#e5e7eb"/>
+                        <rect x="164" y="6" width="20" height="6" rx="2" fill="#e5e7eb"/>
+                        <rect x="188" y="6" width="20" height="6" rx="2" fill="#e5e7eb"/>
+                        <line x1="0" y1="18" x2="220" y2="18" stroke="#f3f4f6" strokeWidth="1"/>
+                        {/* hero */}
+                        <rect x="0" y="18" width="220" height="52" fill="#f9fafb"/>
+                        <rect x="12" y="27" width="60" height="8" rx="2" fill="#1f2937"/>
+                        <rect x="12" y="39" width="45" height="5" rx="1.5" fill="#9ca3af"/>
+                        <rect x="12" y="49" width="26" height="9" rx="4.5" fill={brandPrimary}/>
+                        <rect x="42" y="49" width="22" height="9" rx="4.5" fill="none" stroke="#d1d5db" strokeWidth="1"/>
+                        <rect x="148" y="22" width="60" height="44" rx="6" fill="#e5e7eb"/>
+                        {/* product grid */}
+                        <rect x="0" y="74" width="220" height="2" fill="#f3f4f6"/>
+                        <rect x="8" y="80" width="48" height="42" rx="3" fill="#f3f4f6"/>
+                        <rect x="60" y="80" width="48" height="42" rx="3" fill="#f3f4f6"/>
+                        <rect x="112" y="80" width="48" height="42" rx="3" fill="#f3f4f6"/>
+                        <rect x="164" y="80" width="48" height="42" rx="3" fill="#f3f4f6"/>
+                        <rect x="8" y="125" width="28" height="4" rx="1" fill="#e5e7eb"/>
+                        <rect x="60" y="125" width="28" height="4" rx="1" fill="#e5e7eb"/>
+                      </svg>
+                    )}
+
+                    {/* ── Mini store preview — Bold ── */}
+                    {t.id === "bold" && (
+                      <svg viewBox="0 0 220 130" xmlns="http://www.w3.org/2000/svg" className="w-full">
+                        {/* dark bg */}
+                        <rect width="220" height="130" fill="#0a0a0a"/>
+                        {/* header */}
+                        <rect width="220" height="18" fill="#111111"/>
+                        <rect x="8" y="6" width="32" height="6" rx="2" fill="#ffffff"/>
+                        <rect x="150" y="6" width="16" height="6" rx="2" fill="#374151"/>
+                        <rect x="170" y="6" width="16" height="6" rx="2" fill="#374151"/>
+                        <rect x="190" y="6" width="16" height="6" rx="2" fill="#374151"/>
+                        {/* hero full-width dark */}
+                        <rect x="0" y="18" width="220" height="68" fill="#111111"/>
+                        <rect x="0" y="18" width="220" height="68" fill="url(#boldGrad)" opacity="0.4"/>
+                        <defs>
+                          <linearGradient id="boldGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={brandPrimary} stopOpacity="0.3"/>
+                            <stop offset="100%" stopColor="#000000" stopOpacity="0.8"/>
+                          </linearGradient>
+                        </defs>
+                        <rect x="12" y="30" width="72" height="10" rx="2" fill="#ffffff"/>
+                        <rect x="12" y="44" width="52" height="6" rx="2" fill="#6b7280"/>
+                        <rect x="12" y="56" width="30" height="12" rx="6" fill={brandPrimary}/>
+                        {/* product strip dark */}
+                        <rect x="0" y="90" width="220" height="40" fill="#111111"/>
+                        <rect x="8" y="96" width="46" height="28" rx="3" fill="#1f1f1f"/>
+                        <rect x="58" y="96" width="46" height="28" rx="3" fill="#1f1f1f"/>
+                        <rect x="108" y="96" width="46" height="28" rx="3" fill="#1f1f1f"/>
+                        <rect x="158" y="96" width="54" height="28" rx="3" fill="#1f1f1f"/>
+                        <rect x="8" y="120" width="24" height="3" rx="1" fill="#374151"/>
+                        <rect x="58" y="120" width="24" height="3" rx="1" fill="#374151"/>
+                      </svg>
+                    )}
+
+                    {/* ── Mini store preview — Editorial ── */}
+                    {t.id === "editorial" && (
+                      <svg viewBox="0 0 220 130" xmlns="http://www.w3.org/2000/svg" className="w-full">
+                        {/* cream bg */}
+                        <rect width="220" height="130" fill="#faf9f7"/>
+                        {/* header serif-style */}
+                        <rect width="220" height="20" fill="#faf9f7"/>
+                        <rect x="80" y="7" width="60" height="6" rx="1" fill="#1c1c1c"/>
+                        <rect x="8" y="8" width="14" height="4" rx="1" fill="#9ca3af"/>
+                        <rect x="26" y="8" width="14" height="4" rx="1" fill="#9ca3af"/>
+                        <rect x="196" y="8" width="16" height="4" rx="1" fill="#9ca3af"/>
+                        <line x1="0" y1="20" x2="220" y2="20" stroke="#e7e5e0" strokeWidth="1"/>
+                        {/* big editorial hero - split layout */}
+                        <rect x="0" y="20" width="110" height="70" fill="#e7e5e0"/>
+                        <rect x="116" y="28" width="96" height="8" rx="1" fill="#1c1c1c"/>
+                        <rect x="116" y="40" width="80" height="5" rx="1" fill="#9ca3af"/>
+                        <rect x="116" y="48" width="88" height="5" rx="1" fill="#9ca3af"/>
+                        <rect x="116" y="56" width="72" height="5" rx="1" fill="#9ca3af"/>
+                        <rect x="116" y="68" width="34" height="10" rx="5" fill={brandPrimary}/>
+                        {/* bottom editorial grid - big + small */}
+                        <line x1="0" y1="92" x2="220" y2="92" stroke="#e7e5e0" strokeWidth="1"/>
+                        <rect x="8" y="98" width="68" height="26" rx="2" fill="#e7e5e0"/>
+                        <rect x="82" y="98" width="44" height="26" rx="2" fill="#e7e5e0"/>
+                        <rect x="132" y="98" width="38" height="26" rx="2" fill="#e7e5e0"/>
+                        <rect x="176" y="98" width="38" height="26" rx="2" fill="#e7e5e0"/>
+                        <rect x="8" y="126" width="36" height="3" rx="1" fill="#9ca3af"/>
+                      </svg>
+                    )}
+
+                    {/* Card footer */}
+                    <div className={`flex items-center justify-between px-3 py-2 ${
+                      t.id === "bold"
+                        ? "bg-gray-900"
+                        : t.id === "editorial"
+                          ? "bg-stone-100"
+                          : isDark ? "bg-gray-800" : "bg-gray-50"
+                    }`}>
+                      <div>
+                        <p className={`text-xs font-semibold ${
+                          t.id === "bold" ? "text-white" : t.id === "editorial" ? "text-stone-800" : textPrimary
+                        }`}>{t.name}</p>
+                        <p className={`text-[10px] ${
+                          t.id === "bold" ? "text-gray-500" : t.id === "editorial" ? "text-stone-500" : textFaint
+                        }`}>{t.desc}</p>
+                      </div>
+                      {isSelected && <Check className="w-4 h-4 text-orange-400 shrink-0" />}
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div><p className={`text-xs font-semibold ${textPrimary}`}>{t.name}</p><p className={`text-[10px] ${textFaint}`}>{t.desc}</p></div>
-                    {store.template === t.id && <Check className="w-4 h-4 text-orange-400" />}
-                  </div>
-                </button>
-              ))}
+                  </button>
+                )
+              })}
             </div>
             <div className={`pt-3 border-t ${panelBorder} space-y-2`}>
               <p className={`text-[10px] uppercase tracking-wider ${textFaint}`}>Store identity</p>
@@ -924,6 +1163,8 @@ export default function StoreEditorPage() {
           isDark={isDark}
           collections={vendorCollections}
           pages={pages}
+          products={vendorProducts}
+          vendorHandle={vendorHandle}
         />
       </div>
       <div className={`border-t ${panelBorder} px-3 py-2 flex gap-1.5 shrink-0`}>
@@ -1000,7 +1241,7 @@ export default function StoreEditorPage() {
 
         {/* ── CENTER PREVIEW ── */}
         <div className="relative flex flex-col items-center flex-1 min-w-0 min-h-0 overflow-hidden bg-gray-950">
-          {/* <div className="w-full flex items-center justify-between px-3 py-1.5 shrink-0">
+          <div className="w-full flex items-center justify-between px-3 py-1.5 shrink-0">
             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-mono mx-auto ${isDark ? "bg-gray-800/80 border-gray-700 text-gray-400" : "bg-white/80 border-gray-300 text-gray-500"}`}>
               <div className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-green-400" : "bg-yellow-400"}`} />
               <span className="truncate max-w-[180px] sm:max-w-none">
@@ -1012,7 +1253,7 @@ export default function StoreEditorPage() {
                 <Settings className="w-3 h-3" />Edit
               </button>
             )}
-          </div> */}
+          </div>
           <div className={`relative transition-all duration-300 flex-1 overflow-hidden w-full min-h-0 ${viewport === "mobile" ? "max-w-[390px] rounded-[2rem] border-4 border-gray-700 shadow-2xl my-2 mx-auto" : ""}`}>
             {!iframeReady && (
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-gray-900">
@@ -1218,10 +1459,12 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, isDark, panelBorde
 
 // ─── Section Settings ─────────────────────────────────────────────────────────
 
-function SectionSettings({ section, onChange, token, backendUrl, isDark, collections = [], pages = [] }: {
+function SectionSettings({ section, onChange, token, backendUrl, isDark, collections = [], pages = [], products = [], vendorHandle = "" }: {
   section: StoreSection; onChange: (p: Partial<StoreSection>) => void
   collections?: { id: string; title: string; handle: string }[]
   pages?: StorePage[]
+  products?: { id: string; title: string; handle: string; thumbnail?: string; variants?: any[]; options?: any[] }[]
+  vendorHandle?: string
   token: string; backendUrl: string; isDark: boolean
 }) {
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
@@ -1492,6 +1735,221 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
         </div>
       )}
 
+      {/* ── TICKER ───────────────────────────────────────────────────── */}
+      {section.type === "ticker" && (<>
+        <Field label="Ticker items (one per line)" faint={textFaint}>
+          <EditorTextarea
+            value={(section.ticker_items ?? []).join("\n")}
+            onChange={v => onChange({ ticker_items: v.split("\n").map(s => s.trim()).filter(Boolean) })}
+            placeholder={"Free shipping on orders above ₹999\nNew drops every week\nOfficial creator merch"}
+            rows={5} isDark={isDark}
+          />
+          <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Each line is one item in the scroll.</p>
+        </Field>
+        <Field label="Separator between items" faint={textFaint}>
+          <EditorInput value={section.ticker_separator ?? "✦"} onChange={v => onChange({ ticker_separator: v })} placeholder="✦  •  |" isDark={isDark} />
+        </Field>
+        <Field label="Scroll speed" faint={textFaint}>
+          <div className="flex items-center gap-3">
+            <input type="range" min={10} max={100} value={section.ticker_speed ?? 40}
+              onChange={e => onChange({ ticker_speed: Number(e.target.value) })}
+              className="flex-1 accent-orange-500" />
+            <span className={`text-xs w-8 text-right ${textFaint}`}>{section.ticker_speed ?? 40}</span>
+          </div>
+          <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Lower = slower, higher = faster.</p>
+        </Field>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Background" faint={textFaint}>
+            <div className="flex gap-1.5">
+              <input type="color" value={section.background_color ?? "#111827"} onChange={e => onChange({ background_color: e.target.value })} className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <EditorInput value={section.background_color ?? "#111827"} onChange={v => onChange({ background_color: v })} isDark={isDark} />
+            </div>
+          </Field>
+          <Field label="Text color" faint={textFaint}>
+            <div className="flex gap-1.5">
+              <input type="color" value={section.text_color ?? "#ffffff"} onChange={e => onChange({ text_color: e.target.value })} className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <EditorInput value={section.text_color ?? "#ffffff"} onChange={v => onChange({ text_color: v })} isDark={isDark} />
+            </div>
+          </Field>
+        </div>
+        {/* Live preview */}
+        {(section.ticker_items ?? []).length > 0 && (
+          <div className="px-3 py-2 overflow-hidden text-xs font-medium rounded-lg"
+            style={{ background: section.background_color ?? "#111827", color: section.text_color ?? "#ffffff" }}>
+            {(section.ticker_items ?? []).join(` ${section.ticker_separator ?? "✦"} `)}
+          </div>
+        )}
+      </>)}
+
+      {/* ── IMAGE WITH TEXT ───────────────────────────────────────────── */}
+      {section.type === "image_text" && (<>
+        <Field label="Heading" faint={textFaint}><EditorInput value={section.title ?? ""} onChange={v => onChange({ title: v })} placeholder="Our Story" isDark={isDark} /></Field>
+        <Field label="Body text" faint={textFaint}><EditorTextarea value={section.text ?? ""} onChange={v => onChange({ text: v })} placeholder="Share something meaningful..." rows={5} isDark={isDark} /></Field>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Button label" faint={textFaint}><EditorInput value={section.cta_label ?? ""} onChange={v => onChange({ cta_label: v })} placeholder="Learn More" isDark={isDark} /></Field>
+          <Field label="Button link" faint={textFaint}>
+            <LinkInput value={section.cta_url ?? ""} onChange={v => onChange({ cta_url: v })} placeholder="/products" isDark={isDark} pages={pages} />
+          </Field>
+        </div>
+        <UploadOnlyImageField label="Image" value={section.image ?? ""} onChange={v => onChange({ image: v || undefined })} onUpload={() => triggerUpload("image")} isUploading={uploadingKey === "image"} isDark={isDark} previewHeight={120} />
+        <Field label="Layout" faint={textFaint}>
+          <div className="flex gap-2">
+            {(["left", "right"] as const).map(pos => (
+              <button key={pos} onClick={() => onChange({ image_position: pos })}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium border capitalize transition-all ${(section.image_position ?? "left") === pos ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : `${isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500"}`}`}>
+                Image {pos}
+              </button>
+            ))}
+          </div>
+        </Field>
+      </>)}
+
+      {/* ── VIDEO WITH TEXT ───────────────────────────────────────────── */}
+      {section.type === "video_text" && (<>
+        <Field label="Heading" faint={textFaint}><EditorInput value={section.title ?? ""} onChange={v => onChange({ title: v })} placeholder="Watch & Shop" isDark={isDark} /></Field>
+        <Field label="Body text" faint={textFaint}><EditorTextarea value={section.text ?? ""} onChange={v => onChange({ text: v })} placeholder="Tell your audience what this video is about..." rows={4} isDark={isDark} /></Field>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Button label" faint={textFaint}><EditorInput value={section.cta_label ?? ""} onChange={v => onChange({ cta_label: v })} placeholder="Shop Now" isDark={isDark} /></Field>
+          <Field label="Button link" faint={textFaint}>
+            <LinkInput value={section.cta_url ?? ""} onChange={v => onChange({ cta_url: v })} placeholder="/products" isDark={isDark} pages={pages} />
+          </Field>
+        </div>
+        <Field label="Video URL" faint={textFaint}>
+          <EditorInput value={section.video_text_url ?? ""} onChange={v => onChange({ video_text_url: v })} placeholder="https://youtube.com/watch?v=... or https://youtu.be/..." isDark={isDark} />
+          <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>YouTube and Vimeo supported</p>
+        </Field>
+        <Field label="Layout" faint={textFaint}>
+          <div className="flex gap-2">
+            {(["left", "right"] as const).map(pos => (
+              <button key={pos} onClick={() => onChange({ image_position: pos })}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium border capitalize transition-all ${(section.image_position ?? "left") === pos ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : `${isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500"}`}`}>
+                Video {pos}
+              </button>
+            ))}
+          </div>
+        </Field>
+      </>)}
+
+      {/* ── FEATURED PRODUCT ─────────────────────────────────────────── */}
+      {section.type === "featured_product" && (() => {
+        const selectedProduct = products.find(p => p.id === section.featured_product_id) ?? null
+        const showTitle  = section.featured_product_show_title  !== false
+        const showPrice  = section.featured_product_show_price  !== false
+        const showColors = section.featured_product_show_colors !== false
+
+        return (<>
+          {/* Section label above */}
+          <Field label="Section label (shown above image)" faint={textFaint}>
+            <EditorInput value={section.title ?? ""} onChange={v => onChange({ title: v })} placeholder="Fan Favourite" isDark={isDark} />
+          </Field>
+
+          {/* Product dropdown */}
+          <Field label="Select product" faint={textFaint}>
+            {products.length === 0 ? (
+              <p className={`text-[11px] italic ${textFaint}`}>No products found. Add products in your dashboard first.</p>
+            ) : (
+              <div className={`rounded-xl border overflow-hidden ${isDark ? "border-gray-700" : "border-gray-200"}`}>
+                {/* Selected product preview */}
+                {selectedProduct && (
+                  <div className={`flex items-center gap-2.5 px-2.5 py-2 border-b ${isDark ? "border-gray-700 bg-gray-800/80" : "border-gray-200 bg-gray-50"}`}>
+                    {selectedProduct.thumbnail && (
+                      <img src={selectedProduct.thumbnail} alt={selectedProduct.title} className="object-cover w-8 h-8 rounded-lg shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold truncate ${textFaint === "text-gray-500" ? "text-gray-200" : "text-gray-800"}`}>{selectedProduct.title}</p>
+                      <p className={`text-[10px] ${textFaint}`}>/{selectedProduct.handle}</p>
+                    </div>
+                    <button onClick={() => onChange({ featured_product_id: undefined, cta_url: "" })} className={`p-1 shrink-0 ${textFaint} hover:text-red-400 transition-colors`}><X className="w-3 h-3" /></button>
+                  </div>
+                )}
+                {/* Product list */}
+                <div className="overflow-y-auto max-h-44">
+                  {products.map(p => (
+                    <button key={p.id} onClick={() => onChange({
+                      featured_product_id: p.id,
+                      cta_url: `/${vendorHandle}/products/${p.handle}`,
+                    })}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors border-t ${isDark ? "border-gray-700/50" : "border-gray-100"} ${
+                        section.featured_product_id === p.id
+                          ? isDark ? "bg-orange-500/15 text-orange-400" : "bg-orange-50 text-orange-600"
+                          : isDark ? "text-gray-300 hover:bg-gray-800" : "text-gray-700 hover:bg-gray-50"
+                      }`}>
+                      {p.thumbnail && <img src={p.thumbnail} alt={p.title} className="object-cover rounded-md w-7 h-7 shrink-0" />}
+                      <span className="flex-1 text-xs truncate">{p.title}</span>
+                      {section.featured_product_id === p.id && <Check className="w-3 h-3 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Field>
+
+          {/* Show/hide toggles for product info under image */}
+          <div className={`pt-2 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Product info under image</p>
+            <div className="space-y-2">
+              {[
+                { key: "featured_product_show_title",  label: "Show product title",  val: showTitle },
+                { key: "featured_product_show_price",  label: "Show product price",  val: showPrice },
+                { key: "featured_product_show_colors", label: "Show color variants", val: showColors },
+              ].map(({ key, label, val }) => (
+                <label key={key} className="flex items-center gap-2 cursor-pointer">
+                  <div className="relative shrink-0" onClick={() => onChange({ [key]: !val })}>
+                    <div className={`w-8 h-4 rounded-full transition-colors ${val ? "bg-orange-500" : "bg-gray-600"}`} />
+                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${val ? "translate-x-4" : ""}`} />
+                  </div>
+                  <span className={`text-xs ${textFaint === "text-gray-500" ? "text-gray-300" : "text-gray-700"}`}>{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Text side content */}
+          <div className={`pt-2 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Text side content</p>
+            <div className="space-y-2">
+              <Field label="Heading" faint={textFaint}>
+                <EditorInput value={section.featured_product_heading ?? ""} onChange={v => onChange({ featured_product_heading: v })} placeholder="e.g. The one everyone's talking about" isDark={isDark} />
+              </Field>
+              <Field label="Description / story" faint={textFaint}>
+                <EditorTextarea value={section.text ?? ""} onChange={v => onChange({ text: v })} placeholder="Describe why this product is special..." rows={4} isDark={isDark} />
+              </Field>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Button label" faint={textFaint}>
+              <EditorInput value={section.cta_label ?? ""} onChange={v => onChange({ cta_label: v })} placeholder="Get Yours" isDark={isDark} />
+            </Field>
+            <Field label="Button link" faint={textFaint}>
+              {/* Show product picker dropdown pre-filled, still editable */}
+              <div className="space-y-1">
+                <LinkInput value={section.cta_url ?? ""} onChange={v => onChange({ cta_url: v })} placeholder="/products/..." isDark={isDark} pages={pages} />
+                {selectedProduct && section.cta_url !== `/${vendorHandle}/products/${selectedProduct.handle}` && (
+                  <button onClick={() => onChange({ cta_url: `/${vendorHandle}/products/${selectedProduct.handle}` })}
+                    className={`text-[10px] ${textFaint} hover:text-orange-400 transition-colors`}>
+                    ↩ Reset to product page
+                  </button>
+                )}
+              </div>
+            </Field>
+          </div>
+
+          {/* Layout */}
+          <Field label="Product image side" faint={textFaint}>
+            <div className="flex gap-2">
+              {(["left", "right"] as const).map(pos => (
+                <button key={pos} onClick={() => onChange({ image_position: pos })}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium border capitalize transition-all ${(section.image_position ?? "right") === pos ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : `${isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500"}`}`}>
+                  Image {pos}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </>)
+      })()}
+
       {/* ── HEADER NAV EDITOR ────────────────────────────────────────── */}
       {section.type === "header" && (
         <NavItemsEditor
@@ -1518,8 +1976,8 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
         />
       )}
 
-      {/* ── SECTION COLORS OVERRIDE (all except announcement, divider, html) ── */}
-      {!["announcement", "divider", "html"].includes(section.type) && (
+      {/* ── SECTION COLORS OVERRIDE (all except announcement, divider, html, ticker) ── */}
+      {!["announcement", "divider", "html", "ticker"].includes(section.type) && (
         <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
           <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Section colors override</p>
           <div className="grid grid-cols-2 gap-2">

@@ -40,7 +40,8 @@ export default function CartDrawer({
 
   const handleDelete = (lineId: string) => {
     startTransition(async () => {
-      await deleteLineItem(lineId)
+      // ✅ pass handle
+      await deleteLineItem(handle, lineId)
       await refreshCart()
     })
   }
@@ -48,7 +49,8 @@ export default function CartDrawer({
   const handleQuantity = (lineId: string, quantity: number) => {
     if (quantity < 1) return
     startTransition(async () => {
-      await updateLineItem({ lineId, quantity })
+      // ✅ pass handle
+      await updateLineItem({ handle, lineId, quantity })
       await refreshCart()
     })
   }
@@ -77,10 +79,10 @@ export default function CartDrawer({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
+            className="fixed top-0 right-0 z-50 flex flex-col w-full h-full max-w-md bg-white shadow-2xl"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <ShoppingBag className="w-5 h-5" style={{ color: brandPrimary }} />
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -94,20 +96,20 @@ export default function CartDrawer({
               </div>
               <button
                 onClick={closeCart}
-                className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                className="p-2 text-gray-400 transition-colors rounded-full hover:bg-gray-100 hover:text-gray-600"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Items */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="flex-1 px-6 py-4 overflow-y-auto">
               {!cart?.items?.length ? (
-                <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-16">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: `${brandPrimary}15` }}>
+                <div className="flex flex-col items-center justify-center h-full gap-4 py-16 text-center">
+                  <div className="flex items-center justify-center w-16 h-16 rounded-2xl" style={{ background: `${brandPrimary}15` }}>
                     <ShoppingBag className="w-8 h-8" style={{ color: brandPrimary }} />
                   </div>
-                  <p className="text-gray-900 font-medium">Your cart is empty</p>
+                  <p className="font-medium text-gray-900">Your cart is empty</p>
                   <p className="text-sm text-gray-400">Add some products to get started</p>
                   <button onClick={closeCart} className="mt-2 text-sm font-medium underline underline-offset-2" style={{ color: brandPrimary }}>
                     Continue shopping
@@ -123,19 +125,19 @@ export default function CartDrawer({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, x: 40 }}
-                        className="flex gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-3"
+                        className="flex gap-4 p-3 border border-gray-100 rounded-2xl bg-gray-50"
                       >
-                        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-white">
+                        <div className="relative w-20 h-20 overflow-hidden bg-white shrink-0 rounded-xl">
                           {item.thumbnail ? (
                             <Image src={item.thumbnail} alt={item.title} fill className="object-cover" />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center">
+                            <div className="flex items-center justify-center w-full h-full">
                               <ShoppingBag className="w-6 h-6 text-gray-300" />
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-1 flex-col gap-1 min-w-0">
-                          <p className="font-medium text-sm text-gray-900 truncate">{item.title}</p>
+                        <div className="flex flex-col flex-1 min-w-0 gap-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">{item.title}</p>
                           {item.variant?.title && item.variant.title !== "Default Title" && (
                             <p className="text-xs text-gray-400">{item.variant.title}</p>
                           )}
@@ -143,19 +145,19 @@ export default function CartDrawer({
                             {formatPrice(item.unit_price ?? 0)}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
-                            <div className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1">
+                            <div className="flex items-center gap-1 px-2 py-1 bg-white border border-gray-200 rounded-full">
                               <button
                                 onClick={() => handleQuantity(item.id, item.quantity - 1)}
                                 disabled={isPending || item.quantity <= 1}
-                                className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-900 disabled:opacity-30 transition-colors"
+                                className="flex items-center justify-center w-5 h-5 text-gray-500 transition-colors hover:text-gray-900 disabled:opacity-30"
                               >
                                 <Minus className="w-3 h-3" />
                               </button>
-                              <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                              <span className="w-6 text-sm font-medium text-center">{item.quantity}</span>
                               <button
                                 onClick={() => handleQuantity(item.id, item.quantity + 1)}
                                 disabled={isPending}
-                                className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-900 disabled:opacity-30 transition-colors"
+                                className="flex items-center justify-center w-5 h-5 text-gray-500 transition-colors hover:text-gray-900 disabled:opacity-30"
                               >
                                 <Plus className="w-3 h-3" />
                               </button>
@@ -178,7 +180,7 @@ export default function CartDrawer({
 
             {/* Footer */}
             {cart?.items?.length > 0 && (
-              <div className="border-t border-gray-100 px-6 py-5 space-y-4 bg-white">
+              <div className="px-6 py-5 space-y-4 bg-white border-t border-gray-100">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Subtotal</span>
                   <span className="font-semibold text-gray-900">{formatPrice(subtotal)}</span>
@@ -191,7 +193,7 @@ export default function CartDrawer({
                 >
                   Checkout <ArrowRight className="w-4 h-4" />
                 </button>
-                <button onClick={closeCart} className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors py-1">
+                <button onClick={closeCart} className="w-full py-1 text-sm text-gray-500 transition-colors hover:text-gray-700">
                   Continue shopping
                 </button>
               </div>

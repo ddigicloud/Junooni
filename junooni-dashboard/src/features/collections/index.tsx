@@ -19,6 +19,11 @@ import AdminImpersonationBanner from "@/components/AdminImpersonationBanner"
 
 const BRAND = { primary: "#e65100", secondary: "#ac1900" }
 
+// Sales channel ID for creator store products
+// Only products in this channel should appear in creator store collections
+const CREATOR_STORE_SC = import.meta.env.VITE_CREATOR_STORE_SALES_CHANNEL_ID
+  ?? "sc_01KMAP3HD1EVDF9FT7EHHHV8HP"
+
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
 }
@@ -41,6 +46,7 @@ interface MedusaProduct {
   thumbnail: string | null
   handle: string
   status: string
+  sales_channels?: { id: string }[]
 }
 
 export default function CollectionsPage() {
@@ -60,7 +66,6 @@ export default function CollectionsPage() {
   const token = localStorage.getItem("vendorToken")
   const backendUrl = import.meta.env.VITE_MEDUSA_BACKEND_URL
 
-  // Load store + products
   useEffect(() => {
     const load = async () => {
       if (!token) { navigate({ to: "/sign-in" }); return }
@@ -76,13 +81,20 @@ export default function CollectionsPage() {
             setHasStore(true)
           }
         }
-        // Load vendor products
-        const pRes = await fetch(`${backendUrl}/vendors/products?limit=100&status=published`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+
+        // store_only=true → backend filters by creator store sales channel
+        const pRes = await fetch(
+          `${backendUrl}/vendors/products?limit=200&status=published&store_only=true`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
         if (pRes.ok) {
           const pd = await pRes.json()
-          setProducts(pd.products ?? [])
+          const allStoreProducts: MedusaProduct[] = pd.products ?? []
+          // Only show published products in collections — draft products
+          // are excluded because they shouldn't be visible to customers
+          const storeProducts = allStoreProducts.filter(p => p.status === "published")
+          console.log(`[collections] store products: ${allStoreProducts.length} total → ${storeProducts.length} published`)
+          setProducts(storeProducts)
         }
       } catch (e) { console.error(e) }
       finally { setIsLoading(false) }
@@ -214,13 +226,18 @@ export default function CollectionsPage() {
       </div>
 
       <div className="container max-w-6xl px-4 py-8 mx-auto">
-        {/* Intro */}
         <div className="mb-6">
           <h1 className="mb-1 text-xl font-bold text-gray-900">My Collections</h1>
           <p className="text-sm text-gray-500">
             Create custom collections for your store. These are separate from marketplace collections
             and let you group your products any way you like.
           </p>
+          {products.length === 0 && !isLoading && (
+            <div className="flex items-center gap-2 px-3 py-2 mt-3 text-xs border rounded-lg text-amber-700 bg-amber-50 border-amber-200">
+              <Package className="w-3.5 h-3.5 shrink-0" />
+              No products found in your creator store. Make sure your products are added to the creator store sales channel.
+            </div>
+          )}
         </div>
 
         <div className="flex gap-6">
@@ -247,7 +264,6 @@ export default function CollectionsPage() {
                 style={editingId === col.id ? { borderColor: BRAND.primary } : {}}
               >
                 <div className="flex items-center gap-3 p-4">
-                  {/* Thumbnail */}
                   <div className="overflow-hidden bg-gray-100 border border-gray-200 w-14 h-14 rounded-xl shrink-0">
                     {col.thumbnail
                       ? <img src={col.thumbnail} alt={col.title} className="object-cover w-full h-full" />
@@ -256,8 +272,6 @@ export default function CollectionsPage() {
                         </div>
                     }
                   </div>
-
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">{col.title}</p>
                     <p className="font-mono text-xs text-gray-400 truncate">/collections/{col.handle}</p>
@@ -268,8 +282,6 @@ export default function CollectionsPage() {
                       )}
                     </div>
                   </div>
-
-                  {/* Actions */}
                   <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={e => { e.stopPropagation(); moveCollection(col.id, "up") }}
                       disabled={idx === 0}
@@ -294,24 +306,21 @@ export default function CollectionsPage() {
           {/* RIGHT: editor */}
           {editingCol ? (
             <div className="flex-1 space-y-5">
-              {/* Basic info */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center justify-between text-base">
                     <span>Collection details</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateCollection(editingCol.id, { is_visible: !editingCol.is_visible })}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                          editingCol.is_visible
-                            ? "border-green-200 bg-green-50 text-green-700"
-                            : "border-gray-200 bg-gray-50 text-gray-500"
-                        }`}
-                      >
-                        {editingCol.is_visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                        {editingCol.is_visible ? "Visible" : "Hidden"}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => updateCollection(editingCol.id, { is_visible: !editingCol.is_visible })}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        editingCol.is_visible
+                          ? "border-green-200 bg-green-50 text-green-700"
+                          : "border-gray-200 bg-gray-50 text-gray-500"
+                      }`}
+                    >
+                      {editingCol.is_visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                      {editingCol.is_visible ? "Visible" : "Hidden"}
+                    </button>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -322,10 +331,7 @@ export default function CollectionsPage() {
                         value={editingCol.title}
                         onChange={e => {
                           const title = e.target.value
-                          updateCollection(editingCol.id, {
-                            title,
-                            handle: slugify(title),
-                          })
+                          updateCollection(editingCol.id, { title, handle: slugify(title) })
                         }}
                         placeholder="e.g. Summer Drops"
                       />
@@ -345,7 +351,6 @@ export default function CollectionsPage() {
                       </div>
                     </div>
                   </div>
-
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">Description</label>
                     <Textarea
@@ -355,8 +360,6 @@ export default function CollectionsPage() {
                       rows={2}
                     />
                   </div>
-
-                  {/* Thumbnail */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">Cover image</label>
                     <div className="flex items-center gap-4">
@@ -400,14 +403,13 @@ export default function CollectionsPage() {
                 </CardContent>
               </Card>
 
-              {/* Product picker */}
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-base">Products</CardTitle>
                       <CardDescription className="text-xs mt-0.5">
-                        {editingCol.product_ids.length} of {products.length} products selected
+                        {editingCol.product_ids.length} of {products.length} creator store products selected
                       </CardDescription>
                     </div>
                     {editingCol.product_ids.length > 0 && (
@@ -421,7 +423,6 @@ export default function CollectionsPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {/* Search */}
                   <div className="relative mb-3">
                     <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                     <input
@@ -436,11 +437,14 @@ export default function CollectionsPage() {
                       </button>
                     )}
                   </div>
-
-                  {/* Product grid */}
                   <div className="pr-1 space-y-2 overflow-y-auto max-h-96">
                     {filteredProducts.length === 0 && (
-                      <p className="py-6 text-sm text-center text-gray-400">No products found</p>
+                      <p className="py-6 text-sm text-center text-gray-400">
+                        {products.length === 0
+                          ? "No products in creator store. Add products to the creator store sales channel first."
+                          : "No products match your search"
+                        }
+                      </p>
                     )}
                     {filteredProducts.map(product => {
                       const selected = editingCol.product_ids.includes(product.id)
@@ -479,7 +483,6 @@ export default function CollectionsPage() {
                 </CardContent>
               </Card>
 
-              {/* Save this collection */}
               <div className="flex justify-end">
                 <Button
                   onClick={() => save(collections)}

@@ -26,9 +26,9 @@ export default async function AllProductsPage({ params }: Props) {
     <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-black text-white" : "bg-gray-50"}`}>
       <StoreHeader vendor={vendor} store={store} categories={categories} collections={collections} products={products} />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <div className="px-4 py-10 mx-auto max-w-7xl sm:px-6">
         <div className="mb-8">
-          <p className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: brandPrimary }}>{vendor.name}</p>
+          <p className="mb-1 text-xs font-semibold tracking-widest uppercase" style={{ color: brandPrimary }}>{vendor.name}</p>
           <h1 className={`text-3xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>All Products</h1>
           <p className={`text-sm mt-1 ${isDark ? "text-white/50" : "text-gray-500"}`}>{products.length} product{products.length !== 1 ? "s" : ""}</p>
         </div>

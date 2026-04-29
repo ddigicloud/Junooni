@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useRef } from "react"
 import { SlidersHorizontal, X, ChevronDown, ChevronUp } from "lucide-react"
 import ProductCard from "@/components/ui/ProductCard"
 import type { Product, CategoryMeta, CollectionMeta } from "@/lib/types"
@@ -109,114 +109,169 @@ export default function ProductGrid({
   const sidebarBg = isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
 
   // ── Price range slider ────────────────────────────────────────────────────────
-  const PriceRangeSlider = () => {
-    const rangePercent = (val: number) =>
-      globalMax === globalMin ? 0 : ((val - globalMin) / (globalMax - globalMin)) * 100
+  const PriceRangeSlider = useCallback(() => {
+  const minRef = useRef<HTMLInputElement>(null)
+  const maxRef = useRef<HTMLInputElement>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const minLabelRef = useRef<HTMLSpanElement>(null)
+  const maxLabelRef = useRef<HTMLSpanElement>(null)
 
-    return (
-      <div>
-        {/* Display */}
-        <div className="flex items-center justify-between mb-3">
-          <span className={`text-xs font-medium ${textColor}`}>{formatPrice(priceRange[0])}</span>
-          <span className={`text-xs font-medium ${textColor}`}>{formatPrice(priceRange[1])}</span>
-        </div>
-
-        {/* Dual range slider using two overlapping inputs */}
-        <div className="relative h-5 flex items-center">
-          {/* Track background */}
-          <div className={`absolute w-full h-1.5 rounded-full ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
-          {/* Active track */}
-          <div
-            className="absolute h-1.5 rounded-full"
-            style={{
-              left: `${rangePercent(priceRange[0])}%`,
-              width: `${rangePercent(priceRange[1]) - rangePercent(priceRange[0])}%`,
-              background: brandPrimary,
-            }}
-          />
-          {/* Min input */}
-          <input
-            type="range"
-            min={globalMin}
-            max={globalMax}
-            value={priceRange[0]}
-            onChange={e => {
-              const val = Number(e.target.value)
-              if (val <= priceRange[1]) setPriceRange([val, priceRange[1]])
-            }}
-            className="absolute w-full h-1.5 appearance-none bg-transparent cursor-pointer"
-            style={{ zIndex: priceRange[0] > globalMax - (globalMax - globalMin) * 0.1 ? 5 : 3 }}
-          />
-          {/* Max input */}
-          <input
-            type="range"
-            min={globalMin}
-            max={globalMax}
-            value={priceRange[1]}
-            onChange={e => {
-              const val = Number(e.target.value)
-              if (val >= priceRange[0]) setPriceRange([priceRange[0], val])
-            }}
-            className="absolute w-full h-1.5 appearance-none bg-transparent cursor-pointer"
-            style={{ zIndex: 4 }}
-          />
-        </div>
-
-        {/* Manual inputs */}
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          <div>
-            <p className={`text-[10px] uppercase tracking-wider mb-1 ${labelColor}`}>Min</p>
-            <input
-              type="number"
-              value={Math.round(priceRange[0] / 100)}
-              onChange={e => {
-                const val = Number(e.target.value) * 100
-                if (val >= globalMin && val <= priceRange[1]) setPriceRange([val, priceRange[1]])
-              }}
-              className={`w-full px-2.5 py-1.5 rounded-lg border text-xs ${inputBg} focus:outline-none`}
-              placeholder="Min"
-            />
-          </div>
-          <div>
-            <p className={`text-[10px] uppercase tracking-wider mb-1 ${labelColor}`}>Max</p>
-            <input
-              type="number"
-              value={Math.round(priceRange[1] / 100)}
-              onChange={e => {
-                const val = Number(e.target.value) * 100
-                if (val <= globalMax && val >= priceRange[0]) setPriceRange([priceRange[0], val])
-              }}
-              className={`w-full px-2.5 py-1.5 rounded-lg border text-xs ${inputBg} focus:outline-none`}
-              placeholder="Max"
-            />
-          </div>
-        </div>
-
-        {/* Slider custom thumb CSS */}
-        <style>{`
-          input[type="range"]::-webkit-slider-thumb {
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: ${brandPrimary};
-            border: 2px solid white;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-            cursor: pointer;
-          }
-          input[type="range"]::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: ${brandPrimary};
-            border: 2px solid white;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-            cursor: pointer;
-          }
-        `}</style>
-      </div>
-    )
+  const updateTrack = (minVal: number, maxVal: number) => {
+    if (!trackRef.current) return
+    const minPct = globalMax === globalMin ? 0 : ((minVal - globalMin) / (globalMax - globalMin)) * 100
+    const maxPct = globalMax === globalMin ? 0 : ((maxVal - globalMin) / (globalMax - globalMin)) * 100
+    trackRef.current.style.left = `${minPct}%`
+    trackRef.current.style.width = `${maxPct - minPct}%`
+    if (minLabelRef.current) minLabelRef.current.textContent = formatPrice(minVal)
+    if (maxLabelRef.current) maxLabelRef.current.textContent = formatPrice(maxVal)
   }
+
+  const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Math.min(Number(e.target.value), priceRange[1] - 1)
+    e.target.value = String(val)
+    updateTrack(val, priceRange[1])
+  }
+
+  const handleMaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Math.max(Number(e.target.value), priceRange[0] + 1)
+    e.target.value = String(val)
+    updateTrack(priceRange[0], val)
+  }
+
+  const commitMin = () => {
+    if (minRef.current) setPriceRange([Number(minRef.current.value), priceRange[1]])
+  }
+
+  const commitMax = () => {
+    if (maxRef.current) setPriceRange([priceRange[0], Number(maxRef.current.value)])
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <span ref={minLabelRef} className={`text-xs font-medium ${textColor}`}>{formatPrice(priceRange[0])}</span>
+        <span ref={maxLabelRef} className={`text-xs font-medium ${textColor}`}>{formatPrice(priceRange[1])}</span>
+      </div>
+
+      <div className="relative flex items-center" style={{ height: "20px" }}>
+        {/* Track bg */}
+        <div
+          className="absolute w-full rounded-full"
+          style={{ height: "6px", background: isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb" }}
+        />
+        {/* Active track - updated via DOM directly */}
+        <div
+          ref={trackRef}
+          className="absolute rounded-full"
+          style={{
+            height: "6px",
+            left: `${globalMax === globalMin ? 0 : ((priceRange[0] - globalMin) / (globalMax - globalMin)) * 100}%`,
+            width: `${globalMax === globalMin ? 0 : ((priceRange[1] - priceRange[0]) / (globalMax - globalMin)) * 100}%`,
+            background: brandPrimary,
+            pointerEvents: "none",
+          }}
+        />
+        {/* Min input */}
+        <input
+          ref={minRef}
+          type="range"
+          min={globalMin}
+          max={globalMax}
+          step={1}
+          defaultValue={priceRange[0]}
+          onChange={handleMinChange}
+          onMouseUp={commitMin}
+          onTouchEnd={commitMin}
+          className="price-thumb"
+          style={{
+            position: "absolute",
+            width: "100%",
+            height: "6px",
+            appearance: "none",
+            background: "transparent",
+            pointerEvents: "none",
+            zIndex: priceRange[0] >= priceRange[1] - (globalMax - globalMin) * 0.05 ? 5 : 3,
+          }}
+        />
+        {/* Max input */}
+        <input
+          ref={maxRef}
+          type="range"
+          min={globalMin}
+          max={globalMax}
+          step={1}
+          defaultValue={priceRange[1]}
+          onChange={handleMaxChange}
+          onMouseUp={commitMax}
+          onTouchEnd={commitMax}
+          className="price-thumb"
+          style={{
+            position: "absolute",
+            width: "100%",
+            height: "6px",
+            appearance: "none",
+            background: "transparent",
+            pointerEvents: "none",
+            zIndex: 4,
+          }}
+        />
+      </div>
+
+      {/* Manual inputs */}
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        <div>
+          <p className={`text-[10px] uppercase tracking-wider mb-1 ${labelColor}`}>Min</p>
+          <input
+            type="number"
+            value={Math.round(priceRange[0] / 100)}
+            onChange={e => {
+              const val = Number(e.target.value) * 100
+              if (val >= globalMin && val < priceRange[1]) setPriceRange([val, priceRange[1]])
+            }}
+            className={`w-full px-2.5 py-1.5 rounded-lg border text-xs ${inputBg} focus:outline-none`}
+          />
+        </div>
+        <div>
+          <p className={`text-[10px] uppercase tracking-wider mb-1 ${labelColor}`}>Max</p>
+          <input
+            type="number"
+            value={Math.round(priceRange[1] / 100)}
+            onChange={e => {
+              const val = Number(e.target.value) * 100
+              if (val <= globalMax && val > priceRange[0]) setPriceRange([priceRange[0], val])
+            }}
+            className={`w-full px-2.5 py-1.5 rounded-lg border text-xs ${inputBg} focus:outline-none`}
+          />
+        </div>
+      </div>
+
+      <style>{`
+        .price-thumb { pointer-events: none; }
+        .price-thumb::-webkit-slider-thumb {
+          appearance: none;
+          pointer-events: all;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: ${brandPrimary};
+          border: 2px solid white;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+          cursor: grab;
+        }
+        .price-thumb:active::-webkit-slider-thumb { cursor: grabbing; }
+        .price-thumb::-moz-range-thumb {
+          pointer-events: all;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: ${brandPrimary};
+          border: 2px solid white;
+          cursor: grab;
+        }
+      `}</style>
+    </div>
+  )
+}, [priceRange, globalMin, globalMax, brandPrimary, isDark])
 
   const SidebarContent = () => (
     <div className="space-y-5">
@@ -348,7 +403,7 @@ export default function ProductGrid({
         <p className={`text-sm ${subText}`}>{filtered.length} products</p>
       </div>
 
-      <div className="flex gap-6 items-start">
+      <div className="flex items-start gap-6">
         {/* Desktop sidebar */}
         <aside className={`hidden md:block w-52 shrink-0 sticky top-24 rounded-2xl border p-5 ${sidebarBg} shadow-sm`}>
           <div className="flex items-center justify-between mb-5">
@@ -364,7 +419,7 @@ export default function ProductGrid({
 
         {/* Grid */}
         <div className="flex-1 min-w-0">
-          <div className="hidden md:flex items-center justify-between mb-5">
+          <div className="items-center justify-between hidden mb-5 md:flex">
             <p className={`text-sm ${subText}`}>
               Showing <span className={`font-semibold ${textColor}`}>{filtered.length}</span> of {products.length} products
             </p>
@@ -379,7 +434,7 @@ export default function ProductGrid({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
               {filtered.map(product => (
                 <ProductCard
                   key={product.id}

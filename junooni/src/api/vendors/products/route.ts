@@ -9,57 +9,54 @@
 //   ContainerRegistrationKeys
 // } from "@medusajs/framework/utils"
 // import createVendorProductWorkflow from "../../../workflows/marketplace/create-vendor-product";
-//  import {  QueryContext } from "@medusajs/framework/utils";
-
 
 // export const GET = async (
 //   req: AuthenticatedMedusaRequest,
 //   res: MedusaResponse
 // ) => {
+  
 //   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   
-
-
+ 
 //   if (!req.auth_context) {
+   
 //     return res.status(401).json({
 //       message: "Authentication required"
 //     });
 //   }
-
+  
 //   const { data: [vendorAdmin] } = await query.graph({
 //     entity: "vendor_admin",
 //     fields: ["vendor.products.*",
-//       "vendor.products.variants.*",
+//       // "vendor.products.variants.*",
 //       "vendor.products.images.*",
-//       "vendor.products.options.*",
-//       "vendor.products.options.metadata.*",
-//       "vendor.products.variants.options.*",
-//       "vendor.products.options.values.*",
-//      // "vendor.products.variants.calculated_price.*",
+//       // "vendor.products.options.*",
+//       // "vendor.products.options.metadata.*",
+//       // "vendor.products.variants.options.*",
+//       // "vendor.products.options.values.*",
      
-     
-//       "vendor.products.variants.inventory_items.*",
-//       "vendor.products.description_parts",
-//       "vendor.products.variants.inventory_items.inventory.in_stock",
-//       "vendor.products.brand.*",
-//       "vendor.products.categories.*",
-//       "vendor.products.tags.*",
+//       // "vendor.products.variants.inventory_items.*",
+//       // "vendor.products.description_parts",
+//       // "vendor.products.variants.inventory_items.inventory.in_stock",
+//       // "vendor.products.brand.*",
+//       // "vendor.products.categories.*",
+//       // "vendor.products.tags.*",
 //       "vendor.products.vendor.*",
 //       //"vendor.products.size_chart.*",
 //       //"vendor.products.artwork.*",
-//       "vendor.products.metadata"
+//       // "vendor.products.metadata"
 //     ],
 //     filters: {
 //       id: [
 //         // ID of the authenticated vendor admin
 //         req.auth_context.actor_id
 //       ],
-//     }
+//     },
 //   })
-
 //   res.json({
 //     products: vendorAdmin.vendor.products
 //   })
+
 // }
 
 // export const POST = async (
@@ -80,65 +77,56 @@
 //   })
 // }
 
-import { 
-  AuthenticatedMedusaRequest, 
+import {
+  AuthenticatedMedusaRequest,
   MedusaResponse
-} from "@medusajs/framework/http";
-import { 
+} from "@medusajs/framework/http"
+import {
   HttpTypes,
 } from "@medusajs/framework/types"
-import { 
+import {
   ContainerRegistrationKeys
 } from "@medusajs/framework/utils"
-import createVendorProductWorkflow from "../../../workflows/marketplace/create-vendor-product";
+import createVendorProductWorkflow from "../../../workflows/marketplace/create-vendor-product"
+
+const CREATOR_STORE_SC = process.env.CREATOR_STORE_SALES_CHANNEL_ID
+  ?? "sc_01KMAP3HD1EVDF9FT7EHHHV8HP"
 
 export const GET = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse
 ) => {
-  
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-  
- 
   if (!req.auth_context) {
-   
-    return res.status(401).json({
-      message: "Authentication required"
-    });
+    return res.status(401).json({ message: "Authentication required" })
   }
-  
+
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const storeOnly = req.query.store_only === "true"
+
   const { data: [vendorAdmin] } = await query.graph({
     entity: "vendor_admin",
-    fields: ["vendor.products.*",
-      // "vendor.products.variants.*",
+    fields: [
+      "vendor.products.*",
       "vendor.products.images.*",
-      // "vendor.products.options.*",
-      // "vendor.products.options.metadata.*",
-      // "vendor.products.variants.options.*",
-      // "vendor.products.options.values.*",
-     
-      // "vendor.products.variants.inventory_items.*",
-      // "vendor.products.description_parts",
-      // "vendor.products.variants.inventory_items.inventory.in_stock",
-      // "vendor.products.brand.*",
-      // "vendor.products.categories.*",
-      // "vendor.products.tags.*",
       "vendor.products.vendor.*",
-      //"vendor.products.size_chart.*",
-      //"vendor.products.artwork.*",
-      // "vendor.products.metadata"
+      // needed for store_only filter — minimal overhead (just IDs)
+      ...(storeOnly ? ["vendor.products.sales_channels.id"] : []),
     ],
     filters: {
-      id: [
-        // ID of the authenticated vendor admin
-        req.auth_context.actor_id
-      ],
+      id: [req.auth_context.actor_id],
     },
   })
-  res.json({
-    products: vendorAdmin.vendor.products
-  })
 
+  let products = vendorAdmin?.vendor?.products ?? []
+
+  // Filter by creator store sales channel when store_only=true
+  if (storeOnly) {
+    products = products.filter((p: any) =>
+      p.sales_channels?.some((sc: any) => sc.id === CREATOR_STORE_SC)
+    )
+  }
+
+  return res.json({ products })
 }
 
 export const POST = async (
@@ -154,7 +142,5 @@ export const POST = async (
       }
     })
 
-  res.json({
-    product: result.product
-  })
+  res.json({ product: result.product })
 }
