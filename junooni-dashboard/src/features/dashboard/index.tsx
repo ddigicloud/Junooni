@@ -1175,7 +1175,7 @@ const DashboardPage = () => {
           <div className="flex items-center justify-between gap-2">
 
             {/* Left: sidebar trigger */}
-            <div className="flex items-center flex-shrink-0 gap-2">
+            <div className="flex items-center flex-shrink-0 gap-4">
               <SidebarTrigger variant='outline' className='scale-125 sm:scale-100' />
               <Separator orientation='vertical' className='h-5' />
             </div>
@@ -1239,7 +1239,7 @@ const DashboardPage = () => {
               Good {greetingTime}, {vendor?.name.split(' ')[0]}!
             </h1>
             <p className="text-muted-foreground" style={{ color: BRAND.textSecondary }}>
-              Welcome to your Junooni dashboard. Here's an overview of your store performance.
+              Welcome to your JUNOONI dashboard. Here's an overview of your store performance.
             </p>
           </div>
           <div className="flex gap-2 mt-4 md:mt-0">
@@ -1467,7 +1467,7 @@ const DashboardPage = () => {
         <div className="py-6 mt-12 border-t border-gray-200">
           <div className="container px-4 mx-auto text-center">
             <p className="text-sm" style={{ color: BRAND.textLight }}>
-              &copy; {new Date().getFullYear()} Junooni. All rights reserved.
+              &copy; {new Date().getFullYear()} JUNOONI. All rights reserved.
             </p>
           </div>
         </div>

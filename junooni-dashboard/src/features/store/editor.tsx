@@ -1183,8 +1183,8 @@ export default function StoreEditorPage() {
     <div className={`flex flex-col h-screen overflow-hidden ${isDark ? "bg-gray-950" : "bg-gray-100"}`}>
       {/* ── TOP BAR ── */}
       <div className={`flex items-center justify-between px-3 py-2 border-b shrink-0 z-20 ${panelBg} ${panelBorder}`}>
-        <div className="flex items-center min-w-0 gap-2">
-          <button className={`md:hidden p-1.5 rounded-lg transition-colors ${isDark ? "text-gray-400 hover:bg-gray-800" : "text-gray-500 hover:bg-gray-100"}`} onClick={() => setLeftPanelOpen(o => !o)} aria-label="Open editor panel"><Menu className="w-4 h-4" /></button>
+        <div className="flex items-center min-w-0 gap-1">
+          <button className={`md:hidden p-1 rounded-lg transition-colors ${isDark ? "text-gray-400 hover:bg-gray-800" : "text-gray-500 hover:bg-gray-100"}`} onClick={() => setLeftPanelOpen(o => !o)} aria-label="Open editor panel"><Menu className="w-4 h-4" /></button>
           <Link to="/store" className={`flex items-center gap-1 text-xs ${textMuted} transition-colors shrink-0`}><ChevronLeft className="w-3.5 h-3.5" /><span className="hidden sm:inline">Back</span></Link>
           <div className={`w-px h-4 hidden sm:block ${isDark ? "bg-gray-700" : "bg-gray-300"}`} />
           <span className={`text-sm font-semibold ${textPrimary} hidden sm:inline`}>Store Editor</span>
@@ -1201,24 +1201,24 @@ export default function StoreEditorPage() {
             textFaint={textFaint}
             hoverBg={hoverBg}
           />
-          <div className={`flex items-center gap-0.5 p-0.5 rounded-lg ${isDark ? "bg-gray-800" : "bg-gray-100"}`}>
+          <div className={`items-center gap-0.5 p-0.5 rounded-lg hidden sm:flex ${isDark ? "bg-gray-800" : "bg-gray-100"}`}>
             <button onClick={() => setViewport("desktop")} className={`p-1.5 rounded-md transition-colors ${viewport === "desktop" ? (isDark ? "bg-gray-600 text-white" : "bg-white text-gray-900 shadow-sm") : textMuted}`}><Monitor className="w-3.5 h-3.5" /></button>
             <button onClick={() => setViewport("mobile")} className={`p-1.5 rounded-md transition-colors ${viewport === "mobile" ? (isDark ? "bg-gray-600 text-white" : "bg-white text-gray-900 shadow-sm") : textMuted}`}><Smartphone className="w-3.5 h-3.5" /></button>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
           {vendorHandle && (
-            <a href={getStoreUrl(vendorHandle, store.custom_domain)} target="_blank" rel="noopener noreferrer" className={`hidden sm:flex items-center gap-1 text-xs ${textMuted} px-2 py-1.5 rounded-lg border ${panelBorder} transition-colors`}>
-              <ExternalLink className="w-3 h-3" />Visit
+            <a href={getStoreUrl(vendorHandle, store.custom_domain)} target="_blank" rel="noopener noreferrer" className={`items-center gap-1 text-xs ${textMuted} px-2 py-1.5 rounded-lg border ${panelBorder} transition-colors`}>
+              <ExternalLink className="w-3 h-3" /><span className="hidden sm:inline">Visit</span>
             </a>
           )}
-          <button onClick={() => { setIframeReady(false); iframeRef.current?.contentWindow?.location.reload() }} className={`p-1.5 ${textMuted} transition-colors hidden sm:block`}><RefreshCw className="w-3.5 h-3.5" /></button>
+          <button onClick={() => { setIframeReady(false); iframeRef.current?.contentWindow?.location.reload() }} className={`p-1.5 ${textMuted} transition-colors`}><RefreshCw className="w-3.5 h-3.5" /></button>
           <button onClick={handleToggleStatus} disabled={isTogglingStatus}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${isLive ? "bg-green-500/15 border-green-500/40 text-green-400 hover:bg-green-500/25" : "bg-gray-700/50 border-gray-600 text-gray-400 hover:bg-gray-700"}`}>
             {isTogglingStatus ? <Loader2 className="w-3 h-3 animate-spin" /> : <div className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-green-400" : "bg-gray-500"}`} />}
             {isLive ? "Live" : "Draft"}
           </button>
-          <button onClick={() => setEditorTheme(t => t === "dark" ? "light" : "dark")} className={`p-1.5 rounded-md transition-colors hidden sm:block ${isDark ? "text-yellow-400" : "text-gray-500"}`}>
+          <button onClick={() => setEditorTheme(t => t === "dark" ? "light" : "dark")} className={`p-1.5 rounded-md transition-colors border border-gray-400 ${isDark ? "text-yellow-400" : "text-gray-500"}`}>
             {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           </button>
           <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1 px-3 text-xs text-white bg-orange-600 hover:bg-orange-700 h-7">

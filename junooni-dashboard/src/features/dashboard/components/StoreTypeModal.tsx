@@ -58,8 +58,7 @@ export default function StoreTypeModal({
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div
-        className="w-full overflow-hidden bg-white shadow-2xl rounded-2xl"
+      <div className="w-full overflow-y-auto max-h-[90vh] bg-white shadow-2xl rounded-2xl"
         style={{ maxWidth: 560, border: "1px solid rgba(0,0,0,0.08)" }}
       >
         {/* ── Header ── */}
@@ -88,12 +87,12 @@ export default function StoreTypeModal({
         </div>
 
         {/* ── Cards ── */}
-        <div className="grid grid-cols-2 gap-3 px-6 py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-4 sm:px-6 py-4">
           {/* Marketplace */}
           <button
             onClick={() => toggle("sell_on_marketplace")}
             className={cn(
-              "relative text-left p-4 rounded-xl border-2 transition-all duration-150 group",
+              "relative text-left p-3 sm:p-4 rounded-xl border-2 transition-all duration-150 group",
               pref.sell_on_marketplace
                 ? "border-orange-400 bg-orange-50/60 shadow-sm"
                 : "border-gray-200 bg-white hover:border-orange-200 hover:bg-orange-50/20"

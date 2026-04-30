@@ -670,7 +670,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex-1 px-6 py-6 overflow-y-auto">{children}</div>
+        <div className="flex-1 px-2 py-6 overflow-y-auto">{children}</div>
       </div>
     </div>
   )

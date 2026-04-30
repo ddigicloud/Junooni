@@ -1470,7 +1470,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
       <div className="max-w-6xl mx-auto">
         {/* Section label */}
         {section.title && (
-          <p className="mb-12 text-xl font-semibold tracking-widest text-center uppercase" style={{ color: brandPrimary }}>
+          <p className="mb-12 text-xl font-bold tracking-widest text-center uppercase" style={{ color: brandPrimary }}>
             {section.title}
           </p>
         )}

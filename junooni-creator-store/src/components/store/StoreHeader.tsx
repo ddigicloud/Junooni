@@ -146,10 +146,18 @@ export default function StoreHeader({
     <div ref={headerRef}>
       {/* ── HEADER BAR ──────────────────────────────────────────────────────── */}
       <header className={`w-full backdrop-blur-md border-b shadow-sm ${bg}`}>
-        <div className="flex items-center justify-between h-16 gap-6 px-4 mx-auto max-w-7xl sm:px-6">
+        <div className="relative flex items-center justify-between h-16 gap-6 px-4 mx-auto max-w-7xl sm:px-6">
 
-          {/* Logo */}
-          <Link href={`/${handle}`} className="flex items-center gap-2.5 shrink-0">
+          {/* Mobile hamburger - extreme left (md: hidden) */}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className={`md:hidden p-2 rounded-full transition-colors shrink-0 ${isDark ? "text-white/60 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}
+          >
+            {mobileOpen ? <X style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
+          </button>
+
+          {/* Logo - absolutely centered on mobile, static on desktop */}
+          <Link href={`/${handle}`} className="flex items-center gap-2.5 shrink-0 absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0">
             {/* Store logo takes priority over vendor logo over initial */}
             {(store as any)?.store_logo
               ? <Image
@@ -258,12 +266,6 @@ export default function StoreHeader({
             </button>
             {/* <WishlistIconButton handle={handle} brandPrimary={brandPrimary} /> */}
             <CartIconButton brandPrimary={brandPrimary} />
-            <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className={`md:hidden p-2 rounded-full transition-colors ${isDark ? "text-white/60 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}
-            >
-              {mobileOpen ? <X style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
-            </button>
           </div>
         </div>
       </header>
