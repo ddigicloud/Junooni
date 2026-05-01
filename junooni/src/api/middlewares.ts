@@ -127,6 +127,57 @@ export default defineMiddlewares({
     },
   ],
 },
+
+// Add these to src/api/middlewares.ts routes array
+
+// ── Instagram OAuth routes ────────────────────────────────────────────────────
+{
+  matcher: "/vendors/me/instagram/connect",
+  method: ["GET", "OPTIONS"],
+  middlewares: [
+    (req, res, next) => { cors({ origin: true, credentials: true })(req, res, next) },
+    authenticate(["vendor", "user"], ["session", "bearer"]),
+  ],
+},
+{
+  matcher: "/vendors/instagram/callback",
+  method: ["GET"],
+  middlewares: [
+    // Public — no auth, Instagram redirects here with code
+    (req, res, next) => { cors({ origin: true, credentials: false })(req, res, next) },
+  ],
+},
+{
+  matcher: "/vendors/me/instagram/feed",
+  method: ["GET", "OPTIONS"],
+  middlewares: [
+    (req, res, next) => { cors({ origin: true, credentials: true })(req, res, next) },
+    authenticate(["vendor", "user"], ["session", "bearer"]),
+  ],
+},
+{
+  matcher: "/vendors/me/instagram/disconnect",
+  method: ["DELETE", "OPTIONS"],
+  middlewares: [
+    (req, res, next) => { cors({ origin: true, credentials: true })(req, res, next) },
+    authenticate(["vendor", "user"], ["session", "bearer"]),
+  ],
+},
+{
+  matcher: "/vendors/instagram/webhook",
+  method: ["GET", "POST"],
+  middlewares: [
+    (req, res, next) => { cors({ origin: true, credentials: false })(req, res, next) },
+  ],
+},
+{
+  matcher: "/store-front/:handle/instagram",
+  method: ["GET", "OPTIONS"],
+  middlewares: [
+    (req, res, next) => { cors({ origin: true, credentials: false })(req, res, next) },
+  ],
+},
+
 {
   matcher: "/vendors/me/stats",
   method: ["GET", "OPTIONS"],

@@ -1218,7 +1218,7 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
       </div>
 
       <div className="pt-4 border-t border-gray-100">
-        <button onClick={onSave} disabled={isSaving}
+        <button onClick={() => onSave()} disabled={isSaving}
           className="flex items-center justify-center w-full gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-60"
           style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Save changes

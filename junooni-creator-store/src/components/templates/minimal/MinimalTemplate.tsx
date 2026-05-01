@@ -578,7 +578,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ShoppingBag, ShoppingCart, Instagram, Youtube, Twitter, Facebook, ArrowRight, ChevronRight, Loader2, Check, Minus, Plus } from "lucide-react"
@@ -1023,24 +1023,51 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     }
 
     case "html": {
-      const htmlContent = (section as any).html_content
-      if (!htmlContent) return null
-      const isFullDoc = /<!DOCTYPE|<html/i.test(htmlContent)
-      const srcDoc = isFullDoc ? htmlContent : `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:0;font-family:system-ui,sans-serif}</style></head><body>${htmlContent}</body></html>`
-      return (
-        <section className="w-full" style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <iframe srcDoc={srcDoc} className="w-full border-0" style={{ minHeight: "200px" }}
-            sandbox="allow-scripts allow-same-origin allow-forms"
-            onLoad={e => {
-              try {
-                const doc = (e.currentTarget as HTMLIFrameElement).contentDocument
-                if (doc?.body) (e.currentTarget as HTMLIFrameElement).style.height = doc.body.scrollHeight + 32 + "px"
-              } catch {}
-            }}
-            title="Custom HTML section" />
-        </section>
-      )
-    }
+    const htmlContent = (section as any).html_content
+    if (!htmlContent) return null
+    const isFullDoc = /<!DOCTYPE|<html/i.test(htmlContent)
+
+    // Inject a ResizeObserver script so the iframe reports its own height
+    const resizeScript = `
+      <script>
+        function reportHeight() {
+          const h = document.documentElement.scrollHeight;
+          window.parent.postMessage({ type: 'IFRAME_HEIGHT', height: h }, '*');
+        }
+        window.addEventListener('load', reportHeight);
+        window.addEventListener('resize', reportHeight);
+        new ResizeObserver(reportHeight).observe(document.documentElement);
+        if (document.fonts?.ready) {
+          document.fonts.ready.then(() => {
+            reportHeight();
+            setTimeout(reportHeight, 200);
+            setTimeout(reportHeight, 600);
+          });
+        }
+        let t = 0;
+        const iv = setInterval(() => { reportHeight(); if (++t > 20) clearInterval(iv); }, 250);
+      <\/script>
+    `
+
+    const srcDoc = isFullDoc
+  ? htmlContent
+  : `<!DOCTYPE html><html><head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: system-ui, sans-serif; overflow: hidden; }
+      </style>
+    </head><body>${htmlContent}${resizeScript}</body></html>`
+
+    return (
+      <section className="w-full overflow-visible" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+        <IframeAutoHeight srcDoc={srcDoc} />
+      </section>
+    )
+  }
 
     case "text": {
       if (!(section as any).text) return null
@@ -1654,6 +1681,32 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
         </div>
       </div>
     </section>
+  )
+}
+
+function IframeAutoHeight({ srcDoc }: { srcDoc: string }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [height, setHeight] = useState(600)
+
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "IFRAME_HEIGHT" && typeof e.data.height === "number") {
+        setHeight(e.data.height)
+      }
+    }
+    window.addEventListener("message", handler)
+    return () => window.removeEventListener("message", handler)
+  }, [])
+
+  return (
+    <iframe
+      ref={iframeRef}
+      srcDoc={srcDoc}
+      className="w-full border-0 block"
+      style={{ height }}
+      sandbox="allow-scripts allow-same-origin allow-forms"
+      title="Custom HTML section"
+    />
   )
 }
 

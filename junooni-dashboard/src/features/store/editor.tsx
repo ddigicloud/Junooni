@@ -17,12 +17,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getStoreUrl, getPreviewUrl, getPageUrl } from "@/lib/store-urls"
+import { InstagramConnectPanel } from "@/features/store/components/InstagramConnectPanel"
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SectionType = "header" | "hero" | "featured" | "collection" | "featured_collections" | "about" | "social" |
   "announcement" | "divider" | "image" | "text" | "html" | "video" | "links" | "footer" |
-  "ticker" | "image_text" | "video_text" | "featured_product"
+  "ticker" | "image_text" | "video_text" | "featured_product"| "instagram_feed" 
 type EditorTab = "layout" | "style" | "pages" | "theme"
 type PageTemplate = "blank" | "about" | "faq" | "contact" | "links" | "terms" | "privacy" | "returns"
 
@@ -105,6 +107,7 @@ const SECTION_BLOCKS = [
   { type: "image_text"       as SectionType, label: "Image with Text",    icon: <Columns className="w-3.5 h-3.5" />, desc: "Image + rich text side by side",  color: "#8b5cf6", category: "content" },
   { type: "video_text"       as SectionType, label: "Video with Text",    icon: <Video className="w-3.5 h-3.5" />, desc: "Video + rich text side by side",    color: "#f43f5e", category: "content" },
   { type: "featured_product" as SectionType, label: "Featured Product",   icon: <Star className="w-3.5 h-3.5" />, desc: "Spotlight one product with text",   color: "#ec4899", category: "products" },
+  { type: "instagram_feed" as SectionType,  label: "Instagram Feed",  icon: <Instagram className="w-3.5 h-3.5" />,  desc: "Display your Instagram posts",  color: "#E1306C",  category: "content" },
 ]
 
 const SECTION_CATEGORIES = [
@@ -524,6 +527,7 @@ export default function StoreEditorPage() {
       ...(type === "image_text" ? { title: "Our Story", text: "Share something meaningful about your brand, collection, or the story behind this product.", image_position: "left", cta_label: "Learn More", cta_url: "#about" } : {}),
       ...(type === "video_text" ? { title: "Watch & Shop", text: "Tell your audience what this video is about. Keep it concise and engaging.", image_position: "left", video_text_url: "", cta_label: "Shop Now", cta_url: "/products" } : {}),
       ...(type === "featured_product" ? { title: "Fan Favourite", text: "Describe why this product is special. Share the story, the craft, or the inspiration behind it.", image_position: "right", cta_label: "Get Yours", cta_url: "/products" } : {}),
+      ...(type === "instagram_feed" ? { title: "Follow me on Instagram",  limit: 9 } : {}),
     }
     patchStore(p => ({ ...p, sections: { sections: [...(p.sections?.sections ?? []), ns] } }))
     setSelectedId(ns.id); setAddSectionOpen(false); setActiveTab("layout"); setLeftPanelOpen(false); setRightPanelOpen(true)
@@ -945,6 +949,13 @@ export default function StoreEditorPage() {
                 </div>
               </div>
             </StyleSection>
+            <StyleSection title="Instagram Feed" isDark={isDark}>
+            <InstagramConnectPanel
+              token={token ?? ""}
+              backendUrl={backendUrl}
+              isDark={isDark}
+            />
+          </StyleSection>
           </div>
         )}
 
@@ -1975,6 +1986,31 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
           textPrimary={textPrimary}
         />
       )}
+
+      {section.type === "instagram_feed" && (<>
+        <Field label="Section title" faint={textFaint}>
+          <EditorInput value={section.title ?? ""} onChange={v => onChange({ title: v })} placeholder="Follow me on Instagram" isDark={isDark} />
+        </Field>
+        <Field label="Number of posts" faint={textFaint}>
+          <div className="flex gap-1.5">
+            {[6, 9, 12].map(n => (
+              <button key={n} onClick={() => onChange({ limit: n })}
+                className={`flex-1 py-1.5 rounded-lg border text-xs transition-all ${
+                  (section.limit ?? 9) === n 
+                    ? "border-orange-500/50 bg-orange-500/10 text-orange-400" 
+                    : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                }`}>{n}</button>
+            ))}
+          </div>
+        </Field>
+        <div className={`p-3 rounded-xl border text-xs ${isDark ? "border-pink-800/40 bg-pink-900/10 text-pink-300" : "border-pink-200 bg-pink-50 text-pink-700"}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <Instagram className="w-3.5 h-3.5 shrink-0" />
+            <span className="font-semibold">Instagram feed</span>
+          </div>
+          <p className="opacity-80">Connect your Instagram account in the Style tab → Instagram Feed to show your posts here.</p>
+        </div>
+      </>)}
 
       {/* ── SECTION COLORS OVERRIDE (all except announcement, divider, html, ticker) ── */}
       {!["announcement", "divider", "html", "ticker"].includes(section.type) && (

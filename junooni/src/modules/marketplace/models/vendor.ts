@@ -44,6 +44,10 @@ const Vendor = model.define("vendor", {
   plan_activated_at: model.dateTime().nullable(),
   razorpay_subscription_id: model.text().nullable(),
   razorpay_payment_id: model.text().nullable(),
+  // Add these 3 lines to your Vendor model definition:
+  instagram_access_token: model.text().nullable(),
+  instagram_user_id: model.text().nullable(),
+  instagram_token_expires_at: model.dateTime().nullable(),
 
   // 1:1 relation — created when vendor opts into own store
   vendor_store: model.hasOne(() => VendorStore, { mappedBy: "vendor" }).nullable(),
