@@ -14,6 +14,8 @@ const StoreSectionSchema = z.object({
     "hero", "featured", "collection", "featured_collections",
     "about", "social", "announcement", "divider",
     "image", "text", "html", "video", "links", "header", "footer",
+    "ticker", "image_text", "video_text", "featured_product", "category_grid",
+    "category_products", "collections_grid", "collection_products", // ← ADD THESE
   ]),
 }).passthrough()
 
@@ -29,9 +31,13 @@ const VendorCollectionSchema = z.object({
 
 const StorePageSchema = z.object({
   id: z.string(), title: z.string(), slug: z.string(),
-  template: z.enum(["blank", "about", "faq", "contact", "links"]),
+  template: z.enum([
+    "blank", "about", "faq", "contact", "links",
+    "terms", "privacy", "returns" // ← ADD THESE
+  ]),
   content: z.string(), in_nav: z.boolean(), in_footer: z.boolean(), created_at: z.string(),
 }).passthrough()
+
 
 export const VendorStoreSchema = z.object({
   // Identity
@@ -57,7 +63,13 @@ export const VendorStoreSchema = z.object({
   announcement_text: z.string().max(200).nullable().optional(),
 
   // Sections & pages
-  sections: z.object({ sections: z.array(StoreSectionSchema) }).nullable().optional(),
+  //sections: z.object({ sections: z.array(StoreSectionSchema) }).nullable().optional(),
+  sections: z.object({
+  sections: z.array(StoreSectionSchema),
+  page_layouts: z.record(z.object({
+    sections: z.array(StoreSectionSchema.passthrough()),
+  }).passthrough()).optional(),
+}).passthrough().nullable().optional(),
   pages: z.object({ pages: z.array(StorePageSchema) }).nullable().optional(),
   collections: z.object({ collections: z.array(VendorCollectionSchema) }).nullable().optional(),
 
@@ -92,6 +104,29 @@ export const VendorStoreSchema = z.object({
     alignment: z.enum(["left", "center"]).optional(),
     show_sold_out_badge: z.boolean().optional(),
     columns_desktop: z.number().optional(),
+  }).nullable().optional(),
+  // In VendorStoreSchema, add after product_card:
+  product_detail: z.object({
+    element_order: z.array(z.string()).optional(),
+    title_size: z.enum(["sm", "md", "lg", "xl"]).optional(),
+    title_weight: z.enum(["normal", "semibold", "bold", "extrabold"]).optional(),
+    title_color: z.string().nullable().optional(),
+    price_color: z.string().nullable().optional(),
+    price_size: z.enum(["sm", "md", "lg", "xl"]).optional(),
+    colors_label: z.string().optional(),
+    show_color_label: z.boolean().optional(),
+    color_swatch_size: z.enum(["sm", "md", "lg"]).optional(),
+    sizes_label: z.string().optional(),
+    show_size_label: z.boolean().optional(),
+    size_style: z.enum(["pill", "box", "underline"]).optional(),
+    atc_label: z.string().optional(),
+    atc_style: z.enum(["filled", "outline", "pill"]).optional(),
+    atc_full_width: z.boolean().optional(),
+    show_quantity: z.boolean().optional(),
+    show_description: z.boolean().optional(),
+    description_collapsed: z.boolean().optional(),
+    show_secure_badge: z.boolean().optional(),
+    secure_badge_text: z.string().optional(),
   }).nullable().optional(),
   custom_css: z.string().nullable().optional(),
 })

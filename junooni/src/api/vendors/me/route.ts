@@ -12,12 +12,23 @@ async function resolveVendorId(
   query: any,
   actorId: string
 ): Promise<string | null> {
+  // ❌ OLD: query.graph join on vendor.id is unreliable
+  // const { data: [va] } = await query.graph({
+  //   entity: "vendor_admin",
+  //   fields: ["id", "vendor.id"],
+  //   filters: { id: actorId },
+  // })
+  // return va?.vendor?.id ?? null
+
+  // ✅ NEW: read vendor_id column directly — no join needed
   const { data: [va] } = await query.graph({
     entity: "vendor_admin",
-    fields: ["id", "vendor.id"],
+    fields: ["id", "vendor_id"],   // vendor_id is a plain column, no join
     filters: { id: actorId },
   })
-  return va?.vendor?.id ?? null
+
+  console.log("resolveVendorId → va:", va)   // remove after confirming fix
+  return va?.vendor_id ?? null
 }
 
 // ── GET /vendors/me ───────────────────────────────────────────────────────────

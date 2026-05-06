@@ -229,10 +229,6 @@ export default function StoreHeader({
               </div>
             )}
 
-            <Link href={`/${handle}#about`} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${hoverBg} ${textMuted}`}>
-              About
-            </Link>
-
             {/* Custom pages marked in_nav */}
             {((store as any)?.pages?.pages ?? [])
               .filter((p: any) => p.in_nav)

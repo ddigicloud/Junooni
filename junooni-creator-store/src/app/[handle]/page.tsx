@@ -84,6 +84,7 @@ import { cache } from "react"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { getStorefrontData } from "@/lib/api"
+import StoreRenderer from "./StoreRenderer"
 import MinimalTemplate from "@/components/templates/minimal/MinimalTemplate"
 import BoldTemplate from "@/components/templates/bold/BoldTemplate"
 import EditorialTemplate from "@/components/templates/editorial/EditorialTemplate"
@@ -194,22 +195,31 @@ export default async function CreatorStorePage({ params }: Props) {
     "--brand-secondary": store?.secondary_color ?? "#ac1900",
   } as React.CSSProperties
 
-  const template = store?.template ?? "minimal"
+  // const template = store?.template ?? "minimal"
 
+  // return (
+  //   <div style={brandStyles}>
+  //     {template === "minimal" && (
+  //       <MinimalTemplate vendor={vendor} store={store} products={products ?? []}
+  //         categories={categories ?? []} collections={collections ?? []} />
+  //     )}
+  //     {template === "bold" && (
+  //       <BoldTemplate vendor={vendor} store={store} products={products ?? []}
+  //         categories={categories ?? []} collections={collections ?? []} />
+  //     )}
+  //     {template === "editorial" && (
+  //       <EditorialTemplate vendor={vendor} store={store} products={products ?? []}
+  //         categories={categories ?? []} collections={collections ?? []} />
+  //     )}
+  //   </div>
+  // )
   return (
-    <div style={brandStyles}>
-      {template === "minimal" && (
-        <MinimalTemplate vendor={vendor} store={store} products={products ?? []}
-          categories={categories ?? []} collections={collections ?? []} />
-      )}
-      {template === "bold" && (
-        <BoldTemplate vendor={vendor} store={store} products={products ?? []}
-          categories={categories ?? []} collections={collections ?? []} />
-      )}
-      {template === "editorial" && (
-        <EditorialTemplate vendor={vendor} store={store} products={products ?? []}
-          categories={categories ?? []} collections={collections ?? []} />
-      )}
-    </div>
-  )
+  <StoreRenderer
+    vendor={vendor}
+    store={store}
+    products={products ?? []}
+    categories={categories ?? []}
+    collections={collections ?? []}
+  />
+)
 }

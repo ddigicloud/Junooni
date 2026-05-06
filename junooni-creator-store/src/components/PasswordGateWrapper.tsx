@@ -6,6 +6,7 @@ import PasswordGate from "./PasswordGate"
 interface Props {
   handle: string
   storeName: string
+  store_id: string
   storeLogo?: string | null
   primaryColor?: string
   secondaryColor?: string

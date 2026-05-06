@@ -12,23 +12,55 @@ import {
   BookOpen, Upload, Check, ChevronRight, ChevronDown as ChevronDownIcon,
   Pencil, Copy, Instagram, Youtube, Twitter, Facebook,
   Video, Link as LinkIcon, Grid, AlignLeft, AlignCenter,
-  Radio, Zap, Moon, Sun, MoreVertical, Columns, Menu,
+  Radio, Zap, Moon, Sun, MoreVertical, Columns, Menu, search
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getStoreUrl, getPreviewUrl, getPageUrl } from "@/lib/store-urls"
-import { InstagramConnectPanel } from "@/features/store/components/InstagramConnectPanel"
-
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SectionType = "header" | "hero" | "featured" | "collection" | "featured_collections" | "about" | "social" |
-  "announcement" | "divider" | "image" | "text" | "html" | "video" | "links" | "footer" |
-  "ticker" | "image_text" | "video_text" | "featured_product"| "instagram_feed" 
+  "announcement" | "divider" | "image" | "text" | "html" | "video" | "links" | "footer" | "category_grid" | "category_products"
+  "ticker" | "image_text" | "video_text" | "featured_product" | "category_grid" | "collections_grid"
+
 type EditorTab = "layout" | "style" | "pages" | "theme"
+
 type PageTemplate = "blank" | "about" | "faq" | "contact" | "links" | "terms" | "privacy" | "returns"
 
 interface NavItem { id: string; label: string; url: string; external?: boolean; children?: NavItem[] }
+
+interface ProductDetailSettings {
+  // Layout order — drag to reorder
+  element_order?: Array<"title" | "price" | "colors" | "sizes" | "quantity" | "atc" | "description" | "meta">
+  // Title
+  title_size?: "sm" | "md" | "lg" | "xl"
+  title_weight?: "normal" | "semibold" | "bold" | "extrabold"
+  title_color?: string
+  // Price
+  price_color?: string
+  price_size?: "sm" | "md" | "lg" | "xl"
+  // Colors label
+  colors_label?: string
+  show_color_label?: boolean
+  color_swatch_size?: "sm" | "md" | "lg"
+  // Sizes
+  sizes_label?: string
+  show_size_label?: boolean
+  size_style?: "pill" | "box" | "underline"
+  // ATC button
+  atc_label?: string
+  atc_style?: "filled" | "outline" | "pill"
+  atc_full_width?: boolean
+  // Quantity
+  show_quantity?: boolean
+  // Description
+  show_description?: boolean
+  description_collapsed?: boolean
+  // Meta
+  show_secure_badge?: boolean
+  secure_badge_text?: string
+}
 
 interface StoreSection {
   id: string; type: SectionType; hidden?: boolean
@@ -47,6 +79,7 @@ interface StoreSection {
   ticker_items?: string[]; ticker_speed?: number; ticker_separator?: string
   // image_text / video_text
   video_text_url?: string
+  mobile_image_position?: "top" | "bottom"
   // featured_product
   featured_product_id?: string
   featured_product_heading?: string
@@ -73,7 +106,10 @@ interface VendorStore {
   background_color?: string; text_color?: string; hero_image?: string
   tagline?: string; announcement_text?: string
   store_logo?: string; store_favicon?: string
-  sections?: { sections: StoreSection[] }
+  sections?: {
+    sections: StoreSection[]                                    // home page
+    page_layouts?: Partial<Record<string, { sections: StoreSection[] }>>
+  }
   pages?: { pages: StorePage[] }
   seo_title?: string; seo_description?: string; og_image?: string
   border_radius?: "none" | "sm" | "md" | "lg" | "full"
@@ -82,12 +118,49 @@ interface VendorStore {
   sticky_header?: boolean; sticky_announcement?: boolean
   instagram_url?: string; youtube_url?: string; twitter_url?: string
   facebook_url?: string; tiktok_url?: string; discord_url?: string
+  product_detail?: ProductDetailSettings
   custom_css?: string
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const BRAND = { primary: "#e65100", secondary: "#ac1900" }
+
+// Add this constant near SECTION_BLOCKS:
+const PAGE_ALLOWED_SECTIONS: Record<string, SectionType[]> = {
+  home: [
+    "announcement", "hero", "ticker", "collection", "featured",
+    "featured_collections", "featured_product", "about", "text",
+    "image", "image_text", "video", "video_text", "social", "links",
+    "html", "divider"
+  ],
+  products: [
+    "hero", "ticker", "announcement", "text", "image", "image_text",
+    "video", "video_text", "html", "divider", "collection"
+  ],
+  collections: [
+    "hero", "ticker", "text", "image", "html", "divider",
+    "featured_collections"
+  ],
+  collection: [
+    "hero", "ticker", "text", "image", "html", "divider", "collection"
+  ],
+  categories: [ "hero", "ticker", "text", "image", "image_text", "video", "html", "divider", "category_grid",
+  ],
+  category: [ "hero", "ticker", "text", "image", "image_text", "video", "html", "divider", "collection",
+  ],
+  product: [
+    // Only upsell/related sections make sense below product detail
+    "featured", "text", "image", "image_text", "video",
+    "video_text", "html", "divider", "ticker"
+  ],
+  cart: [
+    "featured", "text", "html", "divider"
+  ],
+  search: [
+    "text", "html", "divider"
+  ],
+}
 
 const SECTION_BLOCKS = [
   { type: "announcement" as SectionType, label: "Announcement Bar", icon: <Megaphone className="w-3.5 h-3.5" />, desc: "Top banner with message", color: "#f59e0b", category: "layout" },
@@ -107,8 +180,77 @@ const SECTION_BLOCKS = [
   { type: "image_text"       as SectionType, label: "Image with Text",    icon: <Columns className="w-3.5 h-3.5" />, desc: "Image + rich text side by side",  color: "#8b5cf6", category: "content" },
   { type: "video_text"       as SectionType, label: "Video with Text",    icon: <Video className="w-3.5 h-3.5" />, desc: "Video + rich text side by side",    color: "#f43f5e", category: "content" },
   { type: "featured_product" as SectionType, label: "Featured Product",   icon: <Star className="w-3.5 h-3.5" />, desc: "Spotlight one product with text",   color: "#ec4899", category: "products" },
-  { type: "instagram_feed" as SectionType,  label: "Instagram Feed",  icon: <Instagram className="w-3.5 h-3.5" />,  desc: "Display your Instagram posts",  color: "#E1306C",  category: "content" },
+  { type: "category_products" as SectionType, label: "Category Products", icon: <Grid className="w-3.5 h-3.5" />, desc: "Products in this category", color: "#f59e0b", category: "layout" },
 ]
+
+const PAGE_LAYOUT_META: Record<string, {
+  label: string; icon: string; path: string
+  defaultSections: Partial<StoreSection>[]
+  isFixed?: boolean; systemNote?: string
+}> = {
+  home: {
+    label: "Home", icon: "🏠", path: "/",
+    defaultSections: [],
+  },
+  products: {
+    label: "All Products", icon: "🛍️", path: "/products",
+    defaultSections: [
+      { id: "def_prod_grid", type: "collection" as SectionType, title: "All Products", limit: 48, columns: 3, show_sold_out: true },
+    ],
+  },
+  // In PAGE_LAYOUT_META, categories entry already exists but update it:
+  categories: {
+    label: "Categories", icon: "🏷️", path: "/categories",
+    defaultSections: [],
+  },
+  category: {
+    label: "Category page", icon: "🏷️", path: "/categories/[handle]",
+    defaultSections: [],
+    systemNote: "Products in this category are always shown below your sections",
+  },
+  collections: {
+    label: "Collections", icon: "📦", path: "/collections",
+    defaultSections: [
+      { id: "def_cols_grid", type: "featured_collections" as SectionType, title: "Shop by Collection", collection_ids: [], columns: 3 },
+    ],
+  },
+  collection: {
+    label: "Collection page", icon: "🗂️", path: "/collections/[handle]",
+    defaultSections: [
+      { id: "def_col_grid", type: "collection" as SectionType, title: "Products", limit: 24, columns: 3, show_sold_out: true },
+    ],
+    systemNote: "Applied to all individual collection pages",
+  },
+ // In PAGE_LAYOUT_META, update product entry:
+  product: {
+    label: "Product page", icon: "👕", path: "/products/[handle]",
+    defaultSections: [
+      { 
+        id: "def_prod_upsell", 
+        type: "featured" as SectionType, 
+        title: "You might also like", 
+        limit: 4, 
+        columns: 4 
+      },
+    ],
+    isFixed: true,
+    systemNote: "Product images, variants & Add to Cart are always shown above your sections",
+  },
+  cart: {
+    label: "Cart", icon: "🛒", path: "/cart",
+    defaultSections: [
+      { id: "def_cart_upsell", type: "featured" as SectionType, title: "Complete your look", limit: 4, columns: 4 },
+    ],
+    isFixed: true,
+    systemNote: "Cart items and checkout button are always shown above your sections",
+  },
+  search: {
+    label: "Search", icon: "🔍", path: "/search",
+    defaultSections: [],
+    isFixed: true,
+    systemNote: "Search bar and results are always shown above your sections",
+  },
+}
 
 const SECTION_CATEGORIES = [
   { id: "layout", label: "Layout" },
@@ -241,6 +383,300 @@ const BUILTIN_PAGES = [
   { label: "About",        url: "#about" },
 ]
 
+function ProductDetailSettings({ settings, onChange, isDark }: {
+  settings: ProductDetailSettings
+  onChange: (patch: Partial<ProductDetailSettings>) => void
+  isDark: boolean
+}) {
+  const textFaint  = isDark ? "text-gray-500" : "text-gray-400"
+  const textPrimary = isDark ? "text-white" : "text-gray-900"
+  const hoverBg    = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
+
+  const defaultOrder: ProductDetailSettings["element_order"] = 
+    ["title", "price", "colors", "sizes", "quantity", "atc", "description", "meta"]
+  const order = settings.element_order ?? defaultOrder
+
+  const moveElement = (key: string, dir: "up" | "down") => {
+    const arr = [...order]
+    const i = arr.indexOf(key as any)
+    const swap = dir === "up" ? i - 1 : i + 1
+    if (swap < 0 || swap >= arr.length) return
+    ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
+    onChange({ element_order: arr })
+  }
+
+  const ELEMENT_META: Record<string, { label: string; icon: string }> = {
+    title:       { label: "Product Title",    icon: "T" },
+    price:       { label: "Price",            icon: "₹" },
+    colors:      { label: "Color Options",    icon: "🎨" },
+    sizes:       { label: "Size Options",     icon: "S" },
+    quantity:    { label: "Quantity Stepper", icon: "#" },
+    atc:         { label: "Add to Cart",      icon: "🛒" },
+    description: { label: "Description",      icon: "📝" },
+    meta:        { label: "Secure Badge",     icon: "🔒" },
+  }
+
+  return (
+    <div className="space-y-4">
+
+      {/* ── Element order ── */}
+      <StyleSection title="Element Order" isDark={isDark}>
+        <p className={`text-[10px] ${textFaint} mb-2 opacity-70`}>
+          Drag or use arrows to reorder product page elements.
+        </p>
+        <div className="space-y-1.5">
+          {order.map((key, i) => {
+            const meta = ELEMENT_META[key]
+            if (!meta) return null
+            return (
+              <div key={key} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border ${
+                isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"
+              }`}>
+                <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} />
+                <span className="w-5 text-center text-sm">{meta.icon}</span>
+                <span className={`flex-1 text-xs font-medium ${textPrimary}`}>{meta.label}</span>
+                <button onClick={() => moveElement(key, "up")} disabled={i === 0}
+                  className={`p-0.5 rounded ${i === 0 ? "opacity-30" : hoverBg}`}>
+                  <ChevronUp className={`w-3 h-3 ${textFaint}`} />
+                </button>
+                <button onClick={() => moveElement(key, "down")} disabled={i === order.length - 1}
+                  className={`p-0.5 rounded ${i === order.length - 1 ? "opacity-30" : hoverBg}`}>
+                  <ChevronDown className={`w-3 h-3 ${textFaint}`} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </StyleSection>
+
+      {/* ── Title settings ── */}
+      <StyleSection title="Product Title" isDark={isDark}>
+        <div className="space-y-2.5">
+          <Field label="Size" faint={textFaint}>
+            <div className="grid grid-cols-4 gap-1">
+              {(["sm","md","lg","xl"] as const).map(s => (
+                <button key={s} onClick={() => onChange({ title_size: s })}
+                  className={`py-1.5 rounded-lg border text-xs transition-all ${
+                    (settings.title_size ?? "lg") === s
+                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                  }`}>{s.toUpperCase()}</button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Weight" faint={textFaint}>
+            <div className="grid grid-cols-4 gap-1">
+              {(["normal","semibold","bold","extrabold"] as const).map(w => (
+                <button key={w} onClick={() => onChange({ title_weight: w })}
+                  className={`py-1.5 rounded-lg border text-[10px] transition-all ${
+                    (settings.title_weight ?? "bold") === w
+                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                  }`}>{w}</button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Color" faint={textFaint}>
+            <div className="flex gap-1.5">
+              {settings.title_color ? (
+                <>
+                  <input type="color" value={settings.title_color}
+                    onChange={e => onChange({ title_color: e.target.value })}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <input type="text" value={settings.title_color}
+                    onChange={e => onChange({ title_color: e.target.value })}
+                    className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                    }`} />
+                  <button onClick={() => onChange({ title_color: undefined })} className="text-red-400 shrink-0">
+                    <X className="w-3 h-3" />
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => onChange({ title_color: isDark ? "#ffffff" : "#111827" })}
+                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                    isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                           : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                  }`}>
+                  <Plus className="w-3 h-3" />Set color
+                </button>
+              )}
+            </div>
+          </Field>
+        </div>
+      </StyleSection>
+
+      {/* ── Price settings ── */}
+      <StyleSection title="Price" isDark={isDark}>
+        <div className="space-y-2.5">
+          <Field label="Size" faint={textFaint}>
+            <div className="grid grid-cols-4 gap-1">
+              {(["sm","md","lg","xl"] as const).map(s => (
+                <button key={s} onClick={() => onChange({ price_size: s })}
+                  className={`py-1.5 rounded-lg border text-xs transition-all ${
+                    (settings.price_size ?? "lg") === s
+                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                  }`}>{s.toUpperCase()}</button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Color" faint={textFaint}>
+            <div className="flex gap-1.5">
+              {settings.price_color ? (
+                <>
+                  <input type="color" value={settings.price_color}
+                    onChange={e => onChange({ price_color: e.target.value })}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <input type="text" value={settings.price_color}
+                    onChange={e => onChange({ price_color: e.target.value })}
+                    className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                    }`} />
+                  <button onClick={() => onChange({ price_color: undefined })} className="text-red-400 shrink-0">
+                    <X className="w-3 h-3" />
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => onChange({ price_color: "#e65100" })}
+                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                    isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                           : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                  }`}>
+                  <Plus className="w-3 h-3" />Set color
+                </button>
+              )}
+            </div>
+          </Field>
+        </div>
+      </StyleSection>
+
+      {/* ── Color swatches ── */}
+      <StyleSection title="Color Options" isDark={isDark}>
+        <div className="space-y-2.5">
+          <Field label="Label text" faint={textFaint}>
+            <EditorInput value={settings.colors_label ?? "Color"}
+              onChange={v => onChange({ colors_label: v })} placeholder="Color" isDark={isDark} />
+          </Field>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div className="relative shrink-0" onClick={() => onChange({ show_color_label: !(settings.show_color_label ?? true) })}>
+              <div className={`w-8 h-4 rounded-full transition-colors ${(settings.show_color_label ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
+              <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.show_color_label ?? true) ? "translate-x-4" : ""}`} />
+            </div>
+            <span className={`text-xs ${textPrimary}`}>Show color label</span>
+          </label>
+          <Field label="Swatch size" faint={textFaint}>
+            <div className="grid grid-cols-3 gap-1">
+              {(["sm","md","lg"] as const).map(s => (
+                <button key={s} onClick={() => onChange({ color_swatch_size: s })}
+                  className={`py-1.5 rounded-lg border text-xs transition-all ${
+                    (settings.color_swatch_size ?? "md") === s
+                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                  }`}>{s.toUpperCase()}</button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      </StyleSection>
+
+      {/* ── Size options ── */}
+      <StyleSection title="Size Options" isDark={isDark}>
+        <div className="space-y-2.5">
+          <Field label="Label text" faint={textFaint}>
+            <EditorInput value={settings.sizes_label ?? "Size"}
+              onChange={v => onChange({ sizes_label: v })} placeholder="Size" isDark={isDark} />
+          </Field>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div className="relative shrink-0" onClick={() => onChange({ show_size_label: !(settings.show_size_label ?? true) })}>
+              <div className={`w-8 h-4 rounded-full transition-colors ${(settings.show_size_label ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
+              <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.show_size_label ?? true) ? "translate-x-4" : ""}`} />
+            </div>
+            <span className={`text-xs ${textPrimary}`}>Show size label</span>
+          </label>
+          <Field label="Button style" faint={textFaint}>
+            <div className="grid grid-cols-3 gap-1">
+              {(["pill","box","underline"] as const).map(s => (
+                <button key={s} onClick={() => onChange({ size_style: s })}
+                  className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+                    (settings.size_style ?? "pill") === s
+                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                  }`}>{s}</button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      </StyleSection>
+
+      {/* ── Add to Cart ── */}
+      <StyleSection title="Add to Cart Button" isDark={isDark}>
+        <div className="space-y-2.5">
+          <Field label="Button label" faint={textFaint}>
+            <EditorInput value={settings.atc_label ?? "Add to Cart"}
+              onChange={v => onChange({ atc_label: v })} placeholder="Add to Cart" isDark={isDark} />
+          </Field>
+          <Field label="Style" faint={textFaint}>
+            <div className="grid grid-cols-3 gap-1">
+              {(["filled","outline","pill"] as const).map(s => (
+                <button key={s} onClick={() => onChange({ atc_style: s })}
+                  className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+                    (settings.atc_style ?? "pill") === s
+                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                  }`}>{s}</button>
+              ))}
+            </div>
+          </Field>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div className="relative shrink-0" onClick={() => onChange({ atc_full_width: !(settings.atc_full_width ?? true) })}>
+              <div className={`w-8 h-4 rounded-full transition-colors ${(settings.atc_full_width ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
+              <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.atc_full_width ?? true) ? "translate-x-4" : ""}`} />
+            </div>
+            <span className={`text-xs ${textPrimary}`}>Full width button</span>
+          </label>
+        </div>
+      </StyleSection>
+
+      {/* ── Visibility toggles ── */}
+      <StyleSection title="Show / Hide Elements" isDark={isDark}>
+        <div className="space-y-2">
+          {[
+            { key: "show_quantity",     label: "Quantity stepper",  def: true },
+            { key: "show_description",  label: "Description",       def: true },
+            { key: "description_collapsed", label: "Description collapsed by default", def: false },
+            { key: "show_secure_badge", label: "Secure checkout badge", def: true },
+          ].map(({ key, label, def }) => {
+            const val = (settings as any)[key] !== undefined ? (settings as any)[key] : def
+            return (
+              <label key={key} className="flex items-center gap-2 cursor-pointer">
+                <div className="relative shrink-0" onClick={() => onChange({ [key]: !val })}>
+                  <div className={`w-8 h-4 rounded-full transition-colors ${val ? "bg-orange-500" : "bg-gray-600"}`} />
+                  <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${val ? "translate-x-4" : ""}`} />
+                </div>
+                <span className={`text-xs ${textPrimary}`}>{label}</span>
+              </label>
+            )
+          })}
+        </div>
+      </StyleSection>
+
+      {/* ── Secure badge text ── */}
+      {(settings.show_secure_badge ?? true) && (
+        <StyleSection title="Secure Badge Text" isDark={isDark}>
+          <EditorInput
+            value={settings.secure_badge_text ?? "Secure checkout via Junooni · Powered by Razorpay"}
+            onChange={v => onChange({ secure_badge_text: v })}
+            placeholder="Secure checkout via Junooni"
+            isDark={isDark}
+          />
+        </StyleSection>
+      )}
+
+    </div>
+  )
+}
+
 function slugify(s: string) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") }
 function genId() { return `s_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
 
@@ -273,7 +709,7 @@ function LinkInput({
       />
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setOpen(o => !o); setProductSearch(""); setCategorySearch("") }}
         title="Select a page"
         className={`shrink-0 flex items-center gap-0.5 px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-colors ${
           open
@@ -327,6 +763,51 @@ function LinkInput({
   )
 }
 
+function getLayoutKeyForPath(path: string): string {
+  if (!path || path === "/") return "home"
+  if (path === "/products") return "products"
+  if (path === "/categories") return "categories"
+  if (path === "/collections") return "collections"
+  if (path === "/cart") return "cart"
+  if (path === "/search") return "search"
+  if (path.startsWith("/products/")) return "product"
+  if (path.startsWith("/collections/")) return "collection"
+  if (path.startsWith("/categories/")) return "category"
+  if (path.startsWith("/p/")) return `page_${path.replace("/p/", "")}`
+  return "home"
+}
+ 
+function getPageSections(store: VendorStore, layoutKey: string): StoreSection[] {
+  if (layoutKey === "home") {
+    return (store.sections?.sections ?? []).map((s, i) => ({ ...s, id: s.id ?? `s_${i}` }))
+  }
+  const stored = (store.sections as any)?.page_layouts?.[layoutKey]?.sections
+  if (stored && stored.length > 0) {
+    return stored.map((s: any, i: number) => ({ ...s, id: s.id ?? genId() }))
+  }
+  // Return defaults for this page type
+  const meta = PAGE_LAYOUT_META[layoutKey]
+  return (meta?.defaultSections ?? []).map((s: any) => ({ ...s, id: s.id ?? genId() }))
+}
+ 
+function setPageSections(store: VendorStore, layoutKey: string, newSections: StoreSection[]): VendorStore {
+  if (layoutKey === "home") {
+    return { ...store, sections: { ...(store.sections ?? {}), sections: newSections } }
+  }
+  const existingSections = store.sections ?? { sections: [] }
+  const existingLayouts = (existingSections as any).page_layouts ?? {}
+  return {
+    ...store,
+    sections: {
+      ...existingSections,
+      page_layouts: {
+        ...existingLayouts,
+        [layoutKey]: { sections: newSections },
+      },
+    } as any,
+  }
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function StoreEditorPage() {
@@ -355,7 +836,9 @@ export default function StoreEditorPage() {
   const [editorTheme, setEditorTheme] = useState<"dark" | "light">("dark")
   const [addSectionOpen, setAddSectionOpen] = useState(false)
   const [addSectionFilter, setAddSectionFilter] = useState("all")
+  const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null) // null = append
   const [vendorCollections, setVendorCollections] = useState<{ id: string; title: string; handle: string }[]>([])
+  const [vendorCategories, setVendorCategories] = useState<{ id: string; name: string; handle: string; product_count: number }[]>([])
   const [vendorProducts, setVendorProducts] = useState<{ id: string; title: string; handle: string; thumbnail?: string; variants?: any[]; options?: any[] }[]>([])
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
   const [leftPanelOpen, setLeftPanelOpen] = useState(false)
@@ -366,58 +849,160 @@ export default function StoreEditorPage() {
   const isDark = editorTheme === "dark"
   const token = localStorage.getItem("vendorToken")
   const backendUrl = import.meta.env.VITE_MEDUSA_BACKEND_URL
-  const sections = (store.sections?.sections ?? []).map((s, i) => ({ ...s, id: s.id ?? `s_${i}` }))
+  //const sections = (store.sections?.sections ?? []).map((s, i) => ({ ...s, id: s.id ?? `s_${i}` }))
+  const currentLayoutKey  = getLayoutKeyForPath(previewPagePath)
+  const currentLayoutMeta = PAGE_LAYOUT_META[currentLayoutKey] ?? PAGE_LAYOUT_META.home
+ 
+  // Global header/footer — always from home sections
+  const homeSections = (store.sections?.sections ?? [])
+    .map((s, i) => ({ ...s, id: s.id ?? `s_${i}` }))
+  const headerSections = homeSections.filter(s => s.type === "header" || s.type === "announcement")
+  const footerSections = homeSections.filter(s => s.type === "footer")
+ 
+  // Body sections — per page
+  // In StoreEditorPage, update bodySections:
+  const bodySections = currentLayoutKey === "home"
+  ? homeSections.filter(s => !["header", "announcement", "footer"].includes(s.type))
+  : getPageSections(store, currentLayoutKey).filter(
+      s => s.id !== "__category_grid__"
+        && s.id !== "__category_products__"
+        && s.id !== "__collections_grid__"
+        && s.id !== "__collection_products__"  // ← ADD
+    )
+ 
+  // sections var — used by drag/drop and selectedSection lookup
+  const sections = currentLayoutKey === "home"
+  ? homeSections
+  : [...headerSections, ...bodySections, ...footerSections]
+    .filter(s =>
+      s.id !== "__category_grid__" &&
+      s.id !== "__category_products__" &&
+      s.id !== "__collections_grid__" &&
+      s.id !== "__collection_products__"
+    )
   const pages = store.pages?.pages ?? []
 
   // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const load = async () => {
-      if (!token) { navigate({ to: "/sign-in" }); return }
-      try {
-        const vRes = await fetch(`${backendUrl}/vendors/me`, { headers: { Authorization: `Bearer ${token}` } })
-        if (vRes.ok) { const vd = await vRes.json(); setVendorHandle(vd.vendor?.handle ?? "") }
-        const sRes = await fetch(`${backendUrl}/vendors/me/store`, { headers: { Authorization: `Bearer ${token}` } })
-        if (sRes.ok) {
-          const sd = await sRes.json()
-          if (sd.store) {
-            const secs = (sd.store.sections?.sections ?? []).map((s: any, i: number) => ({ ...s, id: s.id ?? genId() }))
-            setStore({ ...sd.store, sections: { sections: secs } })
-            setHasStore(true)
-          }
-        }
-        try {
-          const colRes = await fetch(`${backendUrl}/vendors/me/store/collections`, { headers: { Authorization: `Bearer ${token}` } })
-          if (colRes.ok) {
-            const colData = await colRes.json()
-            const cols = colData.collections?.collections ?? colData.collections ?? []
-            setVendorCollections(cols.map((c: any) => ({ id: c.id ?? c.handle, title: c.title ?? c.name ?? c.handle, handle: c.handle ?? c.id })))
-          }
-        } catch (e) { console.warn("Could not load collections:", e) }
-        try {
-          const prodRes = await fetch(
-            `${backendUrl}/vendors/products?limit=200&status=published&store_only=true`,
-            { headers: { Authorization: `Bearer ${token}` } }
+  const load = async () => {
+    if (!token) { navigate({ to: "/sign-in" }); return }
+    try {
+
+      // ── 1. Fetch vendor handle ──────────────────────────────────────────────
+      const vRes = await fetch(`${backendUrl}/vendors/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (vRes.ok) {
+        const vd = await vRes.json()
+        setVendorHandle(vd.vendor?.handle ?? "")
+      }
+
+      // ── 2. Fetch store ──────────────────────────────────────────────────────
+      const sRes = await fetch(`${backendUrl}/vendors/me/store`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (sRes.ok) {
+        const sd = await sRes.json()
+        if (sd.store) {
+          // Map home sections with IDs
+          const secs = (sd.store.sections?.sections ?? []).map(
+            (s: any) => ({ ...s, id: s.id ?? genId() })
           )
-          if (prodRes.ok) {
-            const prodData = await prodRes.json()
-            const prods = prodData.products ?? []
-            setVendorProducts(prods.map((p: any) => ({
-              id: p.id,
-              title: p.title,
-              handle: p.handle,
-              thumbnail: p.thumbnail,
-              variants: p.variants,
-              options: p.options, // product-level options e.g. [{title:"Color", values:[{value:"Red"},...]}]
-            })))
+
+          // Map page_layout sections with IDs
+          const rawLayouts = sd.store.sections?.page_layouts ?? {}
+          const mappedLayouts: Record<string, { sections: any[] }> = {}
+          for (const [key, layout] of Object.entries(rawLayouts)) {
+            mappedLayouts[key] = {
+              sections: ((layout as any).sections ?? []).map(
+                (s: any) => ({ ...s, id: s.id ?? genId() })
+              )
+            }
           }
-        } catch (e) { console.warn("Could not load products:", e) }
-      } catch (e) { console.error(e) }
-      finally { setIsLoading(false) }
+
+          setStore({
+            ...sd.store,
+            sections: {
+              sections: secs,
+              page_layouts: mappedLayouts,
+            }
+          })
+          setHasStore(true)
+
+          // ── Collections come from store.collections.collections ──
+          // These are creator-managed collections, NOT Medusa product collections
+          const storeCollections = sd.store.collections?.collections ?? []
+          setVendorCollections(storeCollections.map((c: any) => ({
+            id: c.id,
+            title: c.title ?? c.name ?? c.handle,
+            handle: c.handle,
+          })))
+        }
+      }
+
+      // ── 3. Fetch products — derives vendorProducts + vendorCategories ───────
+      // NOTE: Does NOT touch vendorCollections (already set from store above)
+      try {
+        const prodRes = await fetch(
+          `${backendUrl}/vendors/products?limit=200&status=published&store_only=true`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        if (prodRes.ok) {
+          const prodData = await prodRes.json()
+          const allProds = prodData.products ?? []
+
+          // Only published products for editor dropdowns
+          const prods = allProds.filter((p: any) => p.status === "published")
+
+          // Set vendor products
+          setVendorProducts(prods.map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            handle: p.handle,
+            thumbnail: p.thumbnail,
+            variants: p.variants,
+            options: p.options,
+          })))
+
+          // Derive categories from products
+          const catMap = new Map<string, {
+            id: string; name: string; handle: string; product_count: number
+          }>()
+          for (const p of prods) {
+            for (const c of (p.categories ?? [])) {
+              if (!c?.id) continue
+              const existing = catMap.get(c.id)
+              catMap.set(c.id, {
+                id: c.id,
+                name: c.name ?? c.handle,
+                handle: c.handle,
+                product_count: (existing?.product_count ?? 0) + 1,
+              })
+            }
+          }
+          // Only show categories that have at least 1 published creator store product
+          setVendorCategories([...catMap.values()].filter(c => c.product_count > 0))
+        }
+      } catch (e) {
+        console.warn("Could not load products/categories:", e)
+      }
+
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsLoading(false)
     }
-    load()
-  }, [])
+  }
+  load()
+}, [])
 
   // ── postMessage listener ──────────────────────────────────────────────────
+
+  const syncToIframe = useCallback(() => {
+    if (!iframeReady) return   // ← add this guard
+    iframeRef.current?.contentWindow?.postMessage({ type: "STORE_UPDATE", store, selectedId }, "*")
+  }, [store, selectedId, iframeReady])
+
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === "SECTION_CLICK") { setSelectedId(e.data.sectionId); setActiveTab("layout"); setRightPanelOpen(true) }
@@ -425,13 +1010,9 @@ export default function StoreEditorPage() {
     }
     window.addEventListener("message", handler)
     return () => window.removeEventListener("message", handler)
-  }, [store, selectedId])
+  }, [syncToIframe])  // ← syncToIframe IS the dep; it already includes store + selectedId
 
-  const syncToIframe = useCallback(() => {
-    iframeRef.current?.contentWindow?.postMessage({ type: "STORE_UPDATE", store, selectedId }, "*")
-  }, [store, selectedId])
-
-  useEffect(() => { if (iframeReady) syncToIframe() }, [store, selectedId, iframeReady])
+  useEffect(() => { if (iframeReady) syncToIframe() }, [store, selectedId, iframeReady, syncToIframe])
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -446,6 +1027,10 @@ export default function StoreEditorPage() {
       const data = await res.json()
       setStore(p => ({ ...p, ...data.store }))
       setHasStore(true)
+      
+      // ← ADD THIS: tell iframe to hard refresh after save
+      iframeRef.current?.contentWindow?.postMessage({ type: "STORE_SAVED" }, "*")
+      
       toast({ title: "Saved! ✓", description: "Your store has been updated." })
     } catch (e) {
       toast({ title: "Save failed", description: String(e), variant: "destructive" })
@@ -482,32 +1067,49 @@ export default function StoreEditorPage() {
   // ── Section helpers ───────────────────────────────────────────────────────
   const patchStore = useCallback((updater: (p: VendorStore) => VendorStore) => setStore(updater), [])
   const updateSection = useCallback((id: string, patch: Partial<StoreSection>) => {
-    patchStore(p => ({ ...p, sections: { sections: (p.sections?.sections ?? []).map(s => s.id === id ? { ...s, ...patch } : s) } }))
-  }, [patchStore])
+    const key = getLayoutKeyForPath(previewPagePath)
+    patchStore(p => {
+      const current = getPageSections(p, key)
+      const updated = current.map(s => s.id === id ? { ...s, ...patch } : s)
+      return setPageSections(p, key, updated)
+    })
+  }, [patchStore, previewPagePath])
   const removeSection = (id: string) => {
-    patchStore(p => ({ ...p, sections: { sections: (p.sections?.sections ?? []).filter(s => s.id !== id) } }))
+    const key = getLayoutKeyForPath(previewPagePath)
+    patchStore(p => {
+      const current = getPageSections(p, key)
+      return setPageSections(p, key, current.filter(s => s.id !== id))
+    })
     if (selectedId === id) { setSelectedId(null); setRightPanelOpen(false) }
   }
   const duplicateSection = (id: string) => {
-    const arr = [...(store.sections?.sections ?? [])]
-    const idx = arr.findIndex(s => s.id === id)
-    if (idx === -1) return
-    const copy = { ...arr[idx], id: genId() }
-    arr.splice(idx + 1, 0, copy)
-    patchStore(p => ({ ...p, sections: { sections: arr } }))
+    const key = getLayoutKeyForPath(previewPagePath)
+    patchStore(p => {
+      const arr = [...getPageSections(p, key)]
+      const idx = arr.findIndex(s => s.id === id)
+      if (idx === -1) return p
+      const copy = { ...arr[idx], id: genId() }
+      arr.splice(idx + 1, 0, copy)
+      return setPageSections(p, key, arr)
+    })
   }
   const toggleSection = (id: string) => {
     const s = sections.find(s => s.id === id)
     if (s) updateSection(id, { hidden: !s.hidden })
   }
   const moveSection = (id: string, dir: "up" | "down") => {
-    const arr = [...(store.sections?.sections ?? [])]
-    const i = arr.findIndex(s => s.id === id); const swap = dir === "up" ? i - 1 : i + 1
-    if (swap < 0 || swap >= arr.length) return
-    ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
-    patchStore(p => ({ ...p, sections: { sections: arr } }))
+    const key = getLayoutKeyForPath(previewPagePath)
+    patchStore(p => {
+      const arr = [...getPageSections(p, key)]
+      const i = arr.findIndex(s => s.id === id)
+      const swap = dir === "up" ? i - 1 : i + 1
+      if (swap < 0 || swap >= arr.length) return p
+      ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
+      return setPageSections(p, key, arr)
+    })
   }
   const addSection = (type: SectionType) => {
+    const key = getLayoutKeyForPath(previewPagePath)
     const ns: StoreSection = {
       id: genId(), type,
       ...(type === "hero" ? { headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products" } : {}),
@@ -524,25 +1126,69 @@ export default function StoreEditorPage() {
       ...(type === "header" ? { logo_position: "left", show_social_icons: false, nav_items: [] } : {}),
       ...(type === "footer" ? { show_newsletter: false } : {}),
       ...(type === "ticker" ? { ticker_items: ["Free shipping on orders above ₹999", "New drops every week", "Official creator merchandise"], ticker_speed: 40, ticker_separator: "✦", background_color: "#111827", text_color: "#ffffff" } : {}),
-      ...(type === "image_text" ? { title: "Our Story", text: "Share something meaningful about your brand, collection, or the story behind this product.", image_position: "left", cta_label: "Learn More", cta_url: "#about" } : {}),
-      ...(type === "video_text" ? { title: "Watch & Shop", text: "Tell your audience what this video is about. Keep it concise and engaging.", image_position: "left", video_text_url: "", cta_label: "Shop Now", cta_url: "/products" } : {}),
-      ...(type === "featured_product" ? { title: "Fan Favourite", text: "Describe why this product is special. Share the story, the craft, or the inspiration behind it.", image_position: "right", cta_label: "Get Yours", cta_url: "/products" } : {}),
-      ...(type === "instagram_feed" ? { title: "Follow me on Instagram",  limit: 9 } : {}),
+      ...(type === "image_text" ? { title: "Our Story", text: "Share something meaningful.", image_position: "left", cta_label: "Learn More", cta_url: "#about" } : {}),
+      ...(type === "video_text" ? { title: "Watch & Shop", text: "Tell your audience what this video is about.", image_position: "left", video_text_url: "", cta_label: "Shop Now", cta_url: "/products" } : {}),
+      ...(type === "featured_product" ? { title: "Fan Favourite", text: "Describe why this product is special.", image_position: "right", cta_label: "Get Yours", cta_url: "/products" } : {}),
     }
-    patchStore(p => ({ ...p, sections: { sections: [...(p.sections?.sections ?? []), ns] } }))
-    setSelectedId(ns.id); setAddSectionOpen(false); setActiveTab("layout"); setLeftPanelOpen(false); setRightPanelOpen(true)
+ 
+    patchStore(p => {
+      if (key === "home") {
+        // Home: respect header/footer zones
+        const arr = [...(p.sections?.sections ?? [])]
+        const footerIdx = arr.findIndex(s => s.type === "footer")
+        if (type === "header") arr.unshift(ns)
+        else if (type === "footer") arr.push(ns)
+        else if (insertAtIndex !== null) arr.splice(insertAtIndex + 1, 0, ns)
+        else if (footerIdx !== -1) arr.splice(footerIdx, 0, ns)
+        else arr.push(ns)
+        return { ...p, sections: { ...(p.sections ?? {}), sections: arr } }
+      } else {
+        const current = getPageSections(p, key)
+        // Exclude virtual sections from positioning logic
+       const realSections = current.filter((s: any) => 
+      s.id !== "__category_grid__" &&
+      s.id !== "__category_products__" &&
+      s.id !== "__collections_grid__" &&  // ← ADD
+      s.id !== "__collection_products__"
+    )
+        const virtualSections = current.filter((s: any) => 
+      s.id === "__category_grid__" ||
+      s.id === "__category_products__" ||
+      s.id === "__collections_grid__" ||  // ← ADD
+      s.id === "__collection_products__"
+    )
+        
+        const insertIdx = insertAtIndex !== null ? insertAtIndex + 1 : realSections.length
+        realSections.splice(insertIdx, 0, ns)
+        
+        // Always keep virtual sections at end of array (they don't render as body sections)
+        return setPageSections(p, key, [...realSections, ...virtualSections])
+      }
+    })
+ 
+    setInsertAtIndex(null)
+    setSelectedId(ns.id)
+    setAddSectionOpen(false)
+    setActiveTab("layout")
+    setLeftPanelOpen(false)
+    setRightPanelOpen(true)
   }
   const handleDragStart = (id: string) => setIsDragging(id)
   const handleDragOver = (e: React.DragEvent, idx: number) => { e.preventDefault(); setDragOver(idx) }
   const handleDrop = (e: React.DragEvent, toIdx: number) => {
     e.preventDefault()
     if (!isDragging) return
-    const arr = [...(store.sections?.sections ?? [])]
-    const fromIdx = arr.findIndex(s => s.id === isDragging)
-    if (fromIdx === -1) return
-    const [moved] = arr.splice(fromIdx, 1); arr.splice(toIdx, 0, moved)
-    patchStore(p => ({ ...p, sections: { sections: arr } }))
-    setIsDragging(null); setDragOver(null)
+    const key = getLayoutKeyForPath(previewPagePath)
+    patchStore(p => {
+      const arr = [...getPageSections(p, key)]
+      const fromIdx = arr.findIndex(s => s.id === isDragging)
+      if (fromIdx === -1) return p
+      const [moved] = arr.splice(fromIdx, 1)
+      arr.splice(toIdx, 0, moved)
+      return setPageSections(p, key, arr)
+    })
+    setIsDragging(null)
+    setDragOver(null)
   }
 
   // ── Page helpers ──────────────────────────────────────────────────────────
@@ -620,27 +1266,47 @@ export default function StoreEditorPage() {
       <div className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain">
 
         {/* ══ LAYOUT TAB ══════════════════════════════════════════════ */}
-        {activeTab === "layout" && (
-          <div className="p-2 space-y-1">
-            {sections.map((s, idx) => {
-              const block = SECTION_BLOCKS.find(b => b.type === s.type)
-              const isSelected = selectedId === s.id
-              return (
-                <div key={s.id} draggable
+        {activeTab === "layout" && (() => {
+          const headerSections = sections.filter(s => s.type === "header" || s.type === "announcement")
+          const footerSections = sections.filter(s => s.type === "footer")
+          const bodySections   = sections.filter(s => !["header","announcement","footer"].includes(s.type))
+
+          const SectionRow = ({ s, idx }: { s: typeof sections[0], idx: number }) => {
+            const block = SECTION_BLOCKS.find(b => b.type === s.type)
+            const isSelected = selectedId === s.id
+            const globalIdx = sections.findIndex(x => x.id === s.id)
+            return (
+              <div className="relative group/row">
+                {/* Hover insert zone above */}
+                <div
+                  className="absolute -top-2 left-0 right-0 h-4 z-10 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity"
+                  onMouseEnter={() => {}}
+                >
+                  <button
+                    onClick={e => { e.stopPropagation(); setInsertAtIndex(globalIdx - 1); setAddSectionOpen(true); setAddSectionFilter("all") }}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500 text-white text-[10px] font-semibold shadow-lg hover:bg-orange-600 transition-colors z-20"
+                  >
+                    <Plus className="w-2.5 h-2.5" /> Add
+                  </button>
+                </div>
+
+                <div
+                  draggable
                   onDragStart={() => handleDragStart(s.id)}
-                  onDragOver={e => handleDragOver(e, idx)}
-                  onDrop={e => handleDrop(e, idx)}
+                  onDragOver={e => handleDragOver(e, globalIdx)}
+                  onDrop={e => handleDrop(e, globalIdx)}
                   onDragEnd={() => { setIsDragging(null); setDragOver(null) }}
                   onClick={() => {
                     setSelectedId(isSelected ? null : s.id)
                     if (!isSelected) { setRightPanelOpen(true); if (window.innerWidth < 768) setLeftPanelOpen(false) }
                     else setRightPanelOpen(false)
                   }}
-                  className={`group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-all select-none ${
+                  className={`flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-all select-none ${
                     isSelected ? "bg-orange-500/15 border border-orange-500/40" :
-                    dragOver === idx ? `border border-dashed ${isDark ? "bg-gray-700/50 border-gray-500" : "bg-gray-100 border-gray-300"}` :
+                    dragOver === globalIdx ? `border border-dashed ${isDark ? "bg-gray-700/50 border-gray-500" : "bg-gray-100 border-gray-300"}` :
                     `border border-transparent ${hoverBg}`
-                  } ${s.hidden ? "opacity-40" : ""}`}>
+                  } ${s.hidden ? "opacity-40" : ""}`}
+                >
                   <GripVertical className={`w-3 h-3 shrink-0 cursor-grab ${textFaint}`} />
                   <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0"
                     style={{ background: `${block?.color ?? "#666"}22`, color: block?.color ?? "#666" }}>{block?.icon}</div>
@@ -648,53 +1314,534 @@ export default function StoreEditorPage() {
                     <p className={`text-xs font-medium truncate ${textPrimary}`}>{block?.label}</p>
                     <p className={`text-[10px] truncate ${textFaint}`}>{s.headline || s.title || s.type}</p>
                   </div>
-                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 shrink-0">
+                  <div className="flex gap-0.5 opacity-0 group-hover/row:opacity-100 shrink-0">
                     <button onClick={e => { e.stopPropagation(); duplicateSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title="Duplicate"><Copy className={`w-2.5 h-2.5 ${textMuted}`} /></button>
-                    <button onClick={e => { e.stopPropagation(); toggleSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`}>
-                      {s.hidden ? <Eye className={`w-2.5 h-2.5 ${textMuted}`} /> : <EyeOff className={`w-2.5 h-2.5 ${textMuted}`} />}
+                    <button onClick={e => { e.stopPropagation(); toggleSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title={s.hidden ? "Show section" : "Hide section"}>
+                      {s.hidden ? <EyeOff className={`w-2.5 h-2.5 ${textMuted}`} /> : <Eye className={`w-2.5 h-2.5 ${textMuted}`} />}
                     </button>
                     <button onClick={e => { e.stopPropagation(); removeSection(s.id) }} className="p-0.5 rounded hover:bg-red-900/50"><Trash2 className="w-2.5 h-2.5 text-red-400" /></button>
                   </div>
                 </div>
-              )
-            })}
-            {sections.length === 0 && (
-              <div className="py-8 text-center">
-                <p className={`text-xs ${textFaint}`}>No sections yet</p>
-                <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Click "+ Add section" below</p>
               </div>
-            )}
-            <div className={`pt-2 border-t ${panelBorder}`}>
-              <button onClick={() => setAddSectionOpen(!addSectionOpen)}
-                className={`w-full flex items-center justify-between px-2 py-2 rounded-lg text-xs font-medium transition-all ${isDark ? "text-orange-400 hover:bg-gray-800 border border-dashed border-gray-700 hover:border-orange-500/50" : "text-orange-600 hover:bg-orange-50 border border-dashed border-gray-300"}`}>
-                <span className="flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" />Add section</span>
-                <ChevronRight className={`w-3 h-3 transition-transform ${addSectionOpen ? "rotate-90" : ""}`} />
-              </button>
-              {addSectionOpen && (
-                <div className={`mt-1.5 rounded-xl border overflow-hidden ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
-                  <div className="flex gap-1 p-1.5 overflow-x-auto">
-                    {[{ id: "all", label: "All" }, ...SECTION_CATEGORIES].map(cat => (
-                      <button key={cat.id} onClick={() => setAddSectionFilter(cat.id)}
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all ${addSectionFilter === cat.id ? "bg-orange-500 text-white" : `${textFaint} ${hoverBg}`}`}>
-                        {cat.label}
-                      </button>
-                    ))}
-                  </div>
-                  {SECTION_BLOCKS.filter(b => addSectionFilter === "all" || b.category === addSectionFilter).map(block => (
-                    <button key={block.type} onClick={() => addSection(block.type)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 transition-all text-left ${hoverBg} border-t ${isDark ? "border-gray-700/50" : "border-gray-100"}`}>
-                      <div className="flex items-center justify-center w-6 h-6 rounded-lg shrink-0" style={{ background: `${block.color}20`, color: block.color }}>{block.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-medium ${textPrimary}`}>{block.label}</p>
-                        <p className={`text-[10px] ${textFaint}`}>{block.desc}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+            )
+          }
+
+          const ZoneLabel = ({ label, color }: { label: string; color: string }) => (
+            <div className="flex items-center gap-2 px-1 pt-2 pb-1">
+              <div className="w-1 h-3 rounded-full" style={{ background: color }} />
+              <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color }}>{label}</span>
             </div>
-          </div>
-        )}
+          )
+
+          const AddBetweenLine = ({ afterIndex }: { afterIndex: number }) => {
+            const isOpen = addSectionOpen && insertAtIndex === afterIndex
+            return (
+              <div className="relative group/addline py-0.5">
+                {/* The hover line */}
+                <div className={`flex items-center gap-0 transition-opacity ${isOpen ? "opacity-100" : "opacity-0 group-hover/addline:opacity-100"}`}>
+                  <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
+                  <button
+                    onClick={e => { e.stopPropagation(); if (isOpen) { setAddSectionOpen(false); setInsertAtIndex(null) } else { setInsertAtIndex(afterIndex); setAddSectionOpen(true); setAddSectionFilter("all") } }}
+                    className="mx-1 flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white shadow-lg hover:bg-orange-600 transition-colors shrink-0"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                  <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
+                </div>
+                {/* Invisible hit area so hover works in the gap */}
+                {!isOpen && <div className="absolute inset-x-0 -top-2 -bottom-2" style={{ pointerEvents: "none" }} />}
+                {/* The popover */}
+                {isOpen && (
+                  <div className={`mt-1 rounded-xl border overflow-hidden shadow-xl ${isDark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-white"}`}>
+                    <div className="flex items-center justify-between px-2 py-1.5 border-b" style={{ borderColor: isDark ? "#374151" : "#e5e7eb" }}>
+                      <span className={`text-[10px] font-semibold uppercase tracking-wider ${textFaint}`}>Add section</span>
+                      <button onClick={() => { setAddSectionOpen(false); setInsertAtIndex(null) }} className={`p-0.5 rounded ${textFaint} hover:text-red-400`}><X className="w-3 h-3" /></button>
+                    </div>
+                    <div className="flex gap-1 p-1.5 overflow-x-auto border-b" style={{ borderColor: isDark ? "#374151" : "#e5e7eb" }}>
+                      {[{ id: "all", label: "All" }, ...SECTION_CATEGORIES].map(cat => (
+                        <button key={cat.id} onClick={() => setAddSectionFilter(cat.id)}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all ${addSectionFilter === cat.id ? "bg-orange-500 text-white" : `${textFaint} ${hoverBg}`}`}>
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="max-h-52 overflow-y-auto">
+                      {SECTION_BLOCKS
+                        .filter(b => {
+                          const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey] ?? PAGE_ALLOWED_SECTIONS.home
+                          return allowed.includes(b.type) && (addSectionFilter === "all" || b.category === addSectionFilter)
+                        })
+                        .map(block => (
+                        <button key={block.type} onClick={() => addSection(block.type)}
+                          className={`w-full flex items-center gap-2.5 px-2.5 py-2 transition-all text-left ${hoverBg} border-t ${isDark ? "border-gray-700/50" : "border-gray-100"}`}>
+                          <div className="flex items-center justify-center w-6 h-6 rounded-lg shrink-0" style={{ background: `${block.color}20`, color: block.color }}>{block.icon}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-medium ${textPrimary}`}>{block.label}</p>
+                            <p className={`text-[10px] ${textFaint}`}>{block.desc}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          // Keep AddBetweenButton as a zone-end "Add section" dashed button (only at zone end, no hover trick needed)
+          const AddBetweenButton = ({ afterIndex, zone }: { afterIndex: number; zone: string }) => {
+            const isOpen = addSectionOpen && insertAtIndex === afterIndex
+            return (
+              <div className="pt-1">
+                <button
+                  onClick={() => { if (isOpen) { setAddSectionOpen(false); setInsertAtIndex(null) } else { setInsertAtIndex(afterIndex); setAddSectionOpen(true); setAddSectionFilter("all") } }}
+                  className={`w-full flex items-center justify-center gap-1.5 py-1 rounded-lg border border-dashed text-[10px] font-medium transition-all ${
+                    isOpen
+                      ? isDark ? "border-orange-500/60 text-orange-400 bg-orange-500/5" : "border-orange-400 text-orange-500 bg-orange-50"
+                      : isDark ? "border-gray-700 text-gray-600 hover:border-orange-500/60 hover:text-orange-400 hover:bg-orange-500/5"
+                             : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500 hover:bg-orange-50"
+                  }`}
+                >
+                  <Plus className="w-3 h-3" /> Add section
+                </button>
+                {isOpen && (
+                  <div className={`mt-1 rounded-xl border overflow-hidden shadow-xl ${isDark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-white"}`}>
+                    <div className="flex items-center justify-between px-2 py-1.5 border-b" style={{ borderColor: isDark ? "#374151" : "#e5e7eb" }}>
+                      <span className={`text-[10px] font-semibold uppercase tracking-wider ${textFaint}`}>Add section</span>
+                      <button onClick={() => { setAddSectionOpen(false); setInsertAtIndex(null) }} className={`p-0.5 rounded ${textFaint} hover:text-red-400`}><X className="w-3 h-3" /></button>
+                    </div>
+                    <div className="flex gap-1 p-1.5 overflow-x-auto border-b" style={{ borderColor: isDark ? "#374151" : "#e5e7eb" }}>
+                      {[{ id: "all", label: "All" }, ...SECTION_CATEGORIES].map(cat => (
+                        <button key={cat.id} onClick={() => setAddSectionFilter(cat.id)}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all ${addSectionFilter === cat.id ? "bg-orange-500 text-white" : `${textFaint} ${hoverBg}`}`}>
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="max-h-52 overflow-y-auto">
+                      {SECTION_BLOCKS
+                        .filter(b => {
+                          const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey] ?? PAGE_ALLOWED_SECTIONS.home
+                          return allowed.includes(b.type) && (addSectionFilter === "all" || b.category === addSectionFilter)
+                        })
+                        .map(block => (
+                        <button key={block.type} onClick={() => addSection(block.type)}
+                          className={`w-full flex items-center gap-2.5 px-2.5 py-2 transition-all text-left ${hoverBg} border-t ${isDark ? "border-gray-700/50" : "border-gray-100"}`}>
+                          <div className="flex items-center justify-center w-6 h-6 rounded-lg shrink-0" style={{ background: `${block.color}20`, color: block.color }}>{block.icon}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-medium ${textPrimary}`}>{block.label}</p>
+                            <p className={`text-[10px] ${textFaint}`}>{block.desc}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          return (
+            <div className="p-2 space-y-1 pb-4">
+
+              {/* ── HEADER ZONE ── */}
+              <ZoneLabel label="Header" color="#6366f1" />
+              <div className={`rounded-xl border overflow-hidden ${isDark ? "border-indigo-900/40 bg-indigo-950/20" : "border-indigo-100 bg-indigo-50/30"}`}>
+                <div className="p-1.5 space-y-1">
+                  {/* Announcement rows FIRST (above Store Header) */}
+                  {headerSections.length === 0 ? (
+                    <div className={`flex items-center gap-2 px-2 py-2 rounded-lg opacity-50 border border-dashed ${isDark ? "border-indigo-800 text-indigo-400" : "border-indigo-300 text-indigo-500"}`}>
+                      <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-indigo-500/20"><Megaphone className="w-3 h-3 text-indigo-500" /></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium">Announcement Bar</p>
+                        <p className={`text-[10px] ${textFaint}`}>Click "+ Add section" to add one</p>
+                      </div>
+                    </div>
+                  ) : (
+                    headerSections.map((s, i) => <SectionRow key={s.id} s={s} idx={i} />)
+                  )}
+                  {/* Locked Store Header row — always below announcements */}
+                  <div className={`flex items-center gap-2 px-2 py-2 rounded-lg border ${isDark ? "border-indigo-800/40 bg-indigo-900/20" : "border-indigo-200/60 bg-indigo-50/50"}`}>
+                    <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-indigo-500/20"><Menu className="w-3 h-3 text-indigo-500" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium truncate ${isDark ? "text-indigo-300" : "text-indigo-700"}`}>Store Header</p>
+                      <p className={`text-[10px] ${textFaint}`}>Nav • Logo • Search • Cart</p>
+                    </div>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isDark ? "bg-indigo-900/50 text-indigo-400" : "bg-indigo-100 text-indigo-500"}`}>Auto</span>
+                  </div>
+                </div>
+                <div className="px-1.5 pb-1.5">
+                  <AddBetweenButton afterIndex={headerSections.length > 0 ? Math.max(...headerSections.map(s => sections.findIndex(x => x.id === s.id))) : -1} zone="header" />
+                </div>
+              </div>
+
+              {/* ── BODY ZONE ── */}
+             <ZoneLabel label={currentLayoutKey === "home" ? "Body" : currentLayoutMeta.label} color="#e65100" />
+              <div className={`rounded-xl border overflow-hidden ${isDark ? "border-orange-900/30 bg-orange-950/10" : "border-orange-100 bg-orange-50/20"}`}>
+
+                {/* Product Detail clickable row — only on product page */}
+                {currentLayoutKey === "product" && (
+                  <div className="px-1.5 pt-1.5">
+                    <div
+                      onClick={() => {
+                        setSelectedId("__product_detail__")
+                        setRightPanelOpen(true)
+                        if (window.innerWidth < 768) setLeftPanelOpen(false)
+                      }}
+                      className={`flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer border transition-all ${
+                        selectedId === "__product_detail__"
+                          ? "bg-pink-500/15 border-pink-500/40"
+                          : `border-transparent ${hoverBg}`
+                      }`}
+                    >
+                      <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-pink-500/20">
+                        <ShoppingBag className="w-3 h-3 text-pink-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium truncate ${textPrimary}`}>Product Detail</p>
+                        <p className={`text-[10px] ${textFaint}`}>Title · Price · Colors · Sizes · ATC</p>
+                      </div>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                        isDark ? "bg-pink-900/50 text-pink-400" : "bg-pink-100 text-pink-500"
+                      }`}>Edit</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-1.5 space-y-1">
+
+                  {/* ── CATEGORIES: grid row FIRST, then sections below ── */}
+                  {currentLayoutKey === "categories" && (<>
+                    <div
+                      onClick={() => {
+                        const key = "categories"
+                        const existing = getPageSections(store, key)
+                        if (!existing.find((s: any) => s.id === "__category_grid__")) {
+                          patchStore(p => setPageSections(p, key, [
+                            { id: "__category_grid__", type: "category_grid" as SectionType, title: "Categories", columns: 4 },
+                            ...getPageSections(p, key),
+                          ]))
+                        }
+                        setSelectedId("__category_grid__")
+                        setRightPanelOpen(true)
+                      }}
+                      className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                        selectedId === "__category_grid__"
+                          ? "bg-orange-500/15 border-orange-500/40"
+                          : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                        <Layout className="w-3 h-3 text-orange-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                          Category Grid
+                        </p>
+                        <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
+                      </div>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                        selectedId === "__category_grid__"
+                          ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
+                          : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
+                      }`}>Edit</span>
+                    </div>
+                    {bodySections.length === 0 ? (
+                      <div className="py-3 text-center">
+                        <p className={`text-[10px] ${textFaint} opacity-60`}>Add sections below the category grid</p>
+                      </div>
+                    ) : (
+                      bodySections.map((s, i) => (
+                        <div key={s.id}>
+                          <SectionRow s={s} idx={i} />
+                          {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                        </div>
+                      ))
+                    )}
+                  </>)}
+
+                  {/* ── COLLECTIONS: grid row FIRST (editable), then sections below ── */}
+                  {/* // ADD this BEFORE the OTHER SYSTEM PAGES block: */}
+                  {currentLayoutKey === "collection" && (<>
+                    {bodySections.length === 0 ? (
+                      <div className="py-3 text-center">
+                        <p className={`text-[10px] ${textFaint} opacity-60`}>
+                          Add sections above or below the products
+                        </p>
+                      </div>
+                    ) : (
+                      bodySections.map((s, i) => (
+                        <div key={s.id}>
+                          <SectionRow s={s} idx={i} />
+                          {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                        </div>
+                      ))
+                    )}
+                    <div
+                      onClick={() => {
+                        const key = "collection"
+                        const existing = getPageSections(store, key)
+                        if (!existing.find((s: any) => s.id === "__collection_products__")) {
+                          patchStore(p => setPageSections(p, key, [
+                            ...getPageSections(p, key),
+                            { id: "__collection_products__", type: "collection_products" as SectionType,
+                              title: "Products", columns: 3 },
+                          ]))
+                        }
+                        setSelectedId("__collection_products__")
+                        setRightPanelOpen(true)
+                      }}
+                      className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                        selectedId === "__collection_products__"
+                          ? "bg-orange-500/15 border-orange-500/40"
+                          : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                        <Layout className="w-3 h-3 text-orange-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                          Collection Products
+                        </p>
+                        <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
+                      </div>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                        selectedId === "__collection_products__"
+                          ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
+                          : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
+                      }`}>Edit</span>
+                    </div>
+                  </>)}
+
+                  {/* ── COLLECTIONS PAGE: sections first, editable Collections Grid row at bottom ── */}
+                  {currentLayoutKey === "collections" && (<>
+                  {/* Collections Grid — always pinned at TOP */}
+                  <div
+                    onClick={() => {
+                      const key = "collections"
+                      const existing = getPageSections(store, key)
+                      if (!existing.find((s: any) => s.id === "__collections_grid__")) {
+                        patchStore(p => setPageSections(p, key, [
+                          { id: "__collections_grid__", type: "collections_grid" as SectionType,
+                            title: "Collections", columns: 3 },
+                          ...getPageSections(p, key).filter((s: any) => s.id !== "__collections_grid__"),
+                        ]))
+                      }
+                      setSelectedId("__collections_grid__")
+                      setRightPanelOpen(true)
+                    }}
+                    className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                      selectedId === "__collections_grid__"
+                        ? "bg-orange-500/15 border-orange-500/40"
+                        : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                      <Layout className="w-3 h-3 text-orange-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                        Collections Grid
+                      </p>
+                      <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
+                    </div>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                      selectedId === "__collections_grid__"
+                        ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
+                        : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
+                    }`}>Edit</span>
+                  </div>
+
+                  {/* Custom sections BELOW grid */}
+                  {bodySections.length === 0 ? (
+                    <div className="py-3 text-center">
+                      <p className={`text-[10px] ${textFaint} opacity-60`}>
+                        Add sections below the collections grid
+                      </p>
+                    </div>
+                  ) : (
+                    bodySections.map((s, i) => (
+                      <div key={s.id}>
+                        <SectionRow s={s} idx={i} />
+                        {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                      </div>
+                    ))
+                  )}
+                </>)}
+
+                  {/* ── CATEGORY PAGE: sections first, editable Category Products row at bottom ── */}
+                  {currentLayoutKey === "category" && (<>
+                    {bodySections.length === 0 ? (
+                      <div className="py-3 text-center">
+                        <p className={`text-[10px] ${textFaint} opacity-60`}>Add sections above or below the products</p>
+                      </div>
+                    ) : (
+                      bodySections.map((s, i) => (
+                        <div key={s.id}>
+                          <SectionRow s={s} idx={i} />
+                          {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                        </div>
+                      ))
+                    )}
+                    <div
+                      onClick={() => {
+                        const key = "category"
+                        const existing = getPageSections(store, key)
+                        if (!existing.find((s: any) => s.id === "__category_products__")) {
+                          patchStore(p => setPageSections(p, key, [
+                            ...getPageSections(p, key),
+                            { id: "__category_products__", type: "category_products" as SectionType, title: "Products", columns: 3 },
+                          ]))
+                        }
+                        setSelectedId("__category_products__")
+                        setRightPanelOpen(true)
+                      }}
+                      className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                        selectedId === "__category_products__"
+                          ? "bg-orange-500/15 border-orange-500/40"
+                          : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                        <Layout className="w-3 h-3 text-orange-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                          Category Products
+                        </p>
+                        <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
+                      </div>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                        selectedId === "__category_products__"
+                          ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
+                          : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
+                      }`}>Edit</span>
+                    </div>
+                  </>)}
+
+                  {/* ── OTHER SYSTEM PAGES: sections first, plain Auto row at bottom ── */}
+                  {!["categories", "collections", "category", "home"].includes(currentLayoutKey) &&
+                    !currentLayoutKey.startsWith("page_") &&
+                    ["products", "cart", "search", "product"].includes(currentLayoutKey) && (<>
+
+                      {/* System row FIRST — pinned at top */}
+                      <div
+                        onClick={() => {
+                          setSelectedId(`__${currentLayoutKey}_system__`)
+                          setRightPanelOpen(true)
+                          if (window.innerWidth < 768) setLeftPanelOpen(false)
+                        }}
+                        className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                          selectedId === `__${currentLayoutKey}_system__`
+                            ? "bg-orange-500/15 border-orange-500/40"
+                            : isDark ? "border-orange-800/40 bg-orange-900/20 hover:border-orange-700"
+                                    : "border-orange-200/60 bg-orange-50/50 hover:border-orange-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                          <Layout className="w-3 h-3 text-orange-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                            {currentLayoutKey === "products"  ? "Product Grid" :
+                            currentLayoutKey === "cart"      ? "Cart Items & Checkout" :
+                            currentLayoutKey === "search"    ? "Search Bar & Results" :
+                            currentLayoutKey === "product"   ? "Product Images · Variants · Add to Cart" :
+                            "System Content"}
+                          </p>
+                          <p className={`text-[10px] ${textFaint}`}>Rendered automatically</p>
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                          selectedId === `__${currentLayoutKey}_system__`
+                            ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
+                            : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
+                        }`}>
+                          {selectedId === `__${currentLayoutKey}_system__` ? "Editing" : "Auto"}
+                        </span>
+                      </div>
+
+                      {/* Custom sections BELOW system row */}
+                      {bodySections.length === 0 ? (
+                        <div className="py-3 text-center">
+                          <p className={`text-[10px] ${textFaint} opacity-60`}>
+                            Add sections below the system content
+                          </p>
+                        </div>
+                      ) : (
+                        bodySections.map((s, i) => (
+                          <div key={s.id}>
+                            <SectionRow s={s} idx={i} />
+                            {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                          </div>
+                        ))
+                      )}
+                    </>)}
+
+                  {/* ── HOME PAGE ── */}
+                  {currentLayoutKey === "home" && (<>
+                    {bodySections.length === 0 && (
+                      <div className="py-6 text-center space-y-1">
+                        <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
+                        <p className={`text-[10px] ${textFaint} opacity-60`}>
+                          Click "+ Add section" to build this page
+                        </p>
+                      </div>
+                    )}
+                    {bodySections.map((s, i) => (
+                      <div key={s.id}>
+                        <SectionRow s={s} idx={i} />
+                        {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                      </div>
+                    ))}
+                  </>)}
+
+                  {/* ── CUSTOM PAGES (page_*) ── */}
+                  {currentLayoutKey.startsWith("page_") && (<>
+                    {bodySections.length === 0 && (
+                      <div className="py-6 text-center space-y-1">
+                        <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
+                        <p className={`text-[10px] ${textFaint} opacity-60`}>
+                          Click "+ Add section" to build this page
+                        </p>
+                      </div>
+                    )}
+                    {bodySections.map((s, i) => (
+                      <div key={s.id}>
+                        <SectionRow s={s} idx={i} />
+                        {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                      </div>
+                    ))}
+                  </>)}
+
+                </div>
+
+                <div className="px-1.5 pb-1.5">
+                  <AddBetweenButton afterIndex={bodySections.length - 1} zone="body-end" />
+                </div>
+              </div>
+
+              {/* ── FOOTER ZONE ── */}
+              <ZoneLabel label="Footer" color="#0ea5e9" />
+              <div className={`rounded-xl border overflow-hidden ${isDark ? "border-sky-900/40 bg-sky-950/20" : "border-sky-100 bg-sky-50/30"}`}>
+                <div className="p-1.5 space-y-1">
+                  {/* Editable footer sections if any */}
+                  {footerSections.map((s, i) => <SectionRow key={s.id} s={s} idx={i} />)}
+                  {/* Locked Store Footer row — always at bottom */}
+                  <div className={`flex items-center gap-2 px-2 py-2 rounded-lg border ${isDark ? "border-sky-800/40 bg-sky-900/20" : "border-sky-200/60 bg-sky-50/50"}`}>
+                    <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-sky-500/20"><Layout className="w-3 h-3 text-sky-500" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium truncate ${isDark ? "text-sky-300" : "text-sky-700"}`}>Store Footer</p>
+                      <p className={`text-[10px] ${textFaint}`}>Links • Social • Copyright</p>
+                    </div>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isDark ? "bg-sky-900/50 text-sky-400" : "bg-sky-100 text-sky-500"}`}>Auto</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )
+        })()}
 
         {/* ══ STYLE TAB ═══════════════════════════════════════════════ */}
         {activeTab === "style" && (
@@ -949,13 +2096,6 @@ export default function StoreEditorPage() {
                 </div>
               </div>
             </StyleSection>
-            <StyleSection title="Instagram Feed" isDark={isDark}>
-            <InstagramConnectPanel
-              token={token ?? ""}
-              backendUrl={backendUrl}
-              isDark={isDark}
-            />
-          </StyleSection>
           </div>
         )}
 
@@ -1149,23 +2289,183 @@ export default function StoreEditorPage() {
     </>
   )
 
-  // ── Right panel content ───────────────────────────────────────────────────
-  const RightPanelContent = selectedSection ? (
-    <>
-      <div className="flex justify-center pt-2 pb-1 md:hidden shrink-0">
-        <div className="w-10 h-1 bg-gray-600 rounded-full" />
-      </div>
-      <div className={`flex items-center justify-between px-3 py-2.5 border-b shrink-0 ${panelBorder}`}>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-5 h-5 rounded-md"
-            style={{ background: `${SECTION_BLOCKS.find(b => b.type === selectedSection.type)?.color ?? "#666"}20`, color: SECTION_BLOCKS.find(b => b.type === selectedSection.type)?.color ?? "#666" }}>
-            {SECTION_BLOCKS.find(b => b.type === selectedSection.type)?.icon}
-          </div>
-          <span className={`text-sm font-semibold ${textPrimary}`}>{SECTION_BLOCKS.find(b => b.type === selectedSection.type)?.label ?? selectedSection.type}</span>
+  const isProductDetailPanel      = selectedId === "__product_detail__"
+  const isCategoryGridPanel       = selectedId === "__category_grid__"
+  const isCategoryProductsPanel   = selectedId === "__category_products__"
+  const isCollectionsGridPanel    = selectedId === "__collections_grid__"
+  const isCollectionProductsPanel = selectedId === "__collection_products__"
+  const isSystemPanel = selectedId?.endsWith("_system__") ?? false
+  const isVirtualPanel = isProductDetailPanel || isCategoryGridPanel || isCategoryProductsPanel || isCollectionsGridPanel || isCollectionProductsPanel || isSystemPanel
+
+  // Get the virtual section data for grid/products panels:
+  const categoryGridSection     = isCategoryGridPanel
+    ? (getPageSections(store, "categories").find((s: any) => s.id === "__category_grid__") ?? { id: "__category_grid__", type: "category_grid", title: "Categories", columns: 4 })
+    : null
+    // Add collections grid section data:
+  const collectionsGridSection = isCollectionsGridPanel
+    ? (getPageSections(store, "collections").find((s: any) => s.id === "__collections_grid__") 
+      ?? { id: "__collections_grid__", type: "collections_grid", title: "Collections", columns: 3 })
+    : null
+  const categoryProductsSection = isCategoryProductsPanel
+    ? (getPageSections(store, "category").find((s: any) => s.id === "__category_products__") ?? { id: "__category_products__", type: "category_products", title: "Products", columns: 3 })
+    : null
+  const collectionProductsSection = isCollectionProductsPanel
+    ? (getPageSections(store, "collection").find((s: any) => s.id === "__collection_products__")
+      ?? { id: "__collection_products__", type: "collection_products", title: "Products", columns: 3 })
+    : null
+
+const RightPanelContent = (isVirtualPanel || selectedSection) ? (
+  <>
+    <div className="flex justify-center pt-2 pb-1 md:hidden shrink-0">
+      <div className="w-10 h-1 bg-gray-600 rounded-full" />
+    </div>
+
+    {/* ── Header ── */}
+    <div className={`flex items-center justify-between px-3 py-2.5 border-b shrink-0 ${panelBorder}`}>
+      <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center w-5 h-5 rounded-md"
+          style={
+            isProductDetailPanel      ? { background: "#ec489920", color: "#ec4899" } :
+            isCategoryGridPanel       ? { background: "#f59e0b20", color: "#f59e0b" } :
+            isCategoryProductsPanel   ? { background: "#f59e0b20", color: "#f59e0b" } :
+            isCollectionsGridPanel    ? { background: "#f59e0b20", color: "#f59e0b" } :
+            isCollectionProductsPanel ? { background: "#f59e0b20", color: "#f59e0b" } :
+            {
+              background: `${SECTION_BLOCKS.find(b => b.type === selectedSection?.type)?.color ?? "#666"}20`,
+              color: SECTION_BLOCKS.find(b => b.type === selectedSection?.type)?.color ?? "#666"
+            }
+          }>
+          {isProductDetailPanel
+            ? <ShoppingBag className="w-3 h-3" />
+            : (isCategoryGridPanel || isCategoryProductsPanel || isCollectionsGridPanel || isCollectionProductsPanel)
+              ? <Layout className="w-3 h-3" />
+              : SECTION_BLOCKS.find(b => b.type === selectedSection?.type)?.icon
+          }
         </div>
-        <button onClick={() => { setSelectedId(null); setRightPanelOpen(false) }} className={`p-1 ${textFaint} transition-colors`}><X className="w-3.5 h-3.5" /></button>
+        <span className={`text-sm font-semibold ${textPrimary}`}>
+          {isProductDetailPanel      ? "Product Detail" :
+          isCategoryGridPanel       ? "Category Grid" :
+          isCategoryProductsPanel   ? "Category Products" :
+          isCollectionsGridPanel    ? "Collections Grid" :
+          isCollectionProductsPanel ? "Collection Products" :
+          SECTION_BLOCKS.find(b => b.type === selectedSection?.type)?.label ?? selectedSection?.type}
+        </span>
       </div>
-      <div className="flex-1 px-3 py-3 space-y-3 overflow-y-auto overscroll-contain">
+      <button
+        onClick={() => { setSelectedId(null); setRightPanelOpen(false) }}
+        className={`p-1 ${textFaint} transition-colors`}
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+
+    {/* ── Body ── */}
+    <div className="flex-1 px-3 py-3 space-y-3 overflow-y-auto overscroll-contain">
+      {isProductDetailPanel ? (
+        <ProductDetailSettings
+          settings={store.product_detail ?? {}}
+          onChange={patch =>
+            patchStore(p => ({
+              ...p,
+              product_detail: { ...(p.product_detail ?? {}), ...patch },
+            }))
+          }
+          isDark={isDark}
+        />
+      ) : isCategoryGridPanel && categoryGridSection ? (
+        <SectionSettings
+          section={categoryGridSection as any}
+          onChange={patch => {
+            const key = "categories"
+            const existing = getPageSections(store, key)
+            const updated = existing.find((s: any) => s.id === "__category_grid__")
+              ? existing.map((s: any) => s.id === "__category_grid__" ? { ...s, ...patch } : s)
+              : [{ id: "__category_grid__", type: "category_grid", ...patch }, ...existing]
+            patchStore(p => setPageSections(p, key, updated))
+          }}
+          token={token ?? ""}
+          backendUrl={backendUrl}
+          isDark={isDark}
+          collections={vendorCollections}
+          pages={pages}
+          products={vendorProducts}
+          vendorHandle={vendorHandle}
+          currentLayoutKey="categories"
+        />
+      ) : isCategoryProductsPanel && categoryProductsSection ? (
+        <SectionSettings
+          section={categoryProductsSection as any}
+          onChange={patch => {
+            const key = "category"
+            const existing = getPageSections(store, key)
+            const updated = existing.find((s: any) => s.id === "__category_products__")
+              ? existing.map((s: any) => s.id === "__category_products__" ? { ...s, ...patch } : s)
+              : [...existing, { id: "__category_products__", type: "category_products", ...patch }]
+            patchStore(p => setPageSections(p, key, updated))
+          }}
+          token={token ?? ""}
+          backendUrl={backendUrl}
+          isDark={isDark}
+          collections={vendorCollections}
+          pages={pages}
+          products={vendorProducts}
+          vendorHandle={vendorHandle}
+          currentLayoutKey="category"
+        />
+      ) : isCollectionsGridPanel && collectionsGridSection ? (
+        <SectionSettings
+          section={collectionsGridSection as any}
+          onChange={patch => {
+            const key = "collections"
+            const existing = getPageSections(store, key)
+            const updated = existing.find((s: any) => s.id === "__collections_grid__")
+              ? existing.map((s: any) => s.id === "__collections_grid__" ? { ...s, ...patch } : s)
+              : [{ id: "__collections_grid__", type: "collections_grid", ...patch }, ...existing]
+            patchStore(p => setPageSections(p, key, updated))
+          }}
+          token={token ?? ""}
+          backendUrl={backendUrl}
+          isDark={isDark}
+          collections={vendorCollections}
+          pages={pages}
+          products={vendorProducts}
+          vendorHandle={vendorHandle}
+          currentLayoutKey="collections"
+        />
+      ) : isCollectionProductsPanel && collectionProductsSection ? (
+        <SectionSettings
+          section={collectionProductsSection as any}
+          onChange={patch => {
+            const key = "collection"
+            const existing = getPageSections(store, key)
+            const updated = existing.find((s: any) => s.id === "__collection_products__")
+              ? existing.map((s: any) => s.id === "__collection_products__" ? { ...s, ...patch } : s)
+              : [...existing, { id: "__collection_products__", type: "collection_products", ...patch }]
+            patchStore(p => setPageSections(p, key, updated))
+          }}
+          token={token ?? ""}
+          backendUrl={backendUrl}
+          isDark={isDark}
+          collections={vendorCollections}
+          pages={pages}
+          products={vendorProducts}
+          vendorHandle={vendorHandle}
+          currentLayoutKey="collection"
+        />
+        ) : isSystemPanel ? (
+        <div className="py-8 text-center space-y-2">
+          <Layout className={`w-8 h-8 mx-auto ${textFaint} opacity-40`} />
+          <p className={`text-sm font-medium ${textPrimary}`}>
+            {currentLayoutKey === "search"   ? "Search Bar & Results" :
+            currentLayoutKey === "cart"     ? "Cart Items & Checkout" :
+            currentLayoutKey === "products" ? "Product Grid" :
+            "System Content"}
+          </p>
+          <p className={`text-xs ${textFaint} opacity-70 max-w-[200px] mx-auto leading-relaxed`}>
+            This section is rendered automatically by the system and cannot be edited.
+          </p>
+        </div>
+      ) : selectedSection ? (
         <SectionSettings
           section={selectedSection}
           onChange={patch => updateSection(selectedSection.id, patch)}
@@ -1176,26 +2476,72 @@ export default function StoreEditorPage() {
           pages={pages}
           products={vendorProducts}
           vendorHandle={vendorHandle}
+          currentLayoutKey={currentLayoutKey}
         />
-      </div>
+      ) : null}
+    </div>
+
+    {/* ── Footer actions — only for regular sections, not product detail ── */}
+    {!isVirtualPanel && selectedSection && (
       <div className={`border-t ${panelBorder} px-3 py-2 flex gap-1.5 shrink-0`}>
-        <button onClick={() => moveSection(selectedSection.id, "up")} className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg border text-xs transition-all ${isDark ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white" : "border-gray-200 text-gray-500 hover:border-gray-400"}`}><ChevronUp className="w-3 h-3" />Up</button>
-        <button onClick={() => moveSection(selectedSection.id, "down")} className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg border text-xs transition-all ${isDark ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white" : "border-gray-200 text-gray-500 hover:border-gray-400"}`}><ChevronDown className="w-3 h-3" />Down</button>
-        <button onClick={() => duplicateSection(selectedSection.id)} className={`px-2.5 py-1.5 rounded-lg border text-xs transition-all ${isDark ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white" : "border-gray-200 text-gray-500 hover:border-gray-400"}`} title="Duplicate"><Copy className="w-3 h-3" /></button>
-        <button onClick={() => toggleSection(selectedSection.id)} className={`px-2.5 py-1.5 rounded-lg border text-xs transition-all ${isDark ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white" : "border-gray-200 text-gray-500 hover:border-gray-400"}`}>
-          {selectedSection.hidden ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+        <button
+          onClick={() => moveSection(selectedSection.id, "up")}
+          className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg border text-xs transition-all ${
+            isDark ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white"
+                   : "border-gray-200 text-gray-500 hover:border-gray-400"
+          }`}
+        >
+          <ChevronUp className="w-3 h-3" />Up
         </button>
-        <button onClick={() => removeSection(selectedSection.id)} className="px-2.5 py-1.5 rounded-lg border border-red-900 text-red-400 hover:bg-red-900/30 transition-all"><Trash2 className="w-3 h-3" /></button>
+        <button
+          onClick={() => moveSection(selectedSection.id, "down")}
+          className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg border text-xs transition-all ${
+            isDark ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white"
+                   : "border-gray-200 text-gray-500 hover:border-gray-400"
+          }`}
+        >
+          <ChevronDown className="w-3 h-3" />Down
+        </button>
+        <button
+          onClick={() => duplicateSection(selectedSection.id)}
+          className={`px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+            isDark ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white"
+                   : "border-gray-200 text-gray-500 hover:border-gray-400"
+          }`}
+          title="Duplicate"
+        >
+          <Copy className="w-3 h-3" />
+        </button>
+        <button
+          onClick={() => toggleSection(selectedSection.id)}
+          className={`px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+            isDark ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white"
+                   : "border-gray-200 text-gray-500 hover:border-gray-400"
+          }`}
+          title={selectedSection.hidden ? "Show section" : "Hide section"}
+        >
+          {selectedSection.hidden
+            ? <EyeOff className="w-3 h-3" />
+            : <Eye className="w-3 h-3" />
+          }
+        </button>
+        <button
+          onClick={() => removeSection(selectedSection.id)}
+          className="px-2.5 py-1.5 rounded-lg border border-red-900 text-red-400 hover:bg-red-900/30 transition-all"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
       </div>
-    </>
-  ) : null
+    )}
+  </>
+) : null
 
   return (
     <div className={`flex flex-col h-screen overflow-hidden ${isDark ? "bg-gray-950" : "bg-gray-100"}`}>
       {/* ── TOP BAR ── */}
       <div className={`flex items-center justify-between px-3 py-2 border-b shrink-0 z-20 ${panelBg} ${panelBorder}`}>
-        <div className="flex items-center min-w-0 gap-1">
-          <button className={`md:hidden p-1 rounded-lg transition-colors ${isDark ? "text-gray-400 hover:bg-gray-800" : "text-gray-500 hover:bg-gray-100"}`} onClick={() => setLeftPanelOpen(o => !o)} aria-label="Open editor panel"><Menu className="w-4 h-4" /></button>
+        <div className="flex items-center min-w-0 gap-2">
+          <button className={`md:hidden p-1.5 rounded-lg transition-colors ${isDark ? "text-gray-400 hover:bg-gray-800" : "text-gray-500 hover:bg-gray-100"}`} onClick={() => setLeftPanelOpen(o => !o)} aria-label="Open editor panel"><Menu className="w-4 h-4" /></button>
           <Link to="/store" className={`flex items-center gap-1 text-xs ${textMuted} transition-colors shrink-0`}><ChevronLeft className="w-3.5 h-3.5" /><span className="hidden sm:inline">Back</span></Link>
           <div className={`w-px h-4 hidden sm:block ${isDark ? "bg-gray-700" : "bg-gray-300"}`} />
           <span className={`text-sm font-semibold ${textPrimary} hidden sm:inline`}>Store Editor</span>
@@ -1206,30 +2552,33 @@ export default function StoreEditorPage() {
             currentPath={previewPagePath}
             onSelect={path => { setPreviewPagePath(path); setSelectedId(null); setRightPanelOpen(false) }}
             pages={pages}
+            products={vendorProducts}
+            collections={vendorCollections}
+            categories={vendorCategories}
             isDark={isDark}
             panelBorder={panelBorder}
             textPrimary={textPrimary}
             textFaint={textFaint}
             hoverBg={hoverBg}
           />
-          <div className={`items-center gap-0.5 p-0.5 rounded-lg hidden sm:flex ${isDark ? "bg-gray-800" : "bg-gray-100"}`}>
+          <div className={`flex items-center gap-0.5 p-0.5 rounded-lg ${isDark ? "bg-gray-800" : "bg-gray-100"}`}>
             <button onClick={() => setViewport("desktop")} className={`p-1.5 rounded-md transition-colors ${viewport === "desktop" ? (isDark ? "bg-gray-600 text-white" : "bg-white text-gray-900 shadow-sm") : textMuted}`}><Monitor className="w-3.5 h-3.5" /></button>
             <button onClick={() => setViewport("mobile")} className={`p-1.5 rounded-md transition-colors ${viewport === "mobile" ? (isDark ? "bg-gray-600 text-white" : "bg-white text-gray-900 shadow-sm") : textMuted}`}><Smartphone className="w-3.5 h-3.5" /></button>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
           {vendorHandle && (
-            <a href={getStoreUrl(vendorHandle, store.custom_domain)} target="_blank" rel="noopener noreferrer" className={`items-center gap-1 text-xs ${textMuted} px-2 py-1.5 rounded-lg border ${panelBorder} transition-colors`}>
-              <ExternalLink className="w-3 h-3" /><span className="hidden sm:inline">Visit</span>
+            <a href={getStoreUrl(vendorHandle, store.custom_domain)} target="_blank" rel="noopener noreferrer" className={`hidden sm:flex items-center gap-1 text-xs ${textMuted} px-2 py-1.5 rounded-lg border ${panelBorder} transition-colors`}>
+              <ExternalLink className="w-3 h-3" />Visit
             </a>
           )}
-          <button onClick={() => { setIframeReady(false); iframeRef.current?.contentWindow?.location.reload() }} className={`p-1.5 ${textMuted} transition-colors`}><RefreshCw className="w-3.5 h-3.5" /></button>
+          <button onClick={() => { setIframeReady(false); iframeRef.current?.contentWindow?.location.reload() }} className={`p-1.5 ${textMuted} transition-colors hidden sm:block`}><RefreshCw className="w-3.5 h-3.5" /></button>
           <button onClick={handleToggleStatus} disabled={isTogglingStatus}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${isLive ? "bg-green-500/15 border-green-500/40 text-green-400 hover:bg-green-500/25" : "bg-gray-700/50 border-gray-600 text-gray-400 hover:bg-gray-700"}`}>
             {isTogglingStatus ? <Loader2 className="w-3 h-3 animate-spin" /> : <div className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-green-400" : "bg-gray-500"}`} />}
             {isLive ? "Live" : "Draft"}
           </button>
-          <button onClick={() => setEditorTheme(t => t === "dark" ? "light" : "dark")} className={`p-1.5 rounded-md transition-colors border border-gray-400 ${isDark ? "text-yellow-400" : "text-gray-500"}`}>
+          <button onClick={() => setEditorTheme(t => t === "dark" ? "light" : "dark")} className={`p-1.5 rounded-md transition-colors hidden sm:block ${isDark ? "text-yellow-400" : "text-gray-500"}`}>
             {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           </button>
           <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1 px-3 text-xs text-white bg-orange-600 hover:bg-orange-700 h-7">
@@ -1292,10 +2641,12 @@ export default function StoreEditorPage() {
         </div>
 
         {rightPanelOpen && selectedSection && <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setRightPanelOpen(false)} />}
-        <div className={`flex-col border-l overflow-hidden transition-all duration-300 ${panelBg} ${panelBorder} hidden md:flex ${selectedSection ? "md:w-72" : "md:w-0 md:border-l-0"}`}>
+        <div className={`flex-col border-l overflow-hidden transition-all duration-300 ${panelBg} ${panelBorder} hidden md:flex ${
+          (selectedSection || isVirtualPanel) ? "md:w-72" : "md:w-0 md:border-l-0"
+        }`}>
           {RightPanelContent}
         </div>
-        <div className={`md:hidden fixed left-0 right-0 bottom-0 z-40 flex flex-col ${panelBg} border-t ${panelBorder} rounded-t-2xl shadow-2xl transition-transform duration-300 ${rightPanelOpen && selectedSection ? "translate-y-0" : "translate-y-full"}`} style={{ maxHeight: "70vh", minHeight: selectedSection ? "300px" : undefined }}>
+        <div className={`md:hidden fixed left-0 right-0 bottom-0 z-40 flex flex-col ${panelBg} border-t ${panelBorder} rounded-t-2xl shadow-2xl transition-transform duration-300 ${rightPanelOpen && (selectedSection || isVirtualPanel) ? "translate-y-0" : "translate-y-full"}`}  style={{ maxHeight: "70vh", minHeight: (selectedSection || isProductDetailPanel) ? "300px" : undefined }}>
           {RightPanelContent}
         </div>
       </div>
@@ -1363,10 +2714,13 @@ function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew
 
 // ─── PageSwitcherDropdown — Shopify-style page preview switcher ──────────────
 
-function PageSwitcherDropdown({ currentPath, onSelect, pages, isDark, panelBorder, textPrimary, textFaint, hoverBg }: {
+function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], categories = [], collections = [], isDark, panelBorder, textPrimary, textFaint, hoverBg }: {
   currentPath: string
   onSelect: (path: string) => void
   pages: StorePage[]
+  products?: { id: string; title: string; handle: string; thumbnail?: string }[]
+  collections?: { id: string; title: string; handle: string }[]
+  categories?: { id: string; name: string; handle: string; product_count: number }[]
   isDark: boolean
   panelBorder: string
   textPrimary: string
@@ -1374,6 +2728,9 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, isDark, panelBorde
   hoverBg: string
 }) {
   const [open, setOpen] = useState(false)
+  const [productSearch, setProductSearch] = useState("")
+  const [categorySearch, setCategorySearch] = useState("")
+  const [collectionSearch, setCollectionSearch] = useState("")
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -1383,26 +2740,44 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, isDark, panelBorde
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  // Built-in store pages
+  // Built-in store pages — only pages that actually have routes in the storefront
   const builtinPages = [
-    { label: "Home page",   path: "/",            icon: "🏠" },
-    { label: "All Products",path: "/products",     icon: "🛍️" },
-    { label: "Collections", path: "/collections",  icon: "📦" },
-    { label: "Search",      path: "/search",       icon: "🔍" },
-    { label: "Cart",        path: "/cart",         icon: "🛒" },
+    { label: "Home page",     path: "/",             icon: "🏠" },
+    { label: "All Products",  path: "/products",     icon: "🛍️" },
+    { label: "Categories", path: "/categories", icon: "🏷️" },
+    //{ label: "Single Category", path: "/categories/example", icon: "🏷️" },
+    { label: "Collections",   path: "/collections",  icon: "📦" },
+    // { label: "Single Collection", path: "/collections/example", icon: "🗂️" },
+    // { label: "Cart",          path: "/cart",         icon: "🛒" },
+    { label: "Search",        path: "/search",       icon: "🔍" },
   ]
+
+  const filteredProducts = productSearch.trim()
+    ? products.filter(p => p.title.toLowerCase().includes(productSearch.toLowerCase()))
+    : products.slice(0, 8)
 
   // Find label for current path
   const allPages = [
     ...builtinPages,
     ...pages.map(p => ({ label: p.title, path: `/p/${p.slug}`, icon: "📄" })),
+    ...products.map(p => ({ label: p.title, path: `/products/${p.handle}`, icon: "👕" })),
   ]
-  const currentLabel = allPages.find(p => p.path === currentPath)?.label ?? "Home page"
+  const currentLabel =
+  currentPath === "/" ? "Home page" :
+  currentPath === "/products" ? "All Products" :
+  currentPath === "/categories" ? "Categories" :
+  currentPath === "/collections" ? "Collections" :
+  currentPath === "/search" ? "Search" :
+  currentPath.startsWith("/products/") ? "Product page" :
+  currentPath.startsWith("/collections/") ? "Collection page" :
+  currentPath.startsWith("/categories/") ? "Category page" :
+  currentPath.startsWith("/p/") ? (pages.find(p => `/p/${p.slug}` === currentPath)?.title ?? "Custom page") :
+  "Home page"
 
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setOpen(o => !o); setProductSearch(""); setCategorySearch("") }}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
           open
             ? isDark ? "border-orange-500/50 bg-orange-500/10 text-orange-400" : "border-orange-400 bg-orange-50 text-orange-600"
@@ -1415,9 +2790,11 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, isDark, panelBorde
       </button>
 
       {open && (
-        <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 w-56 rounded-xl border shadow-2xl overflow-hidden ${
-          isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
-        }`}>
+        <div
+          className={`absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 w-64 rounded-xl border shadow-2xl overflow-hidden max-h-64 overflow-y-auto ${
+            isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
+          }`}
+        >
           {/* Built-in pages */}
           <div className="p-1">
             <p className={`px-2 py-1 text-[9px] font-semibold uppercase tracking-wider ${textFaint}`}>Store pages</p>
@@ -1430,10 +2807,131 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, isDark, panelBorde
                 }`}>
                 <span className="text-sm leading-none">{p.icon}</span>
                 <span className="flex-1">{p.label}</span>
-                {currentPath === p.path && <Check className="w-3 h-3 text-orange-400 shrink-0" />}
+                {currentPath === p.path && <Check className="w-3 h-3 shrink-0 text-orange-400" />}
               </button>
             ))}
           </div>
+
+          {/* Product pages */}
+          {products.length > 0 && (
+            <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
+              <div className="p-1">
+                <p className={`px-2 py-1 text-[9px] font-semibold uppercase tracking-wider ${textFaint}`}>
+                  Product page
+                </p>
+                <button
+                  onClick={() => {
+                    onSelect(`/products/${products[0].handle}`)
+                    setOpen(false)
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-colors text-left ${
+                    currentPath.startsWith("/products/") && currentPath !== "/products"
+                      ? isDark ? "bg-orange-500/15 text-orange-400" : "bg-orange-50 text-orange-600"
+                      : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
+                  }`}
+                >
+                  <span className="text-sm leading-none">👕</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate">Product page template</p>
+                    <p className={`text-[10px] ${textFaint}`}>Changes apply to all product pages</p>
+                  </div>
+                  {currentPath.startsWith("/products/") && currentPath !== "/products" && (
+                    <Check className="w-3 h-3 shrink-0 text-orange-400" />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+            {/* Collection pages */}
+            {/* {collections.length > 0 && (
+              <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
+                <div className="px-2 pt-1.5 pb-1">
+                  <p className={`px-0.5 pb-1 text-[9px] font-semibold uppercase tracking-wider ${textFaint}`}>
+                    Collection pages
+                  </p>
+                </div>
+                <div className="max-h-36 overflow-y-auto px-1 pb-1">
+                  {collections.map((col: any) => {
+                    const path = `/collections/${col.handle}`
+                    return (
+                      <button key={col.id} onClick={() => { onSelect(path); setOpen(false) }}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors text-left ${
+                          currentPath === path
+                            ? isDark ? "bg-orange-500/15 text-orange-400" : "bg-orange-50 text-orange-600"
+                            : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
+                        }`}>
+                        <span className="text-sm leading-none shrink-0">🗂️</span>
+                        <span className="flex-1 truncate">{col.title}</span>
+                        {currentPath === path && <Check className="w-3 h-3 shrink-0 text-orange-400" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )} */}
+
+            {/* Collection pages */}
+          {collections.length > 0 && (
+            <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
+              <div className="p-1">
+                <p className={`px-2 py-1 text-[9px] font-semibold uppercase tracking-wider ${textFaint}`}>
+                  Collection page
+                </p>
+                <button
+                  onClick={() => {
+                    onSelect(`/collections/${collections[0].handle}`)
+                    setOpen(false)
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-colors text-left ${
+                    currentPath.startsWith("/collections/") && currentPath !== "/collections"
+                      ? isDark ? "bg-orange-500/15 text-orange-400" : "bg-orange-50 text-orange-600"
+                      : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
+                  }`}
+                >
+                  <span className="text-sm leading-none">🗂️</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate">Collection page template</p>
+                    <p className={`text-[10px] ${textFaint}`}>Changes apply to all collection pages</p>
+                  </div>
+                  {currentPath.startsWith("/collections/") && currentPath !== "/collections" && (
+                    <Check className="w-3 h-3 shrink-0 text-orange-400" />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+            {/* Category pages */}
+            {categories.length > 0 && (
+              <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
+                <div className="p-1">
+                  <p className={`px-2 py-1 text-[9px] font-semibold uppercase tracking-wider ${textFaint}`}>
+                    Category page
+                  </p>
+                  <button
+                    onClick={() => {
+                      onSelect(`/categories/${categories[0].handle}`)
+                      setOpen(false)
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-colors text-left ${
+                      currentPath.startsWith("/categories/") && currentPath !== "/categories"
+                        ? isDark ? "bg-orange-500/15 text-orange-400" : "bg-orange-50 text-orange-600"
+                        : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
+                    }`}
+                  >
+                    <span className="text-sm leading-none">🏷️</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate">Category page template</p>
+                      <p className={`text-[10px] ${textFaint}`}>Changes apply to all category pages</p>
+                    </div>
+                    {currentPath.startsWith("/categories/") && currentPath !== "/categories" && (
+                      <Check className="w-3 h-3 shrink-0 text-orange-400" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
 
           {/* Custom pages */}
           {pages.length > 0 && (
@@ -1450,16 +2948,10 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, isDark, panelBorde
                     }`}>
                     <span className="text-sm leading-none">📄</span>
                     <span className="flex-1 truncate">{p.title}</span>
-                    {currentPath === path && <Check className="w-3 h-3 text-orange-400 shrink-0" />}
+                    {currentPath === path && <Check className="w-3 h-3 shrink-0 text-orange-400" />}
                   </button>
                 )
               })}
-            </div>
-          )}
-
-          {pages.length === 0 && (
-            <div className={`px-3 py-2 border-t ${isDark ? "border-gray-800 text-gray-600" : "border-gray-100 text-gray-400"} text-[10px] italic`}>
-              No custom pages yet
             </div>
           )}
         </div>
@@ -1474,6 +2966,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
   section: StoreSection; onChange: (p: Partial<StoreSection>) => void
   collections?: { id: string; title: string; handle: string }[]
   pages?: StorePage[]
+  currentLayoutKey?: string
   products?: { id: string; title: string; handle: string; thumbnail?: string; variants?: any[]; options?: any[] }[]
   vendorHandle?: string
   token: string; backendUrl: string; isDark: boolean
@@ -1551,9 +3044,16 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
 
       {/* ── ANNOUNCEMENT ─────────────────────────────────────────────── */}
       {section.type === "announcement" && (<>
-        <Field label="Message" faint={textFaint}><EditorInput value={section.title ?? ""} onChange={v => onChange({ title: v })} placeholder="Free shipping! 🎉" isDark={isDark} /></Field>
-        <Field label="Link URL (optional)" faint={textFaint}>
-          <LinkInput value={section.cta_url ?? ""} onChange={v => onChange({ cta_url: v })} placeholder="https://..." isDark={isDark} pages={pages} />
+        <Field label="Message — select text to add link or style" faint={textFaint}>
+          <RichTextEditor
+            value={section.title ?? ""}
+            onChange={v => onChange({ title: v })}
+            placeholder="Free shipping on orders above ₹999 🎉"
+            isDark={isDark}
+            singleLine
+            showToolbar={true}
+          />
+          <p className={`text-[10px] mt-1 ${textFaint} opacity-70`}>Select specific words → click 🔗 to hyperlink just those words</p>
         </Field>
         <div className="grid grid-cols-2 gap-2">
           <Field label="Background color" faint={textFaint}>
@@ -1570,14 +3070,13 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
           </Field>
         </div>
         {section.title && (
-          <div className="px-3 py-2 text-xs font-medium text-center rounded-lg" style={{ background: section.background_color ?? "#e65100", color: section.text_color ?? "#ffffff" }}>
-            {section.title}
-          </div>
+          <div className="px-3 py-2 text-xs font-medium text-center rounded-lg" style={{ background: section.background_color ?? "#e65100", color: section.text_color ?? "#ffffff" }}
+            dangerouslySetInnerHTML={{ __html: section.title }} />
         )}
       </>)}
 
       {/* ── COLLECTION / FEATURED ────────────────────────────────────── */}
-      {(section.type === "collection" || section.type === "featured") && (<>
+       {(section.type === "collection" || section.type === "featured") && (<>
         <Field label="Section title" faint={textFaint}><EditorInput value={section.title ?? ""} onChange={v => onChange({ title: v })} placeholder={section.type === "featured" ? "Featured Drops" : "All Products"} isDark={isDark} /></Field>
         <div className="grid grid-cols-2 gap-2">
           <Field label="Max products" faint={textFaint}>
@@ -1604,7 +3103,318 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
           </div>
           <span className={`text-xs ${textPrimary}`}>Show sold-out products</span>
         </label>
+ 
+        {/* ── Filter sidebar controls — only for collection sections (not featured) ── */}
+        {section.type === "collection" && (
+          <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <p className={`text-[10px] ${textFaint} mb-3 uppercase tracking-wider font-semibold`}>Filter sidebar</p>
+            <div className="space-y-2.5">
+              {[
+                { key: "show_filters",           label: "Show filter sidebar",         hint: "Toggles entire sidebar"          },
+                { key: "show_sort",              label: "Show sort dropdown",           hint: "Newest, price, A–Z"              },
+                { key: "show_price_filter",      label: "Show price range filter",      hint: "Slider + min/max inputs"         },
+                { key: "show_category_filter",   label: "Show category filter",         hint: "Checkbox list of categories"     },
+                { key: "show_collection_filter", label: "Show collection filter",       hint: "Checkbox list of collections"    },
+              ].map(({ key, label, hint }) => {
+                const val = section[key] !== undefined ? section[key] : true  // default all on
+                return (
+                  <label key={key} className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${val ? "border-orange-500/40 bg-orange-500/10" : `${isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-200"}`}`}>
+                    <div className="relative mt-0.5 shrink-0" onClick={() => onChange({ [key]: !val })}>
+                      <div className={`w-8 h-4 rounded-full transition-colors ${val ? "bg-orange-500" : "bg-gray-600"}`} />
+                      <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${val ? "translate-x-4" : ""}`} />
+                    </div>
+                    <div>
+                      <p className={`text-xs font-medium ${textPrimary}`}>{label}</p>
+                      <p className={`text-[10px] mt-0.5 ${textFaint}`}>{hint}</p>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </>)}
+
+      {section.type === "category_products" && (<>
+        {/* <Field label="Page heading" faint={textFaint}>
+          <EditorInput
+            value={section.title ?? "Products"}
+            onChange={v => onChange({ title: v })}
+            placeholder="Products"
+            isDark={isDark}
+          />
+        </Field> */}
+
+        <Field label="Columns" faint={textFaint}>
+          <div className="grid grid-cols-3 gap-1">
+            {([2, 3, 4] as const).map(n => (
+              <button key={n} onClick={() => onChange({ columns: n })}
+                className={`py-1.5 rounded-lg border text-xs transition-all ${
+                  (section.columns ?? 3) === n
+                    ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                    : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                }`}>{n}</button>
+            ))}
+          </div>
+        </Field>
+
+        {/* Filter sidebar toggles — same as products page */}
+        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+        <p className={`text-[10px] ${textFaint} mb-3 uppercase tracking-wider font-semibold`}>
+          Filter sidebar
+        </p>
+
+        {/* Master toggle */}
+        {(() => {
+          const val = section.show_filters !== false
+          return (
+            <label className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all mb-2 ${
+              val ? "border-orange-500/40 bg-orange-500/10" : isDark ? "border-gray-700" : "border-gray-200"
+            }`}>
+              <div className="relative mt-0.5 shrink-0" onClick={() => onChange({ show_filters: !val })}>
+                <div className={`w-8 h-4 rounded-full transition-colors ${val ? "bg-orange-500" : "bg-gray-600"}`} />
+                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${val ? "translate-x-4" : ""}`} />
+              </div>
+              <div>
+                <p className={`text-xs font-medium ${textPrimary}`}>Show filter sidebar</p>
+                <p className={`text-[10px] mt-0.5 ${textFaint}`}>Toggles entire sidebar</p>
+              </div>
+            </label>
+          )
+        })()}
+
+        {/* Orderable filter items */}
+        {(() => {
+          const defaultOrder = ["sort", "price", "category", "collection"]
+          const filterOrder: string[] = section.filter_order ?? defaultOrder
+
+          const FILTER_META: Record<string, { label: string; hint: string; key: string }> = {
+            sort:       { label: "Sort dropdown",       hint: "Newest, price, A–Z",           key: "show_sort" },
+            price:      { label: "Price range filter",  hint: "Slider + min/max inputs",      key: "show_price_filter" },
+            category:   { label: "Category filter",     hint: "Checkbox list of categories",  key: "show_category_filter" },
+            collection: { label: "Collection filter",   hint: "Checkbox list of collections", key: "show_collection_filter" },
+          }
+
+          const moveFilter = (id: string, dir: "up" | "down") => {
+            const arr = [...filterOrder]
+            const i = arr.indexOf(id)
+            const swap = dir === "up" ? i - 1 : i + 1
+            if (swap < 0 || swap >= arr.length) return
+            ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
+            onChange({ filter_order: arr })
+          }
+
+          return (
+            <div className="space-y-1.5">
+              {filterOrder.map((id, i) => {
+                const meta = FILTER_META[id]
+                if (!meta) return null
+                const val = section[meta.key] !== false
+                return (
+                  <div key={id} className={`flex items-center gap-1.5 p-2 rounded-xl border transition-all ${
+                    val
+                      ? isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"
+                      : isDark ? "border-gray-800 opacity-50" : "border-gray-100 opacity-50"
+                  }`}>
+                    {/* Toggle */}
+                    <div className="relative shrink-0" onClick={() => onChange({ [meta.key]: !val })}>
+                      <div className={`w-7 h-3.5 rounded-full transition-colors cursor-pointer ${val ? "bg-orange-500" : "bg-gray-600"}`} />
+                      <div className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${val ? "translate-x-3.5" : ""}`} />
+                    </div>
+
+                    {/* Label */}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium truncate ${textPrimary}`}>{meta.label}</p>
+                      <p className={`text-[10px] ${textFaint} truncate`}>{meta.hint}</p>
+                    </div>
+
+                    {/* Up/Down arrows */}
+                    <div className="flex flex-col gap-0.5 shrink-0">
+                      <button
+                        onClick={() => moveFilter(id, "up")}
+                        disabled={i === 0}
+                        className={`p-0.5 rounded transition-colors ${
+                          i === 0 ? "opacity-20" : isDark ? "hover:bg-gray-700" : "hover:bg-gray-200"
+                        }`}
+                      >
+                        <ChevronUp className={`w-3 h-3 ${textFaint}`} />
+                      </button>
+                      <button
+                        onClick={() => moveFilter(id, "down")}
+                        disabled={i === filterOrder.length - 1}
+                        className={`p-0.5 rounded transition-colors ${
+                          i === filterOrder.length - 1 ? "opacity-20" : isDark ? "hover:bg-gray-700" : "hover:bg-gray-200"
+                        }`}
+                      >
+                        <ChevronDown className={`w-3 h-3 ${textFaint}`} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+      </div>
+
+        {/* Section Colors */}
+        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Section Colors</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Background" faint={textFaint}>
+              <div className="space-y-1.5">
+                {section.background_color ? (
+                  <div className="flex gap-1.5 items-center">
+                    <input type="color" value={section.background_color}
+                      onChange={e => onChange({ background_color: e.target.value })}
+                      className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                    <input type="text" value={section.background_color}
+                      onChange={e => onChange({ background_color: e.target.value })}
+                      className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                        isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                      }`} />
+                    <button onClick={() => onChange({ background_color: undefined })}
+                      className="shrink-0 text-red-400 hover:text-red-300"><X className="w-3 h-3" /></button>
+                  </div>
+                ) : (
+                  <button onClick={() => onChange({ background_color: "#ffffff" })}
+                    className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                      isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                            : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                    }`}>
+                    <Plus className="w-3 h-3" />Set color
+                  </button>
+                )}
+              </div>
+            </Field>
+            <Field label="Text" faint={textFaint}>
+              <div className="space-y-1.5">
+                {section.text_color ? (
+                  <div className="flex gap-1.5 items-center">
+                    <input type="color" value={section.text_color}
+                      onChange={e => onChange({ text_color: e.target.value })}
+                      className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                    <input type="text" value={section.text_color}
+                      onChange={e => onChange({ text_color: e.target.value })}
+                      className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                        isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                      }`} />
+                    <button onClick={() => onChange({ text_color: undefined })}
+                      className="shrink-0 text-red-400 hover:text-red-300"><X className="w-3 h-3" /></button>
+                  </div>
+                ) : (
+                  <button onClick={() => onChange({ text_color: "#111827" })}
+                    className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                      isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                            : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                    }`}>
+                    <Plus className="w-3 h-3" />Set color
+                  </button>
+                )}
+              </div>
+            </Field>
+          </div>
+        </div>
+      </>)}
+
+      {section.type === "collections_grid" && (<>
+      <Field label="Page heading" faint={textFaint}>
+        <EditorInput
+          value={section.title ?? "Collections"}
+          onChange={v => onChange({ title: v })}
+          placeholder="Collections"
+          isDark={isDark}
+        />
+      </Field>
+
+      <Field label="Columns" faint={textFaint}>
+        <div className="grid grid-cols-3 gap-1">
+          {([2, 3, 4] as const).map(n => (
+            <button key={n} onClick={() => onChange({ columns: n })}
+              className={`py-1.5 rounded-lg border text-xs transition-all ${
+                (section.columns ?? 3) === n
+                  ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                  : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+              }`}>{n}</button>
+          ))}
+        </div>
+      </Field>
+
+      <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+        <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Section Colors</p>
+        <div className="grid grid-cols-2 gap-2">
+
+          <Field label="Background" faint={textFaint}>
+            <div className="space-y-1.5">
+              {section.background_color ? (
+                <div className="flex gap-1.5 items-center">
+                  <input type="color" value={section.background_color}
+                    onChange={e => onChange({ background_color: e.target.value })}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <input type="text" value={section.background_color}
+                    onChange={e => onChange({ background_color: e.target.value })}
+                    className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                      isDark
+                        ? "bg-gray-800 border border-gray-700 text-gray-200"
+                        : "bg-white border border-gray-300 text-gray-800"
+                    }`} />
+                  <button
+                    onClick={() => onChange({ background_color: undefined })}
+                    className="shrink-0 text-red-400 hover:text-red-300 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onChange({ background_color: "#ffffff" })}
+                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs transition-colors ${
+                    isDark
+                      ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                      : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                  }`}>
+                  <Plus className="w-3 h-3" />Set color
+                </button>
+              )}
+            </div>
+          </Field>
+
+          <Field label="Text" faint={textFaint}>
+            <div className="space-y-1.5">
+              {section.text_color ? (
+                <div className="flex gap-1.5 items-center">
+                  <input type="color" value={section.text_color}
+                    onChange={e => onChange({ text_color: e.target.value })}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <input type="text" value={section.text_color}
+                    onChange={e => onChange({ text_color: e.target.value })}
+                    className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                      isDark
+                        ? "bg-gray-800 border border-gray-700 text-gray-200"
+                        : "bg-white border border-gray-300 text-gray-800"
+                    }`} />
+                  <button
+                    onClick={() => onChange({ text_color: undefined })}
+                    className="shrink-0 text-red-400 hover:text-red-300 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onChange({ text_color: "#111827" })}
+                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs transition-colors ${
+                    isDark
+                      ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                      : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                  }`}>
+                  <Plus className="w-3 h-3" />Set color
+                </button>
+              )}
+            </div>
+          </Field>
+
+        </div>
+      </div>
+    </>)}
 
       {/* ── ABOUT ────────────────────────────────────────────────────── */}
       {section.type === "about" && (<>
@@ -1785,7 +3595,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
         </div>
         {/* Live preview */}
         {(section.ticker_items ?? []).length > 0 && (
-          <div className="px-3 py-2 overflow-hidden text-xs font-medium rounded-lg"
+          <div className="overflow-hidden rounded-lg py-2 px-3 text-xs font-medium"
             style={{ background: section.background_color ?? "#111827", color: section.text_color ?? "#ffffff" }}>
             {(section.ticker_items ?? []).join(` ${section.ticker_separator ?? "✦"} `)}
           </div>
@@ -1803,16 +3613,28 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
           </Field>
         </div>
         <UploadOnlyImageField label="Image" value={section.image ?? ""} onChange={v => onChange({ image: v || undefined })} onUpload={() => triggerUpload("image")} isUploading={uploadingKey === "image"} isDark={isDark} previewHeight={120} />
-        <Field label="Layout" faint={textFaint}>
-          <div className="flex gap-2">
-            {(["left", "right"] as const).map(pos => (
-              <button key={pos} onClick={() => onChange({ image_position: pos })}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium border capitalize transition-all ${(section.image_position ?? "left") === pos ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : `${isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500"}`}`}>
-                Image {pos}
-              </button>
-            ))}
-          </div>
-        </Field>
+        <div className={`space-y-2 pt-1`}>
+          <Field label="Desktop — image side" faint={textFaint}>
+            <div className="flex gap-2">
+              {(["left", "right"] as const).map(pos => (
+                <button key={pos} onClick={() => onChange({ image_position: pos })}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium border capitalize transition-all ${(section.image_position ?? "left") === pos ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : `${isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500"}`}`}>
+                  🖥 Image {pos}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Mobile — image position" faint={textFaint}>
+            <div className="flex gap-2">
+              {(["top", "bottom"] as const).map(pos => (
+                <button key={pos} onClick={() => onChange({ mobile_image_position: pos })}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium border capitalize transition-all ${(section.mobile_image_position ?? "top") === pos ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : `${isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500"}`}`}>
+                  📱 Image {pos}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
       </>)}
 
       {/* ── VIDEO WITH TEXT ───────────────────────────────────────────── */}
@@ -1829,16 +3651,28 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
           <EditorInput value={section.video_text_url ?? ""} onChange={v => onChange({ video_text_url: v })} placeholder="https://youtube.com/watch?v=... or https://youtu.be/..." isDark={isDark} />
           <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>YouTube and Vimeo supported</p>
         </Field>
-        <Field label="Layout" faint={textFaint}>
-          <div className="flex gap-2">
-            {(["left", "right"] as const).map(pos => (
-              <button key={pos} onClick={() => onChange({ image_position: pos })}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium border capitalize transition-all ${(section.image_position ?? "left") === pos ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : `${isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500"}`}`}>
-                Video {pos}
-              </button>
-            ))}
-          </div>
-        </Field>
+        <div className="space-y-2 pt-1">
+          <Field label="Desktop — video side" faint={textFaint}>
+            <div className="flex gap-2">
+              {(["left", "right"] as const).map(pos => (
+                <button key={pos} onClick={() => onChange({ image_position: pos })}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium border capitalize transition-all ${(section.image_position ?? "left") === pos ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : `${isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500"}`}`}>
+                  🖥 Video {pos}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Mobile — video position" faint={textFaint}>
+            <div className="flex gap-2">
+              {(["top", "bottom"] as const).map(pos => (
+                <button key={pos} onClick={() => onChange({ mobile_image_position: pos })}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium border capitalize transition-all ${(section.mobile_image_position ?? "top") === pos ? "bg-orange-600/20 border-orange-500/50 text-orange-400" : `${isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500"}`}`}>
+                  📱 Video {pos}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
       </>)}
 
       {/* ── FEATURED PRODUCT ─────────────────────────────────────────── */}
@@ -1864,7 +3698,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                 {selectedProduct && (
                   <div className={`flex items-center gap-2.5 px-2.5 py-2 border-b ${isDark ? "border-gray-700 bg-gray-800/80" : "border-gray-200 bg-gray-50"}`}>
                     {selectedProduct.thumbnail && (
-                      <img src={selectedProduct.thumbnail} alt={selectedProduct.title} className="object-cover w-8 h-8 rounded-lg shrink-0" />
+                      <img src={selectedProduct.thumbnail} alt={selectedProduct.title} className="w-8 h-8 rounded-lg object-cover shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs font-semibold truncate ${textFaint === "text-gray-500" ? "text-gray-200" : "text-gray-800"}`}>{selectedProduct.title}</p>
@@ -1874,7 +3708,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                   </div>
                 )}
                 {/* Product list */}
-                <div className="overflow-y-auto max-h-44">
+                <div className="max-h-44 overflow-y-auto">
                   {products.map(p => (
                     <button key={p.id} onClick={() => onChange({
                       featured_product_id: p.id,
@@ -1885,7 +3719,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                           ? isDark ? "bg-orange-500/15 text-orange-400" : "bg-orange-50 text-orange-600"
                           : isDark ? "text-gray-300 hover:bg-gray-800" : "text-gray-700 hover:bg-gray-50"
                       }`}>
-                      {p.thumbnail && <img src={p.thumbnail} alt={p.title} className="object-cover rounded-md w-7 h-7 shrink-0" />}
+                      {p.thumbnail && <img src={p.thumbnail} alt={p.title} className="w-7 h-7 rounded-md object-cover shrink-0" />}
                       <span className="flex-1 text-xs truncate">{p.title}</span>
                       {section.featured_product_id === p.id && <Check className="w-3 h-3 shrink-0" />}
                     </button>
@@ -1987,51 +3821,279 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
         />
       )}
 
-      {section.type === "instagram_feed" && (<>
-        <Field label="Section title" faint={textFaint}>
-          <EditorInput value={section.title ?? ""} onChange={v => onChange({ title: v })} placeholder="Follow me on Instagram" isDark={isDark} />
-        </Field>
-        <Field label="Number of posts" faint={textFaint}>
-          <div className="flex gap-1.5">
-            {[6, 9, 12].map(n => (
-              <button key={n} onClick={() => onChange({ limit: n })}
-                className={`flex-1 py-1.5 rounded-lg border text-xs transition-all ${
-                  (section.limit ?? 9) === n 
-                    ? "border-orange-500/50 bg-orange-500/10 text-orange-400" 
-                    : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
-                }`}>{n}</button>
-            ))}
-          </div>
-        </Field>
-        <div className={`p-3 rounded-xl border text-xs ${isDark ? "border-pink-800/40 bg-pink-900/10 text-pink-300" : "border-pink-200 bg-pink-50 text-pink-700"}`}>
-          <div className="flex items-center gap-2 mb-1">
-            <Instagram className="w-3.5 h-3.5 shrink-0" />
-            <span className="font-semibold">Instagram feed</span>
-          </div>
-          <p className="opacity-80">Connect your Instagram account in the Style tab → Instagram Feed to show your posts here.</p>
+      {section.type === "collection_products" && (<>
+  <Field label="Page heading" faint={textFaint}>
+    <EditorInput
+      value={section.title ?? "Products"}
+      onChange={v => onChange({ title: v })}
+      placeholder="Products"
+      isDark={isDark}
+    />
+  </Field>
+
+  <Field label="Columns" faint={textFaint}>
+    <div className="grid grid-cols-3 gap-1">
+      {([2, 3, 4] as const).map(n => (
+        <button key={n} onClick={() => onChange({ columns: n })}
+          className={`py-1.5 rounded-lg border text-xs transition-all ${
+            (section.columns ?? 3) === n
+              ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+              : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+          }`}>{n}</button>
+      ))}
+    </div>
+  </Field>
+
+  <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+    <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Section Colors</p>
+    <div className="grid grid-cols-2 gap-2">
+      <Field label="Background" faint={textFaint}>
+        <div className="space-y-1.5">
+          {section.background_color ? (
+            <div className="flex gap-1.5 items-center">
+              <input type="color" value={section.background_color}
+                onChange={e => onChange({ background_color: e.target.value })}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <input type="text" value={section.background_color}
+                onChange={e => onChange({ background_color: e.target.value })}
+                className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                  isDark ? "bg-gray-800 border border-gray-700 text-gray-200"
+                         : "bg-white border border-gray-300 text-gray-800"
+                }`} />
+              <button onClick={() => onChange({ background_color: undefined })}
+                className="shrink-0 text-red-400 hover:text-red-300">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => onChange({ background_color: "#ffffff" })}
+              className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                       : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+              }`}>
+              <Plus className="w-3 h-3" />Set color
+            </button>
+          )}
         </div>
-      </>)}
+      </Field>
+      <Field label="Text" faint={textFaint}>
+        <div className="space-y-1.5">
+          {section.text_color ? (
+            <div className="flex gap-1.5 items-center">
+              <input type="color" value={section.text_color}
+                onChange={e => onChange({ text_color: e.target.value })}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <input type="text" value={section.text_color}
+                onChange={e => onChange({ text_color: e.target.value })}
+                className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                  isDark ? "bg-gray-800 border border-gray-700 text-gray-200"
+                         : "bg-white border border-gray-300 text-gray-800"
+                }`} />
+              <button onClick={() => onChange({ text_color: undefined })}
+                className="shrink-0 text-red-400 hover:text-red-300">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => onChange({ text_color: "#111827" })}
+              className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                       : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+              }`}>
+              <Plus className="w-3 h-3" />Set color
+            </button>
+          )}
+        </div>
+      </Field>
+    </div>
+  </div>
+</>)}
+
+      {/* ── CATEGORY GRID ── */}
+      {section.type === "category_grid" && (<>
+      <Field label="Page heading" faint={textFaint}>
+        <EditorInput
+          value={section.title ?? "Categories"}
+          onChange={v => onChange({ title: v })}
+          placeholder="Categories"
+          isDark={isDark}
+        />
+      </Field>
+      <Field label="Columns" faint={textFaint}>
+        <div className="grid grid-cols-4 gap-1">
+          {([2, 3, 4, 5] as const).map(n => (
+            <button key={n} onClick={() => onChange({ columns: n })}
+              className={`py-1.5 rounded-lg border text-xs transition-all ${
+                (section.columns ?? 4) === n
+                  ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                  : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+              }`}>{n}</button>
+          ))}
+        </div>
+      </Field>
+
+      {/* Colors — inline since this is a virtual section type */}
+      <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+        <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Section Colors</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Background" faint={textFaint}>
+            <div className="space-y-1.5">
+              {section.background_color ? (
+                <div className="flex gap-1.5 items-center">
+                  <input type="color" value={section.background_color}
+                    onChange={e => onChange({ background_color: e.target.value })}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <input type="text" value={section.background_color}
+                    onChange={e => onChange({ background_color: e.target.value })}
+                    className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                    }`} />
+                  <button onClick={() => onChange({ background_color: undefined })}
+                    className="shrink-0 text-red-400 hover:text-red-300">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => onChange({ background_color: "#ffffff" })}
+                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                    isDark
+                      ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                      : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                  }`}>
+                  <Plus className="w-3 h-3" />Set color
+                </button>
+              )}
+            </div>
+          </Field>
+
+          <Field label="Text" faint={textFaint}>
+            <div className="space-y-1.5">
+              {section.text_color ? (
+                <div className="flex gap-1.5 items-center">
+                  <input type="color" value={section.text_color}
+                    onChange={e => onChange({ text_color: e.target.value })}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  <input type="text" value={section.text_color}
+                    onChange={e => onChange({ text_color: e.target.value })}
+                    className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                    }`} />
+                  <button onClick={() => onChange({ text_color: undefined })}
+                    className="shrink-0 text-red-400 hover:text-red-300">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => onChange({ text_color: "#111827" })}
+                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                    isDark
+                      ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                      : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                  }`}>
+                  <Plus className="w-3 h-3" />Set color
+                </button>
+              )}
+            </div>
+          </Field>
+        </div>
+      </div>
+    </>)} 
 
       {/* ── SECTION COLORS OVERRIDE (all except announcement, divider, html, ticker) ── */}
-      {!["announcement", "divider", "html", "ticker"].includes(section.type) && (
-        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
-          <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Section colors override</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Background" faint={textFaint}>
-              <div className="flex gap-1.5">
-                <input type="color" value={section.background_color ?? "#ffffff"} onChange={e => onChange({ background_color: e.target.value })} className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
-                <EditorInput value={section.background_color ?? ""} onChange={v => onChange({ background_color: v || undefined })} placeholder="default" isDark={isDark} />
-              </div>
-            </Field>
-            <Field label="Text" faint={textFaint}>
-              <div className="flex gap-1.5">
-                <input type="color" value={section.text_color ?? "#000000"} onChange={e => onChange({ text_color: e.target.value })} className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
-                <EditorInput value={section.text_color ?? ""} onChange={v => onChange({ text_color: v || undefined })} placeholder="default" isDark={isDark} />
-              </div>
-            </Field>
-          </div>
+      {!["announcement", "divider", "html", "ticker", "category_grid", "category_products", "collections_grid", "collection_products"].includes(section.type) && (
+      <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+        <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Section colors override</p>
+        <div className="grid grid-cols-2 gap-2">
+          
+          {/* Background */}
+          <Field label="Background" faint={textFaint}>
+            <div className="space-y-1.5">
+              {section.background_color ? (
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="color"
+                    value={section.background_color}
+                    onChange={e => onChange({ background_color: e.target.value })}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={section.background_color}
+                    onChange={e => onChange({ background_color: e.target.value })}
+                    className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                    }`}
+                  />
+                  <button
+                    onClick={() => onChange({ background_color: undefined })}
+                    className="shrink-0 text-red-400 hover:text-red-300 transition-colors"
+                    title="Remove override"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onChange({ background_color: "#ffffff" })}
+                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs transition-colors ${
+                    isDark
+                      ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                      : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                  }`}
+                >
+                  <Plus className="w-3 h-3" />
+                  Set color
+                </button>
+              )}
+            </div>
+          </Field>
+
+          {/* Text */}
+          <Field label="Text" faint={textFaint}>
+            <div className="space-y-1.5">
+              {section.text_color ? (
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="color"
+                    value={section.text_color}
+                    onChange={e => onChange({ text_color: e.target.value })}
+                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={section.text_color}
+                    onChange={e => onChange({ text_color: e.target.value })}
+                    className={`flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${
+                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                    }`}
+                  />
+                  <button
+                    onClick={() => onChange({ text_color: undefined })}
+                    className="shrink-0 text-red-400 hover:text-red-300 transition-colors"
+                    title="Remove override"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onChange({ text_color: "#000000" })}
+                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs transition-colors ${
+                    isDark
+                      ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                      : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                  }`}
+                >
+                  <Plus className="w-3 h-3" />
+                  Set color
+                </button>
+              )}
+            </div>
+          </Field>
+
         </div>
-      )}
+      </div>
+    )}
     </div>
   )
 }
@@ -2129,6 +4191,121 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
 
 // ─── Reusable sub-components ──────────────────────────────────────────────────
 
+// ─── RichTextEditor — contentEditable with formatting toolbar ────────────────
+
+function RichTextEditor({ value, onChange, placeholder, isDark, rows = 3, singleLine = false, showToolbar }: {
+  value: string; onChange: (v: string) => void; placeholder?: string
+  isDark: boolean; rows?: number; singleLine?: boolean; showToolbar?: boolean
+}) {
+  const editorRef = useRef<HTMLDivElement>(null)
+  const [focused, setFocused] = useState(false)
+  const [showLinkDialog, setShowLinkDialog] = useState(false)
+  const [linkUrl, setLinkUrl] = useState("")
+  const savedRange = useRef<Range | null>(null)
+
+  // Sync external value → editor HTML (only when not focused to avoid cursor jumps)
+  useEffect(() => {
+    if (!editorRef.current || focused) return
+    if (editorRef.current.innerHTML !== value) {
+      editorRef.current.innerHTML = value || ""
+    }
+  }, [value, focused])
+
+  const execCmd = (cmd: string, val?: string) => {
+    editorRef.current?.focus()
+    document.execCommand(cmd, false, val)
+    onChange(editorRef.current?.innerHTML ?? "")
+  }
+
+  const saveSelection = () => {
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) savedRange.current = sel.getRangeAt(0).cloneRange()
+  }
+
+  const restoreSelection = () => {
+    if (!savedRange.current) return
+    const sel = window.getSelection()
+    if (sel) { sel.removeAllRanges(); sel.addRange(savedRange.current) }
+  }
+
+  const insertLink = () => {
+    restoreSelection()
+    if (linkUrl) execCmd("createLink", linkUrl)
+    setShowLinkDialog(false)
+    setLinkUrl("")
+  }
+
+  const renderToolbar = showToolbar !== undefined ? showToolbar : !singleLine
+
+  const btns: { cmd?: string; val?: string; icon: React.ReactNode; title: string; action?: () => void }[] = [
+    { cmd: "bold",        icon: <span className="font-bold text-[11px]">B</span>,       title: "Bold" },
+    { cmd: "italic",      icon: <span className="italic text-[11px]">I</span>,           title: "Italic" },
+    { cmd: "underline",   icon: <span className="underline text-[11px]">U</span>,        title: "Underline" },
+    { cmd: "strikeThrough",icon:<span className="line-through text-[11px]">S</span>,    title: "Strikethrough" },
+    { title: "|" },
+    { cmd: "insertUnorderedList", icon: <span className="text-[11px]">≡</span>,          title: "Bullet list" },
+    { title: "|" },
+    { icon: <LinkIcon className="w-2.5 h-2.5" />, title: "Insert link",
+      action: () => { saveSelection(); setShowLinkDialog(true) } },
+    { cmd: "unlink", icon: <span className="text-[11px] opacity-60 line-through">🔗</span>, title: "Remove link" },
+  ]
+
+  const toolbarBg = isDark ? "bg-gray-700 border-gray-600" : "bg-gray-100 border-gray-200"
+  const editorBg  = isDark ? "bg-gray-800 text-gray-200" : "bg-white text-gray-800"
+  const minH = singleLine ? "min-h-[34px]" : rows <= 3 ? "min-h-[80px]" : rows <= 6 ? "min-h-[130px]" : "min-h-[200px]"
+
+  return (
+    <div className={`rounded-lg border overflow-hidden focus-within:border-orange-500 transition-colors ${isDark ? "border-gray-700" : "border-gray-300"}`}>
+      {/* Toolbar */}
+      {renderToolbar && (
+        <div className={`flex items-center gap-0.5 px-1.5 py-1 border-b ${toolbarBg} flex-wrap`}>
+          {btns.map((b, i) => b.title === "|"
+            ? <div key={i} className={`w-px h-3.5 mx-0.5 ${isDark ? "bg-gray-600" : "bg-gray-300"}`} />
+            : (
+              <button key={i} type="button" title={b.title}
+                onMouseDown={e => { e.preventDefault(); b.action ? b.action() : b.cmd && execCmd(b.cmd, b.val) }}
+                className={`w-5 h-5 flex items-center justify-center rounded transition-colors ${isDark ? "text-gray-300 hover:bg-gray-600 hover:text-white" : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"}`}>
+                {b.icon}
+              </button>
+            )
+          )}
+        </div>
+      )}
+
+      {/* Link dialog */}
+      {showLinkDialog && (
+        <div className={`flex items-center gap-1.5 px-2 py-1.5 border-b ${toolbarBg}`}>
+          <LinkIcon className={`w-3 h-3 shrink-0 ${isDark ? "text-gray-400" : "text-gray-500"}`} />
+          <input
+            autoFocus
+            value={linkUrl}
+            onChange={e => setLinkUrl(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") insertLink(); if (e.key === "Escape") setShowLinkDialog(false) }}
+            placeholder="https://..."
+            className={`flex-1 text-xs px-1.5 py-1 rounded border focus:outline-none ${isDark ? "bg-gray-800 border-gray-600 text-gray-200" : "bg-white border-gray-300 text-gray-800"}`}
+          />
+          <button type="button" onClick={insertLink} className="text-[10px] px-2 py-1 rounded bg-orange-500 text-white font-medium">Add</button>
+          <button type="button" onClick={() => setShowLinkDialog(false)} className={`text-[10px] ${isDark ? "text-gray-400" : "text-gray-500"}`}><X className="w-3 h-3" /></button>
+        </div>
+      )}
+
+      {/* Editable area */}
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        onFocus={() => setFocused(true)}
+        onBlur={() => { setFocused(false); onChange(editorRef.current?.innerHTML ?? "") }}
+        onInput={() => onChange(editorRef.current?.innerHTML ?? "")}
+        onKeyDown={e => { if (singleLine && e.key === "Enter") e.preventDefault() }}
+        data-placeholder={placeholder}
+        className={`${minH} px-2.5 py-1.5 text-sm focus:outline-none ${editorBg} empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 empty:before:pointer-events-none`}
+        style={{ lineHeight: 1.6 }}
+      />
+    </div>
+  )
+}
+
 function StyleSection({ title, isDark, children }: { title: string; isDark: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(true)
   return (
@@ -2146,17 +4323,23 @@ function Field({ label, faint, children }: { label: string; faint: string; child
   return <div><label className={`block text-xs font-medium mb-1.5 ${faint}`}>{label}</label>{children}</div>
 }
 
+// EditorInput now uses RichTextEditor in singleLine mode (bold/italic/link still work via keyboard shortcuts)
 function EditorInput({ value, onChange, placeholder, isDark }: { value: string; onChange: (v: string) => void; placeholder?: string; isDark: boolean }) {
   return (
-    <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      className={`w-full rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors ${isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800 placeholder-gray-400"}`} />
+    <RichTextEditor value={value} onChange={onChange} placeholder={placeholder} isDark={isDark} singleLine rows={1} />
   )
 }
 
 function EditorTextarea({ value, onChange, placeholder, rows = 3, isDark, mono }: { value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; isDark: boolean; mono?: boolean }) {
+  if (mono) {
+    // Mono/code fields (HTML editor, CSS) stay as plain textarea
+    return (
+      <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
+        className={`w-full rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors resize-none font-mono text-xs ${isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800 placeholder-gray-400"}`} />
+    )
+  }
   return (
-    <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
-      className={`w-full rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors resize-none ${mono ? "font-mono text-xs" : ""} ${isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800 placeholder-gray-400"}`} />
+    <RichTextEditor value={value} onChange={onChange} placeholder={placeholder} isDark={isDark} rows={rows} />
   )
 }
 
@@ -2172,7 +4355,7 @@ function UploadOnlyImageField({ label, value, onChange, onUpload, isUploading, i
       {value ? (
         <div className="relative overflow-hidden border border-gray-700 rounded-xl" style={{ height: previewHeight }}>
           <img src={value} alt="preview" className="object-cover w-full h-full" />
-          <div className="absolute inset-0 flex items-center justify-center gap-2 transition-opacity opacity-0 bg-black/40 hover:opacity-100">
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
             <button onClick={onUpload} disabled={isUploading}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/20 backdrop-blur-sm text-white text-xs font-medium border border-white/30 hover:bg-white/30 transition-colors">
               {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}

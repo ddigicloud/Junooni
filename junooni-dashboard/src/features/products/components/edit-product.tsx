@@ -80,6 +80,7 @@ import {
   fetchCurrentVendor,              // ← ADD
   assignProductSalesChannels,      // ← ADD
   fetchProductSalesChannels,       // ← ADD
+  fetchVariantImages,
   removeProductFromSalesChannel,
 } from '../context/fetchApi';
 import HierarchicalCategorySelector from '../context/HierarchicalCategorySelector';
@@ -233,11 +234,11 @@ const EditProduct = () => {
   }, [inventoryLevels]);
   
   // Initialize the form with default values based on the schema
-  useEffect(() => {
-    if (productLoaded && hasVariants) {
-      loadInventoryLevels();
-    }
-  }, [productLoaded, hasVariants]);
+  // useEffect(() => {
+  //   if (productLoaded && hasVariants) {
+  //     loadInventoryLevels();
+  //   }
+  // }, [productLoaded, hasVariants]);
   
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
@@ -438,470 +439,514 @@ const isNewVariant = (variant) => {
   
   // Fetch the product details when the component mounts, but only once
   useEffect(() => {
-    // Prevent multiple API calls
-    if (!id || productLoaded) return;
-    
-    async function loadProduct() {
-  const t0 = performance.now();
-  const lap = (label: string) => console.log(`⏱ ${label}: ${(performance.now() - t0).toFixed(0)}ms`);
+  if (!id || productLoaded) return;
 
-  setIsLoading(true);
-  setError(null);
+  async function loadProduct() {
+    const t0 = performance.now();
+    const mem0 = (performance as any).memory?.usedJSHeapSize;
 
-  try {
+    const lap = (label: string) => {
+      const elapsed = (performance.now() - t0).toFixed(0);
+      const mem = (performance as any).memory?.usedJSHeapSize;
+      const memMB = mem ? ((mem - mem0) / 1024 / 1024).toFixed(1) : '?';
+      const totalMB = mem ? (mem / 1024 / 1024).toFixed(1) : '?';
+      console.log(`⏱ [${elapsed}ms] [+${memMB}MB heap / ${totalMB}MB total] ${label}`);
+    };
+
+    const measure = async <T,>(label: string, fn: () => Promise<T>): Promise<T> => {
+      const t = performance.now();
+      const memBefore = (performance as any).memory?.usedJSHeapSize || 0;
+      console.log(`🔵 START: ${label}`);
+      try {
+        const result = await fn();
+        const elapsed = (performance.now() - t).toFixed(0);
+        const memAfter = (performance as any).memory?.usedJSHeapSize || 0;
+        const delta = ((memAfter - memBefore) / 1024 / 1024).toFixed(1);
+        console.log(`✅ DONE:  ${label} — ${elapsed}ms, heap delta: +${delta}MB`);
+        try {
+          const size = JSON.stringify(result).length;
+          console.log(`📦 SIZE:  ${label} response = ${(size / 1024).toFixed(1)} KB`);
+          if (size > 500_000) {
+            console.warn(`🚨 LARGE RESPONSE: ${label} is ${(size / 1024 / 1024).toFixed(2)} MB — this may cause OOM`);
+          }
+        } catch {}
+        return result;
+      } catch (err) {
+        const elapsed = (performance.now() - t).toFixed(0);
+        console.error(`❌ FAIL:  ${label} — ${elapsed}ms`, err);
+        throw err;
+      }
+    };
+
+    setIsLoading(true);
+    setError(null);
     lap('START');
 
-    // Fetch product data
-    const response = await fetchProduct({id});
-    lap('fetchProduct DONE');
+    try {
+      // ── Phase 1: Parallel fetches ──────────────────────────────────────
+      console.group('📡 Phase 1: Parallel fetches');
+      const [response, categoriesResponse] = await Promise.all([
+        measure('fetchProduct', () => fetchProduct({ id })),
+        measure('fetchCategories', () => fetchCategories().catch((e) => {
+          console.warn('Categories fetch failed (non-fatal):', e);
+          return null;
+        }))
+      ]);
+      console.groupEnd();
+      lap('Phase 1 complete');
 
-    let product;
-    if (typeof response === 'string') {
+      // ── Categories ─────────────────────────────────────────────────────
       try {
-        product = JSON.parse(response);
-        if (product.product) product = product.product;
-      } catch (parseError) {
-        throw new Error('Invalid product data format');
-      }
-    } else {
-      product = response;
-    }
-
-    if (!product) throw new Error('Product data is empty or invalid');
-    lap('product parsed');
-
-    console.log(`📦 Product has: ${product.variants?.length} variants, ${product.images?.length} images, ${product.options?.length} options`);
-
-    const techName = product.metadata?.print_technology_name || '';
-    setTechnologyName(techName);
-    const payloadProdName = product.metadata?.payload_product_name || '';
-    setPayloadProductName(payloadProdName);
-
-    if (product.metadata?.payload_integration) {
-      try {
-        const payloadIntegration = typeof product.metadata.payload_integration === 'string'
-          ? JSON.parse(product.metadata.payload_integration)
-          : product.metadata.payload_integration;
-        if (payloadIntegration?.source_product_id) {
-          setSourceProductId(payloadIntegration.source_product_id);
-        }
-      } catch (e) {
-        console.error("Failed to parse payload_integration:", e);
-      }
-    }
-
-    setProductViewUrl(`${STOREFRONT_DOMAIN}/products/${product.handle}`);
-
-    const metadata = product.metadata || {};
-    setFulfillmentType(metadata.fulfillment_type || '');
-
-    if (metadata.fulfillment_type) {
-      try {
-        const fulfillmentDataObj = parseFulfillmentData(metadata.fulfillment_type);
-        setFulfillmentData(fulfillmentDataObj);
-      } catch (e) {}
-    }
-
-    setOriginalData({
-      options: product.options,
-      variants: product.variants,
-      metadata: product.metadata || {}
-    });
-
-    const originalIds = product.variants?.map((v: any) => v.id) || [];
-    setOriginalVariantIds(originalIds);
-    setHasVariants(product.variants && product.variants.length > 1);
-    lap('metadata + state setup DONE');
-
-    // Transform options
-    let transformedOptions: Option[] = [];
-    if (product.options && product.options.length > 0) {
-      transformedOptions = product.options.map((opt: any) => {
-        const optionValues = opt.values?.map((value: any) =>
-          typeof value === 'object' ? value.value : value
-        ) || [];
-
-        const result: Option = {
-          id: opt.id,
-          title: opt.title,
-          optionValues: optionValues,
-          imageAssociation: false
-        };
-
-        if (isColorOption(opt.title)) {
-          const colorHexValues: Record<string, string> = {};
-          if (product.metadata && product.metadata.color_hex_values) {
-            try {
-              const colorHexArray = JSON.parse(product.metadata.color_hex_values);
-              if (Array.isArray(colorHexArray)) {
-                colorHexArray.forEach(item => {
-                  if (item.name && item.hex) colorHexValues[item.name] = item.hex;
-                });
-              }
-            } catch (e) {}
+        if (categoriesResponse) {
+          const jsonData = await categoriesResponse.json();
+          if (jsonData?.product_categories) {
+            setProductCategories(jsonData.product_categories);
+            console.log(`📂 Categories loaded: ${jsonData.product_categories.length}`);
           }
-          if (Object.keys(colorHexValues).length === 0 && product.metadata) {
-            Object.entries(product.metadata).forEach(([key, value]) => {
-              if (key.startsWith('colorhex_') && typeof value === 'string') {
-                const colorName = key.replace('colorhex_', '').replace(/_/g, ' ');
-                const normalizedOptionValues = optionValues.map(v => v.toLowerCase());
-                if (normalizedOptionValues.includes(colorName.toLowerCase())) {
-                  colorHexValues[colorName] = value;
-                }
-              }
-            });
-          }
-          if (Object.keys(colorHexValues).length > 0) result.colorHexValues = colorHexValues;
         }
-        return result;
-      });
+      } catch {
+        setCategoryError('Failed to load categories. Please try again.');
+      } finally {
+        setIsLoadingCategories(false);
+      }
 
-      if (product.metadata && product.metadata.variant_specific_image_option) {
+      // ── Parse product ──────────────────────────────────────────────────
+      let product: any;
+      if (typeof response === 'string') {
         try {
-          let imageAssociationSettings;
-          if (typeof product.metadata.variant_specific_image_option === 'string') {
-            imageAssociationSettings = JSON.parse(product.metadata.variant_specific_image_option);
-          } else {
-            imageAssociationSettings = product.metadata.variant_specific_image_option;
-          }
-          if (Array.isArray(imageAssociationSettings)) {
-            transformedOptions = transformedOptions.map(opt => {
-              let setting = imageAssociationSettings.find(s => {
-                if (s.option_id === opt.id) return true;
-                const normalizedSettingId = s.option_id.replace(/^opt_/, '');
-                const normalizedOptId = opt.id.replace(/^opt_/, '');
-                if (normalizedSettingId === normalizedOptId) return true;
-                if (s.option_name && opt.title &&
-                    s.option_name.toLowerCase() === opt.title.toLowerCase()) return true;
-                return false;
-              });
-              if (setting) {
-                return { ...opt, imageAssociation: setting.enabled === true || setting.enabled === "true" };
-              }
-              return { ...opt, imageAssociation: false };
-            });
+          product = JSON.parse(response);
+          if (product.product) product = product.product;
+        } catch {
+          throw new Error('Invalid product data format');
+        }
+      } else {
+        product = response;
+      }
+
+      if (!product) throw new Error('Product data is empty or invalid');
+      lap('product parsed');
+
+      console.log(`📦 Product has: ${product.variants?.length} variants, ${product.images?.length} images, ${product.options?.length} options`);
+
+      // Warn if metadata is huge
+      const metaSize = JSON.stringify(product.metadata || {}).length;
+      if (metaSize > 50_000) {
+        console.warn(`🚨 METADATA is ${(metaSize / 1024).toFixed(1)} KB — check for embedded base64 or large JSON blobs`);
+        Object.entries(product.metadata || {}).forEach(([k, v]) => {
+          const size = JSON.stringify(v).length;
+          if (size > 1000) console.warn(`  metadata["${k}"] = ${(size / 1024).toFixed(1)} KB`);
+        });
+      }
+
+      // ── Metadata extraction ────────────────────────────────────────────
+      const techName = product.metadata?.print_technology_name || '';
+      setTechnologyName(techName);
+      const payloadProdName = product.metadata?.payload_product_name || '';
+      setPayloadProductName(payloadProdName);
+
+      if (product.metadata?.payload_integration) {
+        try {
+          const payloadIntegration = typeof product.metadata.payload_integration === 'string'
+            ? JSON.parse(product.metadata.payload_integration)
+            : product.metadata.payload_integration;
+          if (payloadIntegration?.source_product_id) {
+            setSourceProductId(payloadIntegration.source_product_id);
           }
         } catch (e) {
+          console.error('Failed to parse payload_integration:', e);
+        }
+      }
+
+      setProductViewUrl(`${STOREFRONT_DOMAIN}/products/${product.handle}`);
+
+      const metadata = product.metadata || {};
+      setFulfillmentType(metadata.fulfillment_type || '');
+
+      if (metadata.fulfillment_type) {
+        try {
+          setFulfillmentData(parseFulfillmentData(metadata.fulfillment_type));
+        } catch (e) {}
+      }
+
+      setOriginalData({
+        options: product.options,
+        variants: product.variants,
+        metadata: product.metadata || {}
+      });
+
+      const originalIds = product.variants?.map((v: any) => v.id) || [];
+      setOriginalVariantIds(originalIds);
+      setHasVariants(product.variants && product.variants.length > 1);
+      lap('metadata + state setup DONE');
+
+      // ── Transform options ──────────────────────────────────────────────
+      console.group('🔧 Transforming options');
+      let transformedOptions: Option[] = [];
+
+      if (product.options && product.options.length > 0) {
+        transformedOptions = product.options.map((opt: any) => {
+          const optionValues = opt.values?.map((value: any) =>
+            typeof value === 'object' ? value.value : value
+          ) || [];
+
+          const result: Option = {
+            id: opt.id,
+            title: opt.title,
+            optionValues,
+            imageAssociation: false
+          };
+
+          if (isColorOption(opt.title)) {
+            const colorHexValues: Record<string, string> = {};
+            if (product.metadata?.color_hex_values) {
+              try {
+                const colorHexArray = JSON.parse(product.metadata.color_hex_values);
+                if (Array.isArray(colorHexArray)) {
+                  colorHexArray.forEach(item => {
+                    if (item.name && item.hex) colorHexValues[item.name] = item.hex;
+                  });
+                }
+              } catch (e) {}
+            }
+            if (Object.keys(colorHexValues).length === 0 && product.metadata) {
+              Object.entries(product.metadata).forEach(([key, value]) => {
+                if (key.startsWith('colorhex_') && typeof value === 'string') {
+                  const colorName = key.replace('colorhex_', '').replace(/_/g, ' ');
+                  const normalizedOptionValues = optionValues.map((v: string) => v.toLowerCase());
+                  if (normalizedOptionValues.includes(colorName.toLowerCase())) {
+                    colorHexValues[colorName] = value;
+                  }
+                }
+              });
+            }
+            if (Object.keys(colorHexValues).length > 0) result.colorHexValues = colorHexValues;
+          }
+          return result;
+        });
+
+        if (product.metadata?.variant_specific_image_option) {
+          try {
+            const imageAssociationSettings = typeof product.metadata.variant_specific_image_option === 'string'
+              ? JSON.parse(product.metadata.variant_specific_image_option)
+              : product.metadata.variant_specific_image_option;
+
+            if (Array.isArray(imageAssociationSettings)) {
+              transformedOptions = transformedOptions.map(opt => {
+                const setting = imageAssociationSettings.find((s: any) => {
+                  if (s.option_id === opt.id) return true;
+                  const normalizedSettingId = s.option_id?.replace(/^opt_/, '');
+                  const normalizedOptId = opt.id?.replace(/^opt_/, '');
+                  if (normalizedSettingId === normalizedOptId) return true;
+                  if (s.option_name && opt.title &&
+                      s.option_name.toLowerCase() === opt.title.toLowerCase()) return true;
+                  return false;
+                });
+                return setting
+                  ? { ...opt, imageAssociation: setting.enabled === true || setting.enabled === 'true' }
+                  : { ...opt, imageAssociation: false };
+              });
+            }
+          } catch (e) {
+            transformedOptions = transformedOptions.map(opt => ({ ...opt, imageAssociation: false }));
+          }
+        } else {
           transformedOptions = transformedOptions.map(opt => ({ ...opt, imageAssociation: false }));
         }
       } else {
-        transformedOptions = transformedOptions.map(opt => ({ ...opt, imageAssociation: false }));
-      }
-    } else {
-      transformedOptions = [
-        { id: generateUUID(), title: 'Color', optionValues: [], imageAssociation: false },
-        { id: generateUUID(), title: 'Size', optionValues: [], imageAssociation: false }
-      ];
-    }
-
-    if (transformedOptions.length === 0) {
-      transformedOptions.push({ id: generateUUID(), title: '', optionValues: [], imageAssociation: false });
-    }
-    lap('options transformed');
-
-    // Extract shipping info
-    let shippingDays = '7-10';
-    let handlingTime = '2-3';
-    if (product.metadata && product.metadata.fulfillment_type) {
-      try {
-        const fulfillmentInfo = JSON.parse(product.metadata.fulfillment_type);
-        if (typeof fulfillmentInfo === 'object') {
-          if (fulfillmentInfo.shipping_time) {
-            const shippingMatch = fulfillmentInfo.shipping_time.match(/(\d+-?\d*)/);
-            shippingDays = shippingMatch ? shippingMatch[1] : '7-10';
-          }
-          if (fulfillmentInfo.handling_time) {
-            const handlingMatch = fulfillmentInfo.handling_time.match(/(\d+-?\d*)/);
-            handlingTime = handlingMatch ? handlingMatch[1] : '2-3';
-          }
-        }
-      } catch (e) {}
-    }
-
-    // ✅ FIX: No per-variant inventory fetch — use inventory_quantity directly
-    const transformedVariants: Variant[] = [];
-    if (product.variants && product.variants.length > 0) {
-      const optionMap: Record<string, string> = {};
-      if (product.options) {
-        product.options.forEach((opt: any) => { optionMap[opt.id] = opt.title; });
+        transformedOptions = [
+          { id: generateUUID(), title: 'Color', optionValues: [], imageAssociation: false },
+          { id: generateUUID(), title: 'Size', optionValues: [], imageAssociation: false }
+        ];
       }
 
-      for (const variant of product.variants) {
-        let price = 0;
-        let prices: any[] = [];
-
-        if (variant.calculated_price && variant.calculated_price.calculated_amount) {
-          price = variant.calculated_price.calculated_amount;
-          prices = [{ amount: price, currency_code: variant.calculated_price.currency_code || 'inr' }];
-        } else if (variant.prices && Array.isArray(variant.prices) && variant.prices.length > 0) {
-          prices = variant.prices.map((p: any) => ({ amount: p.amount, currency_code: p.currency_code || 'inr' }));
-          const inrPrice = prices.find(p => p.currency_code === 'inr');
-          price = inrPrice ? inrPrice.amount : prices[0].amount;
-        } else {
-          price = 0;
-          prices = [{ amount: 0, currency_code: 'inr' }];
-        }
-
-        // ✅ Use inventory_quantity directly — no API call needed
-        const inventoryItemId = variant.inventory_items?.[0]?.inventory_item_id || null;
-        const stock = variant.inventory_quantity ?? 0;
-
-        let optionValues: OptionValue[] = [];
-        if (variant.options) {
-          if (Array.isArray(variant.options)) {
-            optionValues = variant.options.map((optVal: any) => ({
-              optionId: optVal.option_id || (optVal.option && optVal.option.id),
-              optionName: (optVal.option && optVal.option.title) || optionMap[optVal.option_id] || 'Option',
-              value: optVal.value
-            }));
-          } else if (typeof variant.options === 'object') {
-            optionValues = Object.entries(variant.options).map(([key, value]) => {
-              const matchingOption = transformedOptions.find(opt => opt.title === key);
-              return { optionId: matchingOption?.id || '', optionName: key, value: String(value) };
-            });
-          }
-        } else {
-          const titleParts = variant.title.split(/\s*\/\s*/).map((part: string) => part.trim());
-          if (transformedOptions.length === titleParts.length) {
-            optionValues = transformedOptions.map((option, index) => ({
-              optionId: option.id, optionName: option.title, value: titleParts[index]
-            }));
-          }
-        }
-
-        let cost_Price = 0;
-        if (variant.metadata && variant.metadata.cost_price) {
-          cost_Price = typeof variant.metadata.cost_price === 'string'
-            ? parseFloat(variant.metadata.cost_price) || 0
-            : variant.metadata.cost_price || 0;
-        }
-
-        transformedVariants.push({
-          id: variant.id,
-          title: variant.title,
-          price,
-          prices,
-          stock,
-          sku: variant.sku || '',
-          allowBackorder: Boolean(variant.allow_backorder),
-          manageInventory: variant.manage_inventory !== false,
-          optionValues,
-          inventoryItemId,
-          cost_price: cost_Price,
-          metadata: variant.metadata || {}
-        });
+      if (transformedOptions.length === 0) {
+        transformedOptions.push({ id: generateUUID(), title: '', optionValues: [], imageAssociation: false });
       }
-    }
-    lap('variants transformed (NO inventory fetches)');
 
-    const completeTransformedOptions = addMissingOptionValues(transformedOptions, transformedVariants);
-    lap('options completed');
+      console.log(`Options transformed: ${transformedOptions.length}`);
+      console.groupEnd();
+      lap('options transformed');
 
-    // Transform images
-    const transformedMedia: MediaItem[] = product.images?.map((img: any, index: number) => ({
-      file: null,
-      url: img.url,
-      rank: img.rank || index,
-      id: img.id,
-      isNew: false,
-      colorValue: img.metadata?.color
-    })) || [];
-    lap(`images transformed (${transformedMedia.length} images)`);
-
-    // Process variant image associations
-    // Process variant image associations
-// PRIMARY: Read from native variant.images array (Medusa v2 native association)
-// FALLBACK: Read from variant.metadata.option_images (legacy metadata approach)
-const variantSpecificImages: MediaItem[] = [];
-if (product.variants && Array.isArray(product.variants)) {
-  console.log('=== product.variants[0].images:', product.variants?.[0]?.images);
-  product.variants.forEach(variant => {
-
-    // Find what color/option value this variant represents
-    const colorOptVal = variant.options?.find((o: any) =>
-      o.option?.title?.toLowerCase() === 'color'
-    );
-    const variantColorName = colorOptVal?.value || null;
-    const variantColorOptionName = colorOptVal?.option?.title || 'Color';
-
-    // PRIMARY PATH: Use native variant.images if present
-    if (
-      variant.images &&
-      Array.isArray(variant.images) &&
-      variant.images.length > 0 &&
-      variantColorName
-    ) {
-      variant.images.forEach((varImg: any) => {
-        if (!varImg.id || !varImg.url) return;
-
-        console.log('=== variant.images item:', varImg.id, '| existingIndex:', 
-          transformedMedia.findIndex(img => img.id === varImg.id || img.url === varImg.url)
-        );
-         console.log('=== varImg:', varImg.id, varImg.url);
-        console.log('=== transformedMedia ids:', transformedMedia.map(m => m.id));
-        const testIndex = transformedMedia.findIndex(img => img.id === varImg.id || img.url === varImg.url);
-        console.log('=== findIndex result:', testIndex);
-        // Check if this image already exists in transformedMedia
-        const existingIndex = transformedMedia.findIndex(
-          img => img.id === varImg.id || img.url === varImg.url
-        );
-
-        if (existingIndex >= 0) {
-          // Image already exists — stamp it with variantInfo if not already set
-          if (!transformedMedia[existingIndex].variantInfo) {
-            transformedMedia[existingIndex].variantInfo = {
-              optionName: variantColorOptionName,
-              optionValues: [variantColorName]
-            };
-            transformedMedia[existingIndex].colorValue = variantColorName;
-          } else {
-            // variantInfo already set — just make sure this color value is included
-            const existing = transformedMedia[existingIndex].variantInfo!;
-            if (
-              existing.optionValues &&
-              !existing.optionValues.includes(variantColorName)
-            ) {
-              existing.optionValues.push(variantColorName);
-            }
-          }
-        } else {
-          // Image is on the variant but not in product.images — add it fresh
-          transformedMedia.push({
-            file: null,
-            id: varImg.id,
-            url: varImg.url,
-            rank: transformedMedia.length,
-            isNew: false,
-            colorValue: variantColorName,
-            variantInfo: {
-              optionName: variantColorOptionName,
-              optionValues: [variantColorName]
-            }
-          });
-        }
-      });
-
-    } else if (variant.metadata?.option_images) {
-      // FALLBACK PATH: legacy metadata.option_images for older products
-      // that were saved before native variant.images association was implemented
-      try {
-        let optionImages =
-          typeof variant.metadata.option_images === 'string'
-            ? JSON.parse(variant.metadata.option_images)
-            : variant.metadata.option_images;
-
-        if (Array.isArray(optionImages)) {
-          optionImages.forEach((optImg: any) => {
-            if (!optImg.imageId) return;
-            const optionName = optImg.option_name;
-            const optionValue = optImg.option_value;
-            if (!optionName || !optionValue) return;
-
-            let matchingImage = transformedMedia.find(img => img.id === optImg.imageId);
-            if (!matchingImage) {
-              matchingImage = transformedMedia.find(img => img.url === optImg.url);
-            }
-
-            if (matchingImage) {
-              if (!matchingImage.variantInfo) {
-                matchingImage.colorValue = optionValue;
-                matchingImage.variantInfo = { optionName, optionValues: [optionValue] };
-              }
-            } else {
-              transformedMedia.push({
-                file: null,
-                id: optImg.imageId,
-                url: optImg.url,
-                rank: transformedMedia.length,
-                isNew: false,
-                colorValue: optionValue,
-                variantInfo: { optionName, optionValues: [optionValue] }
-              });
-            }
-          });
-        }
-      } catch (e) {}
-    }
-  });
-}
-lap('variant image associations DONE');
-
-    const allMediaItems = [...transformedMedia];
-    variantSpecificImages.forEach(vsImage => {
-      if (!allMediaItems.some(item => item.url === vsImage.url)) {
-        allMediaItems.push(vsImage);
-      }
-    });
-    setMediaItems(allMediaItems);
-    lap(`mediaItems set (${allMediaItems.length} total)`);
-
-    // Process product details
-    let productDetails: ProductDetail[] = [{ id: generateUUID(), text: '' }];
-    let storyBehindDesign = '';
-    if (product.metadata) {
-      if (product.metadata.product_details) {
+      // ── Shipping info ──────────────────────────────────────────────────
+      let shippingDays = '7-10';
+      let handlingTime = '2-3';
+      if (product.metadata?.fulfillment_type) {
         try {
-          const parsedDetails = JSON.parse(product.metadata.product_details);
-          if (Array.isArray(parsedDetails) && parsedDetails.length > 0) {
-            productDetails = parsedDetails.map(detail => ({ id: generateUUID(), text: detail }));
+          const fulfillmentInfo = JSON.parse(product.metadata.fulfillment_type);
+          if (typeof fulfillmentInfo === 'object') {
+            if (fulfillmentInfo.shipping_time) {
+              const m = fulfillmentInfo.shipping_time.match(/(\d+-?\d*)/);
+              shippingDays = m ? m[1] : '7-10';
+            }
+            if (fulfillmentInfo.handling_time) {
+              const m = fulfillmentInfo.handling_time.match(/(\d+-?\d*)/);
+              handlingTime = m ? m[1] : '2-3';
+            }
           }
         } catch (e) {}
       }
-      if (product.metadata.description_story) {
-        storyBehindDesign = product.metadata.description_story;
+
+      // ── Transform variants ─────────────────────────────────────────────
+      console.group(`🔧 Transforming ${product.variants?.length} variants`);
+      const transformedVariants: Variant[] = [];
+
+      if (product.variants && product.variants.length > 0) {
+        const optionMap: Record<string, string> = {};
+        product.options?.forEach((opt: any) => { optionMap[opt.id] = opt.title; });
+
+        for (let i = 0; i < product.variants.length; i++) {
+          const variant = product.variants[i];
+
+          if (i === 0 || i === product.variants.length - 1) {
+            console.log(`Variant [${i}] "${variant.title}":`, {
+              priceCount: variant.prices?.length,
+              optionCount: variant.options?.length,
+              hasInventoryItems: !!variant.inventory_items?.length,
+              metadataSize: JSON.stringify(variant.metadata || {}).length + ' bytes',
+            });
+          }
+
+          let price = 0;
+          let prices: any[] = [];
+
+          if (variant.calculated_price?.calculated_amount) {
+            price = variant.calculated_price.calculated_amount;
+            prices = [{ amount: price, currency_code: variant.calculated_price.currency_code || 'inr' }];
+          } else if (variant.prices?.length) {
+            prices = variant.prices.map((p: any) => ({ amount: p.amount, currency_code: p.currency_code || 'inr' }));
+            const inrPrice = prices.find((p: any) => p.currency_code === 'inr');
+            price = inrPrice ? inrPrice.amount : prices[0].amount;
+          } else {
+            price = 0;
+            prices = [{ amount: 0, currency_code: 'inr' }];
+          }
+
+          const inventoryItemId = variant.inventory_items?.[0]?.inventory_item_id || null;
+          const stock = variant.inventory_quantity ?? 0;
+
+          let optionValues: OptionValue[] = [];
+          if (variant.options) {
+            if (Array.isArray(variant.options)) {
+              optionValues = variant.options.map((optVal: any) => ({
+                optionId: optVal.option_id || optVal.option?.id,
+                optionName: optVal.option?.title || optionMap[optVal.option_id] || 'Option',
+                value: optVal.value
+              }));
+            } else if (typeof variant.options === 'object') {
+              optionValues = Object.entries(variant.options).map(([key, value]) => {
+                const matchingOption = transformedOptions.find(opt => opt.title === key);
+                return { optionId: matchingOption?.id || '', optionName: key, value: String(value) };
+              });
+            }
+          } else {
+            const titleParts = variant.title.split(/\s*\/\s*/).map((part: string) => part.trim());
+            if (transformedOptions.length === titleParts.length) {
+              optionValues = transformedOptions.map((option, index) => ({
+                optionId: option.id, optionName: option.title, value: titleParts[index]
+              }));
+            }
+          }
+
+          const cost_Price = typeof variant.metadata?.cost_price === 'string'
+            ? parseFloat(variant.metadata.cost_price) || 0
+            : variant.metadata?.cost_price || 0;
+
+          transformedVariants.push({
+            id: variant.id,
+            title: variant.title,
+            price, prices, stock,
+            sku: variant.sku || '',
+            allowBackorder: Boolean(variant.allow_backorder),
+            manageInventory: variant.manage_inventory !== false,
+            optionValues,
+            inventoryItemId,
+            cost_price: cost_Price,
+            metadata: variant.metadata || {}
+          });
+        }
       }
-    }
 
-    form.reset({
-      title: product.title || '',
-      subtitle: product.subtitle || '',
-      handle: product.handle || '',
-      description: product.description || '',
-      status: product.status || 'published',
-      thumbnail: product.thumbnail || '',
-      discountable: product.discountable ?? true,
-      options: completeTransformedOptions,
-      variants: transformedVariants,
-      weight: product.weight?.toString() || '',
-      length: product.length?.toString() || '',
-      width: product.width?.toString() || '',
-      height: product.height?.toString() || '',
-      material: product.material || '',
-      origin_country: product.origin_country || '',
-      category_ids: product.categories?.map(cat => cat.id) || [],
-      productDetails,
-      storyBehindDesign,
-      shippingDays,
-      handlingTime,
-      locationId: DEFAULT_LOCATION_ID
-    });
-    lap('form.reset DONE');
+      console.log(`Variants transformed: ${transformedVariants.length}`);
+      console.groupEnd();
+      lap(`variants transformed (${transformedVariants.length})`);
 
-    const associatedOptions = getImageAssociatedOptions();
-    setImageAssociatedOptions(associatedOptions);
-    if (associatedOptions.length > 0) {
-      setSelectedOption(associatedOptions[0]);
-      if (associatedOptions[0].optionValues?.length > 0) {
-        setSelectedOptionValue(associatedOptions[0].optionValues[0]);
+      // ── Complete options ───────────────────────────────────────────────
+      const completeTransformedOptions = addMissingOptionValues(transformedOptions, transformedVariants);
+      lap('options completed');
+
+      // ── Transform images ───────────────────────────────────────────────
+      console.group(`🔧 Transforming ${product.images?.length} product images`);
+      const transformedMedia: MediaItem[] = product.images?.map((img: any, index: number) => {
+        if (index === 0) console.log('Sample image shape:', Object.keys(img));
+        return {
+          file: null,
+          url: img.url,
+          rank: img.rank || index,
+          id: img.id,
+          isNew: false,
+          colorValue: img.metadata?.color
+        };
+      }) || [];
+      console.log(`Images transformed: ${transformedMedia.length}`);
+      console.groupEnd();
+      lap(`images transformed (${transformedMedia.length})`);
+
+      // NOTE: variant.images is now empty [] from backend (removed from GET fields)
+      // Variant image associations are handled lazily below via fetchVariantImages
+      // Legacy metadata.option_images fallback is also handled in the lazy fetch
+      setMediaItems(transformedMedia);
+      lap(`mediaItems set (${transformedMedia.length} total)`);
+
+      // ── Product details ────────────────────────────────────────────────
+      let productDetails: ProductDetail[] = [{ id: generateUUID(), text: '' }];
+      let storyBehindDesign = '';
+      if (product.metadata) {
+        if (product.metadata.product_details) {
+          try {
+            const parsedDetails = JSON.parse(product.metadata.product_details);
+            if (Array.isArray(parsedDetails) && parsedDetails.length > 0) {
+              productDetails = parsedDetails.map((detail: string) => ({ id: generateUUID(), text: detail }));
+            }
+          } catch (e) {}
+        }
+        if (product.metadata.description_story) {
+          storyBehindDesign = product.metadata.description_story;
+        }
       }
+
+      // ── form.reset ─────────────────────────────────────────────────────
+      form.reset({
+        title: product.title || '',
+        subtitle: product.subtitle || '',
+        handle: product.handle || '',
+        description: product.description || '',
+        status: product.status || 'published',
+        thumbnail: product.thumbnail || '',
+        discountable: product.discountable ?? true,
+        options: completeTransformedOptions,
+        variants: transformedVariants,
+        weight: product.weight?.toString() || '',
+        length: product.length?.toString() || '',
+        width: product.width?.toString() || '',
+        height: product.height?.toString() || '',
+        material: product.material || '',
+        origin_country: product.origin_country || '',
+        category_ids: product.categories?.map((cat: any) => cat.id) || [],
+        productDetails,
+        storyBehindDesign,
+        shippingDays,
+        handlingTime,
+        locationId: DEFAULT_LOCATION_ID
+      });
+      lap('form.reset DONE');
+
+      const associatedOptions = getImageAssociatedOptions();
+      setImageAssociatedOptions(associatedOptions);
+      if (associatedOptions.length > 0) {
+        setSelectedOption(associatedOptions[0]);
+        if (associatedOptions[0].optionValues?.length > 0) {
+          setSelectedOptionValue(associatedOptions[0].optionValues[0]);
+        }
+      }
+
+      setHasUnsavedVariantChanges(false);
+      setProductLoaded(true);
+      setIsLoading(false);
+      lap('✅ FULLY LOADED — form visible, lazy fetches starting');
+      console.log(`🏁 Total blocking load time: ${(performance.now() - t0).toFixed(0)}ms`);
+
+      // ── Lazy: sales channels (non-blocking) ───────────────────────────
+      setIsLoadingSalesChannels(true);
+      fetchCurrentVendor()
+        .then(vendor => {
+          console.log('🏪 Vendor fetched:', {
+            id: vendor?.id,
+            sell_on_marketplace: vendor?.sell_on_marketplace,
+            sell_on_own_store: vendor?.sell_on_own_store,
+          });
+
+          let allowed: string[] = [];
+          if (!vendor) {
+            allowed = [SALES_CHANNEL_MARKETPLACE];
+          } else {
+            if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
+            if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
+            if (allowed.length === 0) allowed = [SALES_CHANNEL_MARKETPLACE];
+          }
+          setVendorSalesChannels(allowed);
+
+          const currentChannelIds = (product?.sales_channels || []).map((sc: any) => sc.id);
+          setSelectedSalesChannels(currentChannelIds.filter((sc: string) => allowed.includes(sc)));
+        })
+        .catch(err => {
+          console.error('Vendor fetch failed (non-fatal):', err);
+          setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+        })
+        .finally(() => setIsLoadingSalesChannels(false));
+
+      // ── Lazy: variant images (non-blocking) ───────────────────────────
+      const hasColorOption = completeTransformedOptions.some(opt => isColorOption(opt.title));
+      if (hasColorOption) {
+        const imgT0 = performance.now();
+        console.log('🖼 Starting lazy variant image fetch...');
+        fetchVariantImages({ id })
+          .then(variantsWithImages => {
+            // Get the color option name from already-loaded form options
+            const formOptions = form.getValues('options');
+            const colorOptionName = formOptions.find(o => isColorOption(o.title))?.title || 'Color';
+
+            setMediaItems(prev => {
+              const updated = [...prev];
+
+              variantsWithImages.forEach((variant: any) => {
+                if (!variant.images?.length) return;
+
+                // Find the color option value using option_id match
+                const colorOptVal = variant.options?.find((o: any) =>
+                  isColorOption(
+                    // Resolve name from formOptions using option_id
+                    formOptions.find(fo => fo.id === o.option_id)?.title || ''
+                  )
+                );
+                const colorName = colorOptVal?.value;
+                if (!colorName) return;
+
+                variant.images.forEach((img: any) => {
+                  const existingIndex = updated.findIndex(m => m.id === img.id || m.url === img.url);
+                  if (existingIndex >= 0) {
+                    if (!updated[existingIndex].variantInfo) {
+                      updated[existingIndex].variantInfo = {
+                        optionName: colorOptionName,
+                        optionValues: [colorName]
+                      };
+                      updated[existingIndex].colorValue = colorName;
+                    }
+                  } else {
+                    updated.push({
+                      file: null, id: img.id, url: img.url,
+                      rank: updated.length, isNew: false,
+                      colorValue: colorName,
+                      variantInfo: { optionName: colorOptionName, optionValues: [colorName] }
+                    });
+                  }
+                });
+              });
+
+              console.log(`🖼 mediaItems updated: ${prev.length} → ${updated.length}`);
+              return updated;
+            });
+          })
+          .catch(err => console.warn('Variant image lazy fetch failed:', err));
+      }
+
+    } catch (error: any) {
+      console.error('Error loading product:', error);
+      setError('Failed to load product. Please try again.');
+      setIsLoading(false);
     }
-
-    setHasUnsavedVariantChanges(false);
-    setProductLoaded(true);
-    setIsLoading(false);
-    lap('✅ FULLY LOADED');
-    console.log(`🏁 Total load time: ${(performance.now() - t0).toFixed(0)}ms`);
-
-  } catch (error: any) {
-    console.error('Error loading product:', error);
-    setError('Failed to load product. Please try again.');
-    setIsLoading(false);
   }
-}
 
-if (id) {
-loadProduct();
-}
+  loadProduct();
 }, [id, form, productLoaded]);
 
 
@@ -1940,33 +1985,33 @@ loadProduct();
   }, [appendOption, form, handleGenerateVariants, productLoaded]);
 
   // Fetch categories when component mounts
-  useEffect(() => {
-    const loadCategories = async () => {
-      setIsLoadingCategories(true);
-      setCategoryError(null);
-      try {
-        const response = await fetchCategories();
+  // useEffect(() => {
+  //   const loadCategories = async () => {
+  //     setIsLoadingCategories(true);
+  //     setCategoryError(null);
+  //     try {
+  //       const response = await fetchCategories();
         
-        if (!response) {
-          throw new Error('Failed to fetch categories');
-        }
+  //       if (!response) {
+  //         throw new Error('Failed to fetch categories');
+  //       }
         
-        const jsonData = await response.json();
+  //       const jsonData = await response.json();
         
-        if (jsonData && jsonData.product_categories) {
-          setProductCategories(jsonData.product_categories);
-        } else {
-          setCategoryError('Received invalid category data from server');
-        }
-      } catch (error) {
-        setCategoryError('Failed to load categories. Please try again.');
-      } finally {
-        setIsLoadingCategories(false);
-      }
-    };
+  //       if (jsonData && jsonData.product_categories) {
+  //         setProductCategories(jsonData.product_categories);
+  //       } else {
+  //         setCategoryError('Received invalid category data from server');
+  //       }
+  //     } catch (error) {
+  //       setCategoryError('Failed to load categories. Please try again.');
+  //     } finally {
+  //       setIsLoadingCategories(false);
+  //     }
+  //   };
     
-    loadCategories();
-  }, []);
+  //   loadCategories();
+  // }, []);
 
   // Cleanup any object URLs for newly added files when unmounting
   const mediaRef = useRef(mediaItems);
@@ -2004,45 +2049,45 @@ loadProduct();
     });
   }, [mediaItems, form]);
 
-  useEffect(() => {
-  if (!id || !productLoaded) return;
+//   useEffect(() => {
+//   if (!id || !productLoaded) return;
 
-    const loadSalesChannelData = async () => {
-      setIsLoadingSalesChannels(true);
-      try {
-        const [vendor, product] = await Promise.all([
-          fetchCurrentVendor(),
-          fetchProduct({ id })
-        ]);
+//     const loadSalesChannelData = async () => {
+//       setIsLoadingSalesChannels(true);
+//       try {
+//         const [vendor, product] = await Promise.all([
+//           fetchCurrentVendor(),
+//           fetchProduct({ id })
+//         ]);
 
-        let allowed: string[] = [];
+//         let allowed: string[] = [];
 
-        if (!vendor) {
-          console.warn('Vendor profile not found, defaulting to marketplace channel');
-          allowed = [SALES_CHANNEL_MARKETPLACE];
-        } else {
-          if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
-          if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
+//         if (!vendor) {
+//           console.warn('Vendor profile not found, defaulting to marketplace channel');
+//           allowed = [SALES_CHANNEL_MARKETPLACE];
+//         } else {
+//           if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
+//           if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
           
-          // Fallback if neither flag is set
-          if (allowed.length === 0) allowed = [SALES_CHANNEL_MARKETPLACE];
-        }
+//           // Fallback if neither flag is set
+//           if (allowed.length === 0) allowed = [SALES_CHANNEL_MARKETPLACE];
+//         }
 
-        setVendorSalesChannels(allowed);
+//         setVendorSalesChannels(allowed);
 
-        const currentChannelIds = (product?.sales_channels || []).map((sc: any) => sc.id);
-        setSelectedSalesChannels(currentChannelIds.filter((sc: string) => allowed.includes(sc)));
+//         const currentChannelIds = (product?.sales_channels || []).map((sc: any) => sc.id);
+//         setSelectedSalesChannels(currentChannelIds.filter((sc: string) => allowed.includes(sc)));
 
-      } catch (err) {
-        console.error('Failed to load sales channel data:', err);
-        setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
-      } finally {
-        setIsLoadingSalesChannels(false);
-      }
-    };
+//       } catch (err) {
+//         console.error('Failed to load sales channel data:', err);
+//         setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+//       } finally {
+//         setIsLoadingSalesChannels(false);
+//       }
+//     };
 
-  loadSalesChannelData();
-}, [id, productLoaded]);
+//   loadSalesChannelData();
+// }, [id, productLoaded]);
 
   // FIXED: Helper function to prepare option-specific images metadata for all option types
   const prepareOptionImagesMetadata = (options: Option[], media: MediaItem[]) => {

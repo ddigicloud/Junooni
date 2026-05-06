@@ -103,19 +103,36 @@ export const GET = async (
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const storeOnly = req.query.store_only === "true"
 
-  const { data: [vendorAdmin] } = await query.graph({
-    entity: "vendor_admin",
-    fields: [
-      "vendor.products.*",
-      "vendor.products.images.*",
-      "vendor.products.vendor.*",
-      // needed for store_only filter — minimal overhead (just IDs)
-      ...(storeOnly ? ["vendor.products.sales_channels.id"] : []),
-    ],
-    filters: {
-      id: [req.auth_context.actor_id],
-    },
-  })
+  // const { data: [vendorAdmin] } = await query.graph({
+  //   entity: "vendor_admin",
+  //   fields: [
+  //     "vendor.products.*",
+  //     "vendor.products.images.*",
+  //     "vendor.products.vendor.*",
+  //     // needed for store_only filter — minimal overhead (just IDs)
+  //     ...(storeOnly ? ["vendor.products.sales_channels.id"] : []),
+  //   ],
+  //   filters: {
+  //     id: [req.auth_context.actor_id],
+  //   },
+  // })
+
+  // REPLACE WITH:
+const { data: [vendorAdmin] } = await query.graph({
+  entity: "vendor_admin",
+  fields: [
+    "vendor.products.*",
+    "vendor.products.images.*",
+    "vendor.products.vendor.*",
+    "vendor.products.categories.id",
+    "vendor.products.categories.name",
+    "vendor.products.categories.handle",
+    ...(storeOnly ? ["vendor.products.sales_channels.id"] : []),
+  ],
+  filters: {
+    id: [req.auth_context.actor_id],
+  },
+})
 
   let products = vendorAdmin?.vendor?.products ?? []
 

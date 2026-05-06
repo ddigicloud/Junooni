@@ -76,13 +76,16 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
     'material','origin_country','metadata',
     'options.id','options.title','options.values.id','options.values.value',
     'variants.id','variants.title','variants.sku','variants.allow_backorder',
-    'variants.manage_inventory','variants.inventory_quantity',
+    'variants.manage_inventory',
+    // 'variants.inventory_quantity',
     'variants.prices.amount','variants.prices.currency_code',
     '+sales_channels.id','+sales_channels.name', 
-    'variants.options.option_id','variants.options.value','variants.options.option.id','variants.options.option.title',
+    'variants.options.option_id','variants.options.value',
+    // 'variants.options.option.id',
+    // 'variants.options.option.title',
     'variants.inventory_items.inventory_item_id',
     'variants.metadata',
-    'variants.images.id','variants.images.url',
+    // 'variants.images.id','variants.images.url',
     'images.id','images.url','images.rank','images.metadata',
     'categories.id','categories.name',
   ].join(',')
@@ -94,6 +97,18 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
     //console.error('Error fetching product:', error);
     throw error;
   }
+}
+
+// fetchApi.ts — add this new function
+export async function fetchVariantImages({ id }: { id: string }): Promise<any[]> {
+  const token = localStorage.getItem("vendorToken");
+  const response = await axios.get(`${API_BASE_URL}/vendors/products/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    params: {
+      fields: 'variants.id,variants.images.id,variants.images.url,variants.options.value,variants.options.option_id',
+    }
+  });
+  return response.data.product?.variants || [];
 }
 
 /**
@@ -207,19 +222,25 @@ export function getVariantInventoryItemId(variant: any): string | null {
  * Fetch categories for product categorization
  * @returns A Promise resolving to an array of categories
  */
+// fetchApi.ts — fetchCategories()
 export async function fetchCategories() {
-  try {
-    const response = await fetch(`${API_BASE_URL}/store/product-categories`, {
-      credentials: "include",
-      headers: {
-        'x-publishable-api-key': `${API_KEY}`
-      },
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000); // 5s max
 
+  try {
+    const response = await fetch(`${API_BASE_URL}/store/product-categories?limit=200&fields=id,name,handle,parent_category_id`, {
+      credentials: 'include',
+      headers: { 'x-publishable-api-key': API_KEY },
+      signal: controller.signal,
     });
-    
+    clearTimeout(timeout);
     return response;
-  } catch (error) {
-    //console.error('Error fetching categories:', error);
+  } catch (error: any) {
+    clearTimeout(timeout);
+    if (error.name === 'AbortError') {
+      console.warn('fetchCategories timed out after 5s');
+      return null;
+    }
     throw error;
   }
 }
@@ -778,43 +799,28 @@ export async function fetchCurrentVendor(): Promise<any> {
   if (!token) return null;
 
   try {
-    const response = await axios.get(`${API_BASE_URL}/vendors/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      withCredentials: true,
-    });
-    return response.data.vendor;
-  } catch (error: any) {
-    const status = error?.response?.status;
-    if (status === 404) {
-      // vendor_admin record missing — try fetching vendor directly via token
-      try {
-        const parts = token.split('.');
-        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        const padding = base64.length % 4;
-        const payload = JSON.parse(
-          decodeURIComponent(
-            atob(padding ? base64 + '='.repeat(4 - padding) : base64)
-              .split('')
-              .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-              .join('')
-          )
-        );
-        const vendorId = payload?.app_metadata?.vendor_id;
-        if (!vendorId) return null;
-
-        const vendorResponse = await axios.get(
-          `${API_BASE_URL}/vendors/${vendorId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            withCredentials: true,
-          }
-        );
-        return vendorResponse.data.vendor;
-      } catch {
-        return null;
+    const response = await fetch(
+      `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
       }
+    );
+
+    if (!response.ok) {
+      console.warn(`fetchCurrentVendor: /vendors/me returned ${response.status}`);
+      return null;
     }
-    // 500 or other — return null silently
+
+    const data = await response.json();
+    // Same shape as dashboard: data.vendor.id = actual vendor ID
+    // data.vendor.sell_on_marketplace, data.vendor.sell_on_own_store
+    return data.vendor;
+  } catch (error) {
+    console.warn('fetchCurrentVendor failed:', error);
     return null;
   }
 }

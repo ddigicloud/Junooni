@@ -18,7 +18,7 @@ import {
   Rocket, Crown, BarChart2, Image as ImageIcon, Zap, Settings, Copy,
   ArrowUpRight, Package, Users, ShoppingBag, Check, ChevronRight,
   Star, TrendingUp, Radio, Megaphone, BookOpen, Link as LinkIcon,
-  Video, Share2, AlertTriangle,
+  Video, Share2, AlertTriangle, EyeOff
 } from "lucide-react"
 import { ProfileDropdown } from "@/components/profile-dropdown"
 import AdminImpersonationBanner from "@/components/AdminImpersonationBanner"
@@ -934,6 +934,39 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
     await onSave(patch)
   }
 
+   function PasswordInputWithToggle({
+  value, onChange, placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  const [show, setShow] = useState(false)
+  const [localValue, setLocalValue] = useState(value)  // ← local copy
+
+  return (
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        value={localValue}
+        onChange={e => setLocalValue(e.target.value)}   // ← only update local
+        onBlur={() => onChange(localValue)}              // ← sync to parent on blur
+        placeholder={placeholder}
+        className="w-full px-4 py-2.5 pr-11 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 transition-colors"
+      />
+      <button
+        type="button"
+        onClick={() => setShow(v => !v)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+        tabIndex={-1}
+        aria-label={show ? "Hide password" : "Show password"}
+      >
+        {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  )
+}
+
   return (
     <div className="space-y-7">
 
@@ -1172,12 +1205,10 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
 
         {store.password_enabled && (
           <div className="space-y-3">
-            <input
-              type="password"
+            <PasswordInputWithToggle
               value={store.store_password ?? ""}
-              onChange={e => onChange({ store_password: e.target.value || null })}
+              onChange={val => onChange({ store_password: val || null })}
               placeholder="Set a store password"
-              className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-400 transition-colors"
             />
             <div className="flex items-start gap-2.5 text-xs bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
               <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />

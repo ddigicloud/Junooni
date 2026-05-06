@@ -52,12 +52,20 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
         "vendor_store.twitter_url",
         "vendor_store.facebook_url",
         "vendor_store.custom_css",
+        "vendor_store.product_detail",  // ← ADD THIS
+        "vendor_store.border_radius",   // these are also missing
+        "vendor_store.button_style",
+        "vendor_store.product_card",
+        "vendor_store.accent_color",
+        "vendor_store.tiktok_url",
+        "vendor_store.discord_url",
       ],
       filters: { handle },
     })
 
     vendor = vendorData
     vendorStore = vendor?.vendor_store ?? null
+    console.log(`[store-front] product_detail:`, JSON.stringify(vendorStore?.product_detail))
 
   } catch (err) {
     console.error("[store-front] vendor lookup failed:", err)

@@ -43,6 +43,7 @@ import { headers, cookies } from "next/headers"
 import PasswordGateWrapper from "@/components/PasswordGateWrapper"
 import { CartProvider } from "@/context/CartContext"
 import CartDrawer from "@/components/cart/CartDrawer"
+import StoreEditorBridge from "@/components/store/StoreEditorBridge"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"
 const JWT_SECRET  = process.env.JWT_SECRET ?? "junooni-store-access-secret"
@@ -99,6 +100,8 @@ function StoreShell({
 }) {
   return (
     <CartProvider handle={handle}>
+      {/* Listens for STORE_SAVED from editor iframe and calls router.refresh() */}
+      <StoreEditorBridge />
       {children}
       <CartDrawer handle={handle} brandPrimary={brandPrimary} />
     </CartProvider>

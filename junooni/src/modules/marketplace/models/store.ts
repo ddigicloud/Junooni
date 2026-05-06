@@ -38,6 +38,25 @@ const VendorStore = model.define("vendor_store", {
   // ── Creator collections (JSON) ────────────────────────────────────────────
   collections: model.json().nullable(),
 
+  // ── Product detail settings (JSON) ───────────────────────────────────────
+  product_detail: model.json().nullable(),      // ← ADD
+
+  // ── Style ─────────────────────────────────────────────────────────────────
+  border_radius: model.text().nullable(),        // ← ADD
+  button_style: model.text().nullable(),         // ← ADD
+  product_card: model.json().nullable(),         // ← ADD
+  accent_color: model.text().nullable(),         // ← ADD
+  custom_css: model.text().nullable(),           // ← ADD
+  og_image: model.text().nullable(),             // ← ADD
+
+  // ── Social ────────────────────────────────────────────────────────────────
+  instagram_url: model.text().nullable(),        // ← ADD
+  youtube_url: model.text().nullable(),          // ← ADD
+  twitter_url: model.text().nullable(),          // ← ADD
+  facebook_url: model.text().nullable(),         // ← ADD
+  tiktok_url: model.text().nullable(),           // ← ADD
+  discord_url: model.text().nullable(),          // ← ADD
+
   // ── SEO ───────────────────────────────────────────────────────────────────
   seo_title: model.text().nullable(),
   seo_description: model.text().nullable(),
