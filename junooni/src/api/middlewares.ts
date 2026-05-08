@@ -360,6 +360,7 @@ export default defineMiddlewares({
             /^\/vendors\/payout$/,
             /^\/vendors\/me$/,
             /^\/vendors\/google-link$/, // ← ADD THIS: skip wildcard auth for google-link
+            /^\/vendors\/[^/]+\/products$/, // ← ADD THIS
           ];
           const isPublic = publicPaths.some((pattern) => pattern.test(req.path));
           if (isPublic) return next();

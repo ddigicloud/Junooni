@@ -278,10 +278,10 @@ export default function CollectionsPageClient({
 
         <div className="max-w-7xl px-4 py-10 mx-auto sm:px-6">
           <div className="mb-8">
-            <p className="mb-1 text-xs font-semibold tracking-widest uppercase"
+            {/* <p className="mb-1 text-xs font-semibold tracking-widest uppercase"
               style={{ color: brandPrimary }}>
               {vendor.name}
-            </p>
+            </p> */}
             <h1 className="text-3xl font-bold"
               style={{ color: gridText ?? (isDark ? "#ffffff" : "#111827") }}>
               {gridTitle}

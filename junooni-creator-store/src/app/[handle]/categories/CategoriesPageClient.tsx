@@ -279,10 +279,10 @@ export default function CategoriesPageClient({
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <div className="mb-8">
-            <p className="text-xs uppercase tracking-widest font-semibold mb-1"
+            {/* <p className="text-xs uppercase tracking-widest font-semibold mb-1"
               style={{ color: brandPrimary }}>
               {vendor.name}
-            </p>
+            </p> */}
             <h1 className="text-3xl font-bold"
               style={{ color: gridText ?? (isDark ? "#ffffff" : "#111827") }}>
               {gridTitle}

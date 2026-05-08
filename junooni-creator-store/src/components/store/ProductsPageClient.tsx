@@ -116,12 +116,12 @@ export default function ProductsPageClient({
         )}
 
         <div className="mb-8">
-          <p
+          {/* <p
             className="mb-1 text-xs font-semibold tracking-widest uppercase"
             style={{ color: brandPrimary }}
           >
             {vendor.name}
-          </p>
+          </p> */}
           <h1
             className="text-3xl font-bold"
             style={{ color: gridTextColor ?? (isDark ? "#ffffff" : "#111827") }}

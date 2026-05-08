@@ -1563,56 +1563,59 @@ export default function StoreEditorPage() {
                   {/* ── COLLECTIONS: grid row FIRST (editable), then sections below ── */}
                   {/* // ADD this BEFORE the OTHER SYSTEM PAGES block: */}
                   {currentLayoutKey === "collection" && (<>
-                    {bodySections.length === 0 ? (
-                      <div className="py-3 text-center">
-                        <p className={`text-[10px] ${textFaint} opacity-60`}>
-                          Add sections above or below the products
-                        </p>
-                      </div>
-                    ) : (
-                      bodySections.map((s, i) => (
-                        <div key={s.id}>
-                          <SectionRow s={s} idx={i} />
-                          {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
-                        </div>
-                      ))
-                    )}
-                    <div
-                      onClick={() => {
-                        const key = "collection"
-                        const existing = getPageSections(store, key)
-                        if (!existing.find((s: any) => s.id === "__collection_products__")) {
-                          patchStore(p => setPageSections(p, key, [
-                            ...getPageSections(p, key),
-                            { id: "__collection_products__", type: "collection_products" as SectionType,
-                              title: "Products", columns: 3 },
-                          ]))
-                        }
-                        setSelectedId("__collection_products__")
-                        setRightPanelOpen(true)
-                      }}
-                      className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
-                        selectedId === "__collection_products__"
-                          ? "bg-orange-500/15 border-orange-500/40"
-                          : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
-                        <Layout className="w-3 h-3 text-orange-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
-                          Collection Products
-                        </p>
-                        <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
-                      </div>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                        selectedId === "__collection_products__"
-                          ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
-                          : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
-                      }`}>Edit</span>
+                  {/* Collection Products — always pinned at TOP */}
+                  <div
+                    onClick={() => {
+                      const key = "collection"
+                      const existing = getPageSections(store, key)
+                      if (!existing.find((s: any) => s.id === "__collection_products__")) {
+                        patchStore(p => setPageSections(p, key, [
+                          ...getPageSections(p, key),
+                          { id: "__collection_products__", type: "collection_products" as SectionType,
+                            title: "Products", columns: 3 },
+                        ]))
+                      }
+                      setSelectedId("__collection_products__")
+                      setRightPanelOpen(true)
+                    }}
+                    className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                      selectedId === "__collection_products__"
+                        ? "bg-orange-500/15 border-orange-500/40"
+                        : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                      <Layout className="w-3 h-3 text-orange-500" />
                     </div>
-                  </>)}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                        Collection Products
+                      </p>
+                      <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
+                    </div>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                      selectedId === "__collection_products__"
+                        ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
+                        : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
+                    }`}>Edit</span>
+                  </div>
+
+                  {/* Custom sections BELOW the products row */}
+                  {bodySections.length === 0 ? (
+                    <div className="py-3 text-center">
+                      <p className={`text-[10px] ${textFaint} opacity-60`}>
+                        Add sections below the products
+                      </p>
+                    </div>
+                  ) : (
+                    bodySections.map((s, i) => (
+                      <div key={s.id}>
+                        <SectionRow s={s} idx={i} />
+                        {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                      </div>
+                    ))
+                  )}
+                </>)}
 
                   {/* ── COLLECTIONS PAGE: sections first, editable Collections Grid row at bottom ── */}
                   {currentLayoutKey === "collections" && (<>
@@ -1673,8 +1676,8 @@ export default function StoreEditorPage() {
                   {/* ── CATEGORY PAGE: sections first, editable Category Products row at bottom ── */}
                   {currentLayoutKey === "category" && (<>
                     {bodySections.length === 0 ? (
-                      <div className="py-3 text-center">
-                        <p className={`text-[10px] ${textFaint} opacity-60`}>Add sections above or below the products</p>
+                      <div className="py-1 text-center">
+                        <p className={`text-[10px] ${textFaint} opacity-60`}>Add sections below the products</p>
                       </div>
                     ) : (
                       bodySections.map((s, i) => (
@@ -1726,7 +1729,7 @@ export default function StoreEditorPage() {
                     ["products", "cart", "search", "product"].includes(currentLayoutKey) && (<>
 
                       {/* System row FIRST — pinned at top */}
-                      <div
+                      {/* <div
                         onClick={() => {
                           setSelectedId(`__${currentLayoutKey}_system__`)
                           setRightPanelOpen(true)
@@ -1759,7 +1762,7 @@ export default function StoreEditorPage() {
                         }`}>
                           {selectedId === `__${currentLayoutKey}_system__` ? "Editing" : "Auto"}
                         </span>
-                      </div>
+                      </div> */}
 
                       {/* Custom sections BELOW system row */}
                       {bodySections.length === 0 ? (

@@ -22,7 +22,7 @@ interface VendorResponse {
       .fetch<VendorResponse>(`/vendors`, {
         method: "GET",
         query: {
-          fields: "*",
+          fields: "*,*products,*products.variants,*products.variants.prices,*products.images",
         },
         headers,
         next,
@@ -51,7 +51,10 @@ interface VendorResponse {
         next,
       })
       .then((products) => products )
-      .catch(() => null);
+      .catch((err) => { 
+        console.error("VENDOR PRODUCTS ERROR:", JSON.stringify(err))  // ← add this
+      return null 
+    });
   };
   
 
@@ -65,29 +68,6 @@ export async function getVendorByHandle(handle: string): Promise<Vendor | undefi
   return vendors.find(vendor => vendor.handle === handle);
 }
 
-
-
-// export const retriveVendorsFollowers = async (vendor_id) => {
-//   const headers = {
-//     ...(await getAuthHeaders()),
-//   };
-
-//   const next = {
-//     ...(await getCacheOptions("vendors")),
-//   };
-
-//   return sdk.client
-//     .fetch<VendorResponse>(`/vendors/${vendor_id}/followers`, {
-//       method: "GET",
-//       query: {
-//         fields: "*",
-//       },
-//       headers,
-//       next,
-//     })
-//     .then((followers) => followers )
-//     .catch(() => null);
-// };
 
 interface FollowersResponse {
   count: number;

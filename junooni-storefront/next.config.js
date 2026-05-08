@@ -29,6 +29,14 @@ const nextConfig = {
         hostname: "medusa-public-images.s3.eu-west-1.amazonaws.com",
       },
       {
+      protocol: "https",
+      hostname: "**",  // ✅ allows any https domain
+    },
+    {
+      protocol: "http", 
+      hostname: "**",  // ✅ allows any http domain (local dev)
+    },
+      {
         protocol: "https",
         hostname: "digicloud9.com",
          pathname: "/wp-content/uploads/**",

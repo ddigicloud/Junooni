@@ -260,7 +260,7 @@ export default function CollectionDetailPageClient({
       </div>
 
       {/* ── Editor sections ABOVE the product grid ── */}
-      {visibleSections.map(renderSection)}
+      {/* {visibleSections.map(renderSection)} */}
 
       {/* ── Product grid — virtual, click to edit in editor ── */}
       <div
@@ -311,6 +311,8 @@ export default function CollectionDetailPageClient({
           )}
         </div>
       </div>
+
+      {visibleSections.map(renderSection)}
 
       <StoreFooter
         vendor={vendor} store={store}
