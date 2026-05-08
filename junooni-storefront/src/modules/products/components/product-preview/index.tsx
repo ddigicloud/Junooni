@@ -10,6 +10,12 @@ import { Region } from "@medusajs/medusa"
 
 interface ProductVariant {
   id: string;
+  thumbnail?: string;
+  images?: Array<{
+    id: string;
+    url: string;
+    variants?: Array<{ id: string }>;
+  }>;
   options?: Array<{
     option?: { title: string };
     value: string;
@@ -106,83 +112,50 @@ const ProductPreview = ({
   }, []);
 
   // Extract image finding logic (optimized - memoized)
-  const findImageForColor = useMemo(() => (colorName: string): string | null => {
-    if (!colorName) return null;
-    
-    const normalizedColorName = normalizeColorName(colorName);
-    
-    // Find variants by color options
-    const colorMatchingVariants = product.variants?.filter(variant => {
-      if (!variant.options) return false;
-      return variant.options.some(option => 
-        option.option?.title === 'color' && 
-        normalizeColorName(option.value).toLowerCase() === normalizedColorName.toLowerCase()
-      );
-    }) || [];
-    
-    // Strategy 1A: Try variant.metadata.variant_images first
-    let variantWithImage = colorMatchingVariants.find(variant => 
-      variant.metadata?.variant_images
+  // Extract image finding logic (optimized - memoized)
+// Extract image finding logic (optimized - memoized)
+const findImageForColor = useMemo(() => (colorName: string): string | null => {
+  if (!colorName) return null;
+
+  const normalizedColorName = normalizeColorName(colorName);
+
+  // Find variants matching this color
+  const colorMatchingVariants = product.variants?.filter(variant => {
+    if (!variant.options) return false;
+    return variant.options.some(option =>
+      option.option?.title?.toLowerCase() === 'color' &&
+      normalizeColorName(option.value).toLowerCase() === normalizedColorName.toLowerCase()
     );
-    
-    if (variantWithImage && variantWithImage.metadata?.variant_images) {
-      let variantImages = variantWithImage.metadata.variant_images;
-      if (typeof variantImages === 'string') {
-        try {
-          variantImages = JSON.parse(variantImages);
-        } catch (e) {
-          variantImages = [];
-        }
-      }
-      
-      if (Array.isArray(variantImages) && variantImages.length > 0) {
-        return variantImages[0];
-      }
+  }) || [];
+
+  if (colorMatchingVariants.length === 0) return null;
+
+  // Strategy 1: variant.thumbnail directly
+  const variantWithThumbnail = colorMatchingVariants.find(v => v.thumbnail);
+  if (variantWithThumbnail?.thumbnail) {
+    return variantWithThumbnail.thumbnail;
+  }
+
+  // Strategy 2: variant.images[] linked to this variant's ID
+  for (const variant of colorMatchingVariants) {
+    const variantImages = variant.images as Array<{
+      id: string;
+      url: string;
+      variants?: Array<{ id: string }>;
+    }> | undefined;
+
+    if (variantImages && variantImages.length > 0) {
+      const linkedImage = variantImages.find(img =>
+        img.variants?.some(v => v.id === variant.id)
+      );
+      if (linkedImage?.url) return linkedImage.url;
+
+      if (variantImages[0]?.url) return variantImages[0].url;
     }
-    
-    // Strategy 1B: Try product.metadata.variant_images mapping
-    if (product.metadata?.variant_images) {
-      let productVariantImages = product.metadata.variant_images;
-      if (typeof productVariantImages === 'string') {
-        try {
-          productVariantImages = JSON.parse(productVariantImages);
-        } catch (e) {
-          productVariantImages = {};
-        }
-      }
-      
-      if (typeof productVariantImages === 'object') {
-        for (const variant of colorMatchingVariants) {
-          if (productVariantImages[variant.id]) {
-            return productVariantImages[variant.id];
-          }
-        }
-      }
-    }
-    
-    // Strategy 2: Search product.images for color-specific filenames
-    if (product.images && product.images.length > 1) {
-      const colorImage = product.images.find(img => {
-        const imageUrl = img.url || '';
-        const colorVariations = [
-          normalizedColorName.toLowerCase(),
-          normalizedColorName.toLowerCase().replace(/\s+/g, ''),
-          normalizedColorName.toLowerCase().replace(/\s+/g, '-'),
-          normalizedColorName.toLowerCase().replace(/\s+/g, '_'),
-        ];
-        
-        return colorVariations.some(variation => 
-          imageUrl.toLowerCase().includes(variation)
-        );
-      });
-      
-      if (colorImage) {
-        return colorImage.url;
-      }
-    }
-    
-    return null;
-  }, [product, normalizeColorName]);
+  }
+
+  return null;
+}, [product, normalizeColorName]);
 
   // Optimized image selection with minimal processing
   interface ImageSelectionResult {
