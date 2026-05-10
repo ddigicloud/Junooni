@@ -35,27 +35,27 @@ interface VendorResponse {
   export const retriveVendorsProducts = async (vendor_id) => {
     const headers = {
       ...(await getAuthHeaders()),
-    };
-  
+    }
+
     const next = {
-      ...(await getCacheOptions("vendors")),
-    };
-  
+      ...(await getCacheOptions(`vendor-products-${vendor_id}`)), // ← vendor-specific tag
+    }
+
     return sdk.client
       .fetch<VendorResponse>(`/vendors/${vendor_id}/products`, {
         method: "GET",
         query: {
-          fields: "*",
+          fields: "*,*variants,*variants.prices,*images", // ← also fix fields
         },
         headers,
         next,
       })
-      .then((products) => products )
-      .catch((err) => { 
-        console.error("VENDOR PRODUCTS ERROR:", JSON.stringify(err))  // ← add this
-      return null 
-    });
-  };
+      .then((products) => products)
+      .catch((err) => {
+        console.error("VENDOR PRODUCTS ERROR:", JSON.stringify(err))
+        return null
+      })
+  }
   
 
  /**

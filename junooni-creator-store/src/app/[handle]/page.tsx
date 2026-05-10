@@ -126,6 +126,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         : vendor.logo ? [{ url: vendor.logo }] : [],
     },
     robots: store?.status === "live" ? "index,follow" : "noindex",
+     icons: store?.store_favicon ? {
+      icon: store.store_favicon,
+      shortcut: store.store_favicon,
+      apple: store.store_favicon,
+    } : undefined,
   }
 }
 

@@ -5,20 +5,24 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        inter:    ["var(--font-inter)", "sans-serif"],
-        poppins:  ["var(--font-poppins)", "sans-serif"],
-        playfair: ["var(--font-playfair)", "serif"],
+        inter:           ["var(--font-inter)", "sans-serif"],
+        poppins:         ["var(--font-poppins)", "sans-serif"],
+        playfair:        ["var(--font-playfair)", "serif"],
+        "dm-sans":       ["var(--font-dm-sans)", "sans-serif"],
+        "space-grotesk": ["var(--font-space-grotesk)", "sans-serif"],
+        "nunito":     ["var(--font-nunito)", "sans-serif"],
+        "raleway":    ["var(--font-raleway)", "sans-serif"],
+        "montserrat": ["var(--font-montserrat)", "sans-serif"],
       },
       colors: {
-        // CSS variable driven — each store injects its own brand colors
         brand: {
           primary:   "var(--brand-primary)",
           secondary: "var(--brand-secondary)",
         },
       },
       animation: {
-        "fade-up":   "fadeUp 0.5s ease forwards",
-        "fade-in":   "fadeIn 0.4s ease forwards",
+        "fade-up": "fadeUp 0.5s ease forwards",
+        "fade-in": "fadeIn 0.4s ease forwards",
       },
       keyframes: {
         fadeUp: {

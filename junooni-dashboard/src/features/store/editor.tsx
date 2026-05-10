@@ -265,6 +265,9 @@ const FONTS = [
   { id: "playfair",      name: "Playfair Display", class: "font-serif" },
   { id: "dm-sans",       name: "DM Sans",          class: "font-sans" },
   { id: "space-grotesk", name: "Space Grotesk",    class: "font-sans" },
+  { id: "nunito",     name: "Nunito",     class: "font-sans" },
+  { id: "raleway",    name: "Raleway",    class: "font-sans" },
+  { id: "montserrat", name: "Montserrat", class: "font-sans" },
 ]
 
 const TEMPLATES = [
@@ -433,7 +436,7 @@ function ProductDetailSettings({ settings, onChange, isDark }: {
                 isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"
               }`}>
                 <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} />
-                <span className="w-5 text-center text-sm">{meta.icon}</span>
+                <span className="w-5 text-sm text-center">{meta.icon}</span>
                 <span className={`flex-1 text-xs font-medium ${textPrimary}`}>{meta.label}</span>
                 <button onClick={() => moveElement(key, "up")} disabled={i === 0}
                   className={`p-0.5 rounded ${i === 0 ? "opacity-30" : hoverBg}`}>
@@ -819,6 +822,7 @@ export default function StoreEditorPage() {
   const fileOgRef = useRef<HTMLInputElement>(null)
 
   const [store, setStore] = useState<VendorStore>({})
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [vendorHandle, setVendorHandle] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -889,11 +893,12 @@ export default function StoreEditorPage() {
     try {
 
       // ── 1. Fetch vendor handle ──────────────────────────────────────────────
+      let vd: any = {}
       const vRes = await fetch(`${backendUrl}/vendors/me`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (vRes.ok) {
-        const vd = await vRes.json()
+        vd = await vRes.json()
         setVendorHandle(vd.vendor?.handle ?? "")
       }
 
@@ -920,12 +925,23 @@ export default function StoreEditorPage() {
             }
           }
 
-          setStore({
+          const loadedStore = {
             ...sd.store,
             sections: {
               sections: secs,
               page_layouts: mappedLayouts,
             }
+          }
+
+          // Seed social URLs from vendor profile if not already saved in store
+          setStore({
+            ...loadedStore,
+            instagram_url: loadedStore.instagram_url || vd.vendor?.instagram || "",
+            youtube_url:   loadedStore.youtube_url   || vd.vendor?.youtube   || "",
+            twitter_url:   loadedStore.twitter_url   || vd.vendor?.xtwitter  || "",
+            facebook_url:  loadedStore.facebook_url  || vd.vendor?.facebook  || "",
+            // tiktok_url:    loadedStore.tiktok_url    || vd.vendor?.tiktok    || "",
+            // discord_url:   loadedStore.discord_url   || vd.vendor?.discord   || "",
           })
           setHasStore(true)
 
@@ -996,6 +1012,10 @@ export default function StoreEditorPage() {
   load()
 }, [])
 
+useEffect(() => {
+  if (!isLoading) setHasUnsavedChanges(true)
+}, [store])
+
   // ── postMessage listener ──────────────────────────────────────────────────
 
   const syncToIframe = useCallback(() => {
@@ -1027,6 +1047,7 @@ export default function StoreEditorPage() {
       const data = await res.json()
       setStore(p => ({ ...p, ...data.store }))
       setHasStore(true)
+      setHasUnsavedChanges(false)
       
       // ← ADD THIS: tell iframe to hard refresh after save
       iframeRef.current?.contentWindow?.postMessage({ type: "STORE_SAVED" }, "*")
@@ -1243,7 +1264,9 @@ export default function StoreEditorPage() {
   const textPrimary = isDark ? "text-white" : "text-gray-900"
   const textMuted = isDark ? "text-gray-400" : "text-gray-500"
   const textFaint = isDark ? "text-gray-500" : "text-gray-400"
-  const inputCls = `bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-600 focus:border-orange-500`
+  const inputCls = isDark
+  ? `bg-gray-800 border border-gray-700 text-gray-200 placeholder-gray-500 focus:border-orange-500`
+  : `bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 focus:border-orange-500`
   const hoverBg = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
 
   // ── Left panel content ────────────────────────────────────────────────────
@@ -1278,8 +1301,8 @@ export default function StoreEditorPage() {
             return (
               <div className="relative group/row">
                 {/* Hover insert zone above */}
-                <div
-                  className="absolute -top-2 left-0 right-0 h-4 z-10 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity"
+                {/* <div
+                  className="absolute left-0 right-0 z-10 flex items-center justify-center h-4 transition-opacity opacity-0 -top-2 group-hover/row:opacity-100"
                   onMouseEnter={() => {}}
                 >
                   <button
@@ -1288,7 +1311,7 @@ export default function StoreEditorPage() {
                   >
                     <Plus className="w-2.5 h-2.5" /> Add
                   </button>
-                </div>
+                </div> */}
 
                 <div
                   draggable
@@ -1301,7 +1324,7 @@ export default function StoreEditorPage() {
                     if (!isSelected) { setRightPanelOpen(true); if (window.innerWidth < 768) setLeftPanelOpen(false) }
                     else setRightPanelOpen(false)
                   }}
-                  className={`flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-all select-none ${
+                  className={`flex items-center gap-2 px-2 py-1 rounded-lg cursor-pointer transition-all select-none ${
                     isSelected ? "bg-orange-500/15 border border-orange-500/40" :
                     dragOver === globalIdx ? `border border-dashed ${isDark ? "bg-gray-700/50 border-gray-500" : "bg-gray-100 border-gray-300"}` :
                     `border border-transparent ${hoverBg}`
@@ -1336,20 +1359,20 @@ export default function StoreEditorPage() {
           const AddBetweenLine = ({ afterIndex }: { afterIndex: number }) => {
             const isOpen = addSectionOpen && insertAtIndex === afterIndex
             return (
-              <div className="relative group/addline py-0.5">
+              <div className="relative h-0 group/addline">
                 {/* The hover line */}
-                <div className={`flex items-center gap-0 transition-opacity ${isOpen ? "opacity-100" : "opacity-0 group-hover/addline:opacity-100"}`}>
+              <div className={`absolute inset-x-0 top-0 -translate-y-1/2 flex items-center gap-0 transition-opacity ${isOpen ? "opacity-100" : "opacity-0 group-hover/addline:opacity-100"}`} style={{ zIndex: 2 }}>
                   <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
                   <button
                     onClick={e => { e.stopPropagation(); if (isOpen) { setAddSectionOpen(false); setInsertAtIndex(null) } else { setInsertAtIndex(afterIndex); setAddSectionOpen(true); setAddSectionFilter("all") } }}
-                    className="mx-1 flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white shadow-lg hover:bg-orange-600 transition-colors shrink-0"
+                    className="flex items-center justify-center w-5 h-5 mx-1 text-white transition-colors bg-orange-500 rounded-full shadow-lg hover:bg-orange-600 shrink-0"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
                   <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
                 </div>
                 {/* Invisible hit area so hover works in the gap */}
-                {!isOpen && <div className="absolute inset-x-0 -top-2 -bottom-2" style={{ pointerEvents: "none" }} />}
+                {!isOpen && <div className="absolute inset-x-0 -top-3 -bottom-3" style={{ pointerEvents: "auto", zIndex: 1 }} />}
                 {/* The popover */}
                 {isOpen && (
                   <div className={`mt-1 rounded-xl border overflow-hidden shadow-xl ${isDark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-white"}`}>
@@ -1365,7 +1388,7 @@ export default function StoreEditorPage() {
                         </button>
                       ))}
                     </div>
-                    <div className="max-h-52 overflow-y-auto">
+                    <div className="overflow-y-auto max-h-52">
                       {SECTION_BLOCKS
                         .filter(b => {
                           const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey] ?? PAGE_ALLOWED_SECTIONS.home
@@ -1418,7 +1441,7 @@ export default function StoreEditorPage() {
                         </button>
                       ))}
                     </div>
-                    <div className="max-h-52 overflow-y-auto">
+                    <div className="overflow-y-auto max-h-52">
                       {SECTION_BLOCKS
                         .filter(b => {
                           const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey] ?? PAGE_ALLOWED_SECTIONS.home
@@ -1442,7 +1465,7 @@ export default function StoreEditorPage() {
           }
 
           return (
-            <div className="p-2 space-y-1 pb-4">
+            <div className="p-2 pb-4 space-y-1">
 
               {/* ── HEADER ZONE ── */}
               <ZoneLabel label="Header" color="#6366f1" />
@@ -1470,9 +1493,9 @@ export default function StoreEditorPage() {
                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isDark ? "bg-indigo-900/50 text-indigo-400" : "bg-indigo-100 text-indigo-500"}`}>Auto</span>
                   </div>
                 </div>
-                <div className="px-1.5 pb-1.5">
+                {/* <div className="px-1.5 pb-1.5">
                   <AddBetweenButton afterIndex={headerSections.length > 0 ? Math.max(...headerSections.map(s => sections.findIndex(x => x.id === s.id))) : -1} zone="header" />
-                </div>
+                </div> */}
               </div>
 
               {/* ── BODY ZONE ── */}
@@ -1784,7 +1807,7 @@ export default function StoreEditorPage() {
                   {/* ── HOME PAGE ── */}
                   {currentLayoutKey === "home" && (<>
                     {bodySections.length === 0 && (
-                      <div className="py-6 text-center space-y-1">
+                      <div className="py-6 space-y-1 text-center">
                         <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
                         <p className={`text-[10px] ${textFaint} opacity-60`}>
                           Click "+ Add section" to build this page
@@ -1802,7 +1825,7 @@ export default function StoreEditorPage() {
                   {/* ── CUSTOM PAGES (page_*) ── */}
                   {currentLayoutKey.startsWith("page_") && (<>
                     {bodySections.length === 0 && (
-                      <div className="py-6 text-center space-y-1">
+                      <div className="py-6 space-y-1 text-center">
                         <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
                         <p className={`text-[10px] ${textFaint} opacity-60`}>
                           Click "+ Add section" to build this page
@@ -1940,8 +1963,8 @@ export default function StoreEditorPage() {
                   { key: "youtube_url",   label: "YouTube",   placeholder: "https://youtube.com/@yourchannel", color: "#FF0000" },
                   { key: "twitter_url",   label: "X",         placeholder: "https://x.com/yourhandle",         color: "#1DA1F2" },
                   { key: "facebook_url",  label: "Facebook",  placeholder: "https://facebook.com/yourpage",    color: "#1877F2" },
-                  { key: "tiktok_url",    label: "TikTok",    placeholder: "https://tiktok.com/@yourhandle",   color: "#000000" },
-                  { key: "discord_url",   label: "Discord",   placeholder: "https://discord.gg/yourserver",    color: "#5865F2" },
+                  // { key: "tiktok_url",    label: "TikTok",    placeholder: "https://tiktok.com/@yourhandle",   color: "#000000" },
+                  // { key: "discord_url",   label: "Discord",   placeholder: "https://discord.gg/yourserver",    color: "#5865F2" },
                 ].map(({ key, label, placeholder, color }) => (
                   <div key={key}>
                     <label className={`text-[10px] ${textFaint} flex items-center gap-1 mb-1`}>
@@ -2456,7 +2479,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           currentLayoutKey="collection"
         />
         ) : isSystemPanel ? (
-        <div className="py-8 text-center space-y-2">
+        <div className="py-8 space-y-2 text-center">
           <Layout className={`w-8 h-8 mx-auto ${textFaint} opacity-40`} />
           <p className={`text-sm font-medium ${textPrimary}`}>
             {currentLayoutKey === "search"   ? "Search Bar & Results" :
@@ -2584,9 +2607,18 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           <button onClick={() => setEditorTheme(t => t === "dark" ? "light" : "dark")} className={`p-1.5 rounded-md transition-colors hidden sm:block ${isDark ? "text-yellow-400" : "text-gray-500"}`}>
             {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           </button>
-          <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1 px-3 text-xs text-white bg-orange-600 hover:bg-orange-700 h-7">
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving || !hasUnsavedChanges}
+            className={`gap-1 px-3 text-xs text-white h-7 transition-colors ${
+              hasUnsavedChanges
+                ? "bg-orange-600 hover:bg-orange-700"
+                : "bg-gray-500 cursor-default"
+            }`}
+          >
             {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-            <span className="hidden sm:inline">Save</span>
+            <span className="hidden sm:inline">{hasUnsavedChanges ? "Save" : "Saved"}</span>
           </Button>
         </div>
       </div>
@@ -2810,7 +2842,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
                 }`}>
                 <span className="text-sm leading-none">{p.icon}</span>
                 <span className="flex-1">{p.label}</span>
-                {currentPath === p.path && <Check className="w-3 h-3 shrink-0 text-orange-400" />}
+                {currentPath === p.path && <Check className="w-3 h-3 text-orange-400 shrink-0" />}
               </button>
             ))}
           </div>
@@ -2839,7 +2871,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
                     <p className={`text-[10px] ${textFaint}`}>Changes apply to all product pages</p>
                   </div>
                   {currentPath.startsWith("/products/") && currentPath !== "/products" && (
-                    <Check className="w-3 h-3 shrink-0 text-orange-400" />
+                    <Check className="w-3 h-3 text-orange-400 shrink-0" />
                   )}
                 </button>
               </div>
@@ -2854,7 +2886,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
                     Collection pages
                   </p>
                 </div>
-                <div className="max-h-36 overflow-y-auto px-1 pb-1">
+                <div className="px-1 pb-1 overflow-y-auto max-h-36">
                   {collections.map((col: any) => {
                     const path = `/collections/${col.handle}`
                     return (
@@ -2866,7 +2898,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
                         }`}>
                         <span className="text-sm leading-none shrink-0">🗂️</span>
                         <span className="flex-1 truncate">{col.title}</span>
-                        {currentPath === path && <Check className="w-3 h-3 shrink-0 text-orange-400" />}
+                        {currentPath === path && <Check className="w-3 h-3 text-orange-400 shrink-0" />}
                       </button>
                     )
                   })}
@@ -2898,7 +2930,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
                     <p className={`text-[10px] ${textFaint}`}>Changes apply to all collection pages</p>
                   </div>
                   {currentPath.startsWith("/collections/") && currentPath !== "/collections" && (
-                    <Check className="w-3 h-3 shrink-0 text-orange-400" />
+                    <Check className="w-3 h-3 text-orange-400 shrink-0" />
                   )}
                 </button>
               </div>
@@ -2929,7 +2961,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
                       <p className={`text-[10px] ${textFaint}`}>Changes apply to all category pages</p>
                     </div>
                     {currentPath.startsWith("/categories/") && currentPath !== "/categories" && (
-                      <Check className="w-3 h-3 shrink-0 text-orange-400" />
+                      <Check className="w-3 h-3 text-orange-400 shrink-0" />
                     )}
                   </button>
                 </div>
@@ -2951,7 +2983,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
                     }`}>
                     <span className="text-sm leading-none">📄</span>
                     <span className="flex-1 truncate">{p.title}</span>
-                    {currentPath === path && <Check className="w-3 h-3 shrink-0 text-orange-400" />}
+                    {currentPath === path && <Check className="w-3 h-3 text-orange-400 shrink-0" />}
                   </button>
                 )
               })}
@@ -2965,7 +2997,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
 
 // ─── Section Settings ─────────────────────────────────────────────────────────
 
-function SectionSettings({ section, onChange, token, backendUrl, isDark, collections = [], pages = [], products = [], vendorHandle = "" }: {
+function SectionSettings({ section, onChange, token, backendUrl, isDark, collections = [], pages = [], products = [], vendorHandle = "", currentLayoutKey = "home" }: {
   section: StoreSection; onChange: (p: Partial<StoreSection>) => void
   collections?: { id: string; title: string; handle: string }[]
   pages?: StorePage[]
@@ -3108,7 +3140,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
         </label>
  
         {/* ── Filter sidebar controls — only for collection sections (not featured) ── */}
-        {section.type === "collection" && (
+        {section.type === "collection" && ["products", "collection", "category"].includes(currentLayoutKey ?? "") && (
           <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
             <p className={`text-[10px] ${textFaint} mb-3 uppercase tracking-wider font-semibold`}>Filter sidebar</p>
             <div className="space-y-2.5">
@@ -3277,7 +3309,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                         isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
                       }`} />
                     <button onClick={() => onChange({ background_color: undefined })}
-                      className="shrink-0 text-red-400 hover:text-red-300"><X className="w-3 h-3" /></button>
+                      className="text-red-400 shrink-0 hover:text-red-300"><X className="w-3 h-3" /></button>
                   </div>
                 ) : (
                   <button onClick={() => onChange({ background_color: "#ffffff" })}
@@ -3303,7 +3335,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                         isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
                       }`} />
                     <button onClick={() => onChange({ text_color: undefined })}
-                      className="shrink-0 text-red-400 hover:text-red-300"><X className="w-3 h-3" /></button>
+                      className="text-red-400 shrink-0 hover:text-red-300"><X className="w-3 h-3" /></button>
                   </div>
                 ) : (
                   <button onClick={() => onChange({ text_color: "#111827" })}
@@ -3363,7 +3395,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                     }`} />
                   <button
                     onClick={() => onChange({ background_color: undefined })}
-                    className="shrink-0 text-red-400 hover:text-red-300 transition-colors">
+                    className="text-red-400 transition-colors shrink-0 hover:text-red-300">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -3397,7 +3429,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                     }`} />
                   <button
                     onClick={() => onChange({ text_color: undefined })}
-                    className="shrink-0 text-red-400 hover:text-red-300 transition-colors">
+                    className="text-red-400 transition-colors shrink-0 hover:text-red-300">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -3552,21 +3584,77 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
       )}
 
       {/* ── DIVIDER ──────────────────────────────────────────────────── */}
-      {section.type === "divider" && (
+      {/* {section.type === "divider" && (
         <div className="py-6 text-center">
           <div className={`w-full h-px mb-3 ${isDark ? "bg-gray-700" : "bg-gray-200"}`} />
           <p className={`text-xs ${textFaint}`}>No settings — just a visual separator.</p>
+        </div>
+      )} */}
+
+      {section.type === "divider" && (
+        <div className="space-y-3">
+          <Field label="Thickness (px)" faint={textFaint}>
+            <div className="flex items-center gap-3">
+              <input type="range" min={1} max={16} value={(section as any).divider_thickness ?? 1}
+                onChange={e => onChange({ divider_thickness: Number(e.target.value) } as any)}
+                className="flex-1 accent-orange-500" />
+              <span className={`text-xs w-6 text-right ${textFaint}`}>{(section as any).divider_thickness ?? 1}</span>
+            </div>
+          </Field>
+          <Field label="Color" faint={textFaint}>
+            <div className="flex gap-1.5 items-center">
+              <input type="color" value={(section as any).divider_color ?? "#e5e7eb"}
+                onChange={e => onChange({ divider_color: e.target.value } as any)}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <EditorInput value={(section as any).divider_color ?? "#e5e7eb"}
+                onChange={v => onChange({ divider_color: v } as any)}
+                placeholder="#e5e7eb" isDark={isDark} />
+              {(section as any).divider_color && (
+                <button onClick={() => onChange({ divider_color: undefined } as any)} className="text-red-400 shrink-0"><X className="w-3 h-3" /></button>
+              )}
+            </div>
+          </Field>
+          <Field label="Padding top (px)" faint={textFaint}>
+            <div className="flex items-center gap-3">
+              <input type="range" min={0} max={120} step={4} value={(section as any).padding_top ?? 16}
+                onChange={e => onChange({ padding_top: Number(e.target.value) } as any)}
+                className="flex-1 accent-orange-500" />
+              <span className={`text-xs w-8 text-right ${textFaint}`}>{(section as any).padding_top ?? 16}px</span>
+            </div>
+          </Field>
+          <Field label="Padding bottom (px)" faint={textFaint}>
+            <div className="flex items-center gap-3">
+              <input type="range" min={0} max={120} step={4} value={(section as any).padding_bottom ?? 16}
+                onChange={e => onChange({ padding_bottom: Number(e.target.value) } as any)}
+                className="flex-1 accent-orange-500" />
+              <span className={`text-xs w-8 text-right ${textFaint}`}>{(section as any).padding_bottom ?? 16}px</span>
+            </div>
+          </Field>
         </div>
       )}
 
       {/* ── TICKER ───────────────────────────────────────────────────── */}
       {section.type === "ticker" && (<>
         <Field label="Ticker items (one per line)" faint={textFaint}>
-          <EditorTextarea
-            value={(section.ticker_items ?? []).join("\n")}
-            onChange={v => onChange({ ticker_items: v.split("\n").map(s => s.trim()).filter(Boolean) })}
-            placeholder={"Free shipping on orders above ₹999\nNew drops every week\nOfficial creator merch"}
-            rows={5} isDark={isDark}
+          <RichTextEditor
+            value={(section.ticker_items ?? []).join("<br>")}
+            onChange={v => {
+              // Split on <br> variants, strip remaining HTML, filter empty
+              const items = v
+                .split(/<br\s*\/?>/gi)
+                .map(s => {
+                  const tmp = document.createElement("div")
+                  tmp.innerHTML = s
+                  return (tmp.textContent ?? tmp.innerText ?? "").trim()
+                })
+                .filter(Boolean)
+              onChange({ ticker_items: items })
+            }}
+            placeholder="Free shipping on orders above ₹999"
+            isDark={isDark}
+            rows={5}
+            singleLine={false}
+            showToolbar={false}
           />
           <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Each line is one item in the scroll.</p>
         </Field>
@@ -3598,7 +3686,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
         </div>
         {/* Live preview */}
         {(section.ticker_items ?? []).length > 0 && (
-          <div className="overflow-hidden rounded-lg py-2 px-3 text-xs font-medium"
+          <div className="px-3 py-2 overflow-hidden text-xs font-medium rounded-lg"
             style={{ background: section.background_color ?? "#111827", color: section.text_color ?? "#ffffff" }}>
             {(section.ticker_items ?? []).join(` ${section.ticker_separator ?? "✦"} `)}
           </div>
@@ -3654,7 +3742,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
           <EditorInput value={section.video_text_url ?? ""} onChange={v => onChange({ video_text_url: v })} placeholder="https://youtube.com/watch?v=... or https://youtu.be/..." isDark={isDark} />
           <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>YouTube and Vimeo supported</p>
         </Field>
-        <div className="space-y-2 pt-1">
+        <div className="pt-1 space-y-2">
           <Field label="Desktop — video side" faint={textFaint}>
             <div className="flex gap-2">
               {(["left", "right"] as const).map(pos => (
@@ -3701,7 +3789,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                 {selectedProduct && (
                   <div className={`flex items-center gap-2.5 px-2.5 py-2 border-b ${isDark ? "border-gray-700 bg-gray-800/80" : "border-gray-200 bg-gray-50"}`}>
                     {selectedProduct.thumbnail && (
-                      <img src={selectedProduct.thumbnail} alt={selectedProduct.title} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                      <img src={selectedProduct.thumbnail} alt={selectedProduct.title} className="object-cover w-8 h-8 rounded-lg shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs font-semibold truncate ${textFaint === "text-gray-500" ? "text-gray-200" : "text-gray-800"}`}>{selectedProduct.title}</p>
@@ -3711,7 +3799,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                   </div>
                 )}
                 {/* Product list */}
-                <div className="max-h-44 overflow-y-auto">
+                <div className="overflow-y-auto max-h-44">
                   {products.map(p => (
                     <button key={p.id} onClick={() => onChange({
                       featured_product_id: p.id,
@@ -3722,7 +3810,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                           ? isDark ? "bg-orange-500/15 text-orange-400" : "bg-orange-50 text-orange-600"
                           : isDark ? "text-gray-300 hover:bg-gray-800" : "text-gray-700 hover:bg-gray-50"
                       }`}>
-                      {p.thumbnail && <img src={p.thumbnail} alt={p.title} className="w-7 h-7 rounded-md object-cover shrink-0" />}
+                      {p.thumbnail && <img src={p.thumbnail} alt={p.title} className="object-cover rounded-md w-7 h-7 shrink-0" />}
                       <span className="flex-1 text-xs truncate">{p.title}</span>
                       {section.featured_product_id === p.id && <Check className="w-3 h-3 shrink-0" />}
                     </button>
@@ -3864,7 +3952,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                          : "bg-white border border-gray-300 text-gray-800"
                 }`} />
               <button onClick={() => onChange({ background_color: undefined })}
-                className="shrink-0 text-red-400 hover:text-red-300">
+                className="text-red-400 shrink-0 hover:text-red-300">
                 <X className="w-3 h-3" />
               </button>
             </div>
@@ -3893,7 +3981,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                          : "bg-white border border-gray-300 text-gray-800"
                 }`} />
               <button onClick={() => onChange({ text_color: undefined })}
-                className="shrink-0 text-red-400 hover:text-red-300">
+                className="text-red-400 shrink-0 hover:text-red-300">
                 <X className="w-3 h-3" />
               </button>
             </div>
@@ -3952,7 +4040,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                       isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
                     }`} />
                   <button onClick={() => onChange({ background_color: undefined })}
-                    className="shrink-0 text-red-400 hover:text-red-300">
+                    className="text-red-400 shrink-0 hover:text-red-300">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -3982,7 +4070,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                       isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
                     }`} />
                   <button onClick={() => onChange({ text_color: undefined })}
-                    className="shrink-0 text-red-400 hover:text-red-300">
+                    className="text-red-400 shrink-0 hover:text-red-300">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -4029,7 +4117,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                   />
                   <button
                     onClick={() => onChange({ background_color: undefined })}
-                    className="shrink-0 text-red-400 hover:text-red-300 transition-colors"
+                    className="text-red-400 transition-colors shrink-0 hover:text-red-300"
                     title="Remove override"
                   >
                     <X className="w-3 h-3" />
@@ -4072,7 +4160,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                   />
                   <button
                     onClick={() => onChange({ text_color: undefined })}
-                    className="shrink-0 text-red-400 hover:text-red-300 transition-colors"
+                    className="text-red-400 transition-colors shrink-0 hover:text-red-300"
                     title="Remove override"
                   >
                     <X className="w-3 h-3" />
@@ -4358,7 +4446,7 @@ function UploadOnlyImageField({ label, value, onChange, onUpload, isUploading, i
       {value ? (
         <div className="relative overflow-hidden border border-gray-700 rounded-xl" style={{ height: previewHeight }}>
           <img src={value} alt="preview" className="object-cover w-full h-full" />
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
+          <div className="absolute inset-0 flex items-center justify-center gap-2 transition-opacity opacity-0 bg-black/40 hover:opacity-100">
             <button onClick={onUpload} disabled={isUploading}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/20 backdrop-blur-sm text-white text-xs font-medium border border-white/30 hover:bg-white/30 transition-colors">
               {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}

@@ -36,39 +36,49 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
     return () => window.removeEventListener("message", handler)
   }, [])
 
-  const store = liveStore
+  const store = liveStore ?? initialStore
   const sections = store?.sections?.sections ?? defaultSections(vendor)
   const brandPrimary = store?.primary_color ?? "#e65100"
-  const fontClass = store?.font === "poppins" ? "font-poppins" : store?.font === "playfair" ? "font-playfair" : "font-inter"
+  const fontClass =
+    store?.font === "poppins"       ? "font-poppins" :
+    store?.font === "playfair"      ? "font-playfair" :
+    store?.font === "dm-sans"       ? "font-dm-sans" :
+    store?.font === "space-grotesk" ? "font-space-grotesk" :
+    store?.font === "nunito"     ? "font-nunito" :
+    store?.font === "raleway"    ? "font-raleway" :
+    store?.font === "montserrat" ? "font-montserrat" :
+    "font-inter"
   const handle = vendor.handle
+  const productCard = (store as any)?.product_card ?? {}
+  const cardAspectRatio = productCard.aspect_ratio ?? "square"
+  const cardAlignment   = productCard.alignment ?? "left"
+  const cardShowPrice   = productCard.show_price !== false
+  const cardShowHover   = productCard.show_hover !== false
+  const cardShowSoldOut = productCard.show_sold_out_badge !== false
+
+  console.log("store.sticky_header =", (store as any)?.sticky_header)
+  console.log("wrapSticky =", (store as any)?.sticky_header !== false)
 
   return (
     <div className={`min-h-screen bg-white ${fontClass}`}>
       {/* ── HEADER + ANNOUNCEMENT ── */}
       {(() => {
-        const stickyHdr = (store as any)?.sticky_header !== false
         const stickyAnn = (store as any)?.sticky_announcement !== false
-        const wrapSticky = stickyHdr || stickyAnn
         const annSections = sections.filter(s => s.type === "announcement" && !(s as any).hidden)
         return (
-          <div className={wrapSticky ? "sticky top-0 z-40" : "relative"}>
-            {annSections.map((s: any, i: number) => {
-              // Render announcement bar inline so rich HTML (links etc.) display correctly
-              // instead of routing through AnnouncementBar which may render as plain text
-              const hasLink = s.cta_url && !s.title?.includes('<a ')
-              return (
-                <div key={i} style={{ background: s.background_color ?? "#e65100", color: s.text_color ?? "#ffffff" }}>
-                  {hasLink ? (
-                    <a href={s.cta_url} className="block w-full text-center py-2 px-4 text-xs font-medium"
-                      style={{ color: s.text_color ?? "#ffffff" }}
-                      dangerouslySetInnerHTML={{ __html: s.title ?? "" }} />
-                  ) : (
-                    <p className="w-full text-center py-2 px-4 text-xs font-medium"
-                      dangerouslySetInnerHTML={{ __html: s.title ?? "" }} />
-                  )}
-                </div>
-              )
-            })}
+          <div className={stickyAnn ? "sticky top-0 z-40" : "relative"}>
+            {annSections.map((s: any, i: number) => (
+              <div key={i} style={{ background: s.background_color ?? "#e65100", color: s.text_color ?? "#ffffff" }}>
+                {s.cta_url && !s.title?.includes('<a ') ? (
+                  <a href={s.cta_url} className="block w-full px-4 py-2 text-xs font-medium text-center"
+                    style={{ color: s.text_color ?? "#ffffff" }}
+                    dangerouslySetInnerHTML={{ __html: s.title ?? "" }} />
+                ) : (
+                  <p className="w-full px-4 py-2 text-xs font-medium text-center"
+                    dangerouslySetInnerHTML={{ __html: s.title ?? "" }} />
+                )}
+              </div>
+            ))}
             <StoreHeader vendor={vendor} store={store} categories={categories} collections={collections} products={products} />
           </div>
         )
@@ -105,6 +115,11 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
               brandPrimary={brandPrimary}
               sectionBg={secBg}
               sectionText={secText}
+              cardAspectRatio={cardAspectRatio}
+              cardAlignment={cardAlignment}
+              cardShowPrice={cardShowPrice}
+              cardShowHover={cardShowHover}
+              cardShowSoldOut={cardShowSoldOut}
             />
           </div>
         )
@@ -118,7 +133,7 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
 
 // ── Section renderer ──────────────────────────────────────────────────────────
 
-function MinimalSection({ section, vendor, store, products, categories, collections, brandPrimary, sectionBg, sectionText }: {
+function MinimalSection({ section, vendor, store, products, categories, collections, brandPrimary, sectionBg, sectionText, cardAspectRatio, cardAlignment, cardShowPrice, cardShowHover, cardShowSoldOut }: {
   section: StoreSection
   vendor: PublicVendor
   store: VendorStore | null
@@ -128,6 +143,11 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
   brandPrimary: string
   sectionBg?: string
   sectionText?: string
+  cardAspectRatio: string
+  cardAlignment: string
+  cardShowPrice: boolean
+  cardShowHover: boolean
+  cardShowSoldOut: boolean
 }) {
   const handle = vendor.handle
   if ((section as any).hidden) return null
@@ -273,7 +293,18 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 View all <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
-            <ProductCarousel products={featured} handle={handle} brandPrimary={brandPrimary} variant="light" />
+            {/* <ProductCarousel products={featured} handle={handle} brandPrimary={brandPrimary} variant="light" /> */}
+            <ProductCarousel
+              products={featured}
+              handle={handle}
+              brandPrimary={brandPrimary}
+              variant="light"
+              aspectRatio={cardAspectRatio}
+              alignment={cardAlignment}
+              showPrice={cardShowPrice}
+              showHover={cardShowHover}
+              showSoldOutBadge={cardShowSoldOut}
+            />
           </div>
         </section>
       )
@@ -295,7 +326,18 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 View all <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
-            <ProductCarousel products={limited} handle={handle} brandPrimary={brandPrimary} variant="light" />
+            {/* <ProductCarousel products={limited} handle={handle} brandPrimary={brandPrimary} variant="light" /> */}
+            <ProductCarousel
+              products={limited}
+              handle={handle}
+              brandPrimary={brandPrimary}
+              variant="light"
+              aspectRatio={cardAspectRatio}
+              alignment={cardAlignment}
+              showPrice={cardShowPrice}
+              showHover={cardShowHover}
+              showSoldOutBadge={cardShowSoldOut}
+            />
           </div>
         </section>
       )
@@ -349,8 +391,24 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       )
     }
 
+    // case "divider": {
+    //   return <hr className="mt-6 border-gray-100" />
+    // }
+
     case "divider": {
-      return <hr className="mt-6 border-gray-100" />
+      const thickness = (section as any).divider_thickness ?? 1
+      const color = (section as any).divider_color ?? "#e5e7eb"
+      const paddingTop = (section as any).padding_top ?? 16
+      const paddingBottom = (section as any).padding_bottom ?? 16
+      return (
+        <div className="px-6" style={{
+          backgroundColor: sectionBg ?? "transparent",
+          paddingTop: `${paddingTop}px`,
+          paddingBottom: `${paddingBottom}px`,
+        }}>
+          <div style={{ height: `${thickness}px`, backgroundColor: color, borderRadius: `${thickness}px` }} />
+        </div>
+      )
     }
 
     // case "divider": {
@@ -589,7 +647,20 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       const bg    = sectionBg ?? (section as any).background_color ?? "#111827"
       const fg    = sectionText ?? (section as any).text_color ?? "#ffffff"
       // Duplicate content to fill scroll seamlessly
-      const line = items.join(`  ${sep}  `)
+      // const line = items.join(`  ${sep}  `)
+      // const fullLine = `${line}  ${sep}  ${line}  ${sep}  `
+      // REPLACE WITH:
+      const stripHtml = (s: string) => {
+        try {
+          const tmp = document.createElement("div")
+          tmp.innerHTML = s
+          return (tmp.textContent ?? tmp.innerText ?? "").trim()
+        } catch {
+          return s.replace(/<[^>]*>/g, "").trim()
+        }
+      }
+      const cleanItems = items.map(stripHtml)
+      const line = cleanItems.join(`  ${sep}  `)
       const fullLine = `${line}  ${sep}  ${line}  ${sep}  `
       // Duration in seconds based on speed (invert: higher speed = shorter duration)
       const duration = Math.round(200 - speed * 1.5)
@@ -606,7 +677,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               animation: junooni-ticker ${duration}s linear infinite;
             }
           `}</style>
-          <div className="junooni-ticker-inner text-sm font-medium tracking-wide" style={{ color: fg }}>
+          <div className="text-sm font-medium tracking-wide junooni-ticker-inner" style={{ color: fg }}>
             {[fullLine, fullLine].map((t, i) => (
               <span key={i} className="mr-8">{t}</span>
             ))}
@@ -621,7 +692,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       const mobileImageTop = ((section as any).mobile_image_position ?? "top") === "top"
       return (
         <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <div className="mx-auto max-w-6xl">
+          <div className="max-w-6xl mx-auto">
             <div className={`flex gap-10 items-center ${mobileImageTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
               {/* Image side */}
               <div className="w-full md:w-1/2 shrink-0">
@@ -642,12 +713,12 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.title }} />
                 )}
                 {section.text && (
-                  <div className="text-base leading-relaxed mb-6 prose prose-sm max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
+                  <div className="mb-6 text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
                   <Link href={section.cta_url ?? "#"}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold transition-all hover:opacity-90 hover:shadow-lg text-sm"
+                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-full hover:opacity-90 hover:shadow-lg"
                     style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
                     {section.cta_label}
                   </Link>
@@ -677,7 +748,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
 
       return (
         <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <div className="mx-auto max-w-6xl">
+          <div className="max-w-6xl mx-auto">
             <div className={`flex gap-10 items-center ${mobileVideoTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
               {/* Video side */}
               <div className="w-full md:w-1/2 shrink-0">
@@ -686,7 +757,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     <iframe src={embedUrl} className="absolute inset-0 w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ border: 0 }} />
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center rounded-2xl bg-gray-100 aspect-video">
+                  <div className="flex items-center justify-center bg-gray-100 rounded-2xl aspect-video">
                     <span className="text-5xl opacity-20">🎬</span>
                   </div>
                 )}
@@ -698,12 +769,12 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.title }} />
                 )}
                 {section.text && (
-                  <div className="text-base leading-relaxed mb-6 prose prose-sm max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
+                  <div className="mb-6 text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
                   <Link href={section.cta_url ?? "#"}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold transition-all hover:opacity-90 hover:shadow-lg text-sm"
+                    className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-full hover:opacity-90 hover:shadow-lg"
                     style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
                     {section.cta_label}
                   </Link>
@@ -893,10 +964,10 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
 
   return (
     <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "#f9fafb" }}>
-      <div className="mx-auto max-w-6xl">
+      <div className="max-w-6xl mx-auto">
         {/* Section label */}
         {section.title && (
-          <p className="text-xs font-semibold tracking-widest uppercase mb-8" style={{ color: brandPrimary }}>
+          <p className="mb-8 text-xs font-semibold tracking-widest uppercase" style={{ color: brandPrimary }}>
             {section.title}
           </p>
         )}
@@ -905,7 +976,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
 
           {/* ── Image side — updates on color select ── */}
           <div className="w-full md:w-[48%] shrink-0">
-            <div className="relative overflow-hidden rounded-3xl aspect-square bg-gray-100">
+            <div className="relative overflow-hidden bg-gray-100 rounded-3xl aspect-square">
               {displayImage ? (
                 <Image
                   key={displayImage}
@@ -975,7 +1046,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
                         key={colorName}
                         title={colorName}
                         onClick={() => setSelectedColor(colorName)}
-                        className="w-8 h-8 rounded-full transition-all shrink-0 hover:scale-110"
+                        className="w-8 h-8 transition-all rounded-full shrink-0 hover:scale-110"
                         style={{
                           ...(isGrad ? { background: hex! } : { backgroundColor: hex ?? colorName }),
                           boxShadow: isSelected
@@ -989,7 +1060,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
                     )
                   })}
                   {overflowCount > 0 && (
-                    <span className="text-xs font-medium ml-1" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>
+                    <span className="ml-1 text-xs font-medium" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>
                       +{overflowCount} more
                     </span>
                   )}
@@ -1008,7 +1079,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
                     </span>
                   )}
                 </p>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-wrap items-center gap-2">
                   {sizeNames.map(size => {
                     const isSelected = selectedSize === size
                     return (
@@ -1033,7 +1104,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
 
             {/* Cart error */}
             {cartError && (
-              <p className="text-sm text-red-500 px-3 py-2 bg-red-50 border border-red-100 rounded-lg">
+              <p className="px-3 py-2 text-sm text-red-500 border border-red-100 rounded-lg bg-red-50">
                 {cartError}
               </p>
             )}
@@ -1041,19 +1112,19 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
             {/* Quantity + Add to Cart */}
             <div className="flex items-center gap-3 pt-1">
               {/* Quantity stepper */}
-              <div className="flex items-center rounded-full border-2 border-gray-200 overflow-hidden shrink-0">
+              <div className="flex items-center overflow-hidden border-2 border-gray-200 rounded-full shrink-0">
                 <button
                   onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                  className="w-10 h-12 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-center w-10 h-12 text-gray-600 transition-colors hover:bg-gray-50"
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <span className="w-8 text-center text-sm font-semibold text-gray-900">
+                <span className="w-8 text-sm font-semibold text-center text-gray-900">
                   {quantity}
                 </span>
                 <button
                   onClick={() => setQuantity(q => q + 1)}
-                  className="w-10 h-12 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-center w-10 h-12 text-gray-600 transition-colors hover:bg-gray-50"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>

@@ -141,9 +141,10 @@ export default function StoreHeader({
   const dropdownBg = isDark ? "bg-gray-950 border-white/10" : "bg-white border-gray-100"
   const divider = isDark ? "border-white/10" : "border-gray-100"
   const inputBg = isDark ? "bg-white/10 border-white/20 text-white placeholder-white/40" : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400"
+  const stickyHeader = (store as any)?.sticky_header !== false
 
   return (
-    <div ref={headerRef}>
+    <div ref={headerRef} className={stickyHeader ? "sticky top-0 z-40" : "relative"}>
       {/* ── HEADER BAR ──────────────────────────────────────────────────────── */}
       <header className={`w-full backdrop-blur-md border-b shadow-sm ${bg}`}>
         <div className="relative flex items-center justify-between h-16 gap-6 px-4 mx-auto max-w-7xl sm:px-6">

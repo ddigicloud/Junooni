@@ -359,7 +359,7 @@ export default function ProductPageClient({
                 )}
               </p>
             )}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2">
               {sizeNames.map(size => {
                 const isSelected = selectedSize === size
                 const style = pd.size_style ?? "pill"
@@ -397,17 +397,17 @@ export default function ProductPageClient({
         if (!(pd.show_quantity ?? true)) return null
         return (
           <div key="quantity"
-            className="flex items-center rounded-full border-2 border-gray-200 overflow-hidden w-fit">
+            className="flex items-center overflow-hidden border-2 border-gray-200 rounded-full w-fit">
             <button
               onClick={() => setQuantity(q => Math.max(1, q - 1))}
-              className="w-10 h-12 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+              className="flex items-center justify-center w-10 h-12 text-gray-600 transition-colors hover:bg-gray-50"
             >
               <Minus className="w-3.5 h-3.5" />
             </button>
-            <span className="w-8 text-center text-sm font-semibold">{quantity}</span>
+            <span className="w-8 text-sm font-semibold text-center">{quantity}</span>
             <button
               onClick={() => setQuantity(q => q + 1)}
-              className="w-10 h-12 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition-colors"
+              className="flex items-center justify-center w-10 h-12 text-gray-600 transition-colors hover:bg-gray-50"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -420,7 +420,7 @@ export default function ProductPageClient({
         return (
           <div key="atc">
             {cartError && (
-              <p className="text-sm text-red-500 px-3 py-2 bg-red-50 border border-red-100 rounded-lg mb-2">
+              <p className="px-3 py-2 mb-2 text-sm text-red-500 border border-red-100 rounded-lg bg-red-50">
                 {cartError}
               </p>
             )}
@@ -532,7 +532,7 @@ export default function ProductPageClient({
           <div className="px-4 py-12 sm:px-6" style={{ backgroundColor: sectionBg }}>
             <div className="mx-auto max-w-7xl">
               {section.title && (
-                <h2 className="text-2xl font-bold mb-6"
+                <h2 className="mb-6 text-2xl font-bold"
                   style={{ color: sectionText ?? (isDark ? "#fff" : "#111827") }}>
                   {section.title}
                 </h2>
@@ -577,7 +577,7 @@ export default function ProductPageClient({
         {/* Image with Text */}
         {section.type === "image_text" && (
           <div className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg }}>
-            <div className="mx-auto max-w-6xl">
+            <div className="max-w-6xl mx-auto">
               <div className={`flex gap-10 items-center ${
                 (section.mobile_image_position ?? "top") === "top" ? "flex-col" : "flex-col-reverse"
               } ${(section.image_position ?? "left") === "left" ? "md:flex-row" : "md:flex-row-reverse"}`}>
@@ -599,13 +599,13 @@ export default function ProductPageClient({
                       dangerouslySetInnerHTML={{ __html: section.title }} />
                   )}
                   {section.text && (
-                    <div className="text-base leading-relaxed mb-6 prose prose-sm max-w-none"
+                    <div className="mb-6 text-base leading-relaxed prose-sm prose max-w-none"
                       style={{ color: sectionText ? `${sectionText}cc` : (isDark ? "#d1d5db" : "#4b5563") }}
                       dangerouslySetInnerHTML={{ __html: section.text }} />
                   )}
                   {section.cta_label && (
                     <Link href={section.cta_url ?? "#"}
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold transition-all hover:opacity-90 text-sm"
+                      className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-full hover:opacity-90"
                       style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)` }}>
                       {section.cta_label}
                     </Link>
@@ -629,7 +629,7 @@ export default function ProductPageClient({
           const embedUrl = videoUrl ? getEmbed(videoUrl) : null
           return (
             <div className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg }}>
-              <div className="mx-auto max-w-6xl">
+              <div className="max-w-6xl mx-auto">
                 <div className={`flex gap-10 items-center ${
                   (section.mobile_image_position ?? "top") === "top" ? "flex-col" : "flex-col-reverse"
                 } ${(section.image_position ?? "left") === "left" ? "md:flex-row" : "md:flex-row-reverse"}`}>
@@ -642,7 +642,7 @@ export default function ProductPageClient({
                           allowFullScreen style={{ border: 0 }} />
                       </div>
                     ) : (
-                      <div className="flex items-center justify-center rounded-2xl bg-gray-100 aspect-video">
+                      <div className="flex items-center justify-center bg-gray-100 rounded-2xl aspect-video">
                         <span className="text-5xl opacity-20">🎬</span>
                       </div>
                     )}
@@ -654,13 +654,13 @@ export default function ProductPageClient({
                         dangerouslySetInnerHTML={{ __html: section.title }} />
                     )}
                     {section.text && (
-                      <div className="text-base leading-relaxed mb-6 prose prose-sm max-w-none"
+                      <div className="mb-6 text-base leading-relaxed prose-sm prose max-w-none"
                         style={{ color: sectionText ? `${sectionText}cc` : (isDark ? "#d1d5db" : "#4b5563") }}
                         dangerouslySetInnerHTML={{ __html: section.text }} />
                     )}
                     {section.cta_label && (
                       <Link href={section.cta_url ?? "#"}
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold transition-all hover:opacity-90 text-sm"
+                        className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-full hover:opacity-90"
                         style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)` }}>
                         {section.cta_label}
                       </Link>
@@ -740,7 +740,7 @@ export default function ProductPageClient({
                   animation: prod-ticker ${duration}s linear infinite;
                 }
               `}</style>
-              <div className="prod-ticker-inner text-sm font-medium tracking-wide" style={{ color: fg }}>
+              <div className="text-sm font-medium tracking-wide prod-ticker-inner" style={{ color: fg }}>
                 {[`${line}  ${sep}  `, `${line}  ${sep}  `].map((t, i) => (
                   <span key={i} className="mr-8">{t}</span>
                 ))}
@@ -791,7 +791,7 @@ export default function ProductPageClient({
       {/* Product detail */}
       <div className="px-6 py-16 mx-auto max-w-7xl">
         <GalleryProvider initialImages={currentImages} key={selectedColor}>
-          <div className="grid items-start gap-16 md:grid-cols-2 mb-6">
+          <div className="grid items-start gap-16 mb-6 md:grid-cols-2">
 
             {/* Left: Gallery — updates on color select */}
             <ProductGallery
@@ -802,7 +802,7 @@ export default function ProductPageClient({
             />
 
             {/* Right: Dynamic element order */}
-            <div className="sticky top-24 space-y-5">
+            <div className="sticky space-y-5 top-24">
               <p className="mb-1 text-xs font-medium tracking-widest uppercase"
                 style={{ color: brandPrimary }}>
                 {vendor.name}

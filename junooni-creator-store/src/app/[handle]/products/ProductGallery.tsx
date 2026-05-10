@@ -52,8 +52,8 @@ export default function ProductGallery({
                 i === activeIndex
                   ? "border-[var(--brand-primary)] scale-105 shadow-md"
                   : isDark
-                  ? "border-white/10 opacity-50 hover:opacity-100 hover:border-white/30"
-                  : "border-gray-100 opacity-60 hover:opacity-100 hover:border-gray-300"
+                  ? "border-white/10 opacity-100 hover:opacity-100 hover:border-white/30"
+                  : "border-gray-100 opacity-100 hover:opacity-100 hover:border-gray-300"
               }`}
             >
               <Image

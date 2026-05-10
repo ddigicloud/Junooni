@@ -959,8 +959,8 @@ export default async function CreatorInstagram({
         `/creator/${spotlightVendor.handle}`,
       instagramUrl: spotlightVendor.metadata?.instagram_url || null,
       youtubeUrl: spotlightVendor.metadata?.youtube_url || null,
-      instagramFollowers: spotlightVendor.metadata?.instagram_followers || null,
-      youtubeFollowers: spotlightVendor.metadata?.youtube_followers || null,
+      instagramFollowers: spotlightVendor.metadata?.instagram_followers || 6600000,
+      youtubeFollowers: spotlightVendor.metadata?.youtube_followers || 288000,
     }
 
     return <CreatorInstagramClient vendor={vendor} products={products} />
