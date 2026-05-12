@@ -63,23 +63,18 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
     <div className={`min-h-screen bg-white ${fontClass}`}>
       {/* ── HEADER + ANNOUNCEMENT ── */}
       {(() => {
+        const stickyHdr = (store as any)?.sticky_header !== false
         const stickyAnn = (store as any)?.sticky_announcement !== false
-        const annSections = sections.filter(s => s.type === "announcement" && !(s as any).hidden)
+        const wrapSticky = stickyHdr || stickyAnn
         return (
-          <div className={stickyAnn ? "sticky top-0 z-40" : "relative"}>
-            {annSections.map((s: any, i: number) => (
-              <div key={i} style={{ background: s.background_color ?? "#e65100", color: s.text_color ?? "#ffffff" }}>
-                {s.cta_url && !s.title?.includes('<a ') ? (
-                  <a href={s.cta_url} className="block w-full px-4 py-2 text-xs font-medium text-center"
-                    style={{ color: s.text_color ?? "#ffffff" }}
-                    dangerouslySetInnerHTML={{ __html: s.title ?? "" }} />
-                ) : (
-                  <p className="w-full px-4 py-2 text-xs font-medium text-center"
-                    dangerouslySetInnerHTML={{ __html: s.title ?? "" }} />
-                )}
-              </div>
-            ))}
-            <StoreHeader vendor={vendor} store={store} categories={categories} collections={collections} products={products} />
+          <div className={wrapSticky ? "sticky top-0 z-40" : "relative"}>
+            <StoreHeader
+              vendor={vendor}
+              store={store}
+              categories={categories}
+              collections={collections}
+              products={products}
+            />
           </div>
         )
       })()}
@@ -488,7 +483,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       const socials = [
         { key: "show_instagram", label: "Instagram", icon: Instagram, getUrl: (v: PublicVendor) => v.instagram ? `https://instagram.com/${v.instagram}` : null },
         { key: "show_youtube",   label: "YouTube",   icon: Youtube,   getUrl: (v: PublicVendor) => v.youtube   ? `https://youtube.com/${v.youtube}`   : null },
-        { key: "show_twitter",   label: "Twitter",   icon: Twitter,   getUrl: (v: PublicVendor) => v.xtwitter  ? `https://twitter.com/${v.xtwitter}`  : null },
+        { key: "show_twitter", label: "", icon: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>, getUrl: (v: PublicVendor) => v.xtwitter ? `https://twitter.com/${v.xtwitter}` : null },
         { key: "show_facebook",  label: "Facebook",  icon: Facebook,  getUrl: (v: PublicVendor) => v.facebook  ? `https://facebook.com/${v.facebook}` : null },
       ].filter(s => (section as any)[s.key] && s.getUrl(vendor))
       if (!socials.length) return null

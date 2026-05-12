@@ -36,7 +36,7 @@ export async function middleware(req: NextRequest) {
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api")   ||
-    pathname === "/favicon.ico"   ||
+    // pathname === "/favicon.ico"   ||
     pathname === "/robots.txt"    ||
     pathname === "/sitemap.xml"   ||
     /\.(?:ico|png|jpg|jpeg|gif|svg|webp|css|js|woff2?)$/.test(pathname)
@@ -100,8 +100,13 @@ export async function middleware(req: NextRequest) {
   return res
 }
 
+// export const config = {
+//   matcher: [
+//     "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.png$|.*\\.jpg$|.*\\.svg$|.*\\.ico$).*)",
+//   ],
+// }
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.png$|.*\\.jpg$|.*\\.svg$|.*\\.ico$).*)",
+    "/((?!_next/static|_next/image|robots.txt|sitemap.xml).*)",
   ],
 }

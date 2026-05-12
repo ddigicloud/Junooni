@@ -12,6 +12,7 @@ import ProductGallery from "../ProductGallery"
 import { GalleryProvider , useGallery } from "../GalleryContext"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
+import SizeChartModal from "@/components/store/SizeChartModal"
 import {
   ShoppingCart, Check, Loader2, Minus, Plus,
 } from "lucide-react"
@@ -82,6 +83,111 @@ function isLightHex(hex: string): boolean {
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
   return (r * 299 + g * 587 + b * 114) / 1000 > 200
+}
+
+// REPLACE WITH:
+function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
+  product: any; isDark: boolean; brandPrimary: string; vendor: any
+}) {
+  const [openSection, setOpenSection] = useState<string | null>("description")
+
+  const toggle = (id: string) => setOpenSection(o => o === id ? null : id)
+
+  const productDetails: string[] = (() => {
+    try {
+      const raw = product?.metadata?.product_details
+      if (!raw) return []
+      return JSON.parse(raw)
+    } catch { return [] }
+  })()
+
+  const descriptionStory: string = product?.metadata?.description_story ?? ""
+  const description: string = product?.description ?? ""
+
+  // REPLACE WITH:
+  const border  = isDark ? "border-white/10" : "border-gray-200"
+  const subText = isDark ? "text-white/50"  : "text-gray-400"
+  const bodyText = isDark ? "text-white/80" : "text-gray-700"
+  const headingText = isDark ? "text-white" : "text-gray-900"
+
+  const AccordionRow = ({ id, label, children }: { id: string; label: string; children: React.ReactNode }) => {
+    const isOpen = openSection === id
+    return (
+      <div className={`border-b ${border}`}>
+        <button
+          onClick={() => toggle(id)}
+          className={`w-full flex items-center justify-between py-4 text-sm font-semibold text-left transition-colors ${headingText}`}
+        >
+          <span>{label}</span>
+          <span className={`text-xl leading-none transition-transform duration-200 ${subText} ${isOpen ? "rotate-45" : ""}`}>
+            +
+          </span>
+        </button>
+        {isOpen && (
+          <div className="pb-5">
+            {children}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className={`pt-8 border-t ${border}`}>
+      {/* Story — always visible above accordion */}
+      {descriptionStory && (
+        <div
+          className={`prose prose-sm max-w-none leading-relaxed mb-8 ${isDark ? "prose-invert text-white/70" : "text-gray-600"}`}
+          dangerouslySetInnerHTML={{ __html: descriptionStory }}
+        />
+      )}
+
+      {/* Accordion rows */}
+      <AccordionRow id="description" label="Description">
+        {description ? (
+          <div
+            className={`prose prose-sm max-w-none leading-relaxed ${isDark ? "prose-invert text-white/70" : "text-gray-600"}`}
+            dangerouslySetInnerHTML={{ __html: description }}
+          />
+        ) : (
+          <p className={`text-sm ${subText}`}>No description available.</p>
+        )}
+      </AccordionRow>
+
+      <AccordionRow id="details" label="Product Details">
+        {productDetails.length > 0 ? (
+          <ul className="space-y-2">
+            {productDetails.map((detail, i) => (
+              <li key={i} className={`flex items-center gap-2.5 text-sm ${bodyText}`}>
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: brandPrimary }} />
+                {detail}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className={`text-sm ${subText}`}>No product details available.</p>
+        )}
+      </AccordionRow>
+
+      <AccordionRow id="quality" label="Quality & Returns">
+        <div className="space-y-3">
+          <p className={`text-sm leading-relaxed ${bodyText}`}>
+            Quality is guaranteed. If there is a print error or visible quality issue, we'll replace or refund it.
+          </p>
+          <p className={`text-sm leading-relaxed ${bodyText}`}>
+            Because the products are made to order, we do not accept general returns or sizing-related returns.
+          </p>
+          <a
+            href={`/${vendor.handle}/p/returns-refunds`}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-2"
+            style={{ color: brandPrimary }}
+          >
+            View Returns & Refunds Policy →
+          </a>
+        </div>
+      </AccordionRow>
+    </div>
+  )
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -390,6 +496,17 @@ export default function ProductPageClient({
                 )
               })}
             </div>
+
+            {product.size_chart && (
+              <div className="mt-2">
+                <SizeChartModal
+                  sizeChart={product.size_chart}
+                  brandPrimary={brandPrimary}
+                  isDark={isDark}
+                />
+              </div>
+            )}
+
           </div>
         )
 
@@ -456,35 +573,10 @@ export default function ProductPageClient({
         )
       }
 
+      // REPLACE WITH:
       case "description":
-        if (!(pd.show_description ?? true) || !product.description) return null
-        return (
-          <div key="description"
-            className={`pt-8 border-t ${isDark ? "border-white/10" : "border-gray-100"}`}>
-            <button
-              className={`flex items-center justify-between w-full text-sm font-semibold uppercase tracking-widest mb-4 ${
-                isDark ? "text-white/60" : "text-gray-500"
-              }`}
-              onClick={() => (pd.description_collapsed ?? false) && setDescOpen(o => !o)}
-              style={{ cursor: pd.description_collapsed ? "pointer" : "default" }}
-            >
-              Description
-              {pd.description_collapsed && (
-                <span className="text-xs font-normal normal-case">
-                  {descOpen ? "▲" : "▼"}
-                </span>
-              )}
-            </button>
-            {descOpen && (
-              <div
-                className={`prose prose-sm max-w-none leading-relaxed ${
-                  isDark ? "text-white/70 prose-invert" : "text-gray-600"
-                }`}
-                dangerouslySetInnerHTML={{ __html: product.description }}
-              />
-            )}
-          </div>
-        )
+        if (!(pd.show_description ?? true)) return null
+        return <DescriptionSection key="description" product={product} isDark={isDark} brandPrimary={brandPrimary} vendor={vendor} />
 
       case "meta":
         if (!(pd.show_secure_badge ?? true)) return null
@@ -529,7 +621,7 @@ export default function ProductPageClient({
 
         {/* Featured / upsell */}
         {section.type === "featured" && (
-          <div className="px-4 py-12 sm:px-6" style={{ backgroundColor: sectionBg }}>
+          <div className="px-4 py-12 z-0 sm:px-6" style={{ backgroundColor: sectionBg }}>
             <div className="mx-auto max-w-7xl">
               {section.title && (
                 <h2 className="mb-6 text-2xl font-bold"
@@ -818,7 +910,7 @@ export default function ProductPageClient({
 
         {/* Default related products — only shown when no editor sections exist */}
         {pageSections.length === 0 && products.length > 1 && (
-          <div className={`mt-24 pt-12 border-t ${isDark ? "border-white/10" : "border-gray-100"}`}>
+          <div className={`mt-24 pt-12 z-0 border-t ${isDark ? "border-white/10" : "border-gray-100"}`}>
             <h2 className={`text-sm uppercase tracking-widest font-semibold mb-8 ${
               isDark ? "text-white/60" : "text-gray-500"
             }`}>

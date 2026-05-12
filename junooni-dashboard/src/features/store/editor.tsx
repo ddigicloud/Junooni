@@ -282,9 +282,9 @@ const PAGE_TEMPLATES = [
   { id: "faq"     as PageTemplate, label: "FAQ",      icon: "❓", defaultContent: "## Frequently Asked Questions\n\n**Q: How long does shipping take?**\nA: 5-7 business days.\n\n**Q: Do you ship internationally?**\nA: Yes!" },
   { id: "contact" as PageTemplate, label: "Contact",  icon: "✉️", defaultContent: "## Contact Us\n\nReach out at your@email.com\n\nWe typically respond within 24 hours." },
   { id: "links"   as PageTemplate, label: "Links",    icon: "🔗", defaultContent: "" },
-  { id: "terms"   as PageTemplate, label: "Terms of Service", icon: "📋", defaultContent: `## Terms of Service
+   { id: "terms" as PageTemplate, label: "Terms of Service", icon: "📋", defaultContent: `## Terms of Service
 
-*Last updated: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}*
+*Last updated: {{CREATED_DATE}}*
 
 Welcome to **[Your Store Name]**. By accessing or purchasing from our store, you agree to the following terms.
 
@@ -314,7 +314,7 @@ For any questions, reach us at **[your@email.com]**` },
 
   { id: "privacy" as PageTemplate, label: "Privacy Policy", icon: "🔒", defaultContent: `## Privacy Policy
 
-*Last updated: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}*
+*Last updated: {{CREATED_DATE}}*
 
 At **[Your Store Name]**, your privacy is important to us. This policy explains what data we collect and how we use it.
 
@@ -349,7 +349,7 @@ Questions about this policy? Write to us at **[your@email.com]**` },
 
   { id: "returns" as PageTemplate, label: "Returns & Refunds", icon: "↩️", defaultContent: `## Returns & Refunds Policy
 
-*Last updated: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}*
+*Last updated: {{CREATED_DATE}}*
 
 We want you to love what you ordered. If something isn't right, here's how we handle it.
 
@@ -383,7 +383,7 @@ const BUILTIN_PAGES = [
   { label: "Home",         url: "/" },
   { label: "All Products", url: "/products" },
   { label: "Collections",  url: "/collections" },
-  { label: "About",        url: "#about" },
+  // { label: "About",        url: "#about" },
 ]
 
 function ProductDetailSettings({ settings, onChange, isDark }: {
@@ -1012,9 +1012,19 @@ export default function StoreEditorPage() {
   load()
 }, [])
 
+// REPLACE WITH:
 useEffect(() => {
   if (!isLoading) setHasUnsavedChanges(true)
-}, [store])
+}, [store, isLoading])
+
+useEffect(() => {
+  const handleDragEnd = () => {
+    setIsDragging(null)
+    setDragOver(null)
+  }
+  document.addEventListener("dragend", handleDragEnd)
+  return () => document.removeEventListener("dragend", handleDragEnd)
+}, [])
 
   // ── postMessage listener ──────────────────────────────────────────────────
 
@@ -1211,21 +1221,80 @@ useEffect(() => {
     setIsDragging(null)
     setDragOver(null)
   }
+  const handleBodyDrop = (e: React.DragEvent) => {
+  e.preventDefault()
+  if (!isDragging) return
+  const key = getLayoutKeyForPath(previewPagePath)
+  patchStore(p => {
+    const arr = [...getPageSections(p, key)]
+    const fromIdx = arr.findIndex(s => s.id === isDragging)
+    if (fromIdx === -1) return p
+    const [moved] = arr.splice(fromIdx, 1)
+    const toIdx = dragOver !== null ? dragOver : arr.length
+    arr.splice(toIdx, 0, moved)
+    return setPageSections(p, key, arr)
+  })
+  setIsDragging(null)
+  setDragOver(null)
+}
+
+const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
 
   // ── Page helpers ──────────────────────────────────────────────────────────
+  // const savePage = (page: StorePage) => {
+  //   const existing = pages.find(p => p.id === page.id)
+  //   const updated = existing ? pages.map(p => p.id === page.id ? page : p) : [...pages, page]
+  //   patchStore(p => ({ ...p, pages: { pages: updated } }))
+  //   setEditingPage(null)
+  // }
+  // REPLACE WITH:
+  // REPLACE WITH:
+  // REPLACE WITH:
+  // REPLACE WITH:
   const savePage = (page: StorePage) => {
     const existing = pages.find(p => p.id === page.id)
     const updated = existing ? pages.map(p => p.id === page.id ? page : p) : [...pages, page]
-    patchStore(p => ({ ...p, pages: { pages: updated } }))
+    
+    patchStore(p => {
+      const freshStore = { ...p, pages: { pages: updated } }
+      
+      fetch(`${backendUrl}/vendors/me/store`, {
+        method: hasStore ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(freshStore),
+      })
+        .then(res => {
+          if (!res.ok) throw new Error(`${res.status}`)
+          setHasUnsavedChanges(false)
+          toast({ title: "Page saved ✓", description: "Your page has been updated." })
+          // Force full src reset so Next.js server component re-fetches from DB
+          if (iframeRef.current) {
+            const src = iframeRef.current.src
+            iframeRef.current.src = ""
+            setTimeout(() => {
+              if (iframeRef.current) iframeRef.current.src = src
+            }, 100)
+          }
+        })
+        .catch(e => {
+          toast({ title: "Save failed", description: String(e), variant: "destructive" })
+        })
+
+      return freshStore
+    })
+
     setEditingPage(null)
   }
   const deletePage = (id: string) => {
     patchStore(p => ({ ...p, pages: { pages: pages.filter(pg => pg.id !== id) } }))
     if (editingPage?.id === id) setEditingPage(null)
   }
+ // REPLACE WITH:
   const startNewPage = (template: PageTemplate) => {
     const tmpl = PAGE_TEMPLATES.find(t => t.id === template)!
-    setEditingPage({ id: `page_${Date.now()}`, title: tmpl.label === "Blank" ? "New Page" : tmpl.label, slug: slugify(tmpl.label), template, content: tmpl.defaultContent, in_nav: true, in_footer: false, created_at: new Date().toISOString() })
+    const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
+    const content = tmpl.defaultContent.replace("{{CREATED_DATE}}", today)
+    setEditingPage({ id: `page_${Date.now()}`, title: tmpl.label === "Blank" ? "New Page" : tmpl.label, slug: slugify(tmpl.label), template, content, in_nav: true, in_footer: false, created_at: new Date().toISOString() })
   }
 
   const selectedSection = selectedId ? sections.find(s => s.id === selectedId) ?? null : null
@@ -1286,7 +1355,13 @@ useEffect(() => {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain">
+      <div className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain"
+          onScroll={() => {
+        if (isDragging) {
+          setIsDragging(null)
+          setDragOver(null)
+        }
+      }}>
 
         {/* ══ LAYOUT TAB ══════════════════════════════════════════════ */}
         {activeTab === "layout" && (() => {
@@ -1295,59 +1370,55 @@ useEffect(() => {
           const bodySections   = sections.filter(s => !["header","announcement","footer"].includes(s.type))
 
           const SectionRow = ({ s, idx }: { s: typeof sections[0], idx: number }) => {
-            const block = SECTION_BLOCKS.find(b => b.type === s.type)
-            const isSelected = selectedId === s.id
-            const globalIdx = sections.findIndex(x => x.id === s.id)
-            return (
-              <div className="relative group/row">
-                {/* Hover insert zone above */}
-                {/* <div
-                  className="absolute left-0 right-0 z-10 flex items-center justify-center h-4 transition-opacity opacity-0 -top-2 group-hover/row:opacity-100"
-                  onMouseEnter={() => {}}
-                >
-                  <button
-                    onClick={e => { e.stopPropagation(); setInsertAtIndex(globalIdx - 1); setAddSectionOpen(true); setAddSectionFilter("all") }}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500 text-white text-[10px] font-semibold shadow-lg hover:bg-orange-600 transition-colors z-20"
-                  >
-                    <Plus className="w-2.5 h-2.5" /> Add
-                  </button>
-                </div> */}
+          const block = SECTION_BLOCKS.find(b => b.type === s.type)
+          const isSelected = selectedId === s.id
+          const globalIdx = sections.findIndex(x => x.id === s.id)
 
-                <div
-                  draggable
-                  onDragStart={() => handleDragStart(s.id)}
-                  onDragOver={e => handleDragOver(e, globalIdx)}
-                  onDrop={e => handleDrop(e, globalIdx)}
-                  onDragEnd={() => { setIsDragging(null); setDragOver(null) }}
-                  onClick={() => {
-                    setSelectedId(isSelected ? null : s.id)
-                    if (!isSelected) { setRightPanelOpen(true); if (window.innerWidth < 768) setLeftPanelOpen(false) }
-                    else setRightPanelOpen(false)
-                  }}
-                  className={`flex items-center gap-2 px-2 py-1 rounded-lg cursor-pointer transition-all select-none ${
-                    isSelected ? "bg-orange-500/15 border border-orange-500/40" :
-                    dragOver === globalIdx ? `border border-dashed ${isDark ? "bg-gray-700/50 border-gray-500" : "bg-gray-100 border-gray-300"}` :
-                    `border border-transparent ${hoverBg}`
-                  } ${s.hidden ? "opacity-40" : ""}`}
-                >
-                  <GripVertical className={`w-3 h-3 shrink-0 cursor-grab ${textFaint}`} />
-                  <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0"
-                    style={{ background: `${block?.color ?? "#666"}22`, color: block?.color ?? "#666" }}>{block?.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-medium truncate ${textPrimary}`}>{block?.label}</p>
-                    <p className={`text-[10px] truncate ${textFaint}`}>{s.headline || s.title || s.type}</p>
-                  </div>
-                  <div className="flex gap-0.5 opacity-0 group-hover/row:opacity-100 shrink-0">
-                    <button onClick={e => { e.stopPropagation(); duplicateSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title="Duplicate"><Copy className={`w-2.5 h-2.5 ${textMuted}`} /></button>
-                    <button onClick={e => { e.stopPropagation(); toggleSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title={s.hidden ? "Show section" : "Hide section"}>
-                      {s.hidden ? <EyeOff className={`w-2.5 h-2.5 ${textMuted}`} /> : <Eye className={`w-2.5 h-2.5 ${textMuted}`} />}
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); removeSection(s.id) }} className="p-0.5 rounded hover:bg-red-900/50"><Trash2 className="w-2.5 h-2.5 text-red-400" /></button>
-                  </div>
+          return (
+            <div
+              className="relative group/row"
+              onDragOver={e => { e.preventDefault(); setDragOver(globalIdx) }}
+            >
+              <div
+                draggable
+                onDragStart={() => handleDragStart(s.id)}
+                onDragEnd={() => { setIsDragging(null); setDragOver(null) }}
+                onClick={() => {
+                  setSelectedId(isSelected ? null : s.id)
+                  if (!isSelected) { setRightPanelOpen(true); if (window.innerWidth < 768) setLeftPanelOpen(false) }
+                  else setRightPanelOpen(false)
+                }}
+                className={`flex items-center gap-2 px-2 py-2 rounded-lg cursor-grab active:cursor-grabbing transition-all select-none ${
+                  isSelected
+                    ? "bg-orange-500/15 border border-orange-500/40"
+                    : dragOver === globalIdx
+                      ? `border border-dashed ${isDark ? "bg-gray-700/50 border-blue-400" : "bg-blue-50 border-blue-300"}`
+                      : `border border-transparent ${hoverBg}`
+                } ${s.hidden ? "opacity-40" : ""}`}
+              >
+                <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} />
+                <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0"
+                  style={{ background: `${block?.color ?? "#666"}22`, color: block?.color ?? "#666" }}>
+                  {block?.icon}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-xs font-medium truncate ${textPrimary}`}>{block?.label}</p>
+                  <p className={`text-[10px] truncate ${textFaint}`}>{s.headline || s.title || s.type}</p>
+                </div>
+                {/* <div className="flex gap-0.5 opacity-0 group-hover/row:opacity-100 shrink-0">
+                  <button onClick={e => { e.stopPropagation(); duplicateSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title="Duplicate"><Copy className={`w-2.5 h-2.5 ${textMuted}`} /></button>
+                  <button onClick={e => { e.stopPropagation(); toggleSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title={s.hidden ? "Show" : "Hide"}>
+                    {s.hidden ? <EyeOff className={`w-2.5 h-2.5 ${textMuted}`} /> : <Eye className={`w-2.5 h-2.5 ${textMuted}`} />}
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); removeSection(s.id) }} className="p-0.5 rounded hover:bg-red-900/50"><Trash2 className="w-2.5 h-2.5 text-red-400" /></button>
+                </div> */}
+                {s.hidden && (
+                  <EyeOff className={`w-2.5 h-2.5 shrink-0 ${textFaint}`} />
+                )}
               </div>
-            )
-          }
+            </div>
+          )
+        }
 
           const ZoneLabel = ({ label, color }: { label: string; color: string }) => (
             <div className="flex items-center gap-2 px-1 pt-2 pb-1">
@@ -1357,59 +1428,85 @@ useEffect(() => {
           )
 
           const AddBetweenLine = ({ afterIndex }: { afterIndex: number }) => {
-            const isOpen = addSectionOpen && insertAtIndex === afterIndex
-            return (
-              <div className="relative h-0 group/addline">
-                {/* The hover line */}
-              <div className={`absolute inset-x-0 top-0 -translate-y-1/2 flex items-center gap-0 transition-opacity ${isOpen ? "opacity-100" : "opacity-0 group-hover/addline:opacity-100"}`} style={{ zIndex: 2 }}>
+          const isOpen = addSectionOpen && insertAtIndex === afterIndex
+          // dragOver === afterIndex means "dragging over the section AT afterIndex"
+          // which means user wants to drop AFTER afterIndex-1, i.e. between afterIndex-1 and afterIndex
+          const isDragTarget = !!isDragging && dragOver === afterIndex + 1
+
+          return (
+            <div className="relative" style={{ height: "16px", margin: "1px 0" }}>
+              {/* Only show when hovering (not dragging) */}
+              {!isDragging && (
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center opacity-0 hover:opacity-100 transition-opacity group/line">
                   <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
                   <button
-                    onClick={e => { e.stopPropagation(); if (isOpen) { setAddSectionOpen(false); setInsertAtIndex(null) } else { setInsertAtIndex(afterIndex); setAddSectionOpen(true); setAddSectionFilter("all") } }}
-                    className="flex items-center justify-center w-5 h-5 mx-1 text-white transition-colors bg-orange-500 rounded-full shadow-lg hover:bg-orange-600 shrink-0"
+                    onClick={e => {
+                      e.stopPropagation()
+                      if (isOpen) { setAddSectionOpen(false); setInsertAtIndex(null) }
+                      else { setInsertAtIndex(afterIndex); setAddSectionOpen(true); setAddSectionFilter("all") }
+                    }}
+                    className="mx-1 flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white shadow-lg hover:bg-orange-600 transition-colors shrink-0"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
                   <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
                 </div>
-                {/* Invisible hit area so hover works in the gap */}
-                {!isOpen && <div className="absolute inset-x-0 -top-3 -bottom-3" style={{ pointerEvents: "auto", zIndex: 1 }} />}
-                {/* The popover */}
-                {isOpen && (
-                  <div className={`mt-1 rounded-xl border overflow-hidden shadow-xl ${isDark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-white"}`}>
-                    <div className="flex items-center justify-between px-2 py-1.5 border-b" style={{ borderColor: isDark ? "#374151" : "#e5e7eb" }}>
-                      <span className={`text-[10px] font-semibold uppercase tracking-wider ${textFaint}`}>Add section</span>
-                      <button onClick={() => { setAddSectionOpen(false); setInsertAtIndex(null) }} className={`p-0.5 rounded ${textFaint} hover:text-red-400`}><X className="w-3 h-3" /></button>
-                    </div>
-                    <div className="flex gap-1 p-1.5 overflow-x-auto border-b" style={{ borderColor: isDark ? "#374151" : "#e5e7eb" }}>
-                      {[{ id: "all", label: "All" }, ...SECTION_CATEGORIES].map(cat => (
-                        <button key={cat.id} onClick={() => setAddSectionFilter(cat.id)}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all ${addSectionFilter === cat.id ? "bg-orange-500 text-white" : `${textFaint} ${hoverBg}`}`}>
-                          {cat.label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="overflow-y-auto max-h-52">
-                      {SECTION_BLOCKS
-                        .filter(b => {
-                          const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey] ?? PAGE_ALLOWED_SECTIONS.home
-                          return allowed.includes(b.type) && (addSectionFilter === "all" || b.category === addSectionFilter)
-                        })
-                        .map(block => (
+              )}
+
+              {/* Only show blue drop indicator when actively dragging over this gap */}
+              {isDragging && isDragTarget && (
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                  <div className="flex-1 h-0.5 bg-blue-400 rounded-full" />
+                  <div className="w-2 h-2 rounded-full bg-blue-400 mx-1 shrink-0" />
+                  <div className="flex-1 h-0.5 bg-blue-400 rounded-full" />
+                </div>
+              )}
+
+              {/* Popover */}
+              {isOpen && !isDragging && (
+                <div className={`absolute left-0 right-0 top-full mt-1 z-50 rounded-xl border overflow-hidden shadow-xl ${
+                  isDark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-white"
+                }`}>
+                  <div className="flex items-center justify-between px-2 py-1.5 border-b" style={{ borderColor: isDark ? "#374151" : "#e5e7eb" }}>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider ${textFaint}`}>Add section</span>
+                    <button onClick={() => { setAddSectionOpen(false); setInsertAtIndex(null) }} className={`p-0.5 rounded ${textFaint} hover:text-red-400`}>
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex gap-1 p-1.5 overflow-x-auto border-b" style={{ borderColor: isDark ? "#374151" : "#e5e7eb" }}>
+                    {[{ id: "all", label: "All" }, ...SECTION_CATEGORIES].map(cat => (
+                      <button key={cat.id} onClick={() => setAddSectionFilter(cat.id)}
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all ${
+                          addSectionFilter === cat.id ? "bg-orange-500 text-white" : `${textFaint} ${hoverBg}`
+                        }`}>
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="max-h-52 overflow-y-auto">
+                    {SECTION_BLOCKS
+                      .filter(b => {
+                        const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey] ?? PAGE_ALLOWED_SECTIONS.home
+                        return allowed.includes(b.type) && (addSectionFilter === "all" || b.category === addSectionFilter)
+                      })
+                      .map(block => (
                         <button key={block.type} onClick={() => addSection(block.type)}
                           className={`w-full flex items-center gap-2.5 px-2.5 py-2 transition-all text-left ${hoverBg} border-t ${isDark ? "border-gray-700/50" : "border-gray-100"}`}>
-                          <div className="flex items-center justify-center w-6 h-6 rounded-lg shrink-0" style={{ background: `${block.color}20`, color: block.color }}>{block.icon}</div>
+                          <div className="flex items-center justify-center w-6 h-6 rounded-lg shrink-0" style={{ background: `${block.color}20`, color: block.color }}>
+                            {block.icon}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-xs font-medium ${textPrimary}`}>{block.label}</p>
                             <p className={`text-[10px] ${textFaint}`}>{block.desc}</p>
                           </div>
                         </button>
                       ))}
-                    </div>
                   </div>
-                )}
-              </div>
-            )
-          }
+                </div>
+              )}
+            </div>
+          )
+        }
 
           // Keep AddBetweenButton as a zone-end "Add section" dashed button (only at zone end, no hover trick needed)
           const AddBetweenButton = ({ afterIndex, zone }: { afterIndex: number; zone: string }) => {
@@ -1534,235 +1631,25 @@ useEffect(() => {
                 <div className="p-1.5 space-y-1">
 
                   {/* ── CATEGORIES: grid row FIRST, then sections below ── */}
-                  {currentLayoutKey === "categories" && (<>
-                    <div
-                      onClick={() => {
-                        const key = "categories"
-                        const existing = getPageSections(store, key)
-                        if (!existing.find((s: any) => s.id === "__category_grid__")) {
-                          patchStore(p => setPageSections(p, key, [
-                            { id: "__category_grid__", type: "category_grid" as SectionType, title: "Categories", columns: 4 },
-                            ...getPageSections(p, key),
-                          ]))
-                        }
-                        setSelectedId("__category_grid__")
-                        setRightPanelOpen(true)
-                      }}
-                      className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
-                        selectedId === "__category_grid__"
-                          ? "bg-orange-500/15 border-orange-500/40"
-                          : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
-                        <Layout className="w-3 h-3 text-orange-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
-                          Category Grid
-                        </p>
-                        <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
-                      </div>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                        selectedId === "__category_grid__"
-                          ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
-                          : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
-                      }`}>Edit</span>
-                    </div>
-                    {bodySections.length === 0 ? (
-                      <div className="py-3 text-center">
-                        <p className={`text-[10px] ${textFaint} opacity-60`}>Add sections below the category grid</p>
-                      </div>
-                    ) : (
-                      bodySections.map((s, i) => (
-                        <div key={s.id}>
-                          <SectionRow s={s} idx={i} />
-                          {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
-                        </div>
-                      ))
-                    )}
-                  </>)}
-
-                  {/* ── COLLECTIONS: grid row FIRST (editable), then sections below ── */}
-                  {/* // ADD this BEFORE the OTHER SYSTEM PAGES block: */}
-                  {currentLayoutKey === "collection" && (<>
-                  {/* Collection Products — always pinned at TOP */}
-                  <div
-                    onClick={() => {
-                      const key = "collection"
-                      const existing = getPageSections(store, key)
-                      if (!existing.find((s: any) => s.id === "__collection_products__")) {
-                        patchStore(p => setPageSections(p, key, [
-                          ...getPageSections(p, key),
-                          { id: "__collection_products__", type: "collection_products" as SectionType,
-                            title: "Products", columns: 3 },
-                        ]))
-                      }
-                      setSelectedId("__collection_products__")
-                      setRightPanelOpen(true)
-                    }}
-                    className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
-                      selectedId === "__collection_products__"
-                        ? "bg-orange-500/15 border-orange-500/40"
-                        : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
-                      <Layout className="w-3 h-3 text-orange-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
-                        Collection Products
-                      </p>
-                      <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
-                    </div>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                      selectedId === "__collection_products__"
-                        ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
-                        : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
-                    }`}>Edit</span>
-                  </div>
-
-                  {/* Custom sections BELOW the products row */}
-                  {bodySections.length === 0 ? (
-                    <div className="py-3 text-center">
-                      <p className={`text-[10px] ${textFaint} opacity-60`}>
-                        Add sections below the products
-                      </p>
-                    </div>
-                  ) : (
-                    bodySections.map((s, i) => (
-                      <div key={s.id}>
-                        <SectionRow s={s} idx={i} />
-                        {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
-                      </div>
-                    ))
-                  )}
-                </>)}
-
-                  {/* ── COLLECTIONS PAGE: sections first, editable Collections Grid row at bottom ── */}
-                  {currentLayoutKey === "collections" && (<>
-                  {/* Collections Grid — always pinned at TOP */}
-                  <div
-                    onClick={() => {
-                      const key = "collections"
-                      const existing = getPageSections(store, key)
-                      if (!existing.find((s: any) => s.id === "__collections_grid__")) {
-                        patchStore(p => setPageSections(p, key, [
-                          { id: "__collections_grid__", type: "collections_grid" as SectionType,
-                            title: "Collections", columns: 3 },
-                          ...getPageSections(p, key).filter((s: any) => s.id !== "__collections_grid__"),
-                        ]))
-                      }
-                      setSelectedId("__collections_grid__")
-                      setRightPanelOpen(true)
-                    }}
-                    className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
-                      selectedId === "__collections_grid__"
-                        ? "bg-orange-500/15 border-orange-500/40"
-                        : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
-                      <Layout className="w-3 h-3 text-orange-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
-                        Collections Grid
-                      </p>
-                      <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
-                    </div>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                      selectedId === "__collections_grid__"
-                        ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
-                        : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
-                    }`}>Edit</span>
-                  </div>
-
-                  {/* Custom sections BELOW grid */}
-                  {bodySections.length === 0 ? (
-                    <div className="py-3 text-center">
-                      <p className={`text-[10px] ${textFaint} opacity-60`}>
-                        Add sections below the collections grid
-                      </p>
-                    </div>
-                  ) : (
-                    bodySections.map((s, i) => (
-                      <div key={s.id}>
-                        <SectionRow s={s} idx={i} />
-                        {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
-                      </div>
-                    ))
-                  )}
-                </>)}
-
-                  {/* ── CATEGORY PAGE: sections first, editable Category Products row at bottom ── */}
-                  {currentLayoutKey === "category" && (<>
-                    {bodySections.length === 0 ? (
-                      <div className="py-1 text-center">
-                        <p className={`text-[10px] ${textFaint} opacity-60`}>Add sections below the products</p>
-                      </div>
-                    ) : (
-                      bodySections.map((s, i) => (
-                        <div key={s.id}>
-                          <SectionRow s={s} idx={i} />
-                          {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
-                        </div>
-                      ))
-                    )}
-                    <div
-                      onClick={() => {
-                        const key = "category"
-                        const existing = getPageSections(store, key)
-                        if (!existing.find((s: any) => s.id === "__category_products__")) {
-                          patchStore(p => setPageSections(p, key, [
-                            ...getPageSections(p, key),
-                            { id: "__category_products__", type: "category_products" as SectionType, title: "Products", columns: 3 },
-                          ]))
-                        }
-                        setSelectedId("__category_products__")
-                        setRightPanelOpen(true)
-                      }}
-                      className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
-                        selectedId === "__category_products__"
-                          ? "bg-orange-500/15 border-orange-500/40"
-                          : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
-                        <Layout className="w-3 h-3 text-orange-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
-                          Category Products
-                        </p>
-                        <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
-                      </div>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                        selectedId === "__category_products__"
-                          ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
-                          : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
-                      }`}>Edit</span>
-                    </div>
-                  </>)}
-
-                  {/* ── OTHER SYSTEM PAGES: sections first, plain Auto row at bottom ── */}
-                  {!["categories", "collections", "category", "home"].includes(currentLayoutKey) &&
-                    !currentLayoutKey.startsWith("page_") &&
-                    ["products", "cart", "search", "product"].includes(currentLayoutKey) && (<>
-
-                      {/* System row FIRST — pinned at top */}
-                      {/* <div
+                  {currentLayoutKey === "categories" && (
+                    <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
+                      <div
                         onClick={() => {
-                          setSelectedId(`__${currentLayoutKey}_system__`)
+                          const key = "categories"
+                          const existing = getPageSections(store, key)
+                          if (!existing.find((s: any) => s.id === "__category_grid__")) {
+                            patchStore(p => setPageSections(p, key, [
+                              { id: "__category_grid__", type: "category_grid" as SectionType, title: "Categories", columns: 4 },
+                              ...getPageSections(p, key),
+                            ]))
+                          }
+                          setSelectedId("__category_grid__")
                           setRightPanelOpen(true)
-                          if (window.innerWidth < 768) setLeftPanelOpen(false)
                         }}
                         className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
-                          selectedId === `__${currentLayoutKey}_system__`
+                          selectedId === "__category_grid__"
                             ? "bg-orange-500/15 border-orange-500/40"
-                            : isDark ? "border-orange-800/40 bg-orange-900/20 hover:border-orange-700"
-                                    : "border-orange-200/60 bg-orange-50/50 hover:border-orange-300"
+                            : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
                         }`}
                       >
                         <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
@@ -1770,28 +1657,74 @@ useEffect(() => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
-                            {currentLayoutKey === "products"  ? "Product Grid" :
-                            currentLayoutKey === "cart"      ? "Cart Items & Checkout" :
-                            currentLayoutKey === "search"    ? "Search Bar & Results" :
-                            currentLayoutKey === "product"   ? "Product Images · Variants · Add to Cart" :
-                            "System Content"}
+                            Category Grid
                           </p>
-                          <p className={`text-[10px] ${textFaint}`}>Rendered automatically</p>
+                          <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
                         </div>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                          selectedId === `__${currentLayoutKey}_system__`
+                          selectedId === "__category_grid__"
                             ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
                             : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
-                        }`}>
-                          {selectedId === `__${currentLayoutKey}_system__` ? "Editing" : "Auto"}
-                        </span>
-                      </div> */}
+                        }`}>Edit</span>
+                      </div>
+                      {bodySections.length === 0 ? (
+                        <div className="py-3 text-center">
+                          <p className={`text-[10px] ${textFaint} opacity-60`}>Add sections below the category grid</p>
+                        </div>
+                      ) : (
+                        bodySections.map((s, i) => (
+                          <div key={s.id}>
+                            <SectionRow s={s} idx={i} />
+                            {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
 
-                      {/* Custom sections BELOW system row */}
+                  {/* ── COLLECTIONS: grid row FIRST (editable), then sections below ── */}
+                  {/* // ADD this BEFORE the OTHER SYSTEM PAGES block: */}
+                  {currentLayoutKey === "collection" && (
+                    <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
+                      <div
+                        onClick={() => {
+                          const key = "collection"
+                          const existing = getPageSections(store, key)
+                          if (!existing.find((s: any) => s.id === "__collection_products__")) {
+                            patchStore(p => setPageSections(p, key, [
+                              ...getPageSections(p, key),
+                              { id: "__collection_products__", type: "collection_products" as SectionType,
+                                title: "Products", columns: 3 },
+                            ]))
+                          }
+                          setSelectedId("__collection_products__")
+                          setRightPanelOpen(true)
+                        }}
+                        className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                          selectedId === "__collection_products__"
+                            ? "bg-orange-500/15 border-orange-500/40"
+                            : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                          <Layout className="w-3 h-3 text-orange-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                            Collection Products
+                          </p>
+                          <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                          selectedId === "__collection_products__"
+                            ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
+                            : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
+                        }`}>Edit</span>
+                      </div>
                       {bodySections.length === 0 ? (
                         <div className="py-3 text-center">
                           <p className={`text-[10px] ${textFaint} opacity-60`}>
-                            Add sections below the system content
+                            Add sections below the products
                           </p>
                         </div>
                       ) : (
@@ -1802,43 +1735,175 @@ useEffect(() => {
                           </div>
                         ))
                       )}
-                    </>)}
+                    </div>
+                  )}
+
+                  {/* ── COLLECTIONS PAGE: sections first, editable Collections Grid row at bottom ── */}
+                  {currentLayoutKey === "collections" && (
+                    <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
+                      <div
+                        onClick={() => {
+                          const key = "collections"
+                          const existing = getPageSections(store, key)
+                          if (!existing.find((s: any) => s.id === "__collections_grid__")) {
+                            patchStore(p => setPageSections(p, key, [
+                              { id: "__collections_grid__", type: "collections_grid" as SectionType,
+                                title: "Collections", columns: 3 },
+                              ...getPageSections(p, key).filter((s: any) => s.id !== "__collections_grid__"),
+                            ]))
+                          }
+                          setSelectedId("__collections_grid__")
+                          setRightPanelOpen(true)
+                        }}
+                        className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                          selectedId === "__collections_grid__"
+                            ? "bg-orange-500/15 border-orange-500/40"
+                            : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                          <Layout className="w-3 h-3 text-orange-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                            Collections Grid
+                          </p>
+                          <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                          selectedId === "__collections_grid__"
+                            ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
+                            : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
+                        }`}>Edit</span>
+                      </div>
+                      {bodySections.length === 0 ? (
+                        <div className="py-3 text-center">
+                          <p className={`text-[10px] ${textFaint} opacity-60`}>
+                            Add sections below the collections grid
+                          </p>
+                        </div>
+                      ) : (
+                        bodySections.map((s, i) => (
+                          <div key={s.id}>
+                            <SectionRow s={s} idx={i} />
+                            {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── CATEGORY PAGE: sections first, editable Category Products row at bottom ── */}
+                  {currentLayoutKey === "category" && (
+                    <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
+                      {bodySections.length === 0 ? (
+                        <div className="py-1 text-center">
+                          <p className={`text-[10px] ${textFaint} opacity-60`}>Add sections below the products</p>
+                        </div>
+                      ) : (
+                        bodySections.map((s, i) => (
+                          <div key={s.id}>
+                            <SectionRow s={s} idx={i} />
+                            {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                          </div>
+                        ))
+                      )}
+                      <div
+                        onClick={() => {
+                          const key = "category"
+                          const existing = getPageSections(store, key)
+                          if (!existing.find((s: any) => s.id === "__category_products__")) {
+                            patchStore(p => setPageSections(p, key, [
+                              ...getPageSections(p, key),
+                              { id: "__category_products__", type: "category_products" as SectionType, title: "Products", columns: 3 },
+                            ]))
+                          }
+                          setSelectedId("__category_products__")
+                          setRightPanelOpen(true)
+                        }}
+                        className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                          selectedId === "__category_products__"
+                            ? "bg-orange-500/15 border-orange-500/40"
+                            : isDark ? "border-orange-800/40 bg-orange-900/20" : "border-orange-200/60 bg-orange-50/50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                          <Layout className="w-3 h-3 text-orange-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                            Category Products
+                          </p>
+                          <p className={`text-[10px] ${textFaint}`}>Columns · Heading · Colors — click to edit</p>
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                          selectedId === "__category_products__"
+                            ? isDark ? "bg-orange-500/20 text-orange-400" : "bg-orange-100 text-orange-600"
+                            : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
+                        }`}>Edit</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── OTHER SYSTEM PAGES: sections first, plain Auto row at bottom ── */}
+                  {!["categories", "collections", "category", "home"].includes(currentLayoutKey) &&
+                    !currentLayoutKey.startsWith("page_") &&
+                    ["products", "cart", "search", "product"].includes(currentLayoutKey) && (
+                      <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
+                        {bodySections.length === 0 ? (
+                          <div className="py-3 text-center">
+                            <p className={`text-[10px] ${textFaint} opacity-60`}>
+                              Add sections below the system content
+                            </p>
+                          </div>
+                        ) : (
+                          bodySections.map((s, i) => (
+                            <div key={s.id}>
+                              <SectionRow s={s} idx={i} />
+                              {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                  )}
 
                   {/* ── HOME PAGE ── */}
-                  {currentLayoutKey === "home" && (<>
-                    {bodySections.length === 0 && (
-                      <div className="py-6 space-y-1 text-center">
-                        <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
-                        <p className={`text-[10px] ${textFaint} opacity-60`}>
-                          Click "+ Add section" to build this page
-                        </p>
-                      </div>
-                    )}
-                    {bodySections.map((s, i) => (
-                      <div key={s.id}>
-                        <SectionRow s={s} idx={i} />
-                        {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
-                      </div>
-                    ))}
-                  </>)}
+                  {currentLayoutKey === "home" && (
+                    <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
+                      {bodySections.length === 0 && (
+                        <div className="py-6 text-center space-y-1">
+                          <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
+                          <p className={`text-[10px] ${textFaint} opacity-60`}>Click "+ Add section" to build this page</p>
+                        </div>
+                      )}
+                      {bodySections.map((s, i) => (
+                        <div key={s.id}>
+                          <SectionRow s={s} idx={i} />
+                          {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* ── CUSTOM PAGES (page_*) ── */}
-                  {currentLayoutKey.startsWith("page_") && (<>
-                    {bodySections.length === 0 && (
-                      <div className="py-6 space-y-1 text-center">
-                        <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
-                        <p className={`text-[10px] ${textFaint} opacity-60`}>
-                          Click "+ Add section" to build this page
-                        </p>
-                      </div>
-                    )}
-                    {bodySections.map((s, i) => (
-                      <div key={s.id}>
-                        <SectionRow s={s} idx={i} />
-                        {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
-                      </div>
-                    ))}
-                  </>)}
+                  {currentLayoutKey.startsWith("page_") && (
+                    <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
+                      {bodySections.length === 0 && (
+                        <div className="py-6 space-y-1 text-center">
+                          <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
+                          <p className={`text-[10px] ${textFaint} opacity-60`}>
+                            Click "+ Add section" to build this page
+                          </p>
+                        </div>
+                      )}
+                      {bodySections.map((s, i) => (
+                        <div key={s.id}>
+                          <SectionRow s={s} idx={i} />
+                          {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                 </div>
 
@@ -2693,7 +2758,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
 
 function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew, isDark }: {
   page: StorePage; vendorHandle: string; isNew: boolean; isDark: boolean
-  onSave: (p: StorePage) => void; onCancel: () => void; onDelete: () => void
+  onSave: (p: StorePage) => void | Promise<void>; onCancel: () => void; onDelete: () => void
 }) {
   const [draft, setDraft] = useState({ ...page })
   const up = (patch: Partial<StorePage>) => setDraft(p => ({ ...p, ...patch }))
@@ -2707,7 +2772,13 @@ function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew
       </div>
       <div>
         <label className={`text-[10px] ${textFaint} block mb-1`}>Page title</label>
-        <EditorInput value={draft.title} onChange={v => up({ title: v, ...(isNew ? { slug: slugify(v) } : {}) })} placeholder="e.g. About Me" isDark={isDark} />
+        <input
+          type="text"
+          value={draft.title}
+          onChange={e => up({ title: e.target.value, ...(isNew ? { slug: slugify(e.target.value) } : {}) })}
+          placeholder="e.g. About Me"
+          className={`w-full rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-orange-500 transition-colors ${isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"}`}
+        />
       </div>
       <div>
         <label className={`text-[10px] ${textFaint} block mb-1`}>URL slug</label>
@@ -2726,7 +2797,13 @@ function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew
             {draft.content.trim().startsWith("<") ? "HTML" : "Markdown"}
           </span>
         </div>
-        <EditorTextarea value={draft.content} onChange={v => up({ content: v })} placeholder={"Markdown: ## Heading\n\nHTML: <div>...</div>"} rows={10} isDark={isDark} />
+        <textarea
+          value={draft.content}
+          onChange={e => up({ content: e.target.value })}
+          placeholder={"Markdown: ## Heading\n\nHTML: <div>...</div>"}
+          rows={10}
+          className={`w-full rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors resize-none font-mono text-xs ${isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800 placeholder-gray-400"}`}
+        />
       </div>
       <div className="space-y-2">
         <p className={`text-[10px] ${textFaint}`}>Visibility</p>
@@ -2738,7 +2815,15 @@ function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew
         ))}
       </div>
       <div className="flex gap-2 pt-1">
-        <button onClick={() => onSave(draft)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white" style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
+         <button onClick={() => {
+          console.log("SAVING DRAFT:", JSON.stringify(draft.content.slice(0, 100)))
+          let finalDraft = { ...draft }
+          if (draft.template === "terms" || draft.template === "privacy") {
+            const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
+            finalDraft.content = draft.content.replace(/\*Last updated:.*?\*/, `*Last updated: ${today}*`)
+          }
+          onSave(finalDraft)
+        }}className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white" style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
           <Save className="w-3 h-3" />{isNew ? "Create page" : "Save changes"}
         </button>
         <button onClick={onCancel} className={`px-3 py-2 rounded-lg border text-xs transition-colors ${isDark ? "border-gray-700 text-gray-400 hover:border-gray-500" : "border-gray-300 text-gray-500 hover:border-gray-400"}`}>Cancel</button>

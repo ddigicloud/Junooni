@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { getStorefrontData } from "@/lib/api"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
-import CustomPageClient from "./CustomPageClient"
+import CustomPageClient from "./Custompageclient"
 
 interface Props { params: { handle: string; slug: string } }
 

@@ -77,7 +77,7 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
     'options.id','options.title','options.values.id','options.values.value',
     'variants.id','variants.title','variants.sku','variants.allow_backorder',
     'variants.manage_inventory',
-    // 'variants.inventory_quantity',
+    '+variants.inventory_quantity',
     'variants.prices.amount','variants.prices.currency_code',
     '+sales_channels.id','+sales_channels.name', 
     'variants.options.option_id','variants.options.value',

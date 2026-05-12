@@ -48,7 +48,7 @@ export default function ProductGallery({
             <button
               key={img.id ?? img.url}
               onClick={() => setActiveIndex(i)}
-              className={`relative overflow-hidden aspect-square rounded-xl border-2 transition-all focus:outline-none ${
+              className={`relative overflow-hidden aspect-square rounded-xl border-2 transition-all focus:outline-0 ${
                 i === activeIndex
                   ? "border-[var(--brand-primary)] scale-105 shadow-md"
                   : isDark

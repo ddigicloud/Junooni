@@ -30,3 +30,27 @@ html {
   background-color: var(--brand-primary);
   color: #fff;
 }
+
+.size-chart-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.size-chart-content th {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+.size-chart-content td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  white-space: nowrap;
+}
+.size-chart-content tr:last-child td {
+  border-bottom: none;
+}

@@ -51,6 +51,12 @@ export default function ProductsPageClient({
   const showPriceFilter      = gridSection.show_price_filter      !== false
   const showCategoryFilter   = gridSection.show_category_filter   !== false
   const showCollectionFilter = gridSection.show_collection_filter !== false
+  // Add these 5 lines after the existing gridSection reads:
+  const cardAspectRatio  = store?.product_card?.aspect_ratio        ?? "square"
+  const cardAlignment    = store?.product_card?.alignment           ?? "left"
+  const cardShowPrice    = store?.product_card?.show_price          !== false
+  const cardShowHover    = store?.product_card?.show_hover          !== false
+  const cardShowSoldOut  = store?.product_card?.show_sold_out_badge !== false
 
   const brandStyles = {
     "--brand-primary":   brandPrimary,
@@ -151,6 +157,11 @@ export default function ProductsPageClient({
           showPriceFilter={showPriceFilter}
           showCategoryFilter={showCategoryFilter}
           showCollectionFilter={showCollectionFilter}
+          cardAspectRatio={cardAspectRatio}
+          cardAlignment={cardAlignment}
+          cardShowPrice={cardShowPrice}
+          cardShowHover={cardShowHover}
+          cardShowSoldOut={cardShowSoldOut}
         />
       </div>
 

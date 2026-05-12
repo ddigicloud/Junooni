@@ -25,6 +25,11 @@ interface Props {
   showPriceFilter?: boolean     // show price range filter (default true)
   showCategoryFilter?: boolean  // show category checkboxes (default true)
   showCollectionFilter?: boolean // show collection checkboxes (default true)
+  cardAspectRatio?:  "square" | "portrait" | "landscape"
+  cardAlignment?:    "left" | "center"
+  cardShowPrice?:    boolean
+  cardShowHover?:    boolean
+  cardShowSoldOut?:  boolean
 }
 
 type SortOption = "newest" | "price_asc" | "price_desc" | "name_asc"
@@ -48,6 +53,11 @@ export default function ProductGrid({
   showCategoryFilter = true,
   showCollectionFilter = true,
   filterOrder = ["sort", "price", "category", "collection"],
+  cardAspectRatio = "square",
+  cardAlignment = "left",
+  cardShowPrice = true,
+  cardShowHover = true,
+  cardShowSoldOut = true,
 }: Props) {
 
   // Apply limit and sold-out filter first (these come from the editor)
@@ -398,6 +408,11 @@ export default function ProductGrid({
                   handle={handle}
                   brandPrimary={brandPrimary}
                   variant={isDark ? "dark" : "light"}
+                  aspectRatio={cardAspectRatio}
+                  alignment={cardAlignment}
+                  showPrice={cardShowPrice}
+                  showHover={cardShowHover}
+                  showSoldOutBadge={cardShowSoldOut}
                 />
               ))}
             </div>
