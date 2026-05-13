@@ -15,6 +15,7 @@ import StoreFooter from "@/components/store/StoreFooter"
 import SizeChartModal from "@/components/store/SizeChartModal"
 import {
   ShoppingCart, Check, Loader2, Minus, Plus,
+  Droplets, Flame, Hand, Ban, Wind, Shield, Sun, RefreshCw,
 } from "lucide-react"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -93,6 +94,7 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
 
   const toggle = (id: string) => setOpenSection(o => o === id ? null : id)
 
+  // REPLACE WITH:
   const productDetails: string[] = (() => {
     try {
       const raw = product?.metadata?.product_details
@@ -100,6 +102,38 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
       return JSON.parse(raw)
     } catch { return [] }
   })()
+
+  const careInstructions: { id: string; instruction: string; icon: string }[] = (() => {
+    try {
+      const raw = product?.metadata?.care_instructions
+      if (!raw) return []
+      return JSON.parse(raw)
+    } catch { return [] }
+  })()
+
+  // REPLACE WITH:
+  const CARE_ICONS: Record<string, React.ElementType> = {
+    wash_cold:      Droplets,
+    wash_warm:      Flame,
+    wash_hot:       Flame,
+    hand_wash:      Hand,
+    no_wash:        Ban,
+    hang_dry:       Wind,
+    no_dry:         Ban,
+    no_bleach:      Shield,
+    no_iron:        Sun,
+    iron:           Sun,
+    iron_low:       Sun,
+    iron_med:       Flame,
+    iron_high:      Flame,
+    tumble_dry_low: RefreshCw,
+    tumble_dry:     RefreshCw,
+    no_tumble_dry:  Ban,
+    dry_clean:      Shield,
+    no_dry_clean:   Ban,
+    bleach_ok:      Droplets,
+    flat_dry:       Wind,
+  }
 
   const descriptionStory: string = product?.metadata?.description_story ?? ""
   const description: string = product?.description ?? ""
@@ -186,6 +220,27 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
           </a>
         </div>
       </AccordionRow>
+
+      {careInstructions.length > 0 && (
+        <AccordionRow id="care" label="Care Instructions">
+          <ul className="space-y-3">
+            {careInstructions.map((item) => {
+              const IconComponent = CARE_ICONS[item.icon] ?? Shield
+              return (
+                <li key={item.id} className={`flex items-start gap-3 text-sm ${bodyText}`}>
+                  <IconComponent
+                    size={16}
+                    className="mt-0.5 shrink-0"
+                    style={{ color: brandPrimary }}
+                  />
+                  <span className="leading-relaxed">{item.instruction}</span>
+                </li>
+              )
+            })}
+          </ul>
+        </AccordionRow>
+      )}
+      
     </div>
   )
 }
@@ -621,7 +676,7 @@ export default function ProductPageClient({
 
         {/* Featured / upsell */}
         {section.type === "featured" && (
-          <div className="px-4 py-12 z-0 sm:px-6" style={{ backgroundColor: sectionBg }}>
+          <div className="z-0 px-4 py-12 sm:px-6" style={{ backgroundColor: sectionBg }}>
             <div className="mx-auto max-w-7xl">
               {section.title && (
                 <h2 className="mb-6 text-2xl font-bold"
@@ -818,7 +873,7 @@ export default function ProductPageClient({
           const bg = sectionBg ?? section.background_color ?? "#111827"
           const fg = sectionText ?? section.text_color ?? "#ffffff"
           const line = items.join(`  ${sep}  `)
-          const duration = Math.round(200 - speed * 1.5)
+          const duration = Math.max(5, 100 - speed)
           return (
             <div className="overflow-hidden py-2.5" style={{ backgroundColor: bg }}>
               <style>{`

@@ -682,6 +682,36 @@ function ProductDetailSettings({ settings, onChange, isDark }: {
 
 function slugify(s: string) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") }
 function genId() { return `s_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
+function CustomPagesGroup({ pages, value, onChange, setOpen, isDark }: {
+  pages: StorePage[]; value: string; onChange: (v: string) => void
+  setOpen: (v: boolean) => void; isDark: boolean
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const textColor = isDark ? "text-gray-300" : "text-gray-700"
+  const hoverBg = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
+  const faint = isDark ? "text-gray-600" : "text-gray-400"
+
+  return (
+    <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className={`w-full flex items-center justify-between px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-wider transition-colors ${"text-black-400"} ${hoverBg}`}
+      >
+        <span>Custom pages</span>
+        <ChevronRight className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} />
+      </button>
+      {expanded && pages.map(p => (
+        <button key={p.id} onClick={() => { onChange(`/p/${p.slug}`); setOpen(false) }}
+          className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors text-left ${
+            value === `/p/${p.slug}` ? "bg-orange-500/10 text-orange-400" : `${textColor} ${hoverBg}`
+          }`}>
+          <span className="pl-1 truncate">{p.title}</span>
+          <span className={`font-mono text-[10px] ml-2 shrink-0 ${faint}`}>/p/{p.slug}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
 
 // ─── LinkInput — URL field with "Select page" dropdown ───────────────────────
 
@@ -743,22 +773,8 @@ function LinkInput({
               </button>
             ))}
           </div>
-          {pages.length > 0 && (
-            <div className="px-1.5 py-1">
-              <p className={`px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${isDark ? "text-gray-600" : "text-gray-400"}`}>Custom pages</p>
-              {pages.map(p => (
-                <button key={p.id} onClick={() => { onChange(`/p/${p.slug}`); setOpen(false) }}
-                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors text-left ${
-                    value === `/p/${p.slug}` ? "bg-orange-500/10 text-orange-400" : isDark ? "text-gray-300 hover:bg-gray-800" : "text-gray-700 hover:bg-gray-50"
-                  }`}>
-                  <span className="truncate">{p.title}</span>
-                  <span className={`font-mono text-[10px] ml-2 shrink-0 ${isDark ? "text-gray-600" : "text-gray-400"}`}>/p/{p.slug}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {pages.length === 0 && (
-            <p className={`px-3 py-2 text-[10px] italic ${isDark ? "text-gray-600" : "text-gray-400"}`}>No custom pages yet.</p>
+           {pages.length > 0 && (
+            <CustomPagesGroup pages={pages} value={value} onChange={onChange} setOpen={setOpen} isDark={isDark} />
           )}
         </div>
       )}
@@ -933,20 +949,73 @@ export default function StoreEditorPage() {
             }
           }
 
-          // Seed social URLs from vendor profile if not already saved in store
+          // ── Auto-seed 3 legal pages if missing ─────────────────────
+          const existingPages: any[] = loadedStore.pages?.pages ?? []
+          const hasTerms   = existingPages.some((p: any) => p.template === "terms")
+          const hasPrivacy = existingPages.some((p: any) => p.template === "privacy")
+          const hasReturns = existingPages.some((p: any) => p.template === "returns")
+
+          if (!hasTerms || !hasPrivacy || !hasReturns) {
+            const today = new Date().toLocaleDateString("en-IN", {
+              day: "numeric", month: "long", year: "numeric"
+            })
+            const seedPages = [...existingPages]
+
+            if (!hasTerms) seedPages.push({
+              id: `page_${Date.now()}_terms`,
+              title: "Terms of Service",
+              slug: "terms-of-service",
+              template: "terms",
+              in_nav: false,
+              in_footer: true,
+              created_at: new Date().toISOString(),
+              content: PAGE_TEMPLATES.find(t => t.id === "terms")!.defaultContent.replace("{{CREATED_DATE}}", today),
+            })
+
+            if (!hasPrivacy) seedPages.push({
+              id: `page_${Date.now() + 1}_privacy`,
+              title: "Privacy Policy",
+              slug: "privacy-policy",
+              template: "privacy",
+              in_nav: false,
+              in_footer: true,
+              created_at: new Date().toISOString(),
+              content: PAGE_TEMPLATES.find(t => t.id === "privacy")!.defaultContent.replace("{{CREATED_DATE}}", today),
+            })
+
+            if (!hasReturns) seedPages.push({
+              id: `page_${Date.now() + 2}_returns`,
+              title: "Returns & Refunds",
+              slug: "returns-refunds",
+              template: "returns",
+              in_nav: false,
+              in_footer: true,
+              created_at: new Date().toISOString(),
+              content: PAGE_TEMPLATES.find(t => t.id === "returns")!.defaultContent.replace("{{CREATED_DATE}}", today),
+            })
+
+            loadedStore.pages = { pages: seedPages }
+          }
+          // ── End seed ────────────────────────────────────────────────
+
+          if (!hasTerms || !hasPrivacy || !hasReturns) {
+            fetch(`${backendUrl}/vendors/me/store`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ ...loadedStore, pages: loadedStore.pages }),
+            }).catch(e => console.warn("Auto-save seeded pages failed:", e))
+          }
+          // setStore AFTER seeding so pages are included from the start
           setStore({
             ...loadedStore,
             instagram_url: loadedStore.instagram_url || vd.vendor?.instagram || "",
             youtube_url:   loadedStore.youtube_url   || vd.vendor?.youtube   || "",
             twitter_url:   loadedStore.twitter_url   || vd.vendor?.xtwitter  || "",
             facebook_url:  loadedStore.facebook_url  || vd.vendor?.facebook  || "",
-            // tiktok_url:    loadedStore.tiktok_url    || vd.vendor?.tiktok    || "",
-            // discord_url:   loadedStore.discord_url   || vd.vendor?.discord   || "",
           })
           setHasStore(true)
 
           // ── Collections come from store.collections.collections ──
-          // These are creator-managed collections, NOT Medusa product collections
           const storeCollections = sd.store.collections?.collections ?? []
           setVendorCollections(storeCollections.map((c: any) => ({
             id: c.id,
@@ -957,7 +1026,6 @@ export default function StoreEditorPage() {
       }
 
       // ── 3. Fetch products — derives vendorProducts + vendorCategories ───────
-      // NOTE: Does NOT touch vendorCollections (already set from store above)
       try {
         const prodRes = await fetch(
           `${backendUrl}/vendors/products?limit=200&status=published&store_only=true`,
@@ -967,10 +1035,8 @@ export default function StoreEditorPage() {
           const prodData = await prodRes.json()
           const allProds = prodData.products ?? []
 
-          // Only published products for editor dropdowns
           const prods = allProds.filter((p: any) => p.status === "published")
 
-          // Set vendor products
           setVendorProducts(prods.map((p: any) => ({
             id: p.id,
             title: p.title,
@@ -980,7 +1046,6 @@ export default function StoreEditorPage() {
             options: p.options,
           })))
 
-          // Derive categories from products
           const catMap = new Map<string, {
             id: string; name: string; handle: string; product_count: number
           }>()
@@ -996,7 +1061,6 @@ export default function StoreEditorPage() {
               })
             }
           }
-          // Only show categories that have at least 1 published creator store product
           setVendorCategories([...catMap.values()].filter(c => c.product_count > 0))
         }
       } catch (e) {
@@ -1061,8 +1125,16 @@ useEffect(() => {
       
       // ← ADD THIS: tell iframe to hard refresh after save
       iframeRef.current?.contentWindow?.postMessage({ type: "STORE_SAVED" }, "*")
-      
       toast({ title: "Saved! ✓", description: "Your store has been updated." })
+
+      // Reload iframe so server-rendered pages (like /p/terms-of-service) pick up new content
+      setTimeout(() => {
+        if (iframeRef.current) {
+          const src = iframeRef.current.src
+          iframeRef.current.src = ""
+          setTimeout(() => { if (iframeRef.current) iframeRef.current.src = src }, 100)
+        }
+      }, 600)
     } catch (e) {
       toast({ title: "Save failed", description: String(e), variant: "destructive" })
     } finally { setIsSaving(false) }
@@ -1412,9 +1484,26 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
                   </button>
                   <button onClick={e => { e.stopPropagation(); removeSection(s.id) }} className="p-0.5 rounded hover:bg-red-900/50"><Trash2 className="w-2.5 h-2.5 text-red-400" /></button>
                 </div> */}
-                {s.hidden && (
+                <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
+                  {!s.id?.startsWith("def_") && (<>
+                    <button onClick={e => { e.stopPropagation(); duplicateSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title="Duplicate">
+                      <Copy className={`w-2.5 h-2.5 ${textMuted}`} />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); toggleSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title={s.hidden ? "Show" : "Hide"}>
+                      {s.hidden
+                        ? <EyeOff className={`w-2.5 h-2.5 ${textMuted}`} />
+                        : <Eye className={`w-2.5 h-2.5 ${textMuted}`} />
+                      }
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); removeSection(s.id) }} className="p-0.5 rounded hover:bg-red-900/50" title="Delete">
+                      <Trash2 className="w-2.5 h-2.5 text-red-400" />
+                    </button>
+                  </>)}
+                  <ChevronRight className={`w-3 h-3 ${textFaint}`} />
+                </div>
+                {/* {s.hidden && (
                   <EyeOff className={`w-2.5 h-2.5 shrink-0 ${textFaint}`} />
-                )}
+                )} */}
               </div>
             </div>
           )
@@ -1437,7 +1526,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
             <div className="relative" style={{ height: "16px", margin: "1px 0" }}>
               {/* Only show when hovering (not dragging) */}
               {!isDragging && (
-                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center opacity-0 hover:opacity-100 transition-opacity group/line">
+                <div className="absolute inset-x-0 flex items-center transition-opacity -translate-y-1/2 opacity-0 top-1/2 hover:opacity-100 group/line">
                   <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
                   <button
                     onClick={e => {
@@ -1445,7 +1534,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
                       if (isOpen) { setAddSectionOpen(false); setInsertAtIndex(null) }
                       else { setInsertAtIndex(afterIndex); setAddSectionOpen(true); setAddSectionFilter("all") }
                     }}
-                    className="mx-1 flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white shadow-lg hover:bg-orange-600 transition-colors shrink-0"
+                    className="flex items-center justify-center w-5 h-5 mx-1 text-white transition-colors bg-orange-500 rounded-full shadow-lg hover:bg-orange-600 shrink-0"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
@@ -1455,9 +1544,9 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
 
               {/* Only show blue drop indicator when actively dragging over this gap */}
               {isDragging && isDragTarget && (
-                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                <div className="absolute inset-x-0 flex items-center -translate-y-1/2 pointer-events-none top-1/2">
                   <div className="flex-1 h-0.5 bg-blue-400 rounded-full" />
-                  <div className="w-2 h-2 rounded-full bg-blue-400 mx-1 shrink-0" />
+                  <div className="w-2 h-2 mx-1 bg-blue-400 rounded-full shrink-0" />
                   <div className="flex-1 h-0.5 bg-blue-400 rounded-full" />
                 </div>
               )}
@@ -1483,7 +1572,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
                       </button>
                     ))}
                   </div>
-                  <div className="max-h-52 overflow-y-auto">
+                  <div className="overflow-y-auto max-h-52">
                     {SECTION_BLOCKS
                       .filter(b => {
                         const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey] ?? PAGE_ALLOWED_SECTIONS.home
@@ -1871,7 +1960,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
                   {currentLayoutKey === "home" && (
                     <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
                       {bodySections.length === 0 && (
-                        <div className="py-6 text-center space-y-1">
+                        <div className="py-6 space-y-1 text-center">
                           <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
                           <p className={`text-[10px] ${textFaint} opacity-60`}>Click "+ Add section" to build this page</p>
                         </div>
@@ -2197,7 +2286,17 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
               <PageEditorPanel page={editingPage} vendorHandle={vendorHandle}
                 onSave={savePage} onCancel={() => setEditingPage(null)}
                 onDelete={() => { deletePage(editingPage.id); setEditingPage(null) }}
-                isNew={!pages.find(p => p.id === editingPage.id)} isDark={isDark} />
+                isNew={!pages.find(p => p.id === editingPage.id)} isDark={isDark}
+                onDraftChange={(updated) => {
+                  patchStore(p => {
+                    const existing = p.pages?.pages ?? []
+                    const updatedPages = existing.find(pg => pg.id === updated.id)
+                      ? existing.map(pg => pg.id === updated.id ? updated : pg)
+                      : [...existing, updated]
+                    return { ...p, pages: { pages: updatedPages } }
+                  })
+                  setHasUnsavedChanges(true)
+                }} />
             ) : (
               <>
                 <p className={`text-[10px] uppercase tracking-wider px-1 py-2 ${textFaint}`}>Custom pages</p>
@@ -2756,12 +2855,18 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
 
 // ─── Page Editor Panel ────────────────────────────────────────────────────────
 
-function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew, isDark }: {
+// REPLACE WITH:
+function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew, isDark, onDraftChange }: {
   page: StorePage; vendorHandle: string; isNew: boolean; isDark: boolean
   onSave: (p: StorePage) => void | Promise<void>; onCancel: () => void; onDelete: () => void
+   onDraftChange?: (updated: StorePage) => void
 }) {
   const [draft, setDraft] = useState({ ...page })
-  const up = (patch: Partial<StorePage>) => setDraft(p => ({ ...p, ...patch }))
+   const up = (patch: Partial<StorePage>) => {
+    const updated = { ...draft, ...patch }
+    setDraft(updated)
+    onDraftChange?.(updated)
+  }
   const textPrimary = isDark ? "text-white" : "text-gray-900"
   const textFaint = isDark ? "text-gray-500" : "text-gray-400"
   return (
@@ -2797,9 +2902,25 @@ function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew
             {draft.content.trim().startsWith("<") ? "HTML" : "Markdown"}
           </span>
         </div>
+        {(draft.template === "terms" || draft.template === "privacy") && (() => {
+          const match = draft.content.match(/\*Last updated:.*?\*/)
+          const dateStr = match ? match[0].replace(/\*/g, "") : null
+          return dateStr ? (
+            <p className={`text-[10px] px-2.5 py-1.5 rounded-lg mb-1 ${isDark ? "bg-gray-800/50 text-gray-500 border border-gray-700" : "bg-gray-50 text-gray-400 border border-gray-200"}`}>
+              🔒 {dateStr} — auto-updated on save
+            </p>
+          ) : null
+        })()}
         <textarea
-          value={draft.content}
-          onChange={e => up({ content: e.target.value })}
+          value={draft.content.replace(/\*Last updated:.*?\*\n*/g, "")}
+          onChange={e => {
+            const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
+            const hasDate = draft.template === "terms" || draft.template === "privacy"
+            const newContent = hasDate
+              ? `*Last updated: ${today}*\n\n${e.target.value}`
+              : e.target.value
+            up({ content: newContent })
+          }}
           placeholder={"Markdown: ## Heading\n\nHTML: <div>...</div>"}
           rows={10}
           className={`w-full rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors resize-none font-mono text-xs ${isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800 placeholder-gray-400"}`}
@@ -2815,19 +2936,52 @@ function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew
         ))}
       </div>
       <div className="flex gap-2 pt-1">
-         <button onClick={() => {
-          console.log("SAVING DRAFT:", JSON.stringify(draft.content.slice(0, 100)))
-          let finalDraft = { ...draft }
-          if (draft.template === "terms" || draft.template === "privacy") {
-            const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
-            finalDraft.content = draft.content.replace(/\*Last updated:.*?\*/, `*Last updated: ${today}*`)
-          }
-          onSave(finalDraft)
+          <button onClick={() => {
+          onSave(draft)
         }}className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white" style={{ background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
           <Save className="w-3 h-3" />{isNew ? "Create page" : "Save changes"}
         </button>
         <button onClick={onCancel} className={`px-3 py-2 rounded-lg border text-xs transition-colors ${isDark ? "border-gray-700 text-gray-400 hover:border-gray-500" : "border-gray-300 text-gray-500 hover:border-gray-400"}`}>Cancel</button>
       </div>
+    </div>
+  )
+}
+
+function PageSwitcherPagesGroup({ pages, currentPath, onSelect, setOpen, isDark, textFaint, hoverBg }: {
+  pages: StorePage[]; currentPath: string; onSelect: (p: string) => void
+  setOpen: (v: boolean) => void; isDark: boolean; textFaint: string; hoverBg: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const hasActive = pages.some(p => currentPath === `/p/${p.slug}`)
+
+  return (
+    <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className={`w-full flex items-center justify-between px-2.5 py-2 text-[9px] font-semibold uppercase tracking-wider transition-colors ${
+          hasActive
+            ? isDark ? "text-orange-400" : "text-orange-600"
+            : "text-grey-50"
+        } ${hoverBg}`}
+      >
+        <span>Custom pages {hasActive && `— ${pages.find(p => currentPath === `/p/${p.slug}`)?.title}`}</span>
+        <ChevronRight className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} />
+      </button>
+      {expanded && pages.map(p => {
+        const path = `/p/${p.slug}`
+        return (
+          <button key={p.id} onClick={() => { onSelect(path); setOpen(false) }}
+            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-colors text-left ${
+              currentPath === path
+                ? isDark ? "bg-orange-500/15 text-orange-400" : "bg-orange-50 text-orange-600"
+                : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
+            }`}>
+            <span className="text-sm leading-none">📄</span>
+            <span className="flex-1 truncate">{p.title}</span>
+            {currentPath === path && <Check className="w-3 h-3 text-orange-400 shrink-0" />}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -2931,6 +3085,18 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
               </button>
             ))}
           </div>
+
+          {pages.length > 0 && (
+            <PageSwitcherPagesGroup
+              pages={pages}
+              currentPath={currentPath}
+              onSelect={onSelect}
+              setOpen={setOpen}
+              isDark={isDark}
+              textFaint={textFaint}
+              hoverBg={hoverBg}
+            />
+          )}
 
           {/* Product pages */}
           {products.length > 0 && (
@@ -3052,28 +3218,6 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
                 </div>
               </div>
             )}
-
-          {/* Custom pages */}
-          {pages.length > 0 && (
-            <div className={`p-1 border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
-              <p className={`px-2 py-1 text-[9px] font-semibold uppercase tracking-wider ${textFaint}`}>Custom pages</p>
-              {pages.map(p => {
-                const path = `/p/${p.slug}`
-                return (
-                  <button key={p.id} onClick={() => { onSelect(path); setOpen(false) }}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-colors text-left ${
-                      currentPath === path
-                        ? isDark ? "bg-orange-500/15 text-orange-400" : "bg-orange-50 text-orange-600"
-                        : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
-                    }`}>
-                    <span className="text-sm leading-none">📄</span>
-                    <span className="flex-1 truncate">{p.title}</span>
-                    {currentPath === path && <Check className="w-3 h-3 text-orange-400 shrink-0" />}
-                  </button>
-                )
-              })}
-            </div>
-          )}
         </div>
       )}
     </div>

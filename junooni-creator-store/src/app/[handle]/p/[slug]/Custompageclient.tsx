@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 function isHTML(content: string): boolean {
   return /^<[!a-zA-Z]/.test(content.trim())
@@ -133,6 +133,7 @@ function InjectedHTML({ html, brandPrimary }: { html: string; brandPrimary: stri
   )
 }
 
+// REPLACE WITH:
 interface Props {
   page: { title: string; content: string; slug: string }
   brandPrimary: string
@@ -140,7 +141,22 @@ interface Props {
 }
 
 export default function CustomPageClient({ page, brandPrimary, isDark }: Props) {
-  const content = page.content ?? ""
+  const [livePage, setLivePage] = useState(page)
+
+  useEffect(() => {
+    window.parent?.postMessage({ type: "IFRAME_READY" }, "*")
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "STORE_UPDATE" && e.data.store) {
+        const pages = e.data.store?.pages?.pages ?? []
+        const updated = pages.find((p: any) => p.slug === page.slug)
+        if (updated) setLivePage(updated)
+      }
+    }
+    window.addEventListener("message", handler)
+    return () => window.removeEventListener("message", handler)
+  }, [page.slug])
+
+  const content = livePage.content ?? ""
   const htmlMode = isHTML(content)
 
   // HTML mode: zero wrapper constraints, full width, let the HTML own its layout
@@ -155,7 +171,7 @@ export default function CustomPageClient({ page, brandPrimary, isDark }: Props) 
   // Markdown mode: normal constrained layout
   return (
     <div className={`flex-1 w-full px-4 py-16 sm:px-6 ${isDark ? "text-white" : "text-gray-900"}`}>
-      <div className="max-w-4xl mx-auto w-full">
+      <div className="w-full max-w-4xl mx-auto">
         <h1 className={`text-4xl font-bold mb-8 ${isDark ? "text-white" : "text-gray-900"}`}>
           {page.title}
         </h1>

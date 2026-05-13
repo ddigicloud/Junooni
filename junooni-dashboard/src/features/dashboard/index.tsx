@@ -900,7 +900,7 @@ const DashboardPage = () => {
     setLoading(true);
     setError(null);
     
-    try {
+    try {      
       if (!validateToken()) {
         setError("Authentication required. Please log in.");
         setAuthError(true);
@@ -914,6 +914,7 @@ const DashboardPage = () => {
         setError("Authentication required. Please log in.");
         setAuthError(true);
         setLoading(false);
+        navigate({ to: "/sign-in" });  // ← add this
         return;
       }
 

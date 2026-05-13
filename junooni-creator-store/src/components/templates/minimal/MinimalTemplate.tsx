@@ -658,7 +658,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       const line = cleanItems.join(`  ${sep}  `)
       const fullLine = `${line}  ${sep}  ${line}  ${sep}  `
       // Duration in seconds based on speed (invert: higher speed = shorter duration)
-      const duration = Math.round(200 - speed * 1.5)
+      const duration = Math.max(5, 100 - speed)
       return (
         <section className="overflow-hidden py-2.5" style={{ backgroundColor: bg }}>
           <style>{`
