@@ -28,7 +28,7 @@ export default function SizeChartModal({ sizeChart, brandPrimary, isDark }: Prop
 
   const modal = (
     <div
-      className="fixed inset-0 flex items-start sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 flex items-start justify-center sm:items-center sm:p-4 bg-black/70 backdrop-blur-sm"
       style={{ zIndex: 99999 }}
       onClick={() => setOpen(false)}
     >
@@ -63,7 +63,7 @@ export default function SizeChartModal({ sizeChart, brandPrimary, isDark }: Prop
         </div>
 
         {/* HTML content */}
-        <div className="overflow-auto flex-1 px-6 py-4">
+        <div className="flex-1 px-6 py-4 overflow-auto">
           <div
             className={`size-chart-content prose prose-sm max-w-none ${
               isDark ? "prose-invert text-white/80" : "text-gray-700"
@@ -79,7 +79,7 @@ export default function SizeChartModal({ sizeChart, brandPrimary, isDark }: Prop
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-base mt-2 font-medium underline underline-offset-2 transition-opacity hover:opacity-70"
+        className="flex items-center gap-1.5 text-[12px] font-medium underline underline-offset-2 transition-opacity hover:opacity-70"
         style={{ color: brandPrimary }}
       >
         <Ruler className="w-3.5 h-3.5" />

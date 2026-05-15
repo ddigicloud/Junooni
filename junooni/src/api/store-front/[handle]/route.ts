@@ -361,11 +361,11 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
         "options.id", "options.title",
         "options.values.id", "options.values.value",
         "categories.id", "categories.name", "categories.handle",
-        "metadata",                    // ← add this if not present
-        "size_chart.id",
-        "size_chart.name", 
-        "size_chart.chart",
-        "size_chart.sku",
+        // "metadata",                    // ← add this if not present
+        // "size_chart.id",
+        // "size_chart.name", 
+        // "size_chart.chart",
+        // "size_chart.sku",
       ],
       filters: {
         status: "published",

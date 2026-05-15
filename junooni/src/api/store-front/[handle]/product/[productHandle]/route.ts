@@ -1,0 +1,76 @@
+import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { MedusaError, ContainerRegistrationKeys } from "@medusajs/framework/utils"
+
+// NOTE: No MARKETPLACE_MODULE import — it's not needed here and the wrong
+// relative path was causing Medusa to fail loading this route silently.
+
+const CREATOR_STORE_SC = process.env.CREATOR_STORE_SALES_CHANNEL_ID
+  ?? "sc_01KMAP3HD1EVDF9FT7EHHHV8HP"
+
+export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+  const { handle, productHandle } = req.params
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+
+  // ── 1. Verify vendor exists and has own store ──────────────────────────
+  let vendor: any = null
+
+  try {
+    const { data: [vendorData] } = await query.graph({
+      entity: "vendor",
+      fields: ["id", "handle", "sell_on_own_store"],
+      filters: { handle },
+    })
+    vendor = vendorData
+  } catch (err) {
+    throw new MedusaError(MedusaError.Types.NOT_FOUND, `No creator found with handle "${handle}"`)
+  }
+
+  if (!vendor) {
+    throw new MedusaError(MedusaError.Types.NOT_FOUND, `No creator found with handle "${handle}"`)
+  }
+
+  if (!vendor.sell_on_own_store) {
+    throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "This creator does not have an own store enabled")
+  }
+
+  // ── 2. Fetch single product with ALL fields including size_chart ───────
+  // Safe here: one product = one size_chart lookup = no N+1 problem.
+  const t1 = Date.now()
+  let product: any = null
+
+  try {
+    const { data: [productData] } = await query.graph({
+      entity: "product",
+      fields: [
+        "id", "title", "handle", "thumbnail", "status", "description",
+        "variants.id", "variants.title",
+        "variants.prices.id", "variants.prices.amount", "variants.prices.currency_code",
+        "images.id", "images.url",
+        "options.id", "options.title",
+        "options.values.id", "options.values.value",
+        "categories.id", "categories.name", "categories.handle",
+        "metadata",
+        "size_chart.id",
+        "size_chart.name",
+        "size_chart.chart",
+        "size_chart.sku",
+      ],
+      filters: {
+        handle: productHandle,
+        status: "published",
+      },
+    })
+    product = productData
+  } catch (err) {
+    console.error("[product-detail] product lookup failed:", err)
+    throw new MedusaError(MedusaError.Types.NOT_FOUND, `Product not found: "${productHandle}"`)
+  }
+
+  if (!product) {
+    throw new MedusaError(MedusaError.Types.NOT_FOUND, `Product not found: "${productHandle}"`)
+  }
+
+  console.log(`[product-detail] fetched "${productHandle}" in ${Date.now() - t1}ms`)
+
+  return res.json({ product })
+}

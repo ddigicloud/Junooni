@@ -483,7 +483,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       const socials = [
         { key: "show_instagram", label: "Instagram", icon: Instagram, getUrl: (v: PublicVendor) => v.instagram ? `https://instagram.com/${v.instagram}` : null },
         { key: "show_youtube",   label: "YouTube",   icon: Youtube,   getUrl: (v: PublicVendor) => v.youtube   ? `https://youtube.com/${v.youtube}`   : null },
-        { key: "show_twitter", label: "", icon: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>, getUrl: (v: PublicVendor) => v.xtwitter ? `https://twitter.com/${v.xtwitter}` : null },
+        { key: "show_twitter", label: "Twitter", icon: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>, getUrl: (v: PublicVendor) => v.xtwitter ? `https://twitter.com/${v.xtwitter}` : null },
         { key: "show_facebook",  label: "Facebook",  icon: Facebook,  getUrl: (v: PublicVendor) => v.facebook  ? `https://facebook.com/${v.facebook}` : null },
       ].filter(s => (section as any)[s.key] && s.getUrl(vendor))
       if (!socials.length) return null
@@ -1022,10 +1022,10 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
             {/* Color swatches — interactive */}
             {showColors && colorNames.length > 0 && (
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest mb-2.5" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-2.5" style={{ color: sectionText ? `${sectionText}` : "#9ca3af" }}>
                   Color
                   {selectedColor && (
-                    <span className="ml-2 font-normal normal-case" style={{ color: sectionText ? `${sectionText}60` : "#6b7280" }}>
+                    <span className="ml-2 font-normal normal-case" style={{ color: sectionText ? `${sectionText}` : "#6b7280" }}>
                       — {selectedColor}
                     </span>
                   )}
@@ -1066,10 +1066,10 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
             {/* Size — interactive */}
             {sizeNames.length > 0 && (
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest mb-2.5" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-2.5" style={{ color: sectionText ? `${sectionText}` : "#9ca3af" }}>
                   Size
                   {selectedSize && (
-                    <span className="ml-2 font-normal normal-case" style={{ color: sectionText ? `${sectionText}60` : "#6b7280" }}>
+                    <span className="ml-2 font-normal normal-case" style={{ color: sectionText ? `${sectionText}` : "#6b7280" }}>
                       — {selectedSize}
                     </span>
                   )}
@@ -1083,7 +1083,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
                         onClick={() => setSelectedSize(size)}
                         className="px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all"
                         style={{
-                          borderColor: isSelected ? brandPrimary : `${brandPrimary}30`,
+                          borderColor: isSelected ? brandPrimary : sectionText ? `${sectionText}30` : `${brandPrimary}30`,
                           backgroundColor: isSelected ? brandPrimary : "transparent",
                           color: isSelected ? "#ffffff" : (sectionText ?? "#374151"),
                           transform: isSelected ? "scale(1.05)" : "scale(1)",
@@ -1105,21 +1105,26 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
             )}
 
             {/* Quantity + Add to Cart */}
+             {/* Quantity + Add to Cart */}
             <div className="flex items-center gap-3 pt-1">
               {/* Quantity stepper */}
-              <div className="flex items-center overflow-hidden border-2 border-gray-200 rounded-full shrink-0">
+              <div className="flex items-center overflow-hidden border-2 rounded-full shrink-0"
+                style={{ borderColor: sectionText ? `${sectionText}30` : "#e5e7eb" }}>
                 <button
                   onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                  className="flex items-center justify-center w-10 h-12 text-gray-600 transition-colors hover:bg-gray-50"
+                  className="flex items-center justify-center w-10 h-12 transition-colors"
+                  style={{ color: sectionText ?? "#6b7280" }}
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <span className="w-8 text-sm font-semibold text-center text-gray-900">
+                <span className="w-8 text-sm font-semibold text-center"
+                  style={{ color: sectionText ?? "#111827" }}>
                   {quantity}
                 </span>
                 <button
                   onClick={() => setQuantity(q => q + 1)}
-                  className="flex items-center justify-center w-10 h-12 text-gray-600 transition-colors hover:bg-gray-50"
+                  className="flex items-center justify-center w-10 h-12 transition-colors"
+                  style={{ color: sectionText ?? "#6b7280" }}
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>

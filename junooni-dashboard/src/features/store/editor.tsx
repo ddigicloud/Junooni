@@ -12,7 +12,7 @@ import {
   BookOpen, Upload, Check, ChevronRight, ChevronDown as ChevronDownIcon,
   Pencil, Copy, Instagram, Youtube, Twitter, Facebook,
   Video, Link as LinkIcon, Grid, AlignLeft, AlignCenter,
-  Radio, Zap, Moon, Sun, MoreVertical, Columns, Menu, search
+  Radio, Zap, Moon, Sun, MoreVertical, Columns, Menu, Search
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -29,6 +29,12 @@ type EditorTab = "layout" | "style" | "pages" | "theme"
 type PageTemplate = "blank" | "about" | "faq" | "contact" | "links" | "terms" | "privacy" | "returns"
 
 interface NavItem { id: string; label: string; url: string; external?: boolean; children?: NavItem[] }
+
+interface FooterColumn {
+  id: string
+  heading: string
+  items: NavItem[]
+}
 
 interface ProductDetailSettings {
   // Layout order — drag to reorder
@@ -75,6 +81,11 @@ interface StoreSection {
   links?: { id: string; label: string; url: string; icon?: string }[]
   logo_position?: "left" | "center"; show_social_icons?: boolean; nav_items?: NavItem[]
   footer_nav_items?: NavItem[]; show_newsletter?: boolean
+  footer_columns?: FooterColumn[]
+  logo_size_desktop?: number
+  logo_size_mobile?: number
+  footer_logo_size_desktop?: number
+  footer_logo_size_mobile?: number
   // ticker
   ticker_items?: string[]; ticker_speed?: number; ticker_separator?: string
   // image_text / video_text
@@ -715,20 +726,69 @@ function CustomPagesGroup({ pages, value, onChange, setOpen, isDark }: {
 
 // ─── LinkInput — URL field with "Select page" dropdown ───────────────────────
 
+const LINK_INPUT_DROPDOWN_HEIGHT = 280
+
 function LinkInput({
   value, onChange, placeholder, isDark, pages = [],
 }: {
   value: string; onChange: (v: string) => void; placeholder?: string; isDark: boolean; pages?: StorePage[]
 }) {
   const [open, setOpen] = useState(false)
+  const [productSearch, setProductSearch] = useState("")
+  const [categorySearch, setCategorySearch] = useState("")
   const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 })
 
   useEffect(() => {
     if (!open) return
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+
+    const update = () => {
+      if (!btnRef.current) return
+      const rect = btnRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceAbove = rect.top
+      const flipUp = spaceBelow < LINK_INPUT_DROPDOWN_HEIGHT && spaceAbove > spaceBelow
+      setDropdownPos({
+        top: flipUp ? rect.top - LINK_INPUT_DROPDOWN_HEIGHT - 4 : rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      })
+    }
+
+    // Initial position
+    update()
+
+    // Only update on scroll/resize — not every frame
+    const scrollEls = document.querySelectorAll(".custom-scrollbar, .overflow-y-auto")
+    scrollEls.forEach(el => el.addEventListener("scroll", update, { passive: true }))
+    window.addEventListener("resize", update, { passive: true })
+
+    return () => {
+      scrollEls.forEach(el => el.removeEventListener("scroll", update))
+      window.removeEventListener("resize", update)
+    }
+  }, [open])
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setDropdownPos({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      })
+    }
+    setOpen(o => !o)
+  }
 
   return (
     <div ref={ref} className="relative flex gap-1">
@@ -741,8 +801,9 @@ function LinkInput({
         }`}
       />
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => { setOpen(o => !o); setProductSearch(""); setCategorySearch("") }}
+        onClick={handleOpen}
         title="Select a page"
         className={`shrink-0 flex items-center gap-0.5 px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-colors ${
           open
@@ -754,10 +815,18 @@ function LinkInput({
         <ChevronDownIcon className="w-2.5 h-2.5" />
       </button>
 
-      {open && (
-        <div className={`absolute right-0 top-full mt-1 z-50 w-52 rounded-xl border shadow-xl overflow-hidden ${
-          isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
-        }`}>
+     {open && (
+        <div
+          className={`fixed z-[9999] w-52 rounded-xl border shadow-xl overflow-hidden ${
+            isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
+          }`}
+         style={{
+            top: dropdownPos.top,
+            right: dropdownPos.right,
+            maxHeight: LINK_INPUT_DROPDOWN_HEIGHT,
+            overflowY: "auto",
+          }}
+        >
           <p className={`px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider border-b ${isDark ? "text-gray-500 border-gray-700" : "text-gray-400 border-gray-100"}`}>
             Select page
           </p>
@@ -773,7 +842,7 @@ function LinkInput({
               </button>
             ))}
           </div>
-           {pages.length > 0 && (
+          {pages.length > 0 && (
             <CustomPagesGroup pages={pages} value={value} onChange={onChange} setOpen={setOpen} isDark={isDark} />
           )}
         </div>
@@ -876,7 +945,7 @@ export default function StoreEditorPage() {
   // Global header/footer — always from home sections
   const homeSections = (store.sections?.sections ?? [])
     .map((s, i) => ({ ...s, id: s.id ?? `s_${i}` }))
-  const headerSections = homeSections.filter(s => s.type === "header" || s.type === "announcement")
+ const headerSections = homeSections.filter(s => s.type === "announcement")
   const footerSections = homeSections.filter(s => s.type === "footer")
  
   // Body sections — per page
@@ -1109,7 +1178,8 @@ useEffect(() => {
   useEffect(() => { if (iframeReady) syncToIframe() }, [store, selectedId, iframeReady, syncToIframe])
 
   // ── Save ──────────────────────────────────────────────────────────────────
-  const handleSave = async () => {
+  // FIND:
+    const handleSave = async () => {
     setIsSaving(true)
     try {
       const res = await fetch(`${backendUrl}/vendors/me/store`, {
@@ -1122,19 +1192,24 @@ useEffect(() => {
       setStore(p => ({ ...p, ...data.store }))
       setHasStore(true)
       setHasUnsavedChanges(false)
-      
-      // ← ADD THIS: tell iframe to hard refresh after save
+
+      // Push to iframe via postMessage first (instant, no flicker)
+      iframeRef.current?.contentWindow?.postMessage({ type: "STORE_UPDATE", store: data.store, selectedId }, "*")
       iframeRef.current?.contentWindow?.postMessage({ type: "STORE_SAVED" }, "*")
+
       toast({ title: "Saved! ✓", description: "Your store has been updated." })
 
-      // Reload iframe so server-rendered pages (like /p/terms-of-service) pick up new content
-      setTimeout(() => {
-        if (iframeRef.current) {
-          const src = iframeRef.current.src
-          iframeRef.current.src = ""
-          setTimeout(() => { if (iframeRef.current) iframeRef.current.src = src }, 100)
-        }
-      }, 600)
+      // Only hard-reload for server-rendered custom pages (/p/slug)
+      // where postMessage can't update server component output
+      if (previewPagePath.startsWith("/p/")) {
+        setTimeout(() => {
+          if (iframeRef.current) {
+            const src = iframeRef.current.src
+            iframeRef.current.src = ""
+            setTimeout(() => { if (iframeRef.current) iframeRef.current.src = src }, 100)
+          }
+        }, 600)
+      }
     } catch (e) {
       toast({ title: "Save failed", description: String(e), variant: "destructive" })
     } finally { setIsSaving(false) }
@@ -1170,8 +1245,20 @@ useEffect(() => {
   // ── Section helpers ───────────────────────────────────────────────────────
   const patchStore = useCallback((updater: (p: VendorStore) => VendorStore) => setStore(updater), [])
   const updateSection = useCallback((id: string, patch: Partial<StoreSection>) => {
-    const key = getLayoutKeyForPath(previewPagePath)
     patchStore(p => {
+      // Check if it's a home-level section (header/announcement/footer)
+      const homeSecs = p.sections?.sections ?? []
+      if (homeSecs.some(s => s.id === id)) {
+        return {
+          ...p,
+          sections: {
+            ...p.sections,
+            sections: homeSecs.map(s => s.id === id ? { ...s, ...patch } : s),
+          }
+        }
+      }
+      // Otherwise patch the page layout
+      const key = getLayoutKeyForPath(previewPagePath)
       const current = getPageSections(p, key)
       const updated = current.map(s => s.id === id ? { ...s, ...patch } : s)
       return setPageSections(p, key, updated)
@@ -1369,7 +1456,11 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
     setEditingPage({ id: `page_${Date.now()}`, title: tmpl.label === "Blank" ? "New Page" : tmpl.label, slug: slugify(tmpl.label), template, content, in_nav: true, in_footer: false, created_at: new Date().toISOString() })
   }
 
-  const selectedSection = selectedId ? sections.find(s => s.id === selectedId) ?? null : null
+   const selectedSection = selectedId
+  ? (sections.find(s => s.id === selectedId)
+      ?? homeSections.find(s => s.id === selectedId)
+      ?? null)
+  : null
   const isLive = store.status === "live"
 
   // Build preview URL correctly:
@@ -1437,7 +1528,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
 
         {/* ══ LAYOUT TAB ══════════════════════════════════════════════ */}
         {activeTab === "layout" && (() => {
-          const headerSections = sections.filter(s => s.type === "header" || s.type === "announcement")
+          const headerSections = sections.filter(s => s.type === "announcement")
           const footerSections = sections.filter(s => s.type === "footer")
           const bodySections   = sections.filter(s => !["header","announcement","footer"].includes(s.type))
 
@@ -1670,14 +1761,85 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
                     headerSections.map((s, i) => <SectionRow key={s.id} s={s} idx={i} />)
                   )}
                   {/* Locked Store Header row — always below announcements */}
-                  <div className={`flex items-center gap-2 px-2 py-2 rounded-lg border ${isDark ? "border-indigo-800/40 bg-indigo-900/20" : "border-indigo-200/60 bg-indigo-50/50"}`}>
-                    <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-indigo-500/20"><Menu className="w-3 h-3 text-indigo-500" /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium truncate ${isDark ? "text-indigo-300" : "text-indigo-700"}`}>Store Header</p>
-                      <p className={`text-[10px] ${textFaint}`}>Nav • Logo • Search • Cart</p>
-                    </div>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isDark ? "bg-indigo-900/50 text-indigo-400" : "bg-indigo-100 text-indigo-500"}`}>Auto</span>
-                  </div>
+                   {(() => {
+                    const headerSec = homeSections.find(s => s.type === "header")
+                    const headerId = headerSec?.id ?? "__store_header__"
+                    const isHeaderSelected = selectedId === headerId
+                    return (
+                      <div
+                        onClick={() => {
+                          const currentSections = store.sections?.sections ?? []
+                          
+                          let hSec = currentSections.find((s: any) => s.type === "header")
+
+                          // Build default nav items mirroring storefront autoNavItems logic
+                          const defaultNavItems: NavItem[] = [
+                            { id: "nav_home",        label: "Home",        url: "/" },
+                            { id: "nav_products",    label: "All Products", url: "/products" },
+                            ...(vendorCollections.length > 0 ? [{ id: "nav_collections", label: "Collections", url: "/collections" }] : []),
+                            ...(vendorCategories.length  > 0 ? [{ id: "nav_categories",  label: "Categories",  url: "/categories"  }] : []),
+                            ...pages
+                              .filter(p => p.in_nav)
+                              .map(p => ({ id: p.id, label: p.title, url: `/p/${p.slug}` })),
+                          ]
+
+                          if (!hSec) {
+                            const newId = `s_header_${Date.now()}`
+                            hSec = {
+                              id: newId,
+                              type: "header" as SectionType,
+                              logo_position: "left",
+                              show_social_icons: false,
+                              nav_items: defaultNavItems,
+                            }
+                            patchStore(p => ({
+                              ...p,
+                              sections: {
+                                ...p.sections,
+                                sections: [...(p.sections?.sections ?? []), hSec],
+                              }
+                            }))
+                          } else if (!hSec.nav_items || hSec.nav_items.length === 0) {
+                            // Header exists in DB but nav_items was never set — seed from auto logic
+                            hSec = { ...hSec, nav_items: defaultNavItems }
+                            patchStore(p => ({
+                              ...p,
+                              sections: {
+                                ...p.sections,
+                                sections: (p.sections?.sections ?? []).map((s: any) =>
+                                  s.id === hSec!.id ? hSec! : s
+                                ),
+                              }
+                            }))
+                          }
+
+                          setSelectedId(hSec.id)
+                          setRightPanelOpen(true)
+                          if (window.innerWidth < 768) setLeftPanelOpen(false)
+                        }}
+                        className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                          isHeaderSelected
+                            ? "bg-indigo-500/15 border-indigo-500/40"
+                            : `${isDark ? "border-indigo-800/40 bg-indigo-900/20 hover:border-indigo-600/50" : "border-indigo-200/60 bg-indigo-50/50 hover:border-indigo-400/60"}`
+                        }`}
+                      >
+                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-indigo-500/20">
+                          <Menu className="w-3 h-3 text-indigo-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-medium truncate ${isDark ? "text-indigo-300" : "text-indigo-700"}`}>Store Header</p>
+                          <p className={`text-[10px] ${textFaint}`}>Nav • Logo • Search • Cart</p>
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full transition-colors ${
+                          isHeaderSelected
+                            ? isDark ? "bg-indigo-500/20 text-indigo-300" : "bg-indigo-100 text-indigo-600"
+                            : isDark ? "bg-indigo-900/50 text-indigo-400" : "bg-indigo-100 text-indigo-500"
+                        }`}>
+                          {isHeaderSelected ? "Edit" : "Auto"}
+                        </span>
+                      </div>
+                    )
+                  })()}
                 </div>
                 {/* <div className="px-1.5 pb-1.5">
                   <AddBetweenButton afterIndex={headerSections.length > 0 ? Math.max(...headerSections.map(s => sections.findIndex(x => x.id === s.id))) : -1} zone="header" />
@@ -2006,16 +2168,77 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
               <div className={`rounded-xl border overflow-hidden ${isDark ? "border-sky-900/40 bg-sky-950/20" : "border-sky-100 bg-sky-50/30"}`}>
                 <div className="p-1.5 space-y-1">
                   {/* Editable footer sections if any */}
-                  {footerSections.map((s, i) => <SectionRow key={s.id} s={s} idx={i} />)}
+                  {footerSections.filter(s => s.type !== "footer").map((s, i) => <SectionRow key={s.id} s={s} idx={i} />)}
                   {/* Locked Store Footer row — always at bottom */}
-                  <div className={`flex items-center gap-2 px-2 py-2 rounded-lg border ${isDark ? "border-sky-800/40 bg-sky-900/20" : "border-sky-200/60 bg-sky-50/50"}`}>
-                    <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-sky-500/20"><Layout className="w-3 h-3 text-sky-500" /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium truncate ${isDark ? "text-sky-300" : "text-sky-700"}`}>Store Footer</p>
-                      <p className={`text-[10px] ${textFaint}`}>Links • Social • Copyright</p>
-                    </div>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isDark ? "bg-sky-900/50 text-sky-400" : "bg-sky-100 text-sky-500"}`}>Auto</span>
-                  </div>
+                  {(() => {
+                    const footerSec = homeSections.find(s => s.type === "footer")
+                    const isFooterSelected = selectedId === (footerSec?.id ?? "__store_footer__")
+                    return (
+                      <div
+                        onClick={() => {
+                          const currentSections = store.sections?.sections ?? []
+
+                          const defaultFooterColumns: FooterColumn[] = getDefaultFooterColumns(
+                            vendorCollections, vendorCategories, pages
+                          )
+
+                          let fSec = currentSections.find((s: any) => s.type === "footer")
+
+                          if (!fSec) {
+                            const newId = `s_footer_${Date.now()}`
+                            fSec = {
+                              id: newId,
+                              type: "footer" as SectionType,
+                              show_newsletter: false,
+                              footer_columns: defaultFooterColumns,
+                            }
+                            patchStore(p => ({
+                              ...p,
+                              sections: {
+                                ...p.sections,
+                                sections: [...(p.sections?.sections ?? []), fSec],
+                              }
+                            }))
+                          } else if (!fSec.footer_columns || fSec.footer_columns.length === 0) {
+                            fSec = { ...fSec, footer_columns: defaultFooterColumns }
+                            patchStore(p => ({
+                              ...p,
+                              sections: {
+                                ...p.sections,
+                                sections: (p.sections?.sections ?? []).map((s: any) =>
+                                  s.id === fSec!.id ? fSec! : s
+                                ),
+                              }
+                            }))
+                          }
+
+                          setSelectedId(fSec.id)
+                          setRightPanelOpen(true)
+                          if (window.innerWidth < 768) setLeftPanelOpen(false)
+                        }}
+                        className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
+                          isFooterSelected
+                            ? "bg-sky-500/15 border-sky-500/40"
+                            : `${isDark ? "border-sky-800/40 bg-sky-900/20 hover:border-sky-600/50" : "border-sky-200/60 bg-sky-50/50 hover:border-sky-400/60"}`
+                        }`}
+                      >
+                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-sky-500/20">
+                          <Layout className="w-3 h-3 text-sky-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-medium truncate ${isDark ? "text-sky-300" : "text-sky-700"}`}>Store Footer</p>
+                          <p className={`text-[10px] ${textFaint}`}>Links • Social • Copyright</p>
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full transition-colors ${
+                          isFooterSelected
+                            ? isDark ? "bg-sky-500/20 text-sky-300" : "bg-sky-100 text-sky-600"
+                            : isDark ? "bg-sky-900/50 text-sky-400" : "bg-sky-100 text-sky-500"
+                        }`}>
+                          {isFooterSelected ? "Edit" : "Auto"}
+                        </span>
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
 
@@ -2075,25 +2298,30 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
             <StyleSection title="Colors" isDark={isDark}>
               <div className="space-y-2.5">
                 {[
-                  { key: "primary_color", label: "Primary", hint: "Buttons & links" },
-                  { key: "secondary_color", label: "Secondary", hint: "Gradients" },
-                  { key: "accent_color", label: "Accent", hint: "Highlights" },
-                ].map(({ key, label, hint }) => (
+                  { key: "primary_color",   label: "Primary",   hint: "Buttons & links", default: "#e65100" },
+                  { key: "secondary_color", label: "Secondary", hint: "Gradients",        default: "#ac1900" },
+                  // { key: "accent_color",    label: "Accent",    hint: "Highlights",       default: "#f97316" },
+                ].map(({ key, label, hint, default: def }) => (
                   <div key={key}>
                     <div className="flex items-center justify-between mb-1">
                       <label className={`text-[10px] ${textFaint}`}>{label}</label>
                       <span className={`text-[10px] ${textFaint} opacity-60`}>{hint}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input type="color" value={(store as any)[key] ?? "#000000"} onChange={e => setStore(p => ({ ...p, [key]: e.target.value }))} className="w-8 h-8 rounded-lg border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
-                      <input type="text" value={(store as any)[key] ?? ""} onChange={e => setStore(p => ({ ...p, [key]: e.target.value }))} className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`} />
+                      <input type="color"
+                        value={(store as any)[key] ?? def}
+                        onChange={e => setStore(p => ({ ...p, [key]: e.target.value }))}
+                        className="w-8 h-8 rounded-lg border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                      <input type="text"
+                        value={(store as any)[key] ?? def}
+                        onChange={e => setStore(p => ({ ...p, [key]: e.target.value }))}
+                        className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`} />
                     </div>
                   </div>
                 ))}
-                <div className="h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-semibold overflow-hidden"
-                  style={{ background: `linear-gradient(135deg, ${store.primary_color ?? "#e65100"}, ${store.secondary_color ?? "#ac1900"})` }}>
-                  Preview Gradient
-                </div>
+                {/* Gradient preview — static, no click */}
+                {/* <div className="h-8 overflow-hidden rounded-lg"
+                  style={{ background: `linear-gradient(135deg, ${store.primary_color ?? "#e65100"}, ${store.secondary_color ?? "#ac1900"})` }} /> */}
               </div>
             </StyleSection>
 
@@ -2175,7 +2403,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
               </div>
             </StyleSection>
 
-            <StyleSection title="Buttons & Shapes" isDark={isDark}>
+            {/* <StyleSection title="Buttons & Shapes" isDark={isDark}>
               <div className="space-y-3">
                 <div>
                   <label className={`text-[10px] ${textFaint} block mb-1.5`}>Button style</label>
@@ -2201,7 +2429,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
                   </div>
                 </div>
               </div>
-            </StyleSection>
+            </StyleSection> */}
 
             <StyleSection title="Header Behaviour" isDark={isDark}>
               <div className="space-y-2.5">
@@ -2525,19 +2753,22 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
               color: SECTION_BLOCKS.find(b => b.type === selectedSection?.type)?.color ?? "#666"
             }
           }>
-          {isProductDetailPanel
+         {isProductDetailPanel
             ? <ShoppingBag className="w-3 h-3" />
             : (isCategoryGridPanel || isCategoryProductsPanel || isCollectionsGridPanel || isCollectionProductsPanel)
               ? <Layout className="w-3 h-3" />
-              : SECTION_BLOCKS.find(b => b.type === selectedSection?.type)?.icon
+              : selectedSection?.type === "header"
+                ? <Menu className="w-3 h-3" />
+                : SECTION_BLOCKS.find(b => b.type === selectedSection?.type)?.icon
           }
         </div>
-        <span className={`text-sm font-semibold ${textPrimary}`}>
+       <span className={`text-sm font-semibold ${textPrimary}`}>
           {isProductDetailPanel      ? "Product Detail" :
           isCategoryGridPanel       ? "Category Grid" :
           isCategoryProductsPanel   ? "Category Products" :
           isCollectionsGridPanel    ? "Collections Grid" :
           isCollectionProductsPanel ? "Collection Products" :
+          selectedSection?.type === "header" ? "Store Header" :
           SECTION_BLOCKS.find(b => b.type === selectedSection?.type)?.label ?? selectedSection?.type}
         </span>
       </div>
@@ -2577,6 +2808,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           backendUrl={backendUrl}
           isDark={isDark}
           collections={vendorCollections}
+          categories={vendorCategories}
           pages={pages}
           products={vendorProducts}
           vendorHandle={vendorHandle}
@@ -2597,6 +2829,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           backendUrl={backendUrl}
           isDark={isDark}
           collections={vendorCollections}
+          categories={vendorCategories}
           pages={pages}
           products={vendorProducts}
           vendorHandle={vendorHandle}
@@ -2617,6 +2850,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           backendUrl={backendUrl}
           isDark={isDark}
           collections={vendorCollections}
+          categories={vendorCategories}
           pages={pages}
           products={vendorProducts}
           vendorHandle={vendorHandle}
@@ -2637,6 +2871,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           backendUrl={backendUrl}
           isDark={isDark}
           collections={vendorCollections}
+          categories={vendorCategories}
           pages={pages}
           products={vendorProducts}
           vendorHandle={vendorHandle}
@@ -2656,13 +2891,14 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           </p>
         </div>
       ) : selectedSection ? (
-        <SectionSettings
+         <SectionSettings
           section={selectedSection}
           onChange={patch => updateSection(selectedSection.id, patch)}
           token={token ?? ""}
           backendUrl={backendUrl}
           isDark={isDark}
           collections={vendorCollections}
+          categories={vendorCategories}
           pages={pages}
           products={vendorProducts}
           vendorHandle={vendorHandle}
@@ -3051,7 +3287,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => { setOpen(o => !o); setProductSearch(""); setCategorySearch("") }}
+        onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
           open
             ? isDark ? "border-orange-500/50 bg-orange-500/10 text-orange-400" : "border-orange-400 bg-orange-50 text-orange-600"
@@ -3224,11 +3460,151 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
   )
 }
 
+// ADD this component right above ProductPickerButton:
+function ProductPickerModal({ products, selectedProduct, onSelect, onClose, isDark }: {
+  products: { id: string; title: string; handle: string; thumbnail?: string }[]
+  selectedProduct: any; onSelect: (p: any) => void
+  onClose: () => void; isDark: boolean
+}) {
+  const [search, setSearch] = useState("")
+  const [pendingId, setPendingId] = useState(selectedProduct?.id ?? null)
+
+  const textPrimary = isDark ? "text-white" : "text-gray-900"
+  const textFaint = isDark ? "text-gray-500" : "text-gray-400"
+  const hoverBg = isDark ? "hover:bg-gray-700/50" : "hover:bg-gray-50"
+  const borderColor = isDark ? "border-gray-700" : "border-gray-200"
+  const bgPanel = isDark ? "bg-gray-800" : "bg-white"
+
+  const filtered = search.trim()
+    ? products.filter(p => p.title.toLowerCase().includes(search.toLowerCase()))
+    : products
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}>
+      <div className={`w-[420px] max-w-full rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${bgPanel} ${isDark ? "border-gray-700" : "border-gray-200"}`}
+        onClick={e => e.stopPropagation()}>
+
+        <div className={`flex items-center justify-between px-5 py-4 border-b ${borderColor}`}>
+          <h3 className={`text-sm font-semibold ${textPrimary}`}>Select a product to feature</h3>
+          <button onClick={onClose} className={`p-1 rounded-lg ${hoverBg} ${textFaint}`}><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className={`px-4 py-3 border-b ${borderColor}`}>
+          <div className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border ${borderColor} ${isDark ? "bg-gray-700/50" : "bg-gray-50"}`}>
+            <Search className={`w-3.5 h-3.5 shrink-0 ${textFaint}`} />
+            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search products..."
+              className={`flex-1 text-sm bg-transparent focus:outline-none ${textPrimary} placeholder-gray-400`} />
+            {search && <button onClick={() => setSearch("")} className={`${textFaint} hover:text-red-400`}><X className="w-3.5 h-3.5" /></button>}
+          </div>
+        </div>
+
+        <div className="overflow-y-auto max-h-64">
+          {filtered.length === 0
+            ? <p className={`px-4 py-6 text-sm text-center italic ${textFaint}`}>No products found</p>
+            : filtered.map(p => (
+              <button key={p.id} onClick={() => setPendingId(p.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-b ${borderColor} last:border-0 ${
+                  pendingId === p.id ? isDark ? "bg-orange-500/15" : "bg-orange-50" : hoverBg
+                }`}>
+                <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
+                  pendingId === p.id ? "border-orange-500 bg-orange-500" : isDark ? "border-gray-600" : "border-gray-300"
+                }`}>
+                  {pendingId === p.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+                {p.thumbnail
+                  ? <img src={p.thumbnail} alt={p.title} className="object-cover w-10 h-10 rounded-xl shrink-0" />
+                  : <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center ${isDark ? "bg-gray-700" : "bg-gray-100"}`}>
+                      <ShoppingBag className={`w-5 h-5 ${textFaint}`} />
+                    </div>
+                }
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium truncate ${textPrimary}`}>{p.title}</p>
+                  <p className={`text-[11px] ${textFaint} truncate`}>/{p.handle}</p>
+                </div>
+              </button>
+            ))
+          }
+        </div>
+
+        <div className={`flex items-center justify-end gap-2.5 px-4 py-3 border-t ${borderColor}`}>
+          <button onClick={onClose}
+            className={`px-4 py-2 rounded-xl border text-sm font-medium transition-colors ${isDark ? `border-gray-700 ${textFaint} hover:border-gray-500` : "border-gray-200 text-gray-500 hover:border-gray-400"}`}>
+            Cancel
+          </button>
+          <button
+            disabled={!pendingId}
+            onClick={() => { const p = products.find(x => x.id === pendingId); if (p) { onSelect(p); onClose() } }}
+            className="px-4 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg, #e65100 0%, #ac1900 100%)" }}>
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProductPickerButton({ products, selectedProduct, onSelect, onClear, isDark, textFaint }: {
+  products: { id: string; title: string; handle: string; thumbnail?: string }[]
+  selectedProduct: any; onSelect: (p: any) => void
+  onClear: () => void; isDark: boolean; textFaint: string
+}) {
+  const [open, setOpen] = useState(false)
+  const textPrimary = isDark ? "text-white" : "text-gray-900"
+  const hoverBg = isDark ? "hover:bg-gray-700" : "hover:bg-gray-50"
+  const borderColor = isDark ? "border-gray-700" : "border-gray-200"
+
+  return (
+    <>
+      {selectedProduct ? (
+        <div className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl border ${borderColor} ${isDark ? "bg-gray-800/50" : "bg-gray-50"}`}>
+          {selectedProduct.thumbnail && (
+            <img src={selectedProduct.thumbnail} alt={selectedProduct.title} className="object-cover rounded-lg w-9 h-9 shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className={`text-xs font-semibold truncate ${textPrimary}`}>{selectedProduct.title}</p>
+            <p className={`text-[10px] ${textFaint}`}>/{selectedProduct.handle}</p>
+          </div>
+          <button onClick={() => setOpen(true)}
+            className={`text-[10px] px-2 py-1 rounded-lg border ${borderColor} ${textFaint} ${hoverBg} transition-colors shrink-0`}>
+            Change
+          </button>
+          <button onClick={onClear} className={`p-1 ${textFaint} hover:text-red-400 transition-colors shrink-0`}>
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        <button onClick={() => setOpen(true)}
+          className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed text-xs font-medium transition-all ${
+            isDark ? "border-gray-600 text-gray-400 hover:border-orange-500/50 hover:text-orange-400"
+                   : "border-gray-300 text-gray-500 hover:border-orange-400 hover:text-orange-500"
+          }`}>
+          <ShoppingBag className="w-3.5 h-3.5" />
+          Select a product
+        </button>
+      )}
+
+      {open && (
+        <ProductPickerModal
+          products={products}
+          selectedProduct={selectedProduct}
+          onSelect={(p) => { onSelect(p); setOpen(false) }}
+          onClose={() => setOpen(false)}
+          isDark={isDark}
+        />
+      )}
+    </>
+  )
+}
+
 // ─── Section Settings ─────────────────────────────────────────────────────────
 
-function SectionSettings({ section, onChange, token, backendUrl, isDark, collections = [], pages = [], products = [], vendorHandle = "", currentLayoutKey = "home" }: {
+function SectionSettings({ section, onChange, token, backendUrl, isDark, collections = [], pages = [], products = [], categories = [], vendorHandle = "", currentLayoutKey = "home" }: {
   section: StoreSection; onChange: (p: Partial<StoreSection>) => void
   collections?: { id: string; title: string; handle: string }[]
+  categories?: { id: string; name: string; handle: string; product_count: number }[]
   pages?: StorePage[]
   currentLayoutKey?: string
   products?: { id: string; title: string; handle: string; thumbnail?: string; variants?: any[]; options?: any[] }[]
@@ -3934,7 +4310,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
         </div>
         <UploadOnlyImageField label="Image" value={section.image ?? ""} onChange={v => onChange({ image: v || undefined })} onUpload={() => triggerUpload("image")} isUploading={uploadingKey === "image"} isDark={isDark} previewHeight={120} />
         <div className={`space-y-2 pt-1`}>
-          <Field label="Desktop — image side" faint={textFaint}>
+          <Field label="Desktop — image position" faint={textFaint}>
             <div className="flex gap-2">
               {(["left", "right"] as const).map(pos => (
                 <button key={pos} onClick={() => onChange({ image_position: pos })}
@@ -4010,43 +4386,17 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
 
           {/* Product dropdown */}
           <Field label="Select product" faint={textFaint}>
-            {products.length === 0 ? (
-              <p className={`text-[11px] italic ${textFaint}`}>No products found. Add products in your dashboard first.</p>
-            ) : (
-              <div className={`rounded-xl border overflow-hidden ${isDark ? "border-gray-700" : "border-gray-200"}`}>
-                {/* Selected product preview */}
-                {selectedProduct && (
-                  <div className={`flex items-center gap-2.5 px-2.5 py-2 border-b ${isDark ? "border-gray-700 bg-gray-800/80" : "border-gray-200 bg-gray-50"}`}>
-                    {selectedProduct.thumbnail && (
-                      <img src={selectedProduct.thumbnail} alt={selectedProduct.title} className="object-cover w-8 h-8 rounded-lg shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold truncate ${textFaint === "text-gray-500" ? "text-gray-200" : "text-gray-800"}`}>{selectedProduct.title}</p>
-                      <p className={`text-[10px] ${textFaint}`}>/{selectedProduct.handle}</p>
-                    </div>
-                    <button onClick={() => onChange({ featured_product_id: undefined, cta_url: "" })} className={`p-1 shrink-0 ${textFaint} hover:text-red-400 transition-colors`}><X className="w-3 h-3" /></button>
-                  </div>
-                )}
-                {/* Product list */}
-                <div className="overflow-y-auto max-h-44">
-                  {products.map(p => (
-                    <button key={p.id} onClick={() => onChange({
-                      featured_product_id: p.id,
-                      cta_url: `/${vendorHandle}/products/${p.handle}`,
-                    })}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors border-t ${isDark ? "border-gray-700/50" : "border-gray-100"} ${
-                        section.featured_product_id === p.id
-                          ? isDark ? "bg-orange-500/15 text-orange-400" : "bg-orange-50 text-orange-600"
-                          : isDark ? "text-gray-300 hover:bg-gray-800" : "text-gray-700 hover:bg-gray-50"
-                      }`}>
-                      {p.thumbnail && <img src={p.thumbnail} alt={p.title} className="object-cover rounded-md w-7 h-7 shrink-0" />}
-                      <span className="flex-1 text-xs truncate">{p.title}</span>
-                      {section.featured_product_id === p.id && <Check className="w-3 h-3 shrink-0" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <ProductPickerButton
+              products={products}
+              selectedProduct={selectedProduct}
+              onSelect={(p) => onChange({
+                featured_product_id: p.id,
+                cta_url: `/${vendorHandle}/products/${p.handle}`,
+              })}
+              onClear={() => onChange({ featured_product_id: undefined, cta_url: "" })}
+              isDark={isDark}
+              textFaint={textFaint}
+            />
           </Field>
 
           {/* Show/hide toggles for product info under image */}
@@ -4116,7 +4466,45 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
       })()}
 
       {/* ── HEADER NAV EDITOR ────────────────────────────────────────── */}
-      {section.type === "header" && (
+      {section.type === "header" && (<>
+        {/* ── Logo size ── */}
+        <StyleSection title="Logo Size" isDark={isDark}>
+          <div className="space-y-3">
+            <Field label={`Desktop size — ${section.logo_size_desktop ?? 36}px`} faint={textFaint}>
+              <input type="range" min={20} max={120} step={2}
+                value={section.logo_size_desktop ?? 36}
+                onChange={e => onChange({ logo_size_desktop: Number(e.target.value) })}
+                className="w-full accent-orange-500" />
+              <div className={`flex justify-between text-[9px] mt-0.5 ${textFaint}`}>
+                <span>20px</span><span>120px</span>
+              </div>
+            </Field>
+            <Field label={`Mobile size — ${section.logo_size_mobile ?? 28}px`} faint={textFaint}>
+              <input type="range" min={16} max={80} step={2}
+                value={section.logo_size_mobile ?? 28}
+                onChange={e => onChange({ logo_size_mobile: Number(e.target.value) })}
+                className="w-full accent-orange-500" />
+              <div className={`flex justify-between text-[9px] mt-0.5 ${textFaint}`}>
+                <span>16px</span><span>80px</span>
+              </div>
+            </Field>
+            {/* Live preview */}
+            <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
+              {store.store_logo ? (
+                <img src={store.store_logo} alt="logo preview"
+                  style={{ height: section.logo_size_desktop ?? 36 }}
+                  className="object-contain w-auto" />
+              ) : (
+                <span className={`font-bold truncate`}
+                  style={{ fontSize: Math.max(12, (section.logo_size_desktop ?? 36) * 0.4) }}>
+                  {vendorHandle}
+                </span>
+              )}
+              <span className={`text-[10px] ${textFaint}`}>Desktop preview</span>
+            </div>
+          </div>
+        </StyleSection>
+
         <NavItemsEditor
           label="Header navigation"
           items={section.nav_items ?? []}
@@ -4125,21 +4513,59 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
           pages={pages}
           textFaint={textFaint}
           textPrimary={textPrimary}
+          collections={collections}
+          categories={categories}
+          products={products}
         />
-      )}
+      </>)}
 
       {/* ── FOOTER NAV EDITOR ────────────────────────────────────────── */}
-      {section.type === "footer" && (
-        <NavItemsEditor
-          label="Footer navigation"
-          items={section.footer_nav_items ?? []}
-          onChange={items => onChange({ footer_nav_items: items })}
+       {section.type === "footer" && (<>
+        <StyleSection title="Footer Logo Size" isDark={isDark}>
+          <div className="space-y-3">
+            <Field label={`Desktop — ${section.footer_logo_size_desktop ?? 36}px`} faint={textFaint}>
+              <input type="range" min={20} max={120} step={2}
+                value={section.footer_logo_size_desktop ?? 36}
+                onChange={e => onChange({ footer_logo_size_desktop: Number(e.target.value) })}
+                className="w-full accent-orange-500" />
+              <div className={`flex justify-between text-[9px] mt-0.5 ${textFaint} opacity-60`}>
+                <span>20px</span><span>120px</span>
+              </div>
+            </Field>
+            <Field label={`Mobile — ${section.footer_logo_size_mobile ?? 28}px`} faint={textFaint}>
+              <input type="range" min={16} max={80} step={2}
+                value={section.footer_logo_size_mobile ?? 28}
+                onChange={e => onChange({ footer_logo_size_mobile: Number(e.target.value) })}
+                className="w-full accent-orange-500" />
+              <div className={`flex justify-between text-[9px] mt-0.5 ${textFaint} opacity-60`}>
+                <span>16px</span><span>80px</span>
+              </div>
+            </Field>
+            <div className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
+              {store.store_logo ? (
+                <img src={store.store_logo} alt="preview"
+                  style={{ height: section.footer_logo_size_desktop ?? 36 }}
+                  className="object-contain w-auto max-w-[160px]" />
+              ) : (
+                <span className={`font-bold ${textPrimary}`}
+                  style={{ fontSize: Math.max(12, (section.footer_logo_size_desktop ?? 36) * 0.38) }}>
+                  {vendorHandle}
+                </span>
+              )}
+              <span className={`text-[9px] ${textFaint} opacity-60 ml-auto`}>Desktop preview</span>
+            </div>
+          </div>
+        </StyleSection>
+
+        <FooterColumnsEditor
+          columns={section.footer_columns ?? getDefaultFooterColumns(collections, categories, pages)}
+          onChange={cols => onChange({ footer_columns: cols })}
           isDark={isDark}
           pages={pages}
           textFaint={textFaint}
           textPrimary={textPrimary}
         />
-      )}
+      </>)}
 
       {section.type === "collection_products" && (<>
   <Field label="Page heading" faint={textFaint}>
@@ -4418,9 +4844,270 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
   )
 }
 
+function getDefaultFooterColumns(
+  collections: { id: string; title: string; handle: string }[],
+  categories: { id: string; name: string; handle: string; product_count: number }[],
+  pages: StorePage[]
+): FooterColumn[] {
+  return [
+    {
+      id: "col_shop",
+      heading: "Shop",
+      items: [
+        { id: "f_products", label: "All Products", url: "/products" },
+        ...collections.slice(0, 4).map(c => ({ id: c.id, label: c.title, url: `/collections/${c.handle}` })),
+      ],
+    },
+    {
+      id: "col_categories",
+      heading: "Categories",
+      items: categories.slice(0, 5).map(c => ({ id: c.id, label: c.name, url: `/categories/${c.handle}` })),
+    },
+    {
+      id: "col_info",
+      heading: "Info",
+      items: pages
+        .filter(p => p.in_footer)
+        .map(p => ({ id: p.id, label: p.title, url: `/p/${p.slug}` })),
+    },
+  ]
+}
+
+function FooterColumnsEditor({ columns, onChange, isDark, pages, textFaint, textPrimary }: {
+  columns: FooterColumn[]
+  onChange: (cols: FooterColumn[]) => void
+  isDark: boolean
+  pages: StorePage[]
+  textFaint: string
+  textPrimary: string
+}) {
+  const [expandedColId, setExpandedColId] = useState<string | null>(null)
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
+  const hoverBg = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
+
+  const addColumn = () => {
+    onChange([...columns, { id: genId(), heading: "New Column", items: [] }])
+  }
+
+  const updateColumn = (id: string, patch: Partial<FooterColumn>) => {
+    onChange(columns.map(c => c.id === id ? { ...c, ...patch } : c))
+  }
+
+  const removeColumn = (id: string) => {
+    onChange(columns.filter(c => c.id !== id))
+    if (expandedColId === id) setExpandedColId(null)
+  }
+
+  const moveColumn = (id: string, dir: "up" | "down") => {
+    const arr = [...columns]
+    const i = arr.findIndex(c => c.id === id)
+    const swap = dir === "up" ? i - 1 : i + 1
+    if (swap < 0 || swap >= arr.length) return
+    ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
+    onChange(arr)
+  }
+
+  const addItem = (colId: string) => {
+    const col = columns.find(c => c.id === colId)
+    if (!col) return
+    updateColumn(colId, { items: [...col.items, { id: genId(), label: "New Link", url: "/" }] })
+  }
+
+  const updateItem = (colId: string, itemId: string, patch: Partial<NavItem>) => {
+    const col = columns.find(c => c.id === colId)
+    if (!col) return
+    updateColumn(colId, { items: col.items.map(it => it.id === itemId ? { ...it, ...patch } : it) })
+  }
+
+  const removeItem = (colId: string, itemId: string) => {
+    const col = columns.find(c => c.id === colId)
+    if (!col) return
+    updateColumn(colId, { items: col.items.filter(it => it.id !== itemId) })
+    if (expandedItemId === itemId) setExpandedItemId(null)
+  }
+
+  const moveItem = (colId: string, itemId: string, dir: "up" | "down") => {
+    const col = columns.find(c => c.id === colId)
+    if (!col) return
+    const arr = [...col.items]
+    const i = arr.findIndex(it => it.id === itemId)
+    const swap = dir === "up" ? i - 1 : i + 1
+    if (swap < 0 || swap >= arr.length) return
+    ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
+    updateColumn(colId, { items: arr })
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className={`text-[10px] font-semibold uppercase tracking-wider ${textFaint}`}>Footer columns</p>
+        <span className={`text-[10px] ${textFaint}`}>{columns.length} column{columns.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      <div className="space-y-2">
+        {columns.map((col, ci) => {
+          const isColExpanded = expandedColId === col.id
+          return (
+            <div key={col.id} className={`rounded-xl border overflow-hidden transition-all ${
+              isColExpanded
+                ? isDark ? "border-orange-500/40 bg-gray-800/80" : "border-orange-400/40 bg-orange-50/20"
+                : isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"
+            }`}>
+
+              {/* ── Column header row ── */}
+              <div className="flex items-center gap-1.5 px-2 py-2">
+                <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} />
+                <ChevronRight className={`w-3 h-3 shrink-0 transition-transform ${isColExpanded ? "rotate-90" : ""} ${textFaint}`} />
+                <span className={`flex-1 text-xs font-semibold truncate ${textPrimary}`}>{col.heading}</span>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isDark ? "bg-gray-700 text-gray-500" : "bg-gray-200 text-gray-400"}`}>
+                  {col.items.length} links
+                </span>
+                <button onClick={() => moveColumn(col.id, "up")} disabled={ci === 0}
+                  className={`p-0.5 rounded ${ci === 0 ? "opacity-30" : hoverBg} ${textFaint}`}>
+                  <ChevronUp className="w-3 h-3" />
+                </button>
+                <button onClick={() => moveColumn(col.id, "down")} disabled={ci === columns.length - 1}
+                  className={`p-0.5 rounded ${ci === columns.length - 1 ? "opacity-30" : hoverBg} ${textFaint}`}>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={() => setExpandedColId(isColExpanded ? null : col.id)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                    isColExpanded
+                      ? "bg-orange-500/20 text-orange-400"
+                      : isDark ? "bg-gray-700 text-gray-400 hover:bg-gray-600" : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+                  }`}>
+                  {isColExpanded ? "Done" : "Edit"}
+                </button>
+                <button onClick={() => removeColumn(col.id)} className="p-0.5 rounded hover:bg-red-900/30">
+                  <Trash2 className="w-3 h-3 text-red-400" />
+                </button>
+              </div>
+
+              {/* ── Column expanded content ── */}
+              {isColExpanded && (
+                <div className={`border-t ${isDark ? "border-gray-700" : "border-orange-200/60"}`}>
+
+                  {/* Heading edit */}
+                  <div className="px-2 pt-2 pb-2">
+                    <label className={`text-[10px] ${textFaint} block mb-1`}>Column heading</label>
+                    <input
+                      value={col.heading}
+                      onChange={e => updateColumn(col.id, { heading: e.target.value })}
+                      placeholder="e.g. Shop"
+                      className={`w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-orange-500 border ${
+                        isDark ? "bg-gray-800 border-gray-700 text-gray-200" : "bg-white border-gray-300 text-gray-800"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Links list */}
+                  <div className={`mx-2 mb-2 rounded-lg border overflow-hidden ${isDark ? "border-gray-700 bg-gray-900/40" : "border-gray-200 bg-white"}`}>
+                    <p className={`px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-wider border-b ${isDark ? "text-gray-500 border-gray-700" : "text-gray-400 border-gray-100"}`}>
+                      Links
+                    </p>
+                    <div className="p-1.5 space-y-1">
+                      {col.items.length === 0 && (
+                        <p className={`text-[10px] italic px-1 py-1 ${textFaint}`}>No links yet.</p>
+                      )}
+                      {col.items.map((item, ii) => {
+                        const isItemExpanded = expandedItemId === item.id
+                        return (
+                          <div key={item.id} className={`rounded-lg border overflow-hidden ${
+                            isItemExpanded
+                              ? isDark ? "border-orange-500/30 bg-gray-800" : "border-orange-300/40 bg-orange-50/30"
+                              : isDark ? "border-gray-700 bg-gray-800/60" : "border-gray-200 bg-gray-50"
+                          }`}>
+                            {/* Item row */}
+                            <div className="flex items-center gap-1.5 px-2 py-1.5">
+                              <GripVertical className={`w-2.5 h-2.5 shrink-0 ${textFaint}`} />
+                              <span className={`flex-1 text-[11px] font-medium truncate ${textPrimary}`}>{item.label || "Untitled"}</span>
+                              <button onClick={() => moveItem(col.id, item.id, "up")} disabled={ii === 0}
+                                className={`p-0.5 rounded ${ii === 0 ? "opacity-30" : hoverBg} ${textFaint}`}>
+                                <ChevronUp className="w-2.5 h-2.5" />
+                              </button>
+                              <button onClick={() => moveItem(col.id, item.id, "down")} disabled={ii === col.items.length - 1}
+                                className={`p-0.5 rounded ${ii === col.items.length - 1 ? "opacity-30" : hoverBg} ${textFaint}`}>
+                                <ChevronDown className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                onClick={() => setExpandedItemId(isItemExpanded ? null : item.id)}
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors ${
+                                  isItemExpanded
+                                    ? "bg-orange-500/20 text-orange-400"
+                                    : isDark ? "bg-gray-700 text-gray-500 hover:bg-gray-600" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                                }`}>
+                                {isItemExpanded ? "Done" : "Edit"}
+                              </button>
+                              <button onClick={() => removeItem(col.id, item.id)} className="p-0.5 rounded hover:bg-red-900/30">
+                                <Trash2 className="w-2.5 h-2.5 text-red-400" />
+                              </button>
+                            </div>
+                            {/* Item fields */}
+                            {isItemExpanded && (
+                              <div className={`px-2 pb-2 space-y-1.5 border-t ${isDark ? "border-gray-700" : "border-orange-200/40"}`}>
+                                <div className="pt-1.5">
+                                  <label className={`text-[10px] ${textFaint} block mb-1`}>Label</label>
+                                  <input
+                                    value={item.label}
+                                    onChange={e => updateItem(col.id, item.id, { label: e.target.value })}
+                                    placeholder="e.g. All Products"
+                                    className={`w-full rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-orange-500 border ${
+                                      isDark ? "bg-gray-800 border-gray-700 text-gray-200" : "bg-white border-gray-300 text-gray-800"
+                                    }`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className={`text-[10px] ${textFaint} block mb-1`}>Link</label>
+                                  <LinkInput
+                                    value={item.url}
+                                    onChange={v => updateItem(col.id, item.id, { url: v })}
+                                    placeholder="/products"
+                                    isDark={isDark}
+                                    pages={pages}
+                                  />
+                                </div>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <div className="relative shrink-0" onClick={() => updateItem(col.id, item.id, { external: !item.external })}>
+                                    <div className={`w-7 h-3.5 rounded-full transition-colors ${item.external ? "bg-orange-500" : "bg-gray-600"}`} />
+                                    <div className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${item.external ? "translate-x-3.5" : ""}`} />
+                                  </div>
+                                  <span className={`text-[10px] ${textFaint}`}>Open in new tab</span>
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                      <button onClick={() => addItem(col.id)}
+                        className={`w-full flex items-center justify-center gap-1 py-1 rounded-lg border border-dashed text-[10px] transition-all ${
+                          isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/40 hover:text-orange-400" : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                        }`}>
+                        <Plus className="w-2.5 h-2.5" />Add link
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <button onClick={addColumn}
+        className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-dashed text-xs transition-all ${
+          isDark ? "border-gray-700 text-gray-400 hover:border-orange-500/40 hover:text-orange-400" : "border-gray-300 text-gray-500 hover:border-orange-400 hover:text-orange-500"
+        }`}>
+        <Plus className="w-3 h-3" />Add column
+      </button>
+    </div>
+  )
+}
+
 // ─── NavItemsEditor — Shopify-style nav editor ─────────────────────────────────
 
-function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, textPrimary }: {
+function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, textPrimary, collections = [], categories = [], products = [] }: {
   label: string
   items: NavItem[]
   onChange: (items: NavItem[]) => void
@@ -4428,8 +5115,16 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
   pages: StorePage[]
   textFaint: string
   textPrimary: string
+  collections?: { id: string; title: string; handle: string }[]
+  categories?: { id: string; name: string; handle: string; product_count: number }[]
+  products?: { id: string; title: string; handle: string; thumbnail?: string }[]
 }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedChildId, setExpandedChildId] = useState<string | null>(null)
   const hoverBg = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
+  const vendorCollections = collections
+  const vendorCategories  = categories
+  const vendorProducts    = products
 
   const addItem = () => {
     onChange([...items, { id: genId(), label: "New Link", url: "/" }])
@@ -4441,6 +5136,7 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
 
   const removeItem = (id: string) => {
     onChange(items.filter(it => it.id !== id))
+    if (expandedId === id) setExpandedId(null)
   }
 
   const moveItem = (id: string, dir: "up" | "down") => {
@@ -4450,6 +5146,41 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
     if (swap < 0 || swap >= arr.length) return
     ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
     onChange(arr)
+  }
+
+  // Child helpers
+  const addChild = (parentId: string) => {
+    updateItem(parentId, {
+      children: [...(items.find(it => it.id === parentId)?.children ?? []), { id: genId(), label: "Sub Link", url: "/" }]
+    })
+  }
+
+  const updateChild = (parentId: string, childId: string, patch: Partial<NavItem>) => {
+    const parent = items.find(it => it.id === parentId)
+    if (!parent) return
+    updateItem(parentId, {
+      children: (parent.children ?? []).map(c => c.id === childId ? { ...c, ...patch } : c)
+    })
+  }
+
+  const removeChild = (parentId: string, childId: string) => {
+    const parent = items.find(it => it.id === parentId)
+    if (!parent) return
+    updateItem(parentId, {
+      children: (parent.children ?? []).filter(c => c.id !== childId)
+    })
+    if (expandedChildId === childId) setExpandedChildId(null)
+  }
+
+  const moveChild = (parentId: string, childId: string, dir: "up" | "down") => {
+    const parent = items.find(it => it.id === parentId)
+    if (!parent) return
+    const arr = [...(parent.children ?? [])]
+    const i = arr.findIndex(c => c.id === childId)
+    const swap = dir === "up" ? i - 1 : i + 1
+    if (swap < 0 || swap >= arr.length) return
+    ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
+    updateItem(parentId, { children: arr })
   }
 
   return (
@@ -4463,38 +5194,193 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
         <p className={`text-[11px] italic py-2 ${textFaint}`}>No nav items yet. Add one below.</p>
       )}
 
-      <div className="space-y-2">
-        {items.map((item, i) => (
-          <div key={item.id} className={`rounded-xl border overflow-hidden ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
-            {/* Item header row */}
-            <div className="flex items-center gap-1.5 px-2 py-1.5">
-              <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} />
-              <span className={`flex-1 text-xs font-medium truncate ${textPrimary}`}>{item.label || "Untitled"}</span>
-              <button onClick={() => moveItem(item.id, "up")} disabled={i === 0} className={`p-0.5 rounded transition-colors ${i === 0 ? "opacity-30" : hoverBg} ${textFaint}`}><ChevronUp className="w-3 h-3" /></button>
-              <button onClick={() => moveItem(item.id, "down")} disabled={i === items.length - 1} className={`p-0.5 rounded transition-colors ${i === items.length - 1 ? "opacity-30" : hoverBg} ${textFaint}`}><ChevronDown className="w-3 h-3" /></button>
-              <button onClick={() => removeItem(item.id)} className="p-0.5 rounded hover:bg-red-900/30"><Trash2 className="w-3 h-3 text-red-400" /></button>
-            </div>
-            {/* Label + URL fields */}
-            <div className={`px-2 pb-2 space-y-1.5 border-t ${isDark ? "border-gray-700" : "border-gray-200"}`}>
-              <div className="pt-1.5">
-                <label className={`text-[10px] ${textFaint} block mb-1`}>Label</label>
-                <EditorInput value={item.label} onChange={v => updateItem(item.id, { label: v })} placeholder="e.g. Shop" isDark={isDark} />
+       <div className="space-y-1.5">
+        {items.map((item, i) => {
+          const isExpanded = expandedId === item.id
+          const children = item.children ?? []
+          return (
+            <div key={item.id} className={`rounded-xl border overflow-hidden transition-all ${
+              isExpanded
+                ? isDark ? "border-orange-500/40 bg-gray-800/80" : "border-orange-400/40 bg-orange-50/30"
+                : isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"
+            }`}>
+
+              {/* ── Parent header row ── */}
+              <div className="flex items-center gap-1.5 px-2 py-1.5">
+                <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} />
+                {children.length > 0 && (
+                  <ChevronRight className={`w-3 h-3 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""} ${textFaint}`} />
+                )}
+                <span className={`flex-1 text-xs font-medium truncate ${textPrimary}`}>
+                  {item.label || "Untitled"}
+                  {children.length > 0 && (
+                    <span className={`ml-1 text-[9px] ${textFaint}`}>({children.length})</span>
+                  )}
+                </span>
+                <button onClick={() => moveItem(item.id, "up")} disabled={i === 0}
+                  className={`p-0.5 rounded transition-colors ${i === 0 ? "opacity-30" : hoverBg} ${textFaint}`}>
+                  <ChevronUp className="w-3 h-3" />
+                </button>
+                <button onClick={() => moveItem(item.id, "down")} disabled={i === items.length - 1}
+                  className={`p-0.5 rounded transition-colors ${i === items.length - 1 ? "opacity-30" : hoverBg} ${textFaint}`}>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                    isExpanded
+                      ? "bg-orange-500/20 text-orange-400"
+                      : isDark ? "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200" : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+                  }`}
+                >
+                  {isExpanded ? "Done" : "Edit"}
+                </button>
+                <button onClick={() => removeItem(item.id)} className="p-0.5 rounded hover:bg-red-900/30">
+                  <Trash2 className="w-3 h-3 text-red-400" />
+                </button>
               </div>
-              <div>
-                <label className={`text-[10px] ${textFaint} block mb-1`}>Link</label>
-                <LinkInput value={item.url} onChange={v => updateItem(item.id, { url: v })} placeholder="/products" isDark={isDark} pages={pages} />
-              </div>
-              {/* External toggle */}
-              <label className="flex items-center gap-2 cursor-pointer pt-0.5">
-                <div className="relative shrink-0" onClick={() => updateItem(item.id, { external: !item.external })}>
-                  <div className={`w-7 h-3.5 rounded-full transition-colors ${item.external ? "bg-orange-500" : "bg-gray-600"}`} />
-                  <div className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${item.external ? "translate-x-3.5" : ""}`} />
+
+              {/* ── Expanded: parent fields + children ── */}
+              {isExpanded && (
+                <div className={`border-t ${isDark ? "border-gray-700" : "border-orange-200/60"}`}>
+
+                  {/* Parent fields */}
+                  <div className="px-2 pt-2 pb-1 space-y-2">
+                    <div>
+                      <label className={`text-[10px] ${textFaint} block mb-1`}>Label</label>
+                      <EditorInput value={item.label} onChange={v => updateItem(item.id, { label: v })} placeholder="e.g. Shop" isDark={isDark} />
+                    </div>
+                    <div>
+                      <label className={`text-[10px] ${textFaint} block mb-1`}>Link <span className={`opacity-60`}>(optional if has children)</span></label>
+                      <LinkInput value={item.url} onChange={v => updateItem(item.id, { url: v })} placeholder="/products" isDark={isDark} pages={pages} />
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <div className="relative shrink-0" onClick={() => updateItem(item.id, { external: !item.external })}>
+                        <div className={`w-7 h-3.5 rounded-full transition-colors ${item.external ? "bg-orange-500" : "bg-gray-600"}`} />
+                        <div className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${item.external ? "translate-x-3.5" : ""}`} />
+                      </div>
+                      <span className={`text-[10px] ${textFaint}`}>Open in new tab</span>
+                    </label>
+                  </div>
+
+                  {/* Children */}
+                   {/* Auto-dropdown note for system pages */}
+                  <div className={`mx-2 mb-2 rounded-lg border ${isDark ? "border-gray-700 bg-gray-900/50" : "border-gray-200 bg-gray-50/80"}`}>
+                    <p className={`px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-wider border-b ${isDark ? "text-gray-500 border-gray-700" : "text-gray-400 border-gray-200"}`}>
+                      Dropdown items
+                    </p>
+                    <div className="p-1.5 space-y-1">
+
+                      {/* System route: show live data as read-only preview */}
+                      {children.length === 0 && ["/collections", "/categories", "/products"].includes(item.url ?? "") && (() => {
+                        const isCollections = item.url === "/collections"
+                        const isCategories  = item.url === "/categories"
+                        const isProducts    = item.url === "/products"
+                        const autoItems = isCollections
+                          ? vendorCollections.map(c => ({ id: c.id, label: c.title, url: `/collections/${c.handle}` }))
+                          : isCategories
+                          ? vendorCategories.map(c => ({ id: c.id, label: c.name, url: `/categories/${c.handle}` }))
+                          : vendorProducts.slice(0, 8).map(p => ({ id: p.id, label: p.title, url: `/products/${p.handle}` }))
+
+                        return (
+                          <>
+                            <p className={`text-[9px] px-1 pb-1 ${textFaint} opacity-70`}>
+                              Auto-populated · Add items below to override
+                            </p>
+                            {autoItems.slice(0, 6).map(ai => (
+                              <div key={ai.id} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${
+                                isDark ? "bg-gray-800/60" : "bg-gray-100/80"
+                              }`}>
+                                <div className={`w-1 h-1 rounded-full shrink-0 ${isDark ? "bg-gray-600" : "bg-gray-400"}`} />
+                                <span className={`flex-1 text-[11px] truncate ${textFaint}`}>{ai.label}</span>
+                                <span className={`text-[9px] font-mono truncate max-w-[80px] ${textFaint} opacity-60`}>{ai.url}</span>
+                              </div>
+                            ))}
+                            {autoItems.length > 6 && (
+                              <p className={`text-[9px] px-1 pt-0.5 ${textFaint} opacity-50`}>
+                                +{autoItems.length - 6} more
+                              </p>
+                            )}
+                          </>
+                        )
+                      })()}
+
+                      {/* Custom children or empty state for non-system routes */}
+                      {children.length === 0 && !["/collections", "/categories", "/products"].includes(item.url ?? "") && (
+                        <p className={`text-[10px] italic px-1 py-1 ${textFaint}`}>No dropdown items yet.</p>
+                      )}
+                      {children.map((child, ci) => {
+                        const isChildExpanded = expandedChildId === child.id
+                        return (
+                          <div key={child.id} className={`rounded-lg border overflow-hidden ${
+                            isChildExpanded
+                              ? isDark ? "border-orange-500/30 bg-gray-800" : "border-orange-300/40 bg-orange-50/40"
+                              : isDark ? "border-gray-700 bg-gray-800/60" : "border-gray-200 bg-white"
+                          }`}>
+                            {/* Child header */}
+                            <div className="flex items-center gap-1.5 px-2 py-1.5">
+                              <GripVertical className={`w-2.5 h-2.5 shrink-0 ${textFaint}`} />
+                              <span className={`flex-1 text-[11px] font-medium truncate ${textPrimary}`}>{child.label || "Untitled"}</span>
+                              <button onClick={() => moveChild(item.id, child.id, "up")} disabled={ci === 0}
+                                className={`p-0.5 rounded ${ci === 0 ? "opacity-30" : hoverBg} ${textFaint}`}>
+                                <ChevronUp className="w-2.5 h-2.5" />
+                              </button>
+                              <button onClick={() => moveChild(item.id, child.id, "down")} disabled={ci === children.length - 1}
+                                className={`p-0.5 rounded ${ci === children.length - 1 ? "opacity-30" : hoverBg} ${textFaint}`}>
+                                <ChevronDown className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                onClick={() => setExpandedChildId(isChildExpanded ? null : child.id)}
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors ${
+                                  isChildExpanded
+                                    ? "bg-orange-500/20 text-orange-400"
+                                    : isDark ? "bg-gray-700 text-gray-500 hover:bg-gray-600" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                                }`}>
+                                {isChildExpanded ? "Done" : "Edit"}
+                              </button>
+                              <button onClick={() => removeChild(item.id, child.id)} className="p-0.5 rounded hover:bg-red-900/30">
+                                <Trash2 className="w-2.5 h-2.5 text-red-400" />
+                              </button>
+                            </div>
+                            {/* Child fields */}
+                            {isChildExpanded && (
+                              <div className={`px-2 pb-2 space-y-1.5 border-t ${isDark ? "border-gray-700" : "border-orange-200/40"}`}>
+                                <div className="pt-1.5">
+                                  <label className={`text-[10px] ${textFaint} block mb-1`}>Label</label>
+                                  <EditorInput value={child.label} onChange={v => updateChild(item.id, child.id, { label: v })} placeholder="e.g. Red Wines" isDark={isDark} />
+                                </div>
+                                <div>
+                                  <label className={`text-[10px] ${textFaint} block mb-1`}>Link</label>
+                                  <LinkInput value={child.url} onChange={v => updateChild(item.id, child.id, { url: v })} placeholder="/collections/red-wines" isDark={isDark} pages={pages} />
+                                </div>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <div className="relative shrink-0" onClick={() => updateChild(item.id, child.id, { external: !child.external })}>
+                                    <div className={`w-7 h-3.5 rounded-full transition-colors ${child.external ? "bg-orange-500" : "bg-gray-600"}`} />
+                                    <div className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${child.external ? "translate-x-3.5" : ""}`} />
+                                  </div>
+                                  <span className={`text-[10px] ${textFaint}`}>Open in new tab</span>
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                      {!["/collections", "/categories", "/products"].includes(item.url ?? "") && (
+                        <button onClick={() => addChild(item.id)}
+                          className={`w-full flex items-center justify-center gap-1 py-1 rounded-lg border border-dashed text-[10px] transition-all ${
+                            isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/40 hover:text-orange-400" : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                          }`}>
+                          <Plus className="w-2.5 h-2.5" />Add dropdown item
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
-                <span className={`text-[10px] ${textFaint}`}>Open in new tab</span>
-              </label>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <button onClick={addItem}
@@ -4615,8 +5501,16 @@ function RichTextEditor({ value, onChange, placeholder, isDark, rows = 3, single
         contentEditable
         suppressContentEditableWarning
         onFocus={() => setFocused(true)}
-        onBlur={() => { setFocused(false); onChange(editorRef.current?.innerHTML ?? "") }}
-        onInput={() => onChange(editorRef.current?.innerHTML ?? "")}
+         onBlur={() => { setFocused(false)
+          const raw = editorRef.current?.innerHTML ?? ""
+          const cleaned = raw.replace(/<br\s*\/?>/gi, "").replace(/<[^>]*>/g, "").trim()
+          onChange(cleaned ? raw : "")
+        }}
+        onInput={() => {
+          const raw = editorRef.current?.innerHTML ?? ""
+          const cleaned = raw.replace(/<br\s*\/?>/gi, "").replace(/<[^>]*>/g, "").trim()
+          onChange(cleaned ? raw : "")
+        }}
         onKeyDown={e => { if (singleLine && e.key === "Enter") e.preventDefault() }}
         data-placeholder={placeholder}
         className={`${minH} px-2.5 py-1.5 text-sm focus:outline-none ${editorBg} empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 empty:before:pointer-events-none`}

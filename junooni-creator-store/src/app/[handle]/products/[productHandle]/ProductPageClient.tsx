@@ -510,15 +510,35 @@ export default function ProductPageClient({
         return (
           <div key="sizes">
             {(pd.show_size_label ?? true) && (
-              <p className="text-xs font-semibold uppercase tracking-widest mb-2.5"
-                style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#9ca3af" }}>
-                {pd.sizes_label ?? "Size"}
-                {selectedSize && (
-                  <span className="ml-2 font-normal normal-case opacity-70">
-                    — {selectedSize}
-                  </span>
-                )}
-              </p>
+              <div className="flex items-center gap-3 mb-2.5 flex-wrap">
+                
+                <p
+                  className="flex items-center gap-2 text-xs font-semibold tracking-widest uppercase"
+                  style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#9ca3af" }}
+                >
+                  {pd.sizes_label ?? "Size"}
+
+                  {selectedSize && (
+                    <span
+                      className="font-normal normal-case opacity-70"
+                      style={{ color: isDark ? "rgba(255,255,255,0.7)" : "#6b7280" }}
+                    >
+                      — {selectedSize}
+                    </span>
+                  )}
+
+                  {product.size_chart && (
+                    <span className="flex items-center ml-2">
+                      <SizeChartModal
+                        sizeChart={product.size_chart}
+                        brandPrimary={brandPrimary}
+                        isDark={isDark}
+                      />
+                    </span>
+                  )}
+                </p>
+
+              </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
               {sizeNames.map(size => {
@@ -552,16 +572,6 @@ export default function ProductPageClient({
               })}
             </div>
 
-            {product.size_chart && (
-              <div className="mt-2">
-                <SizeChartModal
-                  sizeChart={product.size_chart}
-                  brandPrimary={brandPrimary}
-                  isDark={isDark}
-                />
-              </div>
-            )}
-
           </div>
         )
 
@@ -569,17 +579,25 @@ export default function ProductPageClient({
         if (!(pd.show_quantity ?? true)) return null
         return (
           <div key="quantity"
-            className="flex items-center overflow-hidden border-2 border-gray-200 rounded-full w-fit">
+            className="flex items-center overflow-hidden rounded-full w-fit"
+            style={{ border: `2px solid ${isDark ? "rgba(255,255,255,0.15)" : "#e5e7eb"}` }}>
             <button
               onClick={() => setQuantity(q => Math.max(1, q - 1))}
-              className="flex items-center justify-center w-10 h-12 text-gray-600 transition-colors hover:bg-gray-50"
+              className="flex items-center justify-center w-10 h-12 transition-colors"
+              style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}
             >
               <Minus className="w-3.5 h-3.5" />
             </button>
-            <span className="w-8 text-sm font-semibold text-center">{quantity}</span>
+            <span
+              className="w-8 text-sm font-semibold text-center"
+              style={{ color: isDark ? "#ffffff" : "#111827" }}
+            >
+              {quantity}
+            </span>
             <button
               onClick={() => setQuantity(q => q + 1)}
-              className="flex items-center justify-center w-10 h-12 text-gray-600 transition-colors hover:bg-gray-50"
+              className="flex items-center justify-center w-10 h-12 transition-colors"
+              style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280" }}
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -633,12 +651,13 @@ export default function ProductPageClient({
         if (!(pd.show_description ?? true)) return null
         return <DescriptionSection key="description" product={product} isDark={isDark} brandPrimary={brandPrimary} vendor={vendor} />
 
-      case "meta":
+       case "meta":
         if (!(pd.show_secure_badge ?? true)) return null
         return (
           <p key="meta"
             className={`text-xs text-center ${isDark ? "text-white/30" : "text-gray-400"}`}>
-            {pd.secure_badge_text ?? "Secure checkout via Junooni · Powered by Razorpay"}
+            {(pd.secure_badge_text ?? "Secure checkout via Junooni · Powered by Razorpay")
+              .replace(/&nbsp;/g, " ").trim()}
           </p>
         )
 
@@ -950,10 +969,10 @@ export default function ProductPageClient({
 
             {/* Right: Dynamic element order */}
             <div className="sticky space-y-5 top-24">
-              <p className="mb-1 text-xs font-medium tracking-widest uppercase"
+              {/* <p className="mb-1 text-xs font-medium tracking-widest uppercase"
                 style={{ color: brandPrimary }}>
                 {vendor.name}
-              </p>
+              </p> */}
               {elementOrder.map(el => renderElement(el))}
             </div>
 
