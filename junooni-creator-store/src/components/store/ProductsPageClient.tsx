@@ -135,7 +135,7 @@ export default function ProductsPageClient({
             {gridTitle}
           </h1>
           <p
-            className="text-sm mt-1"
+            className="mt-1 text-sm"
             style={{ color: gridTextColor ? `${gridTextColor}99` : (isDark ? "rgba(255,255,255,0.5)" : "#6b7280") }}
           >
             {products.length} product{products.length !== 1 ? "s" : ""}
@@ -148,6 +148,7 @@ export default function ProductsPageClient({
           collections={collections}
           handle={handle}
           brandPrimary={brandPrimary}
+          textColor={gridTextColor} 
           isDark={isDark}
           columns={gridColumns}
           limit={gridLimit}

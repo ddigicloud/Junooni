@@ -91,7 +91,7 @@ export default function CategoryDetailPageClient({
         )}
 
         {section.type === "hero" && (
-          <div className="relative overflow-hidden py-16 px-6"
+          <div className="relative px-6 py-16 overflow-hidden"
             style={{ backgroundColor: secBg ?? (isDark ? "#111" : "#f9fafb") }}>
             {section.background_image && (
               <div className="absolute inset-0">
@@ -100,13 +100,13 @@ export default function CategoryDetailPageClient({
             )}
             <div className="relative z-10 max-w-4xl mx-auto text-center">
               {section.headline && (
-                <h2 className="text-4xl font-extrabold mb-4"
+                <h2 className="mb-4 text-4xl font-extrabold"
                   style={{ color: section.overlay_text_color ?? secText ?? (isDark ? "#fff" : "#111827") }}>
                   {section.headline}
                 </h2>
               )}
               {section.subtext && (
-                <p className="text-lg opacity-70 mb-6"
+                <p className="mb-6 text-lg opacity-70"
                   style={{ color: secText ?? (isDark ? "#fff" : "#4b5563") }}>
                   {section.subtext}
                 </p>
@@ -136,7 +136,7 @@ export default function CategoryDetailPageClient({
                 @keyframes catdet-ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
                 .catdet-ticker-inner { display:inline-flex; white-space:nowrap; animation:catdet-ticker ${duration}s linear infinite; }
               `}</style>
-              <div className="catdet-ticker-inner text-sm font-medium tracking-wide" style={{ color: fg }}>
+              <div className="text-sm font-medium tracking-wide catdet-ticker-inner" style={{ color: fg }}>
                 {[`${line}  ${sep}  `, `${line}  ${sep}  `].map((t, i) => (
                   <span key={i} className="mr-8">{t}</span>
                 ))}
@@ -147,7 +147,7 @@ export default function CategoryDetailPageClient({
 
         {section.type === "image_text" && (
           <div className="px-4 py-16 sm:px-6" style={{ backgroundColor: secBg }}>
-            <div className="mx-auto max-w-6xl">
+            <div className="max-w-6xl mx-auto">
               <div className={`flex gap-10 items-center ${
                 (section.mobile_image_position ?? "top") === "top" ? "flex-col" : "flex-col-reverse"
               } ${(section.image_position ?? "left") === "left" ? "md:flex-row" : "md:flex-row-reverse"}`}>
@@ -169,13 +169,13 @@ export default function CategoryDetailPageClient({
                       dangerouslySetInnerHTML={{ __html: section.title }} />
                   )}
                   {section.text && (
-                    <div className="text-base leading-relaxed mb-6 prose prose-sm max-w-none"
+                    <div className="mb-6 text-base leading-relaxed prose-sm prose max-w-none"
                       style={{ color: secText ? `${secText}cc` : (isDark ? "#d1d5db" : "#4b5563") }}
                       dangerouslySetInnerHTML={{ __html: section.text }} />
                   )}
                   {section.cta_label && (
                     <Link href={section.cta_url ?? "#"}
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold hover:opacity-90 text-sm"
+                      className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white rounded-full hover:opacity-90"
                       style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)` }}>
                       {section.cta_label}
                     </Link>
@@ -260,11 +260,11 @@ export default function CategoryDetailPageClient({
 
       {/* ── Category Product Grid ── */}
       <div
-        className="max-w-7xl mx-auto px-4 sm:px-6 py-10"
+        className="px-4 py-10 mx-auto max-w-7xl sm:px-6"
         style={{ backgroundColor: gridBg ?? undefined }}
         >
         <div className="mb-8">
-            <p className="text-xs uppercase tracking-widest font-semibold mb-1"
+            <p className="mb-1 text-xs font-semibold tracking-widest uppercase"
             style={{ color: brandPrimary }}>
             Category
             </p>
@@ -272,7 +272,7 @@ export default function CategoryDetailPageClient({
             style={{ color: gridText ?? (isDark ? "#ffffff" : "#111827") }}>
             {category.name}
             </h1>
-            <p className="text-sm mt-1"
+            <p className="mt-1 text-sm"
             style={{ color: gridText ? `${gridText}80` : (isDark ? "rgba(255,255,255,0.5)" : "#6b7280") }}>
             {catProducts.length} product{catProducts.length !== 1 ? "s" : ""}
             </p>
@@ -290,6 +290,7 @@ export default function CategoryDetailPageClient({
             categories={categories}
             collections={collections}
             handle={handle}
+            textColor={gridText}
             brandPrimary={brandPrimary}
             isDark={isDark}
             activeCategoryHandle={categoryHandle}

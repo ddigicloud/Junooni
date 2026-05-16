@@ -12,7 +12,7 @@ import {
   BookOpen, Upload, Check, ChevronRight, ChevronDown as ChevronDownIcon,
   Pencil, Copy, Instagram, Youtube, Twitter, Facebook,
   Video, Link as LinkIcon, Grid, AlignLeft, AlignCenter,
-  Radio, Zap, Moon, Sun, MoreVertical, Columns, Menu, Search
+  Radio, Zap, Moon, Sun, MoreVertical, Columns, Menu, Search, PanelLeftClose
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -82,6 +82,7 @@ interface StoreSection {
   logo_position?: "left" | "center"; show_social_icons?: boolean; nav_items?: NavItem[]
   footer_nav_items?: NavItem[]; show_newsletter?: boolean
   footer_columns?: FooterColumn[]
+  footer_columns_per_row?: number
   logo_size_desktop?: number
   logo_size_mobile?: number
   footer_logo_size_desktop?: number
@@ -931,6 +932,7 @@ export default function StoreEditorPage() {
   const [vendorProducts, setVendorProducts] = useState<{ id: string; title: string; handle: string; thumbnail?: string; variants?: any[]; options?: any[] }[]>([])
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
   const [leftPanelOpen, setLeftPanelOpen] = useState(false)
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false)
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
   // Page switcher — controls which page the iframe preview shows
   const [previewPagePath, setPreviewPagePath] = useState<string>("/") // relative path e.g. "/" | "/products" | "/p/about-me"
@@ -2810,6 +2812,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           collections={vendorCollections}
           categories={vendorCategories}
           pages={pages}
+          storeLogo={store.store_logo ?? ""}
           products={vendorProducts}
           vendorHandle={vendorHandle}
           currentLayoutKey="categories"
@@ -2831,6 +2834,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           collections={vendorCollections}
           categories={vendorCategories}
           pages={pages}
+          storeLogo={store.store_logo ?? ""}
           products={vendorProducts}
           vendorHandle={vendorHandle}
           currentLayoutKey="category"
@@ -2852,6 +2856,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           collections={vendorCollections}
           categories={vendorCategories}
           pages={pages}
+          storeLogo={store.store_logo ?? ""}
           products={vendorProducts}
           vendorHandle={vendorHandle}
           currentLayoutKey="collections"
@@ -2873,6 +2878,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           collections={vendorCollections}
           categories={vendorCategories}
           pages={pages}
+          storeLogo={store.store_logo ?? ""}
           products={vendorProducts}
           vendorHandle={vendorHandle}
           currentLayoutKey="collection"
@@ -2900,6 +2906,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
           collections={vendorCollections}
           categories={vendorCategories}
           pages={pages}
+          storeLogo={store.store_logo ?? ""}
           products={vendorProducts}
           vendorHandle={vendorHandle}
           currentLayoutKey={currentLayoutKey}
@@ -2966,9 +2973,31 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
     <div className={`flex flex-col h-screen overflow-hidden ${isDark ? "bg-gray-950" : "bg-gray-100"}`}>
       {/* ── TOP BAR ── */}
       <div className={`flex items-center justify-between px-3 py-2 border-b shrink-0 z-20 ${panelBg} ${panelBorder}`}>
-        <div className="flex items-center min-w-0 gap-2">
-          <button className={`md:hidden p-1.5 rounded-lg transition-colors ${isDark ? "text-gray-400 hover:bg-gray-800" : "text-gray-500 hover:bg-gray-100"}`} onClick={() => setLeftPanelOpen(o => !o)} aria-label="Open editor panel"><Menu className="w-4 h-4" /></button>
-          <Link to="/store" className={`flex items-center gap-1 text-xs ${textMuted} transition-colors shrink-0`}><ChevronLeft className="w-3.5 h-3.5" /><span className="hidden sm:inline">Back</span></Link>
+       <div className="flex items-center min-w-0 gap-2">
+          {/* Mobile: open/close drawer */}
+          <button
+            className={`md:hidden p-1.5 rounded-lg transition-colors ${isDark ? "text-gray-400 hover:bg-gray-800" : "text-gray-500 hover:bg-gray-100"}`}
+            onClick={() => setLeftPanelOpen(o => !o)}
+            aria-label="Toggle editor panel"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+          {/* Desktop: collapse/expand sidebar */}
+          <button
+            className={`hidden md:flex items-center justify-center p-1.5 rounded-lg transition-colors ${isDark ? "text-gray-400 hover:bg-gray-800 hover:text-white" : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"}`}
+            onClick={() => setLeftPanelCollapsed(c => !c)}
+            aria-label="Toggle sidebar"
+            title={leftPanelCollapsed ? "Show sidebar" : "Hide sidebar"}
+          >
+            {leftPanelCollapsed
+              ? <Menu className="w-4 h-4" />
+              : <PanelLeftClose className="w-4 h-4" />
+            }
+          </button>
+          <Link to="/store" className={`flex items-center gap-1 text-xs ${textMuted} transition-colors shrink-0`}>
+            <ChevronLeft className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Back</span>
+          </Link>
           <div className={`w-px h-4 hidden sm:block ${isDark ? "bg-gray-700" : "bg-gray-300"}`} />
           <span className={`text-sm font-semibold ${textPrimary} hidden sm:inline`}>Store Editor</span>
         </div>
@@ -3004,7 +3033,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
             {isTogglingStatus ? <Loader2 className="w-3 h-3 animate-spin" /> : <div className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-green-400" : "bg-gray-500"}`} />}
             {isLive ? "Live" : "Draft"}
           </button>
-          <button onClick={() => setEditorTheme(t => t === "dark" ? "light" : "dark")} className={`p-1.5 rounded-md transition-colors hidden sm:block ${isDark ? "text-yellow-400" : "text-gray-500"}`}>
+          <button onClick={() => setEditorTheme(t => t === "dark" ? "light" : "dark")} className={`p-1.5 rounded-md transition-colors ${isDark ? "text-yellow-400" : "text-gray-500"}`}>
             {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           </button>
           <Button
@@ -3026,17 +3055,19 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
       {/* ── 3-PANEL BODY ── */}
       <div className="relative flex flex-1 min-h-0 overflow-hidden">
         {leftPanelOpen && <div className="fixed inset-0 z-30 bg-black/60 md:hidden" onClick={() => setLeftPanelOpen(false)} />}
-        <div className={`flex flex-col border-r overflow-hidden ${panelBg} ${panelBorder} md:w-64 md:shrink-0 md:relative md:translate-x-0 md:z-auto md:shadow-none fixed top-0 bottom-0 left-0 z-40 w-72 transition-transform duration-300 ${leftPanelOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"}`}>
+        <div className={`flex flex-col border-r overflow-hidden ${panelBg} ${panelBorder} md:shrink-0 md:relative md:translate-x-0 md:z-auto md:shadow-none fixed top-0 bottom-0 left-0 z-40 w-72 transition-all duration-300 ${
+          leftPanelOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"
+        } ${leftPanelCollapsed ? "md:w-0 md:border-r-0" : "md:w-64"}`}>
           <div className={`md:hidden flex items-center justify-between px-3 py-2.5 border-b ${panelBorder}`}>
             <span className={`text-sm font-semibold ${textPrimary}`}>Editor</span>
             <button onClick={() => setLeftPanelOpen(false)} className={`p-1 rounded-lg ${isDark ? "text-gray-400 hover:bg-gray-800" : "text-gray-500 hover:bg-gray-100"}`}><X className="w-4 h-4" /></button>
           </div>
-          {LeftPanelContent}
+          {!leftPanelCollapsed && LeftPanelContent}
         </div>
 
         {/* ── CENTER PREVIEW ── */}
         <div className="relative flex flex-col items-center flex-1 min-w-0 min-h-0 overflow-hidden bg-gray-950">
-          <div className="w-full flex items-center justify-between px-3 py-1.5 shrink-0">
+          {/* <div className="w-full flex items-center justify-between px-3 py-1.5 shrink-0">
             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-mono mx-auto ${isDark ? "bg-gray-800/80 border-gray-700 text-gray-400" : "bg-white/80 border-gray-300 text-gray-500"}`}>
               <div className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-green-400" : "bg-yellow-400"}`} />
               <span className="truncate max-w-[180px] sm:max-w-none">
@@ -3048,7 +3079,7 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
                 <Settings className="w-3 h-3" />Edit
               </button>
             )}
-          </div>
+          </div> */}
           <div className={`relative transition-all duration-300 flex-1 overflow-hidden w-full min-h-0 ${viewport === "mobile" ? "max-w-[390px] rounded-[2rem] border-4 border-gray-700 shadow-2xl my-2 mx-auto" : ""}`}>
             {!iframeReady && (
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-gray-900">
@@ -3601,7 +3632,7 @@ function ProductPickerButton({ products, selectedProduct, onSelect, onClear, isD
 
 // ─── Section Settings ─────────────────────────────────────────────────────────
 
-function SectionSettings({ section, onChange, token, backendUrl, isDark, collections = [], pages = [], products = [], categories = [], vendorHandle = "", currentLayoutKey = "home" }: {
+function SectionSettings({ section, onChange, token, backendUrl, isDark, collections = [], categories = [], pages = [], products = [], vendorHandle = "", currentLayoutKey = "home", storeLogo = "" }: {
   section: StoreSection; onChange: (p: Partial<StoreSection>) => void
   collections?: { id: string; title: string; handle: string }[]
   categories?: { id: string; name: string; handle: string; product_count: number }[]
@@ -3609,6 +3640,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
   currentLayoutKey?: string
   products?: { id: string; title: string; handle: string; thumbnail?: string; variants?: any[]; options?: any[] }[]
   vendorHandle?: string
+  storeLogo?: string
   token: string; backendUrl: string; isDark: boolean
 }) {
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
@@ -4490,9 +4522,9 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
             </Field>
             {/* Live preview */}
             <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
-              {store.store_logo ? (
-                <img src={store.store_logo} alt="logo preview"
-                  style={{ height: section.logo_size_desktop ?? 36 }}
+              {storeLogo ? (
+                <img src={storeLogo} alt="logo preview"
+                  style={{ height: 36 }}
                   className="object-contain w-auto" />
               ) : (
                 <span className={`font-bold truncate`}
@@ -4541,25 +4573,28 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
                 <span>16px</span><span>80px</span>
               </div>
             </Field>
-            <div className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
-              {store.store_logo ? (
-                <img src={store.store_logo} alt="preview"
-                  style={{ height: section.footer_logo_size_desktop ?? 36 }}
-                  className="object-contain w-auto max-w-[160px]" />
+             <div className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
+              {storeLogo ? (
+                <img src={storeLogo} alt="preview"
+                  style={{ height: 32 }}
+                  className="object-contain w-auto max-w-[120px]" />
               ) : (
-                <span className={`font-bold ${textPrimary}`}
-                  style={{ fontSize: Math.max(12, (section.footer_logo_size_desktop ?? 36) * 0.38) }}>
+                <span className={`font-bold text-sm ${textPrimary}`}>
                   {vendorHandle}
                 </span>
               )}
-              <span className={`text-[9px] ${textFaint} opacity-60 ml-auto`}>Desktop preview</span>
+              <span className={`text-[9px] ${textFaint} opacity-60 ml-auto`}>
+                {section.footer_logo_size_desktop ?? 36}px desktop · {section.footer_logo_size_mobile ?? 28}px mobile
+              </span>
             </div>
           </div>
         </StyleSection>
 
-        <FooterColumnsEditor
+       <FooterColumnsEditor
           columns={section.footer_columns ?? getDefaultFooterColumns(collections, categories, pages)}
           onChange={cols => onChange({ footer_columns: cols })}
+          columnsPerRow={section.footer_columns_per_row ?? 4}
+          onColumnsPerRowChange={n => onChange({ footer_columns_per_row: n })}
           isDark={isDark}
           pages={pages}
           textFaint={textFaint}
@@ -4873,9 +4908,11 @@ function getDefaultFooterColumns(
   ]
 }
 
-function FooterColumnsEditor({ columns, onChange, isDark, pages, textFaint, textPrimary }: {
+function FooterColumnsEditor({ columns, onChange, columnsPerRow, onColumnsPerRowChange, isDark, pages, textFaint, textPrimary }: {
   columns: FooterColumn[]
   onChange: (cols: FooterColumn[]) => void
+  columnsPerRow: number
+  onColumnsPerRowChange: (n: number) => void
   isDark: boolean
   pages: StorePage[]
   textFaint: string
@@ -4939,6 +4976,24 @@ function FooterColumnsEditor({ columns, onChange, isDark, pages, textFaint, text
 
   return (
     <div className="space-y-2">
+      {/* Columns per row control */}
+      <div className={`p-2.5 rounded-xl border ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
+        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${textFaint}`}>Columns per row (desktop)</p>
+        <div className="grid grid-cols-5 gap-1">
+          {[2, 3, 4, 5, 6].map(n => (
+            <button key={n} onClick={() => onColumnsPerRowChange(n)}
+              className={`py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                columnsPerRow === n
+                  ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                  : isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500 hover:border-gray-300"
+              }`}>
+              {n}
+            </button>
+          ))}
+        </div>
+        <p className={`text-[9px] mt-1.5 ${textFaint} opacity-60`}>Mobile always stacks to 2 columns</p>
+      </div>
+
       <div className="flex items-center justify-between">
         <p className={`text-[10px] font-semibold uppercase tracking-wider ${textFaint}`}>Footer columns</p>
         <span className={`text-[10px] ${textFaint}`}>{columns.length} column{columns.length !== 1 ? "s" : ""}</span>

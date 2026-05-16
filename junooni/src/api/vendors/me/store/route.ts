@@ -42,7 +42,7 @@ export const VendorStoreSchema = z.object({
   // Identity
   subdomain: z.string().min(2).max(50).regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers and hyphens").optional(),
   custom_domain: z.string().nullable().optional(),
-  domain_verified: z.boolean().optional(),
+  //domain_verified: z.boolean().optional(),
 
   // Template & status
   template: z.enum(["minimal", "bold", "editorial"]).optional(),
@@ -407,11 +407,18 @@ export const PUT = async (req: AuthenticatedMedusaRequest<StoreBody>, res: Medus
   const mergedSettings = { ...existingSettings, ...incomingSettings }
 
   // ── Domain verified reset ─────────────────────────────────────────────────
+  // if ("custom_domain" in columnPayload &&
+  //     columnPayload.custom_domain !== vendor.vendor_store.custom_domain) {
+  //   columnPayload.domain_verified = false
+  // }
+
+  delete columnPayload.domain_verified
+
   if ("custom_domain" in columnPayload &&
       columnPayload.custom_domain !== vendor.vendor_store.custom_domain) {
     columnPayload.domain_verified = false
   }
-
+  
   // ── Password handling ─────────────────────────────────────────────────────
   if (columnPayload.store_password) {
     columnPayload.store_password = await bcrypt.hash(columnPayload.store_password, 12)

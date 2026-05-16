@@ -1,5 +1,8 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
+import { useState, useEffect } from "react"
 import type { PublicVendor, VendorStore, CategoryMeta, CollectionMeta } from "@/lib/types"
 
 interface Props {
@@ -9,7 +12,17 @@ interface Props {
   collections: CollectionMeta[]
 }
 
-export default function StoreFooter({ vendor, store, categories, collections }: Props) {
+export default function StoreFooter({ vendor, store: initialStore, categories, collections }: Props) {
+  const [store, setStore] = useState(initialStore)
+
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "STORE_UPDATE" && e.data?.store) setStore(e.data.store)
+    }
+    window.addEventListener("message", handler)
+    return () => window.removeEventListener("message", handler)
+  }, [])
+
   const brandPrimary = store?.primary_color ?? "#e65100"
   const isDark = store?.template === "bold"
   const handle = vendor.handle
@@ -50,16 +63,24 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
     },
   ]
   const footerColumns = customColumns.length > 0 ? customColumns : autoColumns
+  const columnsPerRow: number = footerSection?.footer_columns_per_row ?? 4
 
   return (
     <footer
-      className={`border-t mt-20 ${isDark ? "border-white/10 bg-black text-white" : "border-gray-100 bg-white text-gray-900"}`}
+      className={`border-t mt-0 ${isDark ? "border-white/10 bg-black text-white" : "border-gray-100 bg-white text-gray-900"}`}
       style={{
         ...(footerBg   ? { backgroundColor: footerBg }   : {}),
         ...(footerText ? { color: footerText }            : {}),
       }}
     >
-     <div className={`grid max-w-6xl gap-8 px-6 py-12 mx-auto grid-cols-2 md:grid-cols-${Math.min(footerColumns.length + 2, 6)}`}>
+    <div
+        className="grid max-w-6xl grid-cols-2 px-6 py-12 mx-auto gap-x-8 gap-y-10"
+        style={{
+          gridTemplateColumns: `repeat(${columnsPerRow}, minmax(0, 1fr))`,
+          gridAutoRows: "auto",
+          flexWrap: "wrap",
+        }}
+      >
 
         {/* Brand */}
         {/* <div className="col-span-2 md:col-span-1">
@@ -210,7 +231,7 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
               alt={vendor.name}
               width={240}
               height={footerLogoDesktop * 2}
-              className="object-contain w-auto hidden md:block"
+              className="hidden object-contain w-auto md:block"
               style={{
                 height: footerLogoDesktop,
                 ...(isDark ? { filter: "brightness(0) invert(1)" } : {})

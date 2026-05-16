@@ -59,8 +59,18 @@ export default function StoreHeader({
   // Custom pages marked in_nav
   const inNavPages: any[] = ((store as any)?.pages?.pages ?? []).filter((p: any) => p.in_nav)
 
-  const isActive = (href: string) =>
-    href === `/${handle}` ? pathname === `/${handle}` : pathname.startsWith(href)
+ const isActive = (href: string) => {
+    // Home — exact match only
+    if (href === `/${handle}` || href === `/${handle}/`) return pathname === `/${handle}`
+    // All Products — exact match to avoid matching /products/[handle]
+    if (href === `/${handle}/products`) return pathname === `/${handle}/products`
+    // Collections index — exact match
+    if (href === `/${handle}/collections`) return pathname === `/${handle}/collections`
+    // Categories index — exact match
+    if (href === `/${handle}/categories`) return pathname === `/${handle}/categories`
+    // Everything else — prefix match
+    return pathname.startsWith(href)
+  }
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -129,9 +139,24 @@ export default function StoreHeader({
       .slice(0, 8)
   }, [searchQuery, products])
 
-  const getPreviewProducts = (key: string, itemHandle?: string): Product[] => {
+   const getPreviewProducts = (key: string, itemHandle?: string): Product[] => {
     if (!products.length) return []
-    if (key === "shop") return products.slice(0, 8)
+
+    if (key === "shop") {
+      // No collection hovered — show all products
+      if (!itemHandle) return products.slice(0, 8)
+      // Collection hovered inside Shop dropdown — filter by collection
+      const col = collections.find(c => c.handle === itemHandle)
+      const ids: string[] = (col as any)?.product_ids ?? []
+      if (ids.length) {
+        const filtered = products.filter(p =>
+          ids.map(String).includes(String(p.id))
+        )
+        return filtered.length ? filtered.slice(0, 8) : products.slice(0, 8)
+      }
+      return products.slice(0, 8)
+    }
+
     if (key === "collections" && itemHandle) {
       const col = collections.find(c => c.handle === itemHandle)
       const ids: string[] = (col as any)?.product_ids ?? []
@@ -142,10 +167,14 @@ export default function StoreHeader({
       }
       return []
     }
+
     if (key === "categories" && itemHandle) {
-      const m = products.filter(p => p.categories?.some(c => c.handle === itemHandle))
+      const m = products.filter(p =>
+        p.categories?.some(c => c.handle === itemHandle)
+      )
       return m.length ? m.slice(0, 8) : []
     }
+
     return products.slice(0, 8)
   }
 
@@ -239,15 +268,15 @@ export default function StoreHeader({
                   alt={vendor.name}
                   width={240}
                   height={logoSizeDesktop * 2}
-                  className="object-contain w-auto hidden md:block"
+                  className="hidden object-contain w-auto md:block"
                   style={{ height: logoSizeDesktop }}
                 />
               : vendor.logo
-              ? <div className="overflow-hidden rounded-full ring-2 ring-gray-100 hidden md:block"
+              ? <div className="hidden overflow-hidden rounded-full ring-2 ring-gray-100 md:block"
                   style={{ width: logoSizeDesktop, height: logoSizeDesktop }}>
                   <Image src={vendor.logo} alt={vendor.name} width={logoSizeDesktop} height={logoSizeDesktop} className="object-cover" />
                 </div>
-              : <div className="items-center justify-center font-bold text-white rounded-full hidden md:flex"
+              : <div className="items-center justify-center hidden font-bold text-white rounded-full md:flex"
                   style={{ width: logoSizeDesktop, height: logoSizeDesktop, background: brandPrimary, fontSize: logoSizeDesktop * 0.4 }}>
                   {vendor.name[0]?.toUpperCase()}
                 </div>
@@ -286,7 +315,7 @@ export default function StoreHeader({
                     onMouseLeave={scheduleClose}
                   >
                      <button
-                      className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${hoverBg} ${isActive(href) ? "" : textMuted}`}
+                      className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(href) ? "" : textMuted}`}
                       style={headerText
                         ? (isActive(href) ? { color: brandPrimary } : { color: headerText, opacity: 0.7 })
                         : (isActive(href) ? { color: brandPrimary } : {})
@@ -305,7 +334,7 @@ export default function StoreHeader({
                     onMouseLeave={scheduleClose}
                   >
                     <button
-                      className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${hoverBg} ${isActive(href) ? "" : textMuted}`}
+                      className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(href) ? "" : textMuted}`}
                       style={headerText
                         ? (isActive(href) ? { color: brandPrimary } : { color: headerText, opacity: 0.7 })
                         : (isActive(href) ? { color: brandPrimary } : {})
@@ -346,7 +375,7 @@ export default function StoreHeader({
                   href={href}
                   target={item.external ? "_blank" : undefined}
                   rel={item.external ? "noopener noreferrer" : undefined}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${hoverBg} ${isActive(href) ? "" : textMuted}`}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(href) ? "" : textMuted}`}
                   style={headerText
                     ? (isActive(href) ? { color: brandPrimary } : { color: headerText, opacity: 0.7 })
                     : (isActive(href) ? { color: brandPrimary } : {})
@@ -364,14 +393,14 @@ export default function StoreHeader({
               className={`p-2 rounded-full transition-all ${
                 searchOpen
                   ? "text-white"
-                  : isDark ? "text-white/60 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                  : isDark ? "text-white/60 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-900"
               }`}
               style={searchOpen ? { background: brandPrimary } : headerText ? { color: headerText } : {}}
               aria-label="Search"
             >
               {searchOpen ? <X style={{ width: 18, height: 18 }} /> : <Search style={{ width: 18, height: 18 }} />}
             </button>
-            <CartIconButton brandPrimary={brandPrimary} />
+           <CartIconButton brandPrimary={brandPrimary} iconColor={headerText ?? undefined} />
           </div>
         </div>
       </header>
@@ -581,7 +610,7 @@ export default function StoreHeader({
                     target={item.external ? "_blank" : undefined}
                     rel={item.external ? "noopener noreferrer" : undefined}
                     onClick={() => setMobileOpen(false)}
-                    className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${hoverBg} ${isActive(href) ? "" : textMuted}`}
+                    className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(href) ? "" : textMuted}`}
                     style={isActive(href) ? { color: brandPrimary } : {}}
                   >
                     {item.label}
@@ -599,7 +628,7 @@ export default function StoreHeader({
                             target={child.external ? "_blank" : undefined}
                             rel={child.external ? "noopener noreferrer" : undefined}
                             onClick={() => setMobileOpen(false)}
-                            className={`block px-3 py-2 rounded-lg text-sm transition-colors ${hoverBg} ${isActive(childHref) ? "" : textMuted}`}
+                            className={`block px-3 py-2 rounded-lg text-sm transition-colors ${isActive(childHref) ? "" : textMuted}`}
                             style={isActive(childHref) ? { color: brandPrimary } : {}}
                           >
                             {child.label}
@@ -614,7 +643,7 @@ export default function StoreHeader({
             <Link
               href={`/${handle}/search`}
               onClick={() => setMobileOpen(false)}
-              className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${hoverBg} ${isActive(`/${handle}/search`) ? "" : textMuted}`}
+              className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(`/${handle}/search`) ? "" : textMuted}`}
               style={isActive(`/${handle}/search`) ? { color: brandPrimary } : {}}
             >
               Search

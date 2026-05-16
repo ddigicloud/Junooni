@@ -12,6 +12,7 @@ interface Props {
   collections: CollectionMeta[]
   handle: string
   brandPrimary?: string
+  textColor?: string  // add this
   isDark?: boolean
   filterOrder?: string[]
   activeCategoryHandle?: string
@@ -43,6 +44,7 @@ export default function ProductGrid({
   isDark = false,
   activeCategoryHandle,
   activeCollectionHandle,
+  textColor: textColorProp,
   // Editor-controlled — all have sensible defaults
   columns = 3,
   limit = 48,
@@ -153,8 +155,8 @@ export default function ProductGrid({
 
   const inputBg    = isDark ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-200 text-gray-900"
   const labelColor = isDark ? "text-white/50" : "text-gray-400"
-  const textColor  = isDark ? "text-white" : "text-gray-900"
-  const subText    = isDark ? "text-white/50" : "text-gray-500"
+  const textColor  = textColorProp ?? (isDark ? "text-white" : "text-gray-900")
+  const subText    = textColorProp ? `opacity-70` : (isDark ? "text-white/50" : "text-gray-500")
   const divider    = isDark ? "border-white/10" : "border-gray-100"
   const sidebarBg  = isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
 
@@ -383,8 +385,11 @@ export default function ProductGrid({
         <div className="flex-1 min-w-0">
           {sidebarVisible && (
             <div className="items-center justify-between hidden mb-5 md:flex">
-              <p className={`text-sm ${subText}`}>
-                Showing <span className={`font-semibold ${textColor}`}>{filtered.length}</span> of {products.length} products
+              <p
+                className={`text-sm ${textColor}`}
+                style={textColorProp ? { color: textColorProp } : undefined}
+              >
+                Showing <span className="font-semibold">{filtered.length}</span> of {products.length} products
               </p>
             </div>
           )}

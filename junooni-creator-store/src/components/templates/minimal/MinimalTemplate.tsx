@@ -56,8 +56,8 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
   const cardShowHover   = productCard.show_hover !== false
   const cardShowSoldOut = productCard.show_sold_out_badge !== false
 
-  console.log("store.sticky_header =", (store as any)?.sticky_header)
-  console.log("wrapSticky =", (store as any)?.sticky_header !== false)
+  // console.log("store.sticky_header =", (store as any)?.sticky_header)
+  // console.log("wrapSticky =", (store as any)?.sticky_header !== false)
 
   return (
     <div className={`min-h-screen bg-white ${fontClass}`}>
