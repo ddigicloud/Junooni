@@ -232,7 +232,7 @@ export default function StoreHeader({
 
             <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className={`md:hidden p-2 rounded-full transition-colors shrink-0 ${isDark ? "text-white/60 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}
+            className={`md:hidden p-2 rounded-full transition-colors shrink-0 ${isDark ? "text-white/60 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-900 "}`}
             style={headerText ? { color: headerText } : {}}
           >
             {mobileOpen ? <X style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
@@ -640,14 +640,14 @@ export default function StoreHeader({
                 </div>
               )
             })}
-            <Link
+            {/* <Link
               href={`/${handle}/search`}
               onClick={() => setMobileOpen(false)}
               className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(`/${handle}/search`) ? "" : textMuted}`}
               style={isActive(`/${handle}/search`) ? { color: brandPrimary } : {}}
             >
               Search
-            </Link>
+            </Link> */}
           </div>
         </div>
       )}

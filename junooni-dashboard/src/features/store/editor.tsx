@@ -138,6 +138,8 @@ interface VendorStore {
 
 const BRAND = { primary: "#e65100", secondary: "#ac1900" }
 
+let _linkInputProducts: { id: string; title: string; handle: string; thumbnail?: string }[] = []
+
 // Add this constant near SECTION_BLOCKS:
 const PAGE_ALLOWED_SECTIONS: Record<string, SectionType[]> = {
   home: [
@@ -395,7 +397,8 @@ const BUILTIN_PAGES = [
   { label: "Home",         url: "/" },
   { label: "All Products", url: "/products" },
   { label: "Collections",  url: "/collections" },
-  // { label: "About",        url: "#about" },
+  { label: "Categories",   url: "/categories" },
+  { label: "Search",       url: "/search" },
 ]
 
 function ProductDetailSettings({ settings, onChange, isDark }: {
@@ -694,6 +697,54 @@ function ProductDetailSettings({ settings, onChange, isDark }: {
 
 function slugify(s: string) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") }
 function genId() { return `s_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
+// REPLACE WITH:
+function ProductPagesGroup({ value, onChange, setOpen, isDark }: {
+  value: string
+  onChange: (v: string) => void
+  setOpen: (v: boolean) => void
+  isDark: boolean
+}) {
+  const [modalOpen, setModalOpen] = useState(false)
+  const faint = isDark ? "text-gray-600" : "text-gray-400"
+  const hoverBg = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
+  const products = _linkInputProducts
+
+  const selectedProduct = products.find(p => value === `/products/${p.handle}`) ?? null
+
+  return (
+    <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
+      <button
+        onClick={() => setModalOpen(true)}
+        className={`w-full flex items-center justify-between px-2.5 py-2 text-[9px] font-semibold uppercase tracking-wider transition-colors ${faint} ${hoverBg}`}
+      >
+        <span>
+          Product pages
+          {selectedProduct && (
+            <span className="ml-1.5 normal-case font-normal">
+              — {selectedProduct.title}
+            </span>
+          )}
+        </span>
+        <ChevronRight className="w-3 h-3" />
+      </button>
+
+      {modalOpen && (
+        <ProductPickerModal
+          products={products}
+          selectedProduct={selectedProduct}
+          onSelect={p => {
+            onChange(`/products/${p.handle}`)
+            setOpen(false)
+            setModalOpen(false)
+          }}
+          onClose={() => setModalOpen(false)}
+          isDark={isDark}
+        />
+      )}
+    </div>
+  )
+}
+
 function CustomPagesGroup({ pages, value, onChange, setOpen, isDark }: {
   pages: StorePage[]; value: string; onChange: (v: string) => void
   setOpen: (v: boolean) => void; isDark: boolean
@@ -707,7 +758,7 @@ function CustomPagesGroup({ pages, value, onChange, setOpen, isDark }: {
     <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
       <button
         onClick={() => setExpanded(e => !e)}
-        className={`w-full flex items-center justify-between px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-wider transition-colors ${"text-black-400"} ${hoverBg}`}
+        className={`w-full flex items-center justify-between px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-wider transition-colors ${textColor} ${hoverBg}`}
       >
         <span>Custom pages</span>
         <ChevronRight className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} />
@@ -846,6 +897,13 @@ function LinkInput({
           {pages.length > 0 && (
             <CustomPagesGroup pages={pages} value={value} onChange={onChange} setOpen={setOpen} isDark={isDark} />
           )}
+
+           <ProductPagesGroup
+            value={value}
+            onChange={onChange}
+            setOpen={setOpen}
+            isDark={isDark}
+          />
         </div>
       )}
     </div>
@@ -930,6 +988,7 @@ export default function StoreEditorPage() {
   const [vendorCollections, setVendorCollections] = useState<{ id: string; title: string; handle: string }[]>([])
   const [vendorCategories, setVendorCategories] = useState<{ id: string; name: string; handle: string; product_count: number }[]>([])
   const [vendorProducts, setVendorProducts] = useState<{ id: string; title: string; handle: string; thumbnail?: string; variants?: any[]; options?: any[] }[]>([])
+   useEffect(() => { _linkInputProducts = vendorProducts }, [vendorProducts])
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
   const [leftPanelOpen, setLeftPanelOpen] = useState(false)
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false)
@@ -3228,7 +3287,7 @@ function PageSwitcherPagesGroup({ pages, currentPath, onSelect, setOpen, isDark,
         className={`w-full flex items-center justify-between px-2.5 py-2 text-[9px] font-semibold uppercase tracking-wider transition-colors ${
           hasActive
             ? isDark ? "text-orange-400" : "text-orange-600"
-            : "text-grey-50"
+            : textFaint
         } ${hoverBg}`}
       >
         <span>Custom pages {hasActive && `— ${pages.find(p => currentPath === `/p/${p.slug}`)?.title}`}</span>
@@ -4503,21 +4562,21 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
         <StyleSection title="Logo Size" isDark={isDark}>
           <div className="space-y-3">
             <Field label={`Desktop size — ${section.logo_size_desktop ?? 36}px`} faint={textFaint}>
-              <input type="range" min={20} max={120} step={2}
+              <input type="range" min={20} max={80} step={2}
                 value={section.logo_size_desktop ?? 36}
                 onChange={e => onChange({ logo_size_desktop: Number(e.target.value) })}
                 className="w-full accent-orange-500" />
               <div className={`flex justify-between text-[9px] mt-0.5 ${textFaint}`}>
-                <span>20px</span><span>120px</span>
+                <span>20px</span><span>80px</span>
               </div>
             </Field>
             <Field label={`Mobile size — ${section.logo_size_mobile ?? 28}px`} faint={textFaint}>
-              <input type="range" min={16} max={80} step={2}
+              <input type="range" min={16} max={60} step={2}
                 value={section.logo_size_mobile ?? 28}
                 onChange={e => onChange({ logo_size_mobile: Number(e.target.value) })}
                 className="w-full accent-orange-500" />
               <div className={`flex justify-between text-[9px] mt-0.5 ${textFaint}`}>
-                <span>16px</span><span>80px</span>
+                <span>16px</span><span>60px</span>
               </div>
             </Field>
             {/* Live preview */}
@@ -5181,8 +5240,10 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
   const vendorCategories  = categories
   const vendorProducts    = products
 
-  const addItem = () => {
-    onChange([...items, { id: genId(), label: "New Link", url: "/" }])
+   const addItem = () => {
+    const newId = genId()
+    onChange([...items, { id: newId, label: "New Link", url: "" }])
+    setExpandedId(newId) // auto-open so creator fills it in immediately
   }
 
   const updateItem = (id: string, patch: Partial<NavItem>) => {
@@ -5272,6 +5333,10 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                     <span className={`ml-1 text-[9px] ${textFaint}`}>({children.length})</span>
                   )}
                 </span>
+                {/* Red dot if URL is missing and no children */}
+                {!item.url?.trim() && (!item.children || item.children.length === 0) && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" title="URL required" />
+                )}
                 <button onClick={() => moveItem(item.id, "up")} disabled={i === 0}
                   className={`p-0.5 rounded transition-colors ${i === 0 ? "opacity-30" : hoverBg} ${textFaint}`}>
                   <ChevronUp className="w-3 h-3" />
@@ -5279,17 +5344,27 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                 <button onClick={() => moveItem(item.id, "down")} disabled={i === items.length - 1}
                   className={`p-0.5 rounded transition-colors ${i === items.length - 1 ? "opacity-30" : hoverBg} ${textFaint}`}>
                   <ChevronDown className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                    isExpanded
-                      ? "bg-orange-500/20 text-orange-400"
-                      : isDark ? "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200" : "bg-gray-200 text-gray-500 hover:bg-gray-300"
-                  }`}
-                >
-                  {isExpanded ? "Done" : "Edit"}
-                </button>
+                </button> {(() => {
+                  const isInvalid = isExpanded && !item.url?.trim() && (!item.children || item.children.length === 0)
+                  return (
+                    <button
+                      onClick={() => !isInvalid && setExpandedId(isExpanded ? null : item.id)}
+                      disabled={isInvalid}
+                      title={isInvalid ? "Enter a URL first" : undefined}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                        isExpanded
+                          ? isInvalid
+                            ? "bg-red-500/15 text-red-400 cursor-not-allowed opacity-60"
+                            : "bg-orange-500/20 text-orange-400"
+                          : isDark
+                            ? "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200"
+                            : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+                      }`}
+                    >
+                      {isExpanded ? "Done" : "Edit"}
+                    </button>
+                  )
+                })()}
                 <button onClick={() => removeItem(item.id)} className="p-0.5 rounded hover:bg-red-900/30">
                   <Trash2 className="w-3 h-3 text-red-400" />
                 </button>
@@ -5306,8 +5381,23 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                       <EditorInput value={item.label} onChange={v => updateItem(item.id, { label: v })} placeholder="e.g. Shop" isDark={isDark} />
                     </div>
                     <div>
-                      <label className={`text-[10px] ${textFaint} block mb-1`}>Link <span className={`opacity-60`}>(optional if has children)</span></label>
-                      <LinkInput value={item.url} onChange={v => updateItem(item.id, { url: v })} placeholder="/products" isDark={isDark} pages={pages} />
+                      <label className={`text-[10px] ${textFaint} block mb-1`}>
+                        Link <span className="opacity-60">(optional if has children)</span>
+                      </label>
+                      <LinkInput
+                        value={item.url}
+                        onChange={v => updateItem(item.id, { url: v })}
+                        placeholder="/products"
+                        isDark={isDark}
+                        pages={pages}
+                      />
+                      {/* Validation — show error if url is empty and no children */}
+                      {!item.url?.trim() && (!item.children || item.children.length === 0) && (
+                        <p className="flex items-center gap-1 mt-1 text-[10px] text-red-400">
+                          <span className="inline-block w-3 h-3 rounded-full bg-red-400/20 text-red-400 text-center leading-3">!</span>
+                          Enter a valid URL or choose a page
+                        </p>
+                      )}
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <div className="relative shrink-0" onClick={() => updateItem(item.id, { external: !item.external })}>
@@ -5438,10 +5528,25 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
         })}
       </div>
 
-      <button onClick={addItem}
-        className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-xs transition-all ${isDark ? "border-gray-700 border-dashed text-gray-400 hover:border-gray-500 hover:text-gray-300" : "border-gray-300 border-dashed text-gray-500 hover:border-gray-400"}`}>
-        <Plus className="w-3 h-3" />Add nav item
-      </button>
+      {(() => {
+        const hasInvalid = items.some(it => !it.url?.trim() && (!it.children || it.children.length === 0))
+        return hasInvalid ? (
+          <div className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-xs ${
+            isDark ? "border-red-800/50 bg-red-900/10 text-red-400" : "border-red-200 bg-red-50 text-red-500"
+          }`}>
+            <span className="w-3 h-3 rounded-full bg-red-400/20 text-red-400 text-[9px] flex items-center justify-center font-bold">!</span>
+            Fill in the URL for existing items first
+          </div>
+        ) : (
+          <button onClick={addItem}
+            className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-xs transition-all ${
+              isDark ? "border-gray-700 border-dashed text-gray-400 hover:border-gray-500 hover:text-gray-300"
+                     : "border-gray-300 border-dashed text-gray-500 hover:border-gray-400"
+            }`}>
+            <Plus className="w-3 h-3" />Add nav item
+          </button>
+        )
+      })()}
 
       <p className={`text-[10px] ${textFaint} opacity-60`}>
         Tip: Pages marked "Show in header nav" in the Pages tab are added automatically.
