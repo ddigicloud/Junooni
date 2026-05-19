@@ -6848,10 +6848,10 @@ svg-pathdata@^6.0.3:
   resolved "https://registry.npmjs.org/svg-pathdata/-/svg-pathdata-6.0.3.tgz"
   integrity sha512-qsjeeq5YjBZ5eMdFuUa4ZosMLxgr5RZ+F+Y1OrDhuOCEInRMA3x74XdBtggJcj9kOeInz0WE+LgCPDkZFlBYJw==
 
-swiper@^11.2.4:
-  version "11.2.4"
-  resolved "https://registry.npmjs.org/swiper/-/swiper-11.2.4.tgz"
-  integrity sha512-DTtglrsFfMYytid+oNy4QI3t2N2+XhhwSYbnyOhlwBmvY8Bkoj3ombK1/b80w8vDpQ+Lqlnbm+0737+i32MrcA==
+swiper@^11.2.10:
+  version "11.2.10"
+  resolved "https://registry.npmjs.org/swiper/-/swiper-11.2.10.tgz"
+  integrity sha512-RMeVUUjTQH+6N3ckimK93oxz6Sn5la4aDlgPzB+rBrG/smPdCTicXyhxa+woIpopz+jewEloiEE3lKo1h9w2YQ==
 
 tabbable@^6.0.0, tabbable@^6.0.1:
   version "6.2.0"

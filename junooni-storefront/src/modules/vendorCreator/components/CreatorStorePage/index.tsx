@@ -56,6 +56,7 @@ import profileplaceholder from "@assets/profile-logo.png"
 // Updated DynamicProductCardProps to include region
 interface ExtendedProductCardProps extends DynamicProductCardProps {
   region: any
+  reviewData?: { averageRating: number; reviewCount: number }
 }
 
 // Currency utility functions
@@ -344,12 +345,19 @@ const getProductColorsEnhanced = (product: any): Array<{name: string, hex: strin
   return uniqueColors
 }
 
-const CreatorStorePage: React.FC<CreatorStorePageProps> = ({
+const CreatorStorePage: React.FC<CreatorStorePageProps & {
+  vendorProducts?: any[]
+  reviewsMap?: Record<string, { averageRating: number; reviewCount: number }>
+}> = ({
   vendor,
   region,
+  vendorProducts: initialVendorProducts = [],
+  reviewsMap = {},
 }) => {
-  const [vendorProducts, setVendorProducts] = useState<Product[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+  // const [vendorProducts, setVendorProducts] = useState<Product[]>([])
+  // const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [vendorProducts] = useState<Product[]>(initialVendorProducts)
+  const isLoading = false  // No client fetch needed — products come from server
   const [followers, setFollowers] = useState([])
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true)
 
@@ -525,82 +533,82 @@ const handleFollowToggle = async () => {
   }
 
   // Fetch vendor products
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true)
-      try {
-        if (vendor && !Array.isArray(vendor) && region) {
-          //console.log("🔍 Fetching all products to filter by vendor:", vendor.id)
+  // useEffect(() => {
+  //   const fetchProducts = async () => {
+  //     setIsLoading(true)
+  //     try {
+  //       if (vendor && !Array.isArray(vendor) && region) {
+  //         //console.log("🔍 Fetching all products to filter by vendor:", vendor.id)
           
-          const {
-            response: { products: pricedProducts },
-          } = await listProducts({
-            regionId: region.id,
-            queryParams: {
-              fields: "*vendor,*tags,*metadata,*variants,*variants.prices,*variants.calculated_price",
-              limit: 1000,
-            },
-          })
+  //         const {
+  //           response: { products: pricedProducts },
+  //         } = await listProducts({
+  //           regionId: region.id,
+  //           queryParams: {
+  //             fields: "*vendor,*tags,*metadata,*variants,*variants.prices,*variants.calculated_price",
+  //             limit: 1000,
+  //           },
+  //         })
           
-          //console.log("📦 Total products fetched:", pricedProducts?.length || 0)
+  //         //console.log("📦 Total products fetched:", pricedProducts?.length || 0)
           
-          if (pricedProducts && Array.isArray(pricedProducts)) {
-            //console.log("📦 Sample product structure:", pricedProducts[0])
+  //         if (pricedProducts && Array.isArray(pricedProducts)) {
+  //           //console.log("📦 Sample product structure:", pricedProducts[0])
             
-            // 🎨 DEBUG: Log metadata structure for color debugging
-            //console.log("🎨 DEBUGGING PRODUCT METADATA:")
-            pricedProducts.forEach((product, index) => {
-              if (product.metadata && Object.keys(product.metadata).length > 0) {
-                //console.log(`Product ${index} "${product.title}" metadata:`, product.metadata)
+  //           // 🎨 DEBUG: Log metadata structure for color debugging
+  //           //console.log("🎨 DEBUGGING PRODUCT METADATA:")
+  //           pricedProducts.forEach((product, index) => {
+  //             if (product.metadata && Object.keys(product.metadata).length > 0) {
+  //               //console.log(`Product ${index} "${product.title}" metadata:`, product.metadata)
                 
-                // Check for color-related keys
-                const colorKeys = Object.keys(product.metadata).filter(key => 
-                  key.toLowerCase().includes('color') || 
-                  key.toLowerCase().includes('colour')
-                )
-                //console.log(`Color-related keys:`, colorKeys)
-              }
-            })
+  //               // Check for color-related keys
+  //               const colorKeys = Object.keys(product.metadata).filter(key => 
+  //                 key.toLowerCase().includes('color') || 
+  //                 key.toLowerCase().includes('colour')
+  //               )
+  //               //console.log(`Color-related keys:`, colorKeys)
+  //             }
+  //           })
             
-            // Filter products that belong to this vendor
-            const vendorProducts = pricedProducts.filter(product => {
-              // console.log(`🔍 Product "${product.title}":`, {
-              //   vendor: product.vendor,
-              //   vendor_id: product.vendor_id,
-              //   metadata: product.metadata
-              // })
+  //           // Filter products that belong to this vendor
+  //           const vendorProducts = pricedProducts.filter(product => {
+  //             // console.log(`🔍 Product "${product.title}":`, {
+  //             //   vendor: product.vendor,
+  //             //   vendor_id: product.vendor_id,
+  //             //   metadata: product.metadata
+  //             // })
               
-              return (
-                product.vendor?.id === vendor.id ||
-                product.vendor_id === vendor.id ||
-                product.creator_id === vendor.id ||
-                product.seller_id === vendor.id ||
-                (product.metadata && product.metadata.vendor_id === vendor.id) ||
-                (product.metadata && product.metadata.creator_id === vendor.id)
-              )
-            })
+  //             return (
+  //               product.vendor?.id === vendor.id ||
+  //               product.vendor_id === vendor.id ||
+  //               product.creator_id === vendor.id ||
+  //               product.seller_id === vendor.id ||
+  //               (product.metadata && product.metadata.vendor_id === vendor.id) ||
+  //               (product.metadata && product.metadata.creator_id === vendor.id)
+  //             )
+  //           })
             
-            //console.log("✅ Vendor products found:", vendorProducts.length)
-            if (vendorProducts.length > 0) {
-              //console.log("📦 Sample vendor product:", vendorProducts[0])
-            }
+  //           //console.log("✅ Vendor products found:", vendorProducts.length)
+  //           if (vendorProducts.length > 0) {
+  //             //console.log("📦 Sample vendor product:", vendorProducts[0])
+  //           }
             
-            setVendorProducts(vendorProducts)
-          } else {
-            //console.log("❌ No products in response")
-            setVendorProducts([])
-          }
-        }
-      } catch (error) {
-        //console.error("❌ Error fetching products:", error)
-        setVendorProducts([])
-      } finally {
-        setIsLoading(false)
-      }
-    }
+  //           setVendorProducts(vendorProducts)
+  //         } else {
+  //           //console.log("❌ No products in response")
+  //           setVendorProducts([])
+  //         }
+  //       }
+  //     } catch (error) {
+  //       //console.error("❌ Error fetching products:", error)
+  //       setVendorProducts([])
+  //     } finally {
+  //       setIsLoading(false)
+  //     }
+  //   }
 
-    fetchProducts()
-  }, [vendor, region])
+  //   fetchProducts()
+  // }, [vendor, region])
 
   // If this is the main page showing multiple vendors
   if (Array.isArray(vendor)) {
@@ -1508,6 +1516,7 @@ const handleFollowToggle = async () => {
                           product={product}
                           hasProductBadge={hasProductBadge}
                           region={region}
+                          reviewData={reviewsMap[product.id]}
                         />
                       ))}
                     </motion.div>
@@ -1651,14 +1660,15 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
   product,
   hasProductBadge,
   region,
+  reviewData,
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false)
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
   const [hoveredColor, setHoveredColor] = useState<string | null>(null) // Add this line
   // Review state
-  const [averageRating, setAverageRating] = useState(0)
-  const [reviewCount, setReviewCount] = useState(0)
-  const [isLoadingReviews, setIsLoadingReviews] = useState(true)
+  // const [averageRating, setAverageRating] = useState(0)
+  // const [reviewCount, setReviewCount] = useState(0)
+  // const [isLoadingReviews, setIsLoadingReviews] = useState(true)
 
   // Extract required info from product with safety checks
   const productName = product?.title || "Product"
@@ -1666,27 +1676,32 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
   const productHandle = product?.handle || ""
 
   // Fetch actual review data
-  useEffect(() => {
-    setIsLoadingReviews(true)
-    getProductReviews({
-      productId: product.id,
-      limit: 100,
-      offset: 0,
-    })
-      .then(({ reviews: paginatedReviews, average_rating, count }) => {
-        setAverageRating(average_rating || 0)
-        const actualCount = paginatedReviews?.length || 0
-        setReviewCount(actualCount)
-      })
-      .catch((error) => {
-        //console.error("Error fetching product reviews in card:", error)
-        setAverageRating(0)
-        setReviewCount(0)
-      })
-      .finally(() => {
-        setIsLoadingReviews(false)
-      })
-  }, [product.id])
+  // useEffect(() => {
+  //   setIsLoadingReviews(true)
+  //   getProductReviews({
+  //     productId: product.id,
+  //     limit: 100,
+  //     offset: 0,
+  //   })
+  //     .then(({ reviews: paginatedReviews, average_rating, count }) => {
+  //       setAverageRating(average_rating || 0)
+  //       const actualCount = paginatedReviews?.length || 0
+  //       setReviewCount(actualCount)
+  //     })
+  //     .catch((error) => {
+  //       //console.error("Error fetching product reviews in card:", error)
+  //       setAverageRating(0)
+  //       setReviewCount(0)
+  //     })
+  //     .finally(() => {
+  //       setIsLoadingReviews(false)
+  //     })
+  // }, [product.id])
+
+  const averageRating = reviewData?.averageRating ?? 0
+  const reviewCount = reviewData?.reviewCount ?? 0
+  const isLoadingReviews = false
+
 
   // ADD STEP 3 FUNCTION HERE:
 // Function to get the appropriate image based on selected color
@@ -2037,7 +2052,8 @@ const ColorOptions = ({ colors }: { colors: Array<{name: string, hex: string, ke
     href: string
     children: React.ReactNode
   }> = ({ href, children }) => (
-    <Link href={href}>{children}</Link>
+    // <Link href={href}>{children}</Link>
+    <Link href={href} prefetch={true}>{children}</Link>
   )
 
   const productTags = product?.tags || []

@@ -34,9 +34,6 @@
 //         "vendor_store.primary_color",
 //         "vendor_store.secondary_color",
 //         "vendor_store.font",
-//         "vendor_store.hero_image",
-//         "vendor_store.tagline",
-//         "vendor_store.announcement_text",
 //         "vendor_store.store_logo",
 //         "vendor_store.store_favicon",
 //         "vendor_store.sections",
@@ -44,27 +41,21 @@
 //         "vendor_store.collections",
 //         "vendor_store.seo_title",
 //         "vendor_store.seo_description",
-//         "vendor_store.sticky_header",
-//         "vendor_store.sticky_announcement",
-//         "vendor_store.og_image",
-//         "vendor_store.instagram_url",
-//         "vendor_store.youtube_url",
-//         "vendor_store.twitter_url",
-//         "vendor_store.facebook_url",
-//         "vendor_store.custom_css",
-//         "vendor_store.product_detail",  // ← ADD THIS
-//         "vendor_store.border_radius",   // these are also missing
-//         "vendor_store.button_style",
-//         "vendor_store.product_card",
-//         "vendor_store.accent_color",
-//         "vendor_store.tiktok_url",
-//         "vendor_store.discord_url",
+//         // ← settings JSON column holds everything else:
+//         "vendor_store.settings",
 //       ],
 //       filters: { handle },
 //     })
 
 //     vendor = vendorData
 //     vendorStore = vendor?.vendor_store ?? null
+
+//     // Flatten settings into vendorStore so the rest of the code
+//     // can access fields like product_detail, border_radius etc. at top level
+//     if (vendorStore && vendorStore.settings) {
+//       vendorStore = { ...vendorStore, ...vendorStore.settings }
+//     }
+
 //     console.log(`[store-front] product_detail:`, JSON.stringify(vendorStore?.product_detail))
 
 //   } catch (err) {
@@ -114,6 +105,7 @@
 //           pages: vendorStore.pages ?? { pages: [] },
 //           password_enabled: true,
 //           store_password: undefined,
+//           settings: undefined,
 //         },
 //         products: [],
 //         categories: [],
@@ -143,6 +135,11 @@
 //         "options.id", "options.title",
 //         "options.values.id", "options.values.value",
 //         "categories.id", "categories.name", "categories.handle",
+//         // "metadata",                    // ← add this if not present
+//         // "size_chart.id",
+//         // "size_chart.name", 
+//         // "size_chart.chart",
+//         // "size_chart.sku",
 //       ],
 //       filters: {
 //         status: "published",
@@ -162,7 +159,7 @@
 //       ...p,
 //       variants: (p.variants ?? []).map((v: any) => ({
 //         ...v,
-//         inventory_quantity: 10, // checked at cart time
+//         inventory_quantity: 10,
 //       })),
 //     }))
 
@@ -170,7 +167,6 @@
 
 //   } catch (err) {
 //     console.error("[store-front] query.index failed:", err)
-//     // Don't crash — return store with empty products
 //   }
 
 //   // ── 5. Categories + collections ────────────────────────────────────────
@@ -201,6 +197,7 @@
 //     pages:            vendorStore.pages ?? { pages: [] },
 //     password_enabled: vendorStore.password_enabled ?? false,
 //     store_password:   undefined,
+//     settings:         undefined, // don't expose raw settings — already flattened
 //   } : null
 
 //   const totalPages = Math.ceil(totalProducts / PAGE_SIZE)
@@ -223,6 +220,7 @@
 
 //   return res.json(response)
 // }
+
 
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { MedusaError, ContainerRegistrationKeys } from "@medusajs/framework/utils"
@@ -343,7 +341,34 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     console.log(`[store-front] access granted — loading products`)
   }
 
-  // ── 4. Fetch products via query.index (cross-module filtering) ─────────
+  // ── 4. Build collections + store response (needed for both shell and full) ──
+  const rawVendorCollections: any[] = vendorStore?.collections?.collections ?? []
+
+  const storeResponse = vendorStore ? {
+    ...vendorStore,
+    pages:            vendorStore.pages ?? { pages: [] },
+    password_enabled: vendorStore.password_enabled ?? false,
+    store_password:   undefined,
+    settings:         undefined, // don't expose raw settings — already flattened
+  } : null
+
+  // ── 5. Shell-only: skip the expensive products query and return early ──
+  if (req.query.shell === "true") {
+    const shellCollections = rawVendorCollections
+      .filter((c: any) => c.is_visible !== false)
+      .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+
+    return res.json({
+      vendor:      publicVendor,
+      store:       storeResponse,
+      products:    [],
+      categories:  [],
+      collections: shellCollections,
+      pagination:  { page: 1, total: 0, totalPages: 0, hasMore: false },
+    })
+  }
+
+  // ── 6. Fetch products via query.index (cross-module filtering) ─────────
   let products: any[] = []
   let totalProducts = 0
   const t1 = Date.now()
@@ -395,7 +420,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     console.error("[store-front] query.index failed:", err)
   }
 
-  // ── 5. Categories + collections ────────────────────────────────────────
+  // ── 7. Categories + collections ────────────────────────────────────────
   const categoriesMap = new Map<string, any>()
   for (const product of products) {
     for (const cat of product.categories ?? []) {
@@ -406,7 +431,6 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     }
   }
 
-  const rawVendorCollections: any[] = vendorStore?.collections?.collections ?? []
   const vendorCollections = rawVendorCollections
     .filter((c: any) => c.is_visible !== false)
     .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -417,15 +441,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
       ).length,
     }))
 
-  // ── 6. Build response ──────────────────────────────────────────────────
-  const storeResponse = vendorStore ? {
-    ...vendorStore,
-    pages:            vendorStore.pages ?? { pages: [] },
-    password_enabled: vendorStore.password_enabled ?? false,
-    store_password:   undefined,
-    settings:         undefined, // don't expose raw settings — already flattened
-  } : null
-
+  // ── 8. Build response ──────────────────────────────────────────────────
   const totalPages = Math.ceil(totalProducts / PAGE_SIZE)
 
   const response = {

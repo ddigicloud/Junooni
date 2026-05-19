@@ -46,7 +46,7 @@
     "react-whatsapp-widget": "^2.2.0",
     "server-only": "^0.0.1",
     "slick-carousel": "^1.8.1",
-    "swiper": "^11.2.4",
+    "swiper": "^11.2.10",
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
     "tailwindcss-radix": "^2.8.0",

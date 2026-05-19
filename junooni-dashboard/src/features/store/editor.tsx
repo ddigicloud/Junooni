@@ -83,6 +83,7 @@ interface StoreSection {
   footer_nav_items?: NavItem[]; show_newsletter?: boolean
   footer_columns?: FooterColumn[]
   footer_columns_per_row?: number
+  footer_columns_per_row_mobile?: number
   logo_size_desktop?: number
   logo_size_mobile?: number
   footer_logo_size_desktop?: number
@@ -4649,11 +4650,13 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
           </div>
         </StyleSection>
 
-       <FooterColumnsEditor
+         <FooterColumnsEditor
           columns={section.footer_columns ?? getDefaultFooterColumns(collections, categories, pages)}
           onChange={cols => onChange({ footer_columns: cols })}
           columnsPerRow={section.footer_columns_per_row ?? 4}
           onColumnsPerRowChange={n => onChange({ footer_columns_per_row: n })}
+          columnsPerRowMobile={section.footer_columns_per_row_mobile ?? 2}
+          onColumnsPerRowMobileChange={n => onChange({ footer_columns_per_row_mobile: n })}
           isDark={isDark}
           pages={pages}
           textFaint={textFaint}
@@ -4967,16 +4970,18 @@ function getDefaultFooterColumns(
   ]
 }
 
-function FooterColumnsEditor({ columns, onChange, columnsPerRow, onColumnsPerRowChange, isDark, pages, textFaint, textPrimary }: {
+function FooterColumnsEditor({ columns, onChange, columnsPerRow, onColumnsPerRowChange, columnsPerRowMobile, onColumnsPerRowMobileChange, isDark, pages, textFaint, textPrimary }: {
   columns: FooterColumn[]
   onChange: (cols: FooterColumn[]) => void
   columnsPerRow: number
   onColumnsPerRowChange: (n: number) => void
+  columnsPerRowMobile: number
+  onColumnsPerRowMobileChange: (n: number) => void
   isDark: boolean
   pages: StorePage[]
   textFaint: string
   textPrimary: string
-}) {
+}){
   const [expandedColId, setExpandedColId] = useState<string | null>(null)
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
   const hoverBg = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
@@ -5051,6 +5056,24 @@ function FooterColumnsEditor({ columns, onChange, columnsPerRow, onColumnsPerRow
           ))}
         </div>
         <p className={`text-[9px] mt-1.5 ${textFaint} opacity-60`}>Mobile always stacks to 2 columns</p>
+      </div>
+
+       {/* Mobile columns per row */}
+      <div className={`p-2.5 rounded-xl border ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
+        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 ${textFaint}`}>Columns per row (mobile)</p>
+        <div className="grid grid-cols-3 gap-1">
+          {[1, 2, 3].map(n => (
+            <button key={n} onClick={() => onColumnsPerRowMobileChange(n)}
+              className={`py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                columnsPerRowMobile === n
+                  ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                  : isDark ? "border-gray-700 text-gray-400 hover:border-gray-600" : "border-gray-200 text-gray-500 hover:border-gray-300"
+              }`}>
+              {n}
+            </button>
+          ))}
+        </div>
+        <p className={`text-[9px] mt-1.5 ${textFaint} opacity-60`}>1 = full width stacked, 2 = side by side, 3 = compact</p>
       </div>
 
       <div className="flex items-center justify-between">

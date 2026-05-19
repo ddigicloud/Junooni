@@ -17,7 +17,7 @@ import CollectionBanner from "@modules/home/components/CollectionBanner"
 import Bestsellers from "@modules/home/components/BestSellers"
 import FeaturedProducts from "@modules/home/components/featured-products"
 
-export const metadata: retriveVendorsMetadata = {
+export const metadata: Metadata = {
   title: "Junooni | India's #1 Creator Merchandise Marketplace",
   description:
     "Shop exclusive merchandise from your favourite Indian creators, influencers & personalities. Discover unique apparel, accessories, prints & keepsakes. Authentic. Limited edition. Delivered across India.",
@@ -223,7 +223,7 @@ export default async function Home(props: {
         <main className="flex-grow">
           {/* 1. VendorList - Fast component, loads immediately */}
           {/* <VendorList /> */}
-          <VendorList vendorsList={vendorsList} />
+          <VendorList vendorsList={vendorsList ?? []} />
 
           {/* 2. FeaturedProducts - Heavy component (API calls), wrapped in Suspense */}
           <Suspense fallback={<ProductsSkeleton title="Featured Products" />}>

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type { PublicVendor, VendorStore, CategoryMeta, CollectionMeta } from "@/lib/types"
 
 interface Props {
@@ -22,6 +22,7 @@ export default function StoreFooter({ vendor, store: initialStore, categories, c
     window.addEventListener("message", handler)
     return () => window.removeEventListener("message", handler)
   }, [])
+
 
   const brandPrimary = store?.primary_color ?? "#e65100"
   const isDark = store?.template === "bold"
@@ -64,6 +65,23 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
   ]
   const footerColumns = customColumns.length > 0 ? customColumns : autoColumns
   const columnsPerRow: number = footerSection?.footer_columns_per_row ?? 4
+  const columnsPerRowMobile: number = footerSection?.footer_columns_per_row_mobile ?? 2
+
+  // ADD after the existing useEffect in StoreFooter.tsx:
+  const footerGridRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const apply = () => {
+      if (!footerGridRef.current) return
+      footerGridRef.current.style.gridTemplateColumns =
+        window.innerWidth >= 768
+          ? `repeat(${columnsPerRow}, minmax(0, 1fr))`
+          : `repeat(${columnsPerRowMobile}, minmax(0, 1fr))`
+    }
+    apply()
+    window.addEventListener("resize", apply)
+    return () => window.removeEventListener("resize", apply)
+  }, [columnsPerRow, columnsPerRowMobile])
 
   return (
     <footer
@@ -73,13 +91,10 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
         ...(footerText ? { color: footerText }            : {}),
       }}
     >
-    <div
-        className="grid max-w-6xl grid-cols-2 px-6 py-12 mx-auto gap-x-8 gap-y-10"
-        style={{
-          gridTemplateColumns: `repeat(${columnsPerRow}, minmax(0, 1fr))`,
-          gridAutoRows: "auto",
-          flexWrap: "wrap",
-        }}
+     <div
+        ref={footerGridRef}
+        className="grid max-w-6xl gap-x-8 gap-y-10 px-6 py-12 mx-auto"
+        style={{ gridTemplateColumns: `repeat(${columnsPerRowMobile}, minmax(0, 1fr))` }}
       >
 
         {/* Brand */}

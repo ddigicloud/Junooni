@@ -252,20 +252,27 @@ export default function ProductPageClient({
 }: Props) {
   const [store, setStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+  // Add this alongside the other useState declarations:
+  const [relatedLoading, setRelatedLoading] = useState(true)
   const { openCart, refreshCart } = useCart()
 
   // ── Editor bridge ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    window.parent?.postMessage({ type: "IFRAME_READY" }, "*")
-    const handler = (e: MessageEvent) => {
-      if (e.data?.type === "STORE_UPDATE" && e.data.store) {
-        setStore(e.data.store)
-        setSelectedSectionId(e.data.selectedId ?? null)
-      }
-    }
-    window.addEventListener("message", handler)
-    return () => window.removeEventListener("message", handler)
-  }, [])
+useEffect(() => {
+  if (relatedProducts.length > 0) {
+    setRelatedLoading(false)
+    return
+  }
+  fetch(
+    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"}/store-front/${vendor.handle}?shell=false&page=1`,
+    { headers: { "Content-Type": "application/json" } }
+  )
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data?.products?.length) setRelatedProducts(data.products)
+      setRelatedLoading(false)   // ← add this
+    })
+    .catch(() => { setRelatedLoading(false) })  // ← and this
+}, [vendor.handle])
 
   // ── Store-derived values ───────────────────────────────────────────────────
   const brandPrimary   = store?.primary_color   ?? "#e65100"
@@ -405,6 +412,23 @@ export default function ProductPageClient({
 
   // ── Page sections (editor-added below product) ─────────────────────────────
   const pageSections: any[] = store?.sections?.page_layouts?.product?.sections ?? []
+
+  // ── Lazy-load related products client-side ─────────────────────────────
+const [relatedProducts, setRelatedProducts] = useState<any[]>(products)
+
+useEffect(() => {
+  if (relatedProducts.length > 0) return // already have products (e.g. from SSR)
+  fetch(
+    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"}/store-front/${vendor.handle}?shell=false&page=1`,
+    { headers: { "Content-Type": "application/json" } }
+  )
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data?.products?.length) setRelatedProducts(data.products)
+    })
+    .catch(() => {})
+}, [vendor.handle])
+
   const isEditorMode = typeof window !== "undefined" && window.parent !== window
 
   // ── Initial gallery images ─────────────────────────────────────────────────
@@ -708,38 +732,48 @@ export default function ProductPageClient({
                 section.columns === 4 ? "grid-cols-2 md:grid-cols-4" :
                 "grid-cols-2 md:grid-cols-3"
               }`}>
-                {(section.product_ids?.length
-                  ? products.filter((p: any) => section.product_ids.includes(p.id))
-                  : products
-                      .filter((p: any) => p.handle !== product.handle)
-                      .slice(0, section.limit ?? 4)
-                ).map((p: any) => (
-                  <Link key={p.id}
-                    href={`/${vendor.handle}/products/${p.handle}`}
-                    className="group">
-                    <div className={`aspect-square relative rounded-xl overflow-hidden mb-3 ${
-                      isDark ? "bg-white/5" : "bg-gray-50"
-                    }`}>
-                      {p.thumbnail && (
-                        <Image src={p.thumbnail} alt={p.title} fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-105" />
-                      )}
+                {relatedLoading ? (
+                  // ── Skeleton cards while loading ──
+                  [...Array(section.limit ?? 4)].map((_, i) => (
+                    <div key={i} className="animate-pulse space-y-3">
+                      <div className={`aspect-square rounded-xl ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
+                      <div className={`h-4 w-3/4 rounded ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
+                      <div className={`h-4 w-1/3 rounded ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
                     </div>
-                    <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-gray-900"}`}>
-                      {p.title}
-                    </p>
-                    {p.variants?.[0]?.prices?.[0]?.amount && (
-                      <p className="text-sm" style={{ color: brandPrimary }}>
-                        {formatPrice(p.variants[0].prices[0].amount)}
+                  ))
+                ) : (
+                  (section.product_ids?.length
+                    ? relatedProducts.filter((p: any) => section.product_ids.includes(p.id))
+                    : relatedProducts
+                        .filter((p: any) => p.handle !== product.handle)
+                        .slice(0, section.limit ?? 4)
+                  ).map((p: any) => (
+                    <Link key={p.id}
+                      href={`/${vendor.handle}/products/${p.handle}`}
+                      className="group">
+                      <div className={`aspect-square relative rounded-xl overflow-hidden mb-3 ${
+                        isDark ? "bg-white/5" : "bg-gray-50"
+                      }`}>
+                        {p.thumbnail && (
+                          <Image src={p.thumbnail} alt={p.title} fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                        )}
+                      </div>
+                      <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-gray-900"}`}>
+                        {p.title}
                       </p>
-                    )}
-                  </Link>
-                ))}
+                      {p.variants?.[0]?.prices?.[0]?.amount && (
+                        <p className="text-sm" style={{ color: brandPrimary }}>
+                          {formatPrice(p.variants[0].prices[0].amount)}
+                        </p>
+                      )}
+                    </Link>
+                  ))
+                )}
               </div>
             </div>
           </div>
         )}
-
         {/* Image with Text */}
         {section.type === "image_text" && (
           <div className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg }}>
@@ -983,39 +1017,50 @@ export default function ProductPageClient({
         {pageSections.filter(s => !s.hidden).map(renderPageSection)}
 
         {/* Default related products — only shown when no editor sections exist */}
-        {pageSections.length === 0 && products.length > 1 && (
+        {pageSections.length === 0 && (relatedLoading || relatedProducts.length > 1) && (
           <div className={`mt-24 pt-12 z-0 border-t ${isDark ? "border-white/10" : "border-gray-100"}`}>
             <h2 className={`text-sm uppercase tracking-widest font-semibold mb-8 ${
               isDark ? "text-white/60" : "text-gray-500"
             }`}>
-              More from {vendor.name}
+              {relatedLoading ? "More from " + vendor.name : `More from ${vendor.name}`}
             </h2>
             <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-              {products
-                .filter((p: any) => p.handle !== product.handle)
-                .slice(0, 4)
-                .map((p: any) => (
-                  <Link key={p.id}
-                    href={`/${vendor.handle}/products/${p.handle}`}
-                    className="group">
-                    <div className={`aspect-square relative rounded-xl overflow-hidden mb-3 ${
-                      isDark ? "bg-white/5" : "bg-gray-50"
-                    }`}>
-                      {p.thumbnail && (
-                        <Image src={p.thumbnail} alt={p.title} fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-105" />
-                      )}
-                    </div>
-                    <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-gray-900"}`}>
-                      {p.title}
-                    </p>
-                    {p.variants?.[0]?.prices?.[0]?.amount && (
-                      <p className="text-sm" style={{ color: brandPrimary }}>
-                        {formatPrice(p.variants[0].prices[0].amount)}
+              {relatedLoading ? (
+                // ── Skeleton cards ──
+                [...Array(4)].map((_, i) => (
+                  <div key={i} className="animate-pulse space-y-3">
+                    <div className={`aspect-square rounded-xl ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
+                    <div className={`h-4 w-3/4 rounded ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
+                    <div className={`h-4 w-1/3 rounded ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
+                  </div>
+                ))
+              ) : (
+                relatedProducts
+                  .filter((p: any) => p.handle !== product.handle)
+                  .slice(0, 4)
+                  .map((p: any) => (
+                    <Link key={p.id}
+                      href={`/${vendor.handle}/products/${p.handle}`}
+                      className="group">
+                      <div className={`aspect-square relative rounded-xl overflow-hidden mb-3 ${
+                        isDark ? "bg-white/5" : "bg-gray-50"
+                      }`}>
+                        {p.thumbnail && (
+                          <Image src={p.thumbnail} alt={p.title} fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                        )}
+                      </div>
+                      <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-gray-900"}`}>
+                        {p.title}
                       </p>
-                    )}
-                  </Link>
-                ))}
+                      {p.variants?.[0]?.prices?.[0]?.amount && (
+                        <p className="text-sm" style={{ color: brandPrimary }}>
+                          {formatPrice(p.variants[0].prices[0].amount)}
+                        </p>
+                      )}
+                    </Link>
+                  ))
+              )}
             </div>
           </div>
         )}

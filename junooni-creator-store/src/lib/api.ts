@@ -348,6 +348,44 @@ export const getStoreCollectionDetail = cache(
   }
 )
 
+export const getStoreShell = cache(
+  async (
+    handle: string,
+    options: { accessToken?: string } = {}
+  ): Promise<{
+    vendor: any
+    store: any
+    categories: any[]
+    collections: any[]
+  } | null> => {
+    if (isSystemHandle(handle)) return null
+
+    const callId = Math.random().toString(36).slice(2, 6)
+    // ↓ same existing route, just add ?shell=true
+    const url = `${BACKEND}/store-front/${handle}?shell=true`
+
+    console.log(`[api:shell:${callId}] START handle=${handle}`)
+    const t0 = Date.now()
+
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (options.accessToken) headers["x-store-access"] = options.accessToken
+
+      const res = await fetchWithTimeout(url, {
+        headers,
+        next: { revalidate: 60, tags: [`store-shell-${handle}`] },
+      })
+
+      console.log(`[api:shell:${callId}] Response ${res.status} in ${Date.now() - t0}ms`)
+      if (!res.ok) return null
+      return res.json()
+    } catch (err: any) {
+      console.error(`[api:shell:${callId}] FAILED after ${Date.now() - t0}ms: ${err?.name} — ${err?.message}`)
+      return null
+    }
+  }
+)
+
 // ─── UTILITIES ──────────────────────────────────────────────────────────────
 export function formatPrice(amount: number, currency = "INR"): string {
   return new Intl.NumberFormat("en-IN", {

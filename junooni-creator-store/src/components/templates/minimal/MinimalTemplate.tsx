@@ -12,6 +12,14 @@ import ProductCarousel from "@/components/ui/ProductCarousel"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
 
+function resolveUrl(url: string | undefined | null, handle: string): string {
+  if (!url) return "#"
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:")) return url
+  if (url.startsWith(`/${handle}/`) || url === `/${handle}`) return url
+  if (url.startsWith("#")) return url
+  return `/${handle}${url.startsWith("/") ? url : `/${url}`}`
+}
+
 interface Props {
   vendor: PublicVendor
   store: VendorStore | null
@@ -223,7 +231,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   {/* Primary CTA */}
                   {section.cta_label && (
                     <Link
-                      href={section.cta_url ?? `/${handle}/products`}
+                      href={resolveUrl(section.cta_url ?? "/products", handle)}
                       className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-white font-semibold transition-all hover:opacity-90 hover:shadow-lg"
                       style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
                     >
@@ -234,7 +242,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   {/* Secondary CTA — only render if label is set */}
                   {secCtaLabel && (
                     <Link
-                      href={secCtaUrl ?? `/${handle}/products`}
+                      href={resolveUrl(secCtaUrl ?? "/products", handle)}
                       className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold border-2 transition-all hover:border-gray-400"
                       style={{
                         color: headlineColor,
@@ -712,7 +720,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
-                  <Link href={section.cta_url ?? "#"}
+                  <Link href={resolveUrl(section.cta_url, handle)}
                     className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-full hover:opacity-90 hover:shadow-lg"
                     style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
                     {section.cta_label}
@@ -768,7 +776,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
-                  <Link href={section.cta_url ?? "#"}
+                  <Link href={resolveUrl(section.cta_url, handle)}
                     className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-full hover:opacity-90 hover:shadow-lg"
                     style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
                     {section.cta_label}
