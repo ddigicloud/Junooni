@@ -140,6 +140,7 @@ interface VendorStore {
 const BRAND = { primary: "#e65100", secondary: "#ac1900" }
 
 let _linkInputProducts: { id: string; title: string; handle: string; thumbnail?: string }[] = []
+let _linkInputProductsRef: { current: { id: string; title: string; handle: string; thumbnail?: string }[] } = { current: [] }
 
 // Add this constant near SECTION_BLOCKS:
 const PAGE_ALLOWED_SECTIONS: Record<string, SectionType[]> = {
@@ -316,7 +317,7 @@ By placing an order, you confirm that the information you provide is accurate. W
 We ship pan-India. Estimated delivery is 5–10 business days. We are not responsible for delays caused by shipping carriers or customs.
 
 ### 5. Returns & Refunds
-Please refer to our [Returns & Refunds Policy](/p/returns-refunds) for details.
+Please refer to our [Returns & Refunds Policy](/pages/returns-refunds) for details.
 
 ### 6. Intellectual Property
 All content on this store — including logos, designs, and product images — is the property of [Your Store Name] and may not be reproduced without written permission.
@@ -684,7 +685,7 @@ function ProductDetailSettings({ settings, onChange, isDark }: {
       {(settings.show_secure_badge ?? true) && (
         <StyleSection title="Secure Badge Text" isDark={isDark}>
           <EditorInput
-            value={settings.secure_badge_text ?? "Secure checkout via Junooni · Powered by Razorpay"}
+            value={settings.secure_badge_text ?? "Secure checkout via Junooni"}
             onChange={v => onChange({ secure_badge_text: v })}
             placeholder="Secure checkout via Junooni"
             isDark={isDark}
@@ -699,37 +700,74 @@ function ProductDetailSettings({ settings, onChange, isDark }: {
 function slugify(s: string) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") }
 function genId() { return `s_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
 // REPLACE WITH:
-function ProductPagesGroup({ value, onChange, setOpen, isDark }: {
+function ProductPagesGroup({ value, onChange, setOpen, isDark, searchQuery }: {
   value: string
   onChange: (v: string) => void
   setOpen: (v: boolean) => void
   isDark: boolean
+  searchQuery?: string
 }) {
   const [modalOpen, setModalOpen] = useState(false)
   const faint = isDark ? "text-gray-600" : "text-gray-400"
   const hoverBg = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
-  const products = _linkInputProducts
+  const products = _linkInputProductsRef.current.length > 0
+    ? _linkInputProductsRef.current
+    : _linkInputProducts
 
   const selectedProduct = products.find(p => value === `/products/${p.handle}`) ?? null
 
+  const filteredProducts = searchQuery
+    ? products.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    : []
+
+  const textColor = isDark ? "text-gray-300" : "text-gray-700"
+
   return (
     <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
-      <button
-        onClick={() => setModalOpen(true)}
-        className={`w-full flex items-center justify-between px-2.5 py-2 text-[9px] font-semibold uppercase tracking-wider transition-colors ${faint} ${hoverBg}`}
-      >
-        <span>
-          Product pages
-          {selectedProduct && (
-            <span className="ml-1.5 normal-case font-normal">
-              — {selectedProduct.title}
-            </span>
-          )}
-        </span>
-        <ChevronRight className="w-3 h-3" />
-      </button>
+      {/* When searching — show inline results */}
+      {searchQuery ? (
+        filteredProducts.length > 0 ? (
+        <div>
+          <p className={`px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-wider ${faint}`}>
+            Product pages
+          </p>
+          <div className="pb-1">
+            {filteredProducts.slice(0, 6).map(p => {
+              const url = `/products/${p.handle}`
+              return (
+                <button key={p.id}
+                  onClick={() => { onChange(url); setOpen(false) }}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors text-left ${
+                    value === url ? "bg-orange-500/10 text-orange-400" : `${textColor} ${hoverBg}`
+                  }`}>
+                  {p.thumbnail && (
+                    <img src={p.thumbnail} alt={p.title}
+                      className="object-cover w-5 h-5 rounded shrink-0" />
+                  )}
+                  <span className="flex-1 truncate">{p.title}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        ) : null
+      ) : (
+        /* When not searching — show modal trigger */
+        <button
+          onClick={() => setModalOpen(true)}
+          className={`w-full flex items-center justify-between px-2.5 py-2 text-[9px] font-semibold uppercase tracking-wider transition-colors ${faint} ${hoverBg}`}
+        >
+          <span>
+            Product pages
+            {selectedProduct && (
+              <span className="ml-1.5 normal-case font-normal">— {selectedProduct.title}</span>
+            )}
+          </span>
+          <ChevronRight className="w-3 h-3" />
+        </button>
+      )}
 
-      {modalOpen && (
+      {modalOpen && !searchQuery && (
         <ProductPickerModal
           products={products}
           selectedProduct={selectedProduct}
@@ -746,11 +784,18 @@ function ProductPagesGroup({ value, onChange, setOpen, isDark }: {
   )
 }
 
-function CustomPagesGroup({ pages, value, onChange, setOpen, isDark }: {
+function CustomPagesGroup({ pages, value, onChange, setOpen, isDark, onLabelSuggest, isSearching }: {
   pages: StorePage[]; value: string; onChange: (v: string) => void
   setOpen: (v: boolean) => void; isDark: boolean
+  onLabelSuggest?: (label: string) => void
+  isSearching?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
+  // Auto-expand when searching
+  useEffect(() => {
+    if (isSearching) setExpanded(true)
+    else setExpanded(false)
+  }, [isSearching])
   const textColor = isDark ? "text-gray-300" : "text-gray-700"
   const hoverBg = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
   const faint = isDark ? "text-gray-600" : "text-gray-400"
@@ -765,12 +810,18 @@ function CustomPagesGroup({ pages, value, onChange, setOpen, isDark }: {
         <ChevronRight className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} />
       </button>
       {expanded && pages.map(p => (
-        <button key={p.id} onClick={() => { onChange(`/p/${p.slug}`); setOpen(false) }}
+         <button key={p.id} onClick={() => {
+          onChange(`/pages/${p.slug}`)
+          onLabelSuggest?.(p.title)
+          setTimeout(() => {
+            setOpen(false)
+          }, 0)
+        }}
           className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors text-left ${
-            value === `/p/${p.slug}` ? "bg-orange-500/10 text-orange-400" : `${textColor} ${hoverBg}`
+            value === `/pages/${p.slug}` ? "bg-orange-500/10 text-orange-400" : `${textColor} ${hoverBg}`
           }`}>
           <span className="pl-1 truncate">{p.title}</span>
-          <span className={`font-mono text-[10px] ml-2 shrink-0 ${faint}`}>/p/{p.slug}</span>
+          <span className={`font-mono text-[10px] ml-2 shrink-0 ${faint}`}>/pages/{p.slug}</span>
         </button>
       ))}
     </div>
@@ -781,17 +832,66 @@ function CustomPagesGroup({ pages, value, onChange, setOpen, isDark }: {
 
 const LINK_INPUT_DROPDOWN_HEIGHT = 280
 
+// Resolve a URL to a human-readable label for display
+function resolveUrlLabel(url: string, pages: StorePage[]): { label: string; icon: string } | null {
+  if (!url || url === "#" || !url.trim()) return null
+
+  // Built-in store pages
+  const builtinMatch = BUILTIN_PAGES.find(p => p.url === url)
+  if (builtinMatch) return { label: builtinMatch.label, icon: "🔗" }
+
+  // Custom pages — match by slug, show title
+  const pageMatch = pages.find(p =>
+    `/pages/${p.slug}` === url || `/p/${p.slug}` === url
+  )
+  if (pageMatch) return { label: pageMatch.title, icon: "📄" }
+
+  // Products — show product title
+  const allProducts = _linkInputProductsRef.current.length > 0
+    ? _linkInputProductsRef.current : _linkInputProducts
+  const product = allProducts.find(p => `/products/${p.handle}` === url)
+  if (product) return { label: product.title, icon: "🛍️" }
+
+  // External URLs — show domain only
+  if (url.startsWith("http")) {
+    try {
+      return { label: new URL(url).hostname, icon: "🌐" }
+    } catch {
+      return { label: url.replace(/^https?:\/\//, ""), icon: "🌐" }
+    }
+  }
+
+  // Any other relative path — show cleanly without leading slash
+  if (url.startsWith("/")) {
+    const clean = url
+      .replace(/^\/products\//, "")
+      .replace(/^\/pages\//, "")
+      .replace(/^\/collections\//, "")
+      .replace(/^\/categories\//, "")
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, c => c.toUpperCase())
+    return { label: clean, icon: "🔗" }
+  }
+
+  return null
+}
+
 function LinkInput({
-  value, onChange, placeholder, isDark, pages = [],
+  value, onChange, placeholder, isDark, pages = [], onLabelSuggest,
 }: {
-  value: string; onChange: (v: string) => void; placeholder?: string; isDark: boolean; pages?: StorePage[]
-}) {
+  value: string; onChange: (v: string) => void; placeholder?: string
+  isDark: boolean; pages?: StorePage[]
+  onLabelSuggest?: (label: string) => void
+}){
   const [open, setOpen] = useState(false)
-  const [productSearch, setProductSearch] = useState("")
-  const [categorySearch, setCategorySearch] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [displayValue, setDisplayValue] = useState(value)
   const ref = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 })
+
+  // Keep displayValue in sync with prop
+  useEffect(() => { setDisplayValue(value) }, [value])
 
   useEffect(() => {
     if (!open) return
@@ -840,33 +940,107 @@ function LinkInput({
         right: window.innerWidth - rect.right,
       })
     }
+    setSearchQuery(displayValue) // pre-fill with current value
     setOpen(o => !o)
   }
 
   return (
     <div ref={ref} className="relative flex gap-1">
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder ?? "https://... or /path"}
-        className={`flex-1 min-w-0 rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors ${
-          isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800 placeholder-gray-400"
-        }`}
-      />
-      <button
-        ref={btnRef}
-        type="button"
-        onClick={handleOpen}
-        title="Select a page"
-        className={`shrink-0 flex items-center gap-0.5 px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-colors ${
-          open
-            ? "border-orange-500/60 bg-orange-500/10 text-orange-400"
-            : isDark ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200" : "border-gray-300 text-gray-500 hover:border-gray-400"
-        }`}
-      >
-        <FileText className="w-3 h-3" />
-        <ChevronDownIcon className="w-2.5 h-2.5" />
-      </button>
+       {(() => {
+        const resolved = resolveUrlLabel(displayValue, pages)
+        const hasValue = displayValue && displayValue.trim() && displayValue !== "#"
+        if (hasValue && !open) {
+          return (
+            <div
+              ref={btnRef as any}
+              onClick={() => {
+                setSearchQuery("")
+                handleOpen()
+              }}
+              className={`flex-1 min-w-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg cursor-pointer border transition-colors ${
+                isDark
+                  ? "bg-gray-800 border-gray-700 hover:border-gray-600"
+                  : "bg-white border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              <span className="text-sm shrink-0">
+                {resolved?.icon ?? "🔗"}
+              </span>
+              <span className={`text-sm truncate ${isDark ? "text-gray-200" : "text-gray-800"}`}>
+                {resolved?.label ?? displayValue}
+              </span>
+            </div>
+          )
+        }
+        return (
+          <input
+            value={searchQuery || displayValue}
+            onChange={e => {
+              const v = e.target.value
+              setSearchQuery(v)
+              setDisplayValue(v)
+              if (v.startsWith("http") || v.startsWith("/") || v === "") onChange(v)
+              if (!open) {
+                if (btnRef.current) {
+                  const rect = btnRef.current.getBoundingClientRect()
+                  setDropdownPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+                }
+                setOpen(true)
+              }
+            }}
+            onFocus={() => {
+              setSearchQuery(value)
+              if (btnRef.current) {
+                const rect = btnRef.current.getBoundingClientRect()
+                setDropdownPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+              }
+              setOpen(true)
+            }}
+            onKeyDown={e => {
+              if (e.key === "Enter" && searchQuery.trim()) {
+                const isUrl = searchQuery.startsWith("http") || searchQuery.startsWith("/")
+                if (isUrl) { onChange(searchQuery.trim()); setOpen(false); setSearchQuery("") }
+              }
+              if (e.key === "Escape") { setOpen(false); setSearchQuery("") }
+            }}
+            placeholder={placeholder ?? "Search or paste link"}
+            className={`flex-1 min-w-0 rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors ${
+              isDark
+                ? "bg-gray-800 border border-gray-700 text-gray-200"
+                : "bg-white border border-gray-300 text-gray-800 placeholder-gray-400"
+            }`}
+          />
+        )
+      })()}
+     {value && !open ? (
+        <button
+          type="button"
+           onClick={() => { onChange(""); setDisplayValue("") }}
+          title="Clear"
+          className={`shrink-0 p-1.5 rounded-lg border transition-colors ${
+            isDark
+              ? "border-gray-700 text-gray-500 hover:border-red-800 hover:text-red-400"
+              : "border-gray-300 text-gray-400 hover:border-red-300 hover:text-red-500"
+          }`}
+        >
+          <X className="w-3 h-3" />
+        </button>
+      ) : (
+        <button
+          ref={btnRef}
+          type="button"
+          onClick={handleOpen}
+          title="Select a page"
+          className={`shrink-0 flex items-center gap-0.5 px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-colors ${
+            open
+              ? "border-orange-500/60 bg-orange-500/10 text-orange-400"
+              : isDark ? "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200" : "border-gray-300 text-gray-500 hover:border-gray-400"
+          }`}
+        >
+          <FileText className="w-3 h-3" />
+          <ChevronDownIcon className="w-2.5 h-2.5" />
+        </button>
+      )}
 
      {open && (
         <div
@@ -880,13 +1054,21 @@ function LinkInput({
             overflowY: "auto",
           }}
         >
-          <p className={`px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider border-b ${isDark ? "text-gray-500 border-gray-700" : "text-gray-400 border-gray-100"}`}>
-            Select page
+           <p className={`px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider border-b ${isDark ? "text-gray-500 border-gray-700" : "text-gray-400 border-gray-100"}`}>
+            {searchQuery ? `Results for "${searchQuery}"` : "Select page"}
           </p>
           <div className={`px-1.5 py-1 border-b ${isDark ? "border-gray-800" : "border-gray-100"}`}>
-            <p className={`px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${isDark ? "text-gray-600" : "text-gray-400"}`}>Store pages</p>
-            {BUILTIN_PAGES.map(p => (
-              <button key={p.url} onClick={() => { onChange(p.url); setOpen(false) }}
+            {!searchQuery && <p className={`px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${isDark ? "text-gray-600" : "text-gray-400"}`}>Store pages</p>}
+            {BUILTIN_PAGES
+              .filter(p => !searchQuery || p.label.toLowerCase().includes(searchQuery.toLowerCase()) || p.url.includes(searchQuery.toLowerCase()))
+              .map(p => (
+              <button key={p.url} onClick={() => {
+                onChange(p.url)
+                setDisplayValue(p.url)  
+                onLabelSuggest?.(p.label)
+                setOpen(false)
+                setSearchQuery("")
+              }}
                 className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors text-left ${
                   value === p.url ? "bg-orange-500/10 text-orange-400" : isDark ? "text-gray-300 hover:bg-gray-800" : "text-gray-700 hover:bg-gray-50"
                 }`}>
@@ -895,15 +1077,67 @@ function LinkInput({
               </button>
             ))}
           </div>
+
+           {searchQuery && (() => {
+            const builtinMatches = BUILTIN_PAGES.filter(p =>
+              p.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              p.url.includes(searchQuery.toLowerCase())
+            )
+            const pageMatches = pages.filter(p =>
+              p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              p.slug.includes(searchQuery.toLowerCase())
+            )
+            const productMatches = _linkInputProductsRef.current.filter(p =>
+              p.title.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            const totalMatches = builtinMatches.length + pageMatches.length + productMatches.length
+            if (totalMatches === 0) {
+              return (
+                <div className={`px-3 py-4 text-center`}>
+                  <p className={`text-xs font-medium ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                    No pages found for "{searchQuery}"
+                  </p>
+                  <p className={`text-[10px] mt-1 ${isDark ? "text-gray-600" : "text-gray-400"}`}>
+                    Try a different search or paste a URL directly
+                  </p>
+                </div>
+              )
+            }
+            return null
+          })()}
+          
           {pages.length > 0 && (
-            <CustomPagesGroup pages={pages} value={value} onChange={onChange} setOpen={setOpen} isDark={isDark} />
+             <CustomPagesGroup
+              pages={pages.filter(p =>
+                !searchQuery ||
+                p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                p.slug.includes(searchQuery.toLowerCase())
+              )}
+              value={value}
+                onChange={(v) => {
+                onChange(v)
+                setDisplayValue(v)
+                setOpen(false)      // ← force close immediately
+                setSearchQuery("")  // ← clear search immediately
+              }}
+              setOpen={setOpen}
+              isDark={isDark}
+              onLabelSuggest={onLabelSuggest}
+              isSearching={!!searchQuery}
+            />
           )}
 
            <ProductPagesGroup
-            value={value}
-            onChange={onChange}
+            value={displayValue}
+            onChange={(v) => {
+              onChange(v)
+              setDisplayValue(v)  // ← update display immediately
+              setOpen(false)
+              setSearchQuery("")
+            }}
             setOpen={setOpen}
             isDark={isDark}
+            searchQuery={searchQuery}
           />
         </div>
       )}
@@ -921,7 +1155,7 @@ function getLayoutKeyForPath(path: string): string {
   if (path.startsWith("/products/")) return "product"
   if (path.startsWith("/collections/")) return "collection"
   if (path.startsWith("/categories/")) return "category"
-  if (path.startsWith("/p/")) return `page_${path.replace("/p/", "")}`
+  if (path.startsWith("/pages/")) return `page_${path.replace("/pages/", "")}`
   return "home"
 }
  
@@ -989,7 +1223,12 @@ export default function StoreEditorPage() {
   const [vendorCollections, setVendorCollections] = useState<{ id: string; title: string; handle: string }[]>([])
   const [vendorCategories, setVendorCategories] = useState<{ id: string; name: string; handle: string; product_count: number }[]>([])
   const [vendorProducts, setVendorProducts] = useState<{ id: string; title: string; handle: string; thumbnail?: string; variants?: any[]; options?: any[] }[]>([])
-   useEffect(() => { _linkInputProducts = vendorProducts }, [vendorProducts])
+   useEffect(() => {
+    _linkInputProducts = vendorProducts
+    _linkInputProductsRef.current = vendorProducts
+  }, [vendorProducts])
+   _linkInputProducts = vendorProducts
+  _linkInputProductsRef.current = vendorProducts
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
   const [leftPanelOpen, setLeftPanelOpen] = useState(false)
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false)
@@ -1208,8 +1447,12 @@ export default function StoreEditorPage() {
 }, [])
 
 // REPLACE WITH:
+// REPLACE WITH:
+const isFirstRender = useRef(true)
 useEffect(() => {
-  if (!isLoading) setHasUnsavedChanges(true)
+  if (isLoading) return
+  if (isFirstRender.current) { isFirstRender.current = false; return }
+  setHasUnsavedChanges(true)
 }, [store, isLoading])
 
 useEffect(() => {
@@ -1223,21 +1466,51 @@ useEffect(() => {
 
   // ── postMessage listener ──────────────────────────────────────────────────
 
-  const syncToIframe = useCallback(() => {
-    if (!iframeReady) return   // ← add this guard
+   const syncToIframe = useCallback(() => {
+    if (!iframeReady) return
+    isSyncingRef.current = true
     iframeRef.current?.contentWindow?.postMessage({ type: "STORE_UPDATE", store, selectedId }, "*")
+    setTimeout(() => { isSyncingRef.current = false }, 100)
   }, [store, selectedId, iframeReady])
 
+  const isSyncingRef = useRef(false)
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      if (e.data?.type === "SECTION_CLICK") { setSelectedId(e.data.sectionId); setActiveTab("layout"); setRightPanelOpen(true) }
-      if (e.data?.type === "IFRAME_READY") { setIframeReady(true); setTimeout(() => syncToIframe(), 100) }
+      if (e.data?.type === "SECTION_CLICK" && !isSyncingRef.current) {
+        setSelectedId(e.data.sectionId)
+        setActiveTab("layout")
+        setRightPanelOpen(true)
+      }
+      if (e.data?.type === "IFRAME_READY") {
+        setIframeReady(true)
+        setTimeout(() => syncToIframe(), 100)
+      }
+      if (e.data?.type === "IFRAME_NAVIGATION") {
+        const path: string = e.data.path ?? "/"
+        // Normalize to layout key paths
+        const normalized =
+          path === "/" ? "/" :
+          path.startsWith("/products/") ? `/products/${path.split("/")[2]}` :
+          path.startsWith("/collections/") ? `/collections/${path.split("/")[2]}` :
+          path.startsWith("/categories/") ? `/categories/${path.split("/")[2]}` :
+          path
+
+        setPreviewPagePath(normalized)
+        setSelectedId(null)
+        setRightPanelOpen(false)
+      }
     }
     window.addEventListener("message", handler)
     return () => window.removeEventListener("message", handler)
-  }, [syncToIframe])  // ← syncToIframe IS the dep; it already includes store + selectedId
+  }, [syncToIframe])
 
-  useEffect(() => { if (iframeReady) syncToIframe() }, [store, selectedId, iframeReady, syncToIframe])
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!iframeReady) return
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
+    syncTimerRef.current = setTimeout(() => syncToIframe(), 50)
+    return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current) }
+  }, [store, selectedId, iframeReady, syncToIframe])
 
   // ── Save ──────────────────────────────────────────────────────────────────
   // FIND:
@@ -1263,7 +1536,7 @@ useEffect(() => {
 
       // Only hard-reload for server-rendered custom pages (/p/slug)
       // where postMessage can't update server component output
-      if (previewPagePath.startsWith("/p/")) {
+      if (previewPagePath.startsWith("/pages/")) {
         setTimeout(() => {
           if (iframeRef.current) {
             const src = iframeRef.current.src
@@ -1326,15 +1599,17 @@ useEffect(() => {
       return setPageSections(p, key, updated)
     })
   }, [patchStore, previewPagePath])
-  const removeSection = (id: string) => {
+  // REPLACE WITH:
+  const removeSection = useCallback((id: string) => {
     const key = getLayoutKeyForPath(previewPagePath)
     patchStore(p => {
       const current = getPageSections(p, key)
       return setPageSections(p, key, current.filter(s => s.id !== id))
     })
     if (selectedId === id) { setSelectedId(null); setRightPanelOpen(false) }
-  }
-  const duplicateSection = (id: string) => {
+  }, [previewPagePath, selectedId, patchStore])
+
+  const duplicateSection = useCallback((id: string) => {
     const key = getLayoutKeyForPath(previewPagePath)
     patchStore(p => {
       const arr = [...getPageSections(p, key)]
@@ -1344,7 +1619,7 @@ useEffect(() => {
       arr.splice(idx + 1, 0, copy)
       return setPageSections(p, key, arr)
     })
-  }
+  }, [previewPagePath, patchStore])
   const toggleSection = (id: string) => {
     const s = sections.find(s => s.id === id)
     if (s) updateSection(id, { hidden: !s.hidden })
@@ -1546,7 +1821,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
     }
   })()
 
-  if (isLoading) return (
+ if (isLoading) return (
     <div className="flex items-center justify-center h-screen bg-gray-950">
       <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
     </div>
@@ -1566,16 +1841,20 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
   // ── Left panel content ────────────────────────────────────────────────────
   const LeftPanelContent = (
     <>
-      <div className={`grid grid-cols-4 p-1.5 gap-0.5 shrink-0 border-b ${panelBorder}`}>
+      <div className={`flex shrink-0 border-b ${panelBorder}`}>
         {([
-          { id: "layout", icon: <Layout className="w-3.5 h-3.5" />, label: "Layout" },
-          { id: "style",  icon: <Palette className="w-3.5 h-3.5" />, label: "Style" },
-          { id: "pages",  icon: <FileText className="w-3.5 h-3.5" />, label: "Pages" },
-          { id: "theme",  icon: <Layers className="w-3.5 h-3.5" />, label: "Theme" },
-        ] as { id: EditorTab; icon: React.ReactNode; label: string }[]).map(t => (
+          { id: "layout", label: "Layout" },
+          { id: "style",  label: "Style" },
+          { id: "pages",  label: "Pages" },
+          { id: "theme",  label: "Theme" },
+        ] as { id: EditorTab; label: string }[]).map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[10px] font-medium transition-all ${activeTab === t.id ? (isDark ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900") : `${textFaint} ${hoverBg}`}`}>
-            {t.icon}{t.label}
+            className={`flex-1 py-2.5 text-[11px] font-medium transition-all border-b-2 ${
+              activeTab === t.id
+                ? "border-orange-500 text-orange-500"
+                : `border-transparent ${textFaint} ${hoverBg}`
+            }`}>
+            {t.label}
           </button>
         ))}
       </div>
@@ -1600,8 +1879,9 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
           const globalIdx = sections.findIndex(x => x.id === s.id)
 
           return (
-            <div
+           <div
               className="relative group/row"
+              style={{ animation: "sectionFadeIn 0.15s ease-out" }}
               onDragOver={e => { e.preventDefault(); setDragOver(globalIdx) }}
             >
               <div
@@ -1613,59 +1893,60 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
                   if (!isSelected) { setRightPanelOpen(true); if (window.innerWidth < 768) setLeftPanelOpen(false) }
                   else setRightPanelOpen(false)
                 }}
-                className={`flex items-center gap-2 px-2 py-2 rounded-lg cursor-grab active:cursor-grabbing transition-all select-none ${
+                className={`flex items-center gap-2 px-2 py-0.5 rounded-lg cursor-grab active:cursor-grabbing transition-all select-none group/row ${
                   isSelected
-                    ? "bg-orange-500/15 border border-orange-500/40"
+                    ? isDark ? "bg-gray-800 border border-gray-600" : "bg-gray-100 border border-gray-300"
                     : dragOver === globalIdx
                       ? `border border-dashed ${isDark ? "bg-gray-700/50 border-blue-400" : "bg-blue-50 border-blue-300"}`
                       : `border border-transparent ${hoverBg}`
                 } ${s.hidden ? "opacity-40" : ""}`}
               >
-                <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} />
-                <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0"
-                  style={{ background: `${block?.color ?? "#666"}22`, color: block?.color ?? "#666" }}>
+                {/* Drag handle — only on hover */}
+                <GripVertical className={`w-3.5 h-3.5 shrink-0 opacity-0 group-hover/row:opacity-40 transition-opacity ${textFaint}`} />
+
+                {/* Section icon */}
+                <div className="flex items-center justify-center w-6 h-6 rounded-lg shrink-0"
+                  style={{ background: `${block?.color ?? "#666"}18`, color: block?.color ?? "#666" }}>
                   {block?.icon}
                 </div>
+
+                {/* Label */}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-medium truncate ${textPrimary}`}>{block?.label}</p>
-                  <p className={`text-[10px] truncate ${textFaint}`}>{s.headline || s.title || s.type}</p>
+                  <p className={`text-[12px] font-medium truncate ${isSelected ? textPrimary : textPrimary}`}>
+                    {block?.label ?? s.type}
+                  </p>
                 </div>
-                {/* <div className="flex gap-0.5 opacity-0 group-hover/row:opacity-100 shrink-0">
-                  <button onClick={e => { e.stopPropagation(); duplicateSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title="Duplicate"><Copy className={`w-2.5 h-2.5 ${textMuted}`} /></button>
-                  <button onClick={e => { e.stopPropagation(); toggleSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title={s.hidden ? "Show" : "Hide"}>
-                    {s.hidden ? <EyeOff className={`w-2.5 h-2.5 ${textMuted}`} /> : <Eye className={`w-2.5 h-2.5 ${textMuted}`} />}
-                  </button>
-                  <button onClick={e => { e.stopPropagation(); removeSection(s.id) }} className="p-0.5 rounded hover:bg-red-900/50"><Trash2 className="w-2.5 h-2.5 text-red-400" /></button>
-                </div> */}
+
+                {/* Actions — only on hover */}
                 <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
                   {!s.id?.startsWith("def_") && (<>
-                    <button onClick={e => { e.stopPropagation(); duplicateSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title="Duplicate">
-                      <Copy className={`w-2.5 h-2.5 ${textMuted}`} />
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); toggleSection(s.id) }} className={`p-0.5 rounded ${hoverBg}`} title={s.hidden ? "Show" : "Hide"}>
+                    <button onClick={e => { e.stopPropagation(); toggleSection(s.id) }}
+                      className={`p-1 rounded-md ${hoverBg}`} title={s.hidden ? "Show" : "Hide"}>
                       {s.hidden
-                        ? <EyeOff className={`w-2.5 h-2.5 ${textMuted}`} />
-                        : <Eye className={`w-2.5 h-2.5 ${textMuted}`} />
+                        ? <EyeOff className={`w-3 h-3 ${textFaint}`} />
+                        : <Eye className={`w-3 h-3 ${textFaint}`} />
                       }
                     </button>
-                    <button onClick={e => { e.stopPropagation(); removeSection(s.id) }} className="p-0.5 rounded hover:bg-red-900/50" title="Delete">
-                      <Trash2 className="w-2.5 h-2.5 text-red-400" />
+                    <button onClick={e => { e.stopPropagation(); duplicateSection(s.id) }}
+                      className={`p-1 rounded-md ${hoverBg}`} title="Duplicate">
+                      <Copy className={`w-3 h-3 ${textFaint}`} />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); removeSection(s.id) }}
+                      className={`p-1 rounded-md ${isDark ? "hover:bg-red-900/40" : "hover:bg-red-50"}`} title="Delete">
+                      <Trash2 className="w-3 h-3 text-red-400" />
                     </button>
                   </>)}
-                  <ChevronRight className={`w-3 h-3 ${textFaint}`} />
                 </div>
-                {/* {s.hidden && (
-                  <EyeOff className={`w-2.5 h-2.5 shrink-0 ${textFaint}`} />
-                )} */}
               </div>
             </div>
           )
         }
 
-          const ZoneLabel = ({ label, color }: { label: string; color: string }) => (
-            <div className="flex items-center gap-2 px-1 pt-2 pb-1">
-              <div className="w-1 h-3 rounded-full" style={{ background: color }} />
-              <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color }}>{label}</span>
+           const ZoneLabel = ({ label, color }: { label: string; color: string }) => (
+            <div className="flex items-center gap-2 px-1 pt-3 pb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-widest opacity-50"
+                style={{ color }}>{label}</span>
+              <div className="flex-1 h-px opacity-20" style={{ background: color }} />
             </div>
           )
 
@@ -1757,11 +2038,10 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
               <div className="pt-1">
                 <button
                   onClick={() => { if (isOpen) { setAddSectionOpen(false); setInsertAtIndex(null) } else { setInsertAtIndex(afterIndex); setAddSectionOpen(true); setAddSectionFilter("all") } }}
-                  className={`w-full flex items-center justify-center gap-1.5 py-1 rounded-lg border border-dashed text-[10px] font-medium transition-all ${
+                   className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
                     isOpen
-                      ? isDark ? "border-orange-500/60 text-orange-400 bg-orange-500/5" : "border-orange-400 text-orange-500 bg-orange-50"
-                      : isDark ? "border-gray-700 text-gray-600 hover:border-orange-500/60 hover:text-orange-400 hover:bg-orange-500/5"
-                             : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500 hover:bg-orange-50"
+                      ? isDark ? "bg-orange-500/10 text-orange-400" : "bg-orange-50 text-orange-500"
+                      : isDark ? `${textFaint} ${hoverBg}` : `text-gray-400 ${hoverBg}`
                   }`}
                 >
                   <Plus className="w-3 h-3" /> Add section
@@ -1808,7 +2088,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
 
               {/* ── HEADER ZONE ── */}
               <ZoneLabel label="Header" color="#6366f1" />
-              <div className={`rounded-xl border overflow-hidden ${isDark ? "border-indigo-900/40 bg-indigo-950/20" : "border-indigo-100 bg-indigo-50/30"}`}>
+               <div className={`rounded-xl border overflow-hidden ${isDark ? "border-gray-800" : "border-gray-200"}`}>
                 <div className="p-1.5 space-y-1">
                   {/* Announcement rows FIRST (above Store Header) */}
                   {headerSections.length === 0 ? (
@@ -1842,7 +2122,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
                             ...(vendorCategories.length  > 0 ? [{ id: "nav_categories",  label: "Categories",  url: "/categories"  }] : []),
                             ...pages
                               .filter(p => p.in_nav)
-                              .map(p => ({ id: p.id, label: p.title, url: `/p/${p.slug}` })),
+                              .map(p => ({ id: p.id, label: p.title, url: `/pages/${p.slug}` })),
                           ]
 
                           if (!hSec) {
@@ -1910,7 +2190,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
 
               {/* ── BODY ZONE ── */}
              <ZoneLabel label={currentLayoutKey === "home" ? "Body" : currentLayoutMeta.label} color="#e65100" />
-              <div className={`rounded-xl border overflow-hidden ${isDark ? "border-orange-900/30 bg-orange-950/10" : "border-orange-100 bg-orange-50/20"}`}>
+               <div className={`rounded-xl border overflow-hidden ${isDark ? "border-gray-800" : "border-gray-200"}`}>
 
                 {/* Product Detail clickable row — only on product page */}
                 {currentLayoutKey === "product" && (
@@ -2227,7 +2507,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
 
               {/* ── FOOTER ZONE ── */}
               <ZoneLabel label="Footer" color="#0ea5e9" />
-              <div className={`rounded-xl border overflow-hidden ${isDark ? "border-sky-900/40 bg-sky-950/20" : "border-sky-100 bg-sky-50/30"}`}>
+              <div className={`rounded-xl border overflow-hidden ${isDark ? "border-gray-800" : "border-gray-200"}`}>
                 <div className="p-1.5 space-y-1">
                   {/* Editable footer sections if any */}
                   {footerSections.filter(s => s.type !== "footer").map((s, i) => <SectionRow key={s.id} s={s} idx={i} />)}
@@ -2595,7 +2875,7 @@ const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
                     <span className="text-sm shrink-0">{PAGE_TEMPLATES.find(t => t.id === page.template)?.icon ?? "📄"}</span>
                     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setEditingPage(page)}>
                       <p className={`text-xs font-medium truncate ${textPrimary}`}>{page.title}</p>
-                      <p className={`text-[10px] font-mono ${textFaint}`}>/p/{page.slug}</p>
+                      <p className={`text-[10px] font-mono ${textFaint}`}>/pages/{page.slug}</p>
                     </div>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
                       {page.in_nav && <span className="text-[9px] px-1 py-0.5 bg-blue-500/20 text-blue-400 rounded">Nav</span>}
@@ -3031,6 +3311,16 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
 
   return (
     <div className={`flex flex-col h-screen overflow-hidden ${isDark ? "bg-gray-950" : "bg-gray-100"}`}>
+      <style>{`
+        @keyframes sectionFadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes sectionFadeOut {
+          from { opacity: 1; transform: translateY(0); }
+          to   { opacity: 0; transform: translateY(-4px); }
+        }
+      `}</style>
       {/* ── TOP BAR ── */}
       <div className={`flex items-center justify-between px-3 py-2 border-b shrink-0 z-20 ${panelBg} ${panelBorder}`}>
        <div className="flex items-center min-w-0 gap-2">
@@ -3147,9 +3437,8 @@ const RightPanelContent = (isVirtualPanel || selectedSection) ? (
                 <p className="text-xs text-gray-500">Loading preview...</p>
               </div>
             )}
-            {previewUrl && (
+             {previewUrl && (
               <iframe
-                key={previewUrl}
                 ref={iframeRef}
                 src={previewUrl}
                 className="w-full h-full bg-white border-0"
@@ -3215,7 +3504,7 @@ function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew
       <div>
         <label className={`text-[10px] ${textFaint} block mb-1`}>URL slug</label>
         <div className="flex items-center">
-          <span className={`px-2 py-1.5 border border-r-0 rounded-l-lg text-[10px] whitespace-nowrap ${isDark ? "bg-gray-800 border-gray-700 text-gray-500" : "bg-gray-100 border-gray-300 text-gray-400"}`}>/p/</span>
+          <span className={`px-2 py-1.5 border border-r-0 rounded-l-lg text-[10px] whitespace-nowrap ${isDark ? "bg-gray-800 border-gray-700 text-gray-500" : "bg-gray-100 border-gray-300 text-gray-400"}`}>/pages/</span>
           <input value={draft.slug} onChange={e => up({ slug: slugify(e.target.value) })} className={`flex-1 rounded-r-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"}`} />
         </div>
         <a href={getPageUrl(vendorHandle, draft.slug)} target="_blank" rel="noopener noreferrer" className="text-[10px] text-orange-400 hover:text-orange-300 mt-1 flex items-center gap-1">
@@ -3279,7 +3568,9 @@ function PageSwitcherPagesGroup({ pages, currentPath, onSelect, setOpen, isDark,
   setOpen: (v: boolean) => void; isDark: boolean; textFaint: string; hoverBg: string
 }) {
   const [expanded, setExpanded] = useState(false)
-  const hasActive = pages.some(p => currentPath === `/p/${p.slug}`)
+  const hasActive = pages.some(p => currentPath === `/pages/${p.slug}`)
+
+  //if (isSearching && pages.length === 0) return null
 
   return (
     <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
@@ -3288,14 +3579,14 @@ function PageSwitcherPagesGroup({ pages, currentPath, onSelect, setOpen, isDark,
         className={`w-full flex items-center justify-between px-2.5 py-2 text-[9px] font-semibold uppercase tracking-wider transition-colors ${
           hasActive
             ? isDark ? "text-orange-400" : "text-orange-600"
-            : textFaint
+            : "text-grey-50"
         } ${hoverBg}`}
       >
-        <span>Custom pages {hasActive && `— ${pages.find(p => currentPath === `/p/${p.slug}`)?.title}`}</span>
+        <span>Custom pages {hasActive && `— ${pages.find(p => currentPath === `/pages/${p.slug}`)?.title}`}</span>
         <ChevronRight className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} />
       </button>
       {expanded && pages.map(p => {
-        const path = `/p/${p.slug}`
+        const path = `/pages/${p.slug}`
         return (
           <button key={p.id} onClick={() => { onSelect(path); setOpen(false) }}
             className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition-colors text-left ${
@@ -3336,7 +3627,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
 
   useEffect(() => {
     if (!open) return
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)}
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
@@ -3360,7 +3651,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
   // Find label for current path
   const allPages = [
     ...builtinPages,
-    ...pages.map(p => ({ label: p.title, path: `/p/${p.slug}`, icon: "📄" })),
+    ...pages.map(p => ({ label: p.title, path: `/pages/${p.slug}`, icon: "📄" })),
     ...products.map(p => ({ label: p.title, path: `/products/${p.handle}`, icon: "👕" })),
   ]
   const currentLabel =
@@ -3372,7 +3663,7 @@ function PageSwitcherDropdown({ currentPath, onSelect, pages, products = [], cat
   currentPath.startsWith("/products/") ? "Product page" :
   currentPath.startsWith("/collections/") ? "Collection page" :
   currentPath.startsWith("/categories/") ? "Category page" :
-  currentPath.startsWith("/p/") ? (pages.find(p => `/p/${p.slug}` === currentPath)?.title ?? "Custom page") :
+  currentPath.startsWith("/pages/") ? (pages.find(p => `/pages/${p.slug}` === currentPath)?.title ?? "Custom page") :
   "Home page"
 
   return (
@@ -3733,13 +4024,13 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
       {section.type === "hero" && (<>
         <Field label="Headline" faint={textFaint}><EditorInput value={section.headline ?? ""} onChange={v => onChange({ headline: v })} placeholder="Your big headline" isDark={isDark} /></Field>
         <Field label="Subtext" faint={textFaint}><EditorInput value={section.subtext ?? ""} onChange={v => onChange({ subtext: v })} placeholder="A supporting tagline" isDark={isDark} /></Field>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2">
           <Field label="Primary CTA" faint={textFaint}><EditorInput value={section.cta_label ?? ""} onChange={v => onChange({ cta_label: v })} placeholder="Shop Now" isDark={isDark} /></Field>
           <Field label="CTA link" faint={textFaint}>
             <LinkInput value={section.cta_url ?? ""} onChange={v => onChange({ cta_url: v })} placeholder="/products" isDark={isDark} pages={pages} />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2">
           <Field label="Secondary CTA" faint={textFaint}><EditorInput value={section.cta_secondary_label ?? ""} onChange={v => onChange({ cta_secondary_label: v })} placeholder="Browse all" isDark={isDark} /></Field>
           <Field label="Secondary link" faint={textFaint}>
             <LinkInput value={section.cta_secondary_url ?? ""} onChange={v => onChange({ cta_secondary_url: v })} placeholder="/products" isDark={isDark} pages={pages} />
@@ -4394,7 +4685,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
       {section.type === "image_text" && (<>
         <Field label="Heading" faint={textFaint}><EditorInput value={section.title ?? ""} onChange={v => onChange({ title: v })} placeholder="Our Story" isDark={isDark} /></Field>
         <Field label="Body text" faint={textFaint}><EditorTextarea value={section.text ?? ""} onChange={v => onChange({ text: v })} placeholder="Share something meaningful..." rows={5} isDark={isDark} /></Field>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2">
           <Field label="Button label" faint={textFaint}><EditorInput value={section.cta_label ?? ""} onChange={v => onChange({ cta_label: v })} placeholder="Learn More" isDark={isDark} /></Field>
           <Field label="Button link" faint={textFaint}>
             <LinkInput value={section.cta_url ?? ""} onChange={v => onChange({ cta_url: v })} placeholder="/products" isDark={isDark} pages={pages} />
@@ -4429,7 +4720,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
       {section.type === "video_text" && (<>
         <Field label="Heading" faint={textFaint}><EditorInput value={section.title ?? ""} onChange={v => onChange({ title: v })} placeholder="Watch & Shop" isDark={isDark} /></Field>
         <Field label="Body text" faint={textFaint}><EditorTextarea value={section.text ?? ""} onChange={v => onChange({ text: v })} placeholder="Tell your audience what this video is about..." rows={4} isDark={isDark} /></Field>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2">
           <Field label="Button label" faint={textFaint}><EditorInput value={section.cta_label ?? ""} onChange={v => onChange({ cta_label: v })} placeholder="Shop Now" isDark={isDark} /></Field>
           <Field label="Button link" faint={textFaint}>
             <LinkInput value={section.cta_url ?? ""} onChange={v => onChange({ cta_url: v })} placeholder="/products" isDark={isDark} pages={pages} />
@@ -4525,7 +4816,7 @@ function SectionSettings({ section, onChange, token, backendUrl, isDark, collect
           </div>
 
           {/* CTA */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <Field label="Button label" faint={textFaint}>
               <EditorInput value={section.cta_label ?? ""} onChange={v => onChange({ cta_label: v })} placeholder="Get Yours" isDark={isDark} />
             </Field>
@@ -4965,7 +5256,7 @@ function getDefaultFooterColumns(
       heading: "Info",
       items: pages
         .filter(p => p.in_footer)
-        .map(p => ({ id: p.id, label: p.title, url: `/p/${p.slug}` })),
+        .map(p => ({ id: p.id, label: p.title, url: `/pages/${p.slug}` })),
     },
   ]
 }
@@ -5263,10 +5554,10 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
   const vendorCategories  = categories
   const vendorProducts    = products
 
-   const addItem = () => {
+  const addItem = () => {
     const newId = genId()
     onChange([...items, { id: newId, label: "New Link", url: "" }])
-    setExpandedId(newId) // auto-open so creator fills it in immediately
+    setExpandedId(newId)
   }
 
   const updateItem = (id: string, patch: Partial<NavItem>) => {
@@ -5287,7 +5578,6 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
     onChange(arr)
   }
 
-  // Child helpers
   const addChild = (parentId: string) => {
     updateItem(parentId, {
       children: [...(items.find(it => it.id === parentId)?.children ?? []), { id: genId(), label: "Sub Link", url: "/" }]
@@ -5322,6 +5612,12 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
     updateItem(parentId, { children: arr })
   }
 
+  // An item is "truly invalid" only when it's a brand new untouched item
+  const isItemInvalid = (it: NavItem) =>
+    (!it.url?.trim() || it.url === "#") &&
+    (!it.children || it.children.length === 0) &&
+    (it.label === "New Link" || it.label === "Untitled" || !it.label)
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -5333,10 +5629,12 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
         <p className={`text-[11px] italic py-2 ${textFaint}`}>No nav items yet. Add one below.</p>
       )}
 
-       <div className="space-y-1.5">
+      <div className="space-y-1.5">
         {items.map((item, i) => {
           const isExpanded = expandedId === item.id
           const children = item.children ?? []
+          const invalid = isItemInvalid(item)
+
           return (
             <div key={item.id} className={`rounded-xl border overflow-hidden transition-all ${
               isExpanded
@@ -5356,8 +5654,8 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                     <span className={`ml-1 text-[9px] ${textFaint}`}>({children.length})</span>
                   )}
                 </span>
-                {/* Red dot if URL is missing and no children */}
-                {!item.url?.trim() && (!item.children || item.children.length === 0) && (
+                {/* Red dot only for brand-new untouched items */}
+                {invalid && (
                   <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" title="URL required" />
                 )}
                 <button onClick={() => moveItem(item.id, "up")} disabled={i === 0}
@@ -5367,27 +5665,14 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                 <button onClick={() => moveItem(item.id, "down")} disabled={i === items.length - 1}
                   className={`p-0.5 rounded transition-colors ${i === items.length - 1 ? "opacity-30" : hoverBg} ${textFaint}`}>
                   <ChevronDown className="w-3 h-3" />
-                </button> {(() => {
-                  const isInvalid = isExpanded && !item.url?.trim() && (!item.children || item.children.length === 0)
-                  return (
-                    <button
-                      onClick={() => !isInvalid && setExpandedId(isExpanded ? null : item.id)}
-                      disabled={isInvalid}
-                      title={isInvalid ? "Enter a URL first" : undefined}
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                        isExpanded
-                          ? isInvalid
-                            ? "bg-red-500/15 text-red-400 cursor-not-allowed opacity-60"
-                            : "bg-orange-500/20 text-orange-400"
-                          : isDark
-                            ? "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200"
-                            : "bg-gray-200 text-gray-500 hover:bg-gray-300"
-                      }`}
-                    >
-                      {isExpanded ? "Done" : "Edit"}
-                    </button>
-                  )
-                })()}
+                </button>
+                <button
+                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                  className={`p-0.5 rounded transition-colors ${textFaint} ${hoverBg}`}
+                  title={isExpanded ? "Collapse" : "Edit"}
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                </button>
                 <button onClick={() => removeItem(item.id)} className="p-0.5 rounded hover:bg-red-900/30">
                   <Trash2 className="w-3 h-3 text-red-400" />
                 </button>
@@ -5395,44 +5680,84 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
 
               {/* ── Expanded: parent fields + children ── */}
               {isExpanded && (
-                <div className={`border-t ${isDark ? "border-gray-700" : "border-orange-200/60"}`}>
+                <div className={`border-t ${isDark ? "border-gray-700" : "border-gray-200"}`}>
 
-                  {/* Parent fields */}
-                  <div className="px-2 pt-2 pb-1 space-y-2">
+                  <div className="px-3 pt-2 pb-2.5 space-y-2">
+
+                    {/* Label row */}
                     <div>
-                      <label className={`text-[10px] ${textFaint} block mb-1`}>Label</label>
-                      <EditorInput value={item.label} onChange={v => updateItem(item.id, { label: v })} placeholder="e.g. Shop" isDark={isDark} />
+                      <span className={`text-[10px] font-medium block mb-1 ${textFaint}`}>Label</span>
+                      <input
+                        value={item.label}
+                        onChange={e => updateItem(item.id, { label: e.target.value })}
+                        placeholder="e.g. Shop"
+                        className={`w-full rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 border transition-colors ${
+                          isDark
+                            ? "bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-500"
+                            : "bg-white border-gray-300 text-gray-800 placeholder-gray-400"
+                        }`}
+                      />
                     </div>
+
+                    {/* Link row */}
                     <div>
-                      <label className={`text-[10px] ${textFaint} block mb-1`}>
-                        Link <span className="opacity-60">(optional if has children)</span>
-                      </label>
+                      <span className={`text-[10px] font-medium block mb-1 ${textFaint}`}>
+                        Link <span className="font-normal opacity-50">(optional if has children)</span>
+                      </span>
                       <LinkInput
                         value={item.url}
                         onChange={v => updateItem(item.id, { url: v })}
-                        placeholder="/products"
+                        placeholder="Search or paste link"
                         isDark={isDark}
                         pages={pages}
+                        onLabelSuggest={suggested => {
+                          if (!item.label || item.label === "New Link" || item.label === "Sub Link") {
+                            updateItem(item.id, { label: suggested })
+                          }
+                        }}
                       />
-                      {/* Validation — show error if url is empty and no children */}
-                      {!item.url?.trim() && (!item.children || item.children.length === 0) && (
-                        <p className="flex items-center gap-1 mt-1 text-[10px] text-red-400">
-                          <span className="inline-block w-3 h-3 rounded-full bg-red-400/20 text-red-400 text-center leading-3">!</span>
-                          Enter a valid URL or choose a page
-                        </p>
-                      )}
                     </div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <div className="relative shrink-0" onClick={() => updateItem(item.id, { external: !item.external })}>
-                        <div className={`w-7 h-3.5 rounded-full transition-colors ${item.external ? "bg-orange-500" : "bg-gray-600"}`} />
-                        <div className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${item.external ? "translate-x-3.5" : ""}`} />
+
+                    {/* Actions row */}
+                    <div className="flex items-center justify-between pt-0.5">
+                      {/* External toggle */}
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <div className="relative shrink-0" onClick={() => updateItem(item.id, { external: !item.external })}>
+                          <div className={`w-7 h-3.5 rounded-full transition-colors ${item.external ? "bg-orange-500" : isDark ? "bg-gray-600" : "bg-gray-300"}`} />
+                          <div className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-transform ${item.external ? "translate-x-3.5" : ""}`} />
+                        </div>
+                        <span className={`text-[10px] ${textFaint}`}>Open in new tab</span>
+                      </label>
+
+                      {/* Confirm + Delete */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => { if (!invalid) setExpandedId(null) }}
+                          disabled={invalid}
+                          title={invalid ? "Enter a URL first" : "Confirm"}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            invalid
+                              ? "opacity-30 cursor-not-allowed text-gray-400"
+                              : isDark ? "text-green-400 hover:bg-green-900/30" : "text-green-600 hover:bg-green-50"
+                          }`}
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            isDark ? "text-gray-500 hover:text-red-400 hover:bg-red-900/20" : "text-gray-400 hover:text-red-500 hover:bg-red-50"
+                          }`}
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                      <span className={`text-[10px] ${textFaint}`}>Open in new tab</span>
-                    </label>
+                    </div>
+
                   </div>
 
-                  {/* Children */}
-                   {/* Auto-dropdown note for system pages */}
+                  {/* Children / Dropdown items */}
                   <div className={`mx-2 mb-2 rounded-lg border ${isDark ? "border-gray-700 bg-gray-900/50" : "border-gray-200 bg-gray-50/80"}`}>
                     <p className={`px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-wider border-b ${isDark ? "text-gray-500 border-gray-700" : "text-gray-400 border-gray-200"}`}>
                       Dropdown items
@@ -5443,7 +5768,6 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                       {children.length === 0 && ["/collections", "/categories", "/products"].includes(item.url ?? "") && (() => {
                         const isCollections = item.url === "/collections"
                         const isCategories  = item.url === "/categories"
-                        const isProducts    = item.url === "/products"
                         const autoItems = isCollections
                           ? vendorCollections.map(c => ({ id: c.id, label: c.title, url: `/collections/${c.handle}` }))
                           : isCategories
@@ -5473,10 +5797,11 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                         )
                       })()}
 
-                      {/* Custom children or empty state for non-system routes */}
+                      {/* Empty state for non-system routes */}
                       {children.length === 0 && !["/collections", "/categories", "/products"].includes(item.url ?? "") && (
                         <p className={`text-[10px] italic px-1 py-1 ${textFaint}`}>No dropdown items yet.</p>
                       )}
+
                       {children.map((child, ci) => {
                         const isChildExpanded = expandedChildId === child.id
                         return (
@@ -5485,7 +5810,6 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                               ? isDark ? "border-orange-500/30 bg-gray-800" : "border-orange-300/40 bg-orange-50/40"
                               : isDark ? "border-gray-700 bg-gray-800/60" : "border-gray-200 bg-white"
                           }`}>
-                            {/* Child header */}
                             <div className="flex items-center gap-1.5 px-2 py-1.5">
                               <GripVertical className={`w-2.5 h-2.5 shrink-0 ${textFaint}`} />
                               <span className={`flex-1 text-[11px] font-medium truncate ${textPrimary}`}>{child.label || "Untitled"}</span>
@@ -5510,7 +5834,6 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                                 <Trash2 className="w-2.5 h-2.5 text-red-400" />
                               </button>
                             </div>
-                            {/* Child fields */}
                             {isChildExpanded && (
                               <div className={`px-2 pb-2 space-y-1.5 border-t ${isDark ? "border-gray-700" : "border-orange-200/40"}`}>
                                 <div className="pt-1.5">
@@ -5519,7 +5842,18 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                                 </div>
                                 <div>
                                   <label className={`text-[10px] ${textFaint} block mb-1`}>Link</label>
-                                  <LinkInput value={child.url} onChange={v => updateChild(item.id, child.id, { url: v })} placeholder="/collections/red-wines" isDark={isDark} pages={pages} />
+                                  <LinkInput
+                                    value={child.url}
+                                    onChange={v => updateChild(item.id, child.id, { url: v })}
+                                    placeholder="/collections/red-wines"
+                                    isDark={isDark}
+                                    pages={pages}
+                                    onLabelSuggest={suggested => {
+                                      if (!child.label || child.label === "Sub Link") {
+                                        updateChild(item.id, child.id, { label: suggested })
+                                      }
+                                    }}
+                                  />
                                 </div>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                   <div className="relative shrink-0" onClick={() => updateChild(item.id, child.id, { external: !child.external })}>
@@ -5533,6 +5867,7 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
                           </div>
                         )
                       })}
+
                       {!["/collections", "/categories", "/products"].includes(item.url ?? "") && (
                         <button onClick={() => addChild(item.id)}
                           className={`w-full flex items-center justify-center gap-1 py-1 rounded-lg border border-dashed text-[10px] transition-all ${
@@ -5552,7 +5887,7 @@ function NavItemsEditor({ label, items, onChange, isDark, pages, textFaint, text
       </div>
 
       {(() => {
-        const hasInvalid = items.some(it => !it.url?.trim() && (!it.children || it.children.length === 0))
+        const hasInvalid = items.some(isItemInvalid)
         return hasInvalid ? (
           <div className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-xs ${
             isDark ? "border-red-800/50 bg-red-900/10 text-red-400" : "border-red-200 bg-red-50 text-red-500"

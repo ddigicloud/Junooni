@@ -102,9 +102,27 @@ export default function StoreHeader({
     return () => window.removeEventListener("scroll", handler)
   }, [])
 
-  useEffect(() => {
+  // useEffect(() => {
+  //   setSearchOpen(false)
+  //   setActiveDropdown(null)
+  // }, [pathname])
+
+   useEffect(() => {
     setSearchOpen(false)
     setActiveDropdown(null)
+
+    // Notify editor iframe parent when navigation happens
+    if (window.parent !== window) {
+      const parts = pathname.split("/")
+      // pathname = /meenalhandle/products/handle
+      // subPath  = /products/handle
+      const subPath = "/" + parts.slice(2).join("/")
+      const normalizedPath = subPath === "/" || subPath === "//" ? "/" : subPath
+      window.parent.postMessage({
+        type: "IFRAME_NAVIGATION",
+        path: normalizedPath,
+      }, "*")
+    }
   }, [pathname])
 
   const openDropdown = (key: string) => {
@@ -510,7 +528,7 @@ export default function StoreHeader({
       )}
 
       {/* ── NAV MEGA DROPDOWN ─────────────────────────────────────────────────── */}
-      {activeDropdown && !searchOpen && (
+      {activeDropdown && !searchOpen && !activeDropdown.startsWith("custom_") && (
         <div
           className={`fixed left-0 right-0 z-[60] border-b shadow-2xl ${dropdownBg}`}
           style={{ top: headerRef.current ? headerRef.current.getBoundingClientRect().bottom : 64 }}
