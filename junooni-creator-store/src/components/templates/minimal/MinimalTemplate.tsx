@@ -28,6 +28,51 @@ interface Props {
   collections: CollectionMeta[]
 }
 
+// ADD right before: export default function MinimalTemplate(
+function TickerStrip({ section }: { section: any }) {
+  const items: string[] = section.ticker_items ?? ["Free shipping on orders above ₹999", "New drops every week", "Official creator merchandise"]
+  const sep = section.ticker_separator ?? "✦"
+  const speed = section.ticker_speed ?? 40
+  const bg = section.background_color ?? "#111827"
+  const fg = section.text_color ?? "#ffffff"
+  const stripHtml = (s: string) => s.replace(/<[^>]*>/g, "").trim()
+  const cleanItems = items.map(stripHtml)
+  const line = cleanItems.join(`  ${sep}  `)
+  const repeated = Array(8).fill(line).join(`  ${sep}  `)
+  const fullLine = `${repeated}  ${sep}  `
+  const duration = Math.max(5, 100 - speed)
+  return (
+    <div className="overflow-hidden py-2.5" style={{ backgroundColor: bg }}>
+      <style>{`
+        @keyframes junooni-ticker {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .junooni-ticker-inner {
+          display: inline-flex;
+          white-space: nowrap;
+          animation: junooni-ticker ${duration}s linear infinite;
+        }
+      `}</style>
+      <div className="text-sm font-medium tracking-wide junooni-ticker-inner" style={{ color: fg }}>
+        <span>{fullLine}</span>
+        <span>{fullLine}</span>
+      </div>
+    </div>
+  )
+}
+
+function AnnouncementStrip({ section }: { section: any }) {
+  const bg = section.background_color ?? "#e65100"
+  const fg = section.text_color ?? "#ffffff"
+  if (!section.title) return null
+  return (
+    <div className="w-full py-2 px-4 text-center text-sm font-medium"
+      style={{ backgroundColor: bg, color: fg }}
+      dangerouslySetInnerHTML={{ __html: section.title }} />
+  )
+}
+
 export default function MinimalTemplate({ vendor, store: initialStore, products, categories, collections }: Props) {
   const [liveStore, setLiveStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
@@ -67,28 +112,26 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
   // console.log("store.sticky_header =", (store as any)?.sticky_header)
   // console.log("wrapSticky =", (store as any)?.sticky_header !== false)
 
+   // Header-zone sections — announcement + ticker
+   const headerZoneSectionIds = new Set(
+    sections
+      .filter((s: any) => s.type === "announcement" || s.type === "ticker")
+      .map((s: any) => s.id)
+  )
+
   return (
     <div className={`min-h-screen bg-white ${fontClass}`}>
-      {/* ── HEADER + ANNOUNCEMENT ── */}
-      {(() => {
-        const stickyHdr = (store as any)?.sticky_header !== false
-        const stickyAnn = (store as any)?.sticky_announcement !== false
-        const wrapSticky = stickyHdr || stickyAnn
-        return (
-          <div className={wrapSticky ? "sticky top-0 z-40" : "relative"}>
-            <StoreHeader
-              vendor={vendor}
-              store={store}
-              categories={categories}
-              collections={collections}
-              products={products}
-            />
-          </div>
-        )
-      })()}
+      {/* ── HEADER (handles announcements + tickers internally) ── */}
+      <StoreHeader
+        vendor={vendor}
+        store={store}
+        categories={categories}
+        collections={collections}
+        products={products}
+      />
 
       {/* ── PAGE SECTIONS ── */}
-      {sections.filter(s => !(s as any).hidden).map((section, i) => {
+       {sections.filter(s => !(s as any).hidden && !headerZoneSectionIds.has((s as any).id)).map((section, i) => {
         const secId = (section as any).id
         const isSelected = secId && selectedSectionId === secId
         const isEditorMode = typeof window !== "undefined" && window.parent !== window
@@ -208,14 +251,22 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 transition={{ duration: 0.6 }}
               >
                 {/* Creator badge */}
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6"
-                  style={{ background: `${brandPrimary}15`, color: brandPrimary }}>
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  Official Merch Store
-                </div>
+                {((section as any).hero_badge ?? "Official Merch Store") && (
+                  <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold mb-6"
+                    style={{ background: `${brandPrimary}15`, color: headlineColor }}>
+                    {/* <ShoppingBag className="w-3.5 h-3.5" /> */}
+                    {(section as any).hero_badge ?? "Official Merch Store"}
+                  </div>
+                )}
 
                 <h1
-                  className="mb-4 text-4xl font-extrabold leading-tight md:text-6xl"
+                  className={`mb-4 font-extrabold leading-tight ${
+                    (section as any).headline_size === "sm"
+                      ? "text-2xl md:text-4xl"
+                      : (section as any).headline_size === "md"
+                        ? "text-3xl md:text-5xl"
+                        : "text-4xl md:text-6xl"
+                  }`}
                   style={{ color: headlineColor }}
                 >
                   {section.headline ?? vendor.name}
@@ -260,7 +311,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               </motion.div>
 
               {/* Creator image/logo side */}
-              {(vendor.coverphoto ?? vendor.logo) && (
+              {((section as any).hero_image_right) && (
                 <motion.div
                   className="w-full shrink-0 md:w-80 lg:w-96"
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -268,7 +319,13 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   transition={{ duration: 0.7, delay: 0.1 }}
                 >
                   <div className="relative overflow-hidden shadow-2xl aspect-square rounded-3xl">
-                    <Image src={vendor.coverphoto ?? vendor.logo!} alt={vendor.name} fill className="object-cover" priority />
+                    <Image
+                      src={(section as any).hero_image_right ?? vendor.coverphoto ?? vendor.logo!}
+                      alt={vendor.name}
+                      fill
+                      className="object-cover"
+                      priority
+                    />
                   </div>
                 </motion.div>
               )}
@@ -307,6 +364,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               showPrice={cardShowPrice}
               showHover={cardShowHover}
               showSoldOutBadge={cardShowSoldOut}
+              columns={(section as any).columns ?? 4}
             />
           </div>
         </section>
@@ -316,6 +374,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     // ── All products collection ────────────────────────────────────────────────
     case "collection": {
       const limited = products.slice(0, section.limit ?? 12)
+      console.log("product metadata sample:", products[0]?.metadata?.color_hex_values)
       if (!limited.length) return null
       return (
         <section id="products" className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "#f9fafb" }}>
@@ -330,7 +389,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               </Link>
             </div>
             {/* <ProductCarousel products={limited} handle={handle} brandPrimary={brandPrimary} variant="light" /> */}
-            <ProductCarousel
+             <ProductCarousel
               products={limited}
               handle={handle}
               brandPrimary={brandPrimary}
@@ -340,6 +399,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               showPrice={cardShowPrice}
               showHover={cardShowHover}
               showSoldOutBadge={cardShowSoldOut}
+              columns={(section as any).columns ?? 3}
             />
           </div>
         </section>
@@ -664,7 +724,9 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       }
       const cleanItems = items.map(stripHtml)
       const line = cleanItems.join(`  ${sep}  `)
-      const fullLine = `${line}  ${sep}  ${line}  ${sep}  `
+      // Repeat enough times to fill the viewport with no gaps
+      const repeated = Array(8).fill(line).join(`  ${sep}  `)
+      const fullLine = `${repeated}  ${sep}  `
       // Duration in seconds based on speed (invert: higher speed = shorter duration)
       const duration = Math.max(5, 100 - speed)
       return (
@@ -681,9 +743,8 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
             }
           `}</style>
           <div className="text-sm font-medium tracking-wide junooni-ticker-inner" style={{ color: fg }}>
-            {[fullLine, fullLine].map((t, i) => (
-              <span key={i} className="mr-8">{t}</span>
-            ))}
+            <span>{fullLine}</span>
+            <span>{fullLine}</span>
           </div>
         </section>
       )
@@ -1015,9 +1076,8 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
 
             {/* Story/description */}
             {section.text && (
-              <p className="text-base leading-relaxed" style={{ color: sectionText ? `${sectionText}bb` : "#4b5563" }}>
-                {section.text}
-              </p>
+              <div className="text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}bb` : "#4b5563" }}
+                dangerouslySetInnerHTML={{ __html: section.text }} />
             )}
 
             {/* Price */}

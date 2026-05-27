@@ -96,7 +96,7 @@ export default defineMiddlewares({
     // ─── Add after the existing /store-front/:handle entry ───────────────────────
 
 {
-  matcher: "/store-front/:handle/verify-password",
+  matcher: "/storefront/:handle/verify-password",
   method: ["POST", "OPTIONS"],
   middlewares: [
     (req, res, next) => {
@@ -119,7 +119,7 @@ export default defineMiddlewares({
   ],
 },
 {
-  matcher: "/store-front/by-domain",
+  matcher: "/storefront/by-domain",
   method: ["GET", "OPTIONS"],
   middlewares: [
     (req, res, next) => {
@@ -171,7 +171,7 @@ export default defineMiddlewares({
   ],
 },
 {
-  matcher: "/store-front/:handle/instagram",
+  matcher: "/storefront/:handle/instagram",
   method: ["GET", "OPTIONS"],
   middlewares: [
     (req, res, next) => { cors({ origin: true, credentials: false })(req, res, next) },
@@ -473,7 +473,7 @@ export default defineMiddlewares({
       middlewares: [],
     },
     {
-      matcher: "/store-front/:handle",
+      matcher: "/storefront/:handle",
       method: ["GET", "OPTIONS"],
       middlewares: [
         (req, res, next) => {

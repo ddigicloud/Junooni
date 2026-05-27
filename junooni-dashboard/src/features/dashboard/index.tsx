@@ -53,6 +53,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import DashboardTour from "./components/DashboardTour";
+
 
 // Junooni brand colors
 const BRAND = {
@@ -683,7 +685,7 @@ const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: P
   
   return (
     <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-4">
-      <Card className="shadow-md">
+      <Card id="tour-today-revenue" className="shadow-md">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div>
@@ -713,7 +715,7 @@ const SummaryCards = ({ orders, products }: { orders: VendorOrder[], products: P
         </CardContent>
       </Card>
       
-      <Card className="shadow-md">
+      <Card id="tour-pending-orders" className="shadow-md">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div>
@@ -761,6 +763,7 @@ const DashboardPage = () => {
   const popupButtonsRef = useRef<ProductsPrimaryButtonsHandle>(null);
   const [storePreference, setStorePreference] = useState<StorePreference | null>(null)
   const [showStoreTypeModal, setShowStoreTypeModal] = useState(false)
+  const [showTour, setShowTour] = useState(false)
   
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>({
     isComplete: true,
@@ -966,6 +969,11 @@ const DashboardPage = () => {
       };
       
       setVendor(transformedVendor);
+
+      // Show tour for first-time visitors
+      if (!localStorage.getItem("dashboard_tour_done")) {
+        setTimeout(() => setShowTour(true), 1200);
+      }
 
       const hasSellPreference =
         vendorData?.vendor?.sell_on_marketplace !== undefined ||
@@ -1204,7 +1212,9 @@ const DashboardPage = () => {
                   Dashboard
                 </Button>
                 {storePreference && (
-                  <StoreModeBadge pref={storePreference} onChangeClick={() => setShowStoreTypeModal(true)} />
+                  <div id="tour-both-stores-badge">
+                    <StoreModeBadge pref={storePreference} onChangeClick={() => setShowStoreTypeModal(true)} />
+                  </div>
                 )}
                 <Button variant="ghost" asChild><Link to="/products">Products</Link></Button>
                 <Button variant="ghost" asChild><Link to="/orders">Orders</Link></Button>
@@ -1244,7 +1254,8 @@ const DashboardPage = () => {
             </p>
           </div>
           <div className="flex gap-2 mt-4 md:mt-0">
-            <Button 
+           <Button 
+              id="tour-add-product"
               className="flex items-center gap-1" 
               onClick={() => popupButtonsRef.current?.openPopup()}
               style={{ backgroundColor: BRAND.primary }}
@@ -1263,7 +1274,7 @@ const DashboardPage = () => {
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Recent Orders Card */}
-          <Card className="shadow-md">
+          <Card id="tour-recent-orders" className="shadow-md">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center text-base sm:text-lg">
@@ -1376,7 +1387,7 @@ const DashboardPage = () => {
           
           {/* Recent Products & Quick Actions */}
           <div className="space-y-6">
-            <Card className="shadow-md">
+            <Card id="tour-your-products" className="shadow-md">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center text-base sm:text-lg">
@@ -1429,7 +1440,7 @@ const DashboardPage = () => {
             </Card>
             
             {/* Quick Actions */}
-            <Card className="shadow-md">
+            <Card id="tour-quick-actions" className="shadow-md">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
                 <CardDescription>Common tasks to manage your store</CardDescription>
@@ -1473,7 +1484,43 @@ const DashboardPage = () => {
           </div>
         </div>
         <ChatwootWidget />
+        {/* Replay tour button */}
+        {!showTour && (
+          <button
+            onClick={() => setShowTour(true)}
+            title="Replay tour"
+            style={{
+              position: "fixed",
+              bottom: 80,
+              right: 20,
+              zIndex: 9990,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              background: BRAND.primary,
+              color: "white",
+              border: "none",
+              fontSize: 18,
+              cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(230,81,0,0.4)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            ✨
+          </button>
+        )}
       </div>
+
+      {showTour && (
+        <DashboardTour
+          onComplete={() => {
+            setShowTour(false);
+            localStorage.setItem("dashboard_tour_done", "true");
+          }}
+        />
+      )}
 
       {showStoreTypeModal && vendor && (
         <StoreTypeModal

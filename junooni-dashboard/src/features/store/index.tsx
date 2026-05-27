@@ -23,6 +23,7 @@ import {
 import { ProfileDropdown } from "@/components/profile-dropdown"
 import AdminImpersonationBanner from "@/components/AdminImpersonationBanner"
 import { getStoreUrl, getPreviewUrl, getPageUrl } from "@/lib/store-urls"
+import storeBanner from "@/assets/store-banner.png"
 
 const BRAND = { primary: "#e65100", secondary: "#ac1900" }
 
@@ -437,43 +438,79 @@ export default function StorePage() {
       <div className="container max-w-5xl px-4 mx-auto py-7">
 
         {/* ── Hero Banner ── */}
-        <div className="p-6 mb-6 bg-white border border-gray-200 rounded-2xl sm:p-8">
-          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
+        <div className="relative mb-6 overflow-hidden rounded-2xl" style={{ minHeight: "220px" }}>
+          
+          {/* Banner image fills the entire section */}
+          <img
+            src={storeBanner}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none"
+          />
+
+          {/* Content overlaid on the left */}
+          <div className="relative z-10 flex flex-col justify-between h-full p-6 sm:px-8 sm:py-12" style={{ minHeight: "220px" }}>
+            <div className="flex-1">
+              {/* Live / Draft pill */}
+              {isLive ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white/90 text-gray-800 shadow-sm mb-4">
+                  🎉 You're Live!
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white/90 text-amber-700 shadow-sm mb-4">
+                  <span className="w-1.5 h-1.5 bg-amber-400 rounded-full" />Draft
+                </span>
+              )}
+
+              {/* Heading */}
+              <h1 className="text-2xl sm:text-3xl font-black text-grey mb-1.5 drop-shadow-sm leading-tight">
                 {isLive
-                  ? <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />Live
-                    </span>
-                  : <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                      <span className="w-1.5 h-1.5 bg-amber-400 rounded-full" />Draft
-                    </span>
-                }
-              </div>
-              <h1 className="mb-1 text-xl font-bold text-gray-900 sm:text-2xl">
-                {isLive ? `You're live, ${vendorName || "Creator"}! 🎉` : `Hey ${vendorName || "Creator"} 👋`}
+                  ? `You're live, ${vendorName || "Creator"}!`
+                  : `Hey ${vendorName || "Creator"} 👋`}
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-grey/85 font-medium mb-5">
                 {isLive
-                  ? <>Your fans can shop at{" "}<a href={getStoreUrl(vendorHandle, store.custom_domain)} target="_blank" rel="noopener noreferrer" className="font-semibold underline decoration-dotted underline-offset-2" style={{ color: BRAND.primary }}>{storeUrl}</a></>
+                  ? "Your fans can shop your awesome products now 🚀"
                   : "Complete the setup below to publish your store and start selling."}
               </p>
+
+              {/* Store link pill */}
+              {hasStore && (
+                <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-sm mb-5">
+                  <span className="text-xs text-gray-500 font-medium">Your store link:</span>
+                  <a
+                    href={getStoreUrl(vendorHandle, store.custom_domain)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-bold underline decoration-dotted underline-offset-2"
+                    style={{ color: BRAND.primary }}
+                  >
+                    {storeUrl}
+                  </a>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Action buttons */}
+            <div className="flex items-center gap-2">
               {hasStore && (
-                <a href={getStoreUrl(vendorHandle, store.custom_domain)} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 transition-all">
-                  <Eye className="w-4 h-4" />Preview
+                <a
+                  href={getStoreUrl(vendorHandle, store.custom_domain)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/25 hover:bg-white/35 backdrop-blur-sm border border-white/40 text-sm font-semibold text-grey transition-all"
+                >
+                  <Eye className="w-4 h-4" />Preview Store
                 </a>
               )}
-              <button onClick={handlePublish} disabled={isPublishing}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60"
-                style={{ background: isLive ? "#dc2626" : `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.secondary} 100%)` }}>
+              <button
+                onClick={handlePublish}
+                disabled={isPublishing}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-90 disabled:opacity-60 bg-white/25 hover:bg-white/35 backdrop-blur-sm border border-white/40 text-grey"
+              >
                 {isPublishing
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : isLive
-                    ? <><Radio className="w-4 h-4" />Unpublish</>
+                    ? <><Radio className="w-4 h-4" />Unpublish Store</>
                     : <><Rocket className="w-4 h-4" />Go live</>}
               </button>
             </div>
@@ -528,17 +565,21 @@ export default function StorePage() {
         )}
 
         {/* ── Action cards ── */}
+        <div className="mb-4">
+          <h2 className="text-base font-bold text-gray-900 mb-0.5">Customize Your Store</h2>
+          <p className="text-xs text-gray-400">Make your store truly yours with powerful customization options</p>
+        </div>
         <div className="grid grid-cols-1 gap-3 mb-5 sm:grid-cols-2">
 
           {/* Store editor */}
           <Link to="/store/editor"
             className="flex items-center gap-4 p-5 transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
-            <div className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0" style={{ background: `${BRAND.primary}12`, color: BRAND.primary }}>
-              <Layout className="w-5 h-5" />
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0 bg-purple-100">
+              <Layout className="w-5 h-5 text-purple-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900">Store editor</p>
-              <p className="text-xs text-gray-400 mt-0.5 truncate">Hero, product grids, sections layout</p>
+              <p className="text-sm font-bold text-gray-900">Store Editor</p>
+              <p className="text-xs text-gray-400 mt-0.5">Design your store layout, hero section, product grid & more</p>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-gray-500 shrink-0" />
           </Link>
@@ -546,12 +587,12 @@ export default function StorePage() {
           {/* Branding */}
           <button onClick={() => setActiveModal("branding")}
             className="flex items-center gap-4 p-5 text-left transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
-            <div className="flex items-center justify-center text-purple-600 w-11 h-11 rounded-xl shrink-0 bg-purple-50">
-              <Palette className="w-5 h-5" />
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0 bg-pink-100">
+              <Palette className="w-5 h-5 text-pink-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900">Branding & identity</p>
-              <p className="text-xs text-gray-400 mt-0.5 truncate">Logo, colors, tagline, announcement</p>
+              <p className="text-sm font-bold text-gray-900">Branding & Identity</p>
+              <p className="text-xs text-gray-400 mt-0.5">Upload logo, choose colors, add tagline & announcement</p>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-gray-500 shrink-0" />
           </button>
@@ -559,15 +600,13 @@ export default function StorePage() {
           {/* Custom pages */}
           <button onClick={() => setActiveModal("pages")}
             className="flex items-center gap-4 p-5 text-left transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
-            <div className="flex items-center justify-center text-blue-600 w-11 h-11 rounded-xl shrink-0 bg-blue-50">
-              <FileText className="w-5 h-5" />
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0 bg-blue-100">
+              <FileText className="w-5 h-5 text-blue-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900">Custom pages</p>
+              <p className="text-sm font-bold text-gray-900">Custom Pages</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                {pages.length > 0
-                  ? <><span className="font-semibold text-blue-600">{pages.length} page{pages.length !== 1 ? "s" : ""}</span> created</>
-                  : "About, FAQ, Contact, or custom HTML"}
+                Create custom pages like About Us, FAQ, Shipping, Returns & more
               </p>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-gray-500 shrink-0" />
@@ -576,21 +615,20 @@ export default function StorePage() {
           {/* Domain & SEO */}
           <button onClick={() => setActiveModal("domain")}
             className="flex items-center gap-4 p-5 text-left transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
-            <div className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0 bg-emerald-50 text-emerald-600">
-              <Globe className="w-5 h-5" />
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0 bg-emerald-100">
+              <Globe className="w-5 h-5 text-emerald-600" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900">Domain & SEO</p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {store.custom_domain
-                  ? <span className="font-mono font-semibold text-emerald-600">{store.custom_domain}</span>
-                  : "Custom domain, meta title, description"}
+                  ? <><span className="font-mono font-semibold text-emerald-600">{store.custom_domain}</span> connected</>
+                  : "Connect custom domain and optimize your store for search engines"}
               </p>
             </div>
             {store.domain_verified
               ? <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0" />
-              : <ChevronRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-gray-500 shrink-0" />
-            }
+              : <ChevronRight className="w-4 h-4 text-gray-300 transition-colors group-hover:text-gray-500 shrink-0" />}
           </button>
         </div>
 

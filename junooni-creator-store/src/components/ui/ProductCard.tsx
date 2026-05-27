@@ -18,7 +18,14 @@ const COLOR_MAP: Record<string, string> = {
 }
 
 function getColorHex(name: string): string {
-  return COLOR_MAP[name.toLowerCase().trim()] ?? "#e5e7eb"
+  const key = name.toLowerCase().trim()
+  // Try direct match first
+  if (COLOR_MAP[key]) return COLOR_MAP[key]
+  // Try partial match (e.g. "dark navy blue" matches "navy blue")
+  const partialMatch = Object.keys(COLOR_MAP).find(k => key.includes(k) || k.includes(key))
+  if (partialMatch) return COLOR_MAP[partialMatch]
+  // True fallback — neutral gray
+  return "#e5e7eb"
 }
 
 function formatINR(paise: number): string {
@@ -107,9 +114,21 @@ function getColorSwatches(product: any) {
   )
   if (!colorOption) return []
 
-  const hexValues = safeParseJson<{ name: string; hex: string }[]>(
+  // Parse metadata hex values — primary source of truth
+  const metaHexValues = safeParseJson<{ name: string; hex: string }[]>(
     product.metadata?.color_hex_values, []
   )
+
+  // Also check variants for any variant-level hex data
+  const variantHexMap: Record<string, string> = {}
+  for (const variant of product.variants ?? []) {
+    const variantHex = safeParseJson<{ name: string; hex: string }[]>(
+      variant.metadata?.color_hex_values, []
+    )
+    for (const h of variantHex) {
+      if (h.name && h.hex) variantHexMap[h.name.toLowerCase().trim()] = h.hex
+    }
+  }
 
   const seen = new Set<string>()
   const swatches: { value: string; hex: string; image: string | null }[] = []
@@ -118,10 +137,17 @@ function getColorSwatches(product: any) {
     if (seen.has(val.value)) continue
     seen.add(val.value)
 
-    const metaHex = hexValues.find(
-      (h) => h.name?.toLowerCase() === val.value?.toLowerCase()
+    const colorKey = val.value?.toLowerCase().trim()
+
+    // Priority: 1) product metadata hex  2) variant metadata hex  3) static COLOR_MAP fallback
+    const metaHex = metaHexValues.find(
+      (h) => h.name?.toLowerCase().trim() === colorKey
     )?.hex
-    const hex = metaHex ?? getColorHex(val.value)
+
+    const hex = metaHex
+      ?? variantHexMap[colorKey]
+      ?? getColorHex(val.value)
+
     const image = getColorImage(product, colorOption.id, val.value)
 
     swatches.push({ value: val.value, hex, image })

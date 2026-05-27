@@ -36,7 +36,7 @@ export default function PasswordGate({
     setError("")
 
     try {
-      const res = await fetch(`${backendUrl}/store-front/${handle}/verify-password`, {
+      const res = await fetch(`${backendUrl}/storefront/${handle}/verify-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password, store_id}),

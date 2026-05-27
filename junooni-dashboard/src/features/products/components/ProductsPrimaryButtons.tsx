@@ -83,9 +83,10 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
 
       {showPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
-          <div className="relative w-full max-w-4xl bg-white">
+          <div id="tour-product-modal" className="relative w-full max-w-4xl bg-white">
             <div className="absolute top-0 right-0 flex justify-end p-4">
               <button 
+                id="tour-product-modal-close"
                 onClick={() => setShowPopup(false)}
                 className="font-bold text-gray-500 hover:text-gray-700"
               >
@@ -102,7 +103,7 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
                 navigate({ to: '/productCatalog' })
               }}
             >
-              <div className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
+              <div id="tour-product-modal-design" className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
                 <img src={windowSoping} alt="Design something new" className="max-w-full max-h-full" />
               </div>
               <h3 className="text-lg font-semibold text-center md:text-xl">Design Something Amazing</h3>
@@ -122,7 +123,7 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
                 }
               }}
             >
-              <div className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
+              <div id="tour-product-modal-existing" className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
                 <img src={sellSometing} alt="Sell something I have" className="max-w-full max-h-full" />
               </div>
               <h3 className="text-lg font-semibold text-center md:text-xl">List Your Existing Products</h3>

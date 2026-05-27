@@ -143,6 +143,7 @@ export interface Product {
   thumbnail: string | null
   status: string
   variants: ProductVariant[]
+  metadata?: Record<string, any>
   images: { id: string; url: string }[]
   options: {
     id: string

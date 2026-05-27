@@ -2,7 +2,7 @@
 // import { notFound } from "next/navigation"
 // import { cookies } from "next/headers"
 // import type { Metadata } from "next"
-// import { getStorefrontData } from "@/lib/api"
+// import { getStoreShell } from "@/lib/api"
 // import ProductPageClient from "./ProductPageClient"
 
 // interface Props {
@@ -12,20 +12,13 @@
 // export const dynamic = "force-dynamic"
 // export const revalidate = 0
 
-// const fetchStore = cache(async (handle: string, token?: string) => {
-//   console.log(`[page:fetchStore] START handle=${handle}`)
-//   const t = Date.now()
-//   const result = await getStorefrontData(handle, { noCache: true, accessToken: token || undefined })
-//   console.log(`[page:fetchStore] DONE ${Date.now()-t}ms — products=${result?.products?.length} vendor=${result?.vendor?.handle}`)
-//   return result
-// })
-
+// // ── Fetch single product — dedicated fast route ────────────────────────────
 // const fetchProduct = cache(async (handle: string, productHandle: string): Promise<any | null> => {
 //   const baseUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"
 //   const pubKey  = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? ""
-//   const url = `${baseUrl}/store/store-front/${handle}/product/${productHandle}`
+//   const url = `${baseUrl}/storefront/${handle}/product/${productHandle}`
 
-//   console.log(`[page:fetchProduct] START url=${url} pubKey=${pubKey ? pubKey.slice(0,12)+"..." : "MISSING"}`)
+//   console.log(`[page:fetchProduct] START url=${url}`)
 //   const t = Date.now()
 
 //   try {
@@ -48,69 +41,61 @@
 //   }
 // })
 
+// // ── Metadata ───────────────────────────────────────────────────────────────
 // export async function generateMetadata({ params }: Props): Promise<Metadata> {
-//   console.log(`[page:generateMetadata] handle=${params.handle} productHandle=${params.productHandle}`)
 //   const token = cookies().get(`store_access_${params.handle}`)?.value
 
-//   const [data, product] = await Promise.all([
-//     fetchStore(params.handle, token),
+//   const [shell, product] = await Promise.all([
+//     getStoreShell(params.handle, { accessToken: token }),
 //     fetchProduct(params.handle, params.productHandle),
 //   ])
 
-//   console.log(`[page:generateMetadata] resolved data=${!!data} product=${!!product}`)
-//   if (!data || !product) return { title: "Product not found" }
+//   if (!shell || !product) return { title: "Product not found" }
 
 //   return {
-//     title: `${product.title} — ${data.vendor.name}`,
+//     title: `${product.title} — ${shell.vendor.name}`,
 //     description: product.description?.replace(/<[^>]*>/g, "") ?? undefined,
-//     openGraph: { images: product.thumbnail ? [{ url: product.thumbnail }] : [] },
+//     openGraph: {
+//       images: product.thumbnail ? [{ url: product.thumbnail }] : [],
+//     },
 //   }
 // }
 
+// // ── Page ───────────────────────────────────────────────────────────────────
 // export default async function ProductPage({ params }: Props) {
 //   console.log(`[page:ProductPage] handle=${params.handle} productHandle=${params.productHandle}`)
 //   const token = cookies().get(`store_access_${params.handle}`)?.value
 
-//   const [data, product] = await Promise.all([
-//     fetchStore(params.handle, token),
+//   // Two fast parallel fetches:
+//   // - getStoreShell: vendor + store config + categories + collections (NO products query)
+//   // - fetchProduct:  single product with all variants/images/options
+//   const [shell, product] = await Promise.all([
+//     getStoreShell(params.handle, { accessToken: token }),
 //     fetchProduct(params.handle, params.productHandle),
 //   ])
 
-//   console.log(`[page:ProductPage] resolved data=${!!data} product=${!!product}`)
+//   console.log(`[page:ProductPage] shell=${!!shell} product=${!!product}`)
 
-//   if (!data) {
-//     console.error(`[page:ProductPage] data is null — notFound()`)
+//   if (!shell) {
+//     console.error(`[page:ProductPage] shell is null — notFound()`)
 //     notFound()
 //   }
+
 //   if (!product) {
 //     console.error(`[page:ProductPage] product is null — notFound()`)
-//     // Temporary fallback: find product from store data while dedicated route is being fixed
-//     const fallback = data!.products?.find((p: any) => p.handle === params.productHandle)
-//     console.log(`[page:ProductPage] fallback product=${!!fallback} handle=${fallback?.handle}`)
-//     if (!fallback) notFound()
-
-//     const { vendor, store, products, categories, collections } = data!
-//     return (
-//       <ProductPageClient
-//         vendor={vendor}
-//         initialStore={store}
-//         product={fallback}
-//         products={products ?? []}
-//         categories={categories ?? []}
-//         collections={collections ?? []}
-//       />
-//     )
+//     notFound()
 //   }
 
-//   const { vendor, store, products, categories, collections } = data!
+//   const { vendor, store, categories, collections } = shell!
+
 //   return (
 //     <ProductPageClient
 //       vendor={vendor}
 //       initialStore={store}
 //       product={product}
-//       products={products ?? []}
-//       categories={categories ?? []}
-//       collections={collections ?? []}
+//       products={[]}          // related products load lazily in ProductPageClient
+//       categories={categories}
+//       collections={collections}
 //     />
 //   )
 // }
@@ -119,7 +104,7 @@ import { cache } from "react"
 import { notFound } from "next/navigation"
 import { cookies } from "next/headers"
 import type { Metadata } from "next"
-import { getStoreShell } from "@/lib/api"
+import { getStoreShell, getStoreCollections } from "@/lib/api"
 import ProductPageClient from "./ProductPageClient"
 
 interface Props {
@@ -129,11 +114,11 @@ interface Props {
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-// ── Fetch single product — dedicated fast route ────────────────────────────
+// ── Fetch single product ───────────────────────────────────────────────────
 const fetchProduct = cache(async (handle: string, productHandle: string): Promise<any | null> => {
   const baseUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"
   const pubKey  = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? ""
-  const url = `${baseUrl}/store-front/${handle}/product/${productHandle}`
+  const url = `${baseUrl}/storefront/${handle}/product/${productHandle}`
 
   console.log(`[page:fetchProduct] START url=${url}`)
   const t = Date.now()
@@ -183,15 +168,13 @@ export default async function ProductPage({ params }: Props) {
   console.log(`[page:ProductPage] handle=${params.handle} productHandle=${params.productHandle}`)
   const token = cookies().get(`store_access_${params.handle}`)?.value
 
-  // Two fast parallel fetches:
-  // - getStoreShell: vendor + store config + categories + collections (NO products query)
-  // - fetchProduct:  single product with all variants/images/options
-  const [shell, product] = await Promise.all([
+  const [shell, product, collectionsData] = await Promise.all([
     getStoreShell(params.handle, { accessToken: token }),
     fetchProduct(params.handle, params.productHandle),
+    getStoreCollections(params.handle),
   ])
 
-  console.log(`[page:ProductPage] shell=${!!shell} product=${!!product}`)
+  console.log(`[page:ProductPage] shell=${!!shell} product=${!!product} collectionsData=${!!collectionsData}`)
 
   if (!shell) {
     console.error(`[page:ProductPage] shell is null — notFound()`)
@@ -203,14 +186,19 @@ export default async function ProductPage({ params }: Props) {
     notFound()
   }
 
-  const { vendor, store, categories, collections } = shell!
+  const { vendor, store } = shell
+
+  // Prefer rich collectionsData (has product_ids + product_count),
+  // fall back to shell data (lightweight, no counts)
+  const categories  = collectionsData?.categories  ?? shell.categories  ?? []
+  const collections = collectionsData?.collections ?? shell.collections ?? []
 
   return (
     <ProductPageClient
       vendor={vendor}
       initialStore={store}
       product={product}
-      products={[]}          // related products load lazily in ProductPageClient
+      products={[]}
       categories={categories}
       collections={collections}
     />

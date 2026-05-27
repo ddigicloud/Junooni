@@ -566,11 +566,11 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
                     </div>
                   </div>
 
-                  {!loading && !error && products.length > 0 && (
+                  {/* {!loading && !error && products.length > 0 && (
                     <div className="flex-shrink-0 ml-2 text-xs text-gray-500 sm:text-sm">
                       {currentPage}/{totalPages}
                     </div>
-                  )}
+                  )} */}
                 </div>
               </CardHeader>
 

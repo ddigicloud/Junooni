@@ -60,7 +60,7 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
     {
       id: "col_info",
       heading: "Info",
-      items: footerPages.map((p: any) => ({ id: p.id, label: p.title, url: `/p/${p.slug}` })),
+      items: footerPages.map((p: any) => ({ id: p.id, label: p.title, url: `/pages/${p.slug}` })),
     },
   ]
   const footerColumns = customColumns.length > 0 ? customColumns : autoColumns
@@ -97,147 +97,6 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
         style={{ gridTemplateColumns: `repeat(${columnsPerRowMobile}, minmax(0, 1fr))` }}
       >
 
-        {/* Brand */}
-        {/* <div className="col-span-2 md:col-span-1">
-          {(store as any)?.store_logo ? (
-            <div className="mb-3">
-              <Image
-                src={(store as any).store_logo}
-                alt={vendor.name}
-                width={120}
-                height={40}
-                className="object-contain w-auto h-9"
-                style={isDark ? { filter: "brightness(0) invert(1)" } : {}}
-              />
-            </div>
-          ) : (
-            <p className="mb-2 text-base font-bold">{vendor.name}</p>
-          )}
-          {vendor.creator_bio && (
-            <p className={`text-sm leading-relaxed line-clamp-3 ${isDark ? "text-white/50" : "text-gray-500"}`}>
-              {vendor.creator_bio}
-            </p>
-          )}
-        </div> */}
-
-        {/* Shop */}
-        {/* <div>
-          <p className={`text-xs uppercase tracking-widest font-semibold mb-3 ${isDark ? "text-white/40" : "text-gray-400"}`}>Shop</p>
-          <div className="space-y-2">
-            {footerNavItems.map((item: any) => {
-              const href = item.href
-                ?? (item.url
-                  ? (item.url.startsWith("http")
-                    ? item.url
-                    : `/${handle}${item.url.startsWith("/") ? item.url : `/${item.url}`}`)
-                  : `/${handle}`)
-              return (
-                <Link
-                  key={item.id}
-                  href={href}
-                  target={item.external ? "_blank" : undefined}
-                  rel={item.external ? "noopener noreferrer" : undefined}
-                  className={`block text-sm ${isDark ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
-                >
-                  {item.label}
-                </Link>
-              )
-            })}
-          </div>
-        </div> */}
-
-        {/* Categories */}
-        {/* {categories.length > 0 && (
-          <div>
-            <p className={`text-xs uppercase tracking-widest font-semibold mb-3 ${isDark ? "text-white/40" : "text-gray-400"}`}>Categories</p>
-            <div className="space-y-2">
-              {categories.slice(0, 5).map(c => (
-                <Link
-                  key={c.id}
-                  href={`/${handle}/categories/${c.handle}`}
-                  className={`block text-sm ${isDark ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
-                >
-                  {c.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )} */}
-
-        {/* Info */}
-        {/* <div>
-          <p className={`text-xs uppercase tracking-widest font-semibold mb-3 ${isDark ? "text-white/40" : "text-gray-400"}`}>Info</p>
-          <div className="space-y-2">
-            {footerPages.map((p: any) => (
-              <Link
-                key={p.id}
-                href={`/${handle}/p/${p.slug}`}
-                className={`block text-sm ${isDark ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
-              >
-                {p.title}
-              </Link>
-            ))}
-            {vendor.sell_on_marketplace && (
-              <a
-                href={`https://junooni.com/${vendor.handle}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`block text-sm ${isDark ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
-              >
-                Our JUNOONI Store
-              </a>
-            )}
-          </div>
-        </div> */}
-
-        {/* Follow Us */}
-        {/* {hasSocial && (
-          <div>
-            <p className={`text-xs uppercase tracking-widest font-semibold mb-3 ${isDark ? "text-white/40" : "text-gray-400"}`}>Follow Us</p>
-            <div className="space-y-2">
-              {vendor.instagram && (
-                <a
-                  href={`https://instagram.com/${vendor.instagram}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block text-sm ${isDark ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
-                >
-                  Instagram
-                </a>
-              )}
-              {vendor.youtube && (
-                <a
-                  href={`https://youtube.com/${vendor.youtube}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block text-sm ${isDark ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
-                >
-                  YouTube
-                </a>
-              )}
-              {vendor.xtwitter && (
-                <a
-                  href={`https://twitter.com/${vendor.xtwitter}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block text-sm ${isDark ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
-                >
-                  Twitter / X
-                </a>
-              )}
-              {vendor.facebook && (
-                <a
-                  href={`https://facebook.com/${vendor.facebook}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block text-sm ${isDark ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"} transition-colors`}
-                >
-                  Facebook
-                </a>
-              )}
-            </div>
-          </div>
-        )} */}
          <div className="col-span-2 md:col-span-1">
           {(store as any)?.store_logo ? (
           <div className="mb-3">
@@ -365,11 +224,11 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
           >
             © {new Date().getFullYear()} {vendor.name}. All rights reserved.
           </p>
-          <p className={isDark ? "text-white/30" : "text-gray-400"}>
+          <p className={isDark ? "text-white/30" : "text-gray-400"} style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}>
             Powered by{" "}
             <a
               href="https://studio.junooni.com"
-              style={{ color: brandPrimary }}
+              style={{ color: brandPrimary, fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}
               className="font-medium transition-opacity hover:opacity-70"
             >
               JUNOONI

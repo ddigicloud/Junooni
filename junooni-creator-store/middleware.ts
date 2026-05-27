@@ -13,7 +13,7 @@ async function resolveCustomDomain(hostname: string): Promise<string | null> {
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.handle
   try {
     const res = await fetch(
-      `${BACKEND_URL}/store-front/by-domain?domain=${encodeURIComponent(hostname)}`,
+      `${BACKEND_URL}/storefront/by-domain?domain=${encodeURIComponent(hostname)}`,
       { cache: "no-store", signal: AbortSignal.timeout(3000) }
     )
     if (!res.ok) return null

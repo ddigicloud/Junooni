@@ -263,7 +263,7 @@ useEffect(() => {
     return
   }
   fetch(
-    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"}/store-front/${vendor.handle}?shell=false&page=1`,
+    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"}/storefront/${vendor.handle}?shell=false&page=1`,
     { headers: { "Content-Type": "application/json" } }
   )
     .then(r => r.ok ? r.json() : null)
@@ -419,7 +419,7 @@ const [relatedProducts, setRelatedProducts] = useState<any[]>(products)
 useEffect(() => {
   if (relatedProducts.length > 0) return // already have products (e.g. from SSR)
   fetch(
-    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"}/store-front/${vendor.handle}?shell=false&page=1`,
+    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"}/storefront/${vendor.handle}?shell=false&page=1`,
     { headers: { "Content-Type": "application/json" } }
   )
     .then(r => r.ok ? r.json() : null)
@@ -985,7 +985,8 @@ useEffect(() => {
         store={store}
         categories={categories}
         collections={collections}
-        products={products}
+        products={relatedProducts}
+        // products={products}
       />
 
       {/* Product detail */}

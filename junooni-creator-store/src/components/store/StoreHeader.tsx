@@ -15,11 +15,12 @@ interface Props {
   categories?: CategoryMeta[]
   collections?: CollectionMeta[]
   products?: Product[]
+  skipAnnouncement?: boolean
 }
 
 export default function StoreHeader({
   vendor, store,
-  categories = [], collections = [], products = [],
+  categories = [], collections = [], products = [], skipAnnouncement = false
 }: Props) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -41,9 +42,6 @@ export default function StoreHeader({
   // All home sections
   const homeSections: any[] = (store as any)?.sections?.sections ?? []
 
-  // Announcement sections
-  const annSections = homeSections.filter((s: any) => s.type === "announcement" && !s.hidden)
-
   // Header section — creator-editable nav
   const headerSection = homeSections.find((s: any) => s.type === "header")
   const customNavItems: any[] = headerSection?.nav_items ?? []
@@ -59,16 +57,11 @@ export default function StoreHeader({
   // Custom pages marked in_nav
   const inNavPages: any[] = ((store as any)?.pages?.pages ?? []).filter((p: any) => p.in_nav)
 
- const isActive = (href: string) => {
-    // Home — exact match only
+  const isActive = (href: string) => {
     if (href === `/${handle}` || href === `/${handle}/`) return pathname === `/${handle}`
-    // All Products — exact match to avoid matching /products/[handle]
     if (href === `/${handle}/products`) return pathname === `/${handle}/products`
-    // Collections index — exact match
     if (href === `/${handle}/collections`) return pathname === `/${handle}/collections`
-    // Categories index — exact match
     if (href === `/${handle}/categories`) return pathname === `/${handle}/categories`
-    // Everything else — prefix match
     return pathname.startsWith(href)
   }
 
@@ -102,20 +95,12 @@ export default function StoreHeader({
     return () => window.removeEventListener("scroll", handler)
   }, [])
 
-  // useEffect(() => {
-  //   setSearchOpen(false)
-  //   setActiveDropdown(null)
-  // }, [pathname])
-
-   useEffect(() => {
+  useEffect(() => {
     setSearchOpen(false)
     setActiveDropdown(null)
 
-    // Notify editor iframe parent when navigation happens
     if (window.parent !== window) {
       const parts = pathname.split("/")
-      // pathname = /meenalhandle/products/handle
-      // subPath  = /products/handle
       const subPath = "/" + parts.slice(2).join("/")
       const normalizedPath = subPath === "/" || subPath === "//" ? "/" : subPath
       window.parent.postMessage({
@@ -157,19 +142,15 @@ export default function StoreHeader({
       .slice(0, 8)
   }, [searchQuery, products])
 
-   const getPreviewProducts = (key: string, itemHandle?: string): Product[] => {
+  const getPreviewProducts = (key: string, itemHandle?: string): Product[] => {
     if (!products.length) return []
 
     if (key === "shop") {
-      // No collection hovered — show all products
       if (!itemHandle) return products.slice(0, 8)
-      // Collection hovered inside Shop dropdown — filter by collection
       const col = collections.find(c => c.handle === itemHandle)
       const ids: string[] = (col as any)?.product_ids ?? []
       if (ids.length) {
-        const filtered = products.filter(p =>
-          ids.map(String).includes(String(p.id))
-        )
+        const filtered = products.filter(p => ids.map(String).includes(String(p.id)))
         return filtered.length ? filtered.slice(0, 8) : products.slice(0, 8)
       }
       return products.slice(0, 8)
@@ -179,17 +160,13 @@ export default function StoreHeader({
       const col = collections.find(c => c.handle === itemHandle)
       const ids: string[] = (col as any)?.product_ids ?? []
       if (ids.length) {
-        return products
-          .filter(p => ids.map(String).includes(String(p.id)))
-          .slice(0, 8)
+        return products.filter(p => ids.map(String).includes(String(p.id))).slice(0, 8)
       }
       return []
     }
 
     if (key === "categories" && itemHandle) {
-      const m = products.filter(p =>
-        p.categories?.some(c => c.handle === itemHandle)
-      )
+      const m = products.filter(p => p.categories?.some(c => c.handle === itemHandle))
       return m.length ? m.slice(0, 8) : []
     }
 
@@ -198,13 +175,13 @@ export default function StoreHeader({
 
   const previewProducts = getPreviewProducts(activeDropdown ?? "shop", hoverItem)
 
-  // Nav items — use custom if creator has set them, otherwise auto-build
+  // Nav items
   const autoNavItems = [
     { id: "home",        label: "Home",        href: `/${handle}`,             type: "link" },
     { id: "shop",        label: "Shop",        href: `/${handle}/products`,    type: "dropdown" },
     ...(collections.length > 0 ? [{ id: "collections", label: "Collections", href: `/${handle}/collections`, type: "dropdown" }] : []),
     ...(categories.length  > 0 ? [{ id: "categories",  label: "Categories",  href: `/${handle}/categories`,  type: "dropdown" }] : []),
-    ...inNavPages.map(p => ({ id: p.id, label: p.title, href: `/${handle}/p/${p.slug}`, type: "link", external: p.external })),
+    ...inNavPages.map(p => ({ id: p.id, label: p.title, href: `/${handle}/pages/${p.slug}`, type: "link", external: p.external })),
   ]
   const navItems = customNavItems.length > 0 ? customNavItems : autoNavItems
 
@@ -219,24 +196,39 @@ export default function StoreHeader({
   return (
     <div ref={headerRef} className={wrapSticky ? "sticky top-0 z-40" : "relative"}>
 
-      {/* ── ANNOUNCEMENT BARS ─────────────────────────────────────────────── */}
-      {annSections.map((s: any, i: number) => (
-        <div key={i} style={{ background: s.background_color ?? "#e65100", color: s.text_color ?? "#ffffff" }}>
-          {s.cta_url && !s.title?.includes('<a ') ? (
-            <a
-              href={s.cta_url}
-              className="block w-full px-4 py-2 text-xs font-medium text-center"
-              style={{ color: s.text_color ?? "#ffffff" }}
-              dangerouslySetInnerHTML={{ __html: s.title ?? "" }}
-            />
-          ) : (
-            <p
-              className="w-full px-4 py-2 text-xs font-medium text-center"
-              dangerouslySetInnerHTML={{ __html: s.title ?? "" }}
-            />
-          )}
-        </div>
-      ))}
+      {/* ── TICKERS ABOVE HEADER ─────────────────────────────────────────────── */}
+      {homeSections
+        .filter((s: any) =>
+          !s.hidden &&
+          (s.type === "announcement" || s.type === "ticker") &&
+          (s as any).ticker_position !== "below"
+        )
+        .map((s: any) => {
+          if (s.type === "ticker") {
+            return <TickerBar key={s.id} section={s} />
+          }
+          if (s.type === "announcement" && !skipAnnouncement) {
+            return (
+              <div key={s.id} style={{ background: s.background_color ?? "#e65100", color: s.text_color ?? "#ffffff" }}>
+                {s.cta_url && !s.title?.includes('<a ') ? (
+                  <a
+                    href={s.cta_url}
+                    className="block w-full px-4 py-2 text-xs font-medium text-center"
+                    style={{ color: s.text_color ?? "#ffffff" }}
+                    dangerouslySetInnerHTML={{ __html: s.title ?? "" }}
+                  />
+                ) : (
+                  <p
+                    className="w-full px-4 py-2 text-xs font-medium text-center"
+                    dangerouslySetInnerHTML={{ __html: s.title ?? "" }}
+                  />
+                )}
+              </div>
+            )
+          }
+          return null
+        })
+      }
 
       {/* ── HEADER BAR ──────────────────────────────────────────────────────── */}
       <header
@@ -248,9 +240,9 @@ export default function StoreHeader({
       >
         <div className="relative flex items-center justify-between h-16 gap-6 px-4 mx-auto max-w-7xl sm:px-6">
 
-            <button
+          <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className={`md:hidden p-2 rounded-full transition-colors shrink-0 ${isDark ? "text-white/60 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-900 "}`}
+            className={`md:hidden p-2 rounded-full transition-colors shrink-0 ${isDark ? "text-white/60 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-900"}`}
             style={headerText ? { color: headerText } : {}}
           >
             {mobileOpen ? <X style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
@@ -310,12 +302,11 @@ export default function StoreHeader({
             )}
           </Link>
 
-           <nav className={`items-center flex-1 hidden gap-1 md:flex ${logoPosition === "center" ? "justify-start" : "justify-center"}`}>
+          <nav className={`items-center flex-1 hidden gap-1 md:flex ${logoPosition === "center" ? "justify-start" : "justify-center"}`}>
             {navItems.map((item: any) => {
               const href = item.href ?? (item.url ? (item.url.startsWith("/") ? `/${handle}${item.url}` : item.url) : `/${handle}`)
               const navTextStyle = headerText ? { color: headerText, opacity: isActive(href) ? 1 : 0.7 } : {}
-              
-              // Detect system dropdown routes by URL, not just by id
+
               const isSystemProducts    = item.url === "/products"    || item.id === "shop"
               const isSystemCollections = item.url === "/collections" || item.id === "collections"
               const isSystemCategories  = item.url === "/categories"  || item.id === "categories"
@@ -332,7 +323,7 @@ export default function StoreHeader({
                     }}
                     onMouseLeave={scheduleClose}
                   >
-                     <button
+                    <button
                       className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(href) ? "" : textMuted}`}
                       style={headerText
                         ? (isActive(href) ? { color: brandPrimary } : { color: headerText, opacity: 0.7 })
@@ -345,7 +336,7 @@ export default function StoreHeader({
                 )
               }
 
-            if (item.children && item.children.length > 0) {
+              if (item.children && item.children.length > 0) {
                 return (
                   <div key={item.id} className="relative"
                     onMouseEnter={() => openDropdown(`custom_${item.id}`)}
@@ -406,7 +397,7 @@ export default function StoreHeader({
           </nav>
 
           <div className="flex items-center gap-1">
-             <button
+            <button
               onClick={toggleSearch}
               className={`p-2 rounded-full transition-all ${
                 searchOpen
@@ -418,10 +409,16 @@ export default function StoreHeader({
             >
               {searchOpen ? <X style={{ width: 18, height: 18 }} /> : <Search style={{ width: 18, height: 18 }} />}
             </button>
-           <CartIconButton brandPrimary={brandPrimary} iconColor={headerText ?? undefined} />
+            <CartIconButton brandPrimary={brandPrimary} iconColor={headerText ?? undefined} />
           </div>
         </div>
       </header>
+
+      {/* ── TICKERS BELOW HEADER ─────────────────────────────────────────────── */}
+      {homeSections
+        .filter((s: any) => s.type === "ticker" && !s.hidden && (s as any).ticker_position === "below")
+        .map((s: any) => <TickerBar key={s.id} section={s} />)
+      }
 
       {/* ── SEARCH DROPDOWN ───────────────────────────────────────────────────── */}
       {searchOpen && (
@@ -610,11 +607,11 @@ export default function StoreHeader({
       )}
 
       {/* ── MOBILE NAV ────────────────────────────────────────────────────────── */}
-     {mobileOpen && (
+      {mobileOpen && (
         <div className={`md:hidden fixed inset-x-0 z-50 border-b shadow-lg ${isDark ? "bg-black border-white/10" : "bg-white border-gray-100"}`}
           style={{ top: headerRef.current ? headerRef.current.getBoundingClientRect().bottom : 64 }}>
           <div className="px-6 py-5 space-y-1">
-          {navItems.map((item: any) => {
+            {navItems.map((item: any) => {
               const href = item.href
                 ?? (item.url
                   ? (item.url.startsWith("http")
@@ -633,7 +630,6 @@ export default function StoreHeader({
                   >
                     {item.label}
                   </Link>
-                  {/* Children indented below parent */}
                   {item.children && item.children.length > 0 && (
                     <div className="ml-4 mt-0.5 space-y-0.5 mb-1">
                       {item.children.map((child: any) => {
@@ -658,17 +654,43 @@ export default function StoreHeader({
                 </div>
               )
             })}
-            {/* <Link
-              href={`/${handle}/search`}
-              onClick={() => setMobileOpen(false)}
-              className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(`/${handle}/search`) ? "" : textMuted}`}
-              style={isActive(`/${handle}/search`) ? { color: brandPrimary } : {}}
-            >
-              Search
-            </Link> */}
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── TickerBar ─────────────────────────────────────────────────────────────────
+function TickerBar({ section }: { section: any }) {
+  const items: string[] = section.ticker_items ?? ["Free shipping on orders above ₹999", "New drops every week", "Official creator merchandise"]
+  const sep = section.ticker_separator ?? "✦"
+  const speed = section.ticker_speed ?? 40
+  const bg = section.background_color ?? "#111827"
+  const fg = section.text_color ?? "#ffffff"
+  const stripHtml = (s: string) => s.replace(/<[^>]*>/g, "").trim()
+  const cleanItems = items.map(stripHtml)
+  const line = cleanItems.join(`  ${sep}  `)
+  const repeated = Array(8).fill(line).join(`  ${sep}  `)
+  const fullLine = `${repeated}  ${sep}  `
+  const duration = Math.max(5, 100 - speed)
+  return (
+    <div className="overflow-hidden py-2.5" style={{ backgroundColor: bg }}>
+      <style>{`
+        @keyframes junooni-ticker {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .junooni-ticker-inner {
+          display: inline-flex;
+          white-space: nowrap;
+          animation: junooni-ticker ${duration}s linear infinite;
+        }
+      `}</style>
+      <div className="text-sm font-medium tracking-wide junooni-ticker-inner" style={{ color: fg }}>
+        <span>{fullLine}</span>
+        <span>{fullLine}</span>
+      </div>
     </div>
   )
 }

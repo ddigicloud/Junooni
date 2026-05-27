@@ -128,7 +128,7 @@ export default async function HandleLayout({ children, params }: Props) {
   }
 
   try {
-    const res = await fetch(`${BACKEND_URL}/store-front/${handle}`, {
+    const res = await fetch(`${BACKEND_URL}/storefront/${handle}`, {
       cache: "no-store",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(8000),
