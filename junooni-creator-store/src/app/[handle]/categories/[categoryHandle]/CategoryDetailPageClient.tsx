@@ -50,7 +50,10 @@ export default function CategoryDetailPageClient({
   // Page sections from editor (category layout key)
   const pageSections: any[] = store?.sections?.page_layouts?.category?.sections ?? []
   const visibleSections = pageSections.filter(s => !s.hidden)
-  const isEditorMode = typeof window !== "undefined" && window.parent !== window
+  const [isEditorMode, setIsEditorMode] = useState(false)
+  useEffect(() => {
+    setIsEditorMode(window.parent !== window)
+  }, [])
   const gridSettings = pageSections.find((s: any) => s.id === "__category_products__") ?? {}
     const gridColumns    = gridSettings.columns ?? 3
     const gridBg         = gridSettings.background_color
@@ -75,6 +78,10 @@ export default function CategoryDetailPageClient({
         onClick={() => {
           if (isEditorMode && section.id)
             window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: section.id }, "*")
+        }}
+        onDoubleClick={() => {
+          if (isEditorMode && section.id)
+            window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: section.id }, "*")
         }}
         className={`relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
         style={{
@@ -256,12 +263,20 @@ export default function CategoryDetailPageClient({
       />
 
       {/* Sections ABOVE the product grid */}
-      {visibleSections.filter(s => s.type !== "collection").map(renderSection)}
+      {/* {visibleSections.filter(s => s.type !== "collection").map(renderSection)} */}
 
       {/* ── Category Product Grid ── */}
       <div
         className="px-4 py-10 mx-auto max-w-7xl sm:px-6"
         style={{ backgroundColor: gridBg ?? undefined }}
+        onClick={() => {
+          if (isEditorMode)
+            window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: "__category_products__" }, "*")
+        }}
+        onDoubleClick={() => {
+          if (isEditorMode)
+            window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: "__category_products__" }, "*")
+        }}
         >
         <div className="mb-8">
             <p className="mb-1 text-xs font-semibold tracking-widest uppercase"
@@ -304,6 +319,8 @@ export default function CategoryDetailPageClient({
             />
         )}
         </div>
+
+        {visibleSections.filter(s => s.type !== "collection").map(renderSection)}
 
       <StoreFooter
         vendor={vendor} store={store}

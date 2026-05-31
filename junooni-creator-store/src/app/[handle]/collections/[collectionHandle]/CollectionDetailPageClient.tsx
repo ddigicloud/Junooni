@@ -61,7 +61,10 @@ export default function CollectionDetailPageClient({
     (s: any) => s.id !== "__collection_products__" && !s.hidden
   )
 
-  const isEditorMode = typeof window !== "undefined" && window.parent !== window
+  const [isEditorMode, setIsEditorMode] = useState(false)
+  useEffect(() => {
+    setIsEditorMode(window.parent !== window)
+  }, [])
   const isGridSelected = selectedSectionId === "__collection_products__"
 
   const colClass =
@@ -81,6 +84,10 @@ export default function CollectionDetailPageClient({
         onClick={() => {
           if (isEditorMode && section.id)
             window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: section.id }, "*")
+        }}
+        onDoubleClick={() => {
+          if (isEditorMode && section.id)
+            window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: section.id }, "*")
         }}
         className={`relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
         style={{
@@ -268,6 +275,10 @@ export default function CollectionDetailPageClient({
         onClick={() => {
           if (isEditorMode)
             window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: "__collection_products__" }, "*")
+        }}
+        onDoubleClick={() => {
+          if (isEditorMode)
+            window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: "__collection_products__" }, "*")
         }}
         className={`relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
         style={{

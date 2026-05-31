@@ -67,7 +67,7 @@ function AnnouncementStrip({ section }: { section: any }) {
   const fg = section.text_color ?? "#ffffff"
   if (!section.title) return null
   return (
-    <div className="w-full py-2 px-4 text-center text-sm font-medium"
+    <div className="w-full px-4 py-2 text-sm font-medium text-center"
       style={{ backgroundColor: bg, color: fg }}
       dangerouslySetInnerHTML={{ __html: section.title }} />
   )
@@ -113,14 +113,17 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
   // console.log("wrapSticky =", (store as any)?.sticky_header !== false)
 
    // Header-zone sections — announcement + ticker
-   const headerZoneSectionIds = new Set(
+  const headerZoneSectionIds = new Set(
     sections
       .filter((s: any) => s.type === "announcement" || s.type === "ticker")
       .map((s: any) => s.id)
   )
+  // All tickers/announcements are handled by StoreHeader (above or below nav)
+  // so filter them all out from the body sections map
 
   return (
     <div className={`min-h-screen bg-white ${fontClass}`}>
+      
       {/* ── HEADER (handles announcements + tickers internally) ── */}
       <StoreHeader
         vendor={vendor}
@@ -131,7 +134,7 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
       />
 
       {/* ── PAGE SECTIONS ── */}
-       {sections.filter(s => !(s as any).hidden && !headerZoneSectionIds.has((s as any).id)).map((section, i) => {
+       {sections.filter(s => !(s as any).hidden && !headerZoneSectionIds.has((s as any).id)).map((section) => {
         const secId = (section as any).id
         const isSelected = secId && selectedSectionId === secId
         const isEditorMode = typeof window !== "undefined" && window.parent !== window
@@ -139,9 +142,10 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
         const secText = (section as any).text_color
         return (
           <div
-            key={i}
+            key={secId}
             data-section-id={secId}
             onClick={() => isEditorMode && secId && window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: secId }, "*")}
+            onDoubleClick={() => isEditorMode && secId && window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: secId }, "*")}
             className={`relative transition-all ${isEditorMode && secId ? "cursor-pointer" : ""}`}
             style={isSelected ? { outline: "2px solid #e65100", outlineOffset: "-2px" } : {}}
           >
@@ -199,7 +203,16 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
   if ((section as any).hidden) return null
 
   switch (section.type) {
-    case "announcement": return null
+    case "announcement": {
+      const bg = (section as any).background_color ?? "#e65100"
+      const fg = (section as any).text_color ?? "#ffffff"
+      if (!(section as any).title) return null
+      return (
+        <div className="w-full px-4 py-2 text-sm font-medium text-center"
+          style={{ backgroundColor: bg, color: fg }}
+          dangerouslySetInnerHTML={{ __html: (section as any).title }} />
+      )
+    }
 
     // ── Hero ───────────────────────────────────────────────────────────────────
     case "hero": {
@@ -374,7 +387,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     // ── All products collection ────────────────────────────────────────────────
     case "collection": {
       const limited = products.slice(0, section.limit ?? 12)
-      console.log("product metadata sample:", products[0]?.metadata?.color_hex_values)
+      // console.log("product metadata sample:", products[0]?.metadata?.color_hex_values)
       if (!limited.length) return null
       return (
         <section id="products" className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "#f9fafb" }}>
@@ -382,7 +395,9 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl font-bold" style={{ color: sectionText ?? "#111827" }}>{section.title ?? "All Products"}</h2>
-                <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>{products.length} products available</p>
+                {section.show_product_count !== false && (
+                  <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>{products.length} products available</p>
+                )}
               </div>
               <Link href={`/${handle}/products`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
                 View all <ChevronRight className="w-4 h-4" />
@@ -700,8 +715,6 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       )
     }
 
-    default: return null
-
     // ── Ticker / Scrolling marquee ─────────────────────────────────────────────
     case "ticker": {
       const items: string[] = (section as any).ticker_items ?? ["Free shipping on orders above ₹999", "New drops every week", "Official creator merchandise"]
@@ -865,6 +878,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
         />
       )
     }
+     default: return null
   }
 }
 

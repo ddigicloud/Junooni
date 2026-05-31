@@ -43,7 +43,10 @@ export default function CollectionsPageClient({
   } as React.CSSProperties
 
   const pageSections: any[] = store?.sections?.page_layouts?.collections?.sections ?? []
-  const isEditorMode = typeof window !== "undefined" && window.parent !== window
+  const [isEditorMode, setIsEditorMode] = useState(false)
+  useEffect(() => {
+    setIsEditorMode(window.parent !== window)
+  }, [])
 
   // Virtual grid settings
   const gridSettings = pageSections.find((s: any) => s.id === "__collections_grid__") ?? {}
@@ -76,6 +79,10 @@ export default function CollectionsPageClient({
         onClick={() => {
           if (isEditorMode && section.id)
             window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: section.id }, "*")
+        }}
+        onDoubleClick={() => {
+          if (isEditorMode && section.id)
+            window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: section.id }, "*")
         }}
         className={`relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
         style={{
@@ -260,10 +267,14 @@ export default function CollectionsPageClient({
       <div
         data-section-id="__collections_grid__"
         onClick={() => {
-          if (isEditorMode)
-            window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: "__collections_grid__" }, "*")
-        }}
-        className={`relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
+            if (isEditorMode)
+              window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: "__collections_grid__" }, "*")
+          }}
+          onDoubleClick={() => {
+            if (isEditorMode)
+              window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: "__collections_grid__" }, "*")
+          }}
+          className={`relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
         style={{
           backgroundColor: gridBg ?? undefined,
           ...(isGridSelected ? { outline: "2px solid #e65100", outlineOffset: "-2px" } : {}),

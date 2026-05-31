@@ -43,7 +43,10 @@ export default function CategoriesPageClient({
   } as React.CSSProperties
 
   const pageSections: any[] = store?.sections?.page_layouts?.categories?.sections ?? []
-  const isEditorMode = typeof window !== "undefined" && window.parent !== window
+  const [isEditorMode, setIsEditorMode] = useState(false)
+  useEffect(() => {
+    setIsEditorMode(window.parent !== window)
+  }, [])
 
   // Virtual grid settings section
   const gridSettings = pageSections.find((s: any) => s.id === "__category_grid__") ?? {}
@@ -77,6 +80,10 @@ export default function CategoriesPageClient({
         onClick={() => {
           if (isEditorMode && section.id)
             window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: section.id }, "*")
+        }}
+        onDoubleClick={() => {
+          if (isEditorMode && section.id)
+            window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: section.id }, "*")
         }}
         className={`relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
         style={{
@@ -263,6 +270,10 @@ export default function CategoriesPageClient({
         onClick={() => {
           if (isEditorMode)
             window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: "__category_grid__" }, "*")
+        }}
+        onDoubleClick={() => {
+          if (isEditorMode)
+            window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: "__category_grid__" }, "*")
         }}
         className={`relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
         style={{

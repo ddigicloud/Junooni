@@ -197,38 +197,35 @@ export default function StoreHeader({
     <div ref={headerRef} className={wrapSticky ? "sticky top-0 z-40" : "relative"}>
 
       {/* ── TICKERS ABOVE HEADER ─────────────────────────────────────────────── */}
-      {homeSections
-        .filter((s: any) =>
-          !s.hidden &&
-          (s.type === "announcement" || s.type === "ticker") &&
-          (s as any).ticker_position !== "below"
-        )
-        .map((s: any) => {
-          if (s.type === "ticker") {
-            return <TickerBar key={s.id} section={s} />
-          }
-          if (s.type === "announcement" && !skipAnnouncement) {
-            return (
-              <div key={s.id} style={{ background: s.background_color ?? "#e65100", color: s.text_color ?? "#ffffff" }}>
-                {s.cta_url && !s.title?.includes('<a ') ? (
-                  <a
-                    href={s.cta_url}
-                    className="block w-full px-4 py-2 text-xs font-medium text-center"
-                    style={{ color: s.text_color ?? "#ffffff" }}
-                    dangerouslySetInnerHTML={{ __html: s.title ?? "" }}
-                  />
-                ) : (
-                  <p
-                    className="w-full px-4 py-2 text-xs font-medium text-center"
-                    dangerouslySetInnerHTML={{ __html: s.title ?? "" }}
-                  />
-                )}
-              </div>
-            )
-          }
-          return null
-        })
-      }
+      {/* ── TICKERS/ANNOUNCEMENTS ABOVE HEADER — rendered in array order ── */}
+      {(() => {
+        const headerIdx = homeSections.findIndex((s: any) => s.type === "header")
+        return homeSections
+          .filter((s: any, i: number) => {
+            if (s.hidden) return false
+            if (s.type !== "announcement" && s.type !== "ticker") return false
+            if (headerIdx === -1) return false
+            return i < headerIdx
+          })
+          .map((s: any) => {
+            if (s.type === "ticker") return <TickerBar key={s.id} section={s} />
+            if (s.type === "announcement" && !skipAnnouncement) {
+              return (
+                <div key={s.id} style={{ background: s.background_color ?? "#e65100", color: s.text_color ?? "#ffffff" }}>
+                  {s.cta_url && !s.title?.includes('<a ') ? (
+                    <a href={s.cta_url} className="block w-full px-4 py-2 text-xs font-medium text-center"
+                      style={{ color: s.text_color ?? "#ffffff" }}
+                      dangerouslySetInnerHTML={{ __html: s.title ?? "" }} />
+                  ) : (
+                    <p className="w-full px-4 py-2 text-xs font-medium text-center"
+                      dangerouslySetInnerHTML={{ __html: s.title ?? "" }} />
+                  )}
+                </div>
+              )
+            }
+            return null
+          })
+      })()}
 
       {/* ── HEADER BAR ──────────────────────────────────────────────────────── */}
       <header
@@ -248,11 +245,13 @@ export default function StoreHeader({
             {mobileOpen ? <X style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
           </button>
 
-          <Link href={`/${handle}`} className={`flex items-center gap-2.5 shrink-0 ${
-            logoPosition === "center"
-              ? "absolute left-1/2 -translate-x-1/2"
-              : "md:static"
-          }`}>
+          <Link href={`/${handle}`} className={`flex items-center gap-2.5 shrink-0 
+            absolute left-1/2 -translate-x-1/2
+            ${logoPosition === "center"
+              ? "md:absolute md:left-1/2 md:-translate-x-1/2"
+              : "md:static md:translate-x-0"   // ← resets absolute positioning on desktop
+            }
+          `}>
             {(store as any)?.store_logo
               ? <Image
                   src={(store as any).store_logo}
@@ -415,10 +414,35 @@ export default function StoreHeader({
       </header>
 
       {/* ── TICKERS BELOW HEADER ─────────────────────────────────────────────── */}
-      {homeSections
-        .filter((s: any) => s.type === "ticker" && !s.hidden && (s as any).ticker_position === "below")
-        .map((s: any) => <TickerBar key={s.id} section={s} />)
-      }
+     {/* ── TICKERS/ANNOUNCEMENTS BELOW HEADER ── */}
+      {(() => {
+        const headerIdx = homeSections.findIndex((s: any) => s.type === "header")
+        if (headerIdx === -1) return null
+        return homeSections
+          .filter((s: any, i: number) => {
+            if (s.hidden) return false
+            if (s.type !== "announcement" && s.type !== "ticker") return false
+            return i > headerIdx
+          })
+          .map((s: any) => {
+            if (s.type === "ticker") return <TickerBar key={s.id} section={s} />
+            if (s.type === "announcement" && !skipAnnouncement) {
+              return (
+                <div key={s.id} style={{ background: s.background_color ?? "#e65100", color: s.text_color ?? "#ffffff" }}>
+                  {s.cta_url && !s.title?.includes('<a ') ? (
+                    <a href={s.cta_url} className="block w-full px-4 py-2 text-xs font-medium text-center"
+                      style={{ color: s.text_color ?? "#ffffff" }}
+                      dangerouslySetInnerHTML={{ __html: s.title ?? "" }} />
+                  ) : (
+                    <p className="w-full px-4 py-2 text-xs font-medium text-center"
+                      dangerouslySetInnerHTML={{ __html: s.title ?? "" }} />
+                  )}
+                </div>
+              )
+            }
+            return null
+          })
+      })()}
 
       {/* ── SEARCH DROPDOWN ───────────────────────────────────────────────────── */}
       {searchOpen && (

@@ -154,10 +154,27 @@ export interface Product {
 
 // ── Full storefront API response ──────────────────────────────────────────────
 
+export interface CollectionMeta {
+  id: string
+  title: string
+  handle: string
+  product_count?: number
+  product_ids?: string[]
+  is_visible?: boolean
+  sort_order?: number
+}
+
+export interface CategoryMeta {
+  id: string
+  name: string
+  handle: string
+  product_count?: number
+}
+
 export interface StorefrontData {
   vendor: PublicVendor
   store: VendorStore | null
   products: Product[]
-  categories?: any[]
-  collections?: any[]
+  categories?: CategoryMeta[]
+  collections?: CollectionMeta[]
 }

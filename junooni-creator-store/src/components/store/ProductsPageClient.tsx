@@ -108,6 +108,11 @@ export default function ProductsPageClient({
             window.parent?.postMessage({ type: "SECTION_CLICK", sectionId }, "*")
           }
         }}
+        onDoubleClick={() => {
+          if (isEditorMode && sectionId) {
+            window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId }, "*")
+          }
+        }}
         className={`px-4 py-10 mx-auto max-w-7xl sm:px-6 relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
         style={{
           backgroundColor: gridBg ?? "transparent",

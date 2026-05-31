@@ -971,7 +971,10 @@ const DashboardPage = () => {
       setVendor(transformedVendor);
 
       // Show tour for first-time visitors
-      if (!localStorage.getItem("dashboard_tour_done")) {
+      // Show tour only within first 3 days of account creation
+      const createdAt = new Date(vendorData.vendor?.created_at);
+      const daysSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceCreation <= 3) {
         setTimeout(() => setShowTour(true), 1200);
       }
 

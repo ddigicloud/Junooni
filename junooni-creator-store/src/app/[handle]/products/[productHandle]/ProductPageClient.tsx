@@ -90,7 +90,7 @@ function isLightHex(hex: string): boolean {
 function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
   product: any; isDark: boolean; brandPrimary: string; vendor: any
 }) {
-  const [openSection, setOpenSection] = useState<string | null>("description")
+  const [openSection, setOpenSection] = useState<string | null>(null)
 
   const toggle = (id: string) => setOpenSection(o => o === id ? null : id)
 
@@ -431,6 +431,20 @@ useEffect(() => {
 
   const isEditorMode = typeof window !== "undefined" && window.parent !== window
 
+  useEffect(() => {
+    window.parent?.postMessage({ type: "IFRAME_READY" }, "*")
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "STORE_UPDATE" && e.data.store) {
+        setStore(e.data.store)
+      }
+      if (e.data?.type === "STORE_UPDATE") {
+        setSelectedSectionId(e.data.selectedId ?? null)
+      }
+    }
+    window.addEventListener("message", handler)
+    return () => window.removeEventListener("message", handler)
+  }, [])
+
   // ── Initial gallery images ─────────────────────────────────────────────────
   const firstVariant = product.variants?.[0]
   const initialImages: any[] = firstVariant?.images?.length > 0
@@ -704,6 +718,11 @@ useEffect(() => {
             window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: section.id }, "*")
           }
         }}
+        onDoubleClick={() => {
+          if (isEditorMode && section.id) {
+            window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: section.id }, "*")
+          }
+        }}
         className={`relative transition-all ${isEditorMode ? "cursor-pointer" : ""}`}
         style={{
           backgroundColor: sectionBg,
@@ -735,7 +754,7 @@ useEffect(() => {
                 {relatedLoading ? (
                   // ── Skeleton cards while loading ──
                   [...Array(section.limit ?? 4)].map((_, i) => (
-                    <div key={i} className="animate-pulse space-y-3">
+                    <div key={i} className="space-y-3 animate-pulse">
                       <div className={`aspect-square rounded-xl ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
                       <div className={`h-4 w-3/4 rounded ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
                       <div className={`h-4 w-1/3 rounded ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
@@ -1029,7 +1048,7 @@ useEffect(() => {
               {relatedLoading ? (
                 // ── Skeleton cards ──
                 [...Array(4)].map((_, i) => (
-                  <div key={i} className="animate-pulse space-y-3">
+                  <div key={i} className="space-y-3 animate-pulse">
                     <div className={`aspect-square rounded-xl ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
                     <div className={`h-4 w-3/4 rounded ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
                     <div className={`h-4 w-1/3 rounded ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
