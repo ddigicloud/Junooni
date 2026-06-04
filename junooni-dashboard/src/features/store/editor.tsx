@@ -1085,7 +1085,7 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
         {/* Left panel */}
         <div className={`flex flex-col border-r overflow-hidden ${panelBg} ${panelBorder} md:shrink-0 md:relative md:translate-x-0 md:z-auto md:shadow-none fixed top-0 bottom-0 left-0 z-40 w-72 transition-all duration-300 ${
           leftPanelOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"
-        } ${leftPanelCollapsed ? "md:w-0 md:border-r-0" : "md:w-64"}`}>
+        } ${leftPanelCollapsed ? "md:w-0 md:border-r-0" : "md:w-65"}`}>
           <div className={`md:hidden flex items-center justify-between px-3 py-2.5 border-b ${panelBorder}`}>
             <span className={`text-sm font-semibold ${textPrimary}`}>Editor</span>
             <button onClick={() => setLeftPanelOpen(false)}

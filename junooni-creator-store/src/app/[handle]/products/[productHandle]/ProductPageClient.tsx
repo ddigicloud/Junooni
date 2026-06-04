@@ -429,8 +429,11 @@ useEffect(() => {
     .catch(() => {})
 }, [vendor.handle])
 
-  const isEditorMode = typeof window !== "undefined" && window.parent !== window
+const [isEditorMode, setIsEditorMode] = useState(false)
 
+useEffect(() => {
+  setIsEditorMode(window.parent !== window)
+}, [])
   useEffect(() => {
     window.parent?.postMessage({ type: "IFRAME_READY" }, "*")
     const handler = (e: MessageEvent) => {

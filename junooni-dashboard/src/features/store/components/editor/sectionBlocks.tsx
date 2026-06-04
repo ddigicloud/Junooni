@@ -16,7 +16,7 @@ export const SECTION_BLOCKS: {
   { type: "announcement",       label: "Announcement Bar",      icon: <Megaphone className="w-3.5 h-3.5" />,   desc: "Top banner with message",              color: "#f59e0b", category: "layout"   },
   { type: "hero",               label: "Hero Banner",           icon: <ImageIcon className="w-3.5 h-3.5" />,   desc: "Big headline + CTA buttons",           color: "#8b5cf6", category: "layout"   },
   { type: "collection",         label: "Product Grid",          icon: <ShoppingBag className="w-3.5 h-3.5" />, desc: "All products / filtered grid",         color: "#e65100", category: "products" },
-  { type: "featured",           label: "Featured Products",     icon: <Star className="w-3.5 h-3.5" />,        desc: "Hand-picked highlights",               color: "#ec4899", category: "products" },
+  // { type: "featured",           label: "Featured Products",     icon: <Star className="w-3.5 h-3.5" />,        desc: "Hand-picked highlights",               color: "#ec4899", category: "products" },
   { type: "featured_collections",label: "Collections Showcase", icon: <Layers className="w-3.5 h-3.5" />,     desc: "Pick collections to feature",          color: "#7c3aed", category: "products" },
   { type: "about",              label: "About",                 icon: <BookOpen className="w-3.5 h-3.5" />,    desc: "Story + image block",                  color: "#10b981", category: "content"  },
   { type: "text",               label: "Text Block",            icon: <Type className="w-3.5 h-3.5" />,        desc: "Rich text / Markdown",                 color: "#14b8a6", category: "content"  },

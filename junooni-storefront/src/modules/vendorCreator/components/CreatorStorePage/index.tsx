@@ -53,6 +53,7 @@ import {
 import { toast } from "react-toastify"
 import profileplaceholder from "@assets/profile-logo.png"
 
+
 // Updated DynamicProductCardProps to include region
 interface ExtendedProductCardProps extends DynamicProductCardProps {
   region: any
@@ -356,8 +357,8 @@ const CreatorStorePage: React.FC<CreatorStorePageProps & {
 }) => {
   // const [vendorProducts, setVendorProducts] = useState<Product[]>([])
   // const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [vendorProducts] = useState<Product[]>(initialVendorProducts)
-  const isLoading = false  // No client fetch needed — products come from server
+  const [vendorProducts, setVendorProducts] = useState<Product[]>(initialVendorProducts)
+  const [isLoading, setIsLoading] = useState(initialVendorProducts.length === 0)
   const [followers, setFollowers] = useState([])
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true)
 
@@ -371,6 +372,28 @@ const CreatorStorePage: React.FC<CreatorStorePageProps & {
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [sortOption, setSortOption] = useState<string>("featured")
   const PRODUCTS_PER_PAGE = 12
+
+  // Fetch products client-side after first paint
+useEffect(() => {
+   console.log("CLIENT EFFECT FIRING", vendor.id, region.id)
+  if (initialVendorProducts.length > 0) return // already have products from server
+
+  const load = async () => {
+    console.log("LOADING PRODUCTS FOR", vendor.id, region.id)
+    setIsLoading(true)
+    try {
+    const { fetchVendorProductsClient } = await import("@lib/data/vendors-client")
+      const products = await fetchVendorProductsClient(vendor.id, region.id)
+      setVendorProducts(products)
+    } catch {
+      setVendorProducts([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  load()
+}, [vendor.id, region.id])
 
   // Fetch followers data
   useEffect(() => {
@@ -940,7 +963,7 @@ const handleFollowToggle = async () => {
                           </p>
                           {creator.verified && (
                             <svg
-                              className="ml-2 inline-block align-middle"
+                              className="inline-block ml-2 align-middle"
                               width="18"
                               height="18"
                               viewBox="0 0 20 20"
@@ -1496,8 +1519,31 @@ const handleFollowToggle = async () => {
                 </div>
 
                 {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-12 h-12 border-4 border-t-4 border-gray-200 rounded-full border-t-[#e65100] animate-spin"></div>
+                  <div className="grid grid-cols-2 gap-0 -mx-4 md:grid-cols-3 sm:-mx-6 lg:grid-cols-4 md:gap-6">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="p-1 sm:p-3">
+                        {/* Image skeleton */}
+                        <div
+                          className="w-full mb-4 bg-gray-100 rounded-lg animate-pulse"
+                          style={{
+                            aspectRatio: "4/5",
+                            animationDelay: `${i * 60}ms`,
+                          }}
+                        />
+                        {/* Vendor name */}
+                        <div className="w-1/3 h-3 mb-2 bg-gray-100 rounded animate-pulse" />
+                        {/* Product title */}
+                        <div className="w-3/4 h-4 mb-2 bg-gray-100 rounded animate-pulse" />
+                        {/* Color dots */}
+                        <div className="flex gap-1.5 mb-2">
+                          {[1,2,3].map(j => (
+                            <div key={j} className="w-5 h-5 bg-gray-100 rounded-full animate-pulse" />
+                          ))}
+                        </div>
+                        {/* Price */}
+                        <div className="w-1/4 h-4 bg-gray-200 rounded animate-pulse" />
+                      </div>
+                    ))}
                   </div>
                 ) : !Array.isArray(vendorProducts) ||
                   vendorProducts.length === 0 ? (
@@ -1698,9 +1744,26 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
   //     })
   // }, [product.id])
 
-  const averageRating = reviewData?.averageRating ?? 0
-  const reviewCount = reviewData?.reviewCount ?? 0
-  const isLoadingReviews = false
+  const [averageRating, setAverageRating] = useState(0)
+  const [reviewCount, setReviewCount] = useState(0)
+  const [isLoadingReviews, setIsLoadingReviews] = useState(true)
+
+  useEffect(() => {
+    // Only fetch if no server data provided
+    if (reviewData) {
+      setAverageRating(reviewData.averageRating)
+      setReviewCount(reviewData.reviewCount)
+      setIsLoadingReviews(false)
+      return
+    }
+    getProductReviews({ productId: product.id, limit: 100, offset: 0 })
+      .then(({ average_rating, reviews }) => {
+        setAverageRating(average_rating ?? 0)
+        setReviewCount(reviews?.length ?? 0)
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingReviews(false))
+  }, [product.id])
 
 
   // ADD STEP 3 FUNCTION HERE:
@@ -2111,7 +2174,7 @@ const ColorOptions = ({ colors }: { colors: Array<{name: string, hex: string, ke
               {/* <Check size={14} /> */}
               
                             <svg
-                              className="ml-2 inline-block align-middle"
+                              className="inline-block ml-2 align-middle"
                               width="18"
                               height="18"
                               viewBox="0 0 20 20"

@@ -47,8 +47,12 @@ export default function SearchPageClient({
 
   const pageSections: any[] = store?.sections?.page_layouts?.search?.sections ?? []
   const visibleSections = pageSections.filter((s: any) => !s.hidden)
-  const isEditorMode = typeof window !== "undefined" && window.parent !== window
+  const [isEditorMode, setIsEditorMode] = useState(false)
 
+  useEffect(() => {
+    setIsEditorMode(window.parent !== window)
+  }, [])
+  
   // ── Search logic ──────────────────────────────────────────────────────────
   const results = useMemo(() => {
     if (!query.trim()) return []
@@ -105,17 +109,17 @@ export default function SearchPageClient({
         )}
 
         {section.type === "hero" && (
-          <div className="relative overflow-hidden py-16 px-6"
+          <div className="relative px-6 py-16 overflow-hidden"
             style={{ backgroundColor: secBg ?? (isDark ? "#111" : "#f9fafb") }}>
             <div className="relative z-10 max-w-4xl mx-auto text-center">
               {section.headline && (
-                <h2 className="text-4xl font-extrabold mb-4"
+                <h2 className="mb-4 text-4xl font-extrabold"
                   style={{ color: section.overlay_text_color ?? secText ?? (isDark ? "#fff" : "#111827") }}>
                   {section.headline}
                 </h2>
               )}
               {section.subtext && (
-                <p className="text-lg opacity-70 mb-6">{section.subtext}</p>
+                <p className="mb-6 text-lg opacity-70">{section.subtext}</p>
               )}
             </div>
           </div>
@@ -135,7 +139,7 @@ export default function SearchPageClient({
                 @keyframes search-ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
                 .search-ticker-inner { display:inline-flex; white-space:nowrap; animation:search-ticker ${duration}s linear infinite; }
               `}</style>
-              <div className="search-ticker-inner text-sm font-medium tracking-wide" style={{ color: fg }}>
+              <div className="text-sm font-medium tracking-wide search-ticker-inner" style={{ color: fg }}>
                 {[`${line}  ${sep}  `, `${line}  ${sep}  `].map((t, i) => (
                   <span key={i} className="mr-8">{t}</span>
                 ))}
@@ -181,7 +185,7 @@ export default function SearchPageClient({
       {/* {visibleSections.map(renderSection)} */}
 
       {/* ── Search UI — always shown ── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <div className="max-w-6xl px-4 py-10 mx-auto sm:px-6">
         <h1 className={`text-3xl font-bold mb-6 ${textColor}`}>Search</h1>
 
         <div className="relative mb-8">
@@ -223,7 +227,7 @@ export default function SearchPageClient({
               {results.length} result{results.length !== 1 ? "s" : ""} for{" "}
               <span className={`font-medium ${textColor}`}>"{query}"</span>
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
               {results.map(product => (
                 <ProductCard
                   key={product.id}

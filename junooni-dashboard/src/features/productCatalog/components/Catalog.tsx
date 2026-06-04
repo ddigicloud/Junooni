@@ -1,12 +1,9 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
 
-// Cache keys
-const CACHE_KEY = 'junooni_products_cache';
-const CATEGORIES_CACHE_KEY = 'junooni_categories_cache';
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (increased from 10)
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Image {
   id: number;
@@ -47,12 +44,7 @@ interface Category {
   title: string;
   slug: string;
   description?: string;
-  breadcrumbs?: any[];
-  createdAt?: string;
-  updatedAt?: string;
   parent?: number;
-  products?: any[];
-  slugLock?: boolean;
 }
 
 interface CategoryOption {
@@ -85,305 +77,226 @@ interface ProductMetadata {
 
 type ProductMetadataMap = Record<number, ProductMetadata>;
 
-interface CacheData<T> {
-  data: T;
-  timestamp: number;
+// ─── Module-level caches (survive re-renders, reset only on tab close) ────────
+// Much faster than localStorage — no JSON.parse/stringify overhead
+
+interface MemoryCache<T> {
+  data: T | null;
+  ts: number;
 }
 
+const CACHE_TTL = 30 * 60 * 1000; // 30 min
+
+const productMemCache: MemoryCache<Product[]> = { data: null, ts: 0 };
+const categoryMemCache: MemoryCache<CategoryOption[]> = { data: null, ts: 0 };
+
+// Stable metadata — seeded from product id, never re-randomizes
+const metaCache: ProductMetadataMap = {};
+
+function getOrCreateMeta(id: number): ProductMetadata {
+  if (!metaCache[id]) {
+    const seed = ((id * 9301 + 49297) % 233280) / 233280;
+    metaCache[id] = {
+      isBestSeller: seed > 0.3,
+      isStaffPick: seed > 0.6,
+      rating: parseFloat((3.5 + seed * 1.5).toFixed(1)),
+      reviewCount: Math.floor(10 + seed * 140),
+    };
+  }
+  return metaCache[id];
+}
+
+function isCacheFresh<T>(cache: MemoryCache<T>): cache is { data: T; ts: number } {
+  return cache.data !== null && Date.now() - cache.ts < CACHE_TTL;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const PRODUCTS_PER_PAGE = 12;
+const ALL_CATEGORY: CategoryOption = { slug: "all", title: "All" };
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 const Catalog = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(false); // Changed default to false
-  const [initialLoad, setInitialLoad] = useState<boolean>(true); // Track first load
-  const [productMetadata, setProductMetadata] = useState<ProductMetadataMap>({});
+  const [products, setProducts] = useState<Product[]>(() =>
+    isCacheFresh(productMemCache) ? productMemCache.data : []
+  );
+  const [categories, setCategories] = useState<CategoryOption[]>(() =>
+    isCacheFresh(categoryMemCache)
+      ? categoryMemCache.data
+      : [ALL_CATEGORY]
+  );
+  // Only show skeleton on true first load (nothing in cache)
+  const [initialLoad, setInitialLoad] = useState<boolean>(
+    !isCacheFresh(productMemCache)
+  );
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [categories, setCategories] = useState<CategoryOption[]>([{ slug: "all", title: "All" }]);
-  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // Optimized cache helper functions
-  const getCachedData = useCallback(<T,>(key: string): T | null => {
-    try {
-      const cached = localStorage.getItem(key);
-      if (!cached) return null;
+  const fetchStarted = useRef(false);
 
-      const { data, timestamp }: CacheData<T> = JSON.parse(cached);
-      const now = Date.now();
-
-      if (now - timestamp < CACHE_DURATION) {
-        return data;
-      }
-
-      localStorage.removeItem(key);
-      return null;
-    } catch (error) {
-      console.error('Cache read error:', error);
-      return null;
-    }
-  }, []);
-
-  const setCachedData = useCallback(<T,>(key: string, data: T): void => {
-    try {
-      const cacheData: CacheData<T> = {
-        data,
-        timestamp: Date.now()
-      };
-      localStorage.setItem(key, JSON.stringify(cacheData));
-    } catch (error) {
-      console.error('Cache write error:', error);
-    }
-  }, []);
-
-  // Generate metadata once
-  const generateMetadata = useCallback((productList: Product[]): ProductMetadataMap => {
-    const metadata: ProductMetadataMap = {};
-    productList.forEach((product: Product) => {
-      metadata[product.id] = {
-        isBestSeller: Math.random() > 0.3,
-        isStaffPick: Math.random() > 0.6,
-        rating: 3.5 + Math.random() * 1.5,
-        reviewCount: Math.floor(10 + Math.random() * 140)
-      };
-    });
-    return metadata;
-  }, []);
-
+  // ── Fetch: only fires once, skips if cache is fresh ──────────────────────────
   useEffect(() => {
-    const fetchData = async () => {
-      // Check cache first
-      const cachedProducts = getCachedData<Product[]>(CACHE_KEY);
-      const cachedCategories = getCachedData<Category[]>(CATEGORIES_CACHE_KEY);
+    if (fetchStarted.current) return;
+    fetchStarted.current = true;
 
-      // If we have cache, show it immediately
-      if (cachedProducts && cachedProducts.length > 0) {
-        setProducts(cachedProducts);
-        setProductMetadata(generateMetadata(cachedProducts));
-        setInitialLoad(false);
-        
-        // Still fetch fresh data in background but don't show loading
-        fetchFreshData(false);
-      } else {
-        // No cache, show loading and fetch
-        setLoading(true);
-        setInitialLoad(true);
-        await fetchFreshData(true);
-      }
+    // Both caches are fresh → nothing to do
+    if (isCacheFresh(productMemCache) && isCacheFresh(categoryMemCache)) return;
 
-      // Handle categories from cache
-      if (cachedCategories && cachedCategories.length > 0) {
-        const categoryOptions = [
-          { slug: "all", title: "All" },
-          ...cachedCategories.map((cat: Category) => ({
-            slug: cat.slug,
-            title: cat.title
-          }))
-        ];
-        setCategories(categoryOptions);
-      }
-    };
-
-    const fetchFreshData = async (showLoading: boolean) => {
+    const fetchAll = async () => {
       try {
-        if (showLoading) setLoading(true);
-
-        // Parallel fetch for speed
-        const [productsResponse, categoriesResponse] = await Promise.all([
-          fetch(`${vite_payload}/api/blank-products?limit=100&depth=1&where[status][equals]=active`, {
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }),
-          fetch(`${vite_payload}/api/categories?limit=100&depth=0`, {
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          })
+        // Fire both requests in parallel regardless of which cache is stale
+        const [productsRes, categoriesRes] = await Promise.all([
+          isCacheFresh(productMemCache)
+            ? Promise.resolve(null) // skip if fresh
+            : fetch(
+                `${vite_payload}/api/blank-products?where[status][equals]=active&limit=100&depth=1`,
+                { credentials: "include", headers: { "Content-Type": "application/json" } }
+              ),
+          isCacheFresh(categoryMemCache)
+            ? Promise.resolve(null)
+            : fetch(
+                `${vite_payload}/api/categories?limit=100&depth=0`,
+                { credentials: "include", headers: { "Content-Type": "application/json" } }
+              ),
         ]);
 
-        if (productsResponse.ok) {
-          const productsData = await productsResponse.json();
-          let fetchedProducts: Product[] = productsData.docs || productsData;
-          
-          // Safety filter
-          fetchedProducts = fetchedProducts.filter(product => product.status === 'active');
-          
-          // Update cache
-          setCachedData(CACHE_KEY, fetchedProducts);
-          setProducts(fetchedProducts);
-          setProductMetadata(generateMetadata(fetchedProducts));
+        // Handle products
+        if (productsRes && productsRes.ok) {
+          const data = await productsRes.json();
+          const fetched: Product[] = (data.docs || data).filter(
+            (p: Product) => p.status === "active"
+          );
+          // Warm the metadata cache eagerly
+          fetched.forEach((p) => getOrCreateMeta(p.id));
+
+          productMemCache.data = fetched;
+          productMemCache.ts = Date.now();
+          setProducts(fetched);
         }
 
-        if (categoriesResponse.ok) {
-          const categoriesData = await categoriesResponse.json();
-          const fetchedCategories: Category[] = categoriesData.docs || categoriesData;
-          
-          setCachedData(CATEGORIES_CACHE_KEY, fetchedCategories);
-          
-          const categoryOptions = [
-            { slug: "all", title: "All" },
-            ...fetchedCategories.map((cat: Category) => ({
-              slug: cat.slug,
-              title: cat.title
-            }))
+        // Handle categories
+        if (categoriesRes && categoriesRes.ok) {
+          const data = await categoriesRes.json();
+          const fetched: Category[] = data.docs || data;
+          const options: CategoryOption[] = [
+            ALL_CATEGORY,
+            ...fetched.map((c) => ({ slug: c.slug, title: c.title })),
           ];
-          
-          setCategories(categoryOptions);
+          categoryMemCache.data = options;
+          categoryMemCache.ts = Date.now();
+          setCategories(options);
         }
-
-      } catch (error) {
-        console.error("Fetch error:", error);
+      } catch (err) {
+        console.error("Catalog fetch error:", err);
       } finally {
-        setLoading(false);
         setInitialLoad(false);
-        setCategoriesLoading(false);
       }
     };
 
-    fetchData();
-  }, [getCachedData, setCachedData, generateMetadata]);
+    fetchAll();
+  }, []); // runs once on mount
 
-  // Reset to page 1 when filters change
+  // ── Reset page on filter change ───────────────────────────────────────────
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedCategory]);
 
-  // Memoize filtered products for performance
+  // ── Filtered + paginated products (memoized) ──────────────────────────────
   const filteredProducts = useMemo(() => {
-    return products.filter(product => {
-      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      if (selectedCategory === "all") {
-        return matchesSearch;
-      }
-      
-      const matchesCategory = product.categories && product.categories.some(category => 
-        category.slug === selectedCategory
-      );
-      
-      return matchesSearch && matchesCategory;
+    const q = searchQuery.toLowerCase();
+    return products.filter((p) => {
+      if (!p.name.toLowerCase().includes(q)) return false;
+      if (selectedCategory === "all") return true;
+      return p.categories?.some((c) => c.slug === selectedCategory) ?? false;
     });
   }, [products, searchQuery, selectedCategory]);
 
-  // Memoize pagination calculations
-  const { totalPages, currentProducts } = useMemo(() => {
+  const { totalPages, currentProducts, startIndex } = useMemo(() => {
     const total = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
-    const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
-    const endIndex = startIndex + PRODUCTS_PER_PAGE;
-    const current = filteredProducts.slice(startIndex, endIndex);
-    
-    return { totalPages: total, currentProducts: current };
+    const start = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    return {
+      totalPages: total,
+      currentProducts: filteredProducts.slice(start, start + PRODUCTS_PER_PAGE),
+      startIndex: start,
+    };
   }, [filteredProducts, currentPage]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const renderPaginationButtons = useMemo(() => {
-    const buttons: React.JSX.Element[] = [];
-    const maxVisibleButtons = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisibleButtons / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisibleButtons - 1);
+  // ── Pagination (extracted as component to avoid useMemo array anti-pattern) ─
+  const PaginationButtons = useCallback(() => {
+    if (totalPages <= 1) return null;
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    const end = Math.min(totalPages, start + maxVisible - 1);
+    if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
 
-    if (endPage - startPage < maxVisibleButtons - 1) {
-      startPage = Math.max(1, endPage - maxVisibleButtons + 1);
-    }
-
-    buttons.push(
+    const pageBtn = (key: string | number, label: React.ReactNode, page: number, active = false, disabled = false) => (
       <button
-        key="prev"
-        onClick={() => handlePageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+        key={key}
+        onClick={() => !disabled && handlePageChange(page)}
+        disabled={disabled}
+        className={`px-4 py-2 border rounded-lg transition-colors ${
+          active
+            ? "bg-[#E8552A] text-white border-[#E8552A]"
+            : disabled
+            ? "border-gray-300 opacity-50 cursor-not-allowed"
+            : "border-gray-300 hover:bg-gray-50"
+        }`}
       >
-        Previous
+        {label}
       </button>
     );
 
-    if (startPage > 1) {
-      buttons.push(
-        <button
-          key={1}
-          onClick={() => handlePageChange(1)}
-          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          1
-        </button>
-      );
-      if (startPage > 2) {
-        buttons.push(<span key="dots1" className="px-2">...</span>);
-      }
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      buttons.push(
-        <button
-          key={i}
-          onClick={() => handlePageChange(i)}
-          className={`px-4 py-2 border rounded-lg transition-colors ${
-            currentPage === i
-              ? 'bg-[#e65100] text-white border-[#e65100]'
-              : 'border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          {i}
-        </button>
-      );
-    }
-
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) {
-        buttons.push(<span key="dots2" className="px-2">...</span>);
-      }
-      buttons.push(
-        <button
-          key={totalPages}
-          onClick={() => handlePageChange(totalPages)}
-          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          {totalPages}
-        </button>
-      );
-    }
-
-    buttons.push(
-      <button
-        key="next"
-        onClick={() => handlePageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-      >
-        Next
-      </button>
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-2 mt-12">
+        {pageBtn("prev", "Previous", currentPage - 1, false, currentPage === 1)}
+        {start > 1 && (
+          <>
+            {pageBtn(1, 1, 1)}
+            {start > 2 && <span key="d1" className="px-2">…</span>}
+          </>
+        )}
+        {Array.from({ length: end - start + 1 }, (_, i) => start + i).map((i) =>
+          pageBtn(i, i, i, i === currentPage)
+        )}
+        {end < totalPages && (
+          <>
+            {end < totalPages - 1 && <span key="d2" className="px-2">…</span>}
+            {pageBtn(totalPages, totalPages, totalPages)}
+          </>
+        )}
+        {pageBtn("next", "Next", currentPage + 1, false, currentPage === totalPages)}
+      </div>
     );
-
-    return buttons;
   }, [currentPage, totalPages, handlePageChange]);
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-      {/* Hero Section */}
+      {/* Hero */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#e65100] to-[#ff9800] opacity-5"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#E8552A] to-[#ff9800] opacity-5" />
         <div className="relative px-4 pt-20 pb-16 mx-auto mt-8 max-w-7xl sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="mb-6 text-4xl font-bold leading-tight text-gray-900 md:text-3xl lg:text-5xl dark:text-white">
               Build Your Vision
-              <span className="block text-[#e65100] text-2xl md:text-3xl lg:text-3xl font-medium mt-2">
+              <span className="block text-[#E8552A] text-2xl md:text-3xl lg:text-3xl font-medium mt-2">
                 Choose from Premium Products
               </span>
             </h1>
             <p className="max-w-3xl mx-auto mb-8 text-lg text-gray-600 dark:text-gray-300">
-              Transform your ideas into reality with our curated collection of high-quality blank products, 
+              Transform your ideas into reality with our curated collection of high-quality blank products,
               perfect for customization and branding.
             </p>
           </div>
 
-          {/* Search and Filter Bar */}
+          {/* Search + Filter */}
           <div className="max-w-4xl mx-auto">
             <div className="p-3 bg-white border border-gray-200 shadow-xl dark:bg-gray-800 rounded-2xl dark:border-gray-700">
               <div className="flex flex-col gap-4 lg:flex-row">
@@ -399,22 +312,18 @@ const Catalog = () => {
                       placeholder="Search products..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e65100] focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#E8552A] focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
                     />
                   </div>
                 </div>
-
                 <div className="lg:w-64">
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    disabled={categoriesLoading}
-                    className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#e65100] focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition-colors disabled:opacity-50"
+                    className="w-full py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#E8552A] focus:border-transparent bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
                   >
-                    {categories.map((category) => (
-                      <option key={category.slug} value={category.slug}>
-                        {category.title}
-                      </option>
+                    {categories.map((c) => (
+                      <option key={c.slug} value={c.slug}>{c.title}</option>
                     ))}
                   </select>
                 </div>
@@ -429,94 +338,57 @@ const Catalog = () => {
         {/* Stats Bar */}
         <div className="flex flex-col items-start justify-between p-6 mb-8 bg-white border border-gray-200 shadow-sm sm:flex-row sm:items-center dark:bg-gray-800 rounded-xl dark:border-gray-700">
           <div>
-            <h2 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-white">
-              Product Catalog
-            </h2>
+            <h2 className="mb-2 text-2xl font-semibold text-gray-900 dark:text-white">Product Catalog</h2>
             <p className="text-gray-600 dark:text-gray-300">
-              {initialLoad ? 'Loading...' : `${filteredProducts.length} products available`}
+              {initialLoad ? "Loading..." : `${filteredProducts.length} products available`}
               {!initialLoad && filteredProducts.length > 0 && (
                 <span className="ml-2 text-sm">
-                  (Showing {currentProducts.length} products on page {currentPage} of {totalPages})
+                  (Showing {startIndex + 1}–{Math.min(startIndex + PRODUCTS_PER_PAGE, filteredProducts.length)} of {filteredProducts.length})
                 </span>
               )}
             </p>
           </div>
         </div>
 
-        {/* Products Grid */}
+        {/* Grid */}
         {initialLoad ? (
-          // Only show skeleton on very first load
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="overflow-hidden bg-white shadow-md dark:bg-gray-800 rounded-xl">
-                  <div className="w-full h-64 bg-gray-200 dark:bg-gray-700"></div>
-                  <div className="p-6">
-                    <div className="h-4 mb-3 bg-gray-200 rounded dark:bg-gray-700"></div>
-                    <div className="w-2/3 h-3 mb-4 bg-gray-200 rounded dark:bg-gray-700"></div>
-                    <div className="w-1/3 h-6 bg-gray-200 rounded dark:bg-gray-700"></div>
-                  </div>
-                </div>
-              </div>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
             ))}
           </div>
-        ) : (
+        ) : currentProducts.length > 0 ? (
           <>
-            {currentProducts.length > 0 ? (
-              <>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {currentProducts.map((product) => {
-                    const metadata = productMetadata[product.id] || {
-                      isBestSeller: false,
-                      isStaffPick: false,
-                      rating: 4.0,
-                      reviewCount: 0
-                    };
-                    
-                    return (
-                      <ProductCard 
-                        key={product.id} 
-                        product={product} 
-                        metadata={metadata} 
-                      />
-                    );
-                  })}
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-12">
-                    {renderPaginationButtons}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="py-16 text-center">
-                <div className="max-w-md mx-auto">
-                  <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full dark:bg-gray-800">
-                    <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                    </svg>
-                  </div>
-                  <h3 className="mb-2 text-xl font-medium text-gray-900 dark:text-white">
-                    No products found
-                  </h3>
-                  <p className="mb-6 text-gray-500 dark:text-gray-400">
-                    Try adjusting your search or filter criteria
-                  </p>
-                  <button 
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSelectedCategory("all");
-                    }}
-                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-[#e65100] hover:bg-[#d84315] transition-colors duration-200"
-                  >
-                    Clear Filters
-                  </button>
-                </div>
-              </div>
-            )}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {currentProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  metadata={getOrCreateMeta(product.id)}
+                />
+              ))}
+            </div>
+            <PaginationButtons />
           </>
+        ) : (
+          <div className="py-16 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="flex items-center justify-center w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full dark:bg-gray-800">
+                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
+              </div>
+              <h3 className="mb-2 text-xl font-medium text-gray-900 dark:text-white">No products found</h3>
+              <p className="mb-6 text-gray-500 dark:text-gray-400">Try adjusting your search or filter criteria</p>
+              <button
+                onClick={() => { setSearchQuery(""); setSelectedCategory("all"); }}
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-[#E8552A] hover:bg-[#d84315] transition-colors duration-200"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

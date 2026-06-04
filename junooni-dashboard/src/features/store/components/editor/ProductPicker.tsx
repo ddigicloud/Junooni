@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { X, Search, ShoppingBag, Check } from "lucide-react"
+import { createPortal } from "react-dom"
+import { X, Search, ShoppingBag } from "lucide-react"
 
 // ─── ProductPickerModal ───────────────────────────────────────────────────────
 
@@ -23,9 +24,10 @@ export function ProductPickerModal({ products, selectedProduct, onSelect, onClos
     ? products.filter(p => p.title.toLowerCase().includes(search.toLowerCase()))
     : products
 
-  return (
+  // ── Portal: renders outside any overflow-hidden ancestor ──────────────────
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -145,7 +147,8 @@ export function ProductPickerModal({ products, selectedProduct, onSelect, onClos
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body   // ← renders directly into <body>, escaping all overflow-hidden ancestors
   )
 }
 
@@ -160,7 +163,7 @@ export function ProductPickerButton({ products, selectedProduct, onSelect, onCle
   textFaint: string
 }) {
   const [open, setOpen] = useState(false)
-  const textPrimary = isDark ? "text-white"    : "text-gray-900"
+  const textPrimary = isDark ? "text-white"      : "text-gray-900"
   const borderColor = isDark ? "border-gray-700" : "border-gray-200"
 
   return (

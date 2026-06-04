@@ -35,9 +35,10 @@ function TickerStrip({ section }: { section: any }) {
   const speed = section.ticker_speed ?? 40
   const bg = section.background_color ?? "#111827"
   const fg = section.text_color ?? "#ffffff"
-  const stripHtml = (s: string) => s.replace(/<[^>]*>/g, "").trim()
-  const cleanItems = items.map(stripHtml)
-  const line = cleanItems.join(`  ${sep}  `)
+  // const stripHtml = (s: string) => s.replace(/<[^>]*>/g, "").trim()
+  // const cleanItems = items.map(stripHtml)
+  // const line = cleanItems.join(`  ${sep}  `)
+  const line = items.join(`  ${sep}  `)
   const repeated = Array(8).fill(line).join(`  ${sep}  `)
   const fullLine = `${repeated}  ${sep}  `
   const duration = Math.max(5, 100 - speed)
@@ -76,6 +77,11 @@ function AnnouncementStrip({ section }: { section: any }) {
 export default function MinimalTemplate({ vendor, store: initialStore, products, categories, collections }: Props) {
   const [liveStore, setLiveStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+  const [isEditorMode, setIsEditorMode] = useState(false)
+
+  useEffect(() => {
+    setIsEditorMode(window.parent !== window)
+  }, [])
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
@@ -137,7 +143,10 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
        {sections.filter(s => !(s as any).hidden && !headerZoneSectionIds.has((s as any).id)).map((section) => {
         const secId = (section as any).id
         const isSelected = secId && selectedSectionId === secId
-        const isEditorMode = typeof window !== "undefined" && window.parent !== window
+        // const [isEditorMode, setIsEditorMode] = useState(false)
+        // useEffect(() => {
+        //   setIsEditorMode(window.parent !== window)
+        // }, [])
         const secBg   = (section as any).background_color
         const secText = (section as any).text_color
         return (
@@ -726,17 +735,18 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       // const line = items.join(`  ${sep}  `)
       // const fullLine = `${line}  ${sep}  ${line}  ${sep}  `
       // REPLACE WITH:
-      const stripHtml = (s: string) => {
-        try {
-          const tmp = document.createElement("div")
-          tmp.innerHTML = s
-          return (tmp.textContent ?? tmp.innerText ?? "").trim()
-        } catch {
-          return s.replace(/<[^>]*>/g, "").trim()
-        }
-      }
-      const cleanItems = items.map(stripHtml)
-      const line = cleanItems.join(`  ${sep}  `)
+      // const stripHtml = (s: string) => {
+      //   try {
+      //     const tmp = document.createElement("div")
+      //     tmp.innerHTML = s
+      //     return (tmp.textContent ?? tmp.innerText ?? "").trim()
+      //   } catch {
+      //     return s.replace(/<[^>]*>/g, "").trim()
+      //   }
+      // }
+      // const cleanItems = items.map(stripHtml)
+      // const line = cleanItems.join(`  ${sep}  `)
+      const line = items.join(`  ${sep}  `)
       // Repeat enough times to fill the viewport with no gaps
       const repeated = Array(8).fill(line).join(`  ${sep}  `)
       const fullLine = `${repeated}  ${sep}  `
@@ -755,10 +765,15 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               animation: junooni-ticker ${duration}s linear infinite;
             }
           `}</style>
-          <div className="text-sm font-medium tracking-wide junooni-ticker-inner" style={{ color: fg }}>
+          {/* <div className="text-sm font-medium tracking-wide junooni-ticker-inner" style={{ color: fg }}>
             <span>{fullLine}</span>
             <span>{fullLine}</span>
-          </div>
+          </div> */}
+          <div
+            className="text-sm font-medium tracking-wide junooni-ticker-inner"
+            style={{ color: fg }}
+            dangerouslySetInnerHTML={{ __html: fullLine + fullLine }}
+          />
         </section>
       )
     }

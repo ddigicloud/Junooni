@@ -686,38 +686,52 @@ export default function StoreHeader({
 }
 
 // ── TickerBar ─────────────────────────────────────────────────────────────────
+// ── TickerBar ─────────────────────────────────────────────────────────────────
 function TickerBar({ section }: { section: any }) {
   const items: string[] = section.ticker_items ?? ["Free shipping on orders above ₹999", "New drops every week", "Official creator merchandise"]
   const sep = section.ticker_separator ?? "✦"
   const speed = section.ticker_speed ?? 40
   const bg = section.background_color ?? "#111827"
   const fg = section.text_color ?? "#ffffff"
-  const stripHtml = (s: string) => s.replace(/<[^>]*>/g, "").trim()
-  const cleanItems = items.map(stripHtml)
-  const line = cleanItems.join(`  ${sep}  `)
-  const repeated = Array(8).fill(line).join(`  ${sep}  `)
-  const fullLine = `${repeated}  ${sep}  `
-  const duration = Math.max(5, 100 - speed)
+
+  const duration = Math.max(2, 100 - speed)
+
+  // Join all items into one repeating unit
+  const unit = items.map(item => item.trim()).filter(Boolean).join(`  ${sep}  `) + `  ${sep}  `
+
+  // Repeat enough copies that even a single short word fills the screen many times over
+  // We render 2 groups: group A + group B (identical). Animation slides group A off-screen
+  // by exactly its own width, at which point group B is in the same position group A started.
+  // Key: each group must be >= 100vw wide, so we repeat the unit many times inside each group.
+  const REPEATS = 20
+  const groupContent = Array(REPEATS).fill(unit).join("")
+
+  const id = `ticker-${bg.replace("#", "")}`
+
   return (
     <div className="overflow-hidden py-2.5" style={{ backgroundColor: bg }}>
       <style>{`
-        @keyframes junooni-ticker {
+        @keyframes ${id} {
           0%   { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
-        .junooni-ticker-inner {
-          display: inline-flex;
+        .${id}-track {
+          display: flex;
           white-space: nowrap;
-          animation: junooni-ticker ${duration}s linear infinite;
+          width: max-content;
+          will-change: transform;
+          animation: ${id} ${duration}s linear infinite;
         }
       `}</style>
-      <div className="text-sm font-medium tracking-wide junooni-ticker-inner" style={{ color: fg }}>
-        <span>{fullLine}</span>
-        <span>{fullLine}</span>
+      {/* Two identical halves — animation moves -50% so it always loops perfectly */}
+      <div className={`${id}-track text-sm font-medium tracking-wide`} style={{ color: fg }}>
+        <span dangerouslySetInnerHTML={{ __html: groupContent }} />
+        <span dangerouslySetInnerHTML={{ __html: groupContent }} />
       </div>
     </div>
   )
 }
+
 
 // ── Dropdown link ─────────────────────────────────────────────────────────────
 function DropdownLink({ href, label, sub, brandPrimary, isDark, active, onHover, onClick }: {

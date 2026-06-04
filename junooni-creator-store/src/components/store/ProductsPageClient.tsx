@@ -76,7 +76,11 @@ export default function ProductsPageClient({
     return () => window.removeEventListener("message", handler)
   }, [])
 
-  const isEditorMode = typeof window !== "undefined" && window.parent !== window
+  const [isEditorMode, setIsEditorMode] = useState(false)
+
+  useEffect(() => {
+    setIsEditorMode(window.parent !== window)
+  }, [])
   const sectionId = gridSection.id ?? "def_prod_grid"
   const isSelected = selectedSectionId === sectionId
 

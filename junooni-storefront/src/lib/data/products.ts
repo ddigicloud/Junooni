@@ -86,6 +86,43 @@ export const listProducts = async ({
     })
 }
 
+// Lean fields for store listing only — no size_chart, no tags
+const STORE_LIST_FIELDS =
+  "*variants.calculated_price,+variants.inventory_quantity,+metadata,*vendor,*categories,*collection"
+
+export const listProductsForStore = async ({
+  offset = 0,
+  limit = 50,
+  countryCode,
+}: {
+  offset?: number
+  limit?: number
+  countryCode: string
+}): Promise<{ products: HttpTypes.StoreProduct[]; count: number }> => {
+  const region = await getRegion(countryCode)
+  if (!region) return { products: [], count: 0 }
+
+  const headers = { ...(await getAuthHeaders()) }
+  const next = { ...(await getCacheOptions("products")) }
+
+  const { products, count } = await sdk.client.fetch<{
+    products: HttpTypes.StoreProduct[]
+    count: number
+  }>(`/store/products`, {
+    method: "GET",
+    query: {
+      limit,
+      offset,
+      region_id: region.id,
+      fields: STORE_LIST_FIELDS,
+    },
+    headers,
+    next,
+  })
+
+  return { products, count }
+}
+
 /**
  * This will fetch 100 products to the Next.js cache and sort them based on the sortBy parameter.
  * It will then return the paginated products based on the page and limit parameters.
