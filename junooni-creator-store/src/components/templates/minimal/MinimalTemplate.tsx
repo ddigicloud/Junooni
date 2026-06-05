@@ -12,11 +12,15 @@ import ProductCarousel from "@/components/ui/ProductCarousel"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
 
-function resolveUrl(url: string | undefined | null, handle: string): string {
+// NEW
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
+
+function resolveUrl(url: string | undefined | null, handle: string, bare = false): string {
   if (!url) return "#"
   if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:")) return url
-  if (url.startsWith(`/${handle}/`) || url === `/${handle}`) return url
   if (url.startsWith("#")) return url
+  if (bare) return url.startsWith("/") ? url : `/${url}`
+  if (url.startsWith(`/${handle}/`) || url === `/${handle}`) return url
   return `/${handle}${url.startsWith("/") ? url : `/${url}`}`
 }
 
@@ -78,9 +82,18 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
   const [liveStore, setLiveStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [isEditorMode, setIsEditorMode] = useState(false)
+  const [bare, setBare] = useState(false)
 
+  // useEffect(() => {
+  //   setIsEditorMode(window.parent !== window)
+  // }, [])
+
+  // NEW
   useEffect(() => {
     setIsEditorMode(window.parent !== window)
+    const hostname = window.location.hostname.replace(/:.*$/, "").toLowerCase()
+    const isMarketplace = hostname === ROOT_DOMAIN || hostname === "localhost" || hostname === "junooni.com"
+    setBare(!isMarketplace)
   }, [])
 
   useEffect(() => {
@@ -179,6 +192,7 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
               cardShowPrice={cardShowPrice}
               cardShowHover={cardShowHover}
               cardShowSoldOut={cardShowSoldOut}
+              bare={bare}
             />
           </div>
         )
@@ -192,7 +206,7 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
 
 // ── Section renderer ──────────────────────────────────────────────────────────
 
-function MinimalSection({ section, vendor, store, products, categories, collections, brandPrimary, sectionBg, sectionText, cardAspectRatio, cardAlignment, cardShowPrice, cardShowHover, cardShowSoldOut }: {
+function MinimalSection({ section, vendor, store, products, categories, collections, brandPrimary, sectionBg, sectionText, cardAspectRatio, cardAlignment, cardShowPrice, cardShowHover, cardShowSoldOut, bare }: {
   section: StoreSection
   vendor: PublicVendor
   store: VendorStore | null
@@ -207,6 +221,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
   cardShowPrice: boolean
   cardShowHover: boolean
   cardShowSoldOut: boolean
+  bare: boolean
 }) {
   const handle = vendor.handle
   if ((section as any).hidden) return null
@@ -304,7 +319,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   {/* Primary CTA */}
                   {section.cta_label && (
                     <Link
-                      href={resolveUrl(section.cta_url ?? "/products", handle)}
+                      href={resolveUrl(section.cta_url ?? "/products", handle, bare)}
                       className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-white font-semibold transition-all hover:opacity-90 hover:shadow-lg"
                       style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
                     >
@@ -315,7 +330,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   {/* Secondary CTA — only render if label is set */}
                   {secCtaLabel && (
                     <Link
-                      href={resolveUrl(secCtaUrl ?? "/products", handle)}
+                      href={resolveUrl(secCtaUrl ?? "/products", handle, bare)}
                       className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold border-2 transition-all hover:border-gray-400"
                       style={{
                         color: headlineColor,
@@ -371,7 +386,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 <h2 className="text-2xl font-bold" style={{ color: sectionText ?? "#111827" }}>{section.title ?? "Featured"}</h2>
                 <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>Hand-picked for you</p>
               </div>
-              <Link href={`/${handle}/products`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
+              <Link href={bare ? `/products` : `/${handle}/products`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
                 View all <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
@@ -408,7 +423,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>{products.length} products available</p>
                 )}
               </div>
-              <Link href={`/${handle}/products`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
+              <Link href={bare ? `/products` : `/${handle}/products`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
                 View all <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
@@ -446,7 +461,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               <h2 className="text-2xl font-bold" style={{ color: sectionText ?? "#111827" }}>
                 {(section as any).title ?? "Shop by Collection"}
               </h2>
-              <Link href={`/${handle}/collections`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
+              <Link href={bare ? `/collections` : `/${handle}/collections`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
                 View all <span>→</span>
               </Link>
             </div>
@@ -457,7 +472,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   ?? products.find(p => ((section as any).collection_ids ?? []).length === 0 || (p as any).collection?.id === col.id)?.images?.[0]?.url
                 const productCount = products.filter(p => (p as any).collection?.handle === col.handle).length
                 return (
-                  <Link key={col.id} href={`/${handle}/collections/${col.handle}`} className="group relative overflow-hidden rounded-2xl bg-gray-100 aspect-[4/3] block">
+                  <Link key={col.id} href={bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`} className="group relative overflow-hidden rounded-2xl bg-gray-100 aspect-[4/3] block">
                     {thumb
                       ? <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
                       : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200"><span className="text-4xl">🛍️</span></div>}
@@ -508,7 +523,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     //             <h2 className="text-2xl font-bold" style={{ color: sectionText ?? "#111827" }}>Collections</h2>
     //             <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>Shop by collection</p>
     //           </div>
-    //           <Link href={`/${handle}/collections`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
+    //           <Link href={bare ? `/collections` : `/${handle}/collections`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
     //             View all <ChevronRight className="w-4 h-4" />
     //           </Link>
     //         </div>
@@ -521,7 +536,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     //               : products.find(p => (p as any).collection?.handle === col.handle)
     //             const coverImg = colThumb || colProduct?.thumbnail
     //             return (
-    //               <Link key={col.id} href={`/${handle}/collections/${col.handle}`}
+    //               <Link key={col.id} href={bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`}
     //                 className="overflow-hidden transition-all border border-gray-100 shadow-sm group rounded-2xl hover:shadow-md"
     //                 style={{ backgroundColor: sectionBg ? `${sectionBg}cc` : "#ffffff" }}>
     //                 <div className="aspect-[4/3] relative bg-gray-100 overflow-hidden">
@@ -809,7 +824,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
-                  <Link href={resolveUrl(section.cta_url, handle)}
+                  <Link href={resolveUrl(section.cta_url, handle, bare)}
                     className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-full hover:opacity-90 hover:shadow-lg"
                     style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
                     {section.cta_label}
@@ -865,7 +880,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
-                  <Link href={resolveUrl(section.cta_url, handle)}
+                  <Link href={resolveUrl(section.cta_url, handle, bare)}
                     className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-all rounded-full hover:opacity-90 hover:shadow-lg"
                     style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
                     {section.cta_label}

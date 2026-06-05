@@ -163,9 +163,27 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
     previewPagePath, hasStore, token, backendUrl, triggerDrillId, store,
   } = props
 
-  const [drillSection, setDrillSection] = useState<StoreSection | null>(null)
-  const [drillVirtual, setDrillVirtual] = useState<string | null>(null)
-  const pendingInsertRef = React.useRef<number | null>(null)
+    const [drillSection, setDrillSection] = useState<StoreSection | null>(null)
+    const [drillVirtual, setDrillVirtual] = useState<string | null>(null)
+    const pendingInsertRef = React.useRef<number | null>(null)
+    const [dropTargetId, setDropTargetId] = useState<string | null>(null)
+    const [dropPosition, setDropPosition] = useState<"before" | "after">("after")
+    const dropTargetRef = React.useRef<{ id: string | null; pos: "before" | "after" }>({ id: null, pos: "after" })
+
+    const getReorderedList = useCallback((list: StoreSection[]) => {
+    const { id: targetId, pos } = dropTargetRef.current
+    if (!isDragging || !targetId || isDragging === targetId) return list
+    const fromIdx = list.findIndex(s => s.id === isDragging)
+    const toIdx   = list.findIndex(s => s.id === targetId)
+    if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return list
+    const result = [...list]
+    const [moved] = result.splice(fromIdx, 1)
+    // After splice, toIdx shifts down by 1 if it was after fromIdx
+    const adjustedTo = toIdx > fromIdx ? toIdx - 1 : toIdx
+    const insertAt = pos === "before" ? adjustedTo : adjustedTo + 1
+    result.splice(insertAt, 0, moved)
+    return result
+    }, [isDragging, dropTargetId])   // dropTargetId state still triggers re-render, but only when position actually changes
 
   useEffect(() => {
     if (!triggerDrillId) return
@@ -207,7 +225,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
     const sectionIcon  = SECTION_BLOCKS_WITH_ICONS.find(b => b.type === drillSection?.type)?.icon
 
     return (
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex flex-col h-full overflow-hidden" style={{ width: '300px' }}>
         {/* ── Drill-in header ── */}
         <div className={`flex items-center gap-2 px-3 py-2.5 border-b shrink-0 ${panelBorder}`}>
           <button
@@ -424,51 +442,66 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
             const globalIdx = sections.findIndex(x => x.id === s.id)
 
             return (
-            <div
-                className="relative group/row"
-                style={{ animation: "sectionFadeIn 0.15s ease-out" }}
-                onDragOver={e => { e.preventDefault(); setDragOver(globalIdx) }}
-                >
+          <div
+            className="relative group/row"
+            style={{ animation: "none" }}
+            >
                 <div
-                draggable
-                    onDragStart={e => {
-                    // Capture a clean ghost image BEFORE React re-renders the faded style
-                    const el = e.currentTarget as HTMLElement
-                    const clone = el.cloneNode(true) as HTMLElement
-                    clone.style.position = "fixed"
-                    clone.style.top = "-1000px"
-                    clone.style.left = "-1000px"
-                    clone.style.width = el.offsetWidth + "px"
-                    clone.style.opacity = "1"
-                    clone.style.transform = "none"
-                    clone.style.pointerEvents = "none"
-                    document.body.appendChild(clone)
-                    e.dataTransfer.setDragImage(clone, el.offsetWidth / 2, el.offsetHeight / 2)
-                    setTimeout(() => document.body.removeChild(clone), 0)
-                    e.dataTransfer.effectAllowed = "move"
-                    // Delay state update so the ghost is captured first
-                    requestAnimationFrame(() => handleDragStart(s.id))
+                    draggable
+                   onDragStart={e => {
+                        e.dataTransfer.effectAllowed = "move"
+                        const ghost = document.createElement("div")
+                        ghost.style.cssText = "position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0;"
+                        document.body.appendChild(ghost)
+                        e.dataTransfer.setDragImage(ghost, 0, 0)
+                        setTimeout(() => document.body.removeChild(ghost), 0)
+                        requestAnimationFrame(() => handleDragStart(s.id))
                     }}
-                onDragEnd={() => { setIsDragging(null); setDragOver(null) }}
-                onDragOver={e => {
-                  e.preventDefault()
-                  e.dataTransfer.dropEffect = "move"
-                  setDragOver(globalIdx)
+                  onDragEnd={() => {
+                    setIsDragging(null)
+                    setDragOver(null)
+                    setDropTargetId(null)
+                    setSelectedId(null)
+                    dropTargetRef.current = { id: null, pos: "after" }
                 }}
-                onDrop={e => handleDrop(e, globalIdx)}
-                onClick={() => {
-                  setDrillSection(s)
-                  setSelectedId(s.id)
-                }}
-               className={[
-                  "flex items-center gap-2.5 px-2.5 py-1 rounded-lg cursor-pointer transition-all duration-150 select-none border-l-2",
-                  isDragging === s.id ? "opacity-40 scale-[0.98]" : "",
-                  isSelected
-                    ? isDark ? "bg-gray-800 border-l-orange-500" : "bg-orange-50/80 border-l-orange-500"
-                    : (dragOver === globalIdx && !headerSections.some(h => h.id === isDragging))
-                      ? isDark ? "bg-gray-700/50 border-l-blue-400" : "bg-blue-50 border-l-blue-400"
-                      : isDark ? `border-l-transparent ${hoverBg}` : `border-l-transparent ${hoverBg}`,
-                  s.hidden ? "opacity-40" : "",
+                   onDragOver={e => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        e.dataTransfer.dropEffect = "move"
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const pos = e.clientY < rect.top + rect.height / 2 ? "before" : "after"
+                        // Update ref immediately (no re-render)
+                        dropTargetRef.current = { id: s.id, pos }
+                        // Only trigger re-render when the target row actually changes
+                        if (dropTargetId !== s.id) {
+                            setDropTargetId(s.id)
+                            setDropPosition(pos)
+                        }
+                        setDragOver(globalIdx)
+                    }}
+                   onDrop={e => {
+                        e.stopPropagation()
+                        handleDrop(e, globalIdx)
+                        setIsDragging(null)
+                        setDragOver(null)
+                        setDropTargetId(null)
+                        setSelectedId(null)
+                        dropTargetRef.current = { id: null, pos: "after" }
+                    }}
+                    onClick={() => {
+                        setDrillSection(s)
+                        setSelectedId(s.id)
+                    }}
+                   className={[
+                    "flex items-center gap-2.5 px-2.5 py-1 rounded-lg cursor-pointer transition-colors duration-100 select-none border-l-2",
+                    isDragging === s.id
+                    ? isDark
+                        ? "border-l-orange-500 bg-gray-700/50 opacity-60"
+                        : "border-l-orange-500 bg-orange-50/60 opacity-60"
+                    : isSelected
+                        ? isDark ? "bg-gray-800 border-l-orange-500" : "bg-orange-50/80 border-l-orange-500"
+                        : isDark ? "border-l-transparent bg-gray-800/60 hover:bg-gray-700/80" : "border-l-transparent bg-gray-100 hover:bg-gray-200/80",
+                    s.hidden && isDragging !== s.id ? "opacity-40" : "",
                 ].join(" ")}
                 >
                     {/* Section icon */}
@@ -480,19 +513,30 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     {/* Label */}
                     <div className="flex-1 min-w-0">
                       <p className={`text-[14px] font-medium truncate ${isSelected ? textPrimary : isDark ? "text-gray-300" : "text-gray-800"}`}>
-                        {s.hidden ? <span className="line-through opacity-50">{block?.label ?? s.type}</span> : block?.label ?? s.type}
+                        {s.hidden ? <span className="opacity-50">{block?.label ?? s.type}</span> : block?.label ?? s.type}
                       </p>
                     </div>
 
+                    {/* Eye toggle — only on hover */}
+                    <button
+                    onClick={e => { e.stopPropagation(); toggleSection(s.id) }}
+                    className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded-md shrink-0"
+                    style={{ color: isDark ? "#6b7280" : "#9ca3af" }}
+                    title={s.hidden ? "Show section" : "Hide section"}
+                    >
+                    {s.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+
                     {/* Drag handle — always visible but muted, slightly more on hover */}
                     <div className="transition-colors cursor-grab active:cursor-grabbing shrink-0"
-                      style={{ color: isDark ? "#4b5563" : "#d1d5db" }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = isDark ? "#6b7280" : "#9ca3af"}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = isDark ? "#4b5563" : "#d1d5db"}
-                      onMouseDown={e => e.stopPropagation()}>
-                      <GripVertical className="w-4 h-4" />
+                    style={{ color: isDark ? "#4b5563" : "#d1d5db" }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = isDark ? "#6b7280" : "#9ca3af"}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = isDark ? "#4b5563" : "#d1d5db"}
+                    onMouseDown={e => e.stopPropagation()}>
+                    <GripVertical className="w-4 h-4" />
                     </div>
                 </div>
+                
                 </div>
             )
             }
@@ -506,52 +550,40 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
             )
 
         const AddBetweenLine = ({ afterIndex }: { afterIndex: number }) => {
-          const isOpen = addSectionOpen && insertAtIndex === afterIndex
-          const isDragTarget = !!isDragging && dragOver === afterIndex + 1
+        const isOpen = addSectionOpen && insertAtIndex === afterIndex
+        if (isDragging) return <div style={{ height: "10px", margin: "0" }} />
 
-          return (
+        return (
             <div
-              className="relative"
-              style={{ height: "16px", margin: "1px 0" }}
-              onDragOver={e => { e.preventDefault(); setDragOver(afterIndex + 1) }}
-              onDrop={e => handleDrop(e, afterIndex + 1)}
+            className="relative"
+            style={{ height: "10px", margin: "0" }}
             >
-              {!isDragging && (
-                    <div className="absolute inset-x-0 flex items-center transition-opacity -translate-y-1/2 opacity-0 top-1/2 hover:opacity-100 group/line">
-                    <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
-                    <button
-                        onClick={e => {
-                        e.stopPropagation()
-                        if (isOpen) {
-                            setAddSectionOpen(false)
-                            setInsertAtIndex(null)
-                            pendingInsertRef.current = null
-                        } else {
-                            pendingInsertRef.current = afterIndex
-                            setInsertAtIndex(afterIndex)
-                            setAddSectionOpen(true)
-                            setAddSectionFilter("all")
-                            setBodySectionPickerOpen(true)
-                        }
-                        }}
-                        className="flex items-center justify-center w-5 h-5 mx-1 text-white transition-colors bg-orange-500 rounded-full shadow-lg hover:bg-orange-600 shrink-0"
-                    >
-                        <Plus className="w-3 h-3" />
-                    </button>
-                    <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
-                    </div>
-                )}
-              {isDragging && isDragTarget && (
-                <div className="absolute inset-x-0 flex items-center pointer-events-none"
-                  style={{ top: "50%", transform: "translateY(-50%)" }}>
-                  <div className="w-2 h-2 ml-1 bg-blue-400 rounded-full shrink-0" />
-                  <div className="flex-1 h-0.5 bg-blue-400 rounded-full" />
-                  <div className="w-2 h-2 mr-1 bg-blue-400 rounded-full shrink-0" />
-                </div>
-              )}
-                </div>
-            )
-            }
+            <div className="absolute inset-x-0 flex items-center transition-opacity opacity-0 hover:opacity-100 group/line" style={{ top: "50%", transform: "translateY(-50%)", zIndex: 10 }}>
+                <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
+                <button
+                onClick={e => {
+                    e.stopPropagation()
+                    if (isOpen) {
+                    setAddSectionOpen(false)
+                    setInsertAtIndex(null)
+                    pendingInsertRef.current = null
+                    } else {
+                    pendingInsertRef.current = afterIndex
+                    setInsertAtIndex(afterIndex)
+                    setAddSectionOpen(true)
+                    setAddSectionFilter("all")
+                    setBodySectionPickerOpen(true)
+                    }
+                }}
+                className="flex items-center justify-center w-4 h-4 mx-1 text-white transition-colors bg-orange-500 rounded-full shadow-lg hover:bg-orange-600 shrink-0"
+                >
+                <Plus className="w-2.5 h-2.5" />
+                </button>
+                <div className={`flex-1 h-px ${isDark ? "bg-orange-500/60" : "bg-orange-400/60"}`} />
+            </div>
+            </div>
+        )
+        }
 
            const AddBetweenButton = ({ afterIndex, zone }: { afterIndex: number; zone: string }) => {
             const isOpen = addSectionOpen && insertAtIndex === afterIndex
@@ -588,7 +620,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
 
                 {/* ── HEADER ZONE ── */}
                 <ZoneLabel label="Header" color="#6366f1" />
-                <div className={`rounded-xl border overflow-hidden ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+                <div className={`rounded-xl ${isDark ? "border-gray-800" : "border-gray-200"}`}>
                 <div className="p-1.5 space-y-1">
 
                     {headerSections.length === 0 ? (
@@ -643,7 +675,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                                 } ${
                                 isSelected
                                     ? isDark ? "bg-gray-800 border-gray-600" : "bg-gray-100 border-gray-300"
-                                    : `border-transparent ${hoverBg}`
+                                    : isDark ? `border-transparent bg-gray-800/60 hover:bg-gray-700/80` : `border-transparent bg-gray-100 hover:bg-gray-200/80`
                                 } ${s.hidden ? "opacity-40" : ""}`}
                             >
                                 {/* <div className="cursor-grab active:cursor-grabbing shrink-0"
@@ -774,7 +806,11 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             }`}
                         >
                             <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-indigo-500/20">
-                            <Menu className="w-3 h-3 text-indigo-500" />
+                            <svg width="12" height="10" viewBox="0 0 12 10" fill="none" className="text-indigo-500">
+                                <rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="currentColor"/>
+                                <rect x="0" y="4" width="8" height="1.5" rx="0.75" fill="currentColor"/>
+                                <rect x="0" y="8" width="10" height="1.5" rx="0.75" fill="currentColor"/>
+                            </svg>
                             </div>
                             <div className="flex-1 min-w-0">
                             <p className={`text-[13px] font-medium truncate ${isDark ? "text-indigo-300" : "text-indigo-700"}`}>
@@ -864,7 +900,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
 
                 {/* ── BODY ZONE ── */}
                 <ZoneLabel label={currentLayoutKey === "home" ? "Body" : currentLayoutMeta.label} color="#e65100" />
-                    <div className={`rounded-xl border overflow-hidden ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+                    <div className={`rounded-xl ${isDark ? "border-gray-800" : "border-gray-200"}`}>
 
                     {currentLayoutKey === "product" && (
                     <div className="px-1.5 pt-1.5">
@@ -893,7 +929,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     </div>
                     )}
 
-                    <div className="p-1.5 space-y-1">
+                    <div className="p-1.5 space-y-0.5">
 
                     {currentLayoutKey === "categories" && (
                         <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
@@ -1142,12 +1178,12 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             <p className={`text-[10px] ${textFaint} opacity-60`}>Click "+ Add section" to build this page</p>
                             </div>
                         )}
-                        {layoutBodySections.map((s, i) => {
+                        {getReorderedList(layoutBodySections).map((s, i, arr) => {
                             const globalIdx = sections.findIndex(x => x.id === s.id)
                             return (
                             <div key={s.id}>
                             <SectionRow s={s} idx={i} />
-                            {i < layoutBodySections.length - 1 && <AddBetweenLine afterIndex={globalIdx} />}
+                            {i < arr.length - 1 && <AddBetweenLine afterIndex={globalIdx} />}
                             </div>
                             )
                         })}
@@ -1164,12 +1200,12 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             </p>
                             </div>
                         )}
-                        {layoutBodySections.map((s, i) => {
+                       {getReorderedList(layoutBodySections).map((s, i, arr) => {
                             const globalIdx = sections.findIndex(x => x.id === s.id)
                             return (
                             <div key={s.id}>
                             <SectionRow s={s} idx={i} />
-                            {i < layoutBodySections.length - 1 && <AddBetweenLine afterIndex={globalIdx} />}
+                            {i < arr.length - 1 && <AddBetweenLine afterIndex={globalIdx} />}
                             </div>
                             )
                         })}
@@ -1185,7 +1221,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
 
                 {/* ── FOOTER ZONE ── */}
                 <ZoneLabel label="Footer" color="#0ea5e9" />
-                <div className={`rounded-xl border overflow-hidden ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+                <div className={`rounded-xl ${isDark ? "border-gray-800" : "border-gray-200"}`}>
                     <div className="p-1.5 space-y-1">
                     {footerSections.filter(s => s.type !== "footer").map((s, i) => <SectionRow key={s.id} s={s} idx={i} />)}
                     {(() => {

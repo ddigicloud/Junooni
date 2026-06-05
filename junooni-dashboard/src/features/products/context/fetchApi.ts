@@ -827,6 +827,60 @@ export async function fetchCurrentVendor(): Promise<any> {
 /**
  * Assign sales channels to a product
  */
+// const DEFAULT_SALES_CHANNEL_ID = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
+
+// export async function assignProductSalesChannels({
+//   productId,
+//   salesChannelIds,
+// }: {
+//   productId: string;
+//   salesChannelIds: string[];
+// }): Promise<any> {
+//   const token = localStorage.getItem("vendorToken");
+
+//   // Step 1: Assign the correct sales channels
+//   const assignResults = await Promise.all(
+//     salesChannelIds.map(channelId =>
+//       axios.post(
+//         `${API_BASE_URL}/vendors/sales-channels/${channelId}/products/batch`,
+//         { product_ids: [{ id: productId }] },
+//         {
+//           headers: {
+//             Authorization: `Bearer ${token}`,
+//             'Content-Type': 'application/json',
+//           },
+//           withCredentials: true,
+//         }
+//       )
+//     )
+//   );
+
+//   // Step 2: Remove default sales channel if it's not in the assigned list
+//   if (!salesChannelIds.includes(DEFAULT_SALES_CHANNEL_ID)) {
+//     try {
+//       await axios.delete(
+//         `${API_BASE_URL}/vendors/sales-channels/${DEFAULT_SALES_CHANNEL_ID}/products/batch`,
+//         {
+//           data: { product_ids: [{ id: productId }] },
+//           headers: {
+//             Authorization: `Bearer ${token}`,
+//             'Content-Type': 'application/json',
+//           },
+//           withCredentials: true,
+//         }
+//       );
+//       console.log('✅ Removed from default sales channel');
+//     } catch (err) {
+//       // Non-fatal — product may not have been in default channel
+//       console.warn('⚠️ Could not remove from default sales channel:', err);
+//     }
+//   }
+
+//   console.log('✅ Sales channels assigned:', salesChannelIds);
+//   return assignResults.map(r => r.data);
+// }
+
+// ❌ REMOVE THIS - hardcoded and environment-specific
 const DEFAULT_SALES_CHANNEL_ID = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
 
 export async function assignProductSalesChannels({
@@ -838,28 +892,40 @@ export async function assignProductSalesChannels({
 }): Promise<any> {
   const token = localStorage.getItem("vendorToken");
 
-  // Step 1: Assign the correct sales channels
+  // Step 1: Get CURRENT sales channels on the product
+  const currentChannels = await fetchProductSalesChannels(productId);
+  console.log('Current channels before assign:', currentChannels);
+
+  // Step 2: Assign the correct sales channels
   const assignResults = await Promise.all(
-    salesChannelIds.map(channelId =>
-      axios.post(
-        `${API_BASE_URL}/vendors/sales-channels/${channelId}/products/batch`,
-        { product_ids: [{ id: productId }] },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          withCredentials: true,
-        }
+    salesChannelIds
+      .filter(Boolean) // ✅ Safety filter
+      .map(channelId =>
+        axios.post(
+          `${API_BASE_URL}/vendors/sales-channels/${channelId}/products/batch`,
+          { product_ids: [{ id: productId }] },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            withCredentials: true,
+          }
+        )
       )
-    )
   );
 
-  // Step 2: Remove default sales channel if it's not in the assigned list
-  if (!salesChannelIds.includes(DEFAULT_SALES_CHANNEL_ID)) {
-    try {
-      await axios.delete(
-        `${API_BASE_URL}/vendors/sales-channels/${DEFAULT_SALES_CHANNEL_ID}/products/batch`,
+  // Step 3: Remove any channels that are NOT in the new list
+  const channelsToRemove = currentChannels.filter(
+    id => id && !salesChannelIds.includes(id)
+  );
+
+  console.log('Channels to remove:', channelsToRemove);
+
+  await Promise.all(
+    channelsToRemove.map(channelId =>
+      axios.delete(
+        `${API_BASE_URL}/vendors/sales-channels/${channelId}/products/batch`,
         {
           data: { product_ids: [{ id: productId }] },
           headers: {
@@ -868,15 +934,11 @@ export async function assignProductSalesChannels({
           },
           withCredentials: true,
         }
-      );
-      console.log('✅ Removed from default sales channel');
-    } catch (err) {
-      // Non-fatal — product may not have been in default channel
-      console.warn('⚠️ Could not remove from default sales channel:', err);
-    }
-  }
+      ).catch(err => console.warn('Could not remove channel:', channelId, err))
+    )
+  );
 
-  console.log('✅ Sales channels assigned:', salesChannelIds);
+  console.log('✅ Sales channels updated:', salesChannelIds);
   return assignResults.map(r => r.data);
 }
 

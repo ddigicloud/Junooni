@@ -404,7 +404,7 @@ export default function StorePage() {
 
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
-        <div className="container flex items-center justify-between max-w-5xl px-4 py-3 mx-auto">
+        <div className="container flex items-center justify-between max-w-6xl px-4 py-3 mx-auto">
           <div className="flex items-center gap-3">
             <SidebarTrigger variant="outline" className="scale-125 sm:scale-100" />
             <Separator orientation="vertical" className="h-6" />
@@ -435,7 +435,7 @@ export default function StorePage() {
         </div>
       </header>
 
-      <div className="container max-w-5xl px-4 mx-auto py-7">
+      <div className="container max-w-6xl px-4 mx-auto py-7">
 
         {/* ── Hero Banner ── */}
         <div className="relative mb-6 overflow-hidden rounded-2xl" style={{ minHeight: "220px" }}>
