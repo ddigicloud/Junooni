@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 import Navbar from "./Navbar";
 import { useToast } from "@/hooks/use-toast";
+import { getVendorMe } from "@/lib/authCache";
 
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
-const vite_backend = import.meta.env.VITE_MEDUSA_BACKEND_URL;
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -52,7 +52,8 @@ interface Product {
   displayImages: DisplayImage[];
   colorOptions: ColorOption[];
   sizeOptions: SizeOption[];
-  printingTechnologies: PrintingTechnology[];
+  printT?: PrintingTechnology[];           // actual Payload field name
+  printingTechnologies?: PrintingTechnology[]; // fallback alias
 }
 
 interface ProductMetadata {
@@ -68,19 +69,17 @@ type ProductMetadataMap = Record<number, ProductMetadata>;
 
 const PRODUCTS_PER_PAGE = 12;
 
-// Simple in-memory cache: stores { data, timestamp }
-// Survives re-renders and tab navigations within the same session
+// ── In-memory cache: survives re-renders and tab navigations within same session
 const productCache: { data: Product[] | null; ts: number } = {
   data: null,
   ts: 0,
 };
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-// Stable metadata: seeded once per product id so it never changes on re-render
+// ── Stable metadata: seeded once per product id, never changes on re-render
 const metadataCache: ProductMetadataMap = {};
 function getOrCreateMetadata(id: number): ProductMetadata {
   if (!metadataCache[id]) {
-    // Deterministic-ish seed from product id so values are stable across renders
     const seed = ((id * 9301 + 49297) % 233280) / 233280;
     metadataCache[id] = {
       isBestSeller: seed > 0.3,
@@ -122,58 +121,53 @@ const Products = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const { toast } = useToast();
 
-  // Track whether we've already kicked off the data fetch to avoid double-fetch in StrictMode
   const fetchStarted = useRef(false);
+  // Track page-level mount time for total time-to-cards measurement
+  const mountTime = useRef(performance.now());
 
-  // ── Single effect: auth check + product fetch run IN PARALLEL ───────────────
   useEffect(() => {
     if (fetchStarted.current) return;
     fetchStarted.current = true;
 
-    const run = async () => {
-      // 1. Local token validation (synchronous — no network needed)
-      const { isValid, hasActorId, token } = validateToken();
+    console.log("%c[Products] 🟡 Component mounted", "color: orange; font-weight: bold");
+    console.log(`[Products] ⏱ Mount timestamp: ${new Date().toISOString()}`);
 
-      if (!isValid) {
-        localStorage.clear();
-        toast({
-          title: "Session Expired",
-          description: "Please sign in again.",
-          variant: "destructive",
-        });
-        window.location.href = "/sign-in";
-        return;
-      }
+    const tokenStart = performance.now();
+    const { isValid, hasActorId, token } = validateToken();
+    console.log(`[Products] 🔑 Token validation: ${Math.round(performance.now() - tokenStart)}ms → isValid=${isValid} hasActorId=${hasActorId}`);
 
-      if (!hasActorId) {
-        toast({
-          title: "Complete Your Profile",
-          description: "Please complete your vendor profile.",
-          variant: "destructive",
-        });
-        window.location.href = "/onboarding?step=basic-info";
-        return;
-      }
-
-      // 2. Fire auth verify + product fetch IN PARALLEL
-      //    Products load immediately from cache or network — don't wait for auth verify
-      const authVerifyPromise = fetch(`${vite_backend}/vendors/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }).catch((err) => {
-        // Network error: don't block product rendering, just log
-        console.warn("Backend auth verify failed (non-blocking):", err);
-        return null;
+    if (!isValid) {
+      localStorage.clear();
+      toast({
+        title: "Session Expired",
+        description: "Please sign in again.",
+        variant: "destructive",
       });
+      window.location.href = "/sign-in";
+      return;
+    }
 
-      const productsPromise = fetchProducts();
+    if (!hasActorId) {
+      toast({
+        title: "Complete Your Profile",
+        description: "Please complete your vendor profile.",
+        variant: "destructive",
+      });
+      window.location.href = "/onboarding?step=basic-info";
+      return;
+    }
 
-      // Await both, but handle auth result only for 401
-      const [authRes] = await Promise.all([authVerifyPromise, productsPromise]);
+    console.log("[Products] 🚀 Firing fetchProducts() immediately (not waiting for auth)");
+    fetchProducts();
 
-      if (authRes && authRes.status === 401) {
+    // ── Auth verify via shared cache — zero extra network call if ProfileDropdown
+    // already called getVendorMe (returns from cache instantly)
+    const authStart = performance.now();
+    console.log("[Products] 🔐 Starting background auth verify (via authCache)...");
+    getVendorMe(token).then((res) => {
+      const authMs = Math.round(performance.now() - authStart);
+      if (res?.status === 401) {
+        console.warn(`[Products] ❌ Auth verify 401 after ${authMs}ms — redirecting to sign-in`);
         localStorage.clear();
         toast({
           title: "Session Expired",
@@ -181,57 +175,94 @@ const Products = () => {
           variant: "destructive",
         });
         window.location.href = "/sign-in";
+      } else {
+        const cached = authMs < 5; // near-zero means it came from cache
+        console.log(`[Products] ✅ Auth verify done in ${authMs}ms ${cached ? "(from cache ⚡)" : "(network call)"} → status=${res?.status}`);
       }
-    };
-
-    run().catch(console.error);
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Product fetch with in-memory cache ──────────────────────────────────────
   const fetchProducts = useCallback(async () => {
+    const fetchStart = performance.now();
     try {
-      // Serve from cache if fresh
+      // ── Cache hit: no network needed
       if (productCache.data && Date.now() - productCache.ts < CACHE_TTL_MS) {
+        console.log(`[Products] ⚡ Cache hit — serving ${productCache.data.length} products instantly`);
         setProducts(productCache.data);
         setLoading(false);
+        const totalMs = Math.round(performance.now() - mountTime.current);
+        console.log(`%c[Products] ✅ Cards visible (from cache) — total time since mount: ${totalMs}ms`, "color: green; font-weight: bold");
         return;
       }
 
-      // FIX 1: Use server-side status filter + sensible limit instead of limit=1000
-      // FIX 2: depth=0 for list view — we only need flat fields here, not nested relations
-      //         Switch to depth=1 ONLY if ProductCard actually renders nested relation fields
-      const response = await fetch(
-        `${vite_payload}/api/blank-products?where[status][equals]=active&limit=200&depth=1`,
-        {
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          // Browser cache for 60s so hard-refresh is fast too
-          cache: "default",
-        }
-      );
+      console.log("[Products] 📡 Cache miss — fetching from Payload API...");
+      const requestStart = performance.now();
+
+      const selectFields = [
+        "select[id]=true",
+        "select[name]=true",
+        "select[cost]=true",
+        "select[sku]=true",
+        "select[brand]=true",
+        "select[status]=true",
+        "select[displayImages]=true",
+        "select[colorOptions]=true",
+        "select[sizeOptions]=true",
+        "select[printT][id]=true",
+        "select[printT][technologyName]=true",
+      ].join("&");
+
+      const url = `${vite_payload}/api/blank-products?where[status][equals]=active&limit=200&depth=1&${selectFields}`;
+      console.log(`[Products] 🌐 GET ${url.replace(vite_payload, "[PAYLOAD]")}`);
+
+      const response = await fetch(url, {
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        cache: "default",
+      });
+
+      const ttfbMs = Math.round(performance.now() - requestStart);
+      console.log(`[Products] 📬 Response received — status=${response.status} TTFB=${ttfbMs}ms`);
 
       if (!response.ok) {
         throw new Error(`Products API returned ${response.status}`);
       }
 
+      const parseStart = performance.now();
       const data = await response.json();
+      const parseMs = Math.round(performance.now() - parseStart);
+      const downloadMs = ttfbMs + parseMs; // approximate total network+parse time
+
       const fetched: Product[] = data.docs || data;
+      const active = fetched.filter((p) => p.status?.toLowerCase() !== "draft");
 
-      // Belt-and-suspenders: filter out any stray drafts
-      const active = fetched.filter(
-        (p) => p.status?.toLowerCase() !== "draft"
-      );
+      console.log(`[Products] 📦 Parsed JSON in ${parseMs}ms — total fetched=${fetched.length} active=${active.length} draftsFiltered=${fetched.length - active.length}`);
+      console.log(`[Products] 🔍 Timing breakdown: TTFB=${ttfbMs}ms | JSON parse=${parseMs}ms | total network=${downloadMs}ms`);
 
-      // Populate stable metadata cache
+      // Sample first product to verify field shape
+      if (active.length > 0) {
+        const sample = active[0];
+        console.log(`[Products] 🧪 Sample product[0]: id=${sample.id} name="${sample.name}" printT=${JSON.stringify(sample.printT?.map(t => t.technologyName))} images=${sample.displayImages?.length} colors=${sample.colorOptions?.length}`);
+      }
+
       active.forEach((p) => getOrCreateMetadata(p.id));
-
-      // Store in session cache
       productCache.data = active;
       productCache.ts = Date.now();
 
       setProducts(active);
+
+      const totalFetchMs = Math.round(performance.now() - fetchStart);
+      const totalSinceMountMs = Math.round(performance.now() - mountTime.current);
+      console.log(`%c[Products] ✅ Cards will render — fetchProducts() took ${totalFetchMs}ms | total since mount: ${totalSinceMountMs}ms`, "color: green; font-weight: bold");
+
+      // Flag slow phases
+      if (ttfbMs > 3000) console.warn(`[Products] 🔴 SLOW TTFB (${ttfbMs}ms) — Payload/DB is the bottleneck`);
+      if (parseMs > 1000) console.warn(`[Products] 🔴 SLOW JSON PARSE (${parseMs}ms) — response payload too large`);
+      if (totalSinceMountMs > 5000) console.warn(`[Products] 🔴 SLOW TOTAL (${totalSinceMountMs}ms) — cards took too long to appear`);
+
     } catch (error) {
-      console.error("Error fetching products:", error);
+      const errMs = Math.round(performance.now() - fetchStart);
+      console.error(`[Products] ❌ fetchProducts failed after ${errMs}ms:`, error);
       toast({
         title: "Failed to load products",
         description: "Please refresh the page.",
@@ -260,7 +291,13 @@ const Products = () => {
     let end = Math.min(totalPages, start + maxVisible - 1);
     if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
 
-    const btn = (key: string | number, label: React.ReactNode, page: number, active = false, disabled = false) => (
+    const btn = (
+      key: string | number,
+      label: React.ReactNode,
+      page: number,
+      active = false,
+      disabled = false
+    ) => (
       <button
         key={key}
         onClick={() => !disabled && handlePageChange(page)}
