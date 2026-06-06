@@ -20,3 +20,18 @@ export const fetchVendorProductsClient = async (
     return []
   }
 }
+
+export const fetchVendorFollowersClient = async (vendor_id: string): Promise<any> => {
+  try {
+    console.log(`[fetchVendorFollowersClient] vendor_id=${vendor_id}`)
+    const res = await fetch(`/api/vendor-followers?vendor_id=${vendor_id}`)
+    console.log(`[fetchVendorFollowersClient] status=${res.status}`)
+    if (!res.ok) return { count: 0, follow: [] }
+    const data = await res.json()
+    console.log(`[fetchVendorFollowersClient] count=${data?.count ?? 0}`)
+    return data
+  } catch (err) {
+    console.error(`[fetchVendorFollowersClient] ERROR:`, err)
+    return { count: 0, follow: [] }
+  }
+}

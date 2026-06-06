@@ -29,10 +29,6 @@ import {
   Check,
 } from "lucide-react"
 import {
-  retriveVendorsFollowers,
-  retriveVendorsProducts,
-} from "@lib/data/vendors"
-import {
   CreatorStorePageProps,
   FAQItemProps,
   DynamicProductCardProps,
@@ -401,7 +397,8 @@ useEffect(() => {
       try {
         //console.log("🔍 Fetching followers for vendor ID:", vendor.id)
         
-        const vendorFollowers = await retriveVendorsFollowers(vendor.id)
+        const { fetchVendorFollowersClient } = await import("@lib/data/vendors-client")
+        const vendorFollowers = await fetchVendorFollowersClient(vendor.id)
         //console.log("📊 Followers response:", vendorFollowers)
         
         if (vendorFollowers && vendorFollowers.follow && Array.isArray(vendorFollowers.follow)) {

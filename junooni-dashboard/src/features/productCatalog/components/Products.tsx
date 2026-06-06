@@ -52,7 +52,7 @@ interface Product {
   displayImages: DisplayImage[];
   colorOptions: ColorOption[];
   sizeOptions: SizeOption[];
-  printT?: PrintingTechnology[];           // actual Payload field name
+  printT?: PrintingTechnology[];            // actual Payload field name
   printingTechnologies?: PrintingTechnology[]; // fallback alias
 }
 
@@ -69,12 +69,10 @@ type ProductMetadataMap = Record<number, ProductMetadata>;
 
 const PRODUCTS_PER_PAGE = 12;
 
-// ── In-memory cache: survives re-renders and tab navigations within same session
-const productCache: { data: Product[] | null; ts: number } = {
-  data: null,
-  ts: 0,
-};
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// ── Per-page cache: key = page number, value = { data, ts }
+// Survives re-renders and back/forward navigation within the same session.
+const pageCache: Record<number, { data: Product[]; ts: number }> = {};
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes per page
 
 // ── Stable metadata: seeded once per product id, never changes on re-render
 const metadataCache: ProductMetadataMap = {};
@@ -119,15 +117,17 @@ const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalDocs, setTotalDocs] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
   const { toast } = useToast();
 
-  const fetchStarted = useRef(false);
-  // Track page-level mount time for total time-to-cards measurement
+  const authDone = useRef(false);
   const mountTime = useRef(performance.now());
 
+  // ── Auth: runs once on mount, fire-and-forget, never blocks product render
   useEffect(() => {
-    if (fetchStarted.current) return;
-    fetchStarted.current = true;
+    if (authDone.current) return;
+    authDone.current = true;
 
     console.log("%c[Products] 🟡 Component mounted", "color: orange; font-weight: bold");
     console.log(`[Products] ⏱ Mount timestamp: ${new Date().toISOString()}`);
@@ -138,64 +138,57 @@ const Products = () => {
 
     if (!isValid) {
       localStorage.clear();
-      toast({
-        title: "Session Expired",
-        description: "Please sign in again.",
-        variant: "destructive",
-      });
+      toast({ title: "Session Expired", description: "Please sign in again.", variant: "destructive" });
       window.location.href = "/sign-in";
       return;
     }
 
     if (!hasActorId) {
-      toast({
-        title: "Complete Your Profile",
-        description: "Please complete your vendor profile.",
-        variant: "destructive",
-      });
+      toast({ title: "Complete Your Profile", description: "Please complete your vendor profile.", variant: "destructive" });
       window.location.href = "/onboarding?step=basic-info";
       return;
     }
 
-    console.log("[Products] 🚀 Firing fetchProducts() immediately (not waiting for auth)");
-    fetchProducts();
-
-    // ── Auth verify via shared cache — zero extra network call if ProfileDropdown
-    // already called getVendorMe (returns from cache instantly)
+    // Auth verify runs in background via shared cache —
+    // if ProfileDropdown already called getVendorMe, this returns instantly from cache
     const authStart = performance.now();
     console.log("[Products] 🔐 Starting background auth verify (via authCache)...");
     getVendorMe(token).then((res) => {
       const authMs = Math.round(performance.now() - authStart);
       if (res?.status === 401) {
-        console.warn(`[Products] ❌ Auth verify 401 after ${authMs}ms — redirecting to sign-in`);
+        console.warn(`[Products] ❌ Auth 401 after ${authMs}ms — redirecting`);
         localStorage.clear();
-        toast({
-          title: "Session Expired",
-          description: "Please sign in again.",
-          variant: "destructive",
-        });
+        toast({ title: "Session Expired", description: "Please sign in again.", variant: "destructive" });
         window.location.href = "/sign-in";
       } else {
-        const cached = authMs < 5; // near-zero means it came from cache
-        console.log(`[Products] ✅ Auth verify done in ${authMs}ms ${cached ? "(from cache ⚡)" : "(network call)"} → status=${res?.status}`);
+        const cached = authMs < 5;
+        console.log(`[Products] ✅ Auth verify ${authMs}ms ${cached ? "(from cache ⚡)" : "(network)"} → status=${res?.status}`);
       }
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchProducts = useCallback(async () => {
+  // ── Fetch products whenever currentPage changes
+  useEffect(() => {
+    fetchProducts(currentPage);
+  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Server-side paginated fetch — only 12 products per request
+  const fetchProducts = useCallback(async (page: number) => {
     const fetchStart = performance.now();
+
     try {
-      // ── Cache hit: no network needed
-      if (productCache.data && Date.now() - productCache.ts < CACHE_TTL_MS) {
-        console.log(`[Products] ⚡ Cache hit — serving ${productCache.data.length} products instantly`);
-        setProducts(productCache.data);
+      // ── Cache hit for this page
+      const cached = pageCache[page];
+      if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+        console.log(`[Products] ⚡ Cache hit page=${page} — serving ${cached.data.length} products instantly`);
+        setProducts(cached.data);
         setLoading(false);
         const totalMs = Math.round(performance.now() - mountTime.current);
-        console.log(`%c[Products] ✅ Cards visible (from cache) — total time since mount: ${totalMs}ms`, "color: green; font-weight: bold");
+        console.log(`%c[Products] ✅ Cards visible (cache) — ${totalMs}ms since mount`, "color: green; font-weight: bold");
         return;
       }
 
-      console.log("[Products] 📡 Cache miss — fetching from Payload API...");
+      console.log(`[Products] 📡 Fetching page=${page} from Payload...`);
       const requestStart = performance.now();
 
       const selectFields = [
@@ -212,7 +205,7 @@ const Products = () => {
         "select[printT][technologyName]=true",
       ].join("&");
 
-      const url = `${vite_payload}/api/blank-products?where[status][equals]=active&limit=200&depth=1&${selectFields}`;
+      const url = `${vite_payload}/api/blank-products?where[status][equals]=active&limit=${PRODUCTS_PER_PAGE}&page=${page}&depth=1&${selectFields}`;
       console.log(`[Products] 🌐 GET ${url.replace(vite_payload, "[PAYLOAD]")}`);
 
       const response = await fetch(url, {
@@ -222,68 +215,66 @@ const Products = () => {
       });
 
       const ttfbMs = Math.round(performance.now() - requestStart);
-      console.log(`[Products] 📬 Response received — status=${response.status} TTFB=${ttfbMs}ms`);
+      console.log(`[Products] 📬 Response status=${response.status} TTFB=${ttfbMs}ms`);
 
-      if (!response.ok) {
-        throw new Error(`Products API returned ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Products API returned ${response.status}`);
 
       const parseStart = performance.now();
       const data = await response.json();
       const parseMs = Math.round(performance.now() - parseStart);
-      const downloadMs = ttfbMs + parseMs; // approximate total network+parse time
 
-      const fetched: Product[] = data.docs || data;
+      // Payload pagination meta
+      const fetched: Product[] = data.docs || [];
+      const serverTotalDocs: number = data.totalDocs ?? fetched.length;
+      const serverTotalPages: number = data.totalPages ?? Math.ceil(serverTotalDocs / PRODUCTS_PER_PAGE);
+
       const active = fetched.filter((p) => p.status?.toLowerCase() !== "draft");
 
-      console.log(`[Products] 📦 Parsed JSON in ${parseMs}ms — total fetched=${fetched.length} active=${active.length} draftsFiltered=${fetched.length - active.length}`);
-      console.log(`[Products] 🔍 Timing breakdown: TTFB=${ttfbMs}ms | JSON parse=${parseMs}ms | total network=${downloadMs}ms`);
+      console.log(`[Products] 📦 JSON parse=${parseMs}ms | fetched=${fetched.length} active=${active.length} | totalDocs=${serverTotalDocs} totalPages=${serverTotalPages}`);
+      console.log(`[Products] 🔍 Timing: TTFB=${ttfbMs}ms | parse=${parseMs}ms | total=${ttfbMs + parseMs}ms`);
 
-      // Sample first product to verify field shape
       if (active.length > 0) {
-        const sample = active[0];
-        console.log(`[Products] 🧪 Sample product[0]: id=${sample.id} name="${sample.name}" printT=${JSON.stringify(sample.printT?.map(t => t.technologyName))} images=${sample.displayImages?.length} colors=${sample.colorOptions?.length}`);
+        const s = active[0];
+        console.log(`[Products] 🧪 Sample[0]: id=${s.id} name="${s.name}" printT=${JSON.stringify(s.printT?.map(t => t.technologyName))} images=${s.displayImages?.length} colors=${s.colorOptions?.length}`);
       }
 
       active.forEach((p) => getOrCreateMetadata(p.id));
-      productCache.data = active;
-      productCache.ts = Date.now();
+
+      // Store in per-page cache
+      pageCache[page] = { data: active, ts: Date.now() };
 
       setProducts(active);
+      setTotalDocs(serverTotalDocs);
+      setTotalPages(serverTotalPages);
 
       const totalFetchMs = Math.round(performance.now() - fetchStart);
       const totalSinceMountMs = Math.round(performance.now() - mountTime.current);
-      console.log(`%c[Products] ✅ Cards will render — fetchProducts() took ${totalFetchMs}ms | total since mount: ${totalSinceMountMs}ms`, "color: green; font-weight: bold");
+      console.log(`%c[Products] ✅ Page ${page} rendered — fetch=${totalFetchMs}ms | since mount=${totalSinceMountMs}ms`, "color: green; font-weight: bold");
 
-      // Flag slow phases
-      if (ttfbMs > 3000) console.warn(`[Products] 🔴 SLOW TTFB (${ttfbMs}ms) — Payload/DB is the bottleneck`);
-      if (parseMs > 1000) console.warn(`[Products] 🔴 SLOW JSON PARSE (${parseMs}ms) — response payload too large`);
-      if (totalSinceMountMs > 5000) console.warn(`[Products] 🔴 SLOW TOTAL (${totalSinceMountMs}ms) — cards took too long to appear`);
+      if (ttfbMs > 3000) console.warn(`[Products] 🔴 SLOW TTFB (${ttfbMs}ms) — Payload/DB bottleneck`);
+      if (parseMs > 500)  console.warn(`[Products] 🔴 SLOW PARSE (${parseMs}ms) — response still large`);
+      if (totalSinceMountMs > 5000) console.warn(`[Products] 🔴 SLOW TOTAL (${totalSinceMountMs}ms)`);
 
     } catch (error) {
       const errMs = Math.round(performance.now() - fetchStart);
-      console.error(`[Products] ❌ fetchProducts failed after ${errMs}ms:`, error);
-      toast({
-        title: "Failed to load products",
-        description: "Please refresh the page.",
-        variant: "destructive",
-      });
+      console.error(`[Products] ❌ fetchProducts page=${page} failed after ${errMs}ms:`, error);
+      toast({ title: "Failed to load products", description: "Please refresh the page.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   }, [toast]);
 
-  // ── Pagination ───────────────────────────────────────────────────────────────
-
-  const totalPages = Math.ceil(products.length / PRODUCTS_PER_PAGE);
-  const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
-  const currentProducts = products.slice(startIndex, startIndex + PRODUCTS_PER_PAGE);
-
+  // ── Page change: clear current products, show skeleton, fetch next page
   const handlePageChange = (page: number) => {
+    if (page === currentPage) return;
+    console.log(`[Products] 📄 Page change: ${currentPage} → ${page}`);
     setCurrentPage(page);
+    setProducts([]);
+    setLoading(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ── Pagination buttons
   const renderPaginationButtons = () => {
     const buttons: React.ReactNode[] = [];
     const maxVisible = 5;
@@ -337,6 +328,10 @@ const Products = () => {
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
+  // Page range for "Showing X–Y of Z"
+  const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE + 1;
+  const endIndex = Math.min(currentPage * PRODUCTS_PER_PAGE, totalDocs);
+
   return (
     <>
       <Navbar />
@@ -361,9 +356,9 @@ const Products = () => {
             <p className="max-w-2xl mx-auto text-lg text-gray-600">
               Discover our premium collection of customizable products. From apparel to accessories, bring your designs to life.
             </p>
-            {!loading && products.length > PRODUCTS_PER_PAGE && (
+            {!loading && totalDocs > 0 && (
               <p className="mt-4 text-sm text-gray-500">
-                Showing {startIndex + 1}–{Math.min(startIndex + PRODUCTS_PER_PAGE, products.length)} of {products.length} products
+                Showing {startIndex}–{endIndex} of {totalDocs} products
               </p>
             )}
           </div>
@@ -371,15 +366,15 @@ const Products = () => {
           {/* Grid */}
           {loading ? (
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {Array.from({ length: 12 }).map((_, i) => (
+              {Array.from({ length: PRODUCTS_PER_PAGE }).map((_, i) => (
                 <ProductCardSkeleton key={i} />
               ))}
             </div>
           ) : (
             <>
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {currentProducts.length > 0 ? (
-                  currentProducts.map((product) => (
+                {products.length > 0 ? (
+                  products.map((product) => (
                     <div key={product.id} className="group">
                       <ProductCard
                         product={product}

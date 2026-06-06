@@ -1,10 +1,5 @@
 // src/app/[handle]/page.tsx
 
-// src/app/[handle]/page.tsx
-// Password gate is handled by layout.tsx
-// This page only renders when layout has confirmed access
-
-// src/app/[handle]/page.tsx
 // Password gate is handled by layout.tsx
 // This page only renders when layout has confirmed access
 
@@ -112,13 +107,29 @@ export default async function CreatorStorePage({ params }: Props) {
           <p style={{ color: "#888", fontSize: "0.9rem", lineHeight: 1.6, marginBottom: "1.5rem" }}>
             Something exciting is coming soon. Check back later!
           </p>
-          <div style={{
-            display: "inline-block", padding: "0.5rem 1.25rem",
-            borderRadius: "8px", border: "1px solid #e5e5e5",
-            fontSize: "0.8rem", color: "#aaa",
-          }}>
-            Powered by <span style={{ color: store?.primary_color ?? "#e65100", fontWeight: 600 }}>JUNOONI</span>
-          </div>
+          <a
+            href="https://junooni.com/in"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              padding: "0.5rem 1.25rem",
+              borderRadius: "8px",
+              border: "1px solid #e5e5e5",
+              fontSize: "0.8rem",
+              color: "#aaa",
+              textDecoration: "none",
+            }}
+          >
+            Powered by{" "}
+            <img
+              src="https://studio.junooni.com/assets/junooni_logo_brand_color-FiOJAWKM.png"
+              alt="JUNOONI"
+              style={{ height: "18px", objectFit: "contain" }}
+            />
+          </a>
         </div>
       </div>
     )
@@ -129,14 +140,13 @@ export default async function CreatorStorePage({ params }: Props) {
     "--brand-secondary": store?.secondary_color ?? "#ac1900",
   } as React.CSSProperties
 
-  
   return (
-  <StoreRenderer
-    vendor={vendor}
-    store={store}
-    products={products ?? []}
-    categories={categories ?? []}
-    collections={collections ?? []}
-  />
-)
+    <StoreRenderer
+      vendor={vendor}
+      store={store}
+      products={products ?? []}
+      categories={categories ?? []}
+      collections={collections ?? []}
+    />
+  )
 }

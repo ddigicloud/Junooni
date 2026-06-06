@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { RichTextEditor } from "./components/editor/ui"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -1421,11 +1422,15 @@ function PageEditorInline({ page, isNew, vendorHandle, onSave, onCancel, onDelet
         </div>
       </Field>
 
-      <Field label="Content (Markdown or HTML)">
-        <Textarea value={draft.content} onChange={e => up({ content: e.target.value })}
-          placeholder={"## My heading\n\nYour content here…\n\n(Prefix with < to write HTML)"}
-          rows={10} className="font-mono text-sm resize-none" />
-        <p className="mt-1.5 text-xs text-gray-400">Start with a <code className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">&lt;</code> tag to use raw HTML. Otherwise Markdown: <code className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">## h2</code>, <code className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">**bold**</code></p>
+      <Field label="Content">
+        <RichTextEditor
+          value={draft.content}
+          onChange={v => up({ content: v })}
+          placeholder="Write page content here..."
+          isDark={false}
+          rows={10}
+          showToolbar={true}
+        />
       </Field>
 
       <label className="flex items-center gap-2.5 cursor-pointer select-none">

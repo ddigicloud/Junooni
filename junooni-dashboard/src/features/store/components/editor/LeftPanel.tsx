@@ -403,7 +403,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
     )
   }
   return (
-    <>
+    <div className="flex flex-col h-full overflow-hidden" style={{ width: '300px' }}>
       <div className={`flex shrink-0 border-b ${panelBorder}`}>
         {([
           { id: "layout", label: "Layout" },
@@ -1731,6 +1731,6 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
             </div>
             )}
         </div>
-        </>
+    </div>
     )
 })

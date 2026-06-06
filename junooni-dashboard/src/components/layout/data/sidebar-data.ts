@@ -54,7 +54,7 @@ export const getSidebarData = (vendorId?: string): SidebarData => {
           },
           {
             title: 'Membership',
-            url: '/store/membership',
+            url: '/membership',
             icon: IconCrown,
           },
         ],

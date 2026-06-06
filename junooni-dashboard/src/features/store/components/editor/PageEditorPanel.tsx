@@ -4,6 +4,7 @@ import type { StorePage, PageTemplate } from "./types"
 import { PAGE_TEMPLATES, BRAND } from "./constants"
 import { slugify } from "./helpers"
 import { LinkInput } from "./LinkInput"
+import { RichTextEditor } from "./ui"
 
 function getPageUrl(vendorHandle: string, slug: string): string {
   const base = import.meta.env.VITE_STORE_BASE_URL ?? `http://localhost:3000`
@@ -97,48 +98,35 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
       </div>
 
       {/* Content */}
+      {/* Content */}
       <div>
-        <div className="flex items-center justify-between mb-1">
-          <label className={`text-[10px] ${textFaint}`}>Content</label>
-          <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${
-            draft.content.trim().startsWith("<")
-              ? "bg-red-900/20 border-red-800 text-red-400"
-              : "bg-green-900/20 border-green-800 text-green-400"
+        <label className={`text-[10px] ${textFaint} block mb-1`}>Content</label>
+
+        {(draft.template === "terms" || draft.template === "privacy") && (
+          <p className={`text-[10px] px-2.5 py-1.5 rounded-lg mb-2 ${
+            isDark
+              ? "bg-gray-800/50 text-gray-500 border border-gray-700"
+              : "bg-gray-50 text-gray-400 border border-gray-200"
           }`}>
-            {draft.content.trim().startsWith("<") ? "HTML" : "Markdown"}
-          </span>
-        </div>
+            🔒 Last updated: {new Date().toLocaleDateString("en-IN", {
+              day: "numeric", month: "long", year: "numeric"
+            })} — auto-updated on save
+          </p>
+        )}
 
-        {/* Date badge for legal pages */}
-        {(draft.template === "terms" || draft.template === "privacy") && (() => {
-          const match = draft.content.match(/\*Last updated:.*?\*/)
-          const dateStr = match ? match[0].replace(/\*/g, "") : null
-          return dateStr ? (
-            <p className={`text-[10px] px-2.5 py-1.5 rounded-lg mb-1 ${
-              isDark
-                ? "bg-gray-800/50 text-gray-500 border border-gray-700"
-                : "bg-gray-50 text-gray-400 border border-gray-200"
-            }`}>
-              🔒 {dateStr} — auto-updated on save
-            </p>
-          ) : null
-        })()}
-
-        <textarea
-          value={draft.content.replace(/\*Last updated:.*?\*\n*/g, "")}
-          onChange={e => {
+        <RichTextEditor
+          value={draft.content.replace(/\*Last updated:.*?\*\n*/g, "").trim()}
+          onChange={v => {
+            const isLegal = draft.template === "terms" || draft.template === "privacy"
             const today = new Date().toLocaleDateString("en-IN", {
               day: "numeric", month: "long", year: "numeric"
             })
-            const hasDate = draft.template === "terms" || draft.template === "privacy"
-            const newContent = hasDate
-              ? `*Last updated: ${today}*\n\n${e.target.value}`
-              : e.target.value
-            up({ content: newContent })
+            up({ content: isLegal ? `*Last updated: ${today}*\n\n${v}` : v })
           }}
-          placeholder={"Markdown: ## Heading\n\nHTML: <div>...</div>"}
+          placeholder="Write page content here..."
+          isDark={isDark}
           rows={10}
-          className={`w-full rounded-lg px-2.5 py-1.5 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 transition-colors resize-none font-mono text-xs ${inputCls}`}
+          showToolbar={true}
         />
       </div>
 
