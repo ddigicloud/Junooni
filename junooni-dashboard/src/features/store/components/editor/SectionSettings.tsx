@@ -475,7 +475,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
         </Field>
         <Field label="CTA link" faint={textFaint}>
           <LinkInput value={section.cta_url ?? ""} onChange={v => onChange({ cta_url: v })}
-            placeholder="/products" isDark={isDark} pages={pages} />
+            placeholder="/products" isDark={isDark} pages={pages} collections={collections} categories={categories}/>
         </Field>
         <Field label="Secondary CTA" faint={textFaint}>
           <EditorInput value={section.cta_secondary_label ?? ""}
@@ -483,7 +483,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
         </Field>
         <Field label="Secondary link" faint={textFaint}>
           <LinkInput value={section.cta_secondary_url ?? ""}
-            onChange={v => onChange({ cta_secondary_url: v })} placeholder="/products" isDark={isDark} pages={pages} />
+            onChange={v => onChange({ cta_secondary_url: v })} placeholder="/products" isDark={isDark} pages={pages} collections={collections} categories={categories}/>
         </Field>
         <UploadOnlyImageField label="Background image" value={section.background_image ?? ""}
           onChange={v => onChange({ background_image: v || undefined })}
@@ -716,7 +716,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
               </div>
               <LinkInput value={link.url}
                 onChange={v => { const links = [...(section.links ?? [])]; links[i] = { ...links[i], url: v }; onChange({ links }) }}
-                placeholder="https://... or /path" isDark={isDark} pages={pages} />
+                placeholder="https://... or /path" isDark={isDark} pages={pages} collections={collections} categories={categories}/>
             </div>
           ))}
           <button onClick={() => onChange({ links: [...(section.links ?? []), { id: `l_${Date.now()}`, label: "New Link", url: "" }] })}
@@ -903,7 +903,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
         </Field>
         <Field label="Button link" faint={textFaint}>
           <LinkInput value={section.cta_url ?? ""} onChange={v => onChange({ cta_url: v })}
-            placeholder="/products" isDark={isDark} pages={pages} />
+            placeholder="/products" isDark={isDark} pages={pages} collections={collections} categories={categories}/>
         </Field>
         <UploadOnlyImageField label="Image" value={section.image ?? ""}
           onChange={v => onChange({ image: v || undefined })}
@@ -951,7 +951,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
         </Field>
         <Field label="Button link" faint={textFaint}>
           <LinkInput value={section.cta_url ?? ""} onChange={v => onChange({ cta_url: v })}
-            placeholder="/products" isDark={isDark} pages={pages} />
+            placeholder="/products" isDark={isDark} pages={pages} collections={collections} categories={categories}/>
         </Field>
         <Field label="Video URL" faint={textFaint}>
           <EditorInput value={section.video_text_url ?? ""}

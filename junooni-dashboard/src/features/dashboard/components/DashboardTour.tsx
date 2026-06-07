@@ -27,7 +27,7 @@ const TOUR_STEPS: TourStep[] = [
     id: "both-stores-badge",
     kind: "spotlight",
     targetId: "tour-both-stores-badge",
-    title: "Your Store Mode",
+    title: "Click here",
     description:
       "This badge shows where your products are listed. Click it now to see your selling options — marketplace, own store, or both.",
     emoji: "🏪",

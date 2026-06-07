@@ -688,7 +688,7 @@ export default function StoreHeader({
 // ── TickerBar ─────────────────────────────────────────────────────────────────
 // ── TickerBar ─────────────────────────────────────────────────────────────────
 function TickerBar({ section }: { section: any }) {
-  const items: string[] = section.ticker_items ?? ["Free shipping on orders above ₹999", "New drops every week", "Official creator merchandise"]
+  const rawItems: string[] = section.ticker_items ?? ["Free shipping on orders above ₹999", "New drops every week", "Official creator merchandise"]
   const sep = section.ticker_separator ?? "✦"
   const speed = section.ticker_speed ?? 40
   const bg = section.background_color ?? "#111827"
@@ -696,13 +696,17 @@ function TickerBar({ section }: { section: any }) {
 
   const duration = Math.max(2, 100 - speed)
 
-  // Join all items into one repeating unit
-  const unit = items.map(item => item.trim()).filter(Boolean).join(`  ${sep}  `) + `  ${sep}  `
+  const items = rawItems
+    .flatMap(raw => {
+      return raw
+        .split(/<\/p>|<br\s*\/?>/)
+        .map(chunk => chunk.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim())
+        .filter(chunk => chunk.length > 0)
+    })
+    .filter(item => item.length > 0)
 
-  // Repeat enough copies that even a single short word fills the screen many times over
-  // We render 2 groups: group A + group B (identical). Animation slides group A off-screen
-  // by exactly its own width, at which point group B is in the same position group A started.
-  // Key: each group must be >= 100vw wide, so we repeat the unit many times inside each group.
+  const unit = items.join(`  ${sep}  `) + `  ${sep}  `
+
   const REPEATS = 20
   const groupContent = Array(REPEATS).fill(unit).join("")
 
@@ -723,10 +727,9 @@ function TickerBar({ section }: { section: any }) {
           animation: ${id} ${duration}s linear infinite;
         }
       `}</style>
-      {/* Two identical halves — animation moves -50% so it always loops perfectly */}
       <div className={`${id}-track text-sm font-medium tracking-wide`} style={{ color: fg }}>
-        <span dangerouslySetInnerHTML={{ __html: groupContent }} />
-        <span dangerouslySetInnerHTML={{ __html: groupContent }} />
+        <span>{groupContent}</span>
+        <span>{groupContent}</span>
       </div>
     </div>
   )

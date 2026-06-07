@@ -46,7 +46,11 @@ export function resolveUrlLabel(url: string, pages: StorePage[]): { label: strin
       .replace(/^\/categories\//, "")
       .replace(/-/g, " ")
       .replace(/\b\w/g, c => c.toUpperCase())
-    return { label: clean, icon: "🔗" }
+    const icon = url.startsWith("/collections/") ? "📦"
+      : url.startsWith("/categories/") ? "🗂️"
+      : url.startsWith("/products/") ? "🛍️"
+      : "🔗"
+    return { label: clean, icon }
   }
 
   return null
@@ -73,11 +77,13 @@ function ProductPickerModal({ products, selectedProduct, onSelect, onClose, isDa
 
   return createPortal( 
     <div
+      data-link-portal
       className="fixed flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       style={{ inset: 0, zIndex: 999999 }}
       onClick={onClose}
     >
       <div
+        data-link-portal
         className={`w-[420px] max-w-[90vw] rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${bgPanel} ${isDark ? "border-gray-700" : "border-gray-200"}`}
         onClick={e => e.stopPropagation()}
       >
@@ -110,7 +116,7 @@ function ProductPickerModal({ products, selectedProduct, onSelect, onClose, isDa
             : filtered.map(p => (
               <button
                 key={p.id}
-                onClick={() => { onSelect(p); onClose() }}
+                onClick={() => { onSelect(p) }}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-b ${borderColor} last:border-0 ${
                   selectedProduct?.id === p.id
                     ? isDark ? "bg-orange-500/15" : "bg-orange-50"
@@ -208,10 +214,140 @@ export function ProductPagesGroup({ value, onChange, setOpen, isDark, searchQuer
         <ProductPickerModal
           products={products}
           selectedProduct={selectedProduct}
-          onSelect={p => { onChange(`/products/${p.handle}`); setOpen(false); setModalOpen(false) }}
+          onSelect={p => { onChange(`/products/${p.handle}`); setModalOpen(false) }}
           onClose={() => setModalOpen(false)}
           isDark={isDark}
         />
+      )}
+    </div>
+  )
+}
+
+// Add after ProductPagesGroup component
+
+function CollectionsGroup({ value, onChange, setOpen, isDark, searchQuery, collections }: {
+  value: string
+  onChange: (v: string) => void
+  setOpen: (v: boolean) => void
+  isDark: boolean
+  searchQuery?: string
+  collections: { id: string; title: string; handle: string }[]
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const textColor = isDark ? "text-gray-300" : "text-gray-700"
+  const hoverBg   = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
+  const faint     = isDark ? "text-gray-600" : "text-gray-400"
+
+  const filtered = searchQuery
+    ? collections.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    : collections
+
+  if (searchQuery && filtered.length === 0) return null
+
+  return (
+    <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
+      {searchQuery ? (
+        <div>
+          <p className={`px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+            Collections
+          </p>
+          {filtered.slice(0, 6).map(c => {
+            const url = `/collections/${c.handle}`
+            return (
+              <button key={c.id} onClick={() => { onChange(url); setOpen(false) }}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs transition-colors text-left ${
+                  value === url ? "bg-orange-500/10 text-orange-400" : `${textColor} ${hoverBg}`
+                }`}>
+                <span className="truncate">{c.title}</span>
+                <span className={`font-mono text-[10px] ml-2 shrink-0 ${faint}`}>/collections/{c.handle}</span>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <>
+          <button onClick={() => setExpanded(e => !e)}
+            className={`w-full flex items-center justify-between px-2 py-1.5 text-xs transition-colors ${isDark ? "text-gray-300 hover:bg-gray-800" : "text-gray-700 hover:bg-gray-50"}`}>
+            <span>Collections</span>
+            <ChevronRight className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} />
+          </button>
+          {expanded && filtered.map(c => {
+            const url = `/collections/${c.handle}`
+            return (
+              <button key={c.id} onClick={() => { onChange(url); setOpen(false) }}
+                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors text-left ${
+                  value === url ? "bg-orange-500/10 text-orange-400" : `${textColor} ${hoverBg}`
+                }`}>
+                <span className="pl-1 truncate">{c.title}</span>
+                <span className={`font-mono text-[10px] ml-2 shrink-0 ${faint}`}>/collections/{c.handle}</span>
+              </button>
+            )
+          })}
+        </>
+      )}
+    </div>
+  )
+}
+
+function CategoriesGroup({ value, onChange, setOpen, isDark, searchQuery, categories }: {
+  value: string
+  onChange: (v: string) => void
+  setOpen: (v: boolean) => void
+  isDark: boolean
+  searchQuery?: string
+  categories: { id: string; name: string; handle: string }[]
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const textColor = isDark ? "text-gray-300" : "text-gray-700"
+  const hoverBg   = isDark ? "hover:bg-gray-800" : "hover:bg-gray-50"
+  const faint     = isDark ? "text-gray-600" : "text-gray-400"
+
+  const filtered = searchQuery
+    ? categories.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : categories
+
+  if (searchQuery && filtered.length === 0) return null
+
+  return (
+    <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
+      {searchQuery ? (
+        <div>
+          <p className={`px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+            Categories
+          </p>
+          {filtered.slice(0, 6).map(c => {
+            const url = `/categories/${c.handle}`
+            return (
+              <button key={c.id} onClick={() => { onChange(url); setOpen(false) }}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs transition-colors text-left ${
+                  value === url ? "bg-orange-500/10 text-orange-400" : `${textColor} ${hoverBg}`
+                }`}>
+                <span className="truncate">{c.name}</span>
+                <span className={`font-mono text-[10px] ml-2 shrink-0 ${faint}`}>/categories/{c.handle}</span>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <>
+          <button onClick={() => setExpanded(e => !e)}
+            className={`w-full flex items-center justify-between px-2 py-1.5 text-xs transition-colors ${isDark ? "text-gray-300 hover:bg-gray-800" : "text-gray-700 hover:bg-gray-50"}`}>
+            <span>Categories</span>
+            <ChevronRight className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} />
+          </button>
+          {expanded && filtered.map(c => {
+            const url = `/categories/${c.handle}`
+            return (
+              <button key={c.id} onClick={() => { onChange(url); setOpen(false) }}
+                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors text-left ${
+                  value === url ? "bg-orange-500/10 text-orange-400" : `${textColor} ${hoverBg}`
+                }`}>
+                <span className="pl-1 truncate">{c.name}</span>
+                <span className={`font-mono text-[10px] ml-2 shrink-0 ${faint}`}>/categories/{c.handle}</span>
+              </button>
+            )
+          })}
+        </>
       )}
     </div>
   )
@@ -271,20 +407,23 @@ export function CustomPagesGroup({ pages, value, onChange, setOpen, isDark, onLa
 
 // ─── LinkInput ────────────────────────────────────────────────────────────────
 
-export function LinkInput({ value, onChange, placeholder, isDark, pages = [], onLabelSuggest }: {
+export function LinkInput({ value, onChange, placeholder, isDark, pages = [], onLabelSuggest, collections = [], categories = [] }: {
   value: string
   onChange: (v: string) => void
   placeholder?: string
   isDark: boolean
   pages?: StorePage[]
   onLabelSuggest?: (label: string) => void
+  collections?: { id: string; title: string; handle: string }[]
+  categories?: { id: string; name: string; handle: string }[]
 }) {
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [displayValue, setDisplayValue] = useState(value)
   const ref    = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 })
+  // Change state type
+  const [dropdownPos, setDropdownPos] = useState({ bottom: 0, left: 0 })
 
   useEffect(() => { setDisplayValue(value) }, [value])
 
@@ -309,9 +448,8 @@ export function LinkInput({ value, onChange, placeholder, isDark, pages = [], on
     const safeLeft = panelLeft || Math.max(0, rect.right - panelWidth)
     const spaceBelow = window.innerHeight - rect.bottom
     const spaceAbove = rect.top
-    const flipUp = spaceBelow < LINK_INPUT_DROPDOWN_HEIGHT && spaceAbove > spaceBelow
     setDropdownPos({
-      top: flipUp ? rect.top - LINK_INPUT_DROPDOWN_HEIGHT - 4 : rect.bottom + 4,
+      bottom: window.innerHeight - rect.top + 4,
       left: safeLeft,
     })
   }
@@ -331,7 +469,11 @@ export function LinkInput({ value, onChange, placeholder, isDark, pages = [], on
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      // Don't close if clicking inside a portal (product picker modal)
+      const target = e.target as Node
+      const isInsidePortal = document.querySelector('[data-link-portal]')?.contains(target)
+      if (isInsidePortal) return
+      if (ref.current && !ref.current.contains(target)) setOpen(false)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
@@ -438,13 +580,13 @@ export function LinkInput({ value, onChange, placeholder, isDark, pages = [], on
           className={`fixed z-[9999] rounded-xl border shadow-xl overflow-hidden ${
             isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
           }`}
-        style={{
-          top: dropdownPos.top,
-          left: dropdownPos.left + 8,
-          width: 244,
-          maxHeight: LINK_INPUT_DROPDOWN_HEIGHT,
-          overflowY: "auto",
-        }}
+       style={{
+            bottom: dropdownPos.bottom,
+            left: dropdownPos.left + 8,
+            width: 244,
+            maxHeight: LINK_INPUT_DROPDOWN_HEIGHT,
+            overflowY: "auto",
+          }}
         >
           <p className={`px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider border-b ${
             isDark ? "text-gray-500 border-gray-700" : "text-gray-400 border-gray-100"
@@ -535,6 +677,24 @@ export function LinkInput({ value, onChange, placeholder, isDark, pages = [], on
               isSearching={!!searchQuery}
             />
           )}
+
+          <CollectionsGroup
+            value={displayValue}
+            onChange={v => { onChange(v); setDisplayValue(v); setOpen(false); setSearchQuery("") }}
+            setOpen={setOpen}
+            isDark={isDark}
+            searchQuery={searchQuery}
+            collections={collections}
+          />
+
+          <CategoriesGroup
+            value={displayValue}
+            onChange={v => { onChange(v); setDisplayValue(v); setOpen(false); setSearchQuery("") }}
+            setOpen={setOpen}
+            isDark={isDark}
+            searchQuery={searchQuery}
+            categories={categories}
+          />
 
           <ProductPagesGroup
             value={displayValue}

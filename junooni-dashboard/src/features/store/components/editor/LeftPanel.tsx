@@ -246,11 +246,14 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
           {/* Quick actions for real sections */}
           {drillSection && !["header","footer"].includes(drillSection.type) && (
             <div className="flex items-center gap-0.5 shrink-0">
-              <button onClick={() => toggleSection(drillSection.id)}
+              <button onClick={() => {
+                toggleSection(drillSection.id)
+                setDrillSection(s => s ? { ...s, hidden: !s.hidden } : s)
+                 }}
                 className={`p-1.5 rounded-lg transition-colors ${isDark ? "hover:bg-gray-800 text-gray-400" : "hover:bg-gray-100 text-gray-500"}`}
                 title={drillSection.hidden ? "Show" : "Hide"}>
                 {drillSection.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
+             </button>
               <button onClick={() => { duplicateSection(drillSection.id); setDrillSection(null) }}
                 className={`p-1.5 rounded-lg transition-colors ${isDark ? "hover:bg-gray-800 text-gray-400" : "hover:bg-gray-100 text-gray-500"}`}
                 title="Duplicate">
@@ -501,7 +504,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     : isSelected
                         ? isDark ? "bg-gray-800 border-l-orange-500" : "bg-orange-50/80 border-l-orange-500"
                         : isDark ? "border-l-transparent bg-gray-800/60 hover:bg-gray-700/80" : "border-l-transparent bg-gray-100 hover:bg-gray-200/80",
-                    s.hidden && isDragging !== s.id ? "opacity-40" : "",
+                    // s.hidden && isDragging !== s.id ? "opacity-40" : "",
                 ].join(" ")}
                 >
                     {/* Section icon */}
@@ -513,18 +516,20 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     {/* Label */}
                     <div className="flex-1 min-w-0">
                       <p className={`text-[14px] font-medium truncate ${isSelected ? textPrimary : isDark ? "text-gray-300" : "text-gray-800"}`}>
-                        {s.hidden ? <span className="opacity-50">{block?.label ?? s.type}</span> : block?.label ?? s.type}
+                        {block?.label ?? s.type}
                       </p>
                     </div>
 
                     {/* Eye toggle — only on hover */}
                     <button
-                    onClick={e => { e.stopPropagation(); toggleSection(s.id) }}
-                    className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded-md shrink-0"
-                    style={{ color: isDark ? "#6b7280" : "#9ca3af" }}
-                    title={s.hidden ? "Show section" : "Hide section"}
-                    >
-                    {s.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        onClick={e => { e.stopPropagation(); toggleSection(s.id) }}
+                        className={`transition-opacity p-1 rounded-md shrink-0 ${
+                            s.hidden ? "opacity-100" : "opacity-0 group-hover/row:opacity-100"
+                        }`}
+                        style={{ color: s.hidden ? (isDark ? "#ef4444" : "#f87171") : (isDark ? "#6b7280" : "#9ca3af") }}
+                        title={s.hidden ? "Show section" : "Hide section"}
+                        >
+                        {s.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
 
                     {/* Drag handle — always visible but muted, slightly more on hover */}

@@ -51,6 +51,7 @@ export default function StoreEditorPage() {
   const navigate   = useNavigate()
   const { toast }  = useToast()
   const [bodySectionPickerOpen, setBodySectionPickerOpen] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
   const iframeRef  = useRef<HTMLIFrameElement>(null)
   const fileLogoRef = useRef<HTMLInputElement>(null)
   const fileFavRef  = useRef<HTMLInputElement>(null)
@@ -321,6 +322,7 @@ export default function StoreEditorPage() {
       }
       if (e.data?.type === "IFRAME_READY") {
         setIframeReady(true)
+        setIsNavigating(false)
         setTimeout(() => syncToIframe(), 100)
       }
       if (e.data?.type === "IFRAME_NAVIGATION") {
@@ -989,6 +991,11 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
           from { opacity: 0; transform: translateY(-4px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes progress {
+          0%   { transform: translateX(-100%); }
+          50%  { transform: translateX(0%); }
+          100% { transform: translateX(100%); }
+        }
       `}</style>
 
       {/* ── TOP BAR ── */}
@@ -1015,7 +1022,16 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
         <div className="flex items-center gap-2">
           <PageSwitcherDropdown
             currentPath={previewPagePath}
-            onSelect={path => { setPreviewPagePath(path); setSelectedId(null); setRightPanelOpen(false) }}
+            onSelect={path => {
+              setPreviewPagePath(path)
+              setSelectedId(null)
+              setRightPanelOpen(false)
+              setIsNavigating(true)
+              iframeRef.current?.contentWindow?.postMessage({ type: "NAVIGATE", path }, "*")
+              setTimeout(() => {
+                iframeRef.current?.contentWindow?.postMessage({ type: "STORE_UPDATE", store, selectedId }, "*")
+              }, 500)
+            }}
             pages={pages}
             products={vendorProducts}
             collections={vendorCollections}
@@ -1173,6 +1189,11 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
               <div className={`absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 ${isDark ? "bg-gray-950" : "bg-gray-100"}`}>
                 <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
                 <p className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>Loading preview...</p>
+              </div>
+            )}
+            {isNavigating && (
+              <div className="absolute top-0 left-0 right-0 z-20 h-0.5 overflow-hidden">
+                <div className="h-full bg-orange-500 animate-[progress_1.5s_ease-in-out_infinite]" />
               </div>
             )}
             {previewUrl && (
