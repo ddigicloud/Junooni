@@ -154,6 +154,11 @@ export default function StoreEditorPage() {
         const vRes = await fetch(`${backendUrl}/vendors/me`, {
           headers: { Authorization: `Bearer ${token}` }
         })
+        if (vRes.status === 401) {
+          localStorage.removeItem("vendorToken")
+          navigate({ to: "/sign-in" })
+          return
+        }
         if (vRes.ok) {
           vd = await vRes.json()
           setVendorHandle(vd.vendor?.handle ?? "")
@@ -162,6 +167,11 @@ export default function StoreEditorPage() {
         const sRes = await fetch(`${backendUrl}/vendors/me/store`, {
           headers: { Authorization: `Bearer ${token}` }
         })
+        if (sRes.status === 401) {
+          localStorage.removeItem("vendorToken")
+          navigate({ to: "/sign-in" })
+          return
+        }
         if (sRes.ok) {
           const sd = await sRes.json()
           if (sd.store) {
@@ -292,12 +302,6 @@ export default function StoreEditorPage() {
     if (isFirstRender.current) { isFirstRender.current = false; return }
     setHasUnsavedChanges(true)
   }, [store, isLoading])
-
-  useEffect(() => {
-    const handleDragEnd = () => { setIsDragging(null); setDragOver(null) }
-    document.addEventListener("dragend", handleDragEnd)
-    return () => document.removeEventListener("dragend", handleDragEnd)
-  }, [])
 
   // ── postMessage sync ──────────────────────────────────────────────────────
   const isSyncingRef = useRef(false)
@@ -630,39 +634,34 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
   
   const handleDragStart = (id: string) => setIsDragging(id)
   const handleDragOver  = (e: React.DragEvent, idx: number) => { e.preventDefault(); setDragOver(idx) }
-  const handleDrop      = (e: React.DragEvent, toIdx: number) => {
+  const handleDrop = (e: React.DragEvent, toId: string) => {
     e.preventDefault()
-    if (!isDragging) return
-    const key = getLayoutKeyForPath(previewPagePath)
-    patchStore(p => {
-      const arr     = [...getPageSections(p, key)]
-      const fromIdx = arr.findIndex(s => s.id === isDragging)
-      if (fromIdx === -1) return p
-      const [moved] = arr.splice(fromIdx, 1)
-      arr.splice(toIdx, 0, moved)
-      return setPageSections(p, key, arr)
-    })
-    setIsDragging(null); setDragOver(null)
-  }
-  const handleBodyDrop     = (e: React.DragEvent) => {
-    e.preventDefault()
-    if (!isDragging) return
-    // Don't handle drops of header-zone sections
+    if (!isDragging || isDragging === toId) return
     const isHeaderZone = headerSections.some(h => h.id === isDragging)
     if (isHeaderZone) return
     const key = getLayoutKeyForPath(previewPagePath)
     patchStore(p => {
-      const arr     = [...getPageSections(p, key)]
+      const arr = [...getPageSections(p, key)]
       const fromIdx = arr.findIndex(s => s.id === isDragging)
-      if (fromIdx === -1) return p
+      const toIdx   = arr.findIndex(s => s.id === toId)
+      if (fromIdx === -1 || toIdx === -1) return p
       const [moved] = arr.splice(fromIdx, 1)
-      const toIdx   = dragOver !== null ? dragOver : arr.length
-      arr.splice(toIdx, 0, moved)
+      const insertAt = toIdx > fromIdx ? toIdx : toIdx  // insert BEFORE toId
+      arr.splice(insertAt, 0, moved)
       return setPageSections(p, key, arr)
     })
-    setIsDragging(null); setDragOver(null)
+    setIsDragging(null)
+    setDragOver(null)
+    setSelectedId(null)  // clears grey highlight
   }
-  const handleBodyDragOver = (e: React.DragEvent) => e.preventDefault()
+  const handleBodyDrop     = (e: React.DragEvent) => {
+    e.preventDefault()
+    // actual drop handled inside LeftPanel via handleDrop(e, placeholderIndex)
+  }
+  const handleBodyDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+  }
 
   // ── Page helpers ──────────────────────────────────────────────────────────
   const savePage = (page: StorePage) => {

@@ -6,6 +6,7 @@ import {
   AlignCenter, Moon, Sun, Pencil, PanelLeftClose
 } from "lucide-react"
 import { Link } from "@tanstack/react-router"
+import { createPortal } from "react-dom"
 import type {
   EditorTab, SectionType, StoreSection, StorePage,
   VendorStore, PageTemplate, FooterColumn, NavItem
@@ -114,7 +115,7 @@ interface LeftPanelProps {
   moveSection: (id: string, dir: "up" | "down") => void
   handleDragStart: (id: string) => void
   handleDragOver: (e: React.DragEvent, idx: number) => void
-  handleDrop: (e: React.DragEvent, toIdx: number) => void
+  handleDrop: (e: React.DragEvent, toId: string) => void
   handleBodyDrop: (e: React.DragEvent) => void
   handleBodyDragOver: (e: React.DragEvent) => void
   // panels
@@ -165,25 +166,41 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
 
     const [drillSection, setDrillSection] = useState<StoreSection | null>(null)
     const [drillVirtual, setDrillVirtual] = useState<string | null>(null)
+    const dragOverIdRef = React.useRef<string | null>(null)
+    const [dragOverId, setDragOverId] = useState<string | null>(null)
     const pendingInsertRef = React.useRef<number | null>(null)
-    const [dropTargetId, setDropTargetId] = useState<string | null>(null)
-    const [dropPosition, setDropPosition] = useState<"before" | "after">("after")
-    const dropTargetRef = React.useRef<{ id: string | null; pos: "before" | "after" }>({ id: null, pos: "after" })
+    // const [placeholderIndex, setPlaceholderIndex] = useState<number | null>(null)
+    // const [dragPos, setDragPos] = useState({ x: 0, y: 0 })
+    // const [draggedHeight, setDraggedHeight] = useState(44)
+    // const [dropTargetId, setDropTargetId] = useState<string | null>(null)
+    // const [dropPosition, setDropPosition] = useState<"before" | "after">("after")
+    // const dropTargetRef = React.useRef<{ id: string | null; pos: "before" | "after" }>({ id: null, pos: "after" })
 
-    const getReorderedList = useCallback((list: StoreSection[]) => {
-    const { id: targetId, pos } = dropTargetRef.current
-    if (!isDragging || !targetId || isDragging === targetId) return list
-    const fromIdx = list.findIndex(s => s.id === isDragging)
-    const toIdx   = list.findIndex(s => s.id === targetId)
-    if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return list
-    const result = [...list]
-    const [moved] = result.splice(fromIdx, 1)
-    // After splice, toIdx shifts down by 1 if it was after fromIdx
-    const adjustedTo = toIdx > fromIdx ? toIdx - 1 : toIdx
-    const insertAt = pos === "before" ? adjustedTo : adjustedTo + 1
-    result.splice(insertAt, 0, moved)
-    return result
-    }, [isDragging, dropTargetId])   // dropTargetId state still triggers re-render, but only when position actually changes
+    // useEffect(() => {
+    // if (!isDragging) return
+
+    // const onDrag = (e: DragEvent) => {
+    //     if (e.clientX === 0 && e.clientY === 0) return
+    //     setDragPos({ x: e.clientX, y: e.clientY })
+    // }
+
+    // const cleanup = () => {
+    //     setIsDragging(null)
+    //     setPlaceholderIndex(null)
+    //     setDragOver(null)
+    //     setDragPos({ x: 0, y: 0 })
+    // }
+
+    // window.addEventListener("drag", onDrag)
+    // window.addEventListener("dragend", cleanup)
+    // window.addEventListener("mouseup", cleanup)   // ← catches drop outside any dropzone
+
+    // return () => {
+    //     window.removeEventListener("drag", onDrag)
+    //     window.removeEventListener("dragend", cleanup)
+    //     window.removeEventListener("mouseup", cleanup)
+    // }
+    // }, [isDragging])
 
   useEffect(() => {
     if (!triggerDrillId) return
@@ -442,106 +459,94 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
             const SectionRow = ({ s, idx }: { s: typeof sections[0], idx: number }) => {
             const block = SECTION_BLOCKS_WITH_ICONS.find(b => b.type === s.type)
             const isSelected = selectedId === s.id
-            const globalIdx = sections.findIndex(x => x.id === s.id)
+            const isBeingDragged = isDragging === s.id
+            const isDragOver = dragOverId === s.id
 
             return (
-          <div
-            className="relative group/row"
-            style={{ animation: "none" }}
-            >
+                <div className="relative">
+                {/* Insertion line ABOVE this item */}
+                {isDragOver && isDragging && isDragging !== s.id && (
+                    <div className="absolute inset-x-0 flex items-center pointer-events-none"
+                    style={{ top: "-1px", zIndex: 20 }}>
+                    <div className="w-2 h-2 bg-orange-500 rounded-full shrink-0" />
+                    <div className="flex-1 h-0.5 bg-orange-500" />
+                    </div>
+                )}
                 <div
                     draggable
-                   onDragStart={e => {
-                        e.dataTransfer.effectAllowed = "move"
-                        const ghost = document.createElement("div")
-                        ghost.style.cssText = "position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0;"
-                        document.body.appendChild(ghost)
-                        e.dataTransfer.setDragImage(ghost, 0, 0)
-                        setTimeout(() => document.body.removeChild(ghost), 0)
-                        requestAnimationFrame(() => handleDragStart(s.id))
+                    onDragStart={e => {
+                    e.dataTransfer.effectAllowed = "move"
+                    // Invisible ghost
+                    const ghost = document.createElement("div")
+                    ghost.style.cssText = "position:fixed;top:-999px;left:-999px;opacity:0;width:1px;height:1px;"
+                    document.body.appendChild(ghost)
+                    e.dataTransfer.setDragImage(ghost, 0, 0)
+                    requestAnimationFrame(() => {
+                        document.body.removeChild(ghost)
+                        handleDragStart(s.id)
+                    })
                     }}
-                  onDragEnd={() => {
+                    onDragEnd={() => {
                     setIsDragging(null)
                     setDragOver(null)
-                    setDropTargetId(null)
+                    setDragOverId(null)
                     setSelectedId(null)
-                    dropTargetRef.current = { id: null, pos: "after" }
-                }}
-                   onDragOver={e => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        e.dataTransfer.dropEffect = "move"
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        const pos = e.clientY < rect.top + rect.height / 2 ? "before" : "after"
-                        // Update ref immediately (no re-render)
-                        dropTargetRef.current = { id: s.id, pos }
-                        // Only trigger re-render when the target row actually changes
-                        if (dropTargetId !== s.id) {
-                            setDropTargetId(s.id)
-                            setDropPosition(pos)
-                        }
-                        setDragOver(globalIdx)
                     }}
-                   onDrop={e => {
-                        e.stopPropagation()
-                        handleDrop(e, globalIdx)
-                        setIsDragging(null)
-                        setDragOver(null)
-                        setDropTargetId(null)
-                        setSelectedId(null)
-                        dropTargetRef.current = { id: null, pos: "after" }
+                    onDragOver={e => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    e.dataTransfer.dropEffect = "move"
+                    if (dragOverId !== s.id) setDragOverId(s.id)
+                    }}
+                    onDrop={e => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleDrop(e, s.id)
+                    setIsDragging(null)
+                    setDragOver(null)
+                    setDragOverId(null)
+                    setSelectedId(null)
                     }}
                     onClick={() => {
-                        setDrillSection(s)
-                        setSelectedId(s.id)
+                    setDrillSection(s)
+                    setSelectedId(s.id)
                     }}
-                   className={[
+                    className={[
                     "flex items-center gap-2.5 px-2.5 py-1 rounded-lg cursor-pointer transition-colors duration-100 select-none border-l-2",
-                    isDragging === s.id
-                    ? isDark
-                        ? "border-l-orange-500 bg-gray-700/50 opacity-60"
-                        : "border-l-orange-500 bg-orange-50/60 opacity-60"
-                    : isSelected
+                    isSelected
                         ? isDark ? "bg-gray-800 border-l-orange-500" : "bg-orange-50/80 border-l-orange-500"
                         : isDark ? "border-l-transparent bg-gray-800/60 hover:bg-gray-700/80" : "border-l-transparent bg-gray-100 hover:bg-gray-200/80",
-                    // s.hidden && isDragging !== s.id ? "opacity-40" : "",
-                ].join(" ")}
+                    ].join(" ")}
+                    style={{ opacity: isBeingDragged ? 0.35 : 1, transition: "opacity 0.15s" }}
                 >
-                    {/* Section icon */}
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
-                      style={{color: block?.color ?? "#666" }}>
-                      {block?.icon}
+                    style={{ color: block?.color ?? "#666" }}>
+                    {block?.icon}
                     </div>
-
-                    {/* Label */}
                     <div className="flex-1 min-w-0">
-                      <p className={`text-[14px] font-medium truncate ${isSelected ? textPrimary : isDark ? "text-gray-300" : "text-gray-800"}`}>
+                    <p className={`text-[14px] font-medium truncate ${isSelected ? textPrimary : isDark ? "text-gray-300" : "text-gray-800"}`}>
                         {block?.label ?? s.type}
-                      </p>
+                    </p>
                     </div>
-
-                    {/* Eye toggle — only on hover */}
                     <button
-                        onClick={e => { e.stopPropagation(); toggleSection(s.id) }}
-                        className={`transition-opacity p-1 rounded-md shrink-0 ${
-                            s.hidden ? "opacity-100" : "opacity-0 group-hover/row:opacity-100"
-                        }`}
-                        style={{ color: s.hidden ? (isDark ? "#ef4444" : "#f87171") : (isDark ? "#6b7280" : "#9ca3af") }}
-                        title={s.hidden ? "Show section" : "Hide section"}
-                        >
-                        {s.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    onClick={e => { e.stopPropagation(); toggleSection(s.id) }}
+                    className={`transition-opacity p-1 rounded-md shrink-0 ${
+                        s.hidden ? "opacity-100" : "opacity-0 group-hover/row:opacity-100"
+                    }`}
+                    style={{ color: s.hidden ? (isDark ? "#ef4444" : "#f87171") : (isDark ? "#6b7280" : "#9ca3af") }}
+                    >
+                    {s.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
-
-                    {/* Drag handle — always visible but muted, slightly more on hover */}
-                    <div className="transition-colors cursor-grab active:cursor-grabbing shrink-0"
+                    <div
+                    className="transition-colors cursor-grab active:cursor-grabbing shrink-0"
                     style={{ color: isDark ? "#4b5563" : "#d1d5db" }}
                     onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = isDark ? "#6b7280" : "#9ca3af"}
                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = isDark ? "#4b5563" : "#d1d5db"}
-                    onMouseDown={e => e.stopPropagation()}>
+                    onMouseDown={e => e.stopPropagation()}
+                    >
                     <GripVertical className="w-4 h-4" />
                     </div>
                 </div>
-                
                 </div>
             )
             }
@@ -1170,29 +1175,26 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     )}
 
                     {currentLayoutKey === "home" && (
-                     <div
-                        onDragOver={e => {
-                            e.preventDefault()
-                            handleBodyDragOver(e)
-                        }}
-                        onDrop={handleBodyDrop}
-                        >
+                    <div
+                        onDragOver={e => { e.preventDefault(); handleBodyDragOver(e) }}
+                        onDrop={e => { handleBodyDrop(e); setDragOverId(null) }}
+                    >
                         {layoutBodySections.length === 0 && (
-                            <div className="py-6 space-y-1 text-center">
+                        <div className="py-6 space-y-1 text-center">
                             <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
                             <p className={`text-[10px] ${textFaint} opacity-60`}>Click "+ Add section" to build this page</p>
-                            </div>
+                        </div>
                         )}
-                        {getReorderedList(layoutBodySections).map((s, i, arr) => {
-                            const globalIdx = sections.findIndex(x => x.id === s.id)
-                            return (
-                            <div key={s.id}>
+                       {layoutBodySections.map((s, i, arr) => {
+                        const globalIdx = sections.findIndex(x => x.id === s.id)
+                        return (
+                            <React.Fragment key={s.id}>
                             <SectionRow s={s} idx={i} />
                             {i < arr.length - 1 && <AddBetweenLine afterIndex={globalIdx} />}
-                            </div>
-                            )
+                            </React.Fragment>
+                        )
                         })}
-                        </div>
+                    </div>
                     )}
 
                     {currentLayoutKey.startsWith("page_") && (
@@ -1205,15 +1207,23 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             </p>
                             </div>
                         )}
-                       {getReorderedList(layoutBodySections).map((s, i, arr) => {
-                            const globalIdx = sections.findIndex(x => x.id === s.id)
-                            return (
-                            <div key={s.id}>
+                       {layoutBodySections.map((s, i, arr) => {
+                        const globalIdx = sections.findIndex(x => x.id === s.id)
+                        return (
+                            <React.Fragment key={s.id}>
                             <SectionRow s={s} idx={i} />
                             {i < arr.length - 1 && <AddBetweenLine afterIndex={globalIdx} />}
-                            </div>
-                            )
+                            </React.Fragment>
+                        )
                         })}
+                        {placeholderIndex === layoutBodySections.length && isDragging && (
+                        <div
+                            style={{ height: draggedHeight, opacity: 0.4 }}
+                            className={`rounded-lg border-2 border-dashed my-0.5 ${
+                            isDark ? "border-orange-500 bg-orange-900/20" : "border-orange-400 bg-orange-50"
+                            }`}
+                        />
+                        )}
                         </div>
                     )}
 

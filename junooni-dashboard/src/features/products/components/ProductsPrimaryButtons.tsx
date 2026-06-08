@@ -98,12 +98,13 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
             {/* Design Something New */}
             <div 
               className="flex flex-col items-center p-4 transition border-b rounded-lg shadow-sm cursor-pointer md:p-6 md:border-b-0 md:border-r hover:bg-gray-50 md:rounded-none md:shadow-none"
+              id="tour-product-modal-design"
               onClick={() => {
                 setShowPopup(false);
                 navigate({ to: '/productCatalog' })
               }}
             >
-              <div id="tour-product-modal-design" className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
+              <div className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
                 <img src={windowSoping} alt="Design something new" className="max-w-full max-h-full" />
               </div>
               <h3 className="text-lg font-semibold text-center md:text-xl">Design Something Amazing</h3>
@@ -113,6 +114,7 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
             {/* Sell Something I Have */}
             <div 
               className="flex flex-col items-center p-4 transition rounded-lg shadow-sm cursor-pointer md:p-6 hover:bg-gray-50 md:rounded-none md:shadow-none"
+              id="tour-product-modal-existing"
               onClick={() => {
                 setShowPopup(false);
                 const gstStatus = vendor?.gst_verification_status || "pending";
@@ -123,7 +125,7 @@ const ProductsPrimaryButtonsComponent: ForwardRefRenderFunction<
                 }
               }}
             >
-              <div id="tour-product-modal-existing" className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
+              <div className="flex items-center justify-center w-40 h-40 mb-4 md:w-64 md:h-64 md:mb-6">
                 <img src={sellSometing} alt="Sell something I have" className="max-w-full max-h-full" />
               </div>
               <h3 className="text-lg font-semibold text-center md:text-xl">List Your Existing Products</h3>

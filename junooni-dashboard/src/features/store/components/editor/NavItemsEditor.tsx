@@ -130,10 +130,10 @@ export function NavItemsEditor({
             >
               {/* ── Parent header row ── */}
               <div className="flex items-center gap-1.5 px-2 py-1.5">
-                <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} />
+                {/* <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} /> */}
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                  className="flex items-center gap-1 flex-1 min-w-0 text-left"
+                  className="flex items-center flex-1 min-w-0 gap-1 text-left"
                 >
                   <ChevronDownIcon className={`w-3.5 h-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-180" : "-rotate-90"} ${textFaint}`} />
                   <span className={`flex-1 text-xs font-medium truncate ${textPrimary}`}>
@@ -334,7 +334,7 @@ export function NavItemsEditor({
                           >
                             {/* Child row */}
                             <div className="flex items-center gap-1.5 px-2 py-1.5">
-                              <GripVertical className={`w-2.5 h-2.5 shrink-0 ${textFaint}`} />
+                              {/* <GripVertical className={`w-2.5 h-2.5 shrink-0 ${textFaint}`} /> */}
                               <button
                                 onClick={() => setExpandedChildId(isChildExpanded ? null : child.id)}
                                 className="flex items-center gap-1.5 flex-1 min-w-0 text-left"

@@ -52,8 +52,8 @@ interface Product {
   displayImages: DisplayImage[];
   colorOptions: ColorOption[];
   sizeOptions: SizeOption[];
-  printT?: PrintingTechnology[];            // actual Payload field name
-  printingTechnologies?: PrintingTechnology[]; // fallback alias
+  printT?: PrintingTechnology[];
+  printingTechnologies?: PrintingTechnology[];
 }
 
 interface ProductMetadata {
@@ -68,13 +68,12 @@ type ProductMetadataMap = Record<number, ProductMetadata>;
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PRODUCTS_PER_PAGE = 12;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-// ── Per-page cache: key = page number, value = { data, ts }
-// Survives re-renders and back/forward navigation within the same session.
-const pageCache: Record<number, { data: Product[]; ts: number }> = {};
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes per page
+// ── Per-page cache: survives re-renders and back/forward navigation
+const pageCache: Record<number, { data: Product[]; ts: number; totalDocs: number; totalPages: number }> = {};
 
-// ── Stable metadata: seeded once per product id, never changes on re-render
+// ── Stable metadata seeded from product id — never changes on re-render
 const metadataCache: ProductMetadataMap = {};
 function getOrCreateMetadata(id: number): ProductMetadata {
   if (!metadataCache[id]) {
@@ -88,6 +87,21 @@ function getOrCreateMetadata(id: number): ProductMetadata {
   }
   return metadataCache[id];
 }
+
+// ─── SELECT_FIELDS: only fetch what ProductCard needs (same as Catalog.tsx) ──
+const SELECT_FIELDS = [
+  "select[id]=true",
+  "select[name]=true",
+  "select[cost]=true",
+  "select[sku]=true",
+  "select[brand]=true",
+  "select[status]=true",
+  "select[displayImages]=true",
+  "select[colorOptions]=true",
+  "select[sizeOptions]=true",
+  "select[printT][id]=true",
+  "select[printT][technologyName]=true",
+].join("&");
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
 
@@ -176,36 +190,27 @@ const Products = () => {
   const fetchProducts = useCallback(async (page: number) => {
     const fetchStart = performance.now();
 
+    // ── Cache hit: serve instantly, skip network entirely
+    const cached = pageCache[page];
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+      console.log(`[Products] ⚡ Cache hit page=${page} — serving ${cached.data.length} products instantly`);
+      setProducts(cached.data);
+      setTotalDocs(cached.totalDocs);
+      setTotalPages(cached.totalPages);
+      setLoading(false);
+      const totalMs = Math.round(performance.now() - mountTime.current);
+      console.log(`%c[Products] ✅ Cards visible (cache) — ${totalMs}ms since mount`, "color: green; font-weight: bold");
+      return;
+    }
+
+    setLoading(true);
+    console.log(`[Products] 📡 Fetching page=${page} from Payload...`);
+    const requestStart = performance.now();
+
     try {
-      // ── Cache hit for this page
-      const cached = pageCache[page];
-      if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-        console.log(`[Products] ⚡ Cache hit page=${page} — serving ${cached.data.length} products instantly`);
-        setProducts(cached.data);
-        setLoading(false);
-        const totalMs = Math.round(performance.now() - mountTime.current);
-        console.log(`%c[Products] ✅ Cards visible (cache) — ${totalMs}ms since mount`, "color: green; font-weight: bold");
-        return;
-      }
-
-      console.log(`[Products] 📡 Fetching page=${page} from Payload...`);
-      const requestStart = performance.now();
-
-      const selectFields = [
-        "select[id]=true",
-        "select[name]=true",
-        "select[cost]=true",
-        "select[sku]=true",
-        "select[brand]=true",
-        "select[status]=true",
-        "select[displayImages]=true",
-        "select[colorOptions]=true",
-        "select[sizeOptions]=true",
-        "select[printT][id]=true",
-        "select[printT][technologyName]=true",
-      ].join("&");
-
-      const url = `${vite_payload}/api/blank-products?where[status][equals]=active&limit=${PRODUCTS_PER_PAGE}&page=${page}&depth=1&${selectFields}`;
+      // FIX: append SELECT_FIELDS to the URL so Payload only returns the fields
+      // ProductCard actually needs — this is why Catalog.tsx loads faster
+      const url = `${vite_payload}/api/blank-products?where[status][equals]=active&limit=${PRODUCTS_PER_PAGE}&page=${page}&depth=1&${SELECT_FIELDS}`;
       console.log(`[Products] 🌐 GET ${url.replace(vite_payload, "[PAYLOAD]")}`);
 
       const response = await fetch(url, {
@@ -223,12 +228,11 @@ const Products = () => {
       const data = await response.json();
       const parseMs = Math.round(performance.now() - parseStart);
 
-      // Payload pagination meta
       const fetched: Product[] = data.docs || [];
       const serverTotalDocs: number = data.totalDocs ?? fetched.length;
       const serverTotalPages: number = data.totalPages ?? Math.ceil(serverTotalDocs / PRODUCTS_PER_PAGE);
 
-      const active = fetched.filter((p) => p.status?.toLowerCase() !== "draft");
+      const active = fetched.filter((p) => p.status === "active");
 
       console.log(`[Products] 📦 JSON parse=${parseMs}ms | fetched=${fetched.length} active=${active.length} | totalDocs=${serverTotalDocs} totalPages=${serverTotalPages}`);
       console.log(`[Products] 🔍 Timing: TTFB=${ttfbMs}ms | parse=${parseMs}ms | total=${ttfbMs + parseMs}ms`);
@@ -240,8 +244,13 @@ const Products = () => {
 
       active.forEach((p) => getOrCreateMetadata(p.id));
 
-      // Store in per-page cache
-      pageCache[page] = { data: active, ts: Date.now() };
+      // Store in cache — now includes pagination meta too (same as Catalog.tsx)
+      pageCache[page] = {
+        data: active,
+        ts: Date.now(),
+        totalDocs: serverTotalDocs,
+        totalPages: serverTotalPages,
+      };
 
       setProducts(active);
       setTotalDocs(serverTotalDocs);
@@ -265,21 +274,21 @@ const Products = () => {
   }, [toast]);
 
   // ── Page change: clear current products, show skeleton, fetch next page
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     if (page === currentPage) return;
     console.log(`[Products] 📄 Page change: ${currentPage} → ${page}`);
     setCurrentPage(page);
     setProducts([]);
     setLoading(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  }, [currentPage]);
 
   // ── Pagination buttons
   const renderPaginationButtons = () => {
     const buttons: React.ReactNode[] = [];
     const maxVisible = 5;
     let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-    let end = Math.min(totalPages, start + maxVisible - 1);
+    const end = Math.min(totalPages, start + maxVisible - 1);
     if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
 
     const btn = (
@@ -328,7 +337,6 @@ const Products = () => {
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
-  // Page range for "Showing X–Y of Z"
   const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE + 1;
   const endIndex = Math.min(currentPage * PRODUCTS_PER_PAGE, totalDocs);
 

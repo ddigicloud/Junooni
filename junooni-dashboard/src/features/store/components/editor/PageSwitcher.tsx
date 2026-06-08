@@ -20,10 +20,10 @@ function PageSwitcherPagesGroup({ pages, currentPath, onSelect, setOpen, isDark,
     <div className={`border-t ${isDark ? "border-gray-800" : "border-gray-100"}`}>
       <button
         onClick={() => setExpanded(e => !e)}
-        className={`w-full flex items-center justify-between px-2.5 py-2 text-[9px] font-semibold uppercase tracking-wider transition-colors ${
+        className={`w-full flex items-center justify-between px-2.5 py-2 text-xs transition-colors ${
           hasActive
             ? isDark ? "text-orange-400" : "text-orange-600"
-            : "text-grey-50"
+            : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
         } ${hoverBg}`}
       >
         <span>
@@ -140,7 +140,7 @@ export function PageSwitcherDropdown({ currentPath, onSelect, pages, products = 
                     : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
                 }`}
               >
-                <span className="text-sm leading-none">{p.icon}</span>
+                {/* <span className="text-sm leading-none">{p.icon}</span> */}
                 <span className="flex-1">{p.label}</span>
                 {currentPath === p.path && <Check className="w-3 h-3 text-orange-400 shrink-0" />}
               </button>
@@ -175,7 +175,7 @@ export function PageSwitcherDropdown({ currentPath, onSelect, pages, products = 
                       : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
                   }`}
                 >
-                  <span className="text-sm leading-none">👕</span>
+                  {/* <span className="text-sm leading-none">👕</span> */}
                   <div className="flex-1 min-w-0">
                     <p className="truncate">Product page template</p>
                     <p className={`text-[10px] ${textFaint}`}>Changes apply to all product pages</p>
@@ -203,7 +203,7 @@ export function PageSwitcherDropdown({ currentPath, onSelect, pages, products = 
                       : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
                   }`}
                 >
-                  <span className="text-sm leading-none">🗂️</span>
+                  {/* <span className="text-sm leading-none">🗂️</span> */}
                   <div className="flex-1 min-w-0">
                     <p className="truncate">Collection page template</p>
                     <p className={`text-[10px] ${textFaint}`}>Changes apply to all collection pages</p>
@@ -231,7 +231,7 @@ export function PageSwitcherDropdown({ currentPath, onSelect, pages, products = 
                       : isDark ? `text-gray-300 ${hoverBg}` : `text-gray-700 ${hoverBg}`
                   }`}
                 >
-                  <span className="text-sm leading-none">🏷️</span>
+                  {/* <span className="text-sm leading-none">🏷️</span> */}
                   <div className="flex-1 min-w-0">
                     <p className="truncate">Category page template</p>
                     <p className={`text-[10px] ${textFaint}`}>Changes apply to all category pages</p>
