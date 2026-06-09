@@ -331,12 +331,14 @@ export default function StoreEditorPage() {
       }
       if (e.data?.type === "IFRAME_NAVIGATION") {
         const path: string = e.data.path ?? "/"
+        console.log("[IframeNav] IFRAME_NAVIGATION received — raw path:", path)
         const normalized =
           path === "/" ? "/" :
           path.startsWith("/products/")    ? `/products/${path.split("/")[2]}`    :
           path.startsWith("/collections/") ? `/collections/${path.split("/")[2]}` :
           path.startsWith("/categories/")  ? `/categories/${path.split("/")[2]}`  :
           path
+        console.log("[IframeNav] normalized path:", normalized)
         setPreviewPagePath(normalized)
         setSelectedId(null)
         setRightPanelOpen(false)
@@ -716,21 +718,44 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
     : null
 
   // ── Preview URL ───────────────────────────────────────────────────────────
-  const basePreviewUrl = vendorHandle ? getPreviewUrl(vendorHandle) : null
-  const previewUrl = (() => {
-    if (!basePreviewUrl) return null
-    try {
-      const u = new URL(basePreviewUrl)
-      if (previewPagePath !== "/") {
-        u.pathname = u.pathname.replace(/\/$/, "") + previewPagePath
-      }
-      return u.toString()
-    } catch {
-      if (previewPagePath === "/") return basePreviewUrl
-      const [base, qs] = basePreviewUrl.split("?")
-      return `${base.replace(/\/$/, "")}${previewPagePath}${qs ? "?" + qs : ""}`
+  // ── Preview URL ───────────────────────────────────────────────────────────
+const basePreviewUrl = vendorHandle ? getPreviewUrl(vendorHandle) : null
+
+console.log("[PreviewURL] vendorHandle:", vendorHandle)
+console.log("[PreviewURL] basePreviewUrl:", basePreviewUrl)
+console.log("[PreviewURL] previewPagePath:", previewPagePath)
+console.log("[PreviewURL] isProd:", import.meta.env.PROD)
+
+const previewUrl = (() => {
+  if (!basePreviewUrl || !vendorHandle) {
+    console.warn("[PreviewURL] ❌ Missing basePreviewUrl or vendorHandle — returning null")
+    return null
+  }
+  try {
+    const u = new URL(basePreviewUrl)
+    console.log("[PreviewURL] parsed URL — origin:", u.origin, "| pathname before:", u.pathname, "| search:", u.search)
+
+    if (import.meta.env.PROD) {
+      // Prod subdomain: https://meenal.junooni.com  → /products, /categories
+      // Custom domain:  https://mymerch.store       → /products, /categories
+      u.pathname = previewPagePath === "/" ? "/" : previewPagePath
+      console.log("[PreviewURL] ✅ PROD — pathname set to:", u.pathname)
+    } else {
+      // Dev: http://localhost:3001/meenal → /meenal/products, /meenal/categories
+      u.pathname = previewPagePath === "/"
+        ? `/${vendorHandle}`
+        : `/${vendorHandle}${previewPagePath}`
+      console.log("[PreviewURL] ✅ DEV — pathname set to:", u.pathname)
     }
-  })()
+
+    const final = u.toString()
+    console.log("[PreviewURL] 🔗 final previewUrl:", final)
+    return final
+  } catch (err) {
+    console.error("[PreviewURL] ❌ URL parse error:", err, "| basePreviewUrl:", basePreviewUrl)
+    return basePreviewUrl
+  }
+})()
 
   // ── Virtual panel flags ───────────────────────────────────────────────────
   const isProductDetailPanel      = selectedId === "__product_detail__"
@@ -1022,12 +1047,21 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
           <PageSwitcherDropdown
             currentPath={previewPagePath}
             onSelect={path => {
+              console.log("[PageSwitcher] onSelect fired — path:", path)
+              console.log("[PageSwitcher] current previewPagePath:", previewPagePath)
+              console.log("[PageSwitcher] vendorHandle:", vendorHandle)
+              console.log("[PageSwitcher] isProd:", import.meta.env.PROD)
+              
               setPreviewPagePath(path)
               setSelectedId(null)
               setRightPanelOpen(false)
               setIsNavigating(true)
+
+              console.log("[PageSwitcher] posting NAVIGATE to iframe with path:", path)
               iframeRef.current?.contentWindow?.postMessage({ type: "NAVIGATE", path }, "*")
+
               setTimeout(() => {
+                console.log("[PageSwitcher] posting STORE_UPDATE after 500ms")
                 iframeRef.current?.contentWindow?.postMessage({ type: "STORE_UPDATE", store, selectedId }, "*")
               }, 500)
             }}
