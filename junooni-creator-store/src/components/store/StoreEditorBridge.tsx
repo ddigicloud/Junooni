@@ -22,11 +22,18 @@ export default function StoreEditorBridge() {
         router.refresh()
       }
       // ── NEW: instant client-side navigation from page switcher ──
-      if (e.data?.type === "NAVIGATE" && e.data.path) {
-        const segments = window.location.pathname.split("/").filter(Boolean)
-        const handle = segments[0] ?? ""
-        const fullPath = handle ? `/${handle}${e.data.path === "/" ? "" : e.data.path}` : e.data.path
-        router.push(fullPath)
+     if (e.data?.type === "NAVIGATE" && e.data.path) {
+        const isProd = process.env.NODE_ENV === "production"
+        if (isProd) {
+          router.push(e.data.path === "/" ? "/" : e.data.path)
+        } else {
+          const segments = window.location.pathname.split("/").filter(Boolean)
+          const handle = segments[0] ?? ""
+          const fullPath = handle
+            ? `/${handle}${e.data.path === "/" ? "" : e.data.path}`
+            : e.data.path
+          router.push(fullPath)
+        }
       }
     }
 

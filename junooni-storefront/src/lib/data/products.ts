@@ -87,8 +87,23 @@ export const listProducts = async ({
 }
 
 // Lean fields for store listing only — no size_chart, no tags
-const STORE_LIST_FIELDS =
-  "*variants.calculated_price,+variants.inventory_quantity,+metadata,*vendor,*categories,*collection"
+// const STORE_LIST_FIELDS =
+//   "*variants.calculated_price,+metadata,*vendor,*categories,*collection"
+
+const STORE_LIST_FIELDS = [
+  "id",
+  "title", 
+  "handle",
+  "thumbnail",
+  "+metadata.color_hex_values",
+  "+images.id",
+  "+images.url", 
+  "+images.rank",
+  "*variants.calculated_price",
+  "+variants.id",
+  "*vendor",
+  "*categories",
+].join(",")
 
 export const listProductsForStore = async ({
   offset = 0,

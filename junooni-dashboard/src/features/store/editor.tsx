@@ -331,14 +331,22 @@ export default function StoreEditorPage() {
       }
       if (e.data?.type === "IFRAME_NAVIGATION") {
         const path: string = e.data.path ?? "/"
-        console.log("[IframeNav] IFRAME_NAVIGATION received — raw path:", path)
+        console.log("[IframeNav] raw path:", path, "| isProd:", import.meta.env.PROD)
+
+        // Dev: path comes as /junooni/products/x — strip handle prefix
+        // Prod: path comes as /products/x — use as-is
+        const stripped = !import.meta.env.PROD
+          ? (path.replace(new RegExp(`^\\/${vendorHandle}`), "") || "/")
+          : path
+
         const normalized =
-          path === "/" ? "/" :
-          path.startsWith("/products/")    ? `/products/${path.split("/")[2]}`    :
-          path.startsWith("/collections/") ? `/collections/${path.split("/")[2]}` :
-          path.startsWith("/categories/")  ? `/categories/${path.split("/")[2]}`  :
-          path
-        console.log("[IframeNav] normalized path:", normalized)
+          stripped === "/" ? "/" :
+          stripped.startsWith("/products/")    ? `/products/${stripped.split("/")[2]}`    :
+          stripped.startsWith("/collections/") ? `/collections/${stripped.split("/")[2]}` :
+          stripped.startsWith("/categories/")  ? `/categories/${stripped.split("/")[2]}`  :
+          stripped
+
+        console.log("[IframeNav] stripped:", stripped, "→ normalized:", normalized)
         setPreviewPagePath(normalized)
         setSelectedId(null)
         setRightPanelOpen(false)
@@ -727,32 +735,20 @@ console.log("[PreviewURL] previewPagePath:", previewPagePath)
 console.log("[PreviewURL] isProd:", import.meta.env.PROD)
 
 const previewUrl = (() => {
-  if (!basePreviewUrl || !vendorHandle) {
-    console.warn("[PreviewURL] ❌ Missing basePreviewUrl or vendorHandle — returning null")
-    return null
-  }
+  if (!basePreviewUrl || !vendorHandle) return null
   try {
     const u = new URL(basePreviewUrl)
-    console.log("[PreviewURL] parsed URL — origin:", u.origin, "| pathname before:", u.pathname, "| search:", u.search)
-
     if (import.meta.env.PROD) {
-      // Prod subdomain: https://meenal.junooni.com  → /products, /categories
-      // Custom domain:  https://mymerch.store       → /products, /categories
+      // Prod: subdomain/custom domain — NO handle in path
       u.pathname = previewPagePath === "/" ? "/" : previewPagePath
-      console.log("[PreviewURL] ✅ PROD — pathname set to:", u.pathname)
     } else {
-      // Dev: http://localhost:3001/meenal → /meenal/products, /meenal/categories
+      // Dev localhost: handle IS in path — /junooni/products/x
       u.pathname = previewPagePath === "/"
         ? `/${vendorHandle}`
         : `/${vendorHandle}${previewPagePath}`
-      console.log("[PreviewURL] ✅ DEV — pathname set to:", u.pathname)
     }
-
-    const final = u.toString()
-    console.log("[PreviewURL] 🔗 final previewUrl:", final)
-    return final
-  } catch (err) {
-    console.error("[PreviewURL] ❌ URL parse error:", err, "| basePreviewUrl:", basePreviewUrl)
+    return u.toString()
+  } catch {
     return basePreviewUrl
   }
 })()

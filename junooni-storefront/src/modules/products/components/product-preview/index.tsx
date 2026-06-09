@@ -128,7 +128,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
     );
   }) || [];
 
-  if (colorMatchingVariants.length === 0) return null;
+  if (colorMatchingVariants?.length === 0) return null;
 
   // Strategy 1: variant.thumbnail directly
   const variantWithThumbnail = colorMatchingVariants.find(v => v.thumbnail);
@@ -144,7 +144,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
       variants?: Array<{ id: string }>;
     }> | undefined;
 
-    if (variantImages && variantImages.length > 0) {
+    if (variantImages && variantImages?.length > 0) {
       const linkedImage = variantImages.find(img =>
         img.variants?.some(v => v.id === variant.id)
       );
@@ -192,7 +192,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
       normalizeColorName(color).toLowerCase().trim()
     );
     
-    const matchedColor = normalizedActiveColors.length > 0 
+    const matchedColor = normalizedActiveColors?.length > 0 
       ? productColors.find(color => 
           normalizedActiveColors.includes(color.normalizedName.toLowerCase().trim())
         )
@@ -252,7 +252,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
       currency_code: string;
     } | undefined = undefined;
     
-    if (product.variants && product.variants.length > 0) {
+    if (product.variants && product.variants?.length > 0) {
       // Prioritize matched variant for pricing
       if (matchedVariant && matchedVariant.calculated_price?.calculated_amount) {
         cheapestPrice = {
@@ -352,7 +352,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
 
   // Truncate product title for mobile
   const truncateTitle = (title: string, maxLength: number = 40): string => {
-    if (title.length <= maxLength) return title;
+    if (title?.length <= maxLength) return title;
     return title.substring(0, maxLength).trim() + '...';
   };
 
@@ -366,7 +366,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
               {isRelativeUrl(displayImage) ? (
                 <Image
                   src={displayImage}
-                  alt={`${product.title}${selectedColors.length > 0 ? ` in ${selectedColors.join(', ')}` : ''}`}
+                  alt={`${product.title}${selectedColors?.length > 0 ? ` in ${selectedColors.join(', ')}` : ''}`}
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
                   className={`object-cover transition-all duration-300 group-hover:scale-105 ${
@@ -377,7 +377,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
               ) : (
                 <img
                   src={displayImage}
-                  alt={`${product.title}${selectedColors.length > 0 ? ` in ${selectedColors.join(', ')}` : ''}`}
+                  alt={`${product.title}${selectedColors?.length > 0 ? ` in ${selectedColors.join(', ')}` : ''}`}
                   className={`object-cover w-full h-full transition-all duration-300 group-hover:scale-105 ${
                     hoveredColor ? 'brightness-110' : ''
                   }`}
@@ -404,7 +404,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
       <div className="flex-grow px-1">
         
         {/* 1. Product Tags - Real Tags Only */}
-        {(productTags.mobile.length > 0 || productTags.desktop.length > 0) && (
+        {(productTags.mobile?.length > 0 || productTags.desktop?.length > 0) && (
           <div className="mb-2">
             {/* Mobile View - Max 3 tags */}
             <div className="flex flex-wrap gap-1 mb-2 sm:hidden">
@@ -526,7 +526,7 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
 
         
         {/* 4. Color Options */}
-        {allProductColors.length > 0 && (
+        {allProductColors?.length > 0 && (
           <div className="flex items-center gap-1 px-2 mb-3">
             {allProductColors.slice(0, 5).map((color, index) => {
               const isSelected = selectedColors.some(selected => 
@@ -551,9 +551,9 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
                 />
               );
             })}
-            {allProductColors.length > 5 && (
+            {allProductColors?.length > 5 && (
               <span className="text-[10px] sm:text-xs text-gray-500 ml-1">
-                +{allProductColors.length - 5}
+                +{allProductColors?.length - 5}
               </span>
             )}
           </div>

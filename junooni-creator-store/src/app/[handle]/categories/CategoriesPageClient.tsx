@@ -313,7 +313,7 @@ export default function CategoriesPageClient({
                 return (
                   <Link
                     key={cat.id}
-                    href={`/${handle}/categories/${cat.handle}`}
+                    href={`/categories/${cat.handle}`}
                     className={`group rounded-2xl overflow-hidden border ${
                       isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
                     } shadow-sm hover:shadow-md transition-all`}
