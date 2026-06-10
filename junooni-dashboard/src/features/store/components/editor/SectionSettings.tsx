@@ -544,11 +544,11 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
             </div>
           </Field>
         </div>
-        {section.title && (
+        {/* {section.title && (
           <div className="px-3 py-2 text-xs font-medium text-center rounded-lg"
             style={{ background: section.background_color ?? "#e65100", color: section.text_color ?? "#ffffff" }}
             dangerouslySetInnerHTML={{ __html: section.title }} />
-        )}
+        )} */}
       </>)}
 
       {/* ── COLLECTION / FEATURED ── */}
@@ -879,12 +879,12 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
             </div>
           </Field>
         </div>
-        {(section.ticker_items ?? []).length > 0 && (
+        {/* {(section.ticker_items ?? []).length > 0 && (
           <div className="px-3 py-2 overflow-hidden text-xs font-medium rounded-lg"
             style={{ background: section.background_color ?? "#111827", color: section.text_color ?? "#ffffff" }}>
             {(section.ticker_items ?? []).join(` ${section.ticker_separator ?? "✦"} `)}
           </div>
-        )}
+        )} */}
       </>)}
 
       {/* ── IMAGE WITH TEXT ── */}
@@ -1122,6 +1122,8 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           pages={pages}
           textFaint={textFaint}
           textPrimary={textPrimary}
+          collections={collections}
+          categories={categories}
         />
       </>)}
 

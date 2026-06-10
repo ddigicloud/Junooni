@@ -93,7 +93,7 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
     >
      <div
         ref={footerGridRef}
-        className="grid max-w-6xl gap-x-8 gap-y-10 px-6 py-12 mx-auto"
+        className="grid max-w-6xl px-6 py-12 mx-auto gap-x-8 gap-y-10"
         style={{ gridTemplateColumns: `repeat(${columnsPerRowMobile}, minmax(0, 1fr))` }}
       >
 
@@ -227,11 +227,14 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
           <p className={isDark ? "text-white/30" : "text-gray-400"} style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}>
             Powered by{" "}
             <a
-              href="https://studio.junooni.com"
-              style={{ color: brandPrimary, fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}
-              className="font-medium transition-opacity hover:opacity-70"
+              href="https://junooni.com"
+              className="inline-block transition-opacity hover:opacity-70"
             >
-              JUNOONI
+              <img
+                src="https://studio.junooni.com/assets/junooni_logo_brand_color-FiOJAWKM.png"
+                alt="JUNOONI"
+                className="inline-block w-auto h-4 align-middle"
+              />
             </a>
           </p>
         </div>

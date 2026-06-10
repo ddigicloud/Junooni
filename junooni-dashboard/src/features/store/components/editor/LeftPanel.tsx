@@ -828,13 +828,13 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             </p>
                             <p className={`text-[10px] ${textFaint}`}>Nav • Logo • Search • Cart</p>
                             </div>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full transition-colors ${
+                            {/* <span className={`text-[9px] px-1.5 py-0.5 rounded-full transition-colors ${
                             isHeaderSelected
                                 ? isDark ? "bg-indigo-500/20 text-indigo-300" : "bg-indigo-100 text-indigo-600"
                                 : isDark ? "bg-indigo-900/50 text-indigo-400" : "bg-indigo-100 text-indigo-500"
                             }`}>
                             {isHeaderSelected ? "Edit" : "Auto"}
-                            </span>
+                            </span> */}
                         </div>
 
                         {isDropTarget && (
@@ -857,9 +857,9 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                       if (belowHeader.length === 0) return null
                       return (
                         <div className="px-1 mt-1">
-                          <p className={`text-[9px] uppercase tracking-widest font-semibold mb-1 opacity-40 ${textFaint}`}>
+                          {/* <p className={`text-[9px] uppercase tracking-widest font-semibold mb-1 opacity-40 ${textFaint}`}>
                             Below nav bar
-                          </p>
+                          </p> */}
                           {belowHeader.map(s => {
                             const block = SECTION_BLOCKS_WITH_ICONS.find(b => b.type === s.type)
                             const isSelected = selectedId === s.id
@@ -1322,13 +1322,13 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             <p className={`text-[13px] font-medium truncate ${isDark ? "text-sky-300" : "text-sky-700"}`}>Store Footer</p>
                             <p className={`text-[10px] ${textFaint}`}>Links • Social • Copyright</p>
                             </div>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full transition-colors ${
+                            {/* <span className={`text-[9px] px-1.5 py-0.5 rounded-full transition-colors ${
                             isFooterSelected
                                 ? isDark ? "bg-sky-500/20 text-sky-300" : "bg-sky-100 text-sky-600"
                                 : isDark ? "bg-sky-900/50 text-sky-400" : "bg-sky-100 text-sky-500"
                             }`}>
                             {isFooterSelected ? "Edit" : "Auto"}
-                            </span>
+                            </span> */}
                         </div>
                         )
                     })()}

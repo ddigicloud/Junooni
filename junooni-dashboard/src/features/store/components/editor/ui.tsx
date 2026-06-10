@@ -45,7 +45,12 @@ export function RichTextEditor({ value, onChange, placeholder, isDark, rows = 3,
 
   const insertLink = () => {
     restoreSelection()
-    if (linkUrl) execCmd("createLink", linkUrl)
+    if (linkUrl) {
+      const normalized = linkUrl.trim().startsWith("http") || linkUrl.trim().startsWith("/")
+        ? linkUrl.trim()
+        : `https://${linkUrl.trim()}`
+      execCmd("createLink", normalized)
+    }
     setShowLinkDialog(false)
     setLinkUrl("")
   }
@@ -150,13 +155,23 @@ export function RichTextEditor({ value, onChange, placeholder, isDark, rows = 3,
             onChange(editorRef.current?.innerHTML ?? "")
           }
         }}
+        onMouseOver={e => {
+          const target = e.target as HTMLElement
+          if (target.tagName === "A") {
+            target.title = (target as HTMLAnchorElement).href
+          }
+        }}
+        onMouseOut={e => {
+          const target = e.target as HTMLElement
+          if (target.tagName === "A") target.title = ""
+}}
         onPaste={e => {
           e.preventDefault()
           const text = e.clipboardData.getData("text/plain")
           document.execCommand("insertText", false, text)
         }}
         data-placeholder={placeholder}
-        className={`${minH} px-2.5 py-1.5 text-sm focus:outline-none ${editorBg} empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 empty:before:pointer-events-none`}
+        className={`${minH} px-2.5 py-1.5 text-sm focus:outline-none ${editorBg} empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 empty:before:pointer-events-none [&_a]:text-blue-400 [&_a]:underline [&_a]:cursor-pointer`}
         style={{ lineHeight: 1.6 }}
       />
     </div>

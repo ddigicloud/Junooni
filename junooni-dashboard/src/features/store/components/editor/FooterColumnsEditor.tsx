@@ -12,6 +12,7 @@ export function FooterColumnsEditor({
   columns, onChange, columnsPerRow, onColumnsPerRowChange,
   columnsPerRowMobile, onColumnsPerRowMobileChange,
   isDark, pages, textFaint, textPrimary,
+  collections = [], categories = [],
 }: {
   columns: FooterColumn[]
   onChange: (cols: FooterColumn[]) => void
@@ -23,7 +24,9 @@ export function FooterColumnsEditor({
   pages: StorePage[]
   textFaint: string
   textPrimary: string
-}) {
+  collections?: { id: string; title: string; handle: string }[]
+  categories?: { id: string; name: string; handle: string }[]
+}){
   const [expandedColId,  setExpandedColId]  = useState<string | null>(null)
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
   const [draggingColId,  setDraggingColId]  = useState<string | null>(null)
@@ -398,6 +401,8 @@ export function FooterColumnsEditor({
                                         placeholder="/products"
                                         isDark={isDark}
                                         pages={pages}
+                                        collections={collections}
+                                        categories={categories}
                                       />
                                     </div>
                                     <label className="flex items-center gap-2 cursor-pointer">

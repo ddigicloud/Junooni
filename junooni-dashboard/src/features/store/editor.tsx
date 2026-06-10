@@ -256,6 +256,7 @@ export default function StoreEditorPage() {
             setHasStore(true)
 
             const storeCollections = sd.store.collections?.collections ?? []
+            //console.log("Loaded collections:", storeCollections)
             setVendorCollections(storeCollections.map((c: any) => ({
               id: c.id, title: c.title ?? c.name ?? c.handle, handle: c.handle,
             })))
@@ -317,12 +318,14 @@ export default function StoreEditorPage() {
       if (e.data?.type === "SECTION_CLICK" && !isSyncingRef.current) {
         setSelectedId(e.data.sectionId)
         setActiveTab("layout")
+        if (window.innerWidth < 768) setLeftPanelOpen(true)
       }
       if (e.data?.type === "SECTION_DBLCLICK" && !isSyncingRef.current) {
         setSelectedId(e.data.sectionId)
         setActiveTab("layout")
         setTriggerDrillId(e.data.sectionId)
         setTimeout(() => setTriggerDrillId(null), 100)
+        if (window.innerWidth < 768) setLeftPanelOpen(true)
       }
       if (e.data?.type === "IFRAME_READY") {
         setIframeReady(true)

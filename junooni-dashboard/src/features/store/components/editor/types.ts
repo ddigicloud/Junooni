@@ -17,6 +17,7 @@ export interface NavItem {
   url: string
   external?: boolean
   children?: NavItem[]
+  showProducts?: boolean
 }
 
 export interface FooterColumn {
