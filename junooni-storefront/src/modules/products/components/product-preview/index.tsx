@@ -363,27 +363,17 @@ const findImageForColor = useMemo(() => (colorName: string): string | null => {
         <LocalizedClientLink href={`/products/${product.handle}`}>
           {displayImage ? (
             <div className="relative w-full h-full">
-              {isRelativeUrl(displayImage) ? (
-                <Image
-                  src={displayImage}
-                  alt={`${product.title}${selectedColors?.length > 0 ? ` in ${selectedColors.join(', ')}` : ''}`}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-                  className={`object-cover transition-all duration-300 group-hover:scale-105 ${
-                    hoveredColor ? 'brightness-110' : ''
-                  }`}
-                  loading="lazy"
-                />
-              ) : (
-                <img
-                  src={displayImage}
-                  alt={`${product.title}${selectedColors?.length > 0 ? ` in ${selectedColors.join(', ')}` : ''}`}
-                  className={`object-cover w-full h-full transition-all duration-300 group-hover:scale-105 ${
-                    hoveredColor ? 'brightness-110' : ''
-                  }`}
-                  loading="lazy"
-                />
-              )}
+              <Image
+                src={displayImage}
+                alt={`${product.title}${selectedColors?.length > 0 ? ` in ${selectedColors.join(', ')}` : ''}`}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+                quality={60}
+                className={`object-cover transition-all duration-300 group-hover:scale-105 ${
+                  hoveredColor ? 'brightness-110' : ''
+                }`}
+                loading="lazy"
+              />
             </div>
           ) : (
             <div className="flex items-center justify-center w-full h-full bg-gray-200">

@@ -257,22 +257,22 @@ export default function ProductPageClient({
   const { openCart, refreshCart } = useCart()
 
   // ── Editor bridge ──────────────────────────────────────────────────────────
-useEffect(() => {
-  if (relatedProducts.length > 0) {
-    setRelatedLoading(false)
-    return
-  }
-  fetch(
-    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"}/storefront/${vendor.handle}?shell=false&page=1`,
-    { headers: { "Content-Type": "application/json" } }
-  )
-    .then(r => r.ok ? r.json() : null)
-    .then(data => {
-      if (data?.products?.length) setRelatedProducts(data.products)
-      setRelatedLoading(false)   // ← add this
-    })
-    .catch(() => { setRelatedLoading(false) })  // ← and this
-}, [vendor.handle])
+// useEffect(() => {
+//   if (relatedProducts.length > 0) {
+//     setRelatedLoading(false)
+//     return
+//   }
+//   fetch(
+//     `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"}/storefront/${vendor.handle}?shell=false&page=1`,
+//     { headers: { "Content-Type": "application/json" } }
+//   )
+//     .then(r => r.ok ? r.json() : null)
+//     .then(data => {
+//       if (data?.products?.length) setRelatedProducts(data.products)
+//       setRelatedLoading(false)   // ← add this
+//     })
+//     .catch(() => { setRelatedLoading(false) })  // ← and this
+// }, [vendor.handle])
 
   // ── Store-derived values ───────────────────────────────────────────────────
   const brandPrimary   = store?.primary_color   ?? "#e65100"
@@ -417,7 +417,10 @@ useEffect(() => {
 const [relatedProducts, setRelatedProducts] = useState<any[]>(products)
 
 useEffect(() => {
-  if (relatedProducts.length > 0) return // already have products (e.g. from SSR)
+  if (relatedProducts.length > 0) {
+    setRelatedLoading(false)
+    return
+  }
   fetch(
     `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"}/storefront/${vendor.handle}?shell=false&page=1`,
     { headers: { "Content-Type": "application/json" } }
@@ -425,8 +428,9 @@ useEffect(() => {
     .then(r => r.ok ? r.json() : null)
     .then(data => {
       if (data?.products?.length) setRelatedProducts(data.products)
+      setRelatedLoading(false)
     })
-    .catch(() => {})
+    .catch(() => setRelatedLoading(false))
 }, [vendor.handle])
 
 const [isEditorMode, setIsEditorMode] = useState(false)

@@ -314,7 +314,7 @@ export default function CollectionsPageClient({
                 return (
                   <Link
                     key={col.id}
-                    href={`/${handle}/collections/${col.handle}`}
+                    href={`/collections/${col.handle}`}
                     className={`group rounded-2xl overflow-hidden border hover:shadow-md transition-all ${
                       isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
                     }`}

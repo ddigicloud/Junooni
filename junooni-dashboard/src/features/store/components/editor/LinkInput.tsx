@@ -476,8 +476,8 @@ export function LinkInput({ value, onChange, placeholder, isDark, pages = [], on
           style={{ bottom: dropdownPos.bottom, left: dropdownPos.left + 8, width: 244 }}
         >
           <div
-            className="flex w-[200%] transition-transform duration-300 ease-out"
-            style={{ transform: atRoot ? "translateX(0)" : "translateX(-50%)" }}
+           className="flex w-[200%] transition-transform duration-300 ease-out items-start overflow-hidden"
+           style={{ transform: atRoot ? "translateX(0)" : "translateX(-50%)" }}
           >
             {/* ── ROOT PANEL ── */}
             <div className="w-1/2 overflow-y-auto shrink-0" style={{ maxHeight: LINK_INPUT_DROPDOWN_HEIGHT }}>
@@ -587,7 +587,7 @@ export function LinkInput({ value, onChange, placeholder, isDark, pages = [], on
             </div>
 
             {/* ── DRILL PANEL ── */}
-            <div className="flex flex-col w-1/2 shrink-0">
+            <div className="flex flex-col w-1/2 shrink-0 overflow-y-auto" style={{ maxHeight: LINK_INPUT_DROPDOWN_HEIGHT }}>
               <div className={`flex items-center gap-1.5 px-2 py-2 border-b shrink-0 ${isDark ? "border-gray-800" : "border-gray-100"}`}>
                 <button onClick={() => { setAtRoot(true); setDrillView(null) }}
                   className={`p-1 rounded-lg transition-colors ${isDark ? "hover:bg-gray-800 text-gray-400" : "hover:bg-gray-100 text-gray-500"}`}>

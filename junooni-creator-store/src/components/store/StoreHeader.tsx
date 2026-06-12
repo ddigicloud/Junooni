@@ -9,6 +9,8 @@ import CartIconButton from "@/components/cart/CartIconButton"
 import { formatPrice } from "@/lib/api"
 import type { PublicVendor, VendorStore, CategoryMeta, CollectionMeta, Product } from "@/lib/types"
 
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
+
 interface Props {
   vendor: PublicVendor
   store: VendorStore | null
@@ -46,6 +48,33 @@ export default function StoreHeader({
   const stickyAnn    = (store as any)?.sticky_announcement !== false
   const wrapSticky   = stickyHeader || stickyAnn
 
+  // ── Bare mode detection ────────────────────────────────────────────────────
+  // On the live subdomain (meenal.junooni.com) and custom domains, the
+  // middleware keeps the browser URL clean — the handle is NOT in the path.
+  // On the marketplace root (junooni.com / localhost) the handle IS in the path.
+  // `bare` = true  → URLs are handle-free   (e.g. /products/mug)
+  // `bare` = false → URLs include the handle (e.g. /meenal/products/mug)
+  const [bare, setBare] = useState(false)
+  useEffect(() => {
+    const hostname = window.location.hostname.replace(/:.*$/, "").toLowerCase()
+    const isMarketplace = hostname === ROOT_DOMAIN || hostname === "localhost"
+    setBare(!isMarketplace)
+  }, [])
+
+  // Build an internal store path respecting bare mode.
+  //   storePath("/")           → bare ? "/"            : "/{handle}"
+  //   storePath("/products")   → bare ? "/products"    : "/{handle}/products"
+  const storePath = (p: string) => {
+    if (!p || p === "/") return bare ? "/" : `/${handle}`
+    return bare ? p : `/${handle}${p}`
+  }
+
+  // Resolve a nav item's url (may be relative, absolute, or external http).
+  const navHref = (url: string) =>
+    url.startsWith("http")
+      ? url
+      : storePath(url.startsWith("/") ? url : `/${url}`)
+
   const homeSections: any[] = (store as any)?.sections?.sections ?? []
 
   const headerSection = homeSections.find((s: any) => s.type === "header")
@@ -60,10 +89,11 @@ export default function StoreHeader({
   const inNavPages: any[] = ((store as any)?.pages?.pages ?? []).filter((p: any) => p.in_nav)
 
   const isActive = (href: string) => {
-    if (href === `/${handle}` || href === `/${handle}/`) return pathname === `/${handle}`
-    if (href === `/${handle}/products`) return pathname === `/${handle}/products`
-    if (href === `/${handle}/collections`) return pathname === `/${handle}/collections`
-    if (href === `/${handle}/categories`) return pathname === `/${handle}/categories`
+    const home = storePath("/")
+    if (href === home || href === `${home}/`) return pathname === home
+    if (href === storePath("/products"))    return pathname === storePath("/products")
+    if (href === storePath("/collections")) return pathname === storePath("/collections")
+    if (href === storePath("/categories"))  return pathname === storePath("/categories")
     return pathname.startsWith(href)
   }
 
@@ -101,12 +131,23 @@ export default function StoreHeader({
     setSearchOpen(false)
     setActiveDropdown(null)
     if (window.parent !== window) {
-      const parts = pathname.split("/")
-      const subPath = "/" + parts.slice(2).join("/")
-      const normalizedPath = subPath === "/" || subPath === "//" ? "/" : subPath
+      // Report the current store-relative path back to the editor.
+      // Dev:  pathname is "/{handle}/categories" → strip the handle segment.
+      // Prod: middleware keeps the browser URL clean ("/categories") → no
+      //       handle present, so use the pathname as-is. The old code blindly
+      //       did parts.slice(2), which on the subdomain sliced off the actual
+      //       page and reported "/" — bouncing every page back to home.
+      const isProd = process.env.NODE_ENV === "production"
+      let subPath: string
+      if (isProd) {
+        subPath = pathname || "/"
+      } else {
+        subPath = pathname.replace(new RegExp(`^/${handle}(?=/|$)`), "") || "/"
+      }
+      const normalizedPath = subPath === "" || subPath === "//" ? "/" : subPath
       window.parent.postMessage({ type: "IFRAME_NAVIGATION", path: normalizedPath }, "*")
     }
-  }, [pathname])
+  }, [pathname, handle])
 
   const openDropdown = (key: string) => {
     if (closeTimer.current) clearTimeout(closeTimer.current)
@@ -168,11 +209,11 @@ export default function StoreHeader({
   const previewProducts = getPreviewProducts(activeDropdown ?? "shop", hoverItem)
 
   const autoNavItems = [
-    { id: "home",        label: "Home",        href: `/${handle}`,             type: "link" },
-    { id: "shop",        label: "Shop",        href: `/${handle}/products`,    type: "dropdown" },
-    ...(collections.length > 0 ? [{ id: "collections", label: "Collections", href: `/${handle}/collections`, type: "dropdown" }] : []),
-    ...(categories.length  > 0 ? [{ id: "categories",  label: "Categories",  href: `/${handle}/categories`,  type: "dropdown" }] : []),
-    ...inNavPages.map(p => ({ id: p.id, label: p.title, href: `/${handle}/pages/${p.slug}`, type: "link", external: p.external })),
+    { id: "home",        label: "Home",        href: storePath("/"),             type: "link" },
+    { id: "shop",        label: "Shop",        href: storePath("/products"),     type: "dropdown" },
+    ...(collections.length > 0 ? [{ id: "collections", label: "Collections", href: storePath("/collections"), type: "dropdown" }] : []),
+    ...(categories.length  > 0 ? [{ id: "categories",  label: "Categories",  href: storePath("/categories"),  type: "dropdown" }] : []),
+    ...inNavPages.map(p => ({ id: p.id, label: p.title, href: storePath(`/pages/${p.slug}`), type: "link", external: p.external })),
   ]
   const navItems = customNavItems.length > 0 ? customNavItems : autoNavItems
 
@@ -238,7 +279,7 @@ export default function StoreHeader({
             {mobileOpen ? <X style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
           </button>
 
-          <Link href={`/${handle}`} className={`flex items-center gap-2.5 shrink-0
+          <Link href={storePath("/")} className={`flex items-center gap-2.5 shrink-0
             absolute left-1/2 -translate-x-1/2
             ${logoPosition === "center"
               ? "md:absolute md:left-1/2 md:-translate-x-1/2"
@@ -277,7 +318,7 @@ export default function StoreHeader({
 
           <nav className={`items-center flex-1 hidden gap-1 md:flex ${logoPosition === "center" ? "justify-start" : "justify-center"}`}>
             {navItems.map((item: any) => {
-              const href = item.href ?? (item.url ? (item.url.startsWith("/") ? `/${handle}${item.url}` : item.url) : `/${handle}`)
+              const href = item.href ?? (item.url ? navHref(item.url) : storePath("/"))
 
               const isSystemProducts    = item.url === "/products"    || item.id === "shop"
               const isSystemCollections = item.url === "/collections" || item.id === "collections"
@@ -408,7 +449,7 @@ export default function StoreHeader({
                 onKeyDown={e => {
                   if (e.key === "Enter" && searchQuery.trim()) {
                     setSearchOpen(false)
-                    window.location.href = `/${handle}/search?q=${encodeURIComponent(searchQuery.trim())}`
+                    window.location.href = storePath(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
                   }
                   if (e.key === "Escape") { setSearchOpen(false); setSearchQuery("") }
                 }}
@@ -428,7 +469,7 @@ export default function StoreHeader({
                   </p>
                   <div className="grid grid-cols-2 gap-3 mb-4 sm:grid-cols-4 lg:grid-cols-8">
                     {searchResults.map(p => (
-                      <Link key={p.id} href={`/${handle}/products/${p.handle}`}
+                      <Link key={p.id} href={storePath(`/products/${p.handle}`)}
                         onClick={() => { setSearchOpen(false); setSearchQuery("") }} className="group">
                         <div className={`aspect-square rounded-xl overflow-hidden relative mb-2 ${isDark ? "bg-white/10" : "bg-gray-100"}`}>
                           {p.thumbnail
@@ -442,7 +483,7 @@ export default function StoreHeader({
                       </Link>
                     ))}
                   </div>
-                  <Link href={`/${handle}/search?q=${encodeURIComponent(searchQuery)}`}
+                  <Link href={storePath(`/search?q=${encodeURIComponent(searchQuery)}`)}
                     onClick={() => { setSearchOpen(false); setSearchQuery("") }}
                     className="flex items-center gap-1.5 text-sm font-semibold pt-3 border-t"
                     style={{ color: brandPrimary, borderColor: isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6" }}>
@@ -459,7 +500,7 @@ export default function StoreHeader({
                 <p className={`text-xs uppercase tracking-widest font-semibold mb-3 ${isDark ? "text-white/40" : "text-gray-400"}`}>Popular</p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
                   {products.slice(0, 8).map(p => (
-                    <Link key={p.id} href={`/${handle}/products/${p.handle}`}
+                    <Link key={p.id} href={storePath(`/products/${p.handle}`)}
                       onClick={() => { setSearchOpen(false); setSearchQuery("") }} className="group">
                       <div className={`aspect-square rounded-xl overflow-hidden relative mb-2 ${isDark ? "bg-white/10" : "bg-gray-100"}`}>
                         {p.thumbnail
@@ -509,12 +550,12 @@ export default function StoreHeader({
                   </p>
                   {activeDropdown === "shop" && (
                     <div className="space-y-0.5">
-                      <DropdownLink href={`/${handle}/products`} label="All Products" sub={`${products.length} items`} brandPrimary={brandPrimary} isDark={isDark} active={!hoverItem} onHover={() => setHoverItem(undefined)} onClick={() => setActiveDropdown(null)} />
+                      <DropdownLink href={storePath("/products")} label="All Products" sub={`${products.length} items`} brandPrimary={brandPrimary} isDark={isDark} active={!hoverItem} onHover={() => setHoverItem(undefined)} onClick={() => setActiveDropdown(null)} />
                       {collections.slice(0, 5).map(c => (
-                        <DropdownLink key={c.id} href={`/${handle}/collections/${c.handle}`} label={c.title} sub={`${c.product_count} items`} brandPrimary={brandPrimary} isDark={isDark} active={hoverItem === c.handle} onHover={() => setHoverItem(c.handle)} onClick={() => setActiveDropdown(null)} />
+                        <DropdownLink key={c.id} href={storePath(`/collections/${c.handle}`)} label={c.title} sub={`${c.product_count} items`} brandPrimary={brandPrimary} isDark={isDark} active={hoverItem === c.handle} onHover={() => setHoverItem(c.handle)} onClick={() => setActiveDropdown(null)} />
                       ))}
                       <div className={`pt-2 mt-2 border-t ${divider}`}>
-                        <Link href={`/${handle}/products`} onClick={() => setActiveDropdown(null)} className="flex items-center gap-1 text-xs font-semibold" style={{ color: brandPrimary }}>
+                        <Link href={storePath("/products")} onClick={() => setActiveDropdown(null)} className="flex items-center gap-1 text-xs font-semibold" style={{ color: brandPrimary }}>
                           View all products <ArrowRight className="w-3 h-3" />
                         </Link>
                       </div>
@@ -523,10 +564,10 @@ export default function StoreHeader({
                   {activeDropdown === "collections" && (
                     <div className="space-y-0.5">
                       {collections.map(c => (
-                        <DropdownLink key={c.id} href={`/${handle}/collections/${c.handle}`} label={c.title} sub={`${c.product_count} items`} brandPrimary={brandPrimary} isDark={isDark} active={hoverItem === c.handle} onHover={() => setHoverItem(c.handle)} onClick={() => setActiveDropdown(null)} />
+                        <DropdownLink key={c.id} href={storePath(`/collections/${c.handle}`)} label={c.title} sub={`${c.product_count} items`} brandPrimary={brandPrimary} isDark={isDark} active={hoverItem === c.handle} onHover={() => setHoverItem(c.handle)} onClick={() => setActiveDropdown(null)} />
                       ))}
                       <div className={`pt-2 mt-2 border-t ${divider}`}>
-                        <Link href={`/${handle}/collections`} onClick={() => setActiveDropdown(null)} className="flex items-center gap-1 text-xs font-semibold" style={{ color: brandPrimary }}>
+                        <Link href={storePath("/collections")} onClick={() => setActiveDropdown(null)} className="flex items-center gap-1 text-xs font-semibold" style={{ color: brandPrimary }}>
                           All collections <ArrowRight className="w-3 h-3" />
                         </Link>
                       </div>
@@ -535,10 +576,10 @@ export default function StoreHeader({
                   {activeDropdown === "categories" && (
                     <div className="space-y-0.5">
                       {categories.map(c => (
-                        <DropdownLink key={c.id} href={`/${handle}/categories/${c.handle}`} label={c.name} sub={`${c.product_count} items`} brandPrimary={brandPrimary} isDark={isDark} active={hoverItem === c.handle} onHover={() => setHoverItem(c.handle)} onClick={() => setActiveDropdown(null)} />
+                        <DropdownLink key={c.id} href={storePath(`/categories/${c.handle}`)} label={c.name} sub={`${c.product_count} items`} brandPrimary={brandPrimary} isDark={isDark} active={hoverItem === c.handle} onHover={() => setHoverItem(c.handle)} onClick={() => setActiveDropdown(null)} />
                       ))}
                       <div className={`pt-2 mt-2 border-t ${divider}`}>
-                        <Link href={`/${handle}/categories`} onClick={() => setActiveDropdown(null)} className="flex items-center gap-1 text-xs font-semibold" style={{ color: brandPrimary }}>
+                        <Link href={storePath("/categories")} onClick={() => setActiveDropdown(null)} className="flex items-center gap-1 text-xs font-semibold" style={{ color: brandPrimary }}>
                           All categories <ArrowRight className="w-3 h-3" />
                         </Link>
                       </div>
@@ -558,7 +599,7 @@ export default function StoreHeader({
                       {previewProducts.length > 0 ? (
                         <div className="flex gap-3 pb-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
                           {previewProducts.map(p => (
-                            <ProductPreviewCard key={p.id} product={p} handle={handle} brandPrimary={brandPrimary} isDark={isDark} onClick={() => setActiveDropdown(null)} />
+                            <ProductPreviewCard key={p.id} product={p} handle={handle} bare={bare} brandPrimary={brandPrimary} isDark={isDark} onClick={() => setActiveDropdown(null)} />
                           ))}
                         </div>
                       ) : (
@@ -577,7 +618,7 @@ export default function StoreHeader({
                       <p className={`text-xs uppercase tracking-widest font-semibold mb-3 ${isDark ? "text-white/40" : "text-gray-400"}`}>More</p>
                       <div className="grid grid-cols-2 gap-x-6 gap-y-0.5">
                         {manualChildren.map((child: any) => {
-                          const childHref = child.url?.startsWith("http") ? child.url : `/${handle}${child.url?.startsWith("/") ? child.url : `/${child.url ?? ""}`}`
+                          const childHref = child.url ? navHref(child.url) : storePath("/")
                           const grandChildren: any[] = child.children ?? []
                           return (
                             <div key={child.id} className="mb-3">
@@ -586,7 +627,7 @@ export default function StoreHeader({
                                 {child.label}
                               </Link>
                               {grandChildren.map((gc: any) => {
-                                const gcHref = gc.url?.startsWith("http") ? gc.url : `/${handle}${gc.url?.startsWith("/") ? gc.url : `/${gc.url ?? ""}`}`
+                                const gcHref = gc.url ? navHref(gc.url) : storePath("/")
                                 return (
                                   <Link key={gc.id} href={gcHref} onClick={() => setActiveDropdown(null)}
                                     className={`block py-0.5 text-sm transition-colors ${isDark ? "text-white/60 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}>
@@ -623,9 +664,7 @@ export default function StoreHeader({
               {!hasAnyGrandChildren ? (
                 <div className="flex gap-1">
                   {activeItem.children.map((child: any) => {
-                    const childHref = child.href ?? (child.url
-                      ? (child.url.startsWith("http") ? child.url : `/${handle}${child.url.startsWith("/") ? child.url : `/${child.url}`}`)
-                      : `/${handle}`)
+                    const childHref = child.href ?? (child.url ? navHref(child.url) : storePath("/"))
                     return (
                       <Link key={child.id} href={childHref}
                         target={child.external ? "_blank" : undefined}
@@ -640,9 +679,7 @@ export default function StoreHeader({
               ) : (
                 <div className="flex gap-10">
                   {activeItem.children.map((child: any) => {
-                    const childHref = child.href ?? (child.url
-                      ? (child.url.startsWith("http") ? child.url : `/${handle}${child.url.startsWith("/") ? child.url : `/${child.url}`}`)
-                      : null)
+                    const childHref = child.href ?? (child.url ? navHref(child.url) : null)
                     const grandChildren: any[] = child.children ?? []
                     return (
                       <div key={child.id} className="min-w-[140px]">
@@ -656,9 +693,7 @@ export default function StoreHeader({
                         )}
                         <div className="space-y-1.5">
                           {grandChildren.map((gc: any) => {
-                            const gcHref = gc.href ?? (gc.url
-                              ? (gc.url.startsWith("http") ? gc.url : `/${handle}${gc.url.startsWith("/") ? gc.url : `/${gc.url}`}`)
-                              : `/${handle}`)
+                            const gcHref = gc.href ?? (gc.url ? navHref(gc.url) : storePath("/"))
                             return (
                               <Link key={gc.id} href={gcHref}
                                 target={gc.external ? "_blank" : undefined}
@@ -686,9 +721,7 @@ export default function StoreHeader({
           style={{ top: dropdownTop }}>
           <div className="px-4 py-3 space-y-0.5 max-h-[70vh] overflow-y-auto">
             {navItems.map((item: any) => {
-              const href = item.href ?? (item.url
-                ? (item.url.startsWith("http") ? item.url : `/${handle}${item.url.startsWith("/") ? item.url : `/${item.url}`}`)
-                : `/${handle}`)
+              const href = item.href ?? (item.url ? navHref(item.url) : storePath("/"))
 
               const isSystemCollections = item.url === "/collections" || item.id === "collections"
               const isSystemCategories  = item.url === "/categories"  || item.id === "categories"
@@ -734,9 +767,7 @@ export default function StoreHeader({
                       isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-gray-50/80"
                     }`}>
                       {mobileChildren.map((child: any) => {
-                        const childHref = child.href ?? (child.url
-                          ? (child.url.startsWith("http") ? child.url : `/${handle}${child.url.startsWith("/") ? child.url : `/${child.url}`}`)
-                          : `/${handle}`)
+                        const childHref = child.href ?? (child.url ? navHref(child.url) : storePath("/"))
                         const grandChildren: any[] = child.children ?? []
                         const hasGrandChildren = grandChildren.length > 0
                         const childKey = `child_${child.id}`
@@ -766,9 +797,7 @@ export default function StoreHeader({
                             {hasGrandChildren && isChildExpanded && (
                               <div className={`ml-4 border-t ${isDark ? "border-white/10" : "border-gray-100"}`}>
                                 {grandChildren.map((gc: any) => {
-                                  const gcHref = gc.href ?? (gc.url
-                                    ? (gc.url.startsWith("http") ? gc.url : `/${handle}${gc.url.startsWith("/") ? gc.url : `/${gc.url}`}`)
-                                    : `/${handle}`)
+                                  const gcHref = gc.href ?? (gc.url ? navHref(gc.url) : storePath("/"))
                                   return (
                                     <Link key={gc.id} href={gcHref}
                                       target={gc.external ? "_blank" : undefined}
@@ -864,12 +893,13 @@ function DropdownLink({ href, label, sub, brandPrimary, isDark, active, onHover,
 }
 
 // ── Product preview card ──────────────────────────────────────────────────────
-function ProductPreviewCard({ product, handle, brandPrimary, isDark, onClick }: {
-  product: Product; handle: string; brandPrimary: string; isDark: boolean; onClick: () => void
+function ProductPreviewCard({ product, handle, bare, brandPrimary, isDark, onClick }: {
+  product: Product; handle: string; bare: boolean; brandPrimary: string; isDark: boolean; onClick: () => void
 }) {
   const price = product.variants?.[0]?.prices?.[0]?.amount
+  const href = bare ? `/products/${product.handle}` : `/${handle}/products/${product.handle}`
   return (
-    <Link href={`/${handle}/products/${product.handle}`} onClick={onClick} className="shrink-0 w-28 group">
+    <Link href={href} onClick={onClick} className="shrink-0 w-28 group">
       <div className={`w-28 h-28 rounded-xl overflow-hidden mb-2 relative ${isDark ? "bg-white/10" : "bg-gray-100"}`}>
         {product.thumbnail
           ? <Image src={product.thumbnail} alt={product.title} fill className="object-cover transition-transform duration-300 group-hover:scale-105" sizes="112px" />

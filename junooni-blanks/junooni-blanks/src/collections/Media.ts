@@ -39,41 +39,51 @@ export const Media: CollectionConfig = {
     },
   ],
   upload: {
-    // Upload to the public/media directory in Next.js making them publicly accessible even outside of Payload
     staticDir: path.resolve(dirname, '../../public/media'),
     adminThumbnail: 'thumbnail',
     focalPoint: true,
+    formatOptions: {
+      format: 'webp',
+      options: { quality: 80 },
+    },
     imageSizes: [
       {
         name: 'thumbnail',
         width: 300,
+        formatOptions: { format: 'webp', options: { quality: 75 } },
       },
       {
         name: 'square',
         width: 500,
         height: 500,
+        formatOptions: { format: 'webp', options: { quality: 75 } },
       },
       {
         name: 'small',
         width: 600,
+        formatOptions: { format: 'webp', options: { quality: 75 } },
       },
       {
         name: 'medium',
         width: 900,
+        formatOptions: { format: 'webp', options: { quality: 80 } },
       },
       {
         name: 'large',
         width: 1400,
+        formatOptions: { format: 'webp', options: { quality: 80 } },
       },
       {
         name: 'xlarge',
         width: 1920,
+        formatOptions: { format: 'webp', options: { quality: 80 } },
       },
       {
         name: 'og',
         width: 1200,
         height: 630,
         crop: 'center',
+        formatOptions: { format: 'webp', options: { quality: 80 } },
       },
     ],
   },

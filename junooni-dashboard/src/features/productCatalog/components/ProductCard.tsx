@@ -4,12 +4,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 const vite_payload = import.meta.env.VITE_PAYLOAD_BASE_URL;
 
 // Define interfaces
+interface ImageSize {
+  url: string;
+  width: number;
+  height: number;
+}
+
 interface Image {
   id: number;
   alt: string;
   url: string;
   width: number;
   height: number;
+  sizes?: {
+    thumbnail?: ImageSize;
+    square?: ImageSize;
+    small?: ImageSize;
+    medium?: ImageSize;
+    large?: ImageSize;
+    xlarge?: ImageSize;
+    og?: ImageSize;
+  };
 }
 
 interface DisplayImage {
@@ -125,6 +140,18 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
   const productionOptions = getProductionOptions();
   const additionalColors = Math.max(0, product.colorOptions.length - 4);
 
+  // ✅ Use Payload's resized "square" variant instead of the full-size original.
+  // Falls back to "small", then the original url if no sizes are available.
+  const getCardImageUrl = (image: Image): string => {
+    const sizeUrl =
+      image.sizes?.square?.url ||
+      image.sizes?.small?.url ||
+      image.sizes?.thumbnail?.url ||
+      image.url;
+
+    return `${vite_payload}${sizeUrl}`;
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-[#e65100]/10 hover:border-[#e65100]/20 group">
       {/* Product Image */}
@@ -134,8 +161,10 @@ const ProductCard = ({ product, metadata }: ProductCardProps) => {
       >
         {product.displayImages?.length > 0 ? (
           <img
-            src={`${vite_payload}${product.displayImages[0].image.url}`}
+            src={getCardImageUrl(product.displayImages[0].image)}
             alt={product.displayImages[0].image.alt}
+            loading="lazy"
+            decoding="async"
             className="object-cover object-center w-full h-full transition-transform duration-300"
           />
         ) : (

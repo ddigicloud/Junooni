@@ -78,7 +78,7 @@ export default async function CategoryDetailPage({ params }: Props) {
     <CategoryDetailPageClient
       vendor={vendor}
       initialStore={store}
-      products={catData.products ?? []}
+      products={storeData.products ?? []}
       catProducts={catData.products ?? []}
       categories={catData.categories ?? []}
       collections={catData.collections ?? collections ?? []}

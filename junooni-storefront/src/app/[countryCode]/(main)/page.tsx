@@ -4,7 +4,6 @@ import { getRegion } from "@lib/data/regions"
 import { retriveVendors } from "@lib/data/vendors"
 import { Suspense } from "react"
 import JsonLd from "./components/JsonLd"
-
 // Fast components - load immediately
 import Hero from "@modules/home/components/hero"
 import Features from "@modules/home/components/Features"

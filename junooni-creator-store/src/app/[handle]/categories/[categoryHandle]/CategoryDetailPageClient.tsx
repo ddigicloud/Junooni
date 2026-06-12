@@ -314,7 +314,8 @@ export default function CategoryDetailPageClient({
             showFilters={showFilters}
             showSort={showSort}
             showPriceFilter={showPriceFilter}
-            showCategoryFilter={showCategoryFilter}
+            // showCategoryFilter={showCategoryFilter}
+            showCategoryFilter={false}
             showCollectionFilter={showCollectionFilter}
             />
         )}
