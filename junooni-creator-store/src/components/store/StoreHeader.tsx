@@ -33,6 +33,7 @@ export default function StoreHeader({
   const [searchQuery, setSearchQuery] = useState("")
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const headerRef = useRef<HTMLDivElement>(null)
+  const headerBarRef = useRef<HTMLHeadingElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const toggleMobileId = (id: string) => setMobileExpandedIds(prev => {
@@ -224,7 +225,8 @@ export default function StoreHeader({
   const divider    = isDark ? "border-white/10" : "border-gray-100"
   const inputBg    = isDark ? "bg-white/10 border-white/20 text-white placeholder-white/40" : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400"
 
-  const dropdownTop      = headerRef.current ? headerRef.current.getBoundingClientRect().bottom : 64
+  //const dropdownTop      = headerRef.current ? headerRef.current.getBoundingClientRect().bottom : 64
+  const dropdownTop      = headerBarRef.current ? headerBarRef.current.getBoundingClientRect().bottom : 64
   const dropdownBgColor  = isDark ? "#030712" : "#ffffff"
   const dropdownBorderColor = isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6"
 
@@ -263,6 +265,7 @@ export default function StoreHeader({
 
       {/* ── HEADER BAR ── */}
       <header
+        ref={headerBarRef}
         className={`w-full backdrop-blur-md border-b shadow-sm ${bg}`}
         style={{
           ...(headerBg   ? { backgroundColor: headerBg }  : {}),

@@ -584,7 +584,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           <Field label="Specific product IDs (one per line)" faint={textFaint}>
             <EditorTextarea value={section.product_ids?.join("\n") ?? ""}
               onChange={v => onChange({ product_ids: v.split("\n").map(s => s.trim()).filter(Boolean) })}
-              placeholder={"prod_01...\nprod_02..."} rows={3} isDark={isDark} />
+              placeholder={"prod_01...\nprod_02..."} rows={3} isDark={isDark}  pages={pages} collections={collections} categories={categories}/>
             <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Leave empty to show latest products</p>
           </Field>
         )}
@@ -612,7 +612,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
         </Field>
         <Field label="Content" faint={textFaint}>
           <EditorTextarea value={section.text ?? ""} onChange={v => onChange({ text: v })}
-            placeholder="Share your story..." rows={6} isDark={isDark} />
+            placeholder="Share your story..." rows={6} isDark={isDark}  pages={pages} collections={collections} categories={categories}/>
         </Field>
         <UploadOnlyImageField label="Image" value={section.image ?? ""}
           onChange={v => onChange({ image: v || undefined })}
@@ -661,7 +661,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
       {section.type === "text" && (
         <Field label="Content" faint={textFaint}>
           <EditorTextarea value={section.text ?? ""} onChange={v => onChange({ text: v })}
-            placeholder="Write your content..." rows={10} isDark={isDark} />
+            placeholder="Write your content..." rows={10} isDark={isDark}  pages={pages} collections={collections} categories={categories}/>
         </Field>
       )}
 
@@ -792,7 +792,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           <EditorTextarea value={section.html_content ?? ""}
             onChange={v => onChange({ html_content: v })}
             placeholder={"<div style=\"padding:40px;text-align:center\">\n  <h2>Custom content</h2>\n</div>"}
-            rows={12} isDark={isDark} mono />
+            rows={12} isDark={isDark} mono  pages={pages} collections={collections} categories={categories}/>
           <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Rendered in an isolated iframe.</p>
         </Field>
       )}
@@ -843,7 +843,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
             value={(section.ticker_items ?? []).join("\n")}
             onChange={v => onChange({ ticker_items: v.split("\n").map(s => s.trim()).filter(Boolean) })}
             placeholder="Free shipping on orders above ₹999"
-            rows={5} isDark={isDark} />
+            rows={5} isDark={isDark}   pages={pages} collections={collections} categories={categories} />
           <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Each line is one item in the scroll.</p>
         </Field>
         <Field label="Separator between items" faint={textFaint}>
@@ -895,7 +895,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
         </Field>
         <Field label="Body text" faint={textFaint}>
           <EditorTextarea value={section.text ?? ""} onChange={v => onChange({ text: v })}
-            placeholder="Share something meaningful..." rows={5} isDark={isDark} />
+            placeholder="Share something meaningful..." rows={5} isDark={isDark} pages={pages} collections={collections} categories={categories} />
         </Field>
         <Field label="Button label" faint={textFaint}>
           <EditorInput value={section.cta_label ?? ""} onChange={v => onChange({ cta_label: v })}
@@ -943,7 +943,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
         </Field>
         <Field label="Body text" faint={textFaint}>
           <EditorTextarea value={section.text ?? ""} onChange={v => onChange({ text: v })}
-            placeholder="Tell your audience what this video is about..." rows={4} isDark={isDark} />
+            placeholder="Tell your audience what this video is about..." rows={4} isDark={isDark}  pages={pages} collections={collections} categories={categories}/>
         </Field>
         <Field label="Button label" faint={textFaint}>
           <EditorInput value={section.cta_label ?? ""} onChange={v => onChange({ cta_label: v })}
@@ -1034,7 +1034,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
               </Field>
               <Field label="Description / story" faint={textFaint}>
                 <EditorTextarea value={section.text ?? ""} onChange={v => onChange({ text: v })}
-                  placeholder="Describe why this product is special..." rows={4} isDark={isDark} />
+                  placeholder="Describe why this product is special..." rows={4} isDark={isDark}  pages={pages} collections={collections} categories={categories}/>
               </Field>
             </div>
           </div>

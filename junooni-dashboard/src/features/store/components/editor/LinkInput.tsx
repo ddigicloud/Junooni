@@ -294,7 +294,7 @@ export function CustomPagesGroup({ pages, value, onChange, setOpen, isDark, onLa
   )
 }
 
-export function LinkInput({ value, onChange, placeholder, isDark, pages = [], onLabelSuggest, collections = [], categories = [] }: {
+export function LinkInput({ value, onChange, placeholder, isDark, pages = [], onLabelSuggest, collections = [], categories = [], openBelow = false }: {
   value: string
   onChange: (v: string) => void
   placeholder?: string
@@ -303,6 +303,7 @@ export function LinkInput({ value, onChange, placeholder, isDark, pages = [], on
   onLabelSuggest?: (label: string) => void
   collections?: { id: string; title: string; handle: string }[]
   categories?: { id: string; name: string; handle: string }[]
+  openBelow?: boolean
 }) {
   const [open, setOpen]               = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -311,9 +312,29 @@ export function LinkInput({ value, onChange, placeholder, isDark, pages = [], on
   const [atRoot, setAtRoot]           = useState(true)
   const ref    = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
-  const [dropdownPos, setDropdownPos] = useState({ bottom: 0, left: 0 })
+  const [dropdownPos, setDropdownPos] = useState({ bottom: 0, top: 0, left: 0, useTop: false })
+  //const [dropdownPos, setDropdownPos] = useState({ bottom: 0, left: 0 })
 
   useEffect(() => { setDisplayValue(value) }, [value])
+
+  // const computePos = () => {
+  //   if (!btnRef.current) return
+  //   const rect = btnRef.current.getBoundingClientRect()
+  //   let panelLeft = 0
+  //   let panelWidth = 260
+  //   let el: HTMLElement | null = btnRef.current.parentElement
+  //   while (el) {
+  //     if (el.classList.contains("left-panel") || el.dataset.panel === "left") {
+  //       const pr = el.getBoundingClientRect()
+  //       panelLeft = pr.left
+  //       panelWidth = pr.width
+  //       break
+  //     }
+  //     el = el.parentElement
+  //   }
+  //   const safeLeft = panelLeft || Math.max(0, rect.right - panelWidth)
+  //   setDropdownPos({ bottom: window.innerHeight - rect.top + 4, left: safeLeft })
+  // }
 
   const computePos = () => {
     if (!btnRef.current) return
@@ -330,8 +351,16 @@ export function LinkInput({ value, onChange, placeholder, isDark, pages = [], on
       }
       el = el.parentElement
     }
-    const safeLeft = panelLeft || Math.max(0, rect.right - panelWidth)
-    setDropdownPos({ bottom: window.innerHeight - rect.top + 4, left: safeLeft })
+    if (openBelow) {
+      const containerRect = ref.current?.getBoundingClientRect()
+      const totalWidth = 244 * 2
+      const left = containerRect ? containerRect.left : rect.left
+      const safeLeft = Math.min(Math.max(8, left), window.innerWidth - totalWidth - 8)
+      setDropdownPos({ bottom: 0, top: rect.bottom + 4, left: safeLeft, useTop: true })
+    } else {
+      const safeLeft = panelLeft || Math.max(0, rect.right - panelWidth)
+      setDropdownPos({ bottom: window.innerHeight - rect.top + 4, top: 0, left: safeLeft, useTop: false })
+    }
   }
 
   useEffect(() => {
@@ -473,11 +502,14 @@ export function LinkInput({ value, onChange, placeholder, isDark, pages = [], on
       {open && (
         <div
           className={`fixed z-[9999] rounded-xl border shadow-xl overflow-hidden ${isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"}`}
-          style={{ bottom: dropdownPos.bottom, left: dropdownPos.left + 8, width: 244 }}
+          style={dropdownPos.useTop
+            ? { top: dropdownPos.top, left: dropdownPos.left + 8, width: 244 }
+            : { bottom: dropdownPos.bottom, left: dropdownPos.left + 8, width: 244 }}
+          // style={{ bottom: dropdownPos.bottom, left: dropdownPos.left + 8, width: 244 }}
         >
           <div
-           className="flex w-[200%] transition-transform duration-300 ease-out items-start overflow-hidden"
-           style={{ transform: atRoot ? "translateX(0)" : "translateX(-50%)" }}
+           className="flex w-[200%] transition-transform duration-300 ease-out overflow-hidden"
+           style={{ transform: atRoot ? "translateX(0)" : "translateX(-50%)", alignItems: "flex-start" }}
           >
             {/* ── ROOT PANEL ── */}
             <div className="w-1/2 overflow-y-auto shrink-0" style={{ maxHeight: LINK_INPUT_DROPDOWN_HEIGHT }}>

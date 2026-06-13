@@ -142,6 +142,11 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
 
   return (
     <div className={`min-h-screen bg-white ${fontClass}`}>
+       <style>{`
+        .rte-content a { text-decoration: underline; text-decoration-color: currentColor; }
+        .rte-content ul { list-style: disc; padding-left: 1.25rem; }
+        .rte-content ol { list-style: decimal; padding-left: 1.25rem; }
+      `}</style>
       
       {/* ── HEADER (handles announcements + tickers internally) ── */}
       <StoreHeader
@@ -643,7 +648,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       if (!(section as any).text) return null
       return (
         <section className="px-4 py-12 sm:px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <div className="max-w-3xl mx-auto prose prose-lg" style={{ color: sectionText ?? "#374151" }}
+          <div className="rte-content max-w-3xl mx-auto prose prose-lg" style={{ color: sectionText ?? "#374151" }}
             dangerouslySetInnerHTML={{
               __html: (section as any).text
                 .replace(/^### (.+)$/gm, "<h3>$1</h3>")
@@ -820,7 +825,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.title }} />
                 )}
                 {section.text && (
-                  <div className="mb-6 text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
+                  <div className="rte-content mb-6 text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
@@ -876,7 +881,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.title }} />
                 )}
                 {section.text && (
-                  <div className="mb-6 text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
+                  <div className="rte-content mb-6 text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
@@ -1120,7 +1125,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
 
             {/* Story/description */}
             {section.text && (
-              <div className="text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}bb` : "#4b5563" }}
+              <div className="rte-content text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}bb` : "#4b5563" }}
                 dangerouslySetInnerHTML={{ __html: section.text }} />
             )}
 

@@ -356,11 +356,14 @@ export function NavItemsEditor({
                         (() => {
                           const isCollections = item.url === "/collections"
                           const isCategories  = item.url === "/categories"
-                          const autoItems = isCollections
+                            const autoItems = isCollections
                             ? vendorCollections.map(c => ({ id: c.id, label: c.title, url: `/collections/${c.handle}` }))
                             : isCategories
                             ? vendorCategories.map(c => ({ id: c.id, label: c.name, url: `/categories/${c.handle}` }))
-                            : vendorProducts.slice(0, 8).map(p => ({ id: p.id, label: p.title, url: `/products/${p.handle}` }))
+                            : [
+                                { id: "all_products", label: "All Products", url: "/products" },
+                                ...vendorCollections.map(c => ({ id: c.id, label: c.title, url: `/collections/${c.handle}` })),
+                              ]
 
                           if (autoItems.length === 0) return (
                             <p className={`text-[9px] px-1 pb-1 ${textFaint} opacity-70`}>

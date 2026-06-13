@@ -6,6 +6,7 @@ loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
+    //databaseLogging: process.env.DB_LOGGING === "true" ? ["query", "error"] : false,
     http: {
       
       storeCors: process.env.STORE_CORS || "http://localhost:8000,http://localhost:5173",
