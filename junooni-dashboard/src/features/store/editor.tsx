@@ -659,8 +659,11 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
       const toIdx   = arr.findIndex(s => s.id === toId)
       if (fromIdx === -1 || toIdx === -1) return p
       const [moved] = arr.splice(fromIdx, 1)
-      const insertAt = toIdx > fromIdx ? toIdx : toIdx  // insert BEFORE toId
-      arr.splice(insertAt, 0, moved)
+      // For non-home layouts, toIdx shifts down by 1 after removal when dragging downward
+      const adjustedToIdx = (currentLayoutKey !== "home" && toIdx > fromIdx)
+        ? toIdx - 1
+        : toIdx
+      arr.splice(adjustedToIdx, 0, moved)
       return setPageSections(p, key, arr)
     })
     setIsDragging(null)
@@ -1354,10 +1357,7 @@ const previewUrl = (() => {
                 .map((block, idx, arr) => (
                   <button key={block.type}
                     onClick={() => {
-                      const targetSection = insertAtIndex !== null
-                        ? sections.find((s, i) => i === insertAtIndex)
-                        : bodySections[bodySections.length - 1]
-                      addSectionAferId(block.type, targetSection?.id ?? null)
+                      addSection(block.type, null)
                       setBodySectionPickerOpen(false)
                       setInsertAtIndex(null)
                     }}

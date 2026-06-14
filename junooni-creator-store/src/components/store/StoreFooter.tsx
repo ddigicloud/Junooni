@@ -5,6 +5,9 @@ import Image from "next/image"
 import { useState, useEffect, useRef } from "react"
 import type { PublicVendor, VendorStore, CategoryMeta, CollectionMeta } from "@/lib/types"
 
+
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
+  
 interface Props {
   vendor: PublicVendor
   store: VendorStore | null
@@ -27,6 +30,18 @@ export default function StoreFooter({ vendor, store: initialStore, categories, c
   const brandPrimary = store?.primary_color ?? "#e65100"
   const isDark = store?.template === "bold"
   const handle = vendor.handle
+
+  const [bare, setBare] = useState(false)
+  useEffect(() => {
+    const hostname = window.location.hostname.replace(/:.*$/, "").toLowerCase()
+    const isMarketplace = hostname === ROOT_DOMAIN || hostname === "localhost"
+    setBare(!isMarketplace)
+  }, [])
+
+  const storePath = (p: string) => {
+    if (!p || p === "/") return bare ? "/" : `/${handle}`
+    return bare ? p : `/${handle}${p}`
+  }
   const footerPages = ((store as any)?.pages?.pages ?? []).filter((p: any) => p.in_footer)
   const hasSocial = vendor.instagram || vendor.youtube || vendor.xtwitter || vendor.facebook
 
@@ -155,7 +170,7 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
             {(col.items ?? []).map((item: any) => {
               const href = item.url?.startsWith("http")
                 ? item.url
-                : `/${handle}${item.url?.startsWith("/") ? item.url : `/${item.url ?? ""}`}`
+                : storePath(item.url?.startsWith("/") ? item.url : `/${item.url ?? ""}`)
               return (
                 <Link key={item.id} href={href}
                   target={item.external ? "_blank" : undefined}

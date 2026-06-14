@@ -453,9 +453,11 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                 return headerIdx === -1 || sIdx < headerIdx
             })
             const footerSections = sections.filter(s => s.type === "footer")
-            const layoutBodySections = sections.filter(s =>
-            !["header", "announcement", "ticker", "footer"].includes(s.type)
-            )
+            const layoutBodySections = sections.filter(s => {
+              if (["header", "announcement", "ticker", "footer"].includes(s.type)) return false
+              if (currentLayoutKey === "product" && s.type === "featured") return false
+              return true
+            })
             const SectionRow = ({ s, idx }: { s: typeof sections[0], idx: number }) => {
             const block = SECTION_BLOCKS_WITH_ICONS.find(b => b.type === s.type)
             const isSelected = selectedId === s.id
@@ -474,6 +476,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                 )}
                 <div
                     draggable
+                    data-drag-id={s.id}
                     onDragStart={e => {
                     e.dataTransfer.effectAllowed = "move"
                     // Invisible ghost
@@ -486,17 +489,49 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         handleDragStart(s.id)
                     })
                     }}
-                    onDragEnd={() => {
+                    onDrop={e => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    const midY = rect.top + rect.height / 2
+                    let dropId = s.id
+                    if (e.clientY >= midY) {
+                      let el: HTMLElement | null = e.currentTarget as HTMLElement
+                      while (el && !el.dataset.dragId) el = el.parentElement
+                      const outerWrapper = el?.parentElement
+                      let nextSibling = outerWrapper?.nextElementSibling
+                      while (nextSibling && !nextSibling.querySelector("[data-drag-id]")) {
+                        nextSibling = nextSibling.nextElementSibling
+                      }
+                      dropId = nextSibling?.querySelector("[data-drag-id]")?.getAttribute("data-drag-id") ?? s.id
+                    }
+                    handleDrop(e, dropId)
                     setIsDragging(null)
                     setDragOver(null)
                     setDragOverId(null)
                     setSelectedId(null)
                     }}
-                    onDragOver={e => {
+                   onDragOver={e => {
                     e.preventDefault()
                     e.stopPropagation()
                     e.dataTransfer.dropEffect = "move"
-                    if (dragOverId !== s.id) setDragOverId(s.id)
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    const midY = rect.top + rect.height / 2
+                    if (e.clientY < midY) {
+                      if (dragOverId !== s.id) setDragOverId(s.id)
+                    } else {
+                      // Walk up to find the outer section wrapper, then find next section
+                      let el: HTMLElement | null = e.currentTarget as HTMLElement
+                      while (el && !el.dataset.dragId) el = el.parentElement
+                      const outerWrapper = el?.parentElement
+                      let nextSibling = outerWrapper?.nextElementSibling
+                      // Skip AddBetweenLine divs (they have no data-drag-id inside)
+                      while (nextSibling && !nextSibling.querySelector("[data-drag-id]")) {
+                        nextSibling = nextSibling.nextElementSibling
+                      }
+                      const nextId = nextSibling?.querySelector("[data-drag-id]")?.getAttribute("data-drag-id") ?? s.id
+                      if (dragOverId !== nextId) setDragOverId(nextId)
+                    }
                     }}
                     onDrop={e => {
                     e.preventDefault()
@@ -512,7 +547,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     setSelectedId(s.id)
                     }}
                     className={[
-                    "flex items-center gap-2.5 px-2.5 py-1 rounded-lg cursor-pointer transition-colors duration-100 select-none border-l-2",
+                    "group/row flex items-center gap-2.5 px-2.5 py-1 rounded-lg cursor-pointer transition-colors duration-100 select-none border-l-2",
                     isSelected
                         ? isDark ? "bg-gray-800 border-l-orange-500" : "bg-orange-50/80 border-l-orange-500"
                         : isDark ? "border-l-transparent bg-gray-800/60 hover:bg-gray-700/80" : "border-l-transparent bg-gray-100 hover:bg-gray-200/80",
@@ -606,8 +641,9 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         setInsertAtIndex(null)
                         pendingInsertRef.current = null
                     } else {
-                        pendingInsertRef.current = afterIndex ?? 0
-                        setInsertAtIndex(afterIndex ?? 0)
+                        const idx = afterIndex === -1 ? null : afterIndex
+                        pendingInsertRef.current = idx
+                        setInsertAtIndex(idx)
                         setAddSectionOpen(true)
                         setAddSectionFilter("all")
                         setBodySectionPickerOpen(true)
@@ -1157,17 +1193,17 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         !currentLayoutKey.startsWith("page_") &&
                         ["products", "cart", "search", "product"].includes(currentLayoutKey) && (
                         <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
-                            {bodySections.length === 0 ? (
+                            {bodySections.filter(s => !(currentLayoutKey === "product" && s.type === "featured")).length === 0 ? (
                             <div className="py-3 text-center">
                                 <p className={`text-[10px] ${textFaint} opacity-60`}>
                                 Add sections below the system content
                                 </p>
                             </div>
                             ) : (
-                            bodySections.map((s, i) => (
+                            bodySections.filter(s => !(currentLayoutKey === "product" && s.type === "featured")).map((s, i, arr) => (
                                 <div key={s.id}>
                                 <SectionRow s={s} idx={i} />
-                                {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                                {i < arr.length - 1 && <AddBetweenLine afterIndex={i} />}
                                 </div>
                             ))
                             )}
@@ -1230,7 +1266,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     </div>
 
                     <div className="px-1.5 pb-1.5">
-                        <AddBetweenButton afterIndex={layoutBodySections.length - 1} zone="body-end" />
+                        <AddBetweenButton afterIndex={-1} zone="body-end" />
                     </div>
                 </div>
 

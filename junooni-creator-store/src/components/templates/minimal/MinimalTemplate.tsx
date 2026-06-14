@@ -593,10 +593,10 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     // ── Social ─────────────────────────────────────────────────────────────────
     case "social": {
       const socials = [
-        { key: "show_instagram", label: "Instagram", icon: Instagram, getUrl: (v: PublicVendor) => v.instagram ? `https://instagram.com/${v.instagram}` : null },
-        { key: "show_youtube",   label: "YouTube",   icon: Youtube,   getUrl: (v: PublicVendor) => v.youtube   ? `https://youtube.com/${v.youtube}`   : null },
+        { key: "show_instagram", label: "", icon: Instagram, getUrl: (v: PublicVendor) => v.instagram ? `https://instagram.com/${v.instagram}` : null },
+        { key: "show_youtube",   label: "",   icon: Youtube,   getUrl: (v: PublicVendor) => v.youtube   ? `https://youtube.com/${v.youtube}`   : null },
         { key: "show_twitter", label: "", icon: () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>, getUrl: (v: PublicVendor) => v.xtwitter ? `https://twitter.com/${v.xtwitter}` : null },
-        { key: "show_facebook",  label: "Facebook",  icon: Facebook,  getUrl: (v: PublicVendor) => v.facebook  ? `https://facebook.com/${v.facebook}` : null },
+        { key: "show_facebook",  label: "",  icon: Facebook,  getUrl: (v: PublicVendor) => v.facebook  ? `https://facebook.com/${v.facebook}` : null },
       ].filter(s => (section as any)[s.key] && s.getUrl(vendor))
       if (!socials.length) return null
       return (
@@ -648,7 +648,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       if (!(section as any).text) return null
       return (
         <section className="px-4 py-12 sm:px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <div className="rte-content max-w-3xl mx-auto prose prose-lg" style={{ color: sectionText ?? "#374151" }}
+          <div className="max-w-3xl mx-auto prose prose-lg rte-content" style={{ color: sectionText ?? "#374151" }}
             dangerouslySetInnerHTML={{
               __html: (section as any).text
                 .replace(/^### (.+)$/gm, "<h3>$1</h3>")
@@ -825,7 +825,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.title }} />
                 )}
                 {section.text && (
-                  <div className="rte-content mb-6 text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
+                  <div className="mb-6 text-base leading-relaxed prose-sm prose rte-content max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
@@ -881,7 +881,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                     dangerouslySetInnerHTML={{ __html: section.title }} />
                 )}
                 {section.text && (
-                  <div className="rte-content mb-6 text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
+                  <div className="mb-6 text-base leading-relaxed prose-sm prose rte-content max-w-none" style={{ color: sectionText ? `${sectionText}cc` : "#4b5563" }}
                     dangerouslySetInnerHTML={{ __html: section.text }} />
                 )}
                 {section.cta_label && (
@@ -1125,7 +1125,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
 
             {/* Story/description */}
             {section.text && (
-              <div className="rte-content text-base leading-relaxed prose-sm prose max-w-none" style={{ color: sectionText ? `${sectionText}bb` : "#4b5563" }}
+              <div className="text-base leading-relaxed prose-sm prose rte-content max-w-none" style={{ color: sectionText ? `${sectionText}bb` : "#4b5563" }}
                 dangerouslySetInnerHTML={{ __html: section.text }} />
             )}
 

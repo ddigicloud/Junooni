@@ -121,7 +121,7 @@ export function PageSwitcherDropdown({ currentPath, onSelect, pages, products = 
       </button>
 
       {open && (
-        <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-50 w-64 rounded-xl border shadow-2xl overflow-hidden max-h-64 overflow-y-auto ${
+        <div className={`absolute top-full mt-1.5 z-50 w-64 rounded-xl border shadow-2xl overflow-hidden max-h-64 overflow-y-auto left-1/2 -translate-x-1/2 sm:left-1/2 sm:-translate-x-1/2 max-sm:left-0 max-sm:translate-x-0 ${
           isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
         }`}>
 
