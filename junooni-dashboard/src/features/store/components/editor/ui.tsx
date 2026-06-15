@@ -208,7 +208,7 @@ export function RichTextEditor({ value, onChange, placeholder, isDark, rows = 3,
         setLinkModalData({ url: existingHref, text: selectedText, openInNewTab: existingNewTab })
         setShowLinkModal(true)
       } },
-    { cmd: "unlink", icon: <span className="text-[11px] opacity-60 line-through">🔗</span>,  title: "Remove link" },
+    { cmd: "unlink", icon: <span className="text-[11px] line-through">🔗</span>,  title: "Remove link" },
   ]
 
   const toolbarBg = isDark ? "bg-gray-700 border-gray-600" : "bg-gray-100 border-gray-200"
@@ -270,7 +270,7 @@ export function RichTextEditor({ value, onChange, placeholder, isDark, rows = 3,
         onMouseOver={e => {
           const target = e.target as HTMLElement
           if (target.tagName === "A") {
-            target.title = (target as HTMLAnchorElement).href
+            target.title = (target as HTMLAnchorElement).getAttribute("href") ?? ""
           }
         }}
         onMouseOut={e => {

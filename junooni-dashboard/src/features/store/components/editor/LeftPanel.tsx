@@ -1014,17 +1014,43 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                                 : isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
                             }`}>Edit</span>
                         </div>
-                        {bodySections.length === 0 ? (
-                            <div className="py-3 text-center">
-                            <p className={`text-[10px] ${textFaint} opacity-60`}>Add sections below the category grid</p>
-                            </div>
+                       {bodySections.length === 0 ? (
+                        <div className="py-3 text-center">
+                        <p className={`text-[10px] ${textFaint} opacity-60`}>Add sections below the category grid</p>
+                        </div>
                         ) : (
-                            bodySections.map((s, i) => (
-                            <div key={s.id}>
-                                <SectionRow s={s} idx={i} />
-                                {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                        bodySections.map((s, i) => (
+                        <div key={s.id}>
+                            <SectionRow s={s} idx={i} />
+                            {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                        </div>
+                        ))
+                        )}
+                        {bodySections.length > 0 && (
+                        <div
+                            className="relative"
+                            style={{ height: "12px" }}
+                            onDragOver={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            if (dragOverId !== "__end__") setDragOverId("__end__")
+                            }}
+                            onDrop={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleBodyDrop(e)
+                            setDragOverId(null)
+                            setIsDragging(null)
+                            setDragOver(null)
+                            }}
+                        >
+                            {dragOverId === "__end__" && isDragging && (
+                            <div className="absolute inset-x-0 flex items-center pointer-events-none" style={{ top: "5px", zIndex: 20 }}>
+                                <div className="w-2 h-2 bg-orange-500 rounded-full shrink-0" />
+                                <div className="flex-1 h-0.5 bg-orange-500" />
                             </div>
-                            ))
+                            )}
+                        </div>
                         )}
                         </div>
                     )}
@@ -1080,6 +1106,32 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             </div>
                             ))
                         )}
+                        {bodySections.length > 0 && (
+                        <div
+                            className="relative"
+                            style={{ height: "12px" }}
+                            onDragOver={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            if (dragOverId !== "__end__") setDragOverId("__end__")
+                            }}
+                            onDrop={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleBodyDrop(e)
+                            setDragOverId(null)
+                            setIsDragging(null)
+                            setDragOver(null)
+                            }}
+                        >
+                            {dragOverId === "__end__" && isDragging && (
+                            <div className="absolute inset-x-0 flex items-center pointer-events-none" style={{ top: "5px", zIndex: 20 }}>
+                                <div className="w-2 h-2 bg-orange-500 rounded-full shrink-0" />
+                                <div className="flex-1 h-0.5 bg-orange-500" />
+                            </div>
+                            )}
+                        </div>
+                        )}
                         </div>
                     )}
 
@@ -1121,18 +1173,44 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             }`}>Edit</span>
                         </div>
                         {bodySections.length === 0 ? (
-                            <div className="py-3 text-center">
-                            <p className={`text-[10px] ${textFaint} opacity-60`}>
-                                Add sections below the collections grid
-                            </p>
-                            </div>
+                        <div className="py-3 text-center">
+                        <p className={`text-[10px] ${textFaint} opacity-60`}>
+                            Add sections below the collections grid
+                        </p>
+                        </div>
                         ) : (
-                            bodySections.map((s, i) => (
-                            <div key={s.id}>
-                                <SectionRow s={s} idx={i} />
-                                {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                        bodySections.map((s, i) => (
+                        <div key={s.id}>
+                            <SectionRow s={s} idx={i} />
+                            {i < bodySections.length - 1 && <AddBetweenLine afterIndex={i} />}
+                        </div>
+                        ))
+                        )}
+                        {bodySections.length > 0 && (
+                        <div
+                            className="relative"
+                            style={{ height: "12px" }}
+                            onDragOver={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            if (dragOverId !== "__end__") setDragOverId("__end__")
+                            }}
+                            onDrop={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleBodyDrop(e)
+                            setDragOverId(null)
+                            setIsDragging(null)
+                            setDragOver(null)
+                            }}
+                        >
+                            {dragOverId === "__end__" && isDragging && (
+                            <div className="absolute inset-x-0 flex items-center pointer-events-none" style={{ top: "5px", zIndex: 20 }}>
+                                <div className="w-2 h-2 bg-orange-500 rounded-full shrink-0" />
+                                <div className="flex-1 h-0.5 bg-orange-500" />
                             </div>
-                            ))
+                            )}
+                        </div>
                         )}
                         </div>
                     )}
@@ -1186,6 +1264,32 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             </div>
                             ))
                         )}
+                        {bodySections.length > 0 && (
+                        <div
+                            className="relative"
+                            style={{ height: "12px" }}
+                            onDragOver={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            if (dragOverId !== "__end__") setDragOverId("__end__")
+                            }}
+                            onDrop={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleBodyDrop(e)
+                            setDragOverId(null)
+                            setIsDragging(null)
+                            setDragOver(null)
+                            }}
+                        >
+                            {dragOverId === "__end__" && isDragging && (
+                            <div className="absolute inset-x-0 flex items-center pointer-events-none" style={{ top: "5px", zIndex: 20 }}>
+                                <div className="w-2 h-2 bg-orange-500 rounded-full shrink-0" />
+                                <div className="flex-1 h-0.5 bg-orange-500" />
+                            </div>
+                            )}
+                        </div>
+                        )}
                         </div>
                     )}
 
@@ -1207,31 +1311,81 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                                 </div>
                             ))
                             )}
+                            {bodySections.filter(s => !(currentLayoutKey === "product" && s.type === "featured")).length > 0 && (
+                            <div
+                                className="relative"
+                                style={{ height: "12px" }}
+                                onDragOver={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                if (dragOverId !== "__end__") setDragOverId("__end__")
+                                }}
+                                onDrop={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleBodyDrop(e)
+                                setDragOverId(null)
+                                setIsDragging(null)
+                                setDragOver(null)
+                                }}
+                            >
+                                {dragOverId === "__end__" && isDragging && (
+                                <div className="absolute inset-x-0 flex items-center pointer-events-none" style={{ top: "5px", zIndex: 20 }}>
+                                    <div className="w-2 h-2 bg-orange-500 rounded-full shrink-0" />
+                                    <div className="flex-1 h-0.5 bg-orange-500" />
+                                </div>
+                                )}
+                            </div>
+                            )}
                         </div>
                     )}
 
                     {currentLayoutKey === "home" && (
-                    <div
-                        onDragOver={e => { e.preventDefault(); handleBodyDragOver(e) }}
-                        onDrop={e => { handleBodyDrop(e); setDragOverId(null) }}
-                    >
-                        {layoutBodySections.length === 0 && (
-                        <div className="py-6 space-y-1 text-center">
-                            <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
-                            <p className={`text-[10px] ${textFaint} opacity-60`}>Click "+ Add section" to build this page</p>
+                        <div
+                            onDragOver={e => { e.preventDefault(); handleBodyDragOver(e) }}
+                            onDrop={e => { handleBodyDrop(e); setDragOverId(null) }}
+                        >
+                            {layoutBodySections.length === 0 && (
+                            <div className="py-6 space-y-1 text-center">
+                                <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
+                                <p className={`text-[10px] ${textFaint} opacity-60`}>Click "+ Add section" to build this page</p>
+                            </div>
+                            )}
+                        {layoutBodySections.map((s, i, arr) => {
+                            const globalIdx = sections.findIndex(x => x.id === s.id)
+                            return (
+                                <React.Fragment key={s.id}>
+                                <SectionRow s={s} idx={i} />
+                                {i < arr.length - 1 && <AddBetweenLine afterIndex={globalIdx} />}
+                                </React.Fragment>
+                            )
+                            })}
+                            {layoutBodySections.length > 0 && (
+                            <div
+                                className="relative"
+                                style={{ height: "12px" }}
+                                onDragOver={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                if (dragOverId !== "__end__") setDragOverId("__end__")
+                                }}
+                                onDrop={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleBodyDrop(e)
+                                setDragOverId(null)
+                                }}
+                            >
+                                {dragOverId === "__end__" && isDragging && (
+                                <div className="absolute inset-x-0 flex items-center pointer-events-none" style={{ top: "5px", zIndex: 20 }}>
+                                    <div className="w-2 h-2 bg-orange-500 rounded-full shrink-0" />
+                                    <div className="flex-1 h-0.5 bg-orange-500" />
+                                </div>
+                                )}
+                            </div>
+                            )}
                         </div>
                         )}
-                       {layoutBodySections.map((s, i, arr) => {
-                        const globalIdx = sections.findIndex(x => x.id === s.id)
-                        return (
-                            <React.Fragment key={s.id}>
-                            <SectionRow s={s} idx={i} />
-                            {i < arr.length - 1 && <AddBetweenLine afterIndex={globalIdx} />}
-                            </React.Fragment>
-                        )
-                        })}
-                    </div>
-                    )}
 
                     {currentLayoutKey.startsWith("page_") && (
                         <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
@@ -1260,8 +1414,34 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             }`}
                         />
                         )}
+                        {layoutBodySections.length > 0 && (
+                            <div
+                            className="relative"
+                            style={{ height: "12px" }}
+                            onDragOver={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                if (dragOverId !== "__end__") setDragOverId("__end__")
+                            }}
+                            onDrop={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleBodyDrop(e)
+                                setDragOverId(null)
+                                setIsDragging(null)
+                                setDragOver(null)
+                            }}
+                            >
+                            {dragOverId === "__end__" && isDragging && (
+                                <div className="absolute inset-x-0 flex items-center pointer-events-none" style={{ top: "5px", zIndex: 20 }}>
+                                <div className="w-2 h-2 bg-orange-500 rounded-full shrink-0" />
+                                <div className="flex-1 h-0.5 bg-orange-500" />
+                                </div>
+                            )}
+                            </div>
+                        )}
                         </div>
-                    )}
+                        )}
 
                     </div>
 

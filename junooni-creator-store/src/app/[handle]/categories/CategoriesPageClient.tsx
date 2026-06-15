@@ -237,7 +237,19 @@ export default function CategoriesPageClient({
           )
         })()}
 
-        {section.type === "divider" && <hr className="my-4 border-gray-200" />}
+        {section.type === "divider" && (
+          <div className="px-6" style={{
+            backgroundColor: section.background_color ?? undefined,
+            paddingTop: `${section.padding_top ?? 16}px`,
+            paddingBottom: `${section.padding_bottom ?? 16}px`,
+          }}>
+            <div style={{
+              height: `${(section as any).divider_thickness ?? 1}px`,
+              backgroundColor: (section as any).divider_color ?? "#e5e7eb",
+              borderRadius: `${(section as any).divider_thickness ?? 1}px`,
+            }} />
+          </div>
+        )}
 
         {section.type === "html" && section.html_content && (
           <iframe

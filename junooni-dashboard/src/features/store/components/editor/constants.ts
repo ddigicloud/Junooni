@@ -70,14 +70,12 @@ export const PAGE_LAYOUT_META: Record<string, {
   },
   collections: {
     label: "Collections", icon: "📦", path: "/collections",
-    defaultSections: [
-      { id: "def_cols_grid", type: "featured_collections", title: "Shop by Collection", collection_ids: [], columns: 3 },
-    ],
+    defaultSections: [],
   },
   collection: {
     label: "Collection page", icon: "🗂️", path: "/collections/[handle]",
     defaultSections: [
-      { id: "def_col_grid", type: "collection", title: "Products", limit: 24, columns: 3, show_sold_out: true },
+      // { id: "def_col_grid", type: "collection", title: "Products", limit: 24, columns: 3, show_sold_out: true },
     ],
     systemNote: "Applied to all individual collection pages",
   },

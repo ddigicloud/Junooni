@@ -246,6 +246,34 @@ export default function StoreEditorPage() {
               }).catch(e => console.warn("Auto-save seeded pages failed:", e))
             }
 
+            // Auto-seed a header section if none exists
+            const loadedSecs = loadedStore.sections?.sections ?? []
+            let finalSecs = loadedSecs
+            if (!loadedSecs.find((s: any) => s.type === "header")) {
+              const defaultNavItems = [
+                { id: "nav_home",     label: "Home",         url: "/" },
+                { id: "nav_products", label: "All Products",  url: "/products" },
+              ]
+              const newHeader = {
+                id: `s_header_${Date.now()}`,
+                type: "header" as SectionType,
+                logo_position: "left",
+                show_social_icons: false,
+                nav_items: defaultNavItems,
+              }
+              // Insert header after any existing announcements/tickers, before everything else
+              const firstNonHeaderIdx = loadedSecs.findIndex(
+                (s: any) => s.type !== "announcement" && s.type !== "ticker"
+              )
+              finalSecs = [...loadedSecs]
+              if (firstNonHeaderIdx === -1) {
+                finalSecs.push(newHeader)
+              } else {
+                finalSecs.splice(firstNonHeaderIdx, 0, newHeader)
+              }
+              loadedStore.sections = { ...loadedStore.sections, sections: finalSecs }
+            }
+
             setStore({
               ...loadedStore,
               instagram_url: loadedStore.instagram_url || vd.vendor?.instagram || "",
@@ -670,10 +698,26 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
     setDragOver(null)
     setSelectedId(null)  // clears grey highlight
   }
-  const handleBodyDrop     = (e: React.DragEvent) => {
-    e.preventDefault()
-    // actual drop handled inside LeftPanel via handleDrop(e, placeholderIndex)
-  }
+  const handleBodyDrop = (e: React.DragEvent) => {
+  e.preventDefault()
+  if (!isDragging) return
+  // Move dragged section to end (before footer)
+  const key = getLayoutKeyForPath(previewPagePath)
+  patchStore(p => {
+    const arr = [...getPageSections(p, key)]
+    const fromIdx = arr.findIndex(s => s.id === isDragging)
+    if (fromIdx === -1) return p
+    const [moved] = arr.splice(fromIdx, 1)
+    // Insert before footer if exists, else append
+    const footerIdx = arr.findIndex(s => s.type === "footer")
+    if (footerIdx !== -1) arr.splice(footerIdx, 0, moved)
+    else arr.push(moved)
+    return setPageSections(p, key, arr)
+  })
+  setIsDragging(null)
+  setDragOver(null)
+  setSelectedId(null)
+}
   const handleBodyDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = "move"
