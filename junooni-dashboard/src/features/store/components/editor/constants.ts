@@ -32,6 +32,7 @@ export const PAGE_ALLOWED_SECTIONS: Record<string, SectionType[]> = {
   ],
   cart: ["featured", "text", "html", "divider"],
   search: ["text", "html", "divider"],
+  checkout: ["text", "html", "divider"],
 }
 
 export const SECTION_CATEGORIES = [
@@ -101,6 +102,12 @@ export const PAGE_LAYOUT_META: Record<string, {
     isFixed: true,
     systemNote: "Search bar and results are always shown above your sections",
   },
+  checkout: {
+    label: "Checkout", icon: "💳", path: "/checkout",
+    defaultSections: [],
+    isFixed: true,
+    systemNote: "Checkout form, payment & order summary are always shown above your sections",
+  },
 }
 
 export const FONTS = [
@@ -137,4 +144,5 @@ export const BUILTIN_PAGES = [
   { label: "Collections",  url: "/collections" },
   { label: "Categories",   url: "/categories" },
   { label: "Search",       url: "/search" },
+  { label: "Checkout",     url: "/checkout" },
 ]

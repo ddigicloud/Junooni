@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import WishlistButton from "@modules/wishlists/components/wishlist-button"
 import { listProducts, getProductReviews } from "@lib/data/products"
 import { motion } from "framer-motion"
@@ -654,19 +655,21 @@ const handleFollowToggle = async () => {
               >
                 <div className="overflow-hidden transition-shadow bg-white rounded-lg shadow-md hover:shadow-xl">
                   <div className="overflow-hidden h-52">
-                    <img
+                    <Image
                       src={vendorItem.coverphoto}
                       alt={`${vendorItem.name} cover`}
-                      className="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
+                      fill
+                      className="object-cover transition-transform duration-500 hover:scale-105"
                     />
                   </div>
                   <div className="flex items-center p-5">
                     <div className="relative w-16 h-16 mr-4 overflow-hidden border-2 border-white rounded-full shadow">
                       <div className="relative w-full h-full">
-                        <img
+                        <Image
                           src={vendorItem.logo}
                           alt={vendorItem.name}
-                          className="absolute inset-0 object-cover object-center w-full h-full"
+                          fill
+                          className="object-cover object-center"
                         />
                       </div>
                     </div>
@@ -915,9 +918,11 @@ const handleFollowToggle = async () => {
         variants={fadeIn}
         className="relative w-full h-64 overflow-hidden bg-gray-300 md:h-80 lg:h-96"
       >
-        <img
+        <Image
           src={creator.coverImage}
-          className="object-cover w-full h-full"
+          alt={`${creator.name} cover`}
+          fill
+          className="object-cover"
         />
 
         {/* Dark gradient overlay - only shown when no cover image */}
@@ -939,10 +944,11 @@ const handleFollowToggle = async () => {
                 >
                   <div className="w-full h-full overflow-hidden border-4 border-white rounded-full shadow-lg">
                     <div className="relative w-full h-full">
-                      <img
+                      <Image
                         src={creator.profileImage || profileplaceholder.src}
                         alt={creator.name}
-                        className="absolute inset-0 object-cover object-center w-full h-full"
+                        fill
+                        className="object-cover object-center"
                       />
                     </div>
                   </div>
@@ -1077,7 +1083,7 @@ const handleFollowToggle = async () => {
                                   onClick={() => handleShare('twitter')}
                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 >
-                                  <img src={Twittericon.src} alt="Twitter" className="w-4 h-4 mr-2" />
+                                  <Image src={Twittericon} alt="Twitter" width={16} height={16} className="mr-2" />
                                   Share on Twitter
                                 </button>
                                 <button
@@ -1175,7 +1181,7 @@ const handleFollowToggle = async () => {
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 px-3 py-3 text-gray-700 transition-colors bg-white rounded-full hover:bg-gray-200"
                       >
-                        <img src={Twittericon.src} alt="Twitter" className="w-5 h-5 text-grey-400" />
+                        <Image src={Twittericon} alt="Twitter" width={20} height={20} />
                         {/* <span className="text-sm font-medium">
                           @{creator.socialMedia.twitter.replace(/^(https?:\/\/)?(www\.)?(twitter|x)\.com\//i, '').replace(/\/$/, '')}
                         </span> */}
@@ -2088,13 +2094,14 @@ const ColorOptions = ({ colors }: { colors: Array<{name: string, hex: string, ke
   const imageUrl = getVariantImage()
   
   return (
-    <img
-      src={imageUrl}
+    <Image
+      src={imageUrl || "/placeholder.png"}
       alt={productName}
-      className={`object-cover w-full h-full transition-all duration-300 ${
+      fill
+      className={`object-cover transition-all duration-300 ${
         hoveredColor ? 'brightness-110' : ''
       }`}
-      key={`${selectedColor}-${hoveredColor}`} // Force re-render when colors change
+      key={`${selectedColor}-${hoveredColor}`}
     />
   )
 }

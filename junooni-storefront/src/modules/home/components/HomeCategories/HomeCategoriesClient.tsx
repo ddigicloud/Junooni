@@ -11,6 +11,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 interface CategoryMetadata {
   featured_image?: string
@@ -50,10 +51,12 @@ function CategoryCard({ category }: { category: Category }) {
       <div className="overflow-hidden transition-all duration-300">
         <div className="relative bg-gray-100 aspect-square">
           {category.metadata?.featured_image && (
-            <img
+            <Image
               src={category.metadata.featured_image}
               alt={category.name}
-              className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+              fill
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              sizes="(max-width: 640px) 50vw, 25vw"
             />
           )}
           <div className="absolute inset-0 transition-all duration-300 bg-black bg-opacity-0 group-hover:bg-opacity-10 group-hover:scale-105" />

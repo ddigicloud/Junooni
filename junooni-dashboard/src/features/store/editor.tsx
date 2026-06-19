@@ -336,6 +336,7 @@ export default function StoreEditorPage() {
   const isSyncingRef = useRef(false)
   const syncToIframe = useCallback(() => {
     if (!iframeReady) return
+    console.log("[syncToIframe] posting STORE_UPDATE, checkout_settings:", store.checkout_settings)
     isSyncingRef.current = true
     iframeRef.current?.contentWindow?.postMessage({ type: "STORE_UPDATE", store, selectedId }, "*")
     setTimeout(() => { isSyncingRef.current = false }, 100)

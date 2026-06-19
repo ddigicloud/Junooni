@@ -1,67 +1,3 @@
-// "use client"
-
-// import { useEffect } from "react"
-// import Link from "next/link"
-// import { CheckCircle2, ArrowRight, Package } from "lucide-react"
-// import { useCart } from "@/context/CartContext"
-
-// interface Props {
-//   params: { handle: string; orderId: string }
-// }
-
-// export default function OrderConfirmationPage({ params }: Props) {
-//   const { handle, orderId } = params
-//   const { clearCart } = useCart()
-
-//   // Clear cart state when order confirmation page loads
-//   useEffect(() => {
-//     clearCart()
-//   }, [clearCart])
-
-//   return (
-//     <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50">
-//       <div className="w-full max-w-md text-center">
-//         <div className="flex items-center justify-center w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full">
-//           <CheckCircle2 className="w-10 h-10 text-green-600" />
-//         </div>
-
-//         <h1 className="mb-2 text-2xl font-bold text-gray-900">Order Placed! 🎉</h1>
-//         <p className="mb-3 text-sm text-gray-500">
-//           Thank you for your order. You will receive a confirmation email shortly.
-//         </p>
-
-//         {orderId && orderId !== "confirmed" && (
-//           <div className="inline-block px-3 py-2 mb-6 font-mono text-xs text-gray-400 bg-gray-100 rounded-lg">
-//             Order ID: {orderId}
-//           </div>
-//         )}
-
-//         <div className="p-5 mb-8 space-y-3 text-left bg-white border border-gray-100 shadow-sm rounded-2xl">
-//           {[
-//             { icon: "📦", text: "Your order is being processed" },
-//             { icon: "✉️", text: "Confirmation email sent to your inbox" },
-//             { icon: "🚚", text: "Tracking info will be sent once shipped" },
-//             { icon: "💬", text: "Questions? Contact the creator" },
-//           ].map(item => (
-//             <div key={item.text} className="flex items-center gap-3">
-//               <span className="text-lg">{item.icon}</span>
-//               <span className="text-sm text-gray-700">{item.text}</span>
-//             </div>
-//           ))}
-//         </div>
-
-//         <Link
-//           href={`/${handle}`}
-//           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-semibold text-sm"
-//           style={{ background: "linear-gradient(135deg, #e65100 0%, #ac1900 100%)" }}
-//         >
-//           Continue Shopping <ArrowRight className="w-4 h-4" />
-//         </Link>
-//       </div>
-//     </div>
-//   )
-// }
-
 // src/app/[handle]/order/[orderId]/page.tsx
 // Order confirmation + tracking page for creator store
 
@@ -241,7 +177,7 @@ export default async function OrderPage({ params }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Order ID</p>
-              <p className="font-mono text-sm font-semibold text-gray-900">#{order.display_id ?? orderId.slice(-8)}</p>
+              <p className="font-mono text-sm font-semibold text-gray-900">#{order.custom_display_id ?? orderId.slice(-8)}</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Date</p>

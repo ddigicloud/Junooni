@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${poppins.variable} ${playfair.variable} ${dmSans.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" className={`${inter.variable} ${poppins.variable} ${playfair.variable} ${dmSans.variable} ${spaceGrotesk.variable} ${nunito.variable} ${raleway.variable} ${montserrat.variable}`}>
       <body>{children}</body>
     </html>
   )

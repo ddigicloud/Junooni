@@ -40,6 +40,40 @@ export const retriveVendors = async () => {
 // Hits /vendors/${vendor_id}/products — server-side filtered, vendor-scoped.
 // region_id passed so calculated_price is computed for the correct region.
 // Lean fields — no size_chart, no tags, no variants.prices.
+// export const retriveVendorsProducts = async (
+//   vendor_id: string,
+//   region_id?: string
+// ) => {
+//   console.log(`[retriveVendorsProducts] START vendor_id=${vendor_id} region_id=${region_id}`)
+//   const start = Date.now()
+
+//   const headers = { ...(await getAuthHeaders()) }
+//   const next = { ...(await getCacheOptions(`vendor-products-${vendor_id}`)) }
+
+//   const result = await sdk.client
+//     .fetch<any>(`/vendors/${vendor_id}/products`, {
+//       method: "GET",
+//       query: {
+//         fields: "*variants.calculated_price,+metadata,*images,*categories,*collection,*vendor",
+//         ...(region_id && { region_id }),
+//       },
+//       headers,
+//       next,
+//     })
+//     .then((response) => {
+//       console.log(`[retriveVendorsProducts] DONE in ${Date.now() - start}ms`)
+//       console.log(`[retriveVendorsProducts] response keys=${response ? Object.keys(response).join(",") : "null"}`)
+//       console.log(`[retriveVendorsProducts] preview=${JSON.stringify(response)?.slice(0, 300)}`)
+//       return response
+//     })
+//     .catch((err) => {
+//       console.error(`[retriveVendorsProducts] ERROR in ${Date.now() - start}ms:`, JSON.stringify(err))
+//       return null
+//     })
+
+//   return result
+// }
+
 export const retriveVendorsProducts = async (
   vendor_id: string,
   region_id?: string
@@ -48,7 +82,6 @@ export const retriveVendorsProducts = async (
   const start = Date.now()
 
   const headers = { ...(await getAuthHeaders()) }
-  const next = { ...(await getCacheOptions(`vendor-products-${vendor_id}`)) }
 
   const result = await sdk.client
     .fetch<any>(`/vendors/${vendor_id}/products`, {
@@ -58,12 +91,10 @@ export const retriveVendorsProducts = async (
         ...(region_id && { region_id }),
       },
       headers,
-      next,
+      cache: "no-store", // ← replaces the old `next: { ...getCacheOptions(...) }` line
     })
     .then((response) => {
       console.log(`[retriveVendorsProducts] DONE in ${Date.now() - start}ms`)
-      console.log(`[retriveVendorsProducts] response keys=${response ? Object.keys(response).join(",") : "null"}`)
-      console.log(`[retriveVendorsProducts] preview=${JSON.stringify(response)?.slice(0, 300)}`)
       return response
     })
     .catch((err) => {

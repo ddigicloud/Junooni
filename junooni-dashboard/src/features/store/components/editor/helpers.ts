@@ -16,6 +16,7 @@ export function getLayoutKeyForPath(path: string): string {
   if (path === "/collections") return "collections"
   if (path === "/cart")        return "cart"
   if (path === "/search")      return "search"
+  if (path === "/checkout")    return "checkout"
   if (path.startsWith("/products/"))    return "product"
   if (path.startsWith("/collections/")) return "collection"
   if (path.startsWith("/categories/"))  return "category"

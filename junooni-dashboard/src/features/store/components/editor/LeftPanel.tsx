@@ -138,6 +138,132 @@ interface LeftPanelProps {
 
 // ─── LeftPanel ────────────────────────────────────────────────────────────────
 
+function CheckoutSettingsPanel({
+  settings, onChange, isDark, textFaint, textPrimary, inputCls,
+}: {
+  settings: any
+  onChange: (patch: any) => void
+  isDark: boolean
+  textFaint: string
+  textPrimary: string
+  inputCls: string
+}) {
+  const logoPosition  = settings.logo_position ?? "center"
+  const logoSize      = settings.logo_size ?? "medium"
+  const showBackLink  = settings.show_back_link !== false
+  const showTrustNote = settings.show_trust_note !== false
+  const isLogoLeft    = logoPosition === "left"
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className={`text-[10px] ${textFaint} block mb-1.5`}>Logo position</label>
+        <div className="grid grid-cols-2 gap-1.5">
+          {(["left", "center"] as const).map(pos => (
+            <button key={pos} onClick={() => onChange({ logo_position: pos })}
+              className={`py-2 rounded-lg border text-[11px] capitalize transition-all ${
+                logoPosition === pos
+                  ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                  : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+              }`}>
+              {pos}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className={`text-[10px] ${textFaint} block mb-1.5`}>Logo size</label>
+        <div className="grid grid-cols-3 gap-1.5">
+          {(["small", "medium", "large"] as const).map(size => (
+            <button key={size} onClick={() => onChange({ logo_size: size })}
+              className={`py-2 rounded-lg border text-[11px] capitalize transition-all ${
+                logoSize === size
+                  ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                  : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+              }`}>
+              {size}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <label className={`flex items-start gap-2.5 p-2.5 rounded-xl border transition-all ${
+        isLogoLeft
+          ? `cursor-not-allowed opacity-50 ${isDark ? "border-gray-700" : "border-gray-200"}`
+          : `cursor-pointer ${showBackLink ? "border-orange-500/40 bg-orange-500/10" : `${isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-200"}`}`
+      }`}>
+        <div
+          className="relative mt-0.5 shrink-0"
+          onClick={() => { if (!isLogoLeft) onChange({ show_back_link: !showBackLink }) }}
+        >
+          <div className={`w-8 h-4 rounded-full transition-colors ${
+            isLogoLeft ? "bg-gray-400" : showBackLink ? "bg-orange-500" : "bg-gray-600"
+          }`} />
+          <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${
+            !isLogoLeft && showBackLink ? "translate-x-4" : ""
+          }`} />
+        </div>
+        <div>
+          <p className={`text-xs font-medium ${textPrimary}`}>Show "Back to store" link</p>
+          <p className={`text-[10px] mt-0.5 ${textFaint}`}>
+            {isLogoLeft ? "Not needed — the logo already links back when positioned left" : "Top-left link out of checkout"}
+          </p>
+        </div>
+      </label>
+
+      <div>
+        <label className={`text-[10px] ${textFaint} block mb-1`}>Banner message</label>
+        <p className={`text-[10px] ${textFaint} opacity-70 mb-1.5`}>Shown above the step indicator. Leave blank to hide.</p>
+        <EditorInput
+          value={settings.banner_text ?? ""}
+          onChange={(v: string) => onChange({ banner_text: v })}
+          placeholder="You're almost there! Free shipping on all orders 🎉"
+          isDark={isDark}
+        />
+      </div>
+
+      <div>
+        <label className={`text-[10px] ${textFaint} block mb-1`}>Accent color</label>
+        <p className={`text-[10px] ${textFaint} opacity-70 mb-1.5`}>Used for the step indicator and pay button. Defaults to your store's primary color.</p>
+        <div className="flex items-center gap-2">
+          <input type="color"
+            value={settings.accent_color || "#e65100"}
+            onChange={e => onChange({ accent_color: e.target.value })}
+            className="w-8 h-8 rounded-lg border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+          <input type="text"
+            value={settings.accent_color ?? ""}
+            onChange={e => onChange({ accent_color: e.target.value })}
+            placeholder="Store primary color"
+            className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`} />
+        </div>
+      </div>
+
+      <label className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+        showTrustNote ? "border-orange-500/40 bg-orange-500/10" : `${isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-200"}`
+      }`}>
+        <div className="relative mt-0.5 shrink-0" onClick={() => onChange({ show_trust_note: !showTrustNote })}>
+          <div className={`w-8 h-4 rounded-full transition-colors ${showTrustNote ? "bg-orange-500" : "bg-gray-600"}`} />
+          <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${showTrustNote ? "translate-x-4" : ""}`} />
+        </div>
+        <div className="flex-1">
+          <p className={`text-xs font-medium ${textPrimary}`}>Show trust note</p>
+          <p className={`text-[10px] mt-0.5 ${textFaint}`}>Small reassurance line below the order summary</p>
+        </div>
+      </label>
+
+      {showTrustNote && (
+        <EditorInput
+          value={settings.trust_note ?? ""}
+          onChange={(v: string) => onChange({ trust_note: v })}
+          placeholder="🔒 Secure checkout · SSL encrypted"
+          isDark={isDark}
+        />
+      )}
+    </div>
+  )
+}
+
 export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
   const {
     activeTab, setActiveTab, isDark, panelBg, panelBorder,  updateSection, store_product_detail,
@@ -207,6 +333,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
     // Handle virtual section IDs
     const virtualIds = [
       "__product_detail__",
+      "__checkout_settings__",
       "__category_grid__",
       "__category_products__",
       "__collections_grid__",
@@ -226,9 +353,21 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
     }
   }, [triggerDrillId])
 
+  // NEW — close drill panel on page switch
+    const prevLayoutKeyRef = React.useRef(currentLayoutKey)
+    useEffect(() => {
+    if (prevLayoutKeyRef.current !== currentLayoutKey) {
+        setDrillSection(null)
+        setDrillVirtual(null)
+        setSelectedId(null)
+        prevLayoutKeyRef.current = currentLayoutKey
+    }
+    }, [currentLayoutKey])
+
   // ── paste everything from LeftPanelContent here ───────────────────────────
    if (drillSection || drillVirtual) {
     const sectionLabel =
+      drillVirtual === "__checkout_settings__"   ? "Checkout Settings"   :
       drillVirtual === "__product_detail__"      ? "Product Detail"      :
       drillVirtual === "__category_grid__"       ? "Category Grid"       :
       drillVirtual === "__category_products__"   ? "Category Products"   :
@@ -287,7 +426,16 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
 
         {/* ── Drill-in body ── */}
         <div className="flex-1 px-3 py-3 overflow-y-auto overscroll-contain custom-scrollbar">
-          {drillVirtual === "__product_detail__" ? (
+          {drillVirtual === "__checkout_settings__" ? (
+            <CheckoutSettingsPanel
+                settings={store.checkout_settings ?? {}}
+                onChange={patch => patchStore(p => ({ ...p, checkout_settings: { ...(p.checkout_settings ?? {}), ...patch } }))}
+                isDark={isDark}
+                textFaint={textFaint}
+                textPrimary={textPrimary}
+                inputCls={inputCls}
+            />
+            ) : drillVirtual === "__product_detail__" ? (
             <ProductDetailSettings
                 settings={store_product_detail ?? {}}
                 onChange={patch => patchStore(p => ({ ...p, product_detail: { ...(p.product_detail ?? {}), ...patch } }))}
@@ -664,6 +812,8 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
             return (
                 <div className="p-2 pb-4 space-y-1">
 
+                {currentLayoutKey !== "checkout" && (
+                <>
                 {/* ── HEADER ZONE ── */}
                 <ZoneLabel label="Header" color="#6366f1" />
                 <div className={`rounded-xl ${isDark ? "border-gray-800" : "border-gray-200"}`}>
@@ -943,6 +1093,8 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     </button>
                 </div>
                 </div>
+                 </>
+                )}
 
                 {/* ── BODY ZONE ── */}
                 <ZoneLabel label={currentLayoutKey === "home" ? "Body" : currentLayoutMeta.label} color="#e65100" />
@@ -970,6 +1122,33 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         </div>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
                             isDark ? "bg-pink-900/50 text-pink-400" : "bg-pink-100 text-pink-500"
+                        }`}>Edit</span>
+                        </div>
+                    </div>
+                    )}
+
+                    {currentLayoutKey === "checkout" && (
+                    <div className="px-1.5 pt-1.5">
+                        <div
+                        onClick={() => {
+                            setDrillVirtual("__checkout_settings__")
+                            setSelectedId("__checkout_settings__")
+                        }}
+                        className={`flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer border transition-all ${
+                            selectedId === "__checkout_settings__"
+                            ? "bg-emerald-500/15 border-emerald-500/40"
+                            : `border-transparent ${hoverBg}`
+                        }`}
+                        >
+                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-emerald-500/20">
+                            <Layout className="w-3 h-3 text-emerald-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-medium truncate ${textPrimary}`}>Checkout Settings</p>
+                            <p className={`text-[10px] ${textFaint}`}>Logo · Banner · Accent color · Trust note</p>
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                            isDark ? "bg-emerald-900/50 text-emerald-400" : "bg-emerald-100 text-emerald-500"
                         }`}>Edit</span>
                         </div>
                     </div>
@@ -1293,9 +1472,9 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         </div>
                     )}
 
-                    {!["categories", "collections", "category", "home"].includes(currentLayoutKey) &&
+                      {!["categories", "collections", "category", "home"].includes(currentLayoutKey) &&
                         !currentLayoutKey.startsWith("page_") &&
-                        ["products", "cart", "search", "product"].includes(currentLayoutKey) && (
+                        ["products", "cart", "search", "product", "checkout"].includes(currentLayoutKey) && (
                         <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
                             {bodySections.filter(s => !(currentLayoutKey === "product" && s.type === "featured")).length === 0 ? (
                             <div className="py-3 text-center">
@@ -1450,6 +1629,8 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     </div>
                 </div>
 
+                {currentLayoutKey !== "checkout" && (
+                <>
                 {/* ── FOOTER ZONE ── */}
                 <ZoneLabel label="Footer" color="#0ea5e9" />
                 <div className={`rounded-xl ${isDark ? "border-gray-800" : "border-gray-200"}`}>
@@ -1550,7 +1731,8 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     })()}
                     </div>
                 </div>
-
+                </>
+                )}
                 </div>
             )
             })()}

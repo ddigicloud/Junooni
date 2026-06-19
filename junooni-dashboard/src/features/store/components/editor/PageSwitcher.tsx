@@ -86,6 +86,7 @@ export function PageSwitcherDropdown({ currentPath, onSelect, pages, products = 
     { label: "Categories",   path: "/categories", icon: "🏷️" },
     { label: "Collections",  path: "/collections",icon: "📦" },
     { label: "Search",       path: "/search",     icon: "🔍" },
+    { label: "Checkout",     path: "/checkout",   icon: "💳" },
   ]
 
   const currentLabel =
@@ -94,6 +95,7 @@ export function PageSwitcherDropdown({ currentPath, onSelect, pages, products = 
     currentPath === "/categories"   ? "Categories"     :
     currentPath === "/collections"  ? "Collections"    :
     currentPath === "/search"       ? "Search"         :
+    currentPath === "/checkout"     ? "Checkout"        :
     currentPath.startsWith("/products/")    ? "Product page"    :
     currentPath.startsWith("/collections/") ? "Collection page" :
     currentPath.startsWith("/categories/")  ? "Category page"   :

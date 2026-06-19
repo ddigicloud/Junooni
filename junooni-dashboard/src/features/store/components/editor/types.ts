@@ -150,6 +150,7 @@ export interface VendorStore {
   hero_image?: string
   tagline?: string
   announcement_text?: string
+  checkout_settings?: any
   store_logo?: string
   store_favicon?: string
   sections?: {

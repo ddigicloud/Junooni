@@ -57,7 +57,8 @@ export default function CartDrawer({
 
   const handleCheckout = () => {
     closeCart()
-    router.push(`/${handle}/checkout?step=address`)
+    router.push(`/checkout?step=address`)
+    //router.push(`/${handle}/checkout?step=address`)
   }
 
   const subtotal = cart?.subtotal ?? 0
