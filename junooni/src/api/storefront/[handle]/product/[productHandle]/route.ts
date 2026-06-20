@@ -44,6 +44,10 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
       fields: [
         "id", "title", "handle", "thumbnail", "status", "description",
         "variants.id", "variants.title",
+        "variants.manage_inventory",
+        "variants.allow_backorder",
+        "variants.inventory_items.inventory.location_levels.stocked_quantity",
+        "variants.inventory_items.inventory.location_levels.reserved_quantity",
         "variants.prices.id", "variants.prices.amount", "variants.prices.currency_code",
         "images.id", "images.url",
         "options.id", "options.title",

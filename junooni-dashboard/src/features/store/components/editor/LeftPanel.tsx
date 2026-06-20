@@ -205,9 +205,9 @@ function CheckoutSettingsPanel({
           }`} />
         </div>
         <div>
-          <p className={`text-xs font-medium ${textPrimary}`}>Show "Back to store" link</p>
+          <p className={`text-xs font-medium ${textPrimary}`}>Show "Back to store" text</p>
           <p className={`text-[10px] mt-0.5 ${textFaint}`}>
-            {isLogoLeft ? "Not needed — the logo already links back when positioned left" : "Top-left link out of checkout"}
+            {isLogoLeft ? "Not needed — the logo already links back when positioned left" : "The back arrow always stays — this only toggles the label next to it"}
           </p>
         </div>
       </label>

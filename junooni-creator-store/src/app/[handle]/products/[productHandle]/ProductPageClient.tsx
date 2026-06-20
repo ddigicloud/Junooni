@@ -367,11 +367,13 @@ export default function ProductPageClient({
     return product.variants.find((v: any) => {
       const opts: any[] = v.options ?? []
       if (opts.length === 0) {
-        const title = v.title ?? ""
-        return (
-          (!selectedColor || title.toLowerCase().includes(selectedColor.toLowerCase())) &&
-          (!selectedSize  || title.toLowerCase().includes(selectedSize.toLowerCase()))
-        )
+        // title fallback: split on " / " and match exact segments
+        const segments = (v.title ?? "").toLowerCase().split(/\s*\/\s*/)
+        const colorMatch = !selectedColor ||
+          segments.some(s => s === selectedColor.toLowerCase())
+        const sizeMatch = !selectedSize ||
+          segments.some(s => s === selectedSize.toLowerCase())
+        return colorMatch && sizeMatch
       }
       const hasColor = !selectedColor || opts.some((o: any) =>
         (o.value ?? o.option_value ?? "").toLowerCase() === selectedColor.toLowerCase()
@@ -383,6 +385,27 @@ export default function ProductPageClient({
     }) ?? product.variants[0]
   }
   const selectedVariant = findVariant()
+
+  // console.log('[debug] selectedVariant:', JSON.stringify(selectedVariant, null, 2))
+  // console.log('[debug] inventory_quantity:', selectedVariant?.inventory_quantity)
+  // console.log('[debug] manage_inventory:', selectedVariant?.manage_inventory)
+
+  // ── Inventory check ────────────────────────────────────────────────────────
+  const inventoryQuantity: number = (() => {
+    if (!selectedVariant) return 0
+    if (!selectedVariant.manage_inventory || selectedVariant.allow_backorder) return 999
+    if (selectedVariant.inventory_quantity != null) return selectedVariant.inventory_quantity
+    // compute from inventory_items if present
+    const items: any[] = selectedVariant.inventory_items ?? []
+    if (items.length === 0) return 999 // no inventory tracking data = assume available
+    return items.reduce((sum: number, item: any) => {
+      const levels: any[] = item?.inventory?.location_levels ?? []
+      return sum + levels.reduce((s: number, l: any) => {
+        return s + Math.max(0, (l.stocked_quantity ?? 0) - (l.reserved_quantity ?? 0))
+      }, 0)
+    }, 0)
+  })()
+  const isOutOfStock = inventoryQuantity <= 0
 
   // ── Price ──────────────────────────────────────────────────────────────────
   const getPrice = (): string => {
@@ -660,26 +683,41 @@ useEffect(() => {
               </p>
             )}
             <button
-              onClick={handleAddToCart}
-              disabled={isAdding}
-              className={`flex items-center justify-center gap-2.5 py-3.5 font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-70 ${
+              onClick={isOutOfStock ? undefined : handleAddToCart}
+              disabled={isAdding || isOutOfStock}
+              className={`flex items-center justify-center gap-2.5 py-3.5 font-semibold text-sm transition-all ${
                 fullWidth ? "w-full" : "px-8"
               } ${
                 style === "filled"   ? "rounded-xl" :
                 style === "outline"  ? "rounded-full border-2 bg-transparent" :
                                        "rounded-full"
+              } ${
+                isOutOfStock
+                  ? "cursor-not-allowed opacity-60"
+                  : "hover:opacity-90 disabled:opacity-70"
               }`}
               style={{
-                background: added
-                  ? "#16a34a"
-                  : style === "outline"
-                    ? "transparent"
-                    : `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)`,
-                borderColor: style === "outline" ? brandPrimary : undefined,
-                color: style === "outline" && !added ? brandPrimary : "#ffffff",
+                background: isOutOfStock
+                  ? (isDark ? "#374151" : "#e5e7eb")
+                  : added
+                    ? "#16a34a"
+                    : style === "outline"
+                      ? "transparent"
+                      : `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)`,
+                borderColor: style === "outline" && !isOutOfStock ? brandPrimary : undefined,
+                color: isOutOfStock
+                  ? (isDark ? "#9ca3af" : "#6b7280")
+                  : style === "outline" && !added
+                    ? brandPrimary
+                    : "#ffffff",
               }}
             >
-              {isAdding ? (
+              {isOutOfStock ? (
+                <>
+                  <Ban className="w-4 h-4" />
+                  Out of Stock
+                </>
+              ) : isAdding ? (
                 <><Loader2 className="w-4 h-4 animate-spin" />Adding...</>
               ) : added ? (
                 <><Check className="w-4 h-4" />Added to cart!</>
@@ -687,6 +725,12 @@ useEffect(() => {
                 <><ShoppingCart className="w-4 h-4" />{pd.atc_label ?? "Add to Cart"}</>
               )}
             </button>
+
+            {isOutOfStock && (
+              <p className={`mt-2 text-xs text-center ${isDark ? "text-white/40" : "text-gray-400"}`}>
+                This variant is currently unavailable
+              </p>
+            )}
           </div>
         )
       }

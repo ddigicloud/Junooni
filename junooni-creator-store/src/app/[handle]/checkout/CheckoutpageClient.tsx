@@ -111,16 +111,16 @@ export default function CheckoutPageClient({
   return (
     <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
       <header className={`${isDark ? "bg-black/80 border-white/10" : "bg-white/90 border-gray-100"} backdrop-blur-md border-b sticky top-0 z-30`}>
-       <div className="grid items-center grid-cols-3 h-16 max-w-6xl px-4 mx-auto sm:px-6">
+       <div className="grid items-center h-16 max-w-6xl grid-cols-3 px-4 mx-auto sm:px-6">
           {/* Left cell — when logo is left-positioned, pair it with an icon-only
               back arrow (no text — the logo itself is the brand, the arrow is the
               action, same pattern Stripe/Shopify checkout use). When logo is
               centered, this corner is free for the text back-link instead. */}
-          <div className="justify-self-start min-w-0">
+          <div className="min-w-0 justify-self-start">
             {checkoutSettings.logo_position === "left" ? (
               <div className="flex items-center gap-3">
                 <Link
-                  href={`/${handle}`}
+                  href={`/`}
                   aria-label="Back to store"
                   className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors shrink-0 ${
                     isDark ? "text-white/60 hover:text-white hover:bg-white/10" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
@@ -130,14 +130,20 @@ export default function CheckoutPageClient({
                 </Link>
                 {logoMark}
               </div>
-            ) : showBackLink ? (
+            ) : (
+              // Arrow is always present — it's the only way back from checkout.
+              // The toggle only controls whether the text label next to it shows.
               <Link
-                href={`/${handle}`}
-                className={`text-sm whitespace-nowrap ${isDark ? "text-white/60 hover:text-white" : "text-gray-500 hover:text-gray-900"} transition-colors`}
+                href={`/`}
+                aria-label="Back to store"
+                className={`flex items-center gap-1.5 text-sm whitespace-nowrap transition-colors ${
+                  isDark ? "text-white/60 hover:text-white" : "text-gray-500 hover:text-gray-900"
+                }`}
               >
-                ← Back to store
+                <ArrowLeft className="w-4 h-4 shrink-0" />
+                {showBackLink && <span>Back to store</span>}
               </Link>
-            ) : null}
+            )}
           </div>
 
           {/* Center cell */}

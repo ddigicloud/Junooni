@@ -126,6 +126,17 @@ export const VendorStoreSchema = z.object({
     secure_badge_text: z.string().optional(),
   }).nullable().optional(),
   custom_css: z.string().nullable().optional(),
+
+  // Checkout page settings
+  checkout_settings: z.object({
+    logo_position: z.enum(["left", "center"]).optional(),
+    logo_size: z.enum(["small", "medium", "large"]).optional(),
+    show_back_link: z.boolean().optional(),
+    banner_text: z.string().nullable().optional(),
+    accent_color: z.string().nullable().optional(),
+    show_trust_note: z.boolean().optional(),
+    trust_note: z.string().nullable().optional(),
+  }).passthrough().nullable().optional(),
 })
 
 type StoreBody = z.infer<typeof VendorStoreSchema>
@@ -137,7 +148,7 @@ const SETTINGS_KEYS = [
   "product_detail", "custom_css", "og_image", "hero_image", "tagline",
   "announcement_text", "sticky_header", "sticky_announcement",
   "instagram_url", "youtube_url", "twitter_url", "facebook_url",
-  "tiktok_url", "discord_url",
+  "tiktok_url", "discord_url", "checkout_settings",
 ] as const
 
 // ─── Helper ───────────────────────────────────────────────────────────────────

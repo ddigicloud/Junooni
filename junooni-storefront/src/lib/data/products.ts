@@ -95,14 +95,25 @@ const STORE_LIST_FIELDS = [
   "title", 
   "handle",
   "thumbnail",
+  "created_at",
   "+metadata.color_hex_values",
-  "+images.id",
-  "+images.url", 
-  "+images.rank",
-  "*variants.calculated_price",
+  "+tags.id",
+  "+tags.value",
+  "vendor.id",
+  "vendor.name",
+  "vendor.handle",
+  "vendor.verified",
+  "categories.id",
+  "categories.name",
+  "categories.handle",
+  "collection.id",
+  "collection.title",
+  "collection.handle",
   "+variants.id",
-  "*vendor",
-  "*categories",
+  "+variants.thumbnail",
+  "+variants.options.value",
+  "+variants.options.option.title",
+  // "*variants.calculated_price",
 ].join(",")
 
 export const listProductsForStore = async ({
@@ -118,7 +129,7 @@ export const listProductsForStore = async ({
   if (!region) return { products: [], count: 0 }
 
   const headers = { ...(await getAuthHeaders()) }
-  const next = { ...(await getCacheOptions("products")) }
+  const next = { ...(await getCacheOptions("products", 60)) }
 
   const { products, count } = await sdk.client.fetch<{
     products: HttpTypes.StoreProduct[]
