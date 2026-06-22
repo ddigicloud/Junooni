@@ -198,6 +198,7 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
               cardShowHover={cardShowHover}
               cardShowSoldOut={cardShowSoldOut}
               bare={bare}
+              isEditorMode={isEditorMode}
             />
           </div>
         )
@@ -211,7 +212,7 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
 
 // ── Section renderer ──────────────────────────────────────────────────────────
 
-function MinimalSection({ section, vendor, store, products, categories, collections, brandPrimary, sectionBg, sectionText, cardAspectRatio, cardAlignment, cardShowPrice, cardShowHover, cardShowSoldOut, bare }: {
+function MinimalSection({ section, vendor, store, products, categories, collections, brandPrimary, sectionBg, sectionText, cardAspectRatio, cardAlignment, cardShowPrice, cardShowHover, cardShowSoldOut, bare, isEditorMode }: {
   section: StoreSection
   vendor: PublicVendor
   store: VendorStore | null
@@ -227,6 +228,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
   cardShowHover: boolean
   cardShowSoldOut: boolean
   bare: boolean
+  isEditorMode: boolean
 }) {
   const handle = vendor.handle
   if ((section as any).hidden) return null
@@ -666,10 +668,107 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     }
 
     case "image": {
-      if (!(section as any).image) return null
+      const img = (section as any).image
+
+      if (!img) {
+        if (!isEditorMode) return null
+        return (
+          <section style={{
+            backgroundColor: sectionBg ?? "transparent",
+            paddingTop:    `${(section as any).padding_top    ?? 0}px`,
+            paddingBottom: `${(section as any).padding_bottom ?? 0}px`,
+          }}>
+            <div className="flex items-center justify-center h-48 border-2 border-dashed border-gray-300 mx-6 rounded-xl">
+              <div className="text-center">
+                <span className="text-4xl">🖼️</span>
+                <p className="text-sm text-gray-400 mt-2">Upload an image in the left panel</p>
+              </div>
+            </div>
+          </section>
+        )
+      }
+
+      const heightMode     = (section as any).image_height_mode ?? "auto"
+      const widthMode      = (section as any).image_width_mode  ?? "full"
+      const fit            = (section as any).image_fit         ?? "cover"
+      const overlayPct     = (section as any).overlay_opacity   ?? 0
+      const radius         = (section as any).border_radius     ?? 0
+      const titlePlacement = (section as any).title_placement   ?? "over"
+      const titlePos       = (section as any).title_position    ?? "center"
+
+      const justifyMap: Record<string, string> = {
+        left: "justify-start", center: "justify-center", right: "justify-end",
+      }
+
+      const imgStyle: React.CSSProperties = {
+        objectFit:    fit as any,
+        borderRadius: radius,
+        width:        "100%",
+        display:      "block",
+        ...(heightMode === "fixed"  ? { height: `${(section as any).image_height_px ?? 400}px` } : {}),
+        ...(heightMode === "screen" ? { height: `${(section as any).image_height_vh ?? 70}vh`  } : {}),
+        ...(heightMode === "auto"   ? { height: "auto", maxHeight: "600px"                      } : {}),
+      }
+
+      const wrapStyle: React.CSSProperties = {
+        backgroundColor: sectionBg ?? "transparent",
+        paddingTop:    `${(section as any).padding_top    ?? 0}px`,
+        paddingBottom: `${(section as any).padding_bottom ?? 0}px`,
+      }
+
+      const innerStyle: React.CSSProperties = {
+        ...(widthMode === "contained" ? { maxWidth: "1280px", margin: "0 auto", padding: "0 24px" } : {}),
+        ...(widthMode === "custom"    ? { maxWidth: `${(section as any).image_width_pct ?? 80}%`, margin: "0 auto" } : {}),
+      }
+
+      const titleEl = section.title ? (
+        <div className={`flex w-full ${justifyMap[titlePos]}`}>
+          <h2
+            className="text-2xl font-bold px-2 py-1"
+            style={{ color: (section as any).title_color ?? (sectionText ?? "#111827") }}
+          >
+            {section.title}
+          </h2>
+        </div>
+      ) : null
+
+      const imgContent = (
+        <div style={{ position: "relative", borderRadius: radius, overflow: "hidden" }}>
+          <img
+            src={img}
+            alt={(section as any).image_alt ?? section.title ?? "Section image"}
+            style={imgStyle}
+          />
+          {overlayPct > 0 && (
+            <div style={{
+              position: "absolute", inset: 0,
+              background: (section as any).overlay_color ?? "#000000",
+              opacity:    overlayPct / 100,
+            }} />
+          )}
+          {section.title && titlePlacement === "over" && (
+            <div className={`absolute inset-0 flex items-center px-6 ${justifyMap[titlePos]}`}>
+              <h2
+                className="text-2xl font-bold drop-shadow-lg"
+                style={{ color: (section as any).title_color ?? "#ffffff" }}
+              >
+                {section.title}
+              </h2>
+            </div>
+          )}
+        </div>
+      )
+
       return (
-        <section className="w-full" style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <img src={(section as any).image} alt={section.title ?? "Section image"} className="w-full object-cover max-h-[600px]" />
+        <section style={wrapStyle}>
+          <div style={innerStyle}>
+            {titlePlacement === "above" && titleEl}
+            {(section as any).image_link
+              ? <a href={(section as any).image_link}>{imgContent}</a>
+              : imgContent
+            }
+            {titlePlacement === "below" && titleEl}
+          </div>
         </section>
       )
     }

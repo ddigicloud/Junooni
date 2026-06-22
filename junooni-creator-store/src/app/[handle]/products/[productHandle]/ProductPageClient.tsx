@@ -212,7 +212,7 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
             Because the products are made to order, we do not accept general returns or sizing-related returns.
           </p>
           <a
-            href={`/${vendor.handle}/p/returns-refunds`}
+            href={`/p/returns-refunds`}
             className="inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-2"
             style={{ color: brandPrimary }}
           >
@@ -284,6 +284,16 @@ export default function ProductPageClient({
     "--brand-primary":   brandPrimary,
     "--brand-secondary": brandSecondary,
   } as React.CSSProperties
+
+  const fontClass =
+  store?.font === "poppins"       ? "font-poppins" :
+  store?.font === "playfair"      ? "font-playfair" :
+  store?.font === "dm-sans"       ? "font-dm-sans" :
+  store?.font === "space-grotesk" ? "font-space-grotesk" :
+  store?.font === "nunito"        ? "font-nunito" :
+  store?.font === "raleway"       ? "font-raleway" :
+  store?.font === "montserrat"    ? "font-montserrat" :
+  "font-inter"
 
   const bgColor = isDark ? "bg-black text-white" : "bg-white text-gray-900"
 
@@ -745,7 +755,7 @@ useEffect(() => {
         return (
           <p key="meta"
             className={`text-xs text-center ${isDark ? "text-white/30" : "text-gray-400"}`}>
-            {(pd.secure_badge_text ?? "Secure checkout via Junooni · Powered by Razorpay")
+            {(pd.secure_badge_text ?? "Secure checkout via Junooni")
               .replace(/&nbsp;/g, " ").trim()}
           </p>
         )
@@ -819,7 +829,7 @@ useEffect(() => {
                         .slice(0, section.limit ?? 4)
                   ).map((p: any) => (
                     <Link key={p.id}
-                      href={`/${vendor.handle}/products/${p.handle}`}
+                      href={`/products/${p.handle}`}
                       className="group">
                       <div className={`aspect-square relative rounded-xl overflow-hidden mb-3 ${
                         isDark ? "bg-white/5" : "bg-gray-50"
@@ -952,12 +962,98 @@ useEffect(() => {
         )}
 
         {/* Image */}
-        {section.type === "image" && section.image && (
-          <div className="w-full" style={{ backgroundColor: sectionBg }}>
-            <img src={section.image} alt={section.title ?? "Image"}
-              className="w-full object-cover max-h-[600px]" />
-          </div>
-        )}
+        {section.type === "image" && section.image && (() => {
+          const heightMode  = (section as any).image_height_mode ?? "auto"
+          const widthMode   = (section as any).image_width_mode  ?? "full"
+          const fit         = (section as any).image_fit         ?? "cover"
+          const overlayPct  = (section as any).overlay_opacity   ?? 0
+          const radius      = (section as any).border_radius     ?? 0
+          const titlePlacement = (section as any).title_placement ?? "over"
+          const titlePos    = (section as any).title_position     ?? "center"
+
+          const alignMap: Record<string, string> = {
+            left: "text-left items-start", 
+            center: "text-center items-center", 
+            right: "text-right items-end"
+          }
+          const justifyMap: Record<string, string> = {
+            left: "justify-start", 
+            center: "justify-center", 
+            right: "justify-end"
+          }
+
+          const imgStyle: React.CSSProperties = {
+            objectFit: fit as any,
+            borderRadius: radius,
+            ...(heightMode === "fixed"  ? { height: `${(section as any).image_height_px ?? 400}px` } : {}),
+            ...(heightMode === "screen" ? { height: `${(section as any).image_height_vh ?? 70}vh`  } : {}),
+            ...(heightMode === "auto"   ? { height: "auto", maxHeight: "600px" } : {}),
+            width: "100%",
+            display: "block",
+          }
+
+          const wrapStyle: React.CSSProperties = {
+            backgroundColor: sectionBg,
+            paddingTop:    `${(section as any).padding_top    ?? 0}px`,
+            paddingBottom: `${(section as any).padding_bottom ?? 0}px`,
+          }
+
+          const innerStyle: React.CSSProperties = {
+            ...(widthMode === "contained" ? { maxWidth: "1280px", margin: "0 auto", padding: "0 24px" } : {}),
+            ...(widthMode === "custom"    ? { maxWidth: `${(section as any).image_width_pct ?? 80}%`, margin: "0 auto" } : {}),
+          }
+
+          const titleEl = section.title ? (
+            <div className={`flex w-full ${justifyMap[titlePos]}`}>
+              <h2
+                className="text-2xl font-bold px-2 py-1"
+                style={{ color: (section as any).title_color ?? (isDark ? "#ffffff" : "#111827") }}
+              >
+                {section.title}
+              </h2>
+            </div>
+          ) : null
+
+          const imgContent = (
+            <div style={{ position: "relative", borderRadius: radius, overflow: "hidden" }}>
+              <img
+                src={section.image}
+                alt={(section as any).image_alt ?? section.title ?? ""}
+                style={imgStyle}
+              />
+              {overlayPct > 0 && (
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: (section as any).overlay_color ?? "#000000",
+                  opacity: overlayPct / 100,
+                }} />
+              )}
+              {section.title && titlePlacement === "over" && (
+                <div className={`absolute inset-0 flex items-center px-6 ${justifyMap[titlePos]}`}>
+                  <h2
+                    className="text-2xl font-bold drop-shadow-lg"
+                    style={{ color: (section as any).title_color ?? "#ffffff" }}
+                  >
+                    {section.title}
+                  </h2>
+                </div>
+              )}
+            </div>
+          )
+
+          return (
+            <div style={wrapStyle}>
+              <div style={innerStyle}>
+                {titlePlacement === "above" && titleEl}
+                {(section as any).image_link
+                  ? <a href={(section as any).image_link}>{imgContent}</a>
+                  : imgContent
+                }
+                {titlePlacement === "below" && titleEl}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Video */}
         {section.type === "video" && (() => {
@@ -1020,7 +1116,23 @@ useEffect(() => {
         })()}
 
         {/* Divider */}
-        {section.type === "divider" && <hr className="my-6 border-gray-100" />}
+        {section.type === "divider" && (
+          <div
+            style={{
+              paddingTop:    `${(section as any).padding_top    ?? 16}px`,
+              paddingBottom: `${(section as any).padding_bottom ?? 16}px`,
+            }}
+          >
+            <hr
+              style={{
+                borderColor:    (section as any).divider_color     ?? "#e5e7eb",
+                borderTopWidth: `${(section as any).divider_thickness ?? 1}px`,
+                borderStyle:    "solid",
+                margin:         0,
+              }}
+            />
+          </div>
+        )}
 
         {/* Custom HTML */}
         {section.type === "html" && section.html_content && (
@@ -1047,7 +1159,7 @@ useEffect(() => {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={brandStyles} className={`min-h-screen ${bgColor}`}>
+    <div style={brandStyles} className={`min-h-screen ${bgColor} ${fontClass}`}>
 
       {/* Header — live store so nav/colors update instantly */}
       <StoreHeader
@@ -1111,7 +1223,7 @@ useEffect(() => {
                   .slice(0, 4)
                   .map((p: any) => (
                     <Link key={p.id}
-                      href={`/${vendor.handle}/products/${p.handle}`}
+                      href={`/products/${p.handle}`}
                       className="group">
                       <div className={`aspect-square relative rounded-xl overflow-hidden mb-3 ${
                         isDark ? "bg-white/5" : "bg-gray-50"

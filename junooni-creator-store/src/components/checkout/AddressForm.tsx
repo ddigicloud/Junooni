@@ -37,7 +37,7 @@ export default function AddressForm({
   const boundSetAddresses = async (state: unknown, formData: FormData) => {
     const err = await setAddresses(handle, state, formData)
     if (!err) {
-      window.location.href = `/${handle}/checkout?step=delivery`
+      window.location.href = `/checkout?step=delivery`
     }
     return err
   }

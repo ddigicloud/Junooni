@@ -292,8 +292,14 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
 
     const [drillSection, setDrillSection] = useState<StoreSection | null>(null)
     const [drillVirtual, setDrillVirtual] = useState<string | null>(null)
+    // Replace the existing dragOverId state + ref with this:
+    const [dragOverId, setDragOverIdState] = useState<string | null>(null)
     const dragOverIdRef = React.useRef<string | null>(null)
-    const [dragOverId, setDragOverId] = useState<string | null>(null)
+    const setDragOverId = (id: string | null) => {
+    dragOverIdRef.current = id
+    setDragOverIdState(id)
+    }
+    
     const pendingInsertRef = React.useRef<number | null>(null)
     const [placeholderIndex, setPlaceholderIndex] = useState<number | null>(null)
     // const [dragPos, setDragPos] = useState({ x: 0, y: 0 })
@@ -352,6 +358,19 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
       setDrillVirtual(null)
     }
   }, [triggerDrillId])
+
+    // ── Global dragend cleanup ────────────────────────────────────────────────
+    // useEffect(() => {
+    // const cleanup = () => {
+    //     requestAnimationFrame(() => {
+    //     setIsDragging(null)
+    //     setDragOver(null)
+    //     setDragOverId(null)
+    //     })
+    // }
+    // window.addEventListener("dragend", cleanup)
+    // return () => window.removeEventListener("dragend", cleanup)
+    // }, [setIsDragging, setDragOver])
 
   // NEW — close drill panel on page switch
     const prevLayoutKeyRef = React.useRef(currentLayoutKey)
@@ -625,16 +644,30 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                 <div
                     draggable
                     data-drag-id={s.id}
-                    onDragStart={e => {
+                   onDragStart={e => {
                     e.dataTransfer.effectAllowed = "move"
-                    // Invisible ghost
                     const ghost = document.createElement("div")
                     ghost.style.cssText = "position:fixed;top:-999px;left:-999px;opacity:0;width:1px;height:1px;"
                     document.body.appendChild(ghost)
                     e.dataTransfer.setDragImage(ghost, 0, 0)
+                    // Store ref to ghost so we can clean it up in onDragEnd
+                    ;(e.currentTarget as any)._dragGhost = ghost
                     requestAnimationFrame(() => {
-                        document.body.removeChild(ghost)
                         handleDragStart(s.id)
+                        // DO NOT remove ghost here
+                    })
+                    }}
+                    onDragEnd={e => {
+                    // Remove ghost now that drag is fully done
+                    const ghost = (e.currentTarget as any)._dragGhost
+                    if (ghost && document.body.contains(ghost)) {
+                        document.body.removeChild(ghost)
+                    }
+                    ;(e.currentTarget as any)._dragGhost = null
+                    requestAnimationFrame(() => {
+                        setIsDragging(null)
+                        setDragOver(null)
+                        setDragOverId(null)
                     })
                     }}
                     onDrop={e => {
@@ -810,7 +843,16 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
             }
 
             return (
-                <div className="p-2 pb-4 space-y-1">
+                <div
+                    className="p-2 pb-4 space-y-1"
+                    onDragEnd={() => {
+                    requestAnimationFrame(() => {
+                        setIsDragging(null)
+                        setDragOver(null)
+                        setDragOverId(null)
+                    })
+                    }}
+                >
 
                 {currentLayoutKey !== "checkout" && (
                 <>
@@ -858,7 +900,13 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                                 e.dataTransfer.effectAllowed = "move"
                                 handleDragStart(s.id)
                                 }}
-                                onDragEnd={() => { setIsDragging(null); setDragOver(null) }}
+                                onDragEnd={() => {
+                                requestAnimationFrame(() => {
+                                    setIsDragging(null)
+                                    setDragOver(null)
+                                    setDragOverId(null)
+                                })
+                                }}
                                 onDragOver={e => {
                                 e.preventDefault()
                                 e.dataTransfer.dropEffect = "move"
@@ -1474,7 +1522,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
 
                       {!["categories", "collections", "category", "home"].includes(currentLayoutKey) &&
                         !currentLayoutKey.startsWith("page_") &&
-                        ["products", "cart", "search", "product", "checkout"].includes(currentLayoutKey) && (
+                        ["products", "cart", "search", "product"].includes(currentLayoutKey) && (
                         <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
                             {bodySections.filter(s => !(currentLayoutKey === "product" && s.type === "featured")).length === 0 ? (
                             <div className="py-3 text-center">
@@ -1624,9 +1672,11 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
 
                     </div>
 
+                    {currentLayoutKey !== "checkout" && (
                     <div className="px-1.5 pb-1.5">
                         <AddBetweenButton afterIndex={-1} zone="body-end" />
                     </div>
+                    )}
                 </div>
 
                 {currentLayoutKey !== "checkout" && (

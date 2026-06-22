@@ -34,8 +34,8 @@ const DEFAULT_PAGE_SECTIONS: Record<string, StoreSection[]> = {
   products:    [],
   collections: [],
   collection:  [],
-  product:     [{ id: "def_prod_upsell",  type: "featured", title: "You might also like", limit: 4, columns: 4 }],
-  cart:        [{ id: "def_cart_upsell",  type: "featured", title: "Complete your look",  limit: 4, columns: 4 }],
+  product:     [{ id: "def_prod_upsell", type: "featured", title: "You might also like", limit: 4, columns: 4 }],
+  cart:        [{ id: "def_cart_upsell", type: "featured", title: "Complete your look",  limit: 4, columns: 4 }],
   search:      [],
 }
 
@@ -100,6 +100,7 @@ export default function PageSections({
               brandPrimary={brandPrimary}
               isDark={isDark}
               handle={vendor.handle}
+              isEditorMode={isEditorMode}
             />
           </div>
         )
@@ -108,12 +109,14 @@ export default function PageSections({
   )
 }
 
-function PageSection({ section, vendor, products, collections, brandPrimary, isDark, handle }: {
+function PageSection({
+  section, vendor, products, collections, brandPrimary, isDark, handle, isEditorMode,
+}: {
   section: StoreSection; vendor: any; products: any[]; collections: any[]
-  brandPrimary: string; isDark: boolean; handle: string
+  brandPrimary: string; isDark: boolean; handle: string; isEditorMode: boolean
 }) {
-  const bg  = section.background_color
-  const fg  = section.text_color
+  const bg           = section.background_color
+  const fg           = section.text_color
   const textColor    = fg ?? (isDark ? "#e5e7eb" : "#374151")
   const headingColor = fg ?? (isDark ? "#ffffff" : "#111827")
 
@@ -126,17 +129,21 @@ function PageSection({ section, vendor, products, collections, brandPrimary, isD
       if (!section.text) return null
       return (
         <section className="px-4 py-12 sm:px-6" style={{ backgroundColor: bg ?? "transparent" }}>
-          <div className="max-w-3xl mx-auto prose prose-lg" style={{ color: textColor }}
-            dangerouslySetInnerHTML={{ __html: section.text
-              .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-              .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-              .replace(/^# (.+)$/gm, "<h1>$1</h1>")
-              .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-              .replace(/\*(.+?)\*/g, "<em>$1</em>")
-              .replace(/^- (.+)$/gm, "<li>$1</li>")
-              .replace(/(<li>[\s\S]*?<\/li>?)+/g, (b: string) => `<ul>${b}</ul>`)
-              .replace(/^(?!<)(.+)$/gm, (l: string) => l.trim() ? `<p>${l}</p>` : "")
-            }} />
+          <div
+            className="max-w-3xl mx-auto prose prose-lg"
+            style={{ color: textColor }}
+            dangerouslySetInnerHTML={{
+              __html: section.text
+                .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+                .replace(/^## (.+)$/gm,  "<h2>$1</h2>")
+                .replace(/^# (.+)$/gm,   "<h1>$1</h1>")
+                .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+                .replace(/\*(.+?)\*/g,     "<em>$1</em>")
+                .replace(/^- (.+)$/gm, "<li>$1</li>")
+                .replace(/(<li>[\s\S]*?<\/li>?)+/g, (b: string) => `<ul>${b}</ul>`)
+                .replace(/^(?!<)(.+)$/gm, (l: string) => l.trim() ? `<p>${l}</p>` : ""),
+            }}
+          />
         </section>
       )
     }
@@ -149,7 +156,10 @@ function PageSection({ section, vendor, products, collections, brandPrimary, isD
         : products.slice(0, section.limit ?? 4)
       if (!items.length) return null
       const cols = section.columns ?? 4
-      const grid = cols === 2 ? "grid-cols-2" : cols === 3 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-4"
+      const grid =
+        cols === 2 ? "grid-cols-2" :
+        cols === 3 ? "grid-cols-2 sm:grid-cols-3" :
+                     "grid-cols-2 sm:grid-cols-4"
       return (
         <section className="px-4 py-12 sm:px-6" style={{ backgroundColor: bg ?? "transparent" }}>
           <div className="mx-auto max-w-7xl">
@@ -161,10 +171,20 @@ function PageSection({ section, vendor, products, collections, brandPrimary, isD
             )}
             <div className={`grid ${grid} gap-4`}>
               {items.map((p: any) => (
-                <Link key={p.id} href={`/${handle}/products/${p.handle}`}
-                  className={`group rounded-xl overflow-hidden border hover:shadow-md transition-all ${isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"}`}>
+                <Link
+                  key={p.id}
+                  href={`/${handle}/products/${p.handle}`}
+                  className={`group rounded-xl overflow-hidden border hover:shadow-md transition-all ${
+                    isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
+                  }`}
+                >
                   <div className="aspect-square relative bg-gray-100 overflow-hidden">
-                    {p.thumbnail && <Image src={p.thumbnail} alt={p.title} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />}
+                    {p.thumbnail && (
+                      <Image
+                        src={p.thumbnail} alt={p.title} fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    )}
                   </div>
                   <div className="p-3">
                     <p className={`text-sm font-semibold truncate ${isDark ? "text-white" : "text-gray-900"}`}>{p.title}</p>
@@ -191,17 +211,38 @@ function PageSection({ section, vendor, products, collections, brandPrimary, isD
             <div className={`flex flex-col gap-10 items-center ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
               <div className="w-full md:w-1/2 shrink-0">
                 {section.image
-                  ? <div className="relative overflow-hidden rounded-2xl shadow-xl aspect-[4/3]"><Image src={section.image} alt={section.title ?? ""} fill className="object-cover" /></div>
-                  : <div className="flex items-center justify-center rounded-2xl bg-gray-100 aspect-[4/3]"><span className="text-5xl opacity-20">🖼️</span></div>}
+                  ? (
+                    <div className="relative overflow-hidden rounded-2xl shadow-xl aspect-[4/3]">
+                      <Image src={section.image} alt={section.title ?? ""} fill className="object-cover" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center rounded-2xl bg-gray-100 aspect-[4/3]">
+                      <span className="text-5xl opacity-20">🖼️</span>
+                    </div>
+                  )
+                }
               </div>
               <div className="flex-1">
-                {section.title && <h2 className="mb-4 text-3xl font-bold" style={{ color: headingColor }} dangerouslySetInnerHTML={{ __html: section.title }} />}
-                {section.text && <div className="text-base leading-relaxed mb-6 prose prose-sm max-w-none"
-                  style={{ color: fg ? `${fg}cc` : (isDark ? "#d1d5db" : "#4b5563") }} dangerouslySetInnerHTML={{ __html: section.text }} />}
+                {section.title && (
+                  <h2
+                    className="mb-4 text-3xl font-bold"
+                    style={{ color: headingColor }}
+                    dangerouslySetInnerHTML={{ __html: section.title }}
+                  />
+                )}
+                {section.text && (
+                  <div
+                    className="text-base leading-relaxed mb-6 prose prose-sm max-w-none"
+                    style={{ color: fg ? `${fg}cc` : (isDark ? "#d1d5db" : "#4b5563") }}
+                    dangerouslySetInnerHTML={{ __html: section.text }}
+                  />
+                )}
                 {section.cta_label && (
-                  <Link href={section.cta_url ?? "#"}
+                  <Link
+                    href={section.cta_url ?? "#"}
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold text-sm hover:opacity-90 transition-all"
-                    style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
+                    style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
+                  >
                     {section.cta_label}
                   </Link>
                 )}
@@ -214,15 +255,25 @@ function PageSection({ section, vendor, products, collections, brandPrimary, isD
 
     // ── VIDEO ─────────────────────────────────────────────────────────────────
     case "video": {
-      const ytMatch = (section.video_url ?? "").match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/)
+      const ytMatch = (section.video_url ?? "").match(
+        /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/
+      )
       if (!ytMatch) return null
       return (
         <section className="px-4 py-12 sm:px-6" style={{ backgroundColor: bg ?? "transparent" }}>
           <div className="max-w-4xl mx-auto">
-            {section.title && <h2 className="mb-6 text-2xl font-bold text-center" style={{ color: headingColor }}>{section.title}</h2>}
+            {section.title && (
+              <h2 className="mb-6 text-2xl font-bold text-center" style={{ color: headingColor }}>
+                {section.title}
+              </h2>
+            )}
             <div className="relative w-full overflow-hidden shadow-xl rounded-2xl" style={{ paddingBottom: "56.25%" }}>
-              <iframe src={`https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`}
-                className="absolute inset-0 w-full h-full" allowFullScreen style={{ border: 0 }} />
+              <iframe
+                src={`https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`}
+                className="absolute inset-0 w-full h-full"
+                allowFullScreen
+                style={{ border: 0 }}
+              />
             </div>
           </div>
         </section>
@@ -232,14 +283,19 @@ function PageSection({ section, vendor, products, collections, brandPrimary, isD
     // ── TICKER ────────────────────────────────────────────────────────────────
     case "ticker": {
       const items: string[] = section.ticker_items ?? ["Free shipping on orders above ₹999"]
-      const sep = section.ticker_separator ?? "✦"
+      const sep      = section.ticker_separator ?? "✦"
       const duration = Math.round(200 - (section.ticker_speed ?? 40) * 1.5)
-      const line = items.join(`  ${sep}  `)
+      const line     = items.join(`  ${sep}  `)
       return (
         <section className="overflow-hidden py-2.5" style={{ backgroundColor: bg ?? "#111827" }}>
-          <style>{`@keyframes pgTicker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.pg-ticker{display:inline-flex;white-space:nowrap;animation:pgTicker ${duration}s linear infinite}`}</style>
+          <style>{`
+            @keyframes pgTicker { 0% { transform: translateX(0) } 100% { transform: translateX(-50%) } }
+            .pg-ticker { display: inline-flex; white-space: nowrap; animation: pgTicker ${duration}s linear infinite }
+          `}</style>
           <div className="pg-ticker text-sm font-medium tracking-wide" style={{ color: fg ?? "#ffffff" }}>
-            {[`${line}  ${sep}  `, `${line}  ${sep}  `].map((t, i) => <span key={i} className="mr-8">{t}</span>)}
+            {[`${line}  ${sep}  `, `${line}  ${sep}  `].map((t, i) => (
+              <span key={i} className="mr-8">{t}</span>
+            ))}
           </div>
         </section>
       )
@@ -247,7 +303,19 @@ function PageSection({ section, vendor, products, collections, brandPrimary, isD
 
     // ── DIVIDER ───────────────────────────────────────────────────────────────
     case "divider":
-      return <hr className={`mx-6 ${isDark ? "border-white/10" : "border-gray-100"}`} />
+      return (
+        <div style={{
+          paddingTop:    `${section.padding_top    ?? 16}px`,
+          paddingBottom: `${section.padding_bottom ?? 16}px`,
+        }}>
+          <hr style={{
+            borderColor:    section.divider_color     ?? (isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb"),
+            borderTopWidth: `${section.divider_thickness ?? 1}px`,
+            borderStyle:    "solid",
+            margin:         0,
+          }} />
+        </div>
+      )
 
     // ── LINKS ─────────────────────────────────────────────────────────────────
     case "links": {
@@ -256,12 +324,21 @@ function PageSection({ section, vendor, products, collections, brandPrimary, isD
       return (
         <section className="px-4 py-12 sm:px-6" style={{ backgroundColor: bg ?? "transparent" }}>
           <div className="max-w-lg mx-auto">
-            {section.title && <h2 className="mb-6 text-xl font-bold text-center" style={{ color: headingColor }}>{section.title}</h2>}
+            {section.title && (
+              <h2 className="mb-6 text-xl font-bold text-center" style={{ color: headingColor }}>
+                {section.title}
+              </h2>
+            )}
             <div className="space-y-3">
               {links.map((link: any, i: number) => (
-                <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+                <a
+                  key={i}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center justify-center w-full px-6 py-3.5 rounded-full font-semibold text-sm border-2 transition-all hover:scale-[1.02]"
-                  style={{ borderColor: fg ?? brandPrimary, color: fg ?? brandPrimary }}>
+                  style={{ borderColor: fg ?? brandPrimary, color: fg ?? brandPrimary }}
+                >
                   {link.label}
                 </a>
               ))}
@@ -279,19 +356,32 @@ function PageSection({ section, vendor, products, collections, brandPrimary, isD
         : collections
       if (!toShow.length) return null
       const cols = section.columns ?? 3
-      const grid = cols === 2 ? "grid-cols-1 sm:grid-cols-2" : cols === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"
+      const grid =
+        cols === 2 ? "grid-cols-1 sm:grid-cols-2" :
+        cols === 4 ? "grid-cols-2 sm:grid-cols-4" :
+                     "grid-cols-1 sm:grid-cols-3"
       return (
         <section className="px-4 py-12 sm:px-6" style={{ backgroundColor: bg ?? "transparent" }}>
           <div className="mx-auto max-w-7xl">
-            {section.title && <h2 className="text-xl font-bold mb-6" style={{ color: headingColor }}>{section.title}</h2>}
+            {section.title && (
+              <h2 className="text-xl font-bold mb-6" style={{ color: headingColor }}>{section.title}</h2>
+            )}
             <div className={`grid ${grid} gap-5`}>
               {toShow.map((col: any) => {
-                const ids2: string[] = col.product_ids ?? []
+                const ids2: string[]  = col.product_ids ?? []
                 const thumb = col.thumbnail ?? products.find((p: any) => ids2.includes(p.id))?.thumbnail
                 return (
-                  <Link key={col.id} href={`/${handle}/collections/${col.handle}`}
-                    className="group relative overflow-hidden rounded-2xl bg-gray-100 aspect-[4/3] block">
-                    {thumb && <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />}
+                  <Link
+                    key={col.id}
+                    href={`/${handle}/collections/${col.handle}`}
+                    className="group relative overflow-hidden rounded-2xl bg-gray-100 aspect-[4/3] block"
+                  >
+                    {thumb && (
+                      <Image
+                        src={thumb} alt={col.title} fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
                       <p className="text-base font-bold text-white">{col.title}</p>
@@ -311,21 +401,132 @@ function PageSection({ section, vendor, products, collections, brandPrimary, isD
       const srcDoc = `<!DOCTYPE html><html><head><style>*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif}</style></head><body>${section.html_content}</body></html>`
       return (
         <section className="w-full" style={{ backgroundColor: bg ?? "transparent" }}>
-          <iframe srcDoc={srcDoc} className="w-full border-0 min-h-[200px]"
+          <iframe
+            srcDoc={srcDoc}
+            className="w-full border-0 min-h-[200px]"
             sandbox="allow-scripts allow-same-origin"
-            onLoad={e => { try { const d = (e.currentTarget as any).contentDocument; if (d?.body) (e.currentTarget as any).style.height = d.body.scrollHeight + 32 + "px" } catch {} }} />
+            onLoad={e => {
+              try {
+                const d = (e.currentTarget as any).contentDocument
+                if (d?.body) (e.currentTarget as any).style.height = d.body.scrollHeight + 32 + "px"
+              } catch {}
+            }}
+          />
         </section>
       )
     }
 
     // ── IMAGE ─────────────────────────────────────────────────────────────────
-    case "image":
-      if (!section.image) return null
+    case "image": {
+      // Show placeholder in editor when no image uploaded yet
+      if (!section.image) {
+        if (!isEditorMode) return null
+        return (
+          <section style={{
+            backgroundColor: bg ?? "transparent",
+            paddingTop:    `${section.padding_top    ?? 0}px`,
+            paddingBottom: `${section.padding_bottom ?? 0}px`,
+          }}>
+            <div className="flex items-center justify-center h-48 border-2 border-dashed border-gray-300 mx-6 rounded-xl">
+              <div className="text-center">
+                <span className="text-4xl">🖼️</span>
+                <p className="text-sm text-gray-400 mt-2">Upload an image in the left panel</p>
+              </div>
+            </div>
+          </section>
+        )
+      }
+
+      const heightMode     = section.image_height_mode ?? "auto"
+      const widthMode      = section.image_width_mode  ?? "full"
+      const fit            = section.image_fit         ?? "cover"
+      const overlayPct     = section.overlay_opacity   ?? 0
+      const radius         = section.border_radius     ?? 0
+      const titlePlacement = section.title_placement   ?? "over"
+      const titlePos       = section.title_position    ?? "center"
+
+      const justifyMap: Record<string, string> = {
+        left:   "justify-start",
+        center: "justify-center",
+        right:  "justify-end",
+      }
+
+      const imgStyle: React.CSSProperties = {
+        objectFit:    fit as any,
+        borderRadius: radius,
+        width:        "100%",
+        display:      "block",
+        ...(heightMode === "fixed"  ? { height: `${section.image_height_px ?? 400}px` } : {}),
+        ...(heightMode === "screen" ? { height: `${section.image_height_vh ?? 70}vh`  } : {}),
+        ...(heightMode === "auto"   ? { height: "auto", maxHeight: "600px"            } : {}),
+      }
+
+      const wrapStyle: React.CSSProperties = {
+        backgroundColor: bg ?? "transparent",
+        paddingTop:    `${section.padding_top    ?? 0}px`,
+        paddingBottom: `${section.padding_bottom ?? 0}px`,
+      }
+
+      const innerStyle: React.CSSProperties = {
+        ...(widthMode === "contained"
+          ? { maxWidth: "1280px", margin: "0 auto", padding: "0 24px" }
+          : {}),
+        ...(widthMode === "custom"
+          ? { maxWidth: `${section.image_width_pct ?? 80}%`, margin: "0 auto" }
+          : {}),
+      }
+
+      const titleEl = section.title ? (
+        <div className={`flex w-full ${justifyMap[titlePos]}`}>
+          <h2
+            className="text-2xl font-bold px-2 py-1"
+            style={{ color: section.title_color ?? (isDark ? "#ffffff" : "#111827") }}
+          >
+            {section.title}
+          </h2>
+        </div>
+      ) : null
+
+      const imgContent = (
+        <div style={{ position: "relative", borderRadius: radius, overflow: "hidden" }}>
+          <img
+            src={section.image}
+            alt={section.image_alt ?? section.title ?? ""}
+            style={imgStyle}
+          />
+          {overlayPct > 0 && (
+            <div style={{
+              position: "absolute", inset: 0,
+              background: section.overlay_color ?? "#000000",
+              opacity:    overlayPct / 100,
+            }} />
+          )}
+          {section.title && titlePlacement === "over" && (
+            <div className={`absolute inset-0 flex items-center px-6 ${justifyMap[titlePos]}`}>
+              <h2
+                className="text-2xl font-bold drop-shadow-lg"
+                style={{ color: section.title_color ?? "#ffffff" }}
+              >
+                {section.title}
+              </h2>
+            </div>
+          )}
+        </div>
+      )
+
       return (
-        <section className="w-full" style={{ backgroundColor: bg ?? "transparent" }}>
-          <img src={section.image} alt={section.title ?? ""} className="w-full object-cover max-h-[500px]" />
+        <section style={wrapStyle}>
+          <div style={innerStyle}>
+            {titlePlacement === "above" && titleEl}
+            {section.image_link
+              ? <a href={section.image_link}>{imgContent}</a>
+              : imgContent
+            }
+            {titlePlacement === "below" && titleEl}
+          </div>
         </section>
       )
+    }
 
     default: return null
   }

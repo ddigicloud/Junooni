@@ -1410,9 +1410,9 @@ const StepCreatorProfile = ({ vendorData, updateVendorData, handleFileUpload, is
             </div>
             <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Brand</span>
           </div>
-          <Field label="Brand Name" required hint="What customers will see" error={!vendorData.vendor.name ? "Required" : ""}>
+          <Field label="Store Name" required hint="What customers will see" error={!vendorData.vendor.name ? "Required" : ""}>
             <input type="text" value={vendorData.vendor.name || ''} onChange={(e) => updateVendorData('name', e.target.value)}
-              className={inputClass} placeholder="e.g. Priya's Art Studio" />
+              className={inputClass} placeholder="Enter your creator, channel, or store name" />
           </Field>
           <div className="flex gap-4">
             <div className="flex-shrink-0">

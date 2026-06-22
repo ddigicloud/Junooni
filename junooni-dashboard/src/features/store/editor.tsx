@@ -70,6 +70,33 @@ export default function StoreEditorPage() {
   const [activeTab,        setActiveTab]        = useState<EditorTab>("layout")
   const [editingPage,      setEditingPage]      = useState<StorePage | null>(null)
   const [isDragging,       setIsDragging]       = useState<string | null>(null)
+ // Add right after isDragging state declaration
+  useEffect(() => {
+    console.log("[isDragging changed]", isDragging)
+  }, [isDragging])
+
+  // Add the event listeners with logs
+  useEffect(() => {
+    const onDragEnd = (e: DragEvent) => {
+      console.log("[window dragend fired]", e.target)
+      setIsDragging(null)
+      setDragOver(null)
+    }
+    const onPointerUp = (e: PointerEvent) => {
+      console.log("[window pointerup fired]", isDragging)
+    }
+    const onMouseUp = (e: MouseEvent) => {
+      console.log("[window mouseup fired]", isDragging)
+    }
+    window.addEventListener("dragend", onDragEnd)
+    window.addEventListener("pointerup", onPointerUp)
+    window.addEventListener("mouseup", onMouseUp)
+    return () => {
+      window.removeEventListener("dragend", onDragEnd)
+      window.removeEventListener("pointerup", onPointerUp)
+      window.removeEventListener("mouseup", onMouseUp)
+    }
+  }, [isDragging])
   const [dragOver,         setDragOver]         = useState<number | null>(null)
   const [isUploadingLogo,  setIsUploadingLogo]  = useState(false)
   const [isUploadingFav,   setIsUploadingFav]   = useState(false)
@@ -326,9 +353,11 @@ export default function StoreEditorPage() {
 
   // ── Track unsaved changes ─────────────────────────────────────────────────
   const isFirstRender = useRef(true)
+  const skipDirtyEffectRef = useRef(false)
   useEffect(() => {
     if (isLoading) return
     if (isFirstRender.current) { isFirstRender.current = false; return }
+    if (skipDirtyEffectRef.current) { skipDirtyEffectRef.current = false; return }
     setHasUnsavedChanges(true)
   }, [store, isLoading])
 
@@ -407,6 +436,7 @@ export default function StoreEditorPage() {
       })
       if (!res.ok) throw new Error(`${res.status}`)
       const data = await res.json()
+      skipDirtyEffectRef.current = true
       setStore(p => ({ ...p, ...data.store }))
       setHasStore(true)
       setHasUnsavedChanges(false)
@@ -1149,7 +1179,7 @@ const previewUrl = (() => {
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
               isLive
                 ? "bg-green-500/15 border-green-500/40 text-green-400 hover:bg-green-500/25"
-                : "bg-gray-700/50 border-gray-600 text-gray-400 hover:bg-gray-700"
+                : "bg-gray-700 border-gray-600 text-gray-100 hover:bg-gray-700"
             }`}>
             {isTogglingStatus
               ? <Loader2 className="w-3 h-3 animate-spin" />

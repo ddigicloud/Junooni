@@ -61,6 +61,16 @@ export default function CheckoutPageClient({
     "--brand-secondary": brandSecondary,
   } as React.CSSProperties
 
+  const fontClass =
+  store?.font === "poppins"       ? "font-poppins" :
+  store?.font === "playfair"      ? "font-playfair" :
+  store?.font === "dm-sans"       ? "font-dm-sans" :
+  store?.font === "space-grotesk" ? "font-space-grotesk" :
+  store?.font === "nunito"        ? "font-nunito" :
+  store?.font === "raleway"       ? "font-raleway" :
+  store?.font === "montserrat"    ? "font-montserrat" :
+  "font-inter"
+
   const checkoutSections: any[] = (store?.sections?.page_layouts?.checkout?.sections ?? [])
     .filter((s: any) => !s.hidden)
 
@@ -109,7 +119,7 @@ export default function CheckoutPageClient({
   )
 
   return (
-    <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-gray-950" : "bg-gray-50"}`}>
+    <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-gray-950" : "bg-gray-50"} ${fontClass}`}>
       <header className={`${isDark ? "bg-black/80 border-white/10" : "bg-white/90 border-gray-100"} backdrop-blur-md border-b sticky top-0 z-30`}>
        <div className="grid items-center h-16 max-w-6xl grid-cols-3 px-4 mx-auto sm:px-6">
           {/* Left cell — when logo is left-positioned, pair it with an icon-only
@@ -233,7 +243,7 @@ export default function CheckoutPageClient({
             <div className="mb-4 space-y-4">
               {cart.items?.map((item: any) => (
                 <div key={item.id} className="flex items-center gap-3">
-                  <div className="relative overflow-hidden bg-gray-100 w-14 h-14 rounded-xl shrink-0">
+                  <div className="relative bg-gray-100 w-14 h-14 rounded-xl shrink-0">
                     {item.thumbnail && (
                       <Image src={item.thumbnail} alt={item.title} fill className="object-cover" />
                     )}

@@ -47,6 +47,16 @@ export default function CollectionDetailPageClient({
     "--brand-secondary": brandSecondary,
   } as React.CSSProperties
 
+  const fontClass =
+  store?.font === "poppins"       ? "font-poppins" :
+  store?.font === "playfair"      ? "font-playfair" :
+  store?.font === "dm-sans"       ? "font-dm-sans" :
+  store?.font === "space-grotesk" ? "font-space-grotesk" :
+  store?.font === "nunito"        ? "font-nunito" :
+  store?.font === "raleway"       ? "font-raleway" :
+  store?.font === "montserrat"    ? "font-montserrat" :
+  "font-inter"
+
   // All page sections for the collection layout key
   const pageSections: any[] = store?.sections?.page_layouts?.collection?.sections ?? []
 
@@ -111,12 +121,109 @@ export default function CollectionDetailPageClient({
           </div>
         )}
 
-        {section.type === "image" && section.image && (
-          <div className="w-full" style={{ backgroundColor: secBg }}>
-            <img src={section.image} alt={section.title ?? ""}
-              className="w-full object-cover max-h-[500px]" />
-          </div>
-        )}
+        {section.type === "image" && (() => {
+          if (!section.image) {
+            if (!isEditorMode) return null
+            return (
+              <div style={{
+                backgroundColor: secBg ?? "transparent",
+                paddingTop:    `${section.padding_top    ?? 0}px`,
+                paddingBottom: `${section.padding_bottom ?? 0}px`,
+              }}>
+                <div className="flex items-center justify-center h-48 border-2 border-dashed border-gray-300 mx-6 rounded-xl">
+                  <div className="text-center">
+                    <span className="text-4xl">🖼️</span>
+                    <p className="text-sm text-gray-400 mt-2">Upload an image in the left panel</p>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          const heightMode     = section.image_height_mode ?? "auto"
+          const widthMode      = section.image_width_mode  ?? "full"
+          const fit            = section.image_fit         ?? "cover"
+          const overlayPct     = section.overlay_opacity   ?? 0
+          const radius         = section.border_radius     ?? 0
+          const titlePlacement = section.title_placement   ?? "over"
+          const titlePos       = section.title_position    ?? "center"
+
+          const justifyMap: Record<string, string> = {
+            left: "justify-start", center: "justify-center", right: "justify-end",
+          }
+
+          const imgStyle: React.CSSProperties = {
+            objectFit:    fit as any,
+            borderRadius: radius,
+            width:        "100%",
+            display:      "block",
+            ...(heightMode === "fixed"  ? { height: `${section.image_height_px ?? 400}px` } : {}),
+            ...(heightMode === "screen" ? { height: `${section.image_height_vh ?? 70}vh`  } : {}),
+            ...(heightMode === "auto"   ? { height: "auto", maxHeight: "600px"            } : {}),
+          }
+
+          const wrapStyle: React.CSSProperties = {
+            backgroundColor: secBg ?? "transparent",
+            paddingTop:    `${section.padding_top    ?? 0}px`,
+            paddingBottom: `${section.padding_bottom ?? 0}px`,
+          }
+
+          const innerStyle: React.CSSProperties = {
+            ...(widthMode === "contained" ? { maxWidth: "1280px", margin: "0 auto", padding: "0 24px" } : {}),
+            ...(widthMode === "custom"    ? { maxWidth: `${section.image_width_pct ?? 80}%`, margin: "0 auto" } : {}),
+          }
+
+          const titleEl = section.title ? (
+            <div className={`flex w-full ${justifyMap[titlePos]}`}>
+              <h2
+                className="text-2xl font-bold px-2 py-1"
+                style={{ color: section.title_color ?? (isDark ? "#ffffff" : "#111827") }}
+              >
+                {section.title}
+              </h2>
+            </div>
+          ) : null
+
+          const imgContent = (
+            <div style={{ position: "relative", borderRadius: radius, overflow: "hidden" }}>
+              <img
+                src={section.image}
+                alt={section.image_alt ?? section.title ?? ""}
+                style={imgStyle}
+              />
+              {overlayPct > 0 && (
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: section.overlay_color ?? "#000000",
+                  opacity:    overlayPct / 100,
+                }} />
+              )}
+              {section.title && titlePlacement === "over" && (
+                <div className={`absolute inset-0 flex items-center px-6 ${justifyMap[titlePos]}`}>
+                  <h2
+                    className="text-2xl font-bold drop-shadow-lg"
+                    style={{ color: section.title_color ?? "#ffffff" }}
+                  >
+                    {section.title}
+                  </h2>
+                </div>
+              )}
+            </div>
+          )
+
+          return (
+            <div style={wrapStyle}>
+              <div style={innerStyle}>
+                {titlePlacement === "above" && titleEl}
+                {section.image_link
+                  ? <a href={section.image_link}>{imgContent}</a>
+                  : imgContent
+                }
+                {titlePlacement === "below" && titleEl}
+              </div>
+            </div>
+          )
+        })()}
 
         {section.type === "hero" && (
           <div className="relative overflow-hidden py-16 px-6"
@@ -240,7 +347,7 @@ export default function CollectionDetailPageClient({
   }
 
   return (
-    <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-black text-white" : "bg-white"}`}>
+    <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-black text-white" : "bg-white"} ${fontClass}`}>
       <div className="sticky top-0 z-40">
         <StoreHeader
           vendor={vendor} store={store}

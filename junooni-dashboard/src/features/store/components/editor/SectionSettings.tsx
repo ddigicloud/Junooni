@@ -61,7 +61,7 @@ export function ProductDetailSettings({ settings, onChange, isDark }: {
               <div key={key} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border ${
                 isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"
               }`}>
-                <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} />
+                {/* <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} /> */}
                 <span className="w-5 text-sm text-center">{meta.icon}</span>
                 <span className={`flex-1 text-xs font-medium ${textPrimary}`}>{meta.label}</span>
                 <button onClick={() => moveElement(key, "up")} disabled={i === 0}
@@ -277,7 +277,7 @@ export function ProductDetailSettings({ settings, onChange, isDark }: {
         <div className="space-y-2">
           {[
             { key: "show_quantity",         label: "Quantity stepper",              def: true  },
-            { key: "show_description",       label: "Description",                  def: true  },
+            // { key: "show_description",       label: "Description",                  def: true  },
             { key: "description_collapsed",  label: "Description collapsed by default", def: false },
             { key: "show_secure_badge",      label: "Secure checkout badge",        def: true  },
           ].map(({ key, label, def }) => {
@@ -426,7 +426,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
 
   const SKIP_COLOR_OVERRIDE = [
     "announcement", "divider", "html", "ticker",
-    "category_grid", "category_products", "collections_grid", "collection_products"
+    "category_grid", "category_products", "collections_grid", "collection_products", "image"
   ]
 
   return (
@@ -666,12 +666,250 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
       )}
 
       {/* ── IMAGE ── */}
-      {section.type === "image" && (
+      {section.type === "image" && (<>
         <UploadOnlyImageField label="Image" value={section.image ?? ""}
           onChange={v => onChange({ image: v || undefined })}
           onUpload={() => triggerUpload("image")}
           isUploading={uploadingKey === "image"} isDark={isDark} previewHeight={140} />
-      )}
+
+        <Field label="Alt text" faint={textFaint}>
+          <EditorInput value={(section as any).image_alt ?? ""}
+            onChange={v => onChange({ image_alt: v } as any)}
+            placeholder="Describe the image..." isDark={isDark} />
+          <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Used for accessibility and SEO.</p>
+        </Field>
+
+        <Field label="Section title (optional)" faint={textFaint}>
+          <EditorInput value={section.title ?? ""}
+            onChange={v => onChange({ title: v })}
+            placeholder="e.g. Our Story" isDark={isDark} />
+        </Field>
+
+        {section.title && (<>
+          <Field label="Title position" faint={textFaint}>
+            <div className="grid grid-cols-3 gap-1">
+              {(["left","center","right"] as const).map(pos => (
+                <button key={pos} onClick={() => onChange({ title_position: pos } as any)}
+                  className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+                    ((section as any).title_position ?? "center") === pos
+                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                  }`}>{pos}</button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Title placement" faint={textFaint}>
+            <div className="grid grid-cols-2 gap-1">
+              {([
+                { val: "above", label: "Above image" },
+                { val: "over",  label: "Over image"  },
+                { val: "below", label: "Below image" },
+              ] as const).map(({ val, label }) => (
+                <button key={val} onClick={() => onChange({ title_placement: val } as any)}
+                  className={`py-1.5 rounded-lg border text-xs transition-all ${
+                    ((section as any).title_placement ?? "over") === val
+                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                  }`}>{label}</button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Title color" faint={textFaint}>
+            <div className="flex gap-1.5">
+              <input type="color"
+                value={(section as any).title_color ?? "#ffffff"}
+                onChange={e => onChange({ title_color: e.target.value } as any)}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <EditorInput value={(section as any).title_color ?? "#ffffff"}
+                onChange={v => onChange({ title_color: v } as any)}
+                placeholder="#ffffff" isDark={isDark} />
+            </div>
+          </Field>
+        </>)}
+
+        <Field label="Image height" faint={textFaint}>
+          <div className="grid grid-cols-3 gap-1 mb-2">
+            {([
+              { val: "auto",   label: "Auto"   },
+              { val: "fixed",  label: "Fixed"  },
+              { val: "screen", label: "Screen" },
+            ] as const).map(({ val, label }) => (
+              <button key={val} onClick={() => onChange({ image_height_mode: val } as any)}
+                className={`py-1.5 rounded-lg border text-xs transition-all ${
+                  ((section as any).image_height_mode ?? "auto") === val
+                    ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                    : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                }`}>{label}</button>
+            ))}
+          </div>
+          {(section as any).image_height_mode === "fixed" && (
+            <div className="flex items-center gap-3">
+              <input type="range" min={100} max={800} step={20}
+                value={(section as any).image_height_px ?? 400}
+                onChange={e => onChange({ image_height_px: Number(e.target.value) } as any)}
+                className="flex-1 accent-orange-500" />
+              <span className={`text-xs w-12 text-right shrink-0 ${textFaint}`}>
+                {(section as any).image_height_px ?? 400}px
+              </span>
+            </div>
+          )}
+          {(section as any).image_height_mode === "screen" && (
+            <div className="flex items-center gap-3">
+              <input type="range" min={30} max={100} step={5}
+                value={(section as any).image_height_vh ?? 70}
+                onChange={e => onChange({ image_height_vh: Number(e.target.value) } as any)}
+                className="flex-1 accent-orange-500" />
+              <span className={`text-xs w-10 text-right shrink-0 ${textFaint}`}>
+                {(section as any).image_height_vh ?? 70}vh
+              </span>
+            </div>
+          )}
+        </Field>
+
+        <Field label="Image width" faint={textFaint}>
+          <div className="grid grid-cols-3 gap-1">
+            {([
+              { val: "full",      label: "Full"      },
+              { val: "contained", label: "Contained" },
+              { val: "custom",    label: "Custom"    },
+            ] as const).map(({ val, label }) => (
+              <button key={val} onClick={() => onChange({ image_width_mode: val } as any)}
+                className={`py-1.5 rounded-lg border text-xs transition-all ${
+                  ((section as any).image_width_mode ?? "full") === val
+                    ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                    : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                }`}>{label}</button>
+            ))}
+          </div>
+          {(section as any).image_width_mode === "custom" && (
+            <div className="flex items-center gap-3 mt-2">
+              <input type="range" min={20} max={100} step={5}
+                value={(section as any).image_width_pct ?? 80}
+                onChange={e => onChange({ image_width_pct: Number(e.target.value) } as any)}
+                className="flex-1 accent-orange-500" />
+              <span className={`text-xs w-10 text-right shrink-0 ${textFaint}`}>
+                {(section as any).image_width_pct ?? 80}%
+              </span>
+            </div>
+          )}
+        </Field>
+
+        <Field label="Object fit" faint={textFaint}>
+          <div className="grid grid-cols-3 gap-1">
+            {([
+              { val: "cover",   label: "Cover"   },
+              { val: "contain", label: "Contain" },
+              { val: "fill",    label: "Fill"    },
+            ] as const).map(({ val, label }) => (
+              <button key={val} onClick={() => onChange({ image_fit: val } as any)}
+                className={`py-1.5 rounded-lg border text-xs transition-all ${
+                  ((section as any).image_fit ?? "cover") === val
+                    ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                    : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                }`}>{label}</button>
+            ))}
+          </div>
+        </Field>
+
+        <Field label="Overlay opacity" faint={textFaint}>
+          <div className="flex items-center gap-3">
+            <input type="range" min={0} max={90} step={5}
+              value={(section as any).overlay_opacity ?? 0}
+              onChange={e => onChange({ overlay_opacity: Number(e.target.value) } as any)}
+              className="flex-1 accent-orange-500" />
+            <span className={`text-xs w-8 text-right shrink-0 ${textFaint}`}>
+              {(section as any).overlay_opacity ?? 0}%
+            </span>
+          </div>
+          {((section as any).overlay_opacity ?? 0) > 0 && (
+            <div className="flex gap-1.5 mt-2">
+              <input type="color"
+                value={(section as any).overlay_color ?? "#000000"}
+                onChange={e => onChange({ overlay_color: e.target.value } as any)}
+                className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+              <EditorInput value={(section as any).overlay_color ?? "#000000"}
+                onChange={v => onChange({ overlay_color: v } as any)}
+                placeholder="#000000" isDark={isDark} />
+            </div>
+          )}
+        </Field>
+
+        <Field label="Corner radius" faint={textFaint}>
+          <div className="flex items-center gap-3">
+            <input type="range" min={0} max={32} step={2}
+              value={(section as any).border_radius ?? 0}
+              onChange={e => onChange({ border_radius: Number(e.target.value) } as any)}
+              className="flex-1 accent-orange-500" />
+            <span className={`text-xs w-8 text-right shrink-0 ${textFaint}`}>
+              {(section as any).border_radius ?? 0}px
+            </span>
+          </div>
+        </Field>
+
+        <Field label="Padding (top / bottom)" faint={textFaint}>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <span className={`text-[10px] w-8 shrink-0 ${textFaint}`}>Top</span>
+              <input type="range" min={0} max={120} step={4}
+                value={(section as any).padding_top ?? 0}
+                onChange={e => onChange({ padding_top: Number(e.target.value) } as any)}
+                className="flex-1 accent-orange-500" />
+              <span className={`text-xs w-10 text-right shrink-0 ${textFaint}`}>
+                {(section as any).padding_top ?? 0}px
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-[10px] w-8 shrink-0 ${textFaint}`}>Bottom</span>
+              <input type="range" min={0} max={120} step={4}
+                value={(section as any).padding_bottom ?? 0}
+                onChange={e => onChange({ padding_bottom: Number(e.target.value) } as any)}
+                className="flex-1 accent-orange-500" />
+              <span className={`text-xs w-10 text-right shrink-0 ${textFaint}`}>
+                {(section as any).padding_bottom ?? 0}px
+              </span>
+            </div>
+          </div>
+        </Field>
+
+        <Field label="Link (optional)" faint={textFaint}>
+          <LinkInput value={(section as any).image_link ?? ""}
+            onChange={v => onChange({ image_link: v } as any)}
+            placeholder="/products" isDark={isDark}
+            pages={pages} collections={collections} categories={categories} />
+          <p className={`text-[10px] mt-1 ${textFaint} opacity-60`}>Makes the entire image clickable.</p>
+        </Field>
+
+        {/* Background only — text color not applicable for image sections */}
+        <Field label="Background color" faint={textFaint}>
+          <div className="space-y-1.5">
+            {section.background_color ? (
+              <div className="flex gap-1.5 items-center">
+                <input type="color" value={section.background_color}
+                  onChange={e => onChange({ background_color: e.target.value })}
+                  className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                <input type="text" value={section.background_color}
+                  onChange={e => onChange({ background_color: e.target.value })}
+                  className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                    isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                  }`} />
+                <button onClick={() => onChange({ background_color: undefined })}
+                  className="text-red-400 shrink-0"><X className="w-3 h-3" /></button>
+              </div>
+            ) : (
+              <button onClick={() => onChange({ background_color: "#ffffff" })}
+                className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                  isDark
+                    ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                    : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                }`}>
+                <Plus className="w-3 h-3" />Set color
+              </button>
+            )}
+          </div>
+        </Field>
+      </>)}
 
       {/* ── VIDEO ── */}
       {section.type === "video" && (<>

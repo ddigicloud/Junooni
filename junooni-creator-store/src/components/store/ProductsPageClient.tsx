@@ -63,6 +63,16 @@ export default function ProductsPageClient({
     "--brand-secondary": store?.secondary_color ?? "#000",
   } as React.CSSProperties
 
+  const fontClass =
+  store?.font === "poppins"       ? "font-poppins" :
+  store?.font === "playfair"      ? "font-playfair" :
+  store?.font === "dm-sans"       ? "font-dm-sans" :
+  store?.font === "space-grotesk" ? "font-space-grotesk" :
+  store?.font === "nunito"        ? "font-nunito" :
+  store?.font === "raleway"       ? "font-raleway" :
+  store?.font === "montserrat"    ? "font-montserrat" :
+  "font-inter"
+
   // Selected section highlight (same pattern as MinimalTemplate)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
 
@@ -85,7 +95,7 @@ export default function ProductsPageClient({
   const isSelected = selectedSectionId === sectionId
 
   return (
-    <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-black text-white" : "bg-gray-50"}`}>
+    <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-black text-white" : "bg-gray-50"} ${fontClass}`}>
       <StoreHeader
         vendor={vendor} store={store}
         categories={categories} collections={collections} products={products}

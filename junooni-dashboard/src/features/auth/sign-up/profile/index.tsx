@@ -1595,7 +1595,7 @@ const openChatwoot = () => {
                         )}
                        
                         {editMode.profile && (
-                          <div className="absolute bottom-4 right-4 z-20">
+                          <div className="absolute z-20 bottom-4 right-4">
                             <Button
                               className="flex items-center gap-1 text-white bg-black/50 hover:bg-black/70"
                               onClick={() => coverPhotoInputRef.current?.click()}
@@ -1946,7 +1946,7 @@ const openChatwoot = () => {
                           <span>Edit</span>
                         </Button>
                       ) : (
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
                           <Button
                             variant="outline"
                             className="flex items-center gap-1"
@@ -2232,7 +2232,7 @@ const openChatwoot = () => {
                           <span>Edit</span>
                         </Button>
                       ) : (
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
                           <Button
                             variant="outline"
                             className="flex items-center gap-1"
@@ -2526,7 +2526,7 @@ const openChatwoot = () => {
                   <CardContent className="pt-6 pb-8">
                     <div className="space-y-6">
                       <div className="mb-6">
-                        <h2 className="mb-4 text-lg font-semibold">Account Security</h2>
+                        <h2 className="px-4 mb-4 text-lg font-semibold">Account Security</h2>
                        
                         <div className="space-y-4">
                           {/* First Name Field */}
