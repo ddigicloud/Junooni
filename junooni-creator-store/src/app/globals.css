@@ -54,3 +54,7 @@ html {
 .size-chart-content tr:last-child td {
   border-bottom: none;
 }
+:root {
+  color: var(--brand-text, #111827);
+  background-color: var(--brand-bg, #ffffff);
+}

@@ -771,10 +771,9 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
           if (!res.ok) throw new Error(`${res.status}`)
           setHasUnsavedChanges(false)
           toast({ title: "Page saved ✓", description: "Your page has been updated." })
-          if (iframeRef.current) {
-            const src = iframeRef.current.src
-            iframeRef.current.src = ""
-            setTimeout(() => { if (iframeRef.current) iframeRef.current.src = src }, 100)
+          // Use postMessage to reload — avoids cross-origin restriction
+          if (iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage({ type: "RELOAD_PAGE" }, "*")
           }
         })
         .catch(e => toast({ title: "Save failed", description: String(e), variant: "destructive" }))

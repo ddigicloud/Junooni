@@ -41,6 +41,7 @@ interface ProductDetailSettings {
   description_collapsed?: boolean
   show_secure_badge?: boolean
   secure_badge_text?: string
+  accordion_text_color?: string
 }
 
 interface Props {
@@ -87,14 +88,12 @@ function isLightHex(hex: string): boolean {
 }
 
 // REPLACE WITH:
-function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
-  product: any; isDark: boolean; brandPrimary: string; vendor: any
+function DescriptionSection({ product, isDark, brandPrimary, vendor, accordionTextColor }: {
+  product: any; isDark: boolean; brandPrimary: string; vendor: any; accordionTextColor?: string
 }) {
   const [openSection, setOpenSection] = useState<string | null>(null)
-
   const toggle = (id: string) => setOpenSection(o => o === id ? null : id)
 
-  // REPLACE WITH:
   const productDetails: string[] = (() => {
     try {
       const raw = product?.metadata?.product_details
@@ -111,38 +110,25 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
     } catch { return [] }
   })()
 
-  // REPLACE WITH:
   const CARE_ICONS: Record<string, React.ElementType> = {
-    wash_cold:      Droplets,
-    wash_warm:      Flame,
-    wash_hot:       Flame,
-    hand_wash:      Hand,
-    no_wash:        Ban,
-    hang_dry:       Wind,
-    no_dry:         Ban,
-    no_bleach:      Shield,
-    no_iron:        Sun,
-    iron:           Sun,
-    iron_low:       Sun,
-    iron_med:       Flame,
-    iron_high:      Flame,
-    tumble_dry_low: RefreshCw,
-    tumble_dry:     RefreshCw,
-    no_tumble_dry:  Ban,
-    dry_clean:      Shield,
-    no_dry_clean:   Ban,
-    bleach_ok:      Droplets,
-    flat_dry:       Wind,
+    wash_cold: Droplets, wash_warm: Flame, wash_hot: Flame,
+    hand_wash: Hand, no_wash: Ban, hang_dry: Wind, no_dry: Ban,
+    no_bleach: Shield, no_iron: Sun, iron: Sun, iron_low: Sun,
+    iron_med: Flame, iron_high: Flame, tumble_dry_low: RefreshCw,
+    tumble_dry: RefreshCw, no_tumble_dry: Ban, dry_clean: Shield,
+    no_dry_clean: Ban, bleach_ok: Droplets, flat_dry: Wind,
   }
 
   const descriptionStory: string = product?.metadata?.description_story ?? ""
   const description: string = product?.description ?? ""
 
-  // REPLACE WITH:
-  const border  = isDark ? "border-white/10" : "border-gray-200"
-  const subText = isDark ? "text-white/50"  : "text-gray-400"
-  const bodyText = isDark ? "text-white/80" : "text-gray-700"
-  const headingText = isDark ? "text-white" : "text-gray-900"
+  const border      = isDark ? "border-white/10" : "border-gray-200"
+  const subText     = isDark ? "text-white/50"   : "text-gray-400"
+  const bodyText    = isDark ? "text-white/80"   : "text-gray-700"
+  const headingText = isDark ? "text-white"      : "text-gray-900"
+
+  const headingStyle = accordionTextColor ? { color: accordionTextColor } : undefined
+  const bodyStyle    = accordionTextColor ? { color: `${accordionTextColor}cc` } : undefined
 
   const AccordionRow = ({ id, label, children }: { id: string; label: string; children: React.ReactNode }) => {
     const isOpen = openSection === id
@@ -151,9 +137,13 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
         <button
           onClick={() => toggle(id)}
           className={`w-full flex items-center justify-between py-4 text-sm font-semibold text-left transition-colors ${headingText}`}
+          style={headingStyle}
         >
           <span>{label}</span>
-          <span className={`text-xl leading-none transition-transform duration-200 ${subText} ${isOpen ? "rotate-45" : ""}`}>
+          <span
+            className={`text-xl leading-none transition-transform duration-200 ${subText} ${isOpen ? "rotate-45" : ""}`}
+            style={headingStyle}
+          >
             +
           </span>
         </button>
@@ -168,10 +158,12 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
 
   return (
     <div className={`pt-8 border-t ${border}`}>
+
       {/* Story — always visible above accordion */}
       {descriptionStory && (
         <div
           className={`prose prose-sm max-w-none leading-relaxed mb-8 ${isDark ? "prose-invert text-white/70" : "text-gray-600"}`}
+          style={bodyStyle}
           dangerouslySetInnerHTML={{ __html: descriptionStory }}
         />
       )}
@@ -181,10 +173,13 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
         {description ? (
           <div
             className={`prose prose-sm max-w-none leading-relaxed ${isDark ? "prose-invert text-white/70" : "text-gray-600"}`}
+            style={bodyStyle}
             dangerouslySetInnerHTML={{ __html: description }}
           />
         ) : (
-          <p className={`text-sm ${subText}`}>No description available.</p>
+          <p className={`text-sm ${subText}`} style={bodyStyle}>
+            No description available.
+          </p>
         )}
       </AccordionRow>
 
@@ -192,29 +187,31 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
         {productDetails.length > 0 ? (
           <ul className="space-y-2">
             {productDetails.map((detail, i) => (
-              <li key={i} className={`flex items-center gap-2.5 text-sm ${bodyText}`}>
+              <li key={i} className={`flex items-center gap-2.5 text-sm ${bodyText}`} style={bodyStyle}>
                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: brandPrimary }} />
                 {detail}
               </li>
             ))}
           </ul>
         ) : (
-          <p className={`text-sm ${subText}`}>No product details available.</p>
+          <p className={`text-sm ${subText}`} style={bodyStyle}>
+            No product details available.
+          </p>
         )}
       </AccordionRow>
 
       <AccordionRow id="quality" label="Quality & Returns">
         <div className="space-y-3">
-          <p className={`text-sm leading-relaxed ${bodyText}`}>
+          <p className={`text-sm leading-relaxed ${bodyText}`} style={bodyStyle}>
             Quality is guaranteed. If there is a print error or visible quality issue, we'll replace or refund it.
           </p>
-          <p className={`text-sm leading-relaxed ${bodyText}`}>
+          <p className={`text-sm leading-relaxed ${bodyText}`} style={bodyStyle}>
             Because the products are made to order, we do not accept general returns or sizing-related returns.
           </p>
           <a
             href={`/p/returns-refunds`}
             className="inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-2"
-            style={{ color: brandPrimary }}
+            style={{ color: accordionTextColor ?? brandPrimary }}
           >
             View Returns & Refunds Policy →
           </a>
@@ -227,20 +224,22 @@ function DescriptionSection({ product, isDark, brandPrimary, vendor }: {
             {careInstructions.map((item) => {
               const IconComponent = CARE_ICONS[item.icon] ?? Shield
               return (
-                <li key={item.id} className={`flex items-start gap-3 text-sm ${bodyText}`}>
+                <li key={item.id} className={`flex items-start gap-3 text-sm ${bodyText}`} style={bodyStyle}>
                   <IconComponent
                     size={16}
                     className="mt-0.5 shrink-0"
-                    style={{ color: brandPrimary }}
+                    style={{ color: accordionTextColor ?? brandPrimary }}
                   />
-                  <span className="leading-relaxed">{item.instruction}</span>
+                  <span className="leading-relaxed" style={bodyStyle}>
+                    {item.instruction}
+                  </span>
                 </li>
               )
             })}
           </ul>
         </AccordionRow>
       )}
-      
+
     </div>
   )
 }
@@ -282,7 +281,9 @@ export default function ProductPageClient({
 
   const brandStyles = {
     "--brand-primary":   brandPrimary,
-    "--brand-secondary": brandSecondary,
+    "--brand-secondary": store?.secondary_color ?? "#000",
+    "--brand-text":      store?.text_color      ?? "#111827",
+    "--brand-bg":        store?.background_color ?? "#ffffff",
   } as React.CSSProperties
 
   const fontClass =
@@ -748,14 +749,14 @@ useEffect(() => {
       // REPLACE WITH:
       case "description":
         if (!(pd.show_description ?? true)) return null
-        return <DescriptionSection key="description" product={product} isDark={isDark} brandPrimary={brandPrimary} vendor={vendor} />
+        return <DescriptionSection key="description" product={product} isDark={isDark} brandPrimary={brandPrimary} vendor={vendor} accordionTextColor={pd.accordion_text_color} />
 
        case "meta":
         if (!(pd.show_secure_badge ?? true)) return null
         return (
           <p key="meta"
             className={`text-xs text-center ${isDark ? "text-white/30" : "text-gray-400"}`}>
-            {(pd.secure_badge_text ?? "Secure checkout via Junooni")
+            {(pd.secure_badge_text ?? "Secure checkout via JUNOONI")
               .replace(/&nbsp;/g, " ").trim()}
           </p>
         )
@@ -1006,7 +1007,7 @@ useEffect(() => {
           const titleEl = section.title ? (
             <div className={`flex w-full ${justifyMap[titlePos]}`}>
               <h2
-                className="text-2xl font-bold px-2 py-1"
+                className="px-2 py-1 text-2xl font-bold"
                 style={{ color: (section as any).title_color ?? (isDark ? "#ffffff" : "#111827") }}
               >
                 {section.title}

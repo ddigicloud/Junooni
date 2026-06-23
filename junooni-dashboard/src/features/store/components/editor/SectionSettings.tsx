@@ -1,6 +1,6 @@
 import { useState, useRef } from "react"
 import {
-  Plus, X, Trash2, Loader2, ChevronUp, ChevronDown,
+  Plus, X, Trash2, Loader2, ChevronUp, ChevronDown, ChevronRight,
   GripVertical, Check, ShoppingBag
 } from "lucide-react"
 import type { StoreSection, StorePage, FooterColumn } from "./types"
@@ -12,6 +12,7 @@ import { NavItemsEditor } from "./NavItemsEditor"
 import { ProductPickerButton } from "./ProductPicker"
 
 // ─── ProductDetailSettings ────────────────────────────────────────────────────
+
 
 export function ProductDetailSettings({ settings, onChange, isDark }: {
   settings: any
@@ -45,271 +46,407 @@ export function ProductDetailSettings({ settings, onChange, isDark }: {
     meta:        { label: "Secure Badge",     icon: "🔒" },
   }
 
+  const [openKey, setOpenKey] = useState<string | null>(null)
+  const toggleKey = (key: string) => setOpenKey(o => o === key ? null : key)
+
+  const rowCls = `flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-colors select-none ${hoverBg}`
+  const activeCls = isDark ? "bg-gray-800" : "bg-orange-50/80"
+  const borderCls = isDark ? "border-gray-700" : "border-gray-200"
+  const innerCls  = `px-3 pb-3 pt-2 border-t ${borderCls} space-y-2.5`
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-1">
 
-      {/* Element order */}
-      <StyleSection title="Element Order" isDark={isDark}>
-        <p className={`text-[10px] ${textFaint} mb-2 opacity-70`}>
-          Drag or use arrows to reorder product page elements.
-        </p>
-        <div className="space-y-1.5">
-          {order.map((key: string, i: number) => {
-            const meta = ELEMENT_META[key]
-            if (!meta) return null
-            return (
-              <div key={key} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border ${
-                isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"
-              }`}>
-                {/* <GripVertical className={`w-3 h-3 shrink-0 ${textFaint}`} /> */}
-                <span className="w-5 text-sm text-center">{meta.icon}</span>
-                <span className={`flex-1 text-xs font-medium ${textPrimary}`}>{meta.label}</span>
-                <button onClick={() => moveElement(key, "up")} disabled={i === 0}
-                  className={`p-0.5 rounded ${i === 0 ? "opacity-30" : hoverBg}`}>
-                  <ChevronUp className={`w-3 h-3 ${textFaint}`} />
-                </button>
-                <button onClick={() => moveElement(key, "down")} disabled={i === order.length - 1}
-                  className={`p-0.5 rounded ${i === order.length - 1 ? "opacity-30" : hoverBg}`}>
-                  <ChevronDown className={`w-3 h-3 ${textFaint}`} />
-                </button>
+      {/* ── Element Order ── */}
+      <div className={`rounded-lg border ${borderCls}`}>
+        <div
+          className={`${rowCls} ${openKey === "__order__" ? activeCls : ""}`}
+          onClick={() => toggleKey("__order__")}
+        >
+          <span className="text-sm">⠿</span>
+          <span className={`flex-1 text-[14px] font-medium ${textPrimary}`}>Element Order</span>
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${textFaint} ${openKey === "__order__" ? "rotate-90" : ""}`} />
+        </div>
+        {openKey === "__order__" && (
+          <div className={innerCls}>
+            <p className={`text-[10px] ${textFaint} opacity-70`}>Use arrows to reorder elements.</p>
+            <div className="space-y-1.5">
+              {order.map((key: string, i: number) => {
+                const meta = ELEMENT_META[key]
+                if (!meta) return null
+                return (
+                  <div key={key} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border ${
+                    isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"
+                  }`}>
+                    <span className="w-5 text-sm text-center">{meta.icon}</span>
+                    <span className={`flex-1 text-xs font-medium ${textPrimary}`}>{meta.label}</span>
+                    <button onClick={() => moveElement(key, "up")} disabled={i === 0}
+                      className={`p-0.5 rounded ${i === 0 ? "opacity-30" : hoverBg}`}>
+                      <ChevronUp className={`w-3 h-3 ${textFaint}`} />
+                    </button>
+                    <button onClick={() => moveElement(key, "down")} disabled={i === order.length - 1}
+                      className={`p-0.5 rounded ${i === order.length - 1 ? "opacity-30" : hoverBg}`}>
+                      <ChevronDown className={`w-3 h-3 ${textFaint}`} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Product Title ── */}
+      <div className={`rounded-lg border ${borderCls}`}>
+        <div
+          className={`${rowCls} ${openKey === "title" ? activeCls : ""}`}
+          onClick={() => toggleKey("title")}
+        >
+          <span className="text-sm">T</span>
+          <span className={`flex-1 text-[14px] font-medium ${textPrimary}`}>Product Title</span>
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${textFaint} ${openKey === "title" ? "rotate-90" : ""}`} />
+        </div>
+        {openKey === "title" && (
+          <div className={innerCls}>
+            <Field label="Size" faint={textFaint}>
+              <div className="grid grid-cols-4 gap-1">
+                {(["sm","md","lg","xl"] as const).map(s => (
+                  <button key={s} onClick={() => onChange({ title_size: s })}
+                    className={`py-1.5 rounded-lg border text-xs transition-all ${
+                      (settings.title_size ?? "lg") === s
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{s.toUpperCase()}</button>
+                ))}
               </div>
-            )
-          })}
-        </div>
-      </StyleSection>
-
-      {/* Title settings */}
-      <StyleSection title="Product Title" isDark={isDark}>
-        <div className="space-y-2.5">
-          <Field label="Size" faint={textFaint}>
-            <div className="grid grid-cols-4 gap-1">
-              {(["sm","md","lg","xl"] as const).map(s => (
-                <button key={s} onClick={() => onChange({ title_size: s })}
-                  className={`py-1.5 rounded-lg border text-xs transition-all ${
-                    (settings.title_size ?? "lg") === s
-                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
-                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
-                  }`}>{s.toUpperCase()}</button>
-              ))}
-            </div>
-          </Field>
-          <Field label="Weight" faint={textFaint}>
-            <div className="grid grid-cols-4 gap-1">
-              {(["normal","semibold","bold","extrabold"] as const).map(w => (
-                <button key={w} onClick={() => onChange({ title_weight: w })}
-                  className={`py-1.5 rounded-lg border text-[10px] transition-all ${
-                    (settings.title_weight ?? "bold") === w
-                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
-                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
-                  }`}>{w}</button>
-              ))}
-            </div>
-          </Field>
-          <Field label="Color" faint={textFaint}>
-            <div className="flex gap-1.5">
-              {settings.title_color ? (
-                <>
-                  <input type="color" value={settings.title_color}
-                    onChange={e => onChange({ title_color: e.target.value })}
-                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
-                  <input type="text" value={settings.title_color}
-                    onChange={e => onChange({ title_color: e.target.value })}
-                    className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
-                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
-                    }`} />
-                  <button onClick={() => onChange({ title_color: undefined })} className="text-red-400 shrink-0">
-                    <X className="w-3 h-3" />
+            </Field>
+            <Field label="Weight" faint={textFaint}>
+              <div className="grid grid-cols-2 gap-1">
+                {(["normal","semibold","bold","extrabold"] as const).map(w => (
+                  <button key={w} onClick={() => onChange({ title_weight: w })}
+                    className={`py-1.5 rounded-lg border text-[10px] transition-all ${
+                      (settings.title_weight ?? "bold") === w
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{w}</button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Color" faint={textFaint}>
+              <div className="flex gap-1.5">
+                {settings.title_color ? (
+                  <>
+                    <input type="color" value={settings.title_color}
+                      onChange={e => onChange({ title_color: e.target.value })}
+                      className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                    <input type="text" value={settings.title_color}
+                      onChange={e => onChange({ title_color: e.target.value })}
+                      className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                        isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                      }`} />
+                    <button onClick={() => onChange({ title_color: undefined })} className="text-red-400 shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => onChange({ title_color: isDark ? "#ffffff" : "#111827" })}
+                    className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                      isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                             : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                    }`}>
+                    <Plus className="w-3 h-3" />Set color
                   </button>
-                </>
-              ) : (
-                <button onClick={() => onChange({ title_color: isDark ? "#ffffff" : "#111827" })}
-                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
-                    isDark
-                      ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
-                      : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
-                  }`}>
-                  <Plus className="w-3 h-3" />Set color
-                </button>
-              )}
-            </div>
-          </Field>
-        </div>
-      </StyleSection>
+                )}
+              </div>
+            </Field>
+          </div>
+        )}
+      </div>
 
-      {/* Price settings */}
-      <StyleSection title="Price" isDark={isDark}>
-        <div className="space-y-2.5">
-          <Field label="Size" faint={textFaint}>
-            <div className="grid grid-cols-4 gap-1">
-              {(["sm","md","lg","xl"] as const).map(s => (
-                <button key={s} onClick={() => onChange({ price_size: s })}
-                  className={`py-1.5 rounded-lg border text-xs transition-all ${
-                    (settings.price_size ?? "lg") === s
-                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
-                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
-                  }`}>{s.toUpperCase()}</button>
-              ))}
-            </div>
-          </Field>
-          <Field label="Color" faint={textFaint}>
-            <div className="flex gap-1.5">
-              {settings.price_color ? (
-                <>
-                  <input type="color" value={settings.price_color}
-                    onChange={e => onChange({ price_color: e.target.value })}
-                    className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
-                  <input type="text" value={settings.price_color}
-                    onChange={e => onChange({ price_color: e.target.value })}
-                    className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
-                      isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
-                    }`} />
-                  <button onClick={() => onChange({ price_color: undefined })} className="text-red-400 shrink-0">
-                    <X className="w-3 h-3" />
+      {/* ── Price ── */}
+      <div className={`rounded-lg border ${borderCls}`}>
+        <div
+          className={`${rowCls} ${openKey === "price" ? activeCls : ""}`}
+          onClick={() => toggleKey("price")}
+        >
+          <span className="text-sm">₹</span>
+          <span className={`flex-1 text-[14px] font-medium ${textPrimary}`}>Price</span>
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${textFaint} ${openKey === "price" ? "rotate-90" : ""}`} />
+        </div>
+        {openKey === "price" && (
+          <div className={innerCls}>
+            <Field label="Size" faint={textFaint}>
+              <div className="grid grid-cols-4 gap-1">
+                {(["sm","md","lg","xl"] as const).map(s => (
+                  <button key={s} onClick={() => onChange({ price_size: s })}
+                    className={`py-1.5 rounded-lg border text-xs transition-all ${
+                      (settings.price_size ?? "lg") === s
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{s.toUpperCase()}</button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Color" faint={textFaint}>
+              <div className="flex gap-1.5">
+                {settings.price_color ? (
+                  <>
+                    <input type="color" value={settings.price_color}
+                      onChange={e => onChange({ price_color: e.target.value })}
+                      className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                    <input type="text" value={settings.price_color}
+                      onChange={e => onChange({ price_color: e.target.value })}
+                      className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                        isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                      }`} />
+                    <button onClick={() => onChange({ price_color: undefined })} className="text-red-400 shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => onChange({ price_color: "#e65100" })}
+                    className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                      isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                             : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                    }`}>
+                    <Plus className="w-3 h-3" />Set color
                   </button>
-                </>
-              ) : (
-                <button onClick={() => onChange({ price_color: "#e65100" })}
-                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
-                    isDark
-                      ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
-                      : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
-                  }`}>
-                  <Plus className="w-3 h-3" />Set color
-                </button>
-              )}
-            </div>
-          </Field>
-        </div>
-      </StyleSection>
+                )}
+              </div>
+            </Field>
+          </div>
+        )}
+      </div>
 
-      {/* Color swatches */}
-      <StyleSection title="Color Options" isDark={isDark}>
-        <div className="space-y-2.5">
-          <Field label="Label text" faint={textFaint}>
-            <EditorInput value={settings.colors_label ?? "Color"}
-              onChange={v => onChange({ colors_label: v })} placeholder="Color" isDark={isDark} />
-          </Field>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <div className="relative shrink-0"
-              onClick={() => onChange({ show_color_label: !(settings.show_color_label ?? true) })}>
-              <div className={`w-8 h-4 rounded-full transition-colors ${(settings.show_color_label ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
-              <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.show_color_label ?? true) ? "translate-x-4" : ""}`} />
-            </div>
-            <span className={`text-xs ${textPrimary}`}>Show color label</span>
-          </label>
-          <Field label="Swatch size" faint={textFaint}>
-            <div className="grid grid-cols-3 gap-1">
-              {(["sm","md","lg"] as const).map(s => (
-                <button key={s} onClick={() => onChange({ color_swatch_size: s })}
-                  className={`py-1.5 rounded-lg border text-xs transition-all ${
-                    (settings.color_swatch_size ?? "md") === s
-                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
-                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
-                  }`}>{s.toUpperCase()}</button>
-              ))}
-            </div>
-          </Field>
+      {/* ── Color Options ── */}
+      <div className={`rounded-lg border ${borderCls}`}>
+        <div
+          className={`${rowCls} ${openKey === "colors" ? activeCls : ""}`}
+          onClick={() => toggleKey("colors")}
+        >
+          <span className="text-sm">🎨</span>
+          <span className={`flex-1 text-[14px] font-medium ${textPrimary}`}>Color Options</span>
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${textFaint} ${openKey === "colors" ? "rotate-90" : ""}`} />
         </div>
-      </StyleSection>
+        {openKey === "colors" && (
+          <div className={innerCls}>
+            <Field label="Label text" faint={textFaint}>
+              <EditorInput value={settings.colors_label ?? "Color"}
+                onChange={v => onChange({ colors_label: v })} placeholder="Color" isDark={isDark} />
+            </Field>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <div className="relative shrink-0"
+                onClick={() => onChange({ show_color_label: !(settings.show_color_label ?? true) })}>
+                <div className={`w-8 h-4 rounded-full transition-colors ${(settings.show_color_label ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
+                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.show_color_label ?? true) ? "translate-x-4" : ""}`} />
+              </div>
+              <span className={`text-xs ${textPrimary}`}>Show color label</span>
+            </label>
+            <Field label="Swatch size" faint={textFaint}>
+              <div className="grid grid-cols-3 gap-1">
+                {(["sm","md","lg"] as const).map(s => (
+                  <button key={s} onClick={() => onChange({ color_swatch_size: s })}
+                    className={`py-1.5 rounded-lg border text-xs transition-all ${
+                      (settings.color_swatch_size ?? "md") === s
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{s.toUpperCase()}</button>
+                ))}
+              </div>
+            </Field>
+          </div>
+        )}
+      </div>
 
-      {/* Size options */}
-      <StyleSection title="Size Options" isDark={isDark}>
-        <div className="space-y-2.5">
-          <Field label="Label text" faint={textFaint}>
-            <EditorInput value={settings.sizes_label ?? "Size"}
-              onChange={v => onChange({ sizes_label: v })} placeholder="Size" isDark={isDark} />
-          </Field>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <div className="relative shrink-0"
-              onClick={() => onChange({ show_size_label: !(settings.show_size_label ?? true) })}>
-              <div className={`w-8 h-4 rounded-full transition-colors ${(settings.show_size_label ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
-              <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.show_size_label ?? true) ? "translate-x-4" : ""}`} />
-            </div>
-            <span className={`text-xs ${textPrimary}`}>Show size label</span>
-          </label>
-          <Field label="Button style" faint={textFaint}>
-            <div className="grid grid-cols-3 gap-1">
-              {(["pill","box","underline"] as const).map(s => (
-                <button key={s} onClick={() => onChange({ size_style: s })}
-                  className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
-                    (settings.size_style ?? "pill") === s
-                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
-                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
-                  }`}>{s}</button>
-              ))}
-            </div>
-          </Field>
+      {/* ── Size Options ── */}
+      <div className={`rounded-lg border ${borderCls}`}>
+        <div
+          className={`${rowCls} ${openKey === "sizes" ? activeCls : ""}`}
+          onClick={() => toggleKey("sizes")}
+        >
+          <span className="text-sm">S</span>
+          <span className={`flex-1 text-[14px] font-medium ${textPrimary}`}>Size Options</span>
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${textFaint} ${openKey === "sizes" ? "rotate-90" : ""}`} />
         </div>
-      </StyleSection>
+        {openKey === "sizes" && (
+          <div className={innerCls}>
+            <Field label="Label text" faint={textFaint}>
+              <EditorInput value={settings.sizes_label ?? "Size"}
+                onChange={v => onChange({ sizes_label: v })} placeholder="Size" isDark={isDark} />
+            </Field>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <div className="relative shrink-0"
+                onClick={() => onChange({ show_size_label: !(settings.show_size_label ?? true) })}>
+                <div className={`w-8 h-4 rounded-full transition-colors ${(settings.show_size_label ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
+                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.show_size_label ?? true) ? "translate-x-4" : ""}`} />
+              </div>
+              <span className={`text-xs ${textPrimary}`}>Show size label</span>
+            </label>
+            <Field label="Button style" faint={textFaint}>
+              <div className="grid grid-cols-3 gap-1">
+                {(["pill","box","underline"] as const).map(s => (
+                  <button key={s} onClick={() => onChange({ size_style: s })}
+                    className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+                      (settings.size_style ?? "pill") === s
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{s}</button>
+                ))}
+              </div>
+            </Field>
+          </div>
+        )}
+      </div>
 
-      {/* Add to Cart */}
-      <StyleSection title="Add to Cart Button" isDark={isDark}>
-        <div className="space-y-2.5">
-          <Field label="Button label" faint={textFaint}>
-            <EditorInput value={settings.atc_label ?? "Add to Cart"}
-              onChange={v => onChange({ atc_label: v })} placeholder="Add to Cart" isDark={isDark} />
-          </Field>
-          <Field label="Style" faint={textFaint}>
-            <div className="grid grid-cols-3 gap-1">
-              {(["filled","outline","pill"] as const).map(s => (
-                <button key={s} onClick={() => onChange({ atc_style: s })}
-                  className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
-                    (settings.atc_style ?? "pill") === s
-                      ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
-                      : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
-                  }`}>{s}</button>
-              ))}
-            </div>
-          </Field>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <div className="relative shrink-0"
-              onClick={() => onChange({ atc_full_width: !(settings.atc_full_width ?? true) })}>
-              <div className={`w-8 h-4 rounded-full transition-colors ${(settings.atc_full_width ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
-              <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.atc_full_width ?? true) ? "translate-x-4" : ""}`} />
-            </div>
-            <span className={`text-xs ${textPrimary}`}>Full width button</span>
-          </label>
+      {/* ── Add to Cart ── */}
+      <div className={`rounded-lg border ${borderCls}`}>
+        <div
+          className={`${rowCls} ${openKey === "atc" ? activeCls : ""}`}
+          onClick={() => toggleKey("atc")}
+        >
+          <span className="text-sm">🛒</span>
+          <span className={`flex-1 text-[14px] font-medium ${textPrimary}`}>Add to Cart Button</span>
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${textFaint} ${openKey === "atc" ? "rotate-90" : ""}`} />
         </div>
-      </StyleSection>
+        {openKey === "atc" && (
+          <div className={innerCls}>
+            <Field label="Button label" faint={textFaint}>
+              <EditorInput value={settings.atc_label ?? "Add to Cart"}
+                onChange={v => onChange({ atc_label: v })} placeholder="Add to Cart" isDark={isDark} />
+            </Field>
+            <Field label="Style" faint={textFaint}>
+              <div className="grid grid-cols-3 gap-1">
+                {(["filled","outline","pill"] as const).map(s => (
+                  <button key={s} onClick={() => onChange({ atc_style: s })}
+                    className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+                      (settings.atc_style ?? "pill") === s
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                        : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                    }`}>{s}</button>
+                ))}
+              </div>
+            </Field>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <div className="relative shrink-0"
+                onClick={() => onChange({ atc_full_width: !(settings.atc_full_width ?? true) })}>
+                <div className={`w-8 h-4 rounded-full transition-colors ${(settings.atc_full_width ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
+                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.atc_full_width ?? true) ? "translate-x-4" : ""}`} />
+              </div>
+              <span className={`text-xs ${textPrimary}`}>Full width button</span>
+            </label>
+          </div>
+        )}
+      </div>
 
-      {/* Visibility toggles */}
-      <StyleSection title="Show / Hide Elements" isDark={isDark}>
-        <div className="space-y-2">
-          {[
-            { key: "show_quantity",         label: "Quantity stepper",              def: true  },
-            // { key: "show_description",       label: "Description",                  def: true  },
-            { key: "description_collapsed",  label: "Description collapsed by default", def: false },
-            { key: "show_secure_badge",      label: "Secure checkout badge",        def: true  },
-          ].map(({ key, label, def }) => {
-            const val = settings[key] !== undefined ? settings[key] : def
-            return (
-              <label key={key} className="flex items-center gap-2 cursor-pointer">
-                <div className="relative shrink-0" onClick={() => onChange({ [key]: !val })}>
-                  <div className={`w-8 h-4 rounded-full transition-colors ${val ? "bg-orange-500" : "bg-gray-600"}`} />
-                  <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${val ? "translate-x-4" : ""}`} />
-                </div>
-                <span className={`text-xs ${textPrimary}`}>{label}</span>
-              </label>
-            )
-          })}
+      {/* ── Description ── */}
+      <div className={`rounded-lg border ${borderCls}`}>
+        <div
+          className={`${rowCls} ${openKey === "description" ? activeCls : ""}`}
+          onClick={() => toggleKey("description")}
+        >
+          <span className="text-sm">📝</span>
+          <span className={`flex-1 text-[14px] font-medium ${textPrimary}`}>Description</span>
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${textFaint} ${openKey === "description" ? "rotate-90" : ""}`} />
         </div>
-      </StyleSection>
+        {openKey === "description" && (
+          <div className={innerCls}>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <div className="relative shrink-0"
+                onClick={() => onChange({ description_collapsed: !(settings.description_collapsed ?? false) })}>
+                <div className={`w-8 h-4 rounded-full transition-colors ${(settings.description_collapsed ?? false) ? "bg-orange-500" : "bg-gray-600"}`} />
+                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.description_collapsed ?? false) ? "translate-x-4" : ""}`} />
+              </div>
+              <span className={`text-xs ${textPrimary}`}>Collapsed by default</span>
+            </label>
+            <Field label="Accordion text color" faint={textFaint}>
+              <div className="flex gap-1.5">
+                {settings.accordion_text_color ? (
+                  <>
+                    <input type="color" value={settings.accordion_text_color}
+                      onChange={e => onChange({ accordion_text_color: e.target.value })}
+                      className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent p-0.5 shrink-0" />
+                    <input type="text" value={settings.accordion_text_color}
+                      onChange={e => onChange({ accordion_text_color: e.target.value })}
+                      className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${
+                        isDark ? "bg-gray-800 border border-gray-700 text-gray-200" : "bg-white border border-gray-300 text-gray-800"
+                      }`} />
+                    <button onClick={() => onChange({ accordion_text_color: undefined })} className="text-red-400 shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => onChange({ accordion_text_color: isDark ? "#ffffff" : "#111827" })}
+                    className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed text-xs ${
+                      isDark ? "border-gray-700 text-gray-500 hover:border-orange-500/50 hover:text-orange-400"
+                             : "border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500"
+                    }`}>
+                    <Plus className="w-3 h-3" />Set color
+                  </button>
+                )}
+              </div>
+            </Field>
+          </div>
+        )}
+      </div>
 
-      {/* Secure badge text */}
+      {/* ── Show / Hide ── */}
+      <div className={`rounded-lg border ${borderCls}`}>
+        <div
+          className={`${rowCls} ${openKey === "visibility" ? activeCls : ""}`}
+          onClick={() => toggleKey("visibility")}
+        >
+          <span className="text-sm">👁</span>
+          <span className={`flex-1 text-[14px] font-medium ${textPrimary}`}>Show / Hide Elements</span>
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${textFaint} ${openKey === "visibility" ? "rotate-90" : ""}`} />
+        </div>
+        {openKey === "visibility" && (
+          <div className={innerCls}>
+            {[
+              { key: "show_quantity",     label: "Quantity stepper",      def: true  },
+              { key: "show_secure_badge", label: "Secure checkout badge", def: true  },
+            ].map(({ key, label, def }) => {
+              const val = settings[key] !== undefined ? settings[key] : def
+              return (
+                <label key={key} className="flex items-center gap-2 cursor-pointer">
+                  <div className="relative shrink-0" onClick={() => onChange({ [key]: !val })}>
+                    <div className={`w-8 h-4 rounded-full transition-colors ${val ? "bg-orange-500" : "bg-gray-600"}`} />
+                    <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${val ? "translate-x-4" : ""}`} />
+                  </div>
+                  <span className={`text-xs ${textPrimary}`}>{label}</span>
+                </label>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Secure Badge ── */}
       {(settings.show_secure_badge ?? true) && (
-        <StyleSection title="Secure Badge Text" isDark={isDark}>
-          <EditorInput
-            value={settings.secure_badge_text ?? "Secure checkout via Junooni"}
-            onChange={v => onChange({ secure_badge_text: v })}
-            placeholder="Secure checkout via Junooni"
-            isDark={isDark}
-          />
-        </StyleSection>
+        <div className={`rounded-lg border ${borderCls}`}>
+          <div
+            className={`${rowCls} ${openKey === "badge" ? activeCls : ""}`}
+            onClick={() => toggleKey("badge")}
+          >
+            <span className="text-sm">🔒</span>
+            <span className={`flex-1 text-[14px] font-medium ${textPrimary}`}>Secure Badge Text</span>
+            <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${textFaint} ${openKey === "badge" ? "rotate-90" : ""}`} />
+          </div>
+          {openKey === "badge" && (
+            <div className={innerCls}>
+              <EditorInput
+                value={settings.secure_badge_text ?? "Secure checkout via Junooni"}
+                onChange={v => onChange({ secure_badge_text: v })}
+                placeholder="Secure checkout via Junooni"
+                isDark={isDark}
+              />
+            </div>
+          )}
+        </div>
       )}
+
     </div>
   )
 }
-
 // ─── ColorOverride helper ─────────────────────────────────────────────────────
 
 function ColorOverride({ section, onChange, isDark, textFaint }: {

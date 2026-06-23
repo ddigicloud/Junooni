@@ -186,7 +186,7 @@ const footerSection = homeSections.find((s: any) => s.type === "footer")
       ))}
 
       {/* Follow Us — always last */}
-      {hasSocial && (
+      {hasSocial && customColumns.length === 0 && (
         <div>
           <p
             className={`text-xs uppercase tracking-widest font-semibold mb-3 ${isDark ? "text-white/40" : "text-gray-400"}`}

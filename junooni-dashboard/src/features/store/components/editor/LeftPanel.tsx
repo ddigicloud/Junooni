@@ -292,6 +292,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
 
     const [drillSection, setDrillSection] = useState<StoreSection | null>(null)
     const [drillVirtual, setDrillVirtual] = useState<string | null>(null)
+    const [localDragging, setLocalDragging] = useState(false)
     // Replace the existing dragOverId state + ref with this:
     const [dragOverId, setDragOverIdState] = useState<string | null>(null)
     const dragOverIdRef = React.useRef<string | null>(null)
@@ -360,17 +361,18 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
   }, [triggerDrillId])
 
     // ── Global dragend cleanup ────────────────────────────────────────────────
-    // useEffect(() => {
-    // const cleanup = () => {
-    //     requestAnimationFrame(() => {
-    //     setIsDragging(null)
-    //     setDragOver(null)
-    //     setDragOverId(null)
-    //     })
-    // }
-    // window.addEventListener("dragend", cleanup)
-    // return () => window.removeEventListener("dragend", cleanup)
-    // }, [setIsDragging, setDragOver])
+    useEffect(() => {
+        const cleanup = () => {
+            requestAnimationFrame(() => {
+            setIsDragging(null)
+            setDragOver(null)
+            setDragOverId(null)
+            setSelectedId(null)
+            })
+        }
+        window.addEventListener("dragend", cleanup)
+        return () => window.removeEventListener("dragend", cleanup)
+    }, [])
 
   // NEW — close drill panel on page switch
     const prevLayoutKeyRef = React.useRef(currentLayoutKey)
@@ -628,7 +630,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
             const SectionRow = ({ s, idx }: { s: typeof sections[0], idx: number }) => {
             const block = SECTION_BLOCKS_WITH_ICONS.find(b => b.type === s.type)
             const isSelected = selectedId === s.id
-            const isBeingDragged = isDragging === s.id
+            const isBeingDragged = isDragging === s.id || localDragging
             const isDragOver = dragOverId === s.id
 
             return (
@@ -645,20 +647,19 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     draggable
                     data-drag-id={s.id}
                    onDragStart={e => {
+                    setLocalDragging(true)
                     e.dataTransfer.effectAllowed = "move"
                     const ghost = document.createElement("div")
                     ghost.style.cssText = "position:fixed;top:-999px;left:-999px;opacity:0;width:1px;height:1px;"
                     document.body.appendChild(ghost)
                     e.dataTransfer.setDragImage(ghost, 0, 0)
-                    // Store ref to ghost so we can clean it up in onDragEnd
                     ;(e.currentTarget as any)._dragGhost = ghost
                     requestAnimationFrame(() => {
                         handleDragStart(s.id)
-                        // DO NOT remove ghost here
                     })
                     }}
                     onDragEnd={e => {
-                    // Remove ghost now that drag is fully done
+                    setLocalDragging(false)
                     const ghost = (e.currentTarget as any)._dragGhost
                     if (ghost && document.body.contains(ghost)) {
                         document.body.removeChild(ghost)
@@ -668,6 +669,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         setIsDragging(null)
                         setDragOver(null)
                         setDragOverId(null)
+                        setSelectedId(null)
                     })
                     }}
                     onDrop={e => {
@@ -733,7 +735,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         ? isDark ? "bg-gray-800 border-l-orange-500" : "bg-orange-50/80 border-l-orange-500"
                         : isDark ? "border-l-transparent bg-gray-800/60 hover:bg-gray-700/80" : "border-l-transparent bg-gray-100 hover:bg-gray-200/80",
                     ].join(" ")}
-                    style={{ opacity: isBeingDragged ? 0.35 : 1, transition: "opacity 0.15s" }}
+                    style={{ transition: "opacity 0.15s" }}
                 >
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
                     style={{ color: block?.color ?? "#666" }}>
@@ -846,11 +848,20 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                 <div
                     className="p-2 pb-4 space-y-1"
                     onDragEnd={() => {
-                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
                         setIsDragging(null)
                         setDragOver(null)
                         setDragOverId(null)
-                    })
+                        setSelectedId(null)
+                        })
+                    }}
+                    onDragLeave={(e) => {
+                        // Only reset if leaving the entire panel (not just a child element)
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        requestAnimationFrame(() => {
+                            setDragOverId(null)
+                        })
+                        }
                     }}
                 >
 
@@ -2033,7 +2044,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     }} />
                 ) : (
                 <>
-                    <p className={`text-[10px] uppercase tracking-wider px-1 py-2 ${textFaint}`}>Custom pages</p>
+                    <p className={`text-[10px] uppercase tracking-wider px-1 py-2 ${textFaint}`}>Existing pages</p>
                     {pages.map(page => (
                     <div key={page.id} className={`group flex items-center gap-2 px-2 py-2 rounded-lg transition-all border border-transparent ${hoverBg}`}>
                         <span className="text-sm shrink-0">{PAGE_TEMPLATES.find(t => t.id === page.template)?.icon ?? "📄"}</span>
@@ -2050,15 +2061,18 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     </div>
                     ))}
                     {pages.length === 0 && <p className={`px-2 py-2 text-xs ${textFaint}`}>No custom pages yet.</p>}
-                    <p className={`text-[10px] uppercase tracking-wider px-1 py-2 mt-2 border-t ${panelBorder} ${textFaint}`}>Create new page</p>
-                    {PAGE_TEMPLATES.map(t => (
-                    <button key={t.id} onClick={() => startNewPage(t.id)}
-                        className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-all border border-transparent ${hoverBg} text-left`}>
-                        <span className="text-sm">{t.icon}</span>
-                        <span className={`text-xs ${textPrimary}`}>{t.label}</span>
-                        <Plus className={`w-3 h-3 ml-auto ${textFaint}`} />
-                    </button>
-                    ))}
+                    <div className={`pt-2 mt-2 border-t ${panelBorder}`}>
+                        <button
+                            onClick={() => startNewPage("blank")}
+                            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed text-xs font-medium transition-all ${
+                            isDark
+                                ? "border-indigo-800/50 text-indigo-400 hover:border-indigo-600 hover:bg-indigo-900/20"
+                                : "border-indigo-300 text-indigo-500 hover:border-indigo-400 hover:bg-indigo-50"
+                            }`}
+                        >
+                            <Plus className="w-3 h-3" /> Add new page
+                        </button>
+                    </div>
                 </>
                 )}
             </div>

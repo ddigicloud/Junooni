@@ -2,10 +2,8 @@ import { headers, cookies } from "next/headers"
 import { cache } from "react"
 import type { Metadata } from "next"
 import PasswordGateWrapper from "@/components/PasswordGateWrapper"
-import { CartProvider } from "@/context/CartContext"
-import CartDrawer from "@/components/cart/CartDrawer"
-import StoreEditorBridge from "@/components/store/StoreEditorBridge"
 import { getStoreShell } from "@/lib/api"
+import StoreShellWrapper from "@/components/store/StoreShellWrapper"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"
 const JWT_SECRET  = process.env.JWT_SECRET ?? "junooni-store-access-secret"
@@ -96,23 +94,23 @@ export async function generateMetadata({ params }: { params: { handle: string } 
 }
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
-function StoreShellWrapper({
-  handle,
-  brandPrimary = "#e65100",
-  children,
-}: {
-  handle: string
-  brandPrimary?: string
-  children: React.ReactNode
-}) {
-  return (
-    <CartProvider handle={handle}>
-      <StoreEditorBridge />
-      {children}
-      <CartDrawer handle={handle} brandPrimary={brandPrimary} />
-    </CartProvider>
-  )
-}
+// function StoreShellWrapper({
+//   handle,
+//   brandPrimary = "#e65100",
+//   children,
+// }: {
+//   handle: string
+//   brandPrimary?: string
+//   children: React.ReactNode
+// }) {
+//   return (
+//     <CartProvider handle={handle}>
+//       <StoreEditorBridge />
+//       {children}
+//       <CartDrawer handle={handle} brandPrimary={brandPrimary} />
+//     </CartProvider>
+//   )
+// }
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 export default async function HandleLayout({ children, params }: Props) {

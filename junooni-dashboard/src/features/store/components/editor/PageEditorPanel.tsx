@@ -87,14 +87,14 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
             className={`flex-1 rounded-r-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`}
           />
         </div>
-        <a
+        {/* <a
           href={getPageUrl(vendorHandle, draft.slug)}
           target="_blank"
           rel="noopener noreferrer"
           className="text-[10px] text-orange-400 hover:text-orange-300 mt-1 flex items-center gap-1"
         >
           <ExternalLink className="w-2.5 h-2.5" />Preview page
-        </a>
+        </a> */}
       </div>
 
       {/* Content */}
