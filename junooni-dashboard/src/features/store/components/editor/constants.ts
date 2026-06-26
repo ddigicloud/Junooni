@@ -33,6 +33,7 @@ export const PAGE_ALLOWED_SECTIONS: Record<string, SectionType[]> = {
   cart: ["featured", "text", "html", "divider"],
   search: ["text", "html", "divider"],
   checkout: ["text", "html", "divider"],
+  page_: ["featured","image_text","video_text","text","image","video","ticker","divider","html",],
 }
 
 export const SECTION_CATEGORIES = [

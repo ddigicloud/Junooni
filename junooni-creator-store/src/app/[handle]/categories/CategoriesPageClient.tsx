@@ -6,6 +6,13 @@ import Link from "next/link"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
 
+const FAKE_CATEGORIES = [
+  { id: "fcat_1", name: "T-Shirts", emoji: "👕", color: "#f3f4f6", count: 12 },
+  { id: "fcat_2", name: "Hoodies", emoji: "🧥", color: "#e5e7eb", count: 8 },
+  { id: "fcat_3", name: "Accessories", emoji: "🧢", color: "#f9fafb", count: 6 },
+  { id: "fcat_4", name: "Limited Drops", emoji: "🔥", color: "#fff1f2", count: 4 },
+]
+
 interface Props {
   vendor: any
   initialStore: any
@@ -420,8 +427,26 @@ export default function CategoriesPageClient({
           </div>
 
           {categories.length === 0 ? (
-            <div className="py-20 text-center">
-              <p className={`text-lg ${isDark ? "text-white/50" : "text-gray-500"}`}>No categories yet</p>
+            <div className={`grid ${gridColClass} gap-4`}>
+              {FAKE_CATEGORIES.slice(0, gridColumns).map(cat => (
+                <div key={cat.id} className={`rounded-2xl overflow-hidden border cursor-default select-none ${
+                  isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
+                } shadow-sm`}>
+                  <div className="aspect-square flex items-center justify-center text-6xl"
+                    style={{ backgroundColor: cat.color }}>
+                    {cat.emoji}
+                  </div>
+                  <div className="p-4">
+                    <h2 className="font-semibold text-sm mb-0.5"
+                      style={{ color: gridText ?? (isDark ? "#ffffff" : "#111827") }}>
+                      {cat.name}
+                    </h2>
+                    <p className="text-xs" style={{ color: brandPrimary }}>
+                      {cat.count} items
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className={`grid ${gridColClass} gap-4`}>

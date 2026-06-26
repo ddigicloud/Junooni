@@ -36,28 +36,17 @@ export default async function CustomPage({ params }: Props) {
       style={brandStyles}
       className={`min-h-screen flex flex-col ${isDark ? "bg-black text-white" : "bg-gray-50"}`}
     >
-      <StoreHeader
-        vendor={vendor}
-        store={store}
-        categories={categories}
-        collections={collections}
-        products={products}
-      />
-
       <main className="flex-1 flex flex-col">
         <CustomPageClient
           page={page}
           brandPrimary={brandPrimary}
           isDark={isDark}
+          vendor={vendor}           
+          initialStore={store}     
+          categories={categories}   
+          collections={collections}
         />
       </main>
-
-      <StoreFooter
-        vendor={vendor}
-        store={store}
-        categories={categories}
-        collections={collections}
-      />
     </div>
   )
 }

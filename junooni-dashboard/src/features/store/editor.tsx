@@ -819,13 +819,15 @@ const previewUrl = (() => {
   try {
     const u = new URL(basePreviewUrl)
     if (import.meta.env.PROD) {
-      // Prod: subdomain/custom domain — NO handle in path
       u.pathname = previewPagePath === "/" ? "/" : previewPagePath
     } else {
-      // Dev localhost: handle IS in path — /junooni/products/x
       u.pathname = previewPagePath === "/"
         ? `/${vendorHandle}`
         : `/${vendorHandle}${previewPagePath}`
+    }
+    // Always add __preview=1 so middleware sets x-vendor-preview header
+    if (previewPagePath === "/checkout") {
+      u.searchParams.set("__preview", "1")
     }
     return u.toString()
   } catch {
@@ -912,7 +914,9 @@ const previewUrl = (() => {
             <div className="overflow-y-auto max-h-52">
               {SECTION_BLOCKS_WITH_ICONS
                 .filter(b => {
-                  const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey] ?? PAGE_ALLOWED_SECTIONS.home
+                  const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey]
+                    ?? (currentLayoutKey.startsWith("page_") ? PAGE_ALLOWED_SECTIONS["page_"] : null)
+                    ?? PAGE_ALLOWED_SECTIONS.home
                   return allowed.includes(b.type) &&
                     !["ticker", "announcement"].includes(b.type) &&
                     (addSectionFilter === "all" || b.category === addSectionFilter)
@@ -1423,7 +1427,9 @@ const previewUrl = (() => {
             <div className="overflow-y-auto max-h-[60vh]">
               {SECTION_BLOCKS_WITH_ICONS
                 .filter(b => {
-                  const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey] ?? PAGE_ALLOWED_SECTIONS.home
+                  const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey]
+                    ?? (currentLayoutKey.startsWith("page_") ? PAGE_ALLOWED_SECTIONS["page_"] : null)
+                    ?? PAGE_ALLOWED_SECTIONS.home
                   return allowed.includes(b.type) &&
                     !["ticker", "announcement"].includes(b.type) &&
                     (addSectionFilter === "all" || b.category === addSectionFilter)

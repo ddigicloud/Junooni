@@ -6,6 +6,15 @@ import ProductCard from "@/components/ui/ProductCard"
 import type { Product, CategoryMeta, CollectionMeta } from "@/lib/types"
 import { formatPrice } from "@/lib/api"
 
+const FAKE_PRODUCTS_GRID = [
+  { id: "fake_1", title: "Classic Creator Tee", price: "₹699", emoji: "👕", color: "#f3f4f6" },
+  { id: "fake_2", title: "Limited Drop Hoodie", price: "₹1,299", emoji: "👕", color: "#e5e7eb" },
+  { id: "fake_3", title: "Signature Cap", price: "₹499", emoji: "🧢", color: "#f9fafb" },
+  { id: "fake_4", title: "Fan Favourite Mug", price: "₹399", emoji: "☕", color: "#f3f4f6" },
+  { id: "fake_5", title: "Creator Hoodie", price: "₹999", emoji: "👕", color: "#e5e7eb" },
+  { id: "fake_6", title: "Exclusive Tote Bag", price: "₹349", emoji: "👜", color: "#f9fafb" },
+]
+
 interface Props {
   products: Product[]
   categories: CategoryMeta[]
@@ -417,16 +426,32 @@ export default function ProductGrid({
         <div className="flex-1 min-w-0">
           {sidebarVisible && (
             <div className="items-center justify-between hidden mb-5 md:flex">
-              <p
-                className={`text-sm ${textColor}`}
-                style={textColorProp ? { color: textColorProp } : undefined}
-              >
+              <p className={`text-sm ${textColor}`} style={textColorProp ? { color: textColorProp } : undefined}>
                 Showing <span className="font-semibold">{filtered.length}</span> of {products.length} products
               </p>
             </div>
           )}
 
-          {filtered.length === 0 ? (
+          {/* No real products at all — show fake placeholder grid */}
+          {allProducts.length === 0 ? (
+            <div className={`grid ${gridColClass} gap-4`}>
+              {FAKE_PRODUCTS_GRID.slice(0, columns * 2).map(p => (
+                <div key={p.id} className="space-y-3 cursor-default select-none">
+                  <div
+                    className="aspect-square rounded-2xl flex items-center justify-center text-6xl"
+                    style={{ backgroundColor: p.color }}
+                  >
+                    {p.emoji}
+                  </div>
+                  <div className="space-y-1">
+                    <p className={`text-sm font-medium ${textColor}`}>{p.title}</p>
+                    <p className="text-sm font-semibold" style={{ color: brandPrimary }}>{p.price}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+          ) : filtered.length === 0 ? (
             <div className="py-20 text-center">
               <p className={`text-lg font-medium mb-2 ${textColor}`}>No products found</p>
               <p className={`text-sm ${subText} mb-4`}>Try adjusting your filters</p>
@@ -436,6 +461,7 @@ export default function ProductGrid({
                 </button>
               )}
             </div>
+
           ) : (
             <div className={`grid ${gridColClass} gap-4`}>
               {filtered.map(product => (

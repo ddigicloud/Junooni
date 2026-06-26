@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ChevronLeft, Save, ExternalLink, X } from "lucide-react"
+import { ChevronLeft, Save, ExternalLink, X, Trash2  } from "lucide-react"
 import type { StorePage, PageTemplate } from "./types"
 import { PAGE_TEMPLATES, BRAND } from "./constants"
 import { slugify } from "./helpers"
@@ -50,7 +50,7 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
             onClick={onDelete}
             className="text-xs text-red-400 hover:text-red-300"
           >
-            Delete
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
@@ -131,7 +131,7 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
       </div>
 
       {/* Visibility */}
-      <div className="space-y-2">
+      {/* <div className="space-y-2">
         <p className={`text-[10px] ${textFaint}`}>Visibility</p>
         {[
           { key: "in_nav",    label: "Show in header nav", color: "blue"   },
@@ -156,7 +156,7 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
             </span>
           </label>
         ))}
-      </div>
+      </div> */}
 
       {/* Actions */}
       <div className="flex gap-2 pt-1">

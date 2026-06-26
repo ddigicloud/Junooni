@@ -30,12 +30,20 @@ export default function ShippingForm({
   const showSelector = !hasShipping || isEditing
 
   const handleContinue = () => {
-    if (!selected) return
-    startTransition(async () => {
-      await setShippingMethod({ cartId: cart.id, shippingMethodId: selected })
-      router.push(`/${handle}/checkout?step=payment`)
-    })
+  if (!selected) return
+  const isPreview = new URLSearchParams(window.location.search).get("__preview") === "1"
+  
+  // In preview mode, skip cart mutation
+  if (isPreview) {
+    router.push(`/${handle}/checkout?step=payment&__preview=1`)
+    return
   }
+
+  startTransition(async () => {
+    await setShippingMethod({ cartId: cart.id, shippingMethodId: selected })
+    router.push(`/${handle}/checkout?step=payment`)
+  })
+}
 
   // ── Completed / summary view ─────────────────────────────────────────────────
   if (!showSelector) {

@@ -33,6 +33,7 @@ export default function PaymentForm({
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const isPreview = searchParams.get("__preview") === "1"
   const activeSession = cart?.payment_collection?.payment_sessions?.find(
     (s: any) => s.status === "pending"
   )
@@ -46,12 +47,19 @@ export default function PaymentForm({
   const showSelector = !hasPayment || isEditing
 
   const handleContinue = () => {
-    if (!selected) return
-    startTransition(async () => {
-      await initiatePaymentSession(cart, { provider_id: selected })
-      router.push(`/${handle}/checkout?step=review`)
-    })
+  if (!selected) return
+  
+  const isPreview = new URLSearchParams(window.location.search).get("__preview") === "1"
+  if (isPreview) {
+    router.push(`/${handle}/checkout?step=review&__preview=1`)
+    return
   }
+
+  startTransition(async () => {
+    await initiatePaymentSession(cart, { provider_id: selected })
+    router.push(`/${handle}/checkout?step=review`)
+  })
+}
 
   // ── Completed / summary view ─────────────────────────────────────────────────
   if (!showSelector) {
@@ -69,7 +77,7 @@ export default function PaymentForm({
               style={{ background: brandPrimary }}>Done</span>
           </div>
           <button
-            onClick={() => router.push(`/${handle}/checkout?step=payment`)}
+            onClick={() => router.push(`/${handle}/checkout?step=payment${isPreview ? "&__preview=1" : ""}`)}
             className="text-sm font-medium underline underline-offset-2"
             style={{ color: brandPrimary }}
           >
@@ -78,7 +86,7 @@ export default function PaymentForm({
         </div>
         <p className="text-sm text-gray-600 ml-11 mb-4">{info.icon} {info.label}</p>
         <button
-          onClick={() => router.push(`/${handle}/checkout?step=review`)}
+          onClick={() => router.push(`/${handle}/checkout?step=review${isPreview ? "&__preview=1" : ""}`)}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90"
           style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}
         >

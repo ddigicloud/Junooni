@@ -78,6 +78,116 @@ function AnnouncementStrip({ section }: { section: any }) {
   )
 }
 
+const FAKE_PRODUCTS = [
+  { id: "fake_1", title: "Classic Creator Tee", price: "₹699", color: "#f3f4f6", emoji: "👕" },
+  { id: "fake_2", title: "Limited Drop Hoodie", price: "₹1,299", color: "#e5e7eb", emoji: "👕" },
+  { id: "fake_3", title: "Signature Cap", price: "₹499", color: "#f9fafb", emoji: "🧢" },
+  { id: "fake_4", title: "Fan Favourite Mug", price: "₹399", color: "#f3f4f6", emoji: "☕" },
+]
+
+function PlaceholderProductGrid({ columns = 3, brandPrimary }: { columns?: number; brandPrimary: string }) {
+  const gridClass =
+    columns === 2 ? "grid-cols-2" :
+    columns === 4 ? "grid-cols-2 md:grid-cols-4" :
+    "grid-cols-2 md:grid-cols-3"
+
+  const items = FAKE_PRODUCTS.slice(0, columns)
+
+  return (
+    <div className={`grid ${gridClass} gap-6`}>
+      {items.map((p) => (
+        <div key={p.id} className="space-y-3 cursor-default select-none">
+          <div
+            className="aspect-square rounded-2xl flex items-center justify-center text-6xl"
+            style={{ backgroundColor: p.color }}
+          >
+            {p.emoji}
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-gray-900">{p.title}</p>
+            <p className="text-sm font-semibold" style={{ color: brandPrimary }}>{p.price}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PlaceholderCollectionGrid({ columns = 3, brandPrimary }: { columns?: number; brandPrimary: string }) {
+  const gridClass = columns === 2 ? "grid-cols-1 sm:grid-cols-2" : columns === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"
+  const FAKE_COLLECTIONS = [
+    { id: "fc_1", title: "Summer Drops", emoji: "☀️", color: "#fef9c3" },
+    { id: "fc_2", title: "Fan Favourites", emoji: "⭐", color: "#f0fdf4" },
+    { id: "fc_3", title: "Limited Edition", emoji: "🔥", color: "#fff1f2" },
+    { id: "fc_4", title: "Accessories", emoji: "🧢", color: "#eff6ff" },
+  ].slice(0, columns)
+
+  return (
+    <div className={`grid ${gridClass} gap-5`}>
+      {FAKE_COLLECTIONS.map(col => (
+        <div key={col.id} className="relative overflow-hidden rounded-2xl aspect-[4/3] cursor-default select-none"
+          style={{ backgroundColor: col.color }}>
+          <div className="absolute inset-0 flex items-center justify-center text-6xl">
+            {col.emoji}
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-4">
+            <p className="text-lg font-bold text-white">{col.title}</p>
+            <p className="text-white/70 text-sm mt-0.5">0 products</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PlaceholderFeaturedProduct({ brandPrimary, sectionBg, sectionText, imageLeft = true }: {
+  brandPrimary: string; sectionBg?: string; sectionText?: string; imageLeft?: boolean
+}) {
+  return (
+    <div className={`flex flex-col gap-12 items-start ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
+      <div className="w-full md:w-[48%] shrink-0">
+        <div className="aspect-square rounded-3xl flex items-center justify-center text-8xl cursor-default select-none"
+          style={{ backgroundColor: "#f3f4f6" }}>
+          👕
+        </div>
+      </div>
+      <div className="flex-1 space-y-5 md:pt-2">
+        {/* <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: brandPrimary }}>
+          Fan Favourite
+        </p> */}
+        <h2 className="text-3xl font-bold" style={{ color: sectionText ?? "#111827" }}>
+          Classic Creator Tee
+        </h2>
+        <p className="text-base leading-relaxed" style={{ color: sectionText ? `${sectionText}bb` : "#4b5563" }}>
+          Your product description will appear here. Tell your fans what makes this drop special.
+        </p>
+        <p className="text-2xl font-bold" style={{ color: brandPrimary }}>₹699</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          {["S", "M", "L", "XL"].map(s => (
+            <span key={s} className="px-4 py-1.5 rounded-full text-sm font-semibold border-2 cursor-default select-none"
+              style={{ borderColor: `${brandPrimary}30`, color: sectionText ?? "#374151" }}>
+              {s}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 pt-1">
+          <div className="flex items-center overflow-hidden border-2 rounded-full shrink-0"
+            style={{ borderColor: "#e5e7eb" }}>
+            <span className="flex items-center justify-center w-10 h-12 text-gray-400">−</span>
+            <span className="w-8 text-sm font-semibold text-center text-gray-900">1</span>
+            <span className="flex items-center justify-center w-10 h-12 text-gray-400">+</span>
+          </div>
+          <div className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full text-white font-semibold text-sm cursor-default select-none"
+            style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, #ac1900 100%)` }}>
+            🛒 Add to Cart
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function MinimalTemplate({ vendor, store: initialStore, products, categories, collections }: Props) {
   const [liveStore, setLiveStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
@@ -384,7 +494,9 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       const featured = section.product_ids?.length
         ? products.filter(p => section.product_ids!.includes(p.id))
         : products.slice(0, 6)
-      if (!featured.length) return null
+      
+      if (!featured.length && !isEditorMode) return null  // ← change
+      
       return (
         <section id="products" className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="mx-auto max-w-7xl">
@@ -393,23 +505,14 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 <h2 className="text-2xl font-bold" style={{ color: sectionText ?? "#111827" }}>{section.title ?? "Featured"}</h2>
                 <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>Hand-picked for you</p>
               </div>
-              <Link href={bare ? `/products` : `/${handle}/products`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
-                View all <ChevronRight className="w-4 h-4" />
-              </Link>
             </div>
-            {/* <ProductCarousel products={featured} handle={handle} brandPrimary={brandPrimary} variant="light" /> */}
-            <ProductCarousel
-              products={featured}
-              handle={handle}
-              brandPrimary={brandPrimary}
-              variant="light"
-              aspectRatio={cardAspectRatio}
-              alignment={cardAlignment}
-              showPrice={cardShowPrice}
-              showHover={cardShowHover}
-              showSoldOutBadge={cardShowSoldOut}
-              columns={(section as any).columns ?? 4}
-            />
+            {featured.length === 0 ? (
+              <PlaceholderProductGrid columns={(section as any).columns ?? 4} brandPrimary={brandPrimary} />
+            ) : (
+              <ProductCarousel products={featured} handle={handle} brandPrimary={brandPrimary} variant="light"
+                aspectRatio={cardAspectRatio} alignment={cardAlignment} showPrice={cardShowPrice}
+                showHover={cardShowHover} showSoldOutBadge={cardShowSoldOut} columns={(section as any).columns ?? 4} />
+            )}
           </div>
         </section>
       )
@@ -418,8 +521,9 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     // ── All products collection ────────────────────────────────────────────────
     case "collection": {
       const limited = products.slice(0, section.limit ?? 12)
-      // console.log("product metadata sample:", products[0]?.metadata?.color_hex_values)
-      if (!limited.length) return null
+      
+      if (!limited.length && !isEditorMode) return null  // ← change
+
       return (
         <section id="products" className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "#f9fafb" }}>
           <div className="mx-auto max-w-7xl">
@@ -427,26 +531,19 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               <div>
                 <h2 className="text-2xl font-bold" style={{ color: sectionText ?? "#111827" }}>{section.title ?? "All Products"}</h2>
                 {section.show_product_count !== false && (
-                  <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>{products.length} products available</p>
+                  <p className="mt-1 text-sm" style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>
+                    {limited.length > 0 ? `${products.length} products available` : "No products yet"}
+                  </p>
                 )}
               </div>
-              <Link href={bare ? `/products` : `/${handle}/products`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
-                View all <ChevronRight className="w-4 h-4" />
-              </Link>
             </div>
-            {/* <ProductCarousel products={limited} handle={handle} brandPrimary={brandPrimary} variant="light" /> */}
-             <ProductCarousel
-              products={limited}
-              handle={handle}
-              brandPrimary={brandPrimary}
-              variant="light"
-              aspectRatio={cardAspectRatio}
-              alignment={cardAlignment}
-              showPrice={cardShowPrice}
-              showHover={cardShowHover}
-              showSoldOutBadge={cardShowSoldOut}
-              columns={(section as any).columns ?? 3}
-            />
+            {limited.length === 0 ? (
+              <PlaceholderProductGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
+            ) : (
+              <ProductCarousel products={limited} handle={handle} brandPrimary={brandPrimary} variant="light"
+                aspectRatio={cardAspectRatio} alignment={cardAlignment} showPrice={cardShowPrice}
+                showHover={cardShowHover} showSoldOutBadge={cardShowSoldOut} columns={(section as any).columns ?? 3} />
+            )}
           </div>
         </section>
       )
@@ -458,9 +555,12 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       const toShow = selectedIds.length
         ? collections.filter(c => selectedIds.includes(c.id) || selectedIds.includes(c.handle))
         : collections
-      if (!toShow.length) return null
+      
+      if (!toShow.length && !isEditorMode) return null
+      
       const cols = (section as any).columns ?? 3
       const gridClass = cols === 2 ? "grid-cols-1 sm:grid-cols-2" : cols === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"
+      
       return (
         <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="mx-auto max-w-7xl">
@@ -468,33 +568,39 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               <h2 className="text-2xl font-bold" style={{ color: sectionText ?? "#111827" }}>
                 {(section as any).title ?? "Shop by Collection"}
               </h2>
-              <Link href={bare ? `/collections` : `/${handle}/collections`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
-                View all <span>→</span>
-              </Link>
+              {toShow.length > 0 && (
+                <Link href={bare ? `/collections` : `/${handle}/collections`} className="flex items-center gap-1 text-sm font-medium transition-all hover:gap-2" style={{ color: brandPrimary }}>
+                  View all <span>→</span>
+                </Link>
+              )}
             </div>
-            <div className={`grid ${gridClass} gap-5`}>
-              {toShow.map(col => {
-                const thumb = (col as any).thumbnail
-                  ?? products.find(p => (p as any).collection?.handle === col.handle)?.thumbnail
-                  ?? products.find(p => ((section as any).collection_ids ?? []).length === 0 || (p as any).collection?.id === col.id)?.images?.[0]?.url
-                const productCount = products.filter(p => (p as any).collection?.handle === col.handle).length
-                return (
-                  <Link key={col.id} href={bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`} className="group relative overflow-hidden rounded-2xl bg-gray-100 aspect-[4/3] block">
-                    {thumb
-                      ? <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
-                      : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200"><span className="text-4xl">🛍️</span></div>}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <p className="text-lg font-bold leading-tight text-white">{col.title}</p>
-                      {productCount > 0 && <p className="text-white/70 text-sm mt-0.5">{productCount} product{productCount !== 1 ? "s" : ""}</p>}
-                    </div>
-                    <div className="absolute transition-opacity opacity-0 top-3 right-3 group-hover:opacity-100">
-                      <span className="text-xs font-semibold text-white bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-full">Shop →</span>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
+            {toShow.length === 0 ? (
+              <PlaceholderCollectionGrid columns={cols} brandPrimary={brandPrimary} />
+            ) : (
+              <div className={`grid ${gridClass} gap-5`}>
+                {toShow.map(col => {
+                  const thumb = (col as any).thumbnail
+                    ?? products.find(p => (p as any).collection?.handle === col.handle)?.thumbnail
+                    ?? products.find(p => ((section as any).collection_ids ?? []).length === 0 || (p as any).collection?.id === col.id)?.images?.[0]?.url
+                  const productCount = products.filter(p => (p as any).collection?.handle === col.handle).length
+                  return (
+                    <Link key={col.id} href={bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`} className="group relative overflow-hidden rounded-2xl bg-gray-100 aspect-[4/3] block">
+                      {thumb
+                        ? <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                        : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200"><span className="text-4xl">🛍️</span></div>}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <p className="text-lg font-bold leading-tight text-white">{col.title}</p>
+                        {productCount > 0 && <p className="text-white/70 text-sm mt-0.5">{productCount} product{productCount !== 1 ? "s" : ""}</p>}
+                      </div>
+                      <div className="absolute transition-opacity opacity-0 top-3 right-3 group-hover:opacity-100">
+                        <span className="text-xs font-semibold text-white bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-full">Shop →</span>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </section>
       )
@@ -1001,15 +1107,36 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
     case "featured_product": {
       const productId: string = (section as any).featured_product_id ?? ""
       const product = productId ? products.find(p => p.id === productId) : products[0]
+
+      if (!product && !isEditorMode) return null
+
       return (
-        <FeaturedProductWidget
-          section={section}
-          product={product as any}
-          handle={handle}
-          brandPrimary={brandPrimary}
-          sectionBg={sectionBg}
-          sectionText={sectionText}
-        />
+        <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "#f9fafb" }}>
+          <div className="max-w-6xl mx-auto">
+            {section.title && (
+              <p className="mb-8 text-xs font-semibold tracking-widest uppercase" style={{ color: brandPrimary }}>
+                {section.title}
+              </p>
+            )}
+            {!product ? (
+              <PlaceholderFeaturedProduct
+                brandPrimary={brandPrimary}
+                sectionBg={sectionBg}
+                sectionText={sectionText}
+                imageLeft={(section.image_position ?? "left") === "left"}
+              />
+            ) : (
+              <FeaturedProductWidget
+                section={section}
+                product={product as any}
+                handle={handle}
+                brandPrimary={brandPrimary}
+                sectionBg={sectionBg}
+                sectionText={sectionText}
+              />
+            )}
+          </div>
+        </section>
       )
     }
      default: return null

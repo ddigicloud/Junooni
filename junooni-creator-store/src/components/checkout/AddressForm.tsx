@@ -1,6 +1,6 @@
 "use client"
 
-import { useTransition } from "react"
+import { useTransition, useCallback } from "react"
 import { useFormState } from "react-dom"
 import { useRouter, useSearchParams } from "next/navigation"
 import { setAddresses } from "@/lib/cart"
@@ -34,13 +34,21 @@ export default function AddressForm({
   const [isPending, startTransition] = useTransition()
 
   // ✅ Bind handle into setAddresses — was missing handle entirely
-  const boundSetAddresses = async (state: unknown, formData: FormData) => {
-    const err = await setAddresses(handle, state, formData)
-    if (!err) {
-      window.location.href = `/checkout?step=delivery`
-    }
-    return err
+  const boundSetAddresses = useCallback(async (state: unknown, formData: FormData) => {
+  const isPreview = new URLSearchParams(window.location.search).get("__preview") === "1"
+  
+  // In preview mode, skip cart mutation and just advance the step
+  if (isPreview) {
+    router.push(`/${handle}/checkout?step=delivery&__preview=1`)
+    return null
   }
+
+  const err = await setAddresses(handle, state, formData)
+  if (!err) {
+    router.push(`/${handle}/checkout?step=delivery`)
+  }
+  return err
+}, [handle, router])
 
   // ✅ useActionState replaces deprecated useFormState
   const [message, formAction] = useFormState(boundSetAddresses, null)

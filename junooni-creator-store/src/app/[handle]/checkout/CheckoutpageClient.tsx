@@ -18,6 +18,7 @@ interface Props {
   step: string
   shippingMethods: any[]
   paymentMethods: any[]
+  previewProduct?: any
 }
 
 function formatPrice(amount: number) {
@@ -26,11 +27,48 @@ function formatPrice(amount: number) {
   }).format(amount)
 }
 
+const MOCK_CART = {
+  items: [],
+  subtotal: 0,
+  shipping_total: 0,
+  tax_total: 0,
+  total: 0,
+  shipping_address: null,
+  shipping_methods: [],
+  payment_collection: null,
+}
+
 export default function CheckoutPageClient({
-  vendor, initialStore, cart, handle, step, shippingMethods, paymentMethods,
+  vendor, initialStore, cart, handle, step, shippingMethods, paymentMethods, previewProduct,
 }: Props) {
   const [store, setStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+
+  const previewCart = previewProduct ? {
+  ...MOCK_CART,
+  items: [{
+    id: "preview_item",
+    title: previewProduct.title,
+    thumbnail: previewProduct.thumbnail ?? null,
+    quantity: 1,
+    unit_price: previewProduct.variants?.[0]?.calculated_price?.calculated_amount
+      ?? previewProduct.variants?.[0]?.prices?.[0]?.amount
+      ?? 49900,
+    variant: {
+      title: previewProduct.variants?.[0]?.title !== "Default Title"
+        ? previewProduct.variants?.[0]?.title
+        : null,
+    },
+  }],
+  subtotal: previewProduct.variants?.[0]?.calculated_price?.calculated_amount
+    ?? previewProduct.variants?.[0]?.prices?.[0]?.amount
+    ?? 49900,
+  total: previewProduct.variants?.[0]?.calculated_price?.calculated_amount
+    ?? previewProduct.variants?.[0]?.prices?.[0]?.amount
+    ?? 49900,
+} : MOCK_CART
+
+const activeCart = (cart?.items?.length > 0) ? cart : previewCart
 
   useEffect(() => {
     window.parent?.postMessage({ type: "IFRAME_READY" }, "*")
@@ -43,6 +81,13 @@ export default function CheckoutPageClient({
     window.addEventListener("message", handler)
     return () => window.removeEventListener("message", handler)
   }, [])
+
+  useEffect(() => {
+  const isPreview = new URLSearchParams(window.location.search).get("__preview") === "1"
+    if (!isPreview) return
+
+    document.cookie = `_creator_cart_id_${handle}=; max-age=0; path=/;`
+  }, [handle])
 
   const checkoutSettings: any = store?.checkout_settings ?? {}
   const brandPrimary   = checkoutSettings.accent_color || store?.primary_color || "#e65100"
@@ -62,14 +107,14 @@ export default function CheckoutPageClient({
   } as React.CSSProperties
 
   const fontClass =
-  store?.font === "poppins"       ? "font-poppins" :
-  store?.font === "playfair"      ? "font-playfair" :
-  store?.font === "dm-sans"       ? "font-dm-sans" :
-  store?.font === "space-grotesk" ? "font-space-grotesk" :
-  store?.font === "nunito"        ? "font-nunito" :
-  store?.font === "raleway"       ? "font-raleway" :
-  store?.font === "montserrat"    ? "font-montserrat" :
-  "font-inter"
+    store?.font === "poppins"       ? "font-poppins" :
+    store?.font === "playfair"      ? "font-playfair" :
+    store?.font === "dm-sans"       ? "font-dm-sans" :
+    store?.font === "space-grotesk" ? "font-space-grotesk" :
+    store?.font === "nunito"        ? "font-nunito" :
+    store?.font === "raleway"       ? "font-raleway" :
+    store?.font === "montserrat"    ? "font-montserrat" :
+    "font-inter"
 
   const checkoutSections: any[] = (store?.sections?.page_layouts?.checkout?.sections ?? [])
     .filter((s: any) => !s.hidden)
@@ -96,36 +141,38 @@ export default function CheckoutPageClient({
     </div>
   )
 
-  // Logo is always the clickable "home" affordance, same as Shopify/Stripe checkout —
-  // it doubles as the back-to-store action so we don't need a separate text link
-  // crowding the same corner when the logo sits on the left.
   const logoMark = (
     <Link href={`/${handle}`} className="block transition-opacity hover:opacity-80">
       {logoMarkInner}
     </Link>
   )
 
-  const addressComplete =
-    !!cart.shipping_address?.first_name &&
-    !!cart.shipping_address?.address_1 &&
-    !!cart.shipping_address?.city
+  const isPreviewMode = typeof window !== "undefined" 
+  ? new URLSearchParams(window.location.search).get("__preview") === "1"
+  : false
 
-  const shippingComplete =
-    !!cart.shipping_methods?.length &&
-    !!cart.shipping_methods[0]?.shipping_option_id
+// Override completion checks in preview mode
+const addressComplete = isPreviewMode || (
+  !!activeCart.shipping_address?.first_name &&
+  !!activeCart.shipping_address?.address_1 &&
+  !!activeCart.shipping_address?.city
+)
 
-  const paymentComplete = !!cart.payment_collection?.payment_sessions?.find(
+const shippingComplete = isPreviewMode || (
+  !!activeCart.shipping_methods?.length &&
+  !!activeCart.shipping_methods[0]?.shipping_option_id
+)
+
+const paymentComplete = isPreviewMode || (
+  !!activeCart.payment_collection?.payment_sessions?.find(
     (s: any) => s.status === "pending"
   )
+)
 
   return (
     <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-gray-950" : "bg-gray-50"} ${fontClass}`}>
       <header className={`${isDark ? "bg-black/80 border-white/10" : "bg-white/90 border-gray-100"} backdrop-blur-md border-b sticky top-0 z-30`}>
-       <div className="grid items-center h-16 max-w-6xl grid-cols-3 px-4 mx-auto sm:px-6">
-          {/* Left cell — when logo is left-positioned, pair it with an icon-only
-              back arrow (no text — the logo itself is the brand, the arrow is the
-              action, same pattern Stripe/Shopify checkout use). When logo is
-              centered, this corner is free for the text back-link instead. */}
+        <div className="grid items-center h-16 max-w-6xl grid-cols-3 px-4 mx-auto sm:px-6">
           <div className="min-w-0 justify-self-start">
             {checkoutSettings.logo_position === "left" ? (
               <div className="flex items-center gap-3">
@@ -141,8 +188,6 @@ export default function CheckoutPageClient({
                 {logoMark}
               </div>
             ) : (
-              // Arrow is always present — it's the only way back from checkout.
-              // The toggle only controls whether the text label next to it shows.
               <Link
                 href={`/`}
                 aria-label="Back to store"
@@ -156,15 +201,13 @@ export default function CheckoutPageClient({
             )}
           </div>
 
-          {/* Center cell */}
           <div className="justify-self-center">
             {checkoutSettings.logo_position !== "left" && logoMark}
           </div>
 
-          {/* Right cell */}
-          <span className={`text-sm font-medium justify-self-end whitespace-nowrap ${isDark ? "text-white/60" : "text-gray-500"}`}>
+          {/* <span className={`text-sm font-medium justify-self-end whitespace-nowrap ${isDark ? "text-white/60" : "text-gray-500"}`}>
             Checkout
-          </span>
+          </span> */}
         </div>
       </header>
 
@@ -181,11 +224,11 @@ export default function CheckoutPageClient({
 
         <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
           <div className="min-w-0 space-y-4">
-            <AddressForm cart={cart} handle={handle} brandPrimary={brandPrimary} isDark={isDark} />
+            <AddressForm cart={activeCart} handle={handle} brandPrimary={brandPrimary} isDark={isDark} />
 
             {(step === "delivery" || step === "payment" || step === "review") && addressComplete && (
               <ShippingForm
-                cart={cart}
+                cart={activeCart}
                 shippingMethods={shippingMethods ?? []}
                 handle={handle}
                 brandPrimary={brandPrimary}
@@ -194,7 +237,7 @@ export default function CheckoutPageClient({
 
             {(step === "payment" || step === "review") && shippingComplete && (
               <PaymentForm
-                cart={cart}
+                cart={activeCart}
                 paymentMethods={paymentMethods ?? []}
                 handle={handle}
                 brandPrimary={brandPrimary}
@@ -202,7 +245,7 @@ export default function CheckoutPageClient({
             )}
 
             {step === "review" && paymentComplete && (
-              <ReviewForm cart={cart} handle={handle} brandPrimary={brandPrimary} />
+              <ReviewForm cart={activeCart} handle={handle} brandPrimary={brandPrimary} />
             )}
 
             {/* ── Editor-added sections ── */}
@@ -236,64 +279,76 @@ export default function CheckoutPageClient({
             ))}
           </div>
 
+          {/* ── Order Summary ── */}
           <div className={`rounded-2xl border ${isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"} shadow-sm p-6 sticky top-24`}>
             <h3 className={`text-xs font-semibold uppercase tracking-widest mb-4 ${isDark ? "text-white/40" : "text-gray-400"}`}>
               Order Summary
             </h3>
-            <div className="mb-4 space-y-4">
-              {cart.items?.map((item: any) => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <div className="relative bg-gray-100 w-14 h-14 rounded-xl shrink-0">
-                    {item.thumbnail && (
-                      <Image src={item.thumbnail} alt={item.title} fill className="object-cover" />
-                    )}
-                    <div
-                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-white text-[10px] flex items-center justify-center font-bold"
-                      style={{ background: brandPrimary }}
-                    >
-                      {item.quantity}
+
+            {activeCart.items?.length === 0 ? (
+              <div className={`py-8 text-center text-sm ${isDark ? "text-white/30" : "text-gray-400"}`}>
+                <p>No items in cart</p>
+                <p className="mt-1 text-xs opacity-60">Add products to see your order summary</p>
+              </div>
+            ) : (
+              <div className="mb-4 space-y-4">
+                {activeCart.items?.map((item: any) => (
+                  <div key={item.id} className="flex items-center gap-3">
+                    <div className="relative bg-gray-100 w-14 h-14 rounded-xl shrink-0 overflow-hidden">
+                      {item.thumbnail ? (
+                        <Image src={item.thumbnail} alt={item.title} fill className="object-cover rounded-xl" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl">👕</div>
+                      )}
+                      <div
+                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-white text-[10px] flex items-center justify-center font-bold"
+                        style={{ background: brandPrimary }}
+                      >
+                        {item.quantity}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-gray-900"}`}>
-                      {item.title}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-gray-900"}`}>
+                        {item.title}
+                      </p>
+                      {item.variant?.title && item.variant.title !== "Default Title" && (
+                        <p className="text-xs text-gray-400">{item.variant.title}</p>
+                      )}
+                    </div>
+                    <p className={`text-sm font-semibold shrink-0 ${isDark ? "text-white" : "text-gray-900"}`}>
+                      {formatPrice((item.unit_price ?? 0) * item.quantity)}
                     </p>
-                    {item.variant?.title && item.variant.title !== "Default Title" && (
-                      <p className="text-xs text-gray-400">{item.variant.title}</p>
-                    )}
                   </div>
-                  <p className={`text-sm font-semibold shrink-0 ${isDark ? "text-white" : "text-gray-900"}`}>
-                    {formatPrice((item.unit_price ?? 0) * item.quantity)}
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+
             <div className={`border-t ${isDark ? "border-white/10" : "border-gray-100"} pt-4 space-y-2.5`}>
               <div className={`flex justify-between text-sm ${isDark ? "text-white/50" : "text-gray-500"}`}>
                 <span>Subtotal</span>
-                <span>{formatPrice(cart.subtotal ?? 0)}</span>
+                <span>{formatPrice(activeCart.subtotal ?? 0)}</span>
               </div>
-              {(cart.shipping_total ?? 0) > 0 && (
+              {(activeCart.shipping_total ?? 0) > 0 && (
                 <div className={`flex justify-between text-sm ${isDark ? "text-white/50" : "text-gray-500"}`}>
                   <span>Shipping</span>
-                  <span>{formatPrice(cart.shipping_total)}</span>
+                  <span>{formatPrice(activeCart.shipping_total)}</span>
                 </div>
               )}
-              {(cart.shipping_total ?? 0) === 0 && shippingComplete && (
+              {(activeCart.shipping_total ?? 0) === 0 && shippingComplete && (
                 <div className={`flex justify-between text-sm ${isDark ? "text-white/50" : "text-gray-500"}`}>
                   <span>Shipping</span>
                   <span className="font-medium text-green-600">Free</span>
                 </div>
               )}
-              {(cart.tax_total ?? 0) > 0 && (
+              {(activeCart.tax_total ?? 0) > 0 && (
                 <div className={`flex justify-between text-sm ${isDark ? "text-white/50" : "text-gray-500"}`}>
                   <span>Tax</span>
-                  <span>{formatPrice(cart.tax_total)}</span>
+                  <span>{formatPrice(activeCart.tax_total)}</span>
                 </div>
               )}
               <div className={`flex justify-between text-base font-bold pt-2 border-t ${isDark ? "border-white/10 text-white" : "border-gray-100 text-gray-900"}`}>
                 <span>Total</span>
-                <span style={{ color: brandPrimary }}>{formatPrice(cart.total ?? 0)}</span>
+                <span style={{ color: brandPrimary }}>{formatPrice(activeCart.total ?? 0)}</span>
               </div>
             </div>
 
