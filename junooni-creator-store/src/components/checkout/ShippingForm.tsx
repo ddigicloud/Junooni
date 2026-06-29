@@ -122,7 +122,7 @@ export default function ShippingForm({
                 >
                   <input type="radio" name="shipping_method" value={method.id}
                     checked={isSelected} onChange={() => setSelected(method.id)}
-                    className="w-4 h-4 accent-orange-500"
+                    className="w-4 h-4 " style={{ accentColor: brandPrimary }}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm text-gray-900">{method.name}</p>

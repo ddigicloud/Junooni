@@ -45,7 +45,7 @@ export default function ProductsPageClient({
   const gridTitle      = gridSection.title          ?? "All Products"
   const gridBg         = gridSection.background_color
   const gridTextColor  = gridSection.text_color
-
+  const filterOrder: string[] = gridSection.filter_order ?? ["sort", "price", "category", "collection"]
   const showFilters          = gridSection.show_filters           !== false
   const showSort             = gridSection.show_sort              !== false
   const showPriceFilter      = gridSection.show_price_filter      !== false
@@ -57,6 +57,7 @@ export default function ProductsPageClient({
   const cardShowPrice    = store?.product_card?.show_price          !== false
   const cardShowHover    = store?.product_card?.show_hover          !== false
   const cardShowSoldOut  = store?.product_card?.show_sold_out_badge !== false
+  const showProductCount = gridSection.show_product_count !== false
 
   const brandStyles = {
     "--brand-primary":   brandPrimary,
@@ -147,18 +148,16 @@ export default function ProductsPageClient({
           >
             {vendor.name}
           </p> */}
-          <h1
-            className="text-3xl font-bold"
-            style={{ color: gridTextColor ?? (isDark ? "#ffffff" : "#111827") }}
-          >
+          <h1 className="text-3xl font-bold"
+            style={{ color: gridTextColor ?? (isDark ? "#ffffff" : "#111827") }}>
             {gridTitle}
           </h1>
-          <p
-            className="mt-1 text-sm"
-            style={{ color: gridTextColor ? `${gridTextColor}99` : (isDark ? "rgba(255,255,255,0.5)" : "#6b7280") }}
-          >
-            {products.length} product{products.length !== 1 ? "s" : ""}
-          </p>
+          {gridSection.show_product_count !== false && (
+            <p className="mt-1 text-sm"
+              style={{ color: gridTextColor ? `${gridTextColor}99` : (isDark ? "rgba(255,255,255,0.5)" : "#6b7280") }}>
+              {products.length} product{products.length !== 1 ? "s" : ""}
+            </p>
+          )}
         </div>
 
         <ProductGrid
@@ -170,6 +169,7 @@ export default function ProductsPageClient({
           textColor={gridTextColor} 
           isDark={isDark}
           columns={gridColumns}
+          showProductCount={showProductCount}
           limit={gridLimit}
           showSoldOut={showSoldOut}
           showFilters={showFilters}
@@ -182,6 +182,7 @@ export default function ProductsPageClient({
           cardShowPrice={cardShowPrice}
           cardShowHover={cardShowHover}
           cardShowSoldOut={cardShowSoldOut}
+          filterOrder={filterOrder}
         />
       </div>
 

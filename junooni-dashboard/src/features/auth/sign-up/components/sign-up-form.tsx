@@ -129,7 +129,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                       className="h-12 px-4 text-base border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-4 focus:ring-[#e65100]/10 transition-all duration-200 bg-white"
                     />
                   </FormControl>
-                  <FormMessage className="text-red-500 text-sm" />
+                  <FormMessage className="text-sm text-red-500" />
                 </FormItem>
               )}
             />
@@ -149,7 +149,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                       className="h-10 px-0 text-base border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-4 focus:ring-[#e65100]/10 transition-all duration-200 bg-white"
                     />
                   </FormControl>
-                  <FormMessage className="text-red-500 text-sm" />
+                  <FormMessage className="text-sm text-red-500" />
                 </FormItem>
               )}
             />
@@ -169,7 +169,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
                       className="h-10 px-0 text-base border-gray-200 rounded-lg focus:border-[#e65100] focus:ring-[#e65100]/10 transition-all duration-200 bg-white"
                     />
                   </FormControl>
-                  <FormMessage className="text-red-500 text-sm" />
+                  <FormMessage className="text-sm text-red-500" />
                 </FormItem>
               )}
             />

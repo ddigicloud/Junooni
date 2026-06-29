@@ -36,7 +36,11 @@ const Vendor = model.define("vendor", {
   verified: model.enum(["Yes", "No"]).default("No"),
   metadata: model.json().nullable(),
   admins: model.hasMany(() => VendorAdmin),
-  sell_on_marketplace: model.boolean().default(true),
+  sell_on_marketplace: model.boolean().default(false),
+  marketplace_status: model.enum(["none", "pending", "approved", "rejected"]).default("none"),
+  marketplace_rejection_reason: model.text().nullable(),
+  marketplace_applied_at: model.dateTime().nullable(),
+  marketplace_approved_at: model.dateTime().nullable(),
   sell_on_own_store: model.boolean().default(false),
   // Subscription / billing fields
   plan: model.text().default("free").nullable(),

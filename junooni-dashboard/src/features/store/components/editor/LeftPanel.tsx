@@ -345,6 +345,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
       "__category_products__",
       "__collections_grid__",
       "__collection_products__",
+      "__page_content__",
     ]
     if (virtualIds.includes(triggerDrillId)) {
       setDrillVirtual(triggerDrillId)
@@ -404,46 +405,47 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
     return (
       <div className="flex flex-col h-full overflow-hidden" style={{ width: '300px' }}>
         {/* ── Drill-in header ── */}
+        {drillVirtual !== "__page_content__" && (
         <div className={`flex items-center gap-2 px-3 py-2.5 border-b shrink-0 ${panelBorder}`}>
-          <button
+            <button
             onClick={() => { setDrillSection(null); setDrillVirtual(null) }}
             className={`p-1.5 rounded-lg transition-colors ${isDark ? "hover:bg-gray-800 text-gray-400" : "hover:bg-gray-100 text-gray-500"}`}
-          >
+            >
             <ChevronLeft className="w-4 h-4" />
-          </button>
-          <div className="flex items-center flex-1 min-w-0 gap-2">
+            </button>
+            <div className="flex items-center flex-1 min-w-0 gap-2">
             {sectionIcon && (
-              <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0"
+                <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0"
                 style={{ background: `${sectionColor}20`, color: sectionColor }}>
                 {sectionIcon}
-              </div>
+                </div>
             )}
             <span className={`text-sm font-semibold truncate ${textPrimary}`}>{sectionLabel}</span>
-          </div>
-          {/* Quick actions for real sections */}
-          {drillSection && !["header","footer"].includes(drillSection.type) && (
+            </div>
+            {drillSection && !["header","footer"].includes(drillSection.type) && (
             <div className="flex items-center gap-0.5 shrink-0">
-              <button onClick={() => {
+                <button onClick={() => {
                 toggleSection(drillSection.id)
                 setDrillSection(s => s ? { ...s, hidden: !s.hidden } : s)
-                 }}
+                }}
                 className={`p-1.5 rounded-lg transition-colors ${isDark ? "hover:bg-gray-800 text-gray-400" : "hover:bg-gray-100 text-gray-500"}`}
                 title={drillSection.hidden ? "Show" : "Hide"}>
                 {drillSection.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-             </button>
-              <button onClick={() => { duplicateSection(drillSection.id); setDrillSection(null) }}
+                </button>
+                <button onClick={() => { duplicateSection(drillSection.id); setDrillSection(null) }}
                 className={`p-1.5 rounded-lg transition-colors ${isDark ? "hover:bg-gray-800 text-gray-400" : "hover:bg-gray-100 text-gray-500"}`}
                 title="Duplicate">
                 <Copy className="w-3.5 h-3.5" />
-              </button>
-              <button onClick={() => { removeSection(drillSection.id); setDrillSection(null); setDrillVirtual(null) }}
+                </button>
+                <button onClick={() => { removeSection(drillSection.id); setDrillSection(null); setDrillVirtual(null) }}
                 className="p-1.5 rounded-lg transition-colors hover:bg-red-900/30 text-red-400"
                 title="Delete">
                 <Trash2 className="w-3.5 h-3.5" />
-              </button>
+                </button>
             </div>
-          )}
+            )}
         </div>
+        )}
 
         {/* ── Drill-in body ── */}
         <div className="flex-1 px-3 py-3 overflow-y-auto overscroll-contain custom-scrollbar">
@@ -550,6 +552,38 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                 products={vendorProducts} vendorHandle={vendorHandle}
                 currentLayoutKey="collection"
             />
+            ) : drillVirtual === "__page_content__" ? (
+            (() => {
+                const pageSlug = currentLayoutKey.replace("page_", "")
+                const currentPage = pages.find(p => p.slug === pageSlug)
+                if (!currentPage) return <p className={`text-xs ${textFaint} p-2`}>Page not found</p>
+                return (
+                <PageEditorPanel
+                    page={currentPage}
+                    vendorHandle={vendorHandle}
+                    onSave={(updated) => {
+                    savePage(updated)
+                    setDrillVirtual(null)
+                    }}
+                    onCancel={() => setDrillVirtual(null)}
+                    onDelete={() => {
+                    deletePage(currentPage.id)
+                    setDrillVirtual(null)
+                    }}
+                    isNew={false}
+                    isDark={isDark}
+                    onDraftChange={(updated) => {
+                    patchStore(p => {
+                        const existing = p.pages?.pages ?? []
+                        const updatedPages = existing.find(pg => pg.id === updated.id)
+                        ? existing.map(pg => pg.id === updated.id ? updated : pg)
+                        : [...existing, updated]
+                        return { ...p, pages: { pages: updatedPages } }
+                    })
+                    }}
+                />
+                )
+            })()
             ) : drillSection ? (
             <SectionSettings
               section={drillSection}
@@ -1156,7 +1190,14 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                 )}
 
                 {/* ── BODY ZONE ── */}
-                <ZoneLabel label={currentLayoutKey === "home" ? "Body" : currentLayoutMeta.label} color="#e65100" />
+                <ZoneLabel 
+                    label={
+                        currentLayoutKey === "home" || currentLayoutKey.startsWith("page_") 
+                        ? "Body" 
+                        : currentLayoutMeta.label
+                    } 
+                    color="#e65100" 
+                />
                     <div className={`rounded-xl ${isDark ? "border-gray-800" : "border-gray-200"}`}>
 
                     {currentLayoutKey === "product" && (
@@ -1626,14 +1667,46 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         )}
 
                     {currentLayoutKey.startsWith("page_") && (
-                        <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
+                     <div onDragOver={handleBodyDragOver} onDrop={handleBodyDrop}>
+
+                        {/* ── Page Content virtual section ── */}
+                        {(() => {
+                        const pageSlug = currentLayoutKey.replace("page_", "")
+                        const currentPage = pages.find(p => p.slug === pageSlug)
+                        if (!currentPage) return null
+                        return (
+                            <div
+                            onClick={() => {
+                                setDrillVirtual("__page_content__")
+                                setSelectedId("__page_content__")
+                            }}
+                            className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all mb-1 ${
+                                isDark ? "border-orange-800/40 bg-orange-900/20 hover:border-orange-600/50" : "border-orange-200/60 bg-orange-50/50 hover:border-orange-400/60"
+                            }`}
+                            >
+                            <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                                <Pencil className="w-3 h-3 text-orange-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className={`text-xs font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
+                                Page Content
+                                </p>
+                                <p className={`text-[10px] ${textFaint}`}>Title · Body text — click to edit</p>
+                            </div>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                                isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
+                            }`}>Edit</span>
+                            </div>
+                        )
+                        })()}
+
                         {layoutBodySections.length === 0 && (
-                            <div className="py-6 space-y-1 text-center">
+                        <div className="py-6 space-y-1 text-center">
                             <p className={`text-xs font-medium ${textFaint}`}>No sections yet</p>
                             <p className={`text-[10px] ${textFaint} opacity-60`}>
-                                Click "+ Add section" to build this page
+                            Click "+ Add section" to build this page
                             </p>
-                            </div>
+                        </div>
                         )}
                        {layoutBodySections.map((s, i, arr) => {
                         const globalIdx = sections.findIndex(x => x.id === s.id)
@@ -1932,7 +2005,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     {[
                         { key: "show_price", label: "Show price", default: true },
                         { key: "show_hover", label: "Hover zoom effect", default: true },
-                        { key: "show_sold_out_badge", label: "Show sold-out badge", default: true },
+                        // { key: "show_sold_out_badge", label: "Show sold-out badge", default: true },
                     ].map(({ key, label, default: def }) => {
                         const val = (storeProductCard as any)?.[key] !== undefined ? (storeProductCard as any)[key] : def
                         return (
@@ -1953,7 +2026,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                 <div className="space-y-2.5">
                     {[
                     { key: "sticky_header", label: "Sticky header", hint: "Stays fixed while scrolling", def: true },
-                    { key: "sticky_announcement", label: "Sticky announcement bar", hint: "Bar stays at top", def: true },
+                    //{ key: "sticky_announcement", label: "Sticky announcement bar", hint: "Bar stays at top", def: true },
                     ].map(({ key, label, hint, def }) => {
                     const val = (store as any)[key] !== undefined ? (store as any)[key] : def
                     return (
@@ -1972,7 +2045,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                 </div>
                 </StyleSection>
 
-                <StyleSection title="SEO & Social Sharing" isDark={isDark}>
+                {/* <StyleSection title="SEO & Social Sharing" isDark={isDark}>
                 <div className="space-y-2.5">
                     <div>
                     <label className={`text-[10px] ${textFaint} block mb-1`}>Page title</label>
@@ -1981,7 +2054,13 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     </div>
                     <div>
                     <label className={`text-[10px] ${textFaint} block mb-1`}>Meta description</label>
-                    <EditorTextarea value={storeSeoDescription ?? ""} onChange={v => setStore(p => ({ ...p, seo_description: v }))} placeholder="Shop official merch from..." rows={3} isDark={isDark} />
+                    <textarea
+                        value={storeSeoDescription ?? ""}
+                        onChange={e => setStore(p => ({ ...p, seo_description: e.target.value }))}
+                        placeholder="Shop official merch from..."
+                        rows={3}
+                        className={`w-full rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:border-orange-500 resize-none ${inputCls}`}
+                    />
                     <p className={`text-[10px] mt-0.5 ${storeSeoDescription && storeSeoDescription.length > 150 ? "text-amber-400" : textFaint}`}>{(storeSeoDescription ?? "").length}/160</p>
                     </div>
                     <div>
@@ -1996,32 +2075,8 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         onChange={async e => { if (e.target.files?.[0]) { setIsUploadingOg(true); const url = await uploadFile(e.target.files[0]); if (url) setStore(p => ({ ...p, og_image: url })); setIsUploadingOg(false) } }} />
                     </div>
                 </div>
-                </StyleSection>
+                </StyleSection> */}
 
-                <StyleSection title="Custom CSS" isDark={isDark}>
-                <div>
-                    <p className={`text-[10px] ${textFaint} mb-2 opacity-70`}>Advanced: inject CSS directly into your store. Use with care.</p>
-                    <EditorTextarea value={storeCustomCss ?? ""} onChange={v => setStore(p => ({ ...p, custom_css: v }))}
-                    placeholder={"/* Add your CSS here */\n.hero-section { background: ... }"} rows={6} isDark={isDark} mono />
-                </div>
-                </StyleSection>
-
-                <StyleSection title="Domain" isDark={isDark}>
-                <div className="space-y-2.5">
-                    <div>
-                    <label className={`text-[10px] ${textFaint} block mb-1`}>Subdomain</label>
-                    <div className="flex items-center">
-                        <input value={storeSubdomain ?? vendorHandle} onChange={e => setStore(p => ({ ...p, subdomain: e.target.value }))} className={`flex-1 rounded-l-lg px-2 py-1.5 text-xs focus:outline-none focus:border-orange-500 border-r-0 ${inputCls}`} />
-                        <span className={`px-2 py-1.5 text-[10px] rounded-r-lg border ${isDark ? "bg-gray-700 border-gray-600 text-gray-400" : "bg-gray-100 border-gray-300 text-gray-500"} whitespace-nowrap`}>.junooni.com</span>
-                    </div>
-                    </div>
-                    <div>
-                    <label className={`text-[10px] ${textFaint} block mb-1`}>Custom domain <span className="opacity-60">(optional)</span></label>
-                    <EditorInput value={storeCustomDomain ?? ""} onChange={v => setStore(p => ({ ...p, custom_domain: v || undefined }))} placeholder="merch.yourname.com" isDark={isDark} />
-                    {storeDomainVerified && <p className="text-[10px] text-green-400 mt-1 flex items-center gap-1"><Check className="w-2.5 h-2.5" />Domain verified</p>}
-                    </div>
-                </div>
-                </StyleSection>
             </div>
             )}
 
@@ -2044,8 +2099,12 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     }} />
                 ) : (
                 <>
-                    <p className={`text-[10px] uppercase tracking-wider px-1 py-2 ${textFaint}`}>Existing pages</p>
-                    {pages.map(page => (
+                    {/* ── Custom pages ── */}
+                    <p className={`text-[10px] uppercase tracking-wider px-1 py-2 font-semibold ${textFaint}`}>
+                    Custom pages
+                    </p>
+
+                    {pages.filter(page => !["terms", "privacy", "returns"].includes(page.template ?? "")).map(page => (
                     <div key={page.id} className={`group flex items-center gap-2 px-2 py-2 rounded-lg transition-all border border-transparent ${hoverBg}`}>
                         <span className="text-sm shrink-0">{PAGE_TEMPLATES.find(t => t.id === page.template)?.icon ?? "📄"}</span>
                         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setEditingPage(page)}>
@@ -2053,25 +2112,87 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         <p className={`text-[10px] font-mono ${textFaint}`}>/pages/{page.slug}</p>
                         </div>
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
-                        {page.in_nav && <span className="text-[9px] px-1 py-0.5 bg-blue-500/20 text-blue-400 rounded">Nav</span>}
-                        {page.in_footer && <span className="text-[9px] px-1 py-0.5 bg-purple-500/20 text-purple-400 rounded">Footer</span>}
-                        <button onClick={() => setEditingPage(page)} className="p-0.5 rounded hover:bg-gray-700"><Pencil className={`w-2.5 h-2.5 ${textMuted}`} /></button>
-                        <button onClick={() => deletePage(page.id)} className="p-0.5 rounded hover:bg-red-900/50"><Trash2 className="w-2.5 h-2.5 text-red-400" /></button>
+                        {/* {page.in_nav && <span className="text-[9px] px-1 py-0.5 bg-blue-500/20 text-blue-400 rounded">Nav</span>}
+                        {page.in_footer && <span className="text-[9px] px-1 py-0.5 bg-purple-500/20 text-purple-400 rounded">Footer</span>} */}
+                        <button onClick={() => setEditingPage(page)} className="p-0.5 rounded hover:bg-gray-700">
+                            <Pencil className={`w-2.5 h-2.5 ${textMuted}`} />
+                        </button>
+                        <button onClick={() => deletePage(page.id)} className="p-0.5 rounded hover:bg-red-900/50">
+                            <Trash2 className="w-2.5 h-2.5 text-red-400" />
+                        </button>
                         </div>
                     </div>
                     ))}
-                    {pages.length === 0 && <p className={`px-2 py-2 text-xs ${textFaint}`}>No custom pages yet.</p>}
+
+                    {pages.filter(page => !["terms", "privacy", "returns"].includes(page.template ?? "")).length === 0 && (
+                    <p className={`px-2 py-2 text-xs ${textFaint}`}>No custom pages yet.</p>
+                    )}
+
                     <div className={`pt-2 mt-2 border-t ${panelBorder}`}>
-                        <button
-                            onClick={() => startNewPage("blank")}
-                            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed text-xs font-medium transition-all ${
-                            isDark
-                                ? "border-indigo-800/50 text-indigo-400 hover:border-indigo-600 hover:bg-indigo-900/20"
-                                : "border-indigo-300 text-indigo-500 hover:border-indigo-400 hover:bg-indigo-50"
-                            }`}
-                        >
-                            <Plus className="w-3 h-3" /> Add new page
+                    <button
+                        onClick={() => startNewPage("blank")}
+                        className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed text-xs font-medium transition-all ${
+                        isDark
+                            ? "border-indigo-800/50 text-indigo-400 hover:border-indigo-600 hover:bg-indigo-900/20"
+                            : "border-indigo-300 text-indigo-500 hover:border-indigo-400 hover:bg-indigo-50"
+                        }`}
+                    >
+                        <Plus className="w-3 h-3" /> Add new page
+                    </button>
+                    </div>
+
+                    {/* ── Policies and support pages ── */}
+                    <p className={`text-[10px] uppercase tracking-wider px-1 pt-4 pb-2 font-semibold ${textFaint}`}>
+                    Policies and support pages
+                    </p>
+
+                    {pages.filter(page => ["terms", "privacy", "returns"].includes(page.template ?? "")).map(page => (
+                    <div key={page.id} className={`group flex items-center gap-2 px-2 py-2 rounded-lg transition-all border border-transparent ${hoverBg}`}>
+                        <span className="text-sm shrink-0">
+                        {PAGE_TEMPLATES.find(t => t.id === page.template)?.icon ?? "📄"}
+                        </span>
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setEditingPage(page)}>
+                        <p className={`text-xs font-medium truncate ${textPrimary}`}>{page.title}</p>
+                        <p className={`text-[10px] font-mono ${textFaint}`}>/pages/{page.slug}</p>
+                        </div>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
+                        {page.in_nav && (
+                            <span className="text-[9px] px-1 py-0.5 bg-blue-500/20 text-blue-400 rounded">Nav</span>
+                        )}
+                        {page.in_footer && (
+                            <span className="text-[9px] px-1 py-0.5 bg-purple-500/20 text-purple-400 rounded">Footer</span>
+                        )}
+                        <button onClick={() => setEditingPage(page)} className="p-0.5 rounded hover:bg-gray-700">
+                            <Pencil className={`w-2.5 h-2.5 ${textMuted}`} />
                         </button>
+                        </div>
+                    </div>
+                    ))}
+
+                    {/* Managed pages notice */}
+                    <div className={`mt-3 mx-1 p-3 rounded-xl border text-xs leading-relaxed ${
+                    isDark
+                        ? "border-gray-700 bg-gray-800/50 text-gray-400"
+                        : "border-gray-200 bg-gray-50 text-gray-500"
+                    }`}>
+                    <p className="mb-2.5">
+                        📋 These pages are auto-generated by JUNOONI. You can customize them, but once you do you will no longer receive automatic updates.
+                    </p>
+                    {/* <button
+                        onClick={() => {
+                        const firstPolicy = pages.find(p =>
+                            ["terms", "privacy", "returns"].includes(p.template ?? "")
+                        )
+                        if (firstPolicy) setEditingPage(firstPolicy)
+                        }}
+                        className={`w-full py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                        isDark
+                            ? "border-gray-600 text-gray-300 hover:border-gray-400 hover:bg-gray-700"
+                            : "border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-white"
+                        }`}
+                    >
+                        Customize these pages
+                    </button> */}
                     </div>
                 </>
                 )}
@@ -2193,7 +2314,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     )
                 })}
                 </div>
-                <div className={`pt-3 border-t ${panelBorder} space-y-2`}>
+                {/* <div className={`pt-3 border-t ${panelBorder} space-y-2`}>
                 <p className={`text-[10px] uppercase tracking-wider ${textFaint}`}>Store identity</p>
                 <div>
                     <label className={`text-[10px] ${textFaint} block mb-1`}>Tagline</label>
@@ -2204,7 +2325,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     <EditorInput value={storeHeroImage ?? ""} onChange={v => setStore(p => ({ ...p, hero_image: v || undefined }))} placeholder="https://..." isDark={isDark} />
                     {storeHeroImage && <img src={storeHeroImage} alt="hero" className="object-cover w-full h-16 mt-2 rounded-lg opacity-60" />}
                 </div>
-                </div>
+                </div> */}
             </div>
             )}
         </div>

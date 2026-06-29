@@ -22,6 +22,7 @@ interface Props {
   handle: string
   brandPrimary?: string
   textColor?: string  // add this
+  showProductCount?: boolean
   isDark?: boolean
   filterOrder?: string[]
   activeCategoryHandle?: string
@@ -166,6 +167,7 @@ export default function ProductGrid({
   cardShowPrice = true,
   cardShowHover = true,
   cardShowSoldOut = true,
+  showProductCount = true,
 }: Props) {
 
   // Apply limit and sold-out filter first (these come from the editor)
@@ -424,7 +426,7 @@ export default function ProductGrid({
 
         {/* Grid */}
         <div className="flex-1 min-w-0">
-          {sidebarVisible && (
+          {sidebarVisible && showProductCount && (
             <div className="items-center justify-between hidden mb-5 md:flex">
               <p className={`text-sm ${textColor}`} style={textColorProp ? { color: textColorProp } : undefined}>
                 Showing <span className="font-semibold">{filtered.length}</span> of {products.length} products

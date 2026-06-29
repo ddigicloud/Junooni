@@ -134,7 +134,7 @@ export default function AddressForm({
         </div>
 
         <label className="flex items-center gap-3 py-1 cursor-pointer">
-          <input type="checkbox" name="same_as_billing" defaultChecked className="w-4 h-4 rounded accent-orange-500" />
+          <input type="checkbox" name="same_as_billing" defaultChecked className="w-4 h-4 rounded" style={{ accentColor: brandPrimary }} />
           <span className="text-sm text-gray-600">Billing address same as shipping</span>
         </label>
 

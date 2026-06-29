@@ -11,6 +11,12 @@ function getPageUrl(vendorHandle: string, slug: string): string {
   return `${base}/${vendorHandle}/pages/${slug}`
 }
 
+// ADD this helper above the component
+function extractLastUpdated(content: string): string | null {
+  const match = content.match(/\*Last updated: (.+?)\*/)
+  return match ? match[1] : null
+}
+
 export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew, isDark, onDraftChange }: {
   page: StorePage
   vendorHandle: string
@@ -108,7 +114,7 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
               ? "bg-gray-800/50 text-gray-500 border border-gray-700"
               : "bg-gray-50 text-gray-400 border border-gray-200"
           }`}>
-            🔒 Last updated: {new Date().toLocaleDateString("en-IN", {
+            🔒 Last updated: {extractLastUpdated(draft.content) ?? new Date().toLocaleDateString("en-IN", {
               day: "numeric", month: "long", year: "numeric"
             })} — auto-updated on save
           </p>

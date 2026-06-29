@@ -1413,8 +1413,15 @@ const previewUrl = (() => {
 
             {/* Category filter tabs */}
             <div className={`flex gap-1.5 p-3 border-b overflow-x-auto ${isDark ? "border-gray-700" : "border-gray-100"}`}>
-              {[{ id: "all", label: "All" }, ...SECTION_CATEGORIES].map(cat => (
-                <button key={cat.id} onClick={() => setAddSectionFilter(cat.id)}
+              {[{ id: "all", label: "All" }, ...SECTION_CATEGORIES.filter(cat => {
+                  const allowed = PAGE_ALLOWED_SECTIONS[currentLayoutKey]
+                    ?? (currentLayoutKey.startsWith("page_") ? PAGE_ALLOWED_SECTIONS["page_"] : null)
+                    ?? PAGE_ALLOWED_SECTIONS.home
+                  return SECTION_BLOCKS_WITH_ICONS.some(b =>
+                    allowed.includes(b.type) && b.category === cat.id
+                  )
+                })].map(cat => (
+                  <button key={cat.id} onClick={() => setAddSectionFilter(cat.id)}
                   className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                     addSectionFilter === cat.id ? "bg-orange-500 text-white" : `${textFaint} ${hoverBg}`
                   }`}>

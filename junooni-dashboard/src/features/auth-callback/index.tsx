@@ -15,7 +15,6 @@
 
 //     async function handleCallback() {
 //       try {
-//         // Step 1 — collect all query params from Google redirect
 //         const params = new URLSearchParams(window.location.search)
 //         const queryObject: Record<string, string> = {}
 //         params.forEach((value, key) => { queryObject[key] = value })
@@ -25,9 +24,6 @@
 //         const intent = localStorage.getItem('googleAuthIntent') || 'signin'
 //         localStorage.removeItem('googleAuthIntent')
 
-//         // Step 2 — validate Google OAuth code with Medusa
-//         // This creates the auth identity (same as POST /auth/vendor/emailpass/register)
-//         // and returns a JWT token
 //         const callbackUrl = new URL(`${backendUrl}/auth/vendor/google-vendor/callback`)
 //         Object.entries(queryObject).forEach(([key, value]) => {
 //           callbackUrl.searchParams.append(key, value)
@@ -47,7 +43,6 @@
 //         let token = data.token
 //         if (!token) throw new Error('No token received from Medusa')
 
-//         // Step 3 — decode JWT
 //         const payload = JSON.parse(atob(token.split('.')[1]))
 //         const email = payload?.user_metadata?.email || ''
 //         const firstName = payload?.user_metadata?.given_name ||
@@ -56,43 +51,30 @@
 //                          payload?.user_metadata?.name?.split(' ').slice(1).join(' ') || ''
 //         const actorId = payload?.actor_id || ''
 
-//         // ─── SIGN UP FLOW ─────────────────────────────────────────────────
-//         // Exactly mirrors emailpass sign-up form:
-//         // emailpass: POST /auth/vendor/emailpass/register → token → localStorage → /onboarding
-//         // Google:    /auth/vendor/google-vendor/callback  → token → localStorage → /onboarding
-//         // No POST /vendors here — that happens during onboarding (basic-info step)
+//         // ─── SIGN UP FLOW ──────────────────────────────────────────────────
 //         if (intent === 'signup') {
 //           if (actorId) {
-//             // Auth identity already linked to vendor profile → dashboard
 //             storeToken(token, email)
 //             navigate({ to: '/dashboard' })
 //             return
 //           }
-
-//           // Auth identity created ✅ — store token exactly like emailpass sign-up
 //           localStorage.setItem('vendorToken', token)
 //           localStorage.setItem('vendorEmail', email)
 //           localStorage.setItem('vendorTokenTimestamp', Date.now().toString())
-
-//           // Bonus: store Google name for onboarding pre-fill
 //           if (firstName) localStorage.setItem('googleFirstName', firstName)
 //           if (lastName) localStorage.setItem('googleLastName', lastName)
-
 //           navigate({ to: '/onboarding' })
 //           return
 //         }
 
-//         // ─── SIGN IN FLOW ─────────────────────────────────────────────────
-
-//         // actor_id exists = Google identity linked to vendor profile
+//         // ─── SIGN IN FLOW ──────────────────────────────────────────────────
 //         if (actorId) {
 //           storeToken(token, email)
 //           navigate({ to: '/dashboard' })
 //           return
 //         }
 
-//         // actor_id empty — try auto-link by email
-//         // (emailpass vendor using Google for first time)
+//         // Try to auto-link by email (emailpass vendor using Google for first time)
 //         const linkResponse = await fetch(`${backendUrl}/vendors/google-link`, {
 //           method: 'POST',
 //           headers: {
@@ -106,7 +88,6 @@
 //         const linkData = await linkResponse.json()
 
 //         if (linkResponse.ok && linkData.token) {
-//           // Linked to existing emailpass vendor
 //           const linkedPayload = JSON.parse(atob(linkData.token.split('.')[1]))
 //           storeToken(linkData.token, email)
 //           linkedPayload?.actor_id
@@ -116,15 +97,10 @@
 //         }
 
 //         if (linkResponse.status === 404 && linkData.isNewVendor) {
-//           // No existing vendor with this email
-//           // Auth identity exists, no vendor profile → onboarding
-//           // (same as emailpass sign-up that never completed onboarding)
-//           localStorage.setItem('vendorToken', token)
-//           localStorage.setItem('vendorEmail', email)
-//           localStorage.setItem('vendorTokenTimestamp', Date.now().toString())
-//           if (firstName) localStorage.setItem('googleFirstName', firstName)
-//           if (lastName) localStorage.setItem('googleLastName', lastName)
-//           navigate({ to: '/onboarding' })
+//           // ✅ Brand new user — no Junooni account exists yet.
+//           // Send them to sign-up and show a friendly prompt toast there.
+//           sessionStorage.setItem('googleSignUpPrompt', 'true')
+//           navigate({ to: '/sign-up' })
 //           return
 //         }
 
@@ -184,6 +160,8 @@
 //   )
 // }
 
+
+
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
@@ -210,6 +188,9 @@ export default function GoogleAuthCallback() {
         const intent = localStorage.getItem('googleAuthIntent') || 'signin'
         localStorage.removeItem('googleAuthIntent')
 
+        console.log('[GoogleAuth] intent:', intent)
+
+        // ── Step 1: Exchange code for token ────────────────────────────────
         const callbackUrl = new URL(`${backendUrl}/auth/vendor/google-vendor/callback`)
         Object.entries(queryObject).forEach(([key, value]) => {
           callbackUrl.searchParams.append(key, value)
@@ -226,24 +207,52 @@ export default function GoogleAuthCallback() {
         const data = await response.json()
         if (!response.ok) throw new Error(data?.message || `Auth failed: ${response.status}`)
 
-        let token = data.token
+        const token = data.token
         if (!token) throw new Error('No token received from Medusa')
 
+        // ── Step 2: Decode token for profile data only ─────────────────────
         const payload = JSON.parse(atob(token.split('.')[1]))
         const email = payload?.user_metadata?.email || ''
         const firstName = payload?.user_metadata?.given_name ||
                           payload?.user_metadata?.name?.split(' ')[0] || ''
         const lastName = payload?.user_metadata?.family_name ||
                          payload?.user_metadata?.name?.split(' ').slice(1).join(' ') || ''
-        const actorId = payload?.actor_id || ''
 
-        // ─── SIGN UP FLOW ──────────────────────────────────────────────────
+        console.log('[GoogleAuth] email:', email, '| actor_id (informational):', payload?.actor_id)
+
+        // ── Step 3: Ground-truth onboarding check via /vendors/me ──────────
+        // actor_id in JWT is NOT reliable for Google OAuth — Medusa can set it
+        // even for incomplete vendors. /vendors/me + checking handle is the
+        // only reliable way to know if onboarding is truly complete.
+        let fullyOnboarded = false
+        try {
+          const vendorRes = await fetch(`${backendUrl}/vendors/me`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'x-publishable-api-key': publishableKey,
+            },
+          })
+          if (vendorRes.ok) {
+            const vendorData = await vendorRes.json()
+            // handle is set during onboarding — if it exists, they're done
+            fullyOnboarded = !!vendorData?.vendor?.handle
+            console.log('[GoogleAuth] vendor handle:', vendorData?.vendor?.handle, '| fullyOnboarded:', fullyOnboarded)
+          } else {
+            console.log('[GoogleAuth] /vendors/me returned', vendorRes.status, '→ not onboarded')
+          }
+        } catch (e) {
+          console.warn('[GoogleAuth] /vendors/me check failed, treating as not onboarded', e)
+        }
+
+        // ── Step 4: SIGN UP FLOW ───────────────────────────────────────────
         if (intent === 'signup') {
-          if (actorId) {
-            storeToken(token, email)
-            navigate({ to: '/dashboard' })
+          if (fullyOnboarded) {
+            // Already has a complete Junooni account
+            sessionStorage.setItem('googleAlreadyExists', 'true')
+            navigate({ to: '/sign-in' })
             return
           }
+          // New or previously stuck mid-onboarding — send to onboarding
           localStorage.setItem('vendorToken', token)
           localStorage.setItem('vendorEmail', email)
           localStorage.setItem('vendorTokenTimestamp', Date.now().toString())
@@ -253,14 +262,14 @@ export default function GoogleAuthCallback() {
           return
         }
 
-        // ─── SIGN IN FLOW ──────────────────────────────────────────────────
-        if (actorId) {
+        // ── Step 5: SIGN IN FLOW ───────────────────────────────────────────
+        if (fullyOnboarded) {
           storeToken(token, email)
           navigate({ to: '/dashboard' })
           return
         }
 
-        // Try to auto-link by email (emailpass vendor using Google for first time)
+        // Not onboarded on sign-in — try auto-link (emailpass vendor using Google first time)
         const linkResponse = await fetch(`${backendUrl}/vendors/google-link`, {
           method: 'POST',
           headers: {
@@ -283,8 +292,7 @@ export default function GoogleAuthCallback() {
         }
 
         if (linkResponse.status === 404 && linkData.isNewVendor) {
-          // ✅ Brand new user — no Junooni account exists yet.
-          // Send them to sign-up and show a friendly prompt toast there.
+          // No Junooni account at all — send to sign-up
           sessionStorage.setItem('googleSignUpPrompt', 'true')
           navigate({ to: '/sign-up' })
           return
@@ -320,7 +328,7 @@ export default function GoogleAuthCallback() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h2 className="mb-2 text-lg font-bold text-gray-900">Sign In Failed</h2>
+          <h2 className="mb-2 text-lg font-bold text-gray-900">Authentication Failed</h2>
           <p className="mb-6 text-sm text-gray-500">{error}</p>
           <button
             onClick={() => navigate({ to: '/sign-in' })}

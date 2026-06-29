@@ -294,11 +294,11 @@ const paymentComplete = isPreviewMode || (
               <div className="mb-4 space-y-4">
                 {activeCart.items?.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-3">
-                    <div className="relative bg-gray-100 w-14 h-14 rounded-xl shrink-0 overflow-hidden">
+                    <div className="relative bg-gray-100 w-14 h-14 rounded-xl shrink-0 overflow">
                       {item.thumbnail ? (
                         <Image src={item.thumbnail} alt={item.title} fill className="object-cover rounded-xl" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-2xl">👕</div>
+                        <div className="flex items-center justify-center w-full h-full text-2xl">👕</div>
                       )}
                       <div
                         className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-white text-[10px] flex items-center justify-center font-bold"

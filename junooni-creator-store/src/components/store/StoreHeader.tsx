@@ -46,8 +46,6 @@ export default function StoreHeader({
   const isDark = store?.template === "bold"
   const handle = vendor.handle
   const stickyHeader = (store as any)?.sticky_header !== false
-  const stickyAnn    = (store as any)?.sticky_announcement !== false
-  const wrapSticky   = stickyHeader || stickyAnn
 
   // ── Bare mode detection ────────────────────────────────────────────────────
   // On the live subdomain (meenal.junooni.com) and custom domains, the
@@ -183,6 +181,7 @@ export default function StoreHeader({
   }, [searchQuery, products])
 
   const getPreviewProducts = (key: string, itemHandle?: string): Product[] => {
+     //console.log("[getPreviewProducts]", { key, itemHandle, productsLen: products.length, collectionsLen: collections.length })
     if (!products.length) return []
     if (key === "shop") {
       if (!itemHandle) return products.slice(0, 8)
@@ -230,11 +229,12 @@ export default function StoreHeader({
   const dropdownBgColor  = isDark ? "#030712" : "#ffffff"
   const dropdownBorderColor = isDark ? "rgba(255,255,255,0.1)" : "#f3f4f6"
 
-  return (
-    <div ref={headerRef} className={wrapSticky ? "sticky top-0 z-40" : "relative"}>
+  // AFTER — separate wrappers for announcement vs header
+return (
+  <div ref={headerRef} className={stickyHeader ? "sticky top-0 z-40" : "relative"}>
 
-      {/* ── TICKERS/ANNOUNCEMENTS ABOVE HEADER ── */}
-      {(() => {
+    {/* ── TICKERS/ANNOUNCEMENTS ABOVE HEADER ── */}
+    {(() => {
         const headerIdx = homeSections.findIndex((s: any) => s.type === "header")
         return homeSections
           .filter((s: any, i: number) => {
@@ -263,9 +263,9 @@ export default function StoreHeader({
           })
       })()}
 
-      {/* ── HEADER BAR ── */}
-      <header
-        ref={headerBarRef}
+    {/* ── HEADER BAR — own sticky wrapper ── */}
+    <header
+      ref={headerBarRef}
         className={`w-full backdrop-blur-md border-b shadow-sm ${bg}`}
         style={{
           ...(headerBg   ? { backgroundColor: headerBg }  : {}),

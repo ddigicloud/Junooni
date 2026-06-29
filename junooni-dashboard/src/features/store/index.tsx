@@ -445,7 +445,7 @@ export default function StorePage() {
           <img
             src={storeBanner}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none"
+            className="absolute inset-0 object-cover object-center w-full h-full pointer-events-none select-none"
           />
 
           {/* Content overlaid on the left */}
@@ -468,7 +468,7 @@ export default function StorePage() {
                   ? `You're live, ${vendorName || "Creator"}!`
                   : `Hey ${vendorName || "Creator"} 👋`}
               </h1>
-              <p className="text-sm text-grey/85 font-medium mb-5">
+              <p className="mb-5 text-sm font-medium text-grey/85">
                 {isLive
                   ? "Your fans can shop your awesome products now 🚀"
                   : "Complete the setup below to publish your store and start selling."}
@@ -477,7 +477,7 @@ export default function StorePage() {
               {/* Store link pill */}
               {hasStore && (
                 <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-sm mb-5">
-                  <span className="text-xs text-gray-500 font-medium">Your store link:</span>
+                  <span className="text-xs font-medium text-gray-500">Your store link:</span>
                   <a
                     href={getStoreUrl(vendorHandle, store.custom_domain)}
                     target="_blank"
@@ -575,7 +575,7 @@ export default function StorePage() {
           {/* Store editor */}
           <Link to="/store/editor"
             className="flex items-center gap-4 p-5 transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0 bg-purple-100">
+            <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl shrink-0">
               <Layout className="w-5 h-5 text-purple-600" />
             </div>
             <div className="flex-1 min-w-0">
@@ -588,7 +588,7 @@ export default function StorePage() {
           {/* Branding */}
           <button onClick={() => setActiveModal("branding")}
             className="flex items-center gap-4 p-5 text-left transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0 bg-pink-100">
+            <div className="flex items-center justify-center w-12 h-12 bg-pink-100 rounded-xl shrink-0">
               <Palette className="w-5 h-5 text-pink-500" />
             </div>
             <div className="flex-1 min-w-0">
@@ -601,7 +601,7 @@ export default function StorePage() {
           {/* Custom pages */}
           <button onClick={() => setActiveModal("pages")}
             className="flex items-center gap-4 p-5 text-left transition-all bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-sm group">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0 bg-blue-100">
+            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl shrink-0">
               <FileText className="w-5 h-5 text-blue-600" />
             </div>
             <div className="flex-1 min-w-0">
@@ -644,7 +644,7 @@ export default function StorePage() {
               <p className="text-xs text-gray-500 mt-0.5">Remove Junooni branding, connect a custom domain, and get priority payouts.</p>
             </div>
           </div>
-          <Link to="/store/membership"
+          <Link to="/membership"
             className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 transition-colors">
             <Crown className="w-3.5 h-3.5" />View plans
           </Link>
@@ -996,7 +996,7 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
       <button
         type="button"
         onClick={() => setShow(v => !v)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+        className="absolute text-gray-400 transition-colors -translate-y-1/2 right-3 top-1/2 hover:text-gray-600"
         tabIndex={-1}
         aria-label={show ? "Hide password" : "Show password"}
       >
@@ -1302,9 +1302,9 @@ function DomainSeoPanel({ store, onChange, onSave, isSaving, vendorHandle, token
 
 const PAGE_TEMPLATES_LIST = [
   { id: "blank"   as PageTemplate, label: "Blank",   icon: "📄", desc: "Start from scratch",         defaultContent: "" },
-  { id: "about"   as PageTemplate, label: "About",   icon: "👋", desc: "About me / my story",        defaultContent: "## About Me\n\nShare your story here..." },
-  { id: "faq"     as PageTemplate, label: "FAQ",     icon: "❓", desc: "Frequently asked questions", defaultContent: "## FAQ\n\n**Q: How long does shipping take?**\nA: 5-7 business days." },
-  { id: "contact" as PageTemplate, label: "Contact", icon: "✉️", desc: "Contact / support page",     defaultContent: "## Contact Us\n\nReach out at your@email.com" },
+  // { id: "about"   as PageTemplate, label: "About",   icon: "👋", desc: "About me / my story",        defaultContent: "## About Me\n\nShare your story here..." },
+  // { id: "faq"     as PageTemplate, label: "FAQ",     icon: "❓", desc: "Frequently asked questions", defaultContent: "## FAQ\n\n**Q: How long does shipping take?**\nA: 5-7 business days." },
+  // { id: "contact" as PageTemplate, label: "Contact", icon: "✉️", desc: "Contact / support page",     defaultContent: "## Contact Us\n\nReach out at your@email.com" },
 ]
 
 function PagesPanel({ pages, vendorHandle, onSave, onDelete, onClose }: {
@@ -1344,12 +1344,12 @@ function PagesPanel({ pages, vendorHandle, onSave, onDelete, onClose }: {
                 <span className="w-8 text-lg text-center shrink-0">{PAGE_TEMPLATES_LIST.find(t => t.id === page.template)?.icon ?? "📄"}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{page.title}</p>
-                  <p className="font-mono text-xs text-gray-400 mt-0.5">/p/{page.slug}</p>
+                  <p className="font-mono text-xs text-gray-400 mt-0.5">/pages/{page.slug}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {page.in_nav && (
+                  {/* {page.in_nav && (
                     <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">Nav</span>
-                  )}
+                  )} */}
                   <button onClick={() => { setEditingPage(page); setIsNew(false) }}
                     className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-all">
                     Edit
@@ -1416,7 +1416,7 @@ function PageEditorInline({ page, isNew, vendorHandle, onSave, onCancel, onDelet
 
       <Field label="URL slug">
         <div className="flex items-center overflow-hidden transition-colors border border-gray-200 rounded-xl focus-within:border-gray-400">
-          <div className="px-3 py-2.5 text-xs font-mono text-gray-500 bg-gray-50 border-r border-gray-200 whitespace-nowrap shrink-0">/p/</div>
+          <div className="px-3 py-2.5 text-xs font-mono text-gray-500 bg-gray-50 border-r border-gray-200 whitespace-nowrap shrink-0">/pages/</div>
           <input value={draft.slug} onChange={e => up({ slug: slugify(e.target.value) })} placeholder="about-me"
             className="flex-1 px-3 py-2.5 text-sm font-mono focus:outline-none bg-white" />
         </div>
@@ -1433,11 +1433,11 @@ function PageEditorInline({ page, isNew, vendorHandle, onSave, onCancel, onDelet
         />
       </Field>
 
-      <label className="flex items-center gap-2.5 cursor-pointer select-none">
+      {/* <label className="flex items-center gap-2.5 cursor-pointer select-none">
         <input type="checkbox" checked={draft.in_nav} onChange={e => up({ in_nav: e.target.checked })}
           className="w-4 h-4 rounded accent-orange-500" />
         <span className="text-sm font-medium text-gray-700">Show in navigation menu</span>
-      </label>
+      </label> */}
 
       <div className="flex gap-3 pt-4 border-t border-gray-100">
         <button onClick={() => onSave(draft)}

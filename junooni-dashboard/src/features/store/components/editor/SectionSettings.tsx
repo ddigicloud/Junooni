@@ -344,7 +344,7 @@ export function ProductDetailSettings({ settings, onChange, isDark }: {
         return (
           <div key={key} className={`rounded-lg border ${borderCls}`}>
             {/* ── row ── */}
-            <div className={`flex items-center gap-2 px-2.5 py-2 rounded-lg select-none ${rowBg}`}>
+            <div className={`flex items-center gap-2 px-2.5 py-1 rounded-lg select-none ${rowBg}`}>
               {/* chevron — left */}
               {hasSettings ? (
                 <button
@@ -364,7 +364,7 @@ export function ProductDetailSettings({ settings, onChange, isDark }: {
                 className={`flex items-center gap-2 flex-1 min-w-0 cursor-pointer ${hasSettings ? "" : "opacity-60"}`}
                 onClick={() => hasSettings && toggleKey(key)}
               >
-                <span className="text-sm w-5 text-center shrink-0">{meta.icon}</span>
+                <span className="w-5 text-sm text-center shrink-0">{meta.icon}</span>
                 <span className={`text-[13px] font-medium truncate ${textPrimary}`}>{meta.label}</span>
               </div>
  
@@ -684,24 +684,20 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           </div>
           <span className={`text-xs ${textPrimary}`}>Show product count</span>
         </label>
-        <label className="flex items-center gap-2 cursor-pointer">
+        {/* <label className="flex items-center gap-2 cursor-pointer">
           <div className="relative" onClick={() => onChange({ show_sold_out: !section.show_sold_out })}>
             <div className={`w-8 h-4 rounded-full transition-colors ${section.show_sold_out !== false ? "bg-orange-500" : "bg-gray-600"}`} />
             <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${section.show_sold_out !== false ? "translate-x-4" : ""}`} />
           </div>
           <span className={`text-xs ${textPrimary}`}>Show sold-out products</span>
-        </label>
+        </label> */}
         {/* ── Filter settings — only for All Products page ── */}
         {currentLayoutKey === "products" && (<>
           <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
             <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Filter sidebar</p>
             <div className="space-y-2">
               {[
-                { key: "show_filters",           label: "Show filters",            def: true },
-                { key: "show_sort",              label: "Show sort dropdown",      def: true },
-                { key: "show_price_filter",      label: "Show price filter",       def: true },
-                { key: "show_category_filter",   label: "Show category filter",    def: true },
-                { key: "show_collection_filter", label: "Show collection filter",  def: true },
+                { key: "show_filters", label: "Show filters", def: true },
               ].map(({ key, label, def }) => {
                 const val = (section as any)[key] !== undefined ? (section as any)[key] : def
                 return (
@@ -715,6 +711,29 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
                   </label>
                 )
               })}
+
+              {(section as any).show_filters !== false && (
+                <div className="space-y-2 pl-2 border-l-2 border-orange-500/20 ml-1">
+                  {[
+                    { key: "show_sort",              label: "Show sort dropdown",      def: true },
+                    { key: "show_price_filter",      label: "Show price filter",       def: true },
+                    { key: "show_category_filter",   label: "Show category filter",    def: true },
+                    { key: "show_collection_filter", label: "Show collection filter",  def: true },
+                  ].map(({ key, label, def }) => {
+                    const val = (section as any)[key] !== undefined ? (section as any)[key] : def
+                    return (
+                      <label key={key} className="flex items-center gap-2 cursor-pointer">
+                        <div className="relative shrink-0"
+                          onClick={() => onChange({ [key]: !val } as any)}>
+                          <div className={`w-8 h-4 rounded-full transition-colors ${val ? "bg-orange-500" : "bg-gray-600"}`} />
+                          <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${val ? "translate-x-4" : ""}`} />
+                        </div>
+                        <span className={`text-xs ${textPrimary}`}>{label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1538,18 +1557,23 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
             ))}
           </div>
         </Field>
+
+        {(section.type === "collection_products" || section.type === "category_products") && (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div className="relative" onClick={() => onChange({ show_product_count: !(section.show_product_count ?? true) })}>
+              <div className={`w-8 h-4 rounded-full transition-colors ${section.show_product_count !== false ? "bg-orange-500" : "bg-gray-600"}`} />
+              <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${section.show_product_count !== false ? "translate-x-4" : ""}`} />
+            </div>
+            <span className={`text-xs ${textPrimary}`}>Show product count</span>
+          </label>
+        )}
+        
         {/* ── Filter settings for category/collection detail pages ── */}
         {(section.type === "category_products" || section.type === "collection_products") && (<>
           <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
             <p className={`text-[10px] ${textFaint} mb-2 uppercase tracking-wider`}>Filter sidebar</p>
             <div className="space-y-2">
-              {[
-                { key: "show_filters",           label: "Show filters",           def: true },
-                { key: "show_sort",              label: "Show sort dropdown",     def: true },
-                { key: "show_price_filter",      label: "Show price filter",      def: true },
-                ...(section.type !== "category_products" ? [{ key: "show_category_filter", label: "Show category filter", def: true }] : []),
-                ...(section.type !== "collection_products" ? [{ key: "show_collection_filter", label: "Show collection filter", def: true }] : []),
-              ].map(({ key, label, def }) => {
+              {[{ key: "show_filters", label: "Show filters", def: true }].map(({ key, label, def }) => {
                 const val = (section as any)[key] !== undefined ? (section as any)[key] : def
                 return (
                   <label key={key} className="flex items-center gap-2 cursor-pointer">
@@ -1562,6 +1586,29 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
                   </label>
                 )
               })}
+
+              {(section as any).show_filters !== false && (
+                <div className="space-y-2 pl-2 border-l-2 border-orange-500/20 ml-1">
+                  {[
+                    { key: "show_sort",          label: "Show sort dropdown", def: true },
+                    { key: "show_price_filter",  label: "Show price filter",  def: true },
+                    ...(section.type !== "category_products"   ? [{ key: "show_category_filter",   label: "Show category filter",   def: true }] : []),
+                    ...(section.type !== "collection_products" ? [{ key: "show_collection_filter", label: "Show collection filter", def: true }] : []),
+                  ].map(({ key, label, def }) => {
+                    const val = (section as any)[key] !== undefined ? (section as any)[key] : def
+                    return (
+                      <label key={key} className="flex items-center gap-2 cursor-pointer">
+                        <div className="relative shrink-0"
+                          onClick={() => onChange({ [key]: !val } as any)}>
+                          <div className={`w-8 h-4 rounded-full transition-colors ${val ? "bg-orange-500" : "bg-gray-600"}`} />
+                          <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${val ? "translate-x-4" : ""}`} />
+                        </div>
+                        <span className={`text-xs ${textPrimary}`}>{label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
 

@@ -1113,11 +1113,11 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       return (
         <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "#f9fafb" }}>
           <div className="max-w-6xl mx-auto">
-            {section.title && (
+            {/* {section.title && (
               <p className="mb-8 text-xs font-semibold tracking-widest uppercase" style={{ color: brandPrimary }}>
                 {section.title}
               </p>
-            )}
+            )} */}
             {!product ? (
               <PlaceholderFeaturedProduct
                 brandPrimary={brandPrimary}
@@ -1302,7 +1302,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
   if (!product) return null
 
   return (
-    <section className="px-4 py-16 sm:px-6" style={{ backgroundColor: sectionBg ?? "#f9fafb" }}>
+    <section className="px-4 py-8 sm:px-6" style={{ backgroundColor: sectionBg ?? "#f9fafb" }}>
       <div className="max-w-6xl mx-auto">
         {/* Section label */}
         {section.title && (

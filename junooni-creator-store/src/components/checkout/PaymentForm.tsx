@@ -134,7 +134,7 @@ export default function PaymentForm({
               >
                 <input type="radio" name="payment_method" value={method.id}
                   checked={isSelected} onChange={() => setSelected(method.id)}
-                  className="w-4 h-4 mt-0.5 accent-orange-500"
+                  className="w-4 h-4 mt-0.5 " style={{ accentColor: brandPrimary }}
                 />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-gray-900">{info.icon} {info.label}</p>

@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
 import ProductCard from "@/components/ui/ProductCard"
+import ProductGrid from "@/components/store/ProductGrid"
 
 interface Props {
   vendor: any
@@ -65,6 +66,19 @@ export default function CollectionDetailPageClient({
   const gridColumns  = gridSettings.columns ?? 3
   const gridBg       = gridSettings.background_color
   const gridText     = gridSettings.text_color
+  const showProductCount = gridSettings.show_product_count !== false
+
+  const showFilters          = gridSettings.show_filters           !== false
+  const showSort             = gridSettings.show_sort              !== false
+  const showPriceFilter      = gridSettings.show_price_filter      !== false
+  const showCategoryFilter   = gridSettings.show_category_filter   !== false
+  //const showCollectionFilter = gridSettings.show_collection_filter !== false
+  const filterOrder: string[] = gridSettings.filter_order ?? ["sort", "price", "category"]
+  const cardAspectRatio  = store?.product_card?.aspect_ratio        ?? "square"
+  const cardAlignment    = store?.product_card?.alignment           ?? "left"
+  const cardShowPrice    = store?.product_card?.show_price          !== false
+  const cardShowHover    = store?.product_card?.show_hover          !== false
+  const cardShowSoldOut  = store?.product_card?.show_sold_out_badge !== false
 
   // Real editor sections — exclude virtual + hidden
   const visibleSections = pageSections.filter(
@@ -379,9 +393,6 @@ export default function CollectionDetailPageClient({
               {col.description}
             </p>
           )}
-          <p className="mt-2 text-sm" style={{ color: brandPrimary }}>
-            {initialColProducts.length} product{initialColProducts.length !== 1 ? "s" : ""}
-          </p>
         </div>
       </div>
 
@@ -420,25 +431,32 @@ export default function CollectionDetailPageClient({
             </h2>
           )}
 
-          {initialColProducts.length === 0 ? (
-            <div className="py-20 text-center">
-              <p className={`text-lg ${isDark ? "text-white/50" : "text-gray-400"}`}>
-                No products in this collection yet.
-              </p>
-            </div>
-          ) : (
-            <div className={`grid ${colClass} gap-4 md:gap-6`}>
-              {initialColProducts.map((product: any) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  handle={vendor.handle}
-                  brandPrimary={brandPrimary}
-                  variant={isDark ? "dark" : "light"}
-                />
-              ))}
-            </div>
+          {showProductCount && (
+            <p className="mb-6 text-sm" style={{ color: brandPrimary }}>
+              {initialColProducts.length} product{initialColProducts.length !== 1 ? "s" : ""}
+            </p>
           )}
+
+          <ProductGrid
+            products={initialColProducts}
+            categories={categories}
+            collections={collections}
+            handle={vendor.handle}
+            brandPrimary={brandPrimary}
+            isDark={isDark}
+            columns={gridColumns}
+            showFilters={showFilters}
+            showSort={showSort}
+            showPriceFilter={showPriceFilter}
+            showCategoryFilter={showCategoryFilter}
+            // showCollectionFilter={showCollectionFilter}
+            filterOrder={filterOrder}
+            cardAspectRatio={cardAspectRatio}
+            cardAlignment={cardAlignment}
+            cardShowPrice={cardShowPrice}
+            cardShowHover={cardShowHover}
+            cardShowSoldOut={cardShowSoldOut}
+          />
         </div>
       </div>
 
