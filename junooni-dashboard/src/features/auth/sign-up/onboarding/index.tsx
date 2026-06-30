@@ -1859,7 +1859,8 @@ export default function ImprovedCreatorOnboarding() {
     const token = localStorage.getItem('vendorToken');
     if (!token) throw new Error('Authentication token not found');
     const uploadedUrls = await uploadPendingFiles();
-    const finalData = localPayload || vendorData.vendor;
+    //const finalData = localPayload || vendorData.vendor;
+    const finalData = vendorData.vendor;
     const payload = {
       name: finalData.name || 'New Vendor', handle: finalData.handle || 'new-vendor-handle',
       phonenumber: finalData.phonenumber || '', logo: uploadedUrls.logo || '',

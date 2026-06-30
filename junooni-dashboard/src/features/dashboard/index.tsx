@@ -763,6 +763,8 @@ const DashboardPage = () => {
   const popupButtonsRef = useRef<ProductsPrimaryButtonsHandle>(null);
   const [storePreference, setStorePreference] = useState<StorePreference | null>(null)
   const [showStoreTypeModal, setShowStoreTypeModal] = useState(false)
+  const [marketplaceStatus, setMarketplaceStatus] = useState<"none" | "pending" | "approved" | "rejected">("none")
+  const [marketplaceRejectionReason, setMarketplaceRejectionReason] = useState<string | null>(null)
   const [showTour, setShowTour] = useState(false)
   
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus>({
@@ -945,10 +947,14 @@ const DashboardPage = () => {
       }
       
       const vendorData = await vendorResponse.json();
-      
+
       // Check onboarding completion (basic-info + creator-profile only)
       const onboardingCheck = checkOnboardingCompletion(vendorData);
       setOnboardingStatus(onboardingCheck);
+
+      // Marketplace application status
+      setMarketplaceStatus(vendorData.vendor?.marketplace_status || "none");
+      setMarketplaceRejectionReason(vendorData.vendor?.marketplace_rejection_reason || null);
       
       const transformedVendor: Vendor = {
         id: vendorData.vendor?.id || "1",
@@ -978,16 +984,17 @@ const DashboardPage = () => {
         setTimeout(() => setShowTour(true), 1200);
       }
 
-      const hasSellPreference =
-        vendorData?.vendor?.sell_on_marketplace !== undefined ||
-        vendorData?.vendor?.sell_on_own_store !== undefined
-      
-      if (hasSellPreference) {
-        setStorePreference({
-          sell_on_marketplace: vendorData.vendor.sell_on_marketplace ?? true,
-          sell_on_own_store: vendorData.vendor.sell_on_own_store ?? false,
-        })
-      } else {
+      const marketplaceStatusValue = vendorData.vendor?.marketplace_status || "none"
+      const isNewVendor = 
+        marketplaceStatusValue === "none" && 
+        !vendorData.vendor?.sell_on_own_store
+
+      setStorePreference({
+        sell_on_marketplace: vendorData.vendor?.sell_on_marketplace ?? false,
+        sell_on_own_store: vendorData.vendor?.sell_on_own_store ?? false,
+      })
+
+      if (isNewVendor) {
         setTimeout(() => setShowStoreTypeModal(true), 800)
       }
 
@@ -1125,6 +1132,25 @@ const DashboardPage = () => {
     return { totalRevenue, pendingOrders, completedOrders, totalOrders: validOrders.length, todayRevenue, todayOrders: todayOrders.length, processingOrders, shippedOrders };
   };
   
+  const handleApplyToMarketplace = async () => {
+    const token = localStorage.getItem("vendorToken");
+    try {
+      const res = await fetch(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/marketplace-application`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMarketplaceStatus("pending");
+        toast({ title: "Application submitted!", description: "We'll review and get back to you shortly." });
+      } else {
+        toast({ title: "Couldn't apply", description: data.message || "Please try again." });
+      }
+    } catch {
+      toast({ title: "Couldn't apply", description: "Network error, please try again." });
+    }
+  };
+
   const stats = calculateStats();
   const handleLoginRedirect = () => navigate({ to: "/sign-in" });
   
@@ -1216,7 +1242,7 @@ const DashboardPage = () => {
                 </Button>
                 {storePreference && (
                   <div id="tour-both-stores-badge">
-                    <StoreModeBadge pref={storePreference} onChangeClick={() => setShowStoreTypeModal(true)} />
+                    <StoreModeBadge pref={storePreference} marketplaceStatus={marketplaceStatus} onChangeClick={() => setShowStoreTypeModal(true)} />
                   </div>
                 )}
                 <Button variant="ghost" asChild><Link to="/products">Products</Link></Button>
@@ -1529,6 +1555,9 @@ const DashboardPage = () => {
         <StoreTypeModal
           vendorId={vendor.id}
           currentPreference={storePreference ?? undefined}
+          marketplaceStatus={marketplaceStatus}
+          marketplaceRejectionReason={marketplaceRejectionReason}
+          onApplyMarketplace={handleApplyToMarketplace}
           onComplete={(pref) => {
             setStorePreference(pref)
             setShowStoreTypeModal(false)

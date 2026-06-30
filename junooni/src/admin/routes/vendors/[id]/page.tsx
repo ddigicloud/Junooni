@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Container, Heading, Label, Button, Text, Badge, toast } from "@medusajs/ui";
+import { Container, Heading, Label, Button, Text, Badge, toast, Textarea } from "@medusajs/ui";
 import { Users } from "@medusajs/icons";
 import CreatorFollowersTab from "./followers/page"
 import CreatorPayoutTab from "./payout/page"
@@ -59,6 +59,10 @@ interface Vendor {
   verified?: "Yes" | "No"; gst_verification_status?: "pending" | "verified" | "failed"
   metadata?: Record<string, any>
   sell_on_marketplace?: boolean; sell_on_own_store?: boolean
+  marketplace_status?: "none" | "pending" | "approved" | "rejected"
+  marketplace_rejection_reason?: string | null
+  marketplace_applied_at?: string | null
+  marketplace_approved_at?: string | null
   // ── plan fields ─────────────────────────────────────────────────────────────
   plan?: string
   plan_billing_cycle?: string
@@ -114,8 +118,14 @@ const CreatorDetailPage = () => {
   const [isImpersonating, setIsImpersonating] = useState(false)
 
   // store mode
+  // store mode
   const [isSavingStoreMode, setIsSavingStoreMode] = useState(false)
   const [storeModeEdit, setStoreModeEdit] = useState({ sell_on_marketplace: false, sell_on_own_store: false })
+
+  // marketplace application
+  const [isProcessingApplication, setIsProcessingApplication] = useState(false)
+  const [showRejectForm, setShowRejectForm] = useState(false)
+  const [rejectReason, setRejectReason] = useState("")
 
   // plan management
   const [isSavingPlan, setIsSavingPlan] = useState(false)
@@ -171,17 +181,63 @@ const CreatorDetailPage = () => {
     finally { setIsLoadingSub(false) }
   }
 
-  const handleSaveStoreMode = async () => {
+  const handleMarketplaceAction = async (action: "approve" | "reject") => {
     if (!vendor) return
-    setIsSavingStoreMode(true)
+    if (action === "reject" && !rejectReason.trim()) {
+      toast.error("Please provide a rejection reason.")
+      return
+    }
+    setIsProcessingApplication(true)
     try {
-      const response = await fetch(`/vendors/${vendor.id}`, {
-        method: "PUT", credentials: "include",
+      const response = await fetch(`/admin/vendors/${vendor.id}/marketplace-application`, {
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(storeModeEdit),
+        body: JSON.stringify(
+          action === "approve" ? { action } : { action, reason: rejectReason.trim() }
+        ),
       })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || `HTTP ${response.status}`)
+
+      setVendor(prev => prev ? {
+        ...prev,
+        marketplace_status: action === "approve" ? "approved" : "rejected",
+        sell_on_marketplace: action === "approve",
+        marketplace_rejection_reason: action === "reject" ? rejectReason.trim() : null,
+      } : prev)
+      setShowRejectForm(false)
+      setRejectReason("")
+      toast.success(action === "approve" ? "Creator approved for marketplace." : "Application rejected.")
+    } catch (err) {
+      toast.error(`Failed: ${err instanceof Error ? err.message : "Unknown error"}`)
+    } finally {
+      setIsProcessingApplication(false)
+    }
+  }
+
+  const handleSaveStoreMode = async () => {
+  if (!vendor) return
+  setIsSavingStoreMode(true)
+  try {
+    // Keep marketplace_status in sync with manual admin overrides —
+    // so a directly-checked marketplace box still reads as "approved"
+    const payload: any = { ...storeModeEdit }
+    if (storeModeEdit.sell_on_marketplace && vendor.marketplace_status !== "approved") {
+      payload.marketplace_status = "approved"
+      payload.marketplace_approved_at = new Date().toISOString()
+      payload.marketplace_rejection_reason = null
+    } else if (!storeModeEdit.sell_on_marketplace && vendor.marketplace_status === "approved") {
+      // Admin manually unchecked an approved vendor — reset to none so they could re-apply cleanly
+      payload.marketplace_status = "none"
+    }
+
+    const response = await fetch(`/vendors/${vendor.id}`, {
+      method: "PUT", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      setVendor(prev => prev ? { ...prev, ...storeModeEdit } : prev)
+      setVendor(prev => prev ? { ...prev, ...storeModeEdit, ...payload } : prev)
       toast.success("Store mode updated.")
     } catch (err) {
       toast.error(`Failed: ${err instanceof Error ? err.message : "Unknown error"}`)
@@ -290,6 +346,8 @@ const CreatorDetailPage = () => {
           {vendor.gst_verification_status === "verified" && <Badge className="text-blue-800 bg-blue-100">GST Verified</Badge>}
           {vendor.sell_on_marketplace && <Badge className="text-orange-800 bg-orange-100">Marketplace</Badge>}
           {vendor.sell_on_own_store && <Badge className="text-green-800 bg-green-100">Own store</Badge>}
+          {vendor.marketplace_status === "pending" && <Badge className="text-amber-800 bg-amber-100">Marketplace: Pending review</Badge>}
+          {vendor.marketplace_status === "rejected" && <Badge className="text-red-800 bg-red-100">Marketplace: Rejected</Badge>}
           {/* Plan badge always visible */}
           <PlanBadge plan={vendor.plan} />
         </div>
@@ -585,10 +643,114 @@ const CreatorDetailPage = () => {
         <div className="p-6 mb-6 bg-white border rounded-lg">
           <Heading level="h2" className="text-xl mb-1">Store mode</Heading>
           <Text className="mb-6 text-sm text-gray-500">Control where {vendor.name}'s merch is sold.</Text>
+
+          {/* Marketplace application review panel — only shown when an application exists */}
+          {vendor.marketplace_status && vendor.marketplace_status !== "none" && (
+            <div className={`p-5 mb-6 rounded-xl border-2 ${
+              vendor.marketplace_status === "pending" ? "border-amber-300 bg-amber-50" :
+              vendor.marketplace_status === "approved" ? "border-green-300 bg-green-50" :
+              "border-red-300 bg-red-50"
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <Heading level="h3" className="text-lg">Marketplace application</Heading>
+                <Badge className={
+                  vendor.marketplace_status === "pending" ? "bg-amber-200 text-amber-900" :
+                  vendor.marketplace_status === "approved" ? "bg-green-200 text-green-900" :
+                  "bg-red-200 text-red-900"
+                }>
+                  {vendor.marketplace_status === "pending" ? "Pending review" :
+                   vendor.marketplace_status === "approved" ? "Approved" : "Rejected"}
+                </Badge>
+              </div>
+
+              {vendor.marketplace_applied_at && (
+                <Text className="text-sm text-gray-600 mb-1">Applied: {formatDate(vendor.marketplace_applied_at)}</Text>
+              )}
+              {vendor.marketplace_status === "approved" && vendor.marketplace_approved_at && (
+                <Text className="text-sm text-gray-600 mb-3">Approved: {formatDate(vendor.marketplace_approved_at)}</Text>
+              )}
+              {vendor.marketplace_status === "rejected" && vendor.marketplace_rejection_reason && (
+                <Text className="text-sm text-red-700 mb-3">Reason: {vendor.marketplace_rejection_reason}</Text>
+              )}
+
+              {vendor.marketplace_status === "pending" && (
+                <div className="mt-3">
+                  {!showRejectForm ? (
+                    <div className="flex gap-3">
+                      <Button
+                        variant="primary"
+                        onClick={() => handleMarketplaceAction("approve")}
+                        isLoading={isProcessingApplication}
+                        disabled={isProcessingApplication}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => setShowRejectForm(true)}
+                        disabled={isProcessingApplication}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="block mb-1 text-sm">Rejection reason</Label>
+                        <Textarea
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          placeholder="e.g. Profile incomplete, content guidelines not met..."
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex gap-3">
+                        <Button
+                          variant="danger"
+                          onClick={() => handleMarketplaceAction("reject")}
+                          isLoading={isProcessingApplication}
+                          disabled={isProcessingApplication || !rejectReason.trim()}
+                        >
+                          Confirm rejection
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => { setShowRejectForm(false); setRejectReason("") }}
+                          disabled={isProcessingApplication}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {vendor.marketplace_status === "rejected" && (
+                <Text className="text-xs text-gray-500 italic">
+                  The creator can re-apply from their dashboard.
+                </Text>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
-            <label className={`flex items-start gap-4 p-5 border-2 rounded-xl cursor-pointer transition-all ${storeModeEdit.sell_on_marketplace ? "border-orange-400 bg-orange-50" : "border-gray-200 bg-gray-50 hover:border-gray-300"}`}>
-              <input type="checkbox" className="mt-1 w-4 h-4 accent-orange-500" checked={storeModeEdit.sell_on_marketplace} onChange={e => setStoreModeEdit(p => ({ ...p, sell_on_marketplace: e.target.checked }))} />
-              <div><Text className="font-semibold">Junooni marketplace</Text><Text className="mt-1 text-sm text-gray-500">Products on junooni.com/store/{vendor.handle || vendor.id}</Text><Badge className="mt-2 text-orange-800 bg-orange-100">junooni.com</Badge></div>
+            <label className={`flex items-start gap-4 p-5 border-2 rounded-xl transition-all ${storeModeEdit.sell_on_marketplace ? "border-orange-400 bg-orange-50" : "border-gray-200 bg-gray-50"} ${vendor.marketplace_status === "pending" ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-gray-300"}`}>
+              <input
+                type="checkbox"
+                className="mt-1 w-4 h-4 accent-orange-500"
+                checked={storeModeEdit.sell_on_marketplace}
+                disabled={vendor.marketplace_status === "pending"}
+                onChange={e => setStoreModeEdit(p => ({ ...p, sell_on_marketplace: e.target.checked }))}
+              />
+              <div>
+                <Text className="font-semibold">Junooni marketplace</Text>
+                <Text className="mt-1 text-sm text-gray-500">Products on junooni.com/store/{vendor.handle || vendor.id}</Text>
+                <Badge className="mt-2 text-orange-800 bg-orange-100">junooni.com</Badge>
+                {vendor.marketplace_status === "pending" && (
+                  <Text className="mt-2 text-xs text-amber-600">Use Approve/Reject above instead of toggling directly.</Text>
+                )}
+              </div>
             </label>
             <label className={`flex items-start gap-4 p-5 border-2 rounded-xl cursor-pointer transition-all ${storeModeEdit.sell_on_own_store ? "border-green-400 bg-green-50" : "border-gray-200 bg-gray-50 hover:border-gray-300"}`}>
               <input type="checkbox" className="mt-1 w-4 h-4 accent-green-600" checked={storeModeEdit.sell_on_own_store} onChange={e => setStoreModeEdit(p => ({ ...p, sell_on_own_store: e.target.checked }))} />
