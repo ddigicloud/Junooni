@@ -210,7 +210,7 @@ export default function GoogleAuthCallback() {
         const token = data.token
         if (!token) throw new Error('No token received from Medusa')
 
-        // ── Step 2: Decode token for profile data only ─────────────────────
+        // ── Step 2: Decode token for profile data ──────────────────────────
         const payload = JSON.parse(atob(token.split('.')[1]))
         const email = payload?.user_metadata?.email || ''
         const firstName = payload?.user_metadata?.given_name ||
@@ -218,13 +218,12 @@ export default function GoogleAuthCallback() {
         const lastName = payload?.user_metadata?.family_name ||
                          payload?.user_metadata?.name?.split(' ').slice(1).join(' ') || ''
 
-        console.log('[GoogleAuth] email:', email, '| actor_id (informational):', payload?.actor_id)
+        console.log('[GoogleAuth] email:', email, '| actor_id:', payload?.actor_id)
 
         // ── Step 3: Ground-truth onboarding check via /vendors/me ──────────
-        // actor_id in JWT is NOT reliable for Google OAuth — Medusa can set it
-        // even for incomplete vendors. /vendors/me + checking handle is the
-        // only reliable way to know if onboarding is truly complete.
         let fullyOnboarded = false
+        let activeToken = token
+
         try {
           const vendorRes = await fetch(`${backendUrl}/vendors/me`, {
             headers: {
@@ -234,26 +233,67 @@ export default function GoogleAuthCallback() {
           })
           if (vendorRes.ok) {
             const vendorData = await vendorRes.json()
-            // handle is set during onboarding — if it exists, they're done
             fullyOnboarded = !!vendorData?.vendor?.handle
             console.log('[GoogleAuth] vendor handle:', vendorData?.vendor?.handle, '| fullyOnboarded:', fullyOnboarded)
-          } else {
-            console.log('[GoogleAuth] /vendors/me returned', vendorRes.status, '→ not onboarded')
           }
         } catch (e) {
-          console.warn('[GoogleAuth] /vendors/me check failed, treating as not onboarded', e)
+          console.warn('[GoogleAuth] /vendors/me check failed', e)
         }
 
-        // ── Step 4: SIGN UP FLOW ───────────────────────────────────────────
-        if (intent === 'signup') {
-          if (fullyOnboarded) {
-            // Already has a complete Junooni account
-            sessionStorage.setItem('googleAlreadyExists', 'true')
-            navigate({ to: '/sign-in' })
+        // ── Step 4: If not yet onboarded via Google, try linking to existing emailpass account ──
+        // This handles two scenarios:
+        // (a) Creator forgot password → clicks "Sign in with Google"
+        // (b) Creator has emailpass account → accidentally clicks "Sign up with Google"
+        // In both cases: if their email matches an existing vendor → link and log in
+        if (!fullyOnboarded) {
+          const linkResponse = await fetch(`${backendUrl}/vendors/google-link`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'x-publishable-api-key': publishableKey,
+            },
+            body: JSON.stringify({ email }),
+          })
+
+          const linkData = await linkResponse.json()
+
+          if (linkResponse.ok && linkData.token) {
+            // Successfully linked Google to existing emailpass account
+            const linkedPayload = JSON.parse(atob(linkData.token.split('.')[1]))
+            activeToken = linkData.token
+            fullyOnboarded = !!linkedPayload?.actor_id
+            console.log('[GoogleAuth] google-link succeeded | fullyOnboarded after link:', fullyOnboarded)
+
+            storeToken(activeToken, email)
+            fullyOnboarded
+              ? navigate({ to: '/dashboard' })
+              : navigate({ to: '/onboarding' })
             return
           }
-          // New or previously stuck mid-onboarding — send to onboarding
-          localStorage.setItem('vendorToken', token)
+
+          if (linkResponse.status === 404 && linkData.isNewVendor) {
+            // Confirmed: no existing account with this email at all
+            // → brand new user, fall through to intent-based routing below
+            console.log('[GoogleAuth] google-link: no existing account found for', email)
+          } else if (!linkResponse.ok) {
+            // Unexpected error from link endpoint
+            console.warn('[GoogleAuth] google-link unexpected error:', linkData)
+          }
+        }
+
+        // ── Step 5: Route based on intent + onboarding status ─────────────
+        if (fullyOnboarded) {
+          // Fully onboarded vendor (Google-native account)
+          storeToken(activeToken, email)
+          navigate({ to: '/dashboard' })
+          return
+        }
+
+        // Not onboarded and no existing emailpass account found
+        if (intent === 'signup') {
+          // Genuinely new user coming from sign-up page → onboarding
+          localStorage.setItem('vendorToken', activeToken)
           localStorage.setItem('vendorEmail', email)
           localStorage.setItem('vendorTokenTimestamp', Date.now().toString())
           if (firstName) localStorage.setItem('googleFirstName', firstName)
@@ -262,43 +302,9 @@ export default function GoogleAuthCallback() {
           return
         }
 
-        // ── Step 5: SIGN IN FLOW ───────────────────────────────────────────
-        if (fullyOnboarded) {
-          storeToken(token, email)
-          navigate({ to: '/dashboard' })
-          return
-        }
-
-        // Not onboarded on sign-in — try auto-link (emailpass vendor using Google first time)
-        const linkResponse = await fetch(`${backendUrl}/vendors/google-link`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'x-publishable-api-key': publishableKey,
-          },
-          body: JSON.stringify({ email }),
-        })
-
-        const linkData = await linkResponse.json()
-
-        if (linkResponse.ok && linkData.token) {
-          const linkedPayload = JSON.parse(atob(linkData.token.split('.')[1]))
-          storeToken(linkData.token, email)
-          linkedPayload?.actor_id
-            ? navigate({ to: '/dashboard' })
-            : navigate({ to: '/onboarding' })
-          return
-        }
-
-        if (linkResponse.status === 404 && linkData.isNewVendor) {
-          // No Junooni account at all — send to sign-up
-          sessionStorage.setItem('googleSignUpPrompt', 'true')
-          navigate({ to: '/sign-up' })
-          return
-        }
-
-        throw new Error(linkData?.message || 'Failed to sign in. Please try again.')
+        // intent === 'signin' but no account found → send to sign-up
+        sessionStorage.setItem('googleSignUpPrompt', 'true')
+        navigate({ to: '/sign-up' })
 
       } catch (err: any) {
         console.error('Google vendor callback error:', err)

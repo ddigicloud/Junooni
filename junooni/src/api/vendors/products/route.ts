@@ -49,6 +49,10 @@ const { data: [vendorAdmin] } = await query.graph({
     "vendor.products.categories.name",
     "vendor.products.categories.handle",
     "vendor.products.size_chart.*",
+    "vendor.products.options.id",
+    "vendor.products.options.title",
+    "vendor.products.options.values.id",
+    "vendor.products.options.values.value",
     ...(storeOnly ? ["vendor.products.sales_channels.id"] : []),
   ],
   filters: {

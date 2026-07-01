@@ -316,14 +316,36 @@ export default function ProductPageClient({
     sm: "w-6 h-6", md: "w-8 h-8", lg: "w-10 h-10"
   }[pd.color_swatch_size ?? "md"]
 
-  const elementOrder = pd.element_order ??
-    ["title", "price", "colors", "sizes", "quantity", "atc", "description", "meta"]
-
   // ── Product options ────────────────────────────────────────────────────────
   const productOpts: any[] = product?.options ?? []
   const colorOption = productOpts.find((o: any) =>
     o.title?.toLowerCase() === "color" || o.title?.toLowerCase() === "colour"
   )
+  const dynamicOptionKeys = productOpts.map((o: any) =>
+  `option_${o.title.toLowerCase().replace(/\s+/g, "_")}`
+)
+
+// Merge stored order with dynamic option keys —
+// replace old hardcoded colors/sizes with actual product option keys
+const storedOrder: string[] = pd.element_order ?? []
+const elementOrder: string[] = storedOrder.length === 0
+  ? ["title", "price", ...dynamicOptionKeys, "quantity", "atc", "description", "meta"]
+  : (() => {
+      const withoutOldOptions = storedOrder.filter(k =>
+        !k.startsWith("option_") && !["colors", "sizes"].includes(k)
+      )
+      const firstOptionIdx = storedOrder.findIndex(k =>
+        k.startsWith("option_") || ["colors", "sizes"].includes(k)
+      )
+      const insertAt = firstOptionIdx !== -1
+        ? firstOptionIdx
+        : withoutOldOptions.indexOf("quantity") !== -1
+          ? withoutOldOptions.indexOf("quantity")
+          : 2
+      const result = [...withoutOldOptions]
+      result.splice(insertAt, 0, ...dynamicOptionKeys)
+      return result.filter((k, i, arr) => arr.indexOf(k) === i)
+    })()
   const sizeOption = productOpts.find((o: any) => o.title?.toLowerCase() === "size")
   const colorNames: string[] = colorOption?.values?.map((v: any) => v.value).filter(Boolean) ?? []
   const sizeNames:  string[] = sizeOption?.values?.map((v: any) => v.value).filter(Boolean) ?? []
@@ -355,8 +377,22 @@ export default function ProductPageClient({
   }
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [selectedColor, setSelectedColor] = useState<string>(colorNames[0] ?? "")
-  const [selectedSize,  setSelectedSize]  = useState<string>(sizeNames[0] ?? "")
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      productOpts.map((o: any) => [
+        o.title.toLowerCase(),
+        o.values?.[0]?.value ?? ""
+      ])
+    )
+  )
+  // convenience aliases for backward compat
+  const selectedColor = selectedOptions["color"] ?? selectedOptions["colour"] ?? ""
+  const selectedSize  = selectedOptions["size"]  ?? ""
+  const setSelectedColor = (v: string) => setSelectedOptions(prev => ({
+    ...prev,
+    ...(prev["color"] !== undefined ? { color: v } : { colour: v })
+  }))
+  const setSelectedSize = (v: string) => setSelectedOptions(prev => ({ ...prev, size: v }))
   const [quantity,   setQuantity]  = useState(1)
   const [isAdding,   setIsAdding]  = useState(false)
   const [added,      setAdded]     = useState(false)
@@ -378,21 +414,21 @@ export default function ProductPageClient({
     return product.variants.find((v: any) => {
       const opts: any[] = v.options ?? []
       if (opts.length === 0) {
-        // title fallback: split on " / " and match exact segments
+        // title fallback
         const segments = (v.title ?? "").toLowerCase().split(/\s*\/\s*/)
-        const colorMatch = !selectedColor ||
-          segments.some(s => s === selectedColor.toLowerCase())
-        const sizeMatch = !selectedSize ||
-          segments.some(s => s === selectedSize.toLowerCase())
-        return colorMatch && sizeMatch
+        return Object.values(selectedOptions).every(val =>
+          !val || segments.some(s => s === val.toLowerCase())
+        )
       }
-      const hasColor = !selectedColor || opts.some((o: any) =>
-        (o.value ?? o.option_value ?? "").toLowerCase() === selectedColor.toLowerCase()
-      )
-      const hasSize = !selectedSize || opts.some((o: any) =>
-        (o.value ?? o.option_value ?? "").toLowerCase() === selectedSize.toLowerCase()
-      )
-      return hasColor && hasSize
+      // check every selected option matches this variant
+      return Object.entries(selectedOptions).every(([optionTitle, selectedVal]) => {
+        if (!selectedVal) return true
+        return opts.some((o: any) => {
+          const thisOptionTitle = (o.option?.title ?? "").toLowerCase()
+          const thisValue = (o.value ?? o.option_value ?? "").toLowerCase()
+          return thisOptionTitle === optionTitle && thisValue === selectedVal.toLowerCase()
+        })
+      })
     }) ?? product.variants[0]
   }
   const selectedVariant = findVariant()
@@ -761,7 +797,150 @@ useEffect(() => {
           </p>
         )
 
-      default: return null
+     default: {
+        if (!el.startsWith("option_")) return null
+        const optionTitleKey = el.replace("option_", "")
+        const matchedOption = productOpts.find((o: any) =>
+          o.title.toLowerCase().replace(/\s+/g, "_") === optionTitleKey
+        )
+        if (!matchedOption) return null
+
+        const isColorOption = matchedOption.title.toLowerCase().includes("color") ||
+          matchedOption.title.toLowerCase().includes("colour")
+        const isSizeOption = matchedOption.title.toLowerCase().includes("size")
+        const optionValues: string[] = matchedOption.values?.map((v: any) => v.value).filter(Boolean) ?? []
+
+        if (isColorOption) return (
+          <div key={el}>
+            {(pd.show_color_label ?? true) && (
+              <p className="text-xs font-semibold uppercase tracking-widest mb-2.5"
+                style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#9ca3af" }}>
+                {pd.colors_label ?? matchedOption.title}
+                {selectedColor && <span className="ml-2 font-normal normal-case opacity-70">— {selectedColor}</span>}
+              </p>
+            )}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {optionValues.map(name => {
+                const hex = resolveHex(name)
+                const isGrad = hex?.startsWith("linear-gradient")
+                const light = hex && !isGrad ? isLightHex(hex) : false
+                const isSelected = selectedColor === name
+                return (
+                  <button key={name} title={name} onClick={() => setSelectedColor(name)}
+                    className={`${swatchSizeClass} rounded-full transition-all shrink-0 hover:scale-110`}
+                    style={{
+                      ...(isGrad ? { background: hex! } : { backgroundColor: hex ?? "#cccccc" }),
+                      boxShadow: isSelected
+                        ? `0 0 0 2.5px white, 0 0 0 4.5px ${brandPrimary}`
+                        : light
+                          ? "0 0 0 1.5px #d1d5db, 0 1px 4px rgba(0,0,0,0.12)"
+                          : "0 0 0 2px rgba(255,255,255,0.9), 0 1px 4px rgba(0,0,0,0.2)",
+                      transform: isSelected ? "scale(1.15)" : "scale(1)",
+                    }} />
+                )
+              })}
+            </div>
+          </div>
+        )
+
+        if (isSizeOption) return (
+          <div key={el}>
+            {(pd.show_size_label ?? true) && (
+              <div className="flex items-center gap-3 mb-2.5 flex-wrap">
+                <p className="flex items-center gap-2 text-xs font-semibold tracking-widest uppercase"
+                  style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#9ca3af" }}>
+                  {pd.sizes_label ?? matchedOption.title}
+                  {selectedSize && (
+                    <span className="font-normal normal-case opacity-70"
+                      style={{ color: isDark ? "rgba(255,255,255,0.7)" : "#6b7280" }}>
+                      — {selectedSize}
+                    </span>
+                  )}
+                  {product.size_chart && (
+                    <span className="flex items-center ml-2">
+                      <SizeChartModal sizeChart={product.size_chart} brandPrimary={brandPrimary} isDark={isDark} />
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {optionValues.map(size => {
+                const isSelected = selectedSize === size
+                const style = pd.size_style ?? "pill"
+                return (
+                  <button key={size} onClick={() => setSelectedSize(size)}
+                    className={`transition-all text-sm font-semibold ${
+                      style === "box" ? "px-3 py-1.5 rounded-lg border-2" :
+                      style === "underline" ? "px-2 py-1 border-b-2 bg-transparent rounded-none" :
+                      "px-4 py-1.5 rounded-full border-2"
+                    }`}
+                    style={{
+                      borderColor: isSelected ? brandPrimary : `${brandPrimary}30`,
+                      backgroundColor: isSelected && style !== "underline" ? brandPrimary : "transparent",
+                      color: isSelected && style !== "underline" ? "#ffffff" : (isDark ? "#ffffff" : "#374151"),
+                      transform: isSelected ? "scale(1.05)" : "scale(1)",
+                    }}>
+                    {size}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+
+        // Generic option (Age, Material, Style, etc.)
+        // AFTER — reads pd settings just like sizes case
+        const showLabel = pd.show_size_label ?? true
+        const style = pd.size_style ?? "pill"
+        const selectedVal = selectedOptions[matchedOption.title.toLowerCase()] ?? ""
+
+        return (
+          <div key={el}>
+            {showLabel && (
+              <div className="flex items-center gap-3 mb-2.5 flex-wrap">
+                <p className="flex items-center gap-2 text-xs font-semibold tracking-widest uppercase"
+                  style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#9ca3af" }}>
+                  {matchedOption.title}
+                  {selectedVal && (
+                    <span className="font-normal normal-case opacity-70"
+                      style={{ color: isDark ? "rgba(255,255,255,0.7)" : "#6b7280" }}>
+                      — {selectedVal}
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {optionValues.map(val => {
+                const isSelected = selectedVal === val
+                return (
+                  <button key={val}
+                    onClick={() => setSelectedOptions(prev => ({
+                      ...prev,
+                      [matchedOption.title.toLowerCase()]: val
+                    }))}
+                    className={`transition-all text-sm font-semibold ${
+                      style === "box"
+                        ? "px-3 py-1.5 rounded-lg border-2"
+                        : style === "underline"
+                          ? "px-2 py-1 border-b-2 bg-transparent rounded-none"
+                          : "px-4 py-1.5 rounded-full border-2"
+                    }`}
+                    style={{
+                      borderColor: isSelected ? brandPrimary : `${brandPrimary}30`,
+                      backgroundColor: isSelected && style !== "underline" ? brandPrimary : "transparent",
+                      color: isSelected && style !== "underline" ? "#ffffff" : (isDark ? "#ffffff" : "#374151"),
+                      transform: isSelected ? "scale(1.05)" : "scale(1)",
+                    }}>
+                    {val}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      }
     }
   }
 
@@ -800,7 +979,7 @@ useEffect(() => {
 
         {/* Featured / upsell */}
         {section.type === "featured" && (
-          <div className="z-0 px-4 py-12 sm:px-6" style={{ backgroundColor: sectionBg }}>
+          <div className="z-0 px-4 py-4 sm:px-6" style={{ backgroundColor: sectionBg }}>
             <div className="mx-auto max-w-7xl">
               {section.title && (
                 <h2 className="mb-6 text-2xl font-bold"
@@ -1173,7 +1352,7 @@ useEffect(() => {
       />
 
       {/* Product detail */}
-      <div className="px-6 py-16 mx-auto max-w-7xl">
+      <div className="px-6 py-4 mx-auto max-w-7xl">
         <GalleryProvider initialImages={currentImages} key={selectedColor}>
           <div className="grid items-start gap-16 mb-6 md:grid-cols-2">
 

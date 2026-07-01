@@ -463,6 +463,8 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                 settings={store_product_detail ?? {}}
                 onChange={patch => patchStore(p => ({ ...p, product_detail: { ...(p.product_detail ?? {}), ...patch } }))}
                 isDark={isDark}
+                products={vendorProducts}
+                previewProductHandle={previewPagePath.replace("/products/", "")}
             />
             ) : drillVirtual === "__category_grid__" ? (
             <SectionSettings
@@ -1209,19 +1211,19 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         }}
                         className={`flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer border transition-all ${
                             selectedId === "__product_detail__"
-                            ? "bg-pink-500/15 border-pink-500/40"
+                            ? "bg-orange-500/15 border-orange-500/40"
                             : `border-transparent ${hoverBg}`
                         }`}
                         >
-                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-pink-500/20">
-                            <ShoppingBag className="w-3 h-3 text-pink-500" />
+                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                            <ShoppingBag className="w-3 h-3 text-orange-500" />
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className={`text-xs font-medium truncate ${textPrimary}`}>Product Detail</p>
                             <p className={`text-[10px] ${textFaint}`}>Title · Price · Colors · Sizes · ATC</p>
                         </div>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                            isDark ? "bg-pink-900/50 text-pink-400" : "bg-pink-100 text-pink-500"
+                            isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
                         }`}>Edit</span>
                         </div>
                     </div>
@@ -1236,19 +1238,19 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         }}
                         className={`flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer border transition-all ${
                             selectedId === "__checkout_settings__"
-                            ? "bg-emerald-500/15 border-emerald-500/40"
+                            ? "bg-orange-500/15 border-orange-500/40"
                             : `border-transparent ${hoverBg}`
                         }`}
                         >
-                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-emerald-500/20">
-                            <Layout className="w-3 h-3 text-emerald-500" />
+                        <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                            <Layout className="w-3 h-3 text-orange-500" />
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className={`text-xs font-medium truncate ${textPrimary}`}>Checkout Settings</p>
                             <p className={`text-[10px] ${textFaint}`}>Logo · Banner · Accent color · Trust note</p>
                         </div>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                            isDark ? "bg-emerald-900/50 text-emerald-400" : "bg-emerald-100 text-emerald-500"
+                            isDark ? "bg-orange-900/50 text-orange-400" : "bg-orange-100 text-orange-500"
                         }`}>Edit</span>
                         </div>
                     </div>

@@ -18,10 +18,12 @@ import { ProductPickerButton } from "./ProductPicker"
 // Flat expandable list. Each element row = reorder arrows + chevron to open settings.
 // No "Element Order" wrapper. No duplicate sections below.
  
-export function ProductDetailSettings({ settings, onChange, isDark }: {
+export function ProductDetailSettings({ settings, onChange, isDark, products = [], previewProductHandle = "" }: {
   settings: any
   onChange: (patch: any) => void
   isDark: boolean
+  products?: { id: string; title: string; handle: string; thumbnail?: string; variants?: any[]; options?: any[] }[]
+  previewProductHandle?: string
 }) {
   const textFaint   = isDark ? "text-gray-500" : "text-gray-400"
   const textPrimary = isDark ? "text-white"    : "text-gray-900"
@@ -29,13 +31,55 @@ export function ProductDetailSettings({ settings, onChange, isDark }: {
   const borderCls   = isDark ? "border-gray-700" : "border-gray-200"
   const innerCls    = `px-3 pb-3 pt-2 border-t ${borderCls} space-y-2.5`
   const activeCls   = isDark ? "bg-gray-800" : "bg-orange-50/80"
- 
-  const defaultOrder = ["title", "price", "colors", "sizes", "quantity", "atc", "description", "meta"]
-  const order: string[] = settings.element_order ?? defaultOrder
- 
+
+  // ── Dynamic options from first product ────────────────────────────────────
+  const firstProduct = previewProductHandle
+  ? products.find(p => p.handle === previewProductHandle) ?? products[0]
+  : products[0]
+  const productOptions: { key: string; label: string }[] =
+    firstProduct?.options?.map((o: any) => ({
+      key: `option_${o.title.toLowerCase().replace(/\s+/g, "_")}`,
+      label: o.title,
+    })) ?? [
+      { key: "colors", label: "Color Options" },
+      { key: "sizes",  label: "Size Options"  },
+    ]
+
+  const optionKeys = productOptions.map(o => o.key)
+
+  const staticBefore = ["title", "price"]
+  const staticAfter  = ["quantity", "atc", "description", "meta"]
+  const defaultOrder = [...staticBefore, ...optionKeys, ...staticAfter]
+
+  // ── Migrate stored order — replace old colors/sizes with real option keys ─
+  // AFTER
+const storedOrder: string[] = settings.element_order ?? []
+const order: string[] = storedOrder.length > 0
+  ? (() => {
+      // Find where colors/sizes/option_ keys were in stored order
+      // and replace them in-place with current optionKeys
+      const withoutOptions = storedOrder.filter(k =>
+        !k.startsWith("option_") && !["colors", "sizes"].includes(k)
+      )
+      // Find insertion point — where first old option key was
+      const firstOptionIdx = storedOrder.findIndex(k =>
+        k.startsWith("option_") || ["colors", "sizes"].includes(k)
+      )
+      // Insert optionKeys at that position, or before "quantity" if not found
+      const insertAt = firstOptionIdx !== -1
+        ? firstOptionIdx
+        : withoutOptions.indexOf("quantity") !== -1
+          ? withoutOptions.indexOf("quantity")
+          : 2
+      const result = [...withoutOptions]
+      result.splice(insertAt, 0, ...optionKeys)
+      return result.filter((k, i, arr) => arr.indexOf(k) === i)
+    })()
+  : defaultOrder
+
   const [openKey, setOpenKey] = useState<string | null>(null)
   const toggleKey = (key: string) => setOpenKey(o => o === key ? null : key)
- 
+
   const moveElement = (key: string, dir: "up" | "down") => {
     const arr  = [...order]
     const i    = arr.indexOf(key)
@@ -44,17 +88,55 @@ export function ProductDetailSettings({ settings, onChange, isDark }: {
     ;[arr[i], arr[swap]] = [arr[swap], arr[i]]
     onChange({ element_order: arr })
   }
- 
+
   const ELEMENT_META: Record<string, { label: string; icon: string }> = {
     title:       { label: "Product Title",    icon: "T"  },
     price:       { label: "Price",            icon: "₹"  },
-    colors:      { label: "Color Options",    icon: "🎨" },
-    sizes:       { label: "Size Options",     icon: "S"  },
     quantity:    { label: "Quantity Stepper", icon: "#"  },
     atc:         { label: "Add to Cart",      icon: "🛒" },
     description: { label: "Description",      icon: "📝" },
     meta:        { label: "Secure Badge",     icon: "🔒" },
+    // dynamic option keys
+    ...Object.fromEntries(
+      productOptions.map(o => [
+        o.key,
+        {
+          label: o.label,
+          icon:
+            o.label.toLowerCase().includes("color") || o.label.toLowerCase().includes("colour")
+              ? "🎨"
+              : o.label.toLowerCase().includes("size")
+              ? "S"
+              : "⚙️",
+        },
+      ])
+    ),
   }
+
+  const renderGenericOptionSettings = () => (
+  <>
+    <Field label="Button style" faint={textFaint}>
+      <div className="grid grid-cols-3 gap-1">
+        {(["pill","box","underline"] as const).map(s => (
+          <button key={s} onClick={() => onChange({ size_style: s })}
+            className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+              (settings.size_style ?? "pill") === s
+                ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+            }`}>{s}</button>
+        ))}
+      </div>
+    </Field>
+    <label className="flex items-center gap-2 cursor-pointer">
+      <div className="relative shrink-0"
+        onClick={() => onChange({ show_size_label: !(settings.show_size_label ?? true) })}>
+        <div className={`w-8 h-4 rounded-full transition-colors ${(settings.show_size_label ?? true) ? "bg-orange-500" : "bg-gray-600"}`} />
+        <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(settings.show_size_label ?? true) ? "translate-x-4" : ""}`} />
+      </div>
+      <span className={`text-xs ${textPrimary}`}>Show option label</span>
+    </label>
+  </>
+)
  
   // ── per-element settings renderers ──────────────────────────────────────────
  
@@ -320,15 +402,28 @@ export function ProductDetailSettings({ settings, onChange, isDark }: {
   )
  
   const SETTINGS_MAP: Record<string, () => React.ReactNode> = {
-    title:       renderTitleSettings,
-    price:       renderPriceSettings,
-    colors:      renderColorsSettings,
-    sizes:       renderSizesSettings,
-    quantity:    renderQuantitySettings,
-    atc:         renderAtcSettings,
-    description: renderDescriptionSettings,
-    meta:        renderMetaSettings,
-  }
+  title:       renderTitleSettings,
+  price:       renderPriceSettings,
+  colors:      renderColorsSettings,
+  sizes:       renderSizesSettings,
+  quantity:    renderQuantitySettings,
+  atc:         renderAtcSettings,
+  description: renderDescriptionSettings,
+  meta:        renderMetaSettings,
+  ...Object.fromEntries(
+    optionKeys.map(key => {
+      const optionLabel = productOptions.find(o => o.key === key)?.label ?? ""
+      const isColor = optionLabel.toLowerCase().includes("color") || optionLabel.toLowerCase().includes("colour")
+      const isSize  = optionLabel.toLowerCase().includes("size")
+      return [
+        key,
+        isColor ? renderColorsSettings :
+        isSize  ? renderSizesSettings  :
+                  renderGenericOptionSettings
+      ]
+    })
+  ),
+}
  
   // ── render ───────────────────────────────────────────────────────────────────
  
