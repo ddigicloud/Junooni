@@ -479,8 +479,15 @@ function calculateVendorAmount(items: CartLineItemDTO[]): number {
   }, 0)
 }
 
+function detectPaymentMethod(parentOrder: OrderDTO): string {
+  const hasCodFee = (parentOrder.items || []).some(
+    (item: any) => item?.metadata?.is_cod_fee === true
+  )
+  return hasCodFee ? "cod" : "razorpay"
+}
+
 // ✅ Helper function to update order payment status
-async function updateOrderPaymentStatus(orderId: string, container: any, metadata: any = {}) {
+async function updateOrderPaymentStatus(orderId: string, container: any, metadata: any = {}, paymentMethod: string = "razorpay") {
   //console.log(`🔄 Updating payment status for order: ${orderId}`)
   
   const orderServiceNames = ['orderModuleService', '@medusajs/order', 'order', 'orderService']
@@ -517,8 +524,8 @@ async function updateOrderPaymentStatus(orderId: string, container: any, metadat
               is_paid: true,
               payment_complete: true,
               payment_verified: true,
-              payment_method: "razorpay",
-              razorpay_payment_completed: true,
+              payment_method: paymentMethod,
+              razorpay_payment_completed: paymentMethod === "razorpay",
               payment_updated_at: new Date().toISOString(),
               update_service: serviceName,
               update_method: methodName,
@@ -682,6 +689,8 @@ const createVendorOrdersStep = createStep(
 })
     
     // Update parent order with comprehensive vendor and payment metadata
+    const detectedPaymentMethod = detectPaymentMethod(parentOrder)
+
     const vendorMetadata = {
       // ✅ CRITICAL: Payment status indicators
       payment_status: "captured",
@@ -689,8 +698,8 @@ const createVendorOrdersStep = createStep(
       is_paid: true,
       payment_complete: true,
       payment_verified: true,
-      payment_method: "razorpay",
-      razorpay_payment_completed: true,
+      payment_method: detectedPaymentMethod,
+      razorpay_payment_completed: detectedPaymentMethod === "razorpay",
       
       // ✅ Vendor information
       vendor_count: vendors.length,
@@ -725,7 +734,7 @@ const createVendorOrdersStep = createStep(
     }
     
     // Update the parent order with vendor and payment information
-    const updateSuccess = await updateOrderPaymentStatus(parentOrder.id, container, vendorMetadata)
+    const updateSuccess = await updateOrderPaymentStatus(parentOrder.id, container, vendorMetadata, detectedPaymentMethod)
     
     if (updateSuccess) {
       //console.log("✅ Parent order updated with vendor and payment information")

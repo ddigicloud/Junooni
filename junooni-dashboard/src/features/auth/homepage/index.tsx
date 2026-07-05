@@ -29,7 +29,7 @@ const JunooniLandingPage = () => {
   const navigate = useNavigate();
 
   const handleRegisterClick = () => {
-    navigate({ to: '/sign-up' });
+    window.location.href = '/sign-up';
   };
 
   const handleLoginClick = () => {

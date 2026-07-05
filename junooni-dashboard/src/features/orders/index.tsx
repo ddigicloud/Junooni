@@ -253,6 +253,37 @@ const StatusBadge = ({ status, orderStatus, canceledAt }: {
   );
 };
 
+// ✅ Standalone COD detection helper - shared by PaymentBadge and Excel export
+const isCODPayment = (paymentCollections?: any[]): boolean => {
+  if (paymentCollections && Array.isArray(paymentCollections) && paymentCollections.length > 0) {
+    const paymentCollection = paymentCollections[0];
+
+    if (paymentCollection.payments && Array.isArray(paymentCollection.payments) && paymentCollection.payments.length > 0) {
+      const payment = paymentCollection.payments[0];
+      const providerId = payment.provider_id?.toLowerCase() || '';
+
+      if (providerId.includes('system_default') || providerId.includes('pp_system')) return true;
+      if (providerId.includes('manual') || providerId.includes('cod') || providerId.includes('cash')) return true;
+      if (providerId.includes('razorpay')) return false;
+
+      if (paymentCollection.status === 'authorized' &&
+          payment.captured_at === null &&
+          paymentCollection.captured_amount === 0) {
+        return true;
+      }
+    }
+
+    if (paymentCollection.payment_providers && Array.isArray(paymentCollection.payment_providers) && paymentCollection.payment_providers.length > 0) {
+      const provider = paymentCollection.payment_providers[0];
+      const providerType = provider?.id?.toLowerCase() || '';
+      if (providerType.includes('manual') || providerType.includes('cod') || providerType.includes('cash') || providerType.includes('system_default')) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
 // Payment badge component with icons
 const PaymentBadge = ({ status, paymentCollections, vendorPaymentDetails, orderStatus, canceledAt }: { 
   status: string
@@ -274,64 +305,64 @@ const PaymentBadge = ({ status, paymentCollections, vendorPaymentDetails, orderS
   const normalizedStatus = status.toLowerCase();
   
   // ✅ Helper function to detect if payment is COD/Manual
-  const isCODPayment = () => {
-    // Check payment_collections array
-    if (paymentCollections && Array.isArray(paymentCollections) && paymentCollections.length > 0) {
-      const paymentCollection = paymentCollections[0];
+  // const isCODPayment = () => {
+  //   // Check payment_collections array
+  //   if (paymentCollections && Array.isArray(paymentCollections) && paymentCollections.length > 0) {
+  //     const paymentCollection = paymentCollections[0];
       
-      // ✅ CRITICAL: Check payments array for provider_id
-      if (paymentCollection.payments && Array.isArray(paymentCollection.payments) && paymentCollection.payments.length > 0) {
-        const payment = paymentCollection.payments[0];
-        const providerId = payment.provider_id?.toLowerCase() || '';
+  //     // ✅ CRITICAL: Check payments array for provider_id
+  //     if (paymentCollection.payments && Array.isArray(paymentCollection.payments) && paymentCollection.payments.length > 0) {
+  //       const payment = paymentCollection.payments[0];
+  //       const providerId = payment.provider_id?.toLowerCase() || '';
         
-        // ✅ COD Detection Logic:
-        // 1. Check if provider is system_default (COD)
-        if (providerId.includes('system_default') || providerId.includes('pp_system')) {
-          //console.log("✅ COD Payment Detected - Provider:", providerId);
-          return true;
-        }
+  //       // ✅ COD Detection Logic:
+  //       // 1. Check if provider is system_default (COD)
+  //       if (providerId.includes('system_default') || providerId.includes('pp_system')) {
+  //         //console.log("✅ COD Payment Detected - Provider:", providerId);
+  //         return true;
+  //       }
         
-        // 2. Check if provider explicitly mentions manual/cod/cash
-        if (providerId.includes('manual') || providerId.includes('cod') || providerId.includes('cash')) {
-          //console.log("✅ COD Payment Detected - Provider:", providerId);
-          return true;
-        }
+  //       // 2. Check if provider explicitly mentions manual/cod/cash
+  //       if (providerId.includes('manual') || providerId.includes('cod') || providerId.includes('cash')) {
+  //         //console.log("✅ COD Payment Detected - Provider:", providerId);
+  //         return true;
+  //       }
         
-        // 3. Check if it's Razorpay
-        if (providerId.includes('razorpay')) {
-          //console.log("✅ Razorpay Payment Detected - Provider:", providerId);
-          return false;
-        }
+  //       // 3. Check if it's Razorpay
+  //       if (providerId.includes('razorpay')) {
+  //         //console.log("✅ Razorpay Payment Detected - Provider:", providerId);
+  //         return false;
+  //       }
         
-        // 4. Additional check: If payment is authorized but not captured (typical for COD)
-        if (paymentCollection.status === 'authorized' && 
-            payment.captured_at === null && 
-            paymentCollection.captured_amount === 0) {
-          //console.log("✅ COD Payment Detected - Authorized but not captured");
-          return true;
-        }
+  //       // 4. Additional check: If payment is authorized but not captured (typical for COD)
+  //       if (paymentCollection.status === 'authorized' && 
+  //           payment.captured_at === null && 
+  //           paymentCollection.captured_amount === 0) {
+  //         //console.log("✅ COD Payment Detected - Authorized but not captured");
+  //         return true;
+  //       }
         
-        //console.log("⚠️ Unknown provider:", providerId);
-      }
+  //       //console.log("⚠️ Unknown provider:", providerId);
+  //     }
       
-      // Fallback: Check payment_providers array
-      if (paymentCollection.payment_providers && Array.isArray(paymentCollection.payment_providers) && paymentCollection.payment_providers.length > 0) {
-        const provider = paymentCollection.payment_providers[0];
-        const providerType = provider?.id?.toLowerCase() || '';
+  //     // Fallback: Check payment_providers array
+  //     if (paymentCollection.payment_providers && Array.isArray(paymentCollection.payment_providers) && paymentCollection.payment_providers.length > 0) {
+  //       const provider = paymentCollection.payment_providers[0];
+  //       const providerType = provider?.id?.toLowerCase() || '';
         
-        if (providerType.includes('manual') || providerType.includes('cod') || providerType.includes('cash') || providerType.includes('system_default')) {
-          //console.log("✅ COD Payment Detected via payment_providers");
-          return true;
-        }
-      }
-    }
+  //       if (providerType.includes('manual') || providerType.includes('cod') || providerType.includes('cash') || providerType.includes('system_default')) {
+  //         //console.log("✅ COD Payment Detected via payment_providers");
+  //         return true;
+  //       }
+  //     }
+  //   }
     
-    //console.log("❌ Not COD - defaulting to Razorpay");
-    return false;
-  };
+  //   //console.log("❌ Not COD - defaulting to Razorpay");
+  //   return false;
+  // };
   
   const getStatusProps = (status: string) => {
-    const isCOD = isCODPayment();
+    const isCOD = isCODPayment(paymentCollections);
     
     switch (status) {
       case "captured":
@@ -1175,7 +1206,11 @@ useEffect(() => {
           'Order ID': `#${order.custom_display_id}`,
           'Order Date': formatDate(order.created_at),
           'Order Status': order.fulfillment_status?.replace(/_/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || 'N/A',
-          'Payment Status': order.payment_status?.replace(/_/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || 'N/A',
+          'Payment Status': (order.payment_status === 'refunded' || order.status === 'canceled' || order.canceled_at)
+            ? 'Refunded'
+            : (order.payment_status === 'captured' || order.payment_status === 'paid')
+              ? (isCODPayment(order.payment_collections) ? 'COD' : 'Paid')
+              : order.payment_status?.replace(/_/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || 'N/A',
           
           // Customer Information
           'Customer Name': `${order.customer.first_name} ${order.customer.last_name}`.trim() || 'Guest',

@@ -17,6 +17,7 @@ import { onboardingReminderEmail } from "./emails/onboarding-reminder"
 import { vendorOrderPlacedEmail } from "./emails/vendor-order-placed"
 import { adminOrderPlacedEmail } from "./emails/admin-order-placed"
 import { accountMergeConfirmationEmail } from "./emails/account-merge-confirmation"
+import { creatorOtpEmail } from "./emails/creator-otp"
 
 enum Templates {
   ORDER_PLACED = "order-placed",
@@ -25,6 +26,7 @@ enum Templates {
   VENDOR_ORDER_PLACED = "vendor-order-placed",
   ADMIN_ORDER_PLACED = "admin-order-placed",
   ACCOUNT_MERGE_CONFIRMATION = "account-merge-confirmation", // ← NEW
+  CREATOR_OTP = "creator-otp", // ← NEW
 }
 
 const templates: {[key in Templates]?: (props: unknown) => React.ReactNode} = {
@@ -34,6 +36,7 @@ const templates: {[key in Templates]?: (props: unknown) => React.ReactNode} = {
   [Templates.VENDOR_ORDER_PLACED]: vendorOrderPlacedEmail,
   [Templates.ADMIN_ORDER_PLACED]: adminOrderPlacedEmail,
   [Templates.ACCOUNT_MERGE_CONFIRMATION]: accountMergeConfirmationEmail, // ← NEW
+  [Templates.CREATOR_OTP]: creatorOtpEmail, // ← NEW
 }
 
 type ResendOptions = {
@@ -110,6 +113,8 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
         return "New order placed on Junooni"
       case Templates.ACCOUNT_MERGE_CONFIRMATION:          // ← NEW
         return "Did you just create a JUNOONI account? 🔐" // ← NEW
+      case Templates.CREATOR_OTP:
+        return "Your JUNOONI verification code 🔐"
       default:
         return "New Email"
     }

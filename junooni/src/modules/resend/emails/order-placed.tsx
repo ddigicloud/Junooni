@@ -20,12 +20,16 @@ type OrderPlacedEmailProps = {
   order: OrderDTO & {
     customer: CustomerDTO
   }
+  storeLogo?: string | null
+  storeName?: string | null
+  storePrimaryColor?: string | null
+  storeUrl?: string | null
 }
 
-// Brand color
+// Brand color (fallback when no vendor store color is present)
 const BRAND_COLOR = '#e65100'
 
-function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
+function OrderPlacedEmailComponent({ order, storeLogo, storeName, storePrimaryColor, storeUrl }: OrderPlacedEmailProps) {
   const formatter = new Intl.NumberFormat([], {
     style: "currency",
     currencyDisplay: "narrowSymbol",
@@ -52,7 +56,16 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
     day: 'numeric' 
   })
 
-  const trackOrderUrl = `https://junooni.com/in/order/${order.id}/confirmed`
+  const trackOrderUrl = storeUrl
+    ? `${storeUrl}/order/${order.id}/confirmed`
+    : `https://junooni.com/in/order/${order.id}/confirmed`
+
+  const contactUrl = storeUrl
+    ? `${storeUrl}/pages/contact`
+    : "https://junooni.com/in/contact-us"
+
+  // Use the vendor store's brand color when this order came from their own store
+  const brandColor = storePrimaryColor || BRAND_COLOR
 
   // Logo URLs
   const shortLogoUrl = "https://junooni.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2FJUNOONI_logo.703fd026.ico&w=256&q=75"
@@ -74,34 +87,43 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
               boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
             }}>
 
-              {/* Header with Logos - Side by Side */}
+              {/* Header with Logo(s) */}
               <Section style={{ 
                 padding: '28px 32px',
                 textAlign: 'center'
               }}>
-                <table cellPadding={0} cellSpacing={0} style={{ margin: '0 auto' }}>
-                  <tbody>
-                    <tr>
-                      {/* Short Logo */}
-                      <td style={{ verticalAlign: 'middle', paddingRight: '12px' }}>
-                        <Img 
-                          src={shortLogoUrl}
-                          alt="Junooni"
-                          width="40"
-                          height="40"
-                        />
-                      </td>
-                      {/* Full Logo */}
-                      <td style={{ verticalAlign: 'middle' }}>
-                        <Img 
-                          src={fullLogoUrl}
-                          alt="Junooni"
-                          width="140"
-                        />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                {storeLogo ? (
+                  <Img 
+                    src={storeLogo}
+                    alt={storeName || "Store"}
+                    height="40"
+                    style={{ margin: '0 auto', maxWidth: '200px', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <table cellPadding={0} cellSpacing={0} style={{ margin: '0 auto' }}>
+                    <tbody>
+                      <tr>
+                        {/* Short Logo */}
+                        <td style={{ verticalAlign: 'middle', paddingRight: '12px' }}>
+                          <Img 
+                            src={shortLogoUrl}
+                            alt="Junooni"
+                            width="40"
+                            height="40"
+                          />
+                        </td>
+                        {/* Full Logo */}
+                        <td style={{ verticalAlign: 'middle' }}>
+                          <Img 
+                            src={fullLogoUrl}
+                            alt="Junooni"
+                            width="140"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
               </Section>
               
               {/* Hero Section */}
@@ -117,7 +139,7 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                       <td style={{
                         width: '56px',
                         height: '56px',
-                        backgroundColor: BRAND_COLOR,
+                        backgroundColor: brandColor,
                         borderRadius: '50%',
                         textAlign: 'center',
                         verticalAlign: 'middle',
@@ -153,7 +175,7 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                   <tbody>
                     <tr>
                       <td style={{
-                        backgroundColor: BRAND_COLOR,
+                        backgroundColor: brandColor,
                         borderRadius: '24px',
                         padding: '10px 24px'
                       }}>
@@ -184,7 +206,7 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                               <td style={{
                                 width: '36px',
                                 height: '36px',
-                                backgroundColor: BRAND_COLOR,
+                                backgroundColor: brandColor,
                                 borderRadius: '50%',
                                 textAlign: 'center',
                                 verticalAlign: 'middle',
@@ -197,7 +219,7 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                             </tr>
                           </tbody>
                         </table>
-                        <Text style={{ fontSize: '11px', color: BRAND_COLOR, fontWeight: '600', margin: '8px 0 0 0' }}>
+                        <Text style={{ fontSize: '11px', color: brandColor, fontWeight: '600', margin: '8px 0 0 0' }}>
                           Confirmed
                         </Text>
                       </td>
@@ -280,7 +302,7 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                   <Column style={{ textAlign: 'right' }}>
                     <Link 
                       href={trackOrderUrl}
-                      style={{ fontSize: '13px', color: BRAND_COLOR, fontWeight: '600', textDecoration: 'none' }}
+                      style={{ fontSize: '13px', color: brandColor, fontWeight: '600', textDecoration: 'none' }}
                     >
                       Track Order →
                     </Link>
@@ -295,115 +317,71 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                 </Text>
                 
                 {order.items?.filter((item: any) => !item.metadata?.is_cod_fee).map((item, index) => {
-                  console.log('=== EMAIL TEMPLATE DEBUG START ===')
-                  console.log('📧 Item ID:', item.id)
-                  console.log('📧 Product Title:', item.product_title)
-                  console.log('📧 Variant Title:', item.variant_title)
-                  console.log('📧 Item Thumbnail:', item.thumbnail)
-                  console.log('📧 Item Metadata:', item.metadata)
-                  console.log('📧 Variant Object:', item.variant)
-                  console.log('📧 Variant Metadata:', item.variant?.metadata)
-                  
                   // Get variant image from variant.metadata (NOT item.metadata)
                   const getVariantImage = () => {
-                    console.log('🔍 Starting variant image search...')
-                    
                     // Check if variant exists
                     if (!item.variant) {
-                      console.log('❌ No variant object found')
                       return item.thumbnail ?? ''
                     }
                     
                     const variantMetadata = item.variant.metadata
-                    console.log('📦 Variant Metadata:', variantMetadata)
                     
                     // First priority: Check variant_images in variant.metadata
                     if (variantMetadata?.variant_images) {
-                      console.log('✅ Found variant_images in variant.metadata:', variantMetadata.variant_images)
-                      console.log('📝 Type of variant_images:', typeof variantMetadata.variant_images)
-                      
                       try {
                         const variantImages = typeof variantMetadata.variant_images === 'string' 
                           ? JSON.parse(variantMetadata.variant_images) 
                           : variantMetadata.variant_images
                         
-                        console.log('📦 Parsed variant_images:', variantImages)
-                        console.log('📦 Is Array:', Array.isArray(variantImages))
-                        console.log('📦 Array Length:', variantImages?.length)
-                        
                         if (Array.isArray(variantImages) && variantImages.length > 0) {
-                          console.log('✅ Using variant image from variant_images[0]:', variantImages[0])
                           return variantImages[0]
-                        } else {
-                          console.log('❌ variant_images exists but is empty or not an array')
                         }
                       } catch (e) {
-                        console.error('❌ Error parsing variant_images:', e)
+                        // fall through to next priority
                       }
-                    } else {
-                      console.log('❌ No variant_images in variant.metadata')
                     }
                     
                     // Second priority: Check color_images in variant.metadata
                     if (variantMetadata?.color_images) {
-                      console.log('✅ Found color_images in variant.metadata:', variantMetadata.color_images)
-                      console.log('📝 Type of color_images:', typeof variantMetadata.color_images)
-                      
                       try {
                         const colorImages = typeof variantMetadata.color_images === 'string'
                           ? JSON.parse(variantMetadata.color_images)
                           : variantMetadata.color_images
                         
-                        console.log('📦 Parsed color_images:', colorImages)
-                        console.log('📦 Is Array:', Array.isArray(colorImages))
-                        
                         if (Array.isArray(colorImages) && colorImages.length > 0) {
                           // color_images has structure: [{color: "Orange", url: "...", imageId: "..."}]
                           const firstImage = colorImages[0]
                           if (firstImage && firstImage.url) {
-                            console.log('✅ Using color image from color_images[0].url:', firstImage.url)
                             return firstImage.url
                           } else if (typeof firstImage === 'string') {
-                            console.log('✅ Using color image (string):', firstImage)
                             return firstImage
                           }
-                          console.log('❌ color_images exists but no valid url found')
-                        } else {
-                          console.log('❌ color_images exists but is empty or not an array')
                         }
                       } catch (e) {
-                        console.error('❌ Error parsing color_images:', e)
+                        // fall through to next priority
                       }
-                    } else {
-                      console.log('❌ No color_images in variant.metadata')
                     }
                     
                     // Third priority: Check option_images in variant.metadata
                     if (variantMetadata?.option_images) {
-                      console.log('✅ Found option_images in variant.metadata')
-                      
                       try {
                         const optionImages = typeof variantMetadata.option_images === 'string'
                           ? JSON.parse(variantMetadata.option_images)
                           : variantMetadata.option_images
                         
                         if (Array.isArray(optionImages) && optionImages.length > 0 && optionImages[0].url) {
-                          console.log('✅ Using option image:', optionImages[0].url)
                           return optionImages[0].url
                         }
                       } catch (e) {
-                        console.error('❌ Error parsing option_images:', e)
+                        // fall through to fallback
                       }
                     }
                     
                     // Fallback to thumbnail
-                    console.log('⚠️ No variant image found, using thumbnail:', item.thumbnail)
                     return item.thumbnail ?? ''
                   }
 
                   const itemImage = getVariantImage()
-                  console.log('🎯 FINAL IMAGE USED:', itemImage)
-                  console.log('=== EMAIL TEMPLATE DEBUG END ===\n')
 
                   return (
                     <Section key={item.id}>
@@ -424,7 +402,7 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                           <Text style={{ fontSize: '12px', color: '#888888', margin: '0 0 8px 0' }}>
                             {item.variant_title} · Qty: {item.quantity}
                           </Text>
-                          <Text style={{ fontSize: '14px', fontWeight: '700', color: BRAND_COLOR, margin: 0 }}>
+                          <Text style={{ fontSize: '14px', fontWeight: '700', color: brandColor, margin: 0 }}>
                             {formatPrice(item.total)}
                           </Text>
                         </Column>
@@ -487,19 +465,6 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                   )
                 })()}
                 
-                {/* {order.tax_total && Number(order.tax_total) > 0 && (
-                  <Row style={{ paddingBottom: '8px' }}>
-                    <Column>
-                      <Text style={{ fontSize: '13px', color: '#666666', margin: 0 }}>Tax</Text>
-                    </Column>
-                    <Column style={{ textAlign: 'right' }}>
-                      <Text style={{ fontSize: '13px', color: '#1a1a1a', margin: 0 }}>
-                        {formatPrice(order.tax_total)}
-                      </Text>
-                    </Column>
-                  </Row>
-                )} */}
-                
                 <Hr style={{ borderTop: '1px solid #e0e0e0', margin: '12px 0' }} />
                 
                 <Row>
@@ -507,7 +472,7 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                     <Text style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>Total</Text>
                   </Column>
                   <Column style={{ textAlign: 'right' }}>
-                    <Text style={{ fontSize: '17px', fontWeight: '700', color: BRAND_COLOR, margin: 0 }}>
+                    <Text style={{ fontSize: '17px', fontWeight: '700', color: brandColor, margin: 0 }}>
                       {formatPrice(order.total)}
                     </Text>
                   </Column>
@@ -548,66 +513,72 @@ function OrderPlacedEmailComponent({ order }: OrderPlacedEmailProps) {
                 Questions about your order?
               </Text>
               <Link 
-                href="https://junooni.com/in/contact-us" 
-                style={{ fontSize: '13px', color: BRAND_COLOR, fontWeight: '600', textDecoration: 'none' }}
+                href={contactUrl} 
+                style={{ fontSize: '13px', color: brandColor, fontWeight: '600', textDecoration: 'none' }}
               >
                 Contact Support
               </Link>
             </Section>
 
-            {/* Quick Links */}
-            <Section style={{ textAlign: 'center', paddingBottom: '16px' }}>
-              <Link href="https://junooni.com/in/orders-shipping" style={{ fontSize: '11px', color: '#888888', textDecoration: 'none', margin: '0 10px' }}>
-                Shipping Info
-              </Link>
-              <Link href="https://junooni.com/in/refund-exchange" style={{ fontSize: '11px', color: '#888888', textDecoration: 'none', margin: '0 10px' }}>
-                Returns
-              </Link>
-              <Link href="https://junooni.com/in/product-care" style={{ fontSize: '11px', color: '#888888', textDecoration: 'none', margin: '0 10px' }}>
-                Product Care
-              </Link>
-            </Section>
+            {/* Quick Links + Social & Footer — Junooni marketplace branding only.
+                Hidden entirely for orders placed on a vendor's own store. */}
+            {!storeLogo && (
+              <>
+                {/* Quick Links */}
+                <Section style={{ textAlign: 'center', paddingBottom: '16px' }}>
+                  <Link href="https://junooni.com/in/orders-shipping" style={{ fontSize: '11px', color: '#888888', textDecoration: 'none', margin: '0 10px' }}>
+                    Shipping Info
+                  </Link>
+                  <Link href="https://junooni.com/in/refund-exchange" style={{ fontSize: '11px', color: '#888888', textDecoration: 'none', margin: '0 10px' }}>
+                    Returns
+                  </Link>
+                  <Link href="https://junooni.com/in/product-care" style={{ fontSize: '11px', color: '#888888', textDecoration: 'none', margin: '0 10px' }}>
+                    Product Care
+                  </Link>
+                </Section>
 
-            {/* Social & Footer */}
-            <Section style={{ textAlign: 'center', paddingBottom: '32px' }}>
-              <table cellPadding={0} cellSpacing={0} style={{ margin: '0 auto 16px auto' }}>
-                <tbody>
-                  <tr>
-                    <td style={{ padding: '0 8px' }}>
-                      <Link href="https://www.instagram.com/bejunooni?utm_source=qr&igsh=YmI4eTJhazMxMHo0">
-                        <Img 
-                          src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" 
-                          alt="Instagram" 
-                          width="22" 
-                          height="22"
-                          style={{ opacity: 0.9 }}
-                        />
-                      </Link>
-                    </td>
-                    <td style={{ padding: '0 8px' }}>
-                      <Link href="https://www.facebook.com/p/Junooni-61577994639087">
-                        <Img 
-                          src="https://cdn-icons-png.flaticon.com/512/733/733547.png" 
-                          alt="Facebook" 
-                          width="22" 
-                          height="22"
-                          style={{ opacity: 0.9 }}
-                        />
-                      </Link>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              
-              <Text style={{ fontSize: '11px', color: '#999999', margin: '0 0 4px 0' }}>
-                © {new Date().getFullYear()} Junooni · India's #1 Creator Merch Marketplace
-              </Text>
-              <Text style={{ fontSize: '10px', color: '#bbbbbb', margin: 0 }}>
-                <Link href="https://junooni.com/in/terms-condition" style={{ color: '#bbbbbb', textDecoration: 'none' }}>Terms</Link>
-                {' · '}
-                <Link href="https://junooni.com/in/contact-us" style={{ color: '#bbbbbb', textDecoration: 'none' }}>Contact</Link>
-              </Text>
-            </Section>
+                {/* Social & Footer */}
+                <Section style={{ textAlign: 'center', paddingBottom: '32px' }}>
+                  <table cellPadding={0} cellSpacing={0} style={{ margin: '0 auto 16px auto' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: '0 8px' }}>
+                          <Link href="https://www.instagram.com/bejunooni?utm_source=qr&igsh=YmI4eTJhazMxMHo0">
+                            <Img 
+                              src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" 
+                              alt="Instagram" 
+                              width="22" 
+                              height="22"
+                              style={{ opacity: 0.9 }}
+                            />
+                          </Link>
+                        </td>
+                        <td style={{ padding: '0 8px' }}>
+                          <Link href="https://www.facebook.com/p/Junooni-61577994639087">
+                            <Img 
+                              src="https://cdn-icons-png.flaticon.com/512/733/733547.png" 
+                              alt="Facebook" 
+                              width="22" 
+                              height="22"
+                              style={{ opacity: 0.9 }}
+                            />
+                          </Link>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  
+                  <Text style={{ fontSize: '11px', color: '#999999', margin: '0 0 4px 0' }}>
+                    © {new Date().getFullYear()} Junooni · India's #1 Creator Merch Marketplace
+                  </Text>
+                  <Text style={{ fontSize: '10px', color: '#bbbbbb', margin: 0 }}>
+                    <Link href="https://junooni.com/in/terms-condition" style={{ color: '#bbbbbb', textDecoration: 'none' }}>Terms</Link>
+                    {' · '}
+                    <Link href="https://junooni.com/in/contact-us" style={{ color: '#bbbbbb', textDecoration: 'none' }}>Contact</Link>
+                  </Text>
+                </Section>
+              </>
+            )}
 
           </Container>
         </Body>
@@ -688,4 +659,16 @@ const mockOrder = {
   }
 }
 // @ts-ignore
-export default () => <OrderPlacedEmailComponent {...mockOrder} />
+export default () => <OrderPlacedEmailComponent {...mockOrder} storeLogo={null} storeName={null} storePrimaryColor={null} storeUrl={null} />
+
+// To preview the vendor-store variant (no Junooni footer, vendor logo/color/link),
+// swap the export above for something like:
+// export default () => (
+//   <OrderPlacedEmailComponent
+//     {...mockOrder}
+//     storeLogo="https://example.com/vendor-logo.png"
+//     storeName="Some Creator Store"
+//     storePrimaryColor="#7c3aed"
+//     storeUrl="https://someborder.junooni.com"
+//   />
+// )

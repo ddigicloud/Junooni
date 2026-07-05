@@ -2106,7 +2106,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     Custom pages
                     </p>
 
-                    {pages.filter(page => !["terms", "privacy", "returns"].includes(page.template ?? "")).map(page => (
+                    {pages.filter(page => !["terms", "privacy", "returns", "contact"].includes(page.template ?? "")).map(page => (
                     <div key={page.id} className={`group flex items-center gap-2 px-2 py-2 rounded-lg transition-all border border-transparent ${hoverBg}`}>
                         <span className="text-sm shrink-0">{PAGE_TEMPLATES.find(t => t.id === page.template)?.icon ?? "📄"}</span>
                         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setEditingPage(page)}>
@@ -2126,7 +2126,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     </div>
                     ))}
 
-                    {pages.filter(page => !["terms", "privacy", "returns"].includes(page.template ?? "")).length === 0 && (
+                    {pages.filter(page => !["terms", "privacy", "returns", "contact"].includes(page.template ?? "")).length === 0 && (
                     <p className={`px-2 py-2 text-xs ${textFaint}`}>No custom pages yet.</p>
                     )}
 
@@ -2148,7 +2148,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     Policies and support pages
                     </p>
 
-                    {pages.filter(page => ["terms", "privacy", "returns"].includes(page.template ?? "")).map(page => (
+                    {pages.filter(page => ["terms", "privacy", "returns", "contact"].includes(page.template ?? "")).map(page => (
                     <div key={page.id} className={`group flex items-center gap-2 px-2 py-2 rounded-lg transition-all border border-transparent ${hoverBg}`}>
                         <span className="text-sm shrink-0">
                         {PAGE_TEMPLATES.find(t => t.id === page.template)?.icon ?? "📄"}

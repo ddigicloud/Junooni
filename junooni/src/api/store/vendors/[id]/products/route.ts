@@ -90,6 +90,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
         "variants.id", "variants.title",
         "variants.calculated_price.*",
         "images.*", "categories.*", "collection.*",
+        "vendor.id", "vendor.name", "vendor.handle", "vendor.verified",
       ],
       filters: { id: productIds },
       context: {

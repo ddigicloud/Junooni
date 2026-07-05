@@ -2125,6 +2125,7 @@ const ColorOptions = ({ colors }: { colors: Array<{name: string, hex: string, ke
 
   const productTags = product?.tags || []
   const vendorName = product?.vendor?.name || "Junooni"
+  console.log("🛍️ Rendering product card for:", productName, "with tags:", productTags, "and vendor:", vendorName)
 
   return (
     <motion.div

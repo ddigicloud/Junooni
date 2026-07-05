@@ -340,6 +340,47 @@ export default defineMiddlewares({
         authenticate(["vendor", "user"], ["session", "bearer"]),
       ],
     },
+    // ── OTP & email check routes (public — user not logged in yet) ───────────────
+    {
+      matcher: "/vendors/check-email",
+      method: ["OPTIONS", "POST"],
+      middlewares: [
+        (req, res, next) => {
+          if (req.method === "OPTIONS") { res.status(204).end(); return }
+          cors({ origin: true, credentials: true })(req, res, next)
+        },
+      ],
+    },
+    {
+      matcher: "/vendors/send-otp",
+      method: ["OPTIONS", "POST"],
+      middlewares: [
+        (req, res, next) => {
+          if (req.method === "OPTIONS") { res.status(204).end(); return }
+          cors({ origin: true, credentials: true })(req, res, next)
+        },
+      ],
+    },
+    {
+      matcher: "/vendors/verify-otp",
+      method: ["OPTIONS", "POST"],
+      middlewares: [
+        (req, res, next) => {
+          if (req.method === "OPTIONS") { res.status(204).end(); return }
+          cors({ origin: true, credentials: true })(req, res, next)
+        },
+      ],
+    },
+    {
+      matcher: "/vendors/link-emailpass",
+      method: ["OPTIONS", "POST"],
+      middlewares: [
+        (req, res, next) => {
+          if (req.method === "OPTIONS") { res.status(204).end(); return }
+          cors({ origin: true, credentials: true })(req, res, next)
+        },
+      ],
+    },
     {
       matcher: "/vendors/*",
       method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],
@@ -361,6 +402,10 @@ export default defineMiddlewares({
             /^\/vendors\/me$/,
             /^\/vendors\/google-link$/, // ← ADD THIS: skip wildcard auth for google-link
             /^\/vendors\/[^/]+\/products$/, // ← ADD THIS
+            /^\/vendors\/check-email$/,   // ← ADD
+            /^\/vendors\/send-otp$/,      // ← ADD
+            /^\/vendors\/verify-otp$/,    // ← ADD
+            /^\/vendors\/link-emailpass$/, // ← ADD
           ];
           const isPublic = publicPaths.some((pattern) => pattern.test(req.path));
           if (isPublic) return next();
@@ -478,6 +523,19 @@ export default defineMiddlewares({
       middlewares: [
         (req, res, next) => {
           cors({ origin: true, credentials: false })(req, res, next)
+        },
+      ],
+    },
+    {
+      matcher: "/storefront/:handle/contact",
+      method: ["POST", "OPTIONS"],
+      middlewares: [
+        (req, res, next) => {
+          cors({ origin: true, credentials: false })(req, res, next)
+        },
+        (req, res, next) => {
+          if (req.method === "OPTIONS") { res.status(204).end(); return }
+          next()
         },
       ],
     },

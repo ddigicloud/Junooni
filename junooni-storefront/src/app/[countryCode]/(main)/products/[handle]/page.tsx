@@ -53,6 +53,39 @@ const priceValidUntil = () =>
     .toISOString()
     .split("T")[0]
 
+// FIX: robust stock check — mirrors the storefront's own logic.
+// The flat `variant.inventory_quantity` field is not reliable on its own:
+// it ignores manage_inventory / allow_backorder, and doesn't reflect the
+// same location-level stock the storefront's buy button actually checks.
+// NOTE: requires `fields` to expand
+// `+variants.manage_inventory,+variants.allow_backorder,
+//  +variants.inventory_items.inventory.location_levels.stocked_quantity,
+//  +variants.inventory_items.inventory.location_levels.reserved_quantity`
+// If your `listProducts` fields string doesn't include these yet, add them —
+// otherwise this falls back to treating everything as in stock.
+const isVariantInStock = (v: any): boolean => {
+  if (v.manage_inventory === false) return true
+  if (v.allow_backorder) return true
+
+  const levels = v.inventory_items?.flatMap(
+    (ii: any) => ii.inventory?.location_levels ?? []
+  )
+
+  if (!levels || levels.length === 0) {
+    // No location-level data available — fall back to inventory_quantity if present,
+    // otherwise assume in stock rather than wrongly flagging OutOfStock.
+    return v.inventory_quantity == null || v.inventory_quantity > 0
+  }
+
+  const available = levels.reduce(
+    (sum: number, ll: any) =>
+      sum + ((ll.stocked_quantity ?? 0) - (ll.reserved_quantity ?? 0)),
+    0
+  )
+
+  return available > 0
+}
+
 // ── generateMetadata ───────────────────────────────────────────────────────
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
@@ -82,6 +115,9 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const firstVariant = product.variants?.[0]
   const price = toMajorUnit(firstVariant?.calculated_price?.calculated_amount)
 
+  // FIX: use the actual countryCode instead of hardcoding "in"
+  const canonicalUrl = `https://junooni.com/${countryCode}/products/${handle}`
+
   return {
     title: `${product.title} | Junooni`,
     description,
@@ -93,13 +129,21 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       "Junooni",
     ],
     alternates: {
-      canonical: `https://junooni.com/in/products/${handle}`,
+      canonical: canonicalUrl,
     },
     openGraph: {
+      // NOTE: Open Graph's spec supports type: "product", but Next.js's
+      // metadata resolver validates this against its own internal enum
+      // (website/article/book/profile/etc) and throws at runtime for
+      // anything outside it — "as any" only fools TypeScript, not Next's
+      // resolver. There's no supported way to emit og:type=product through
+      // the Metadata API, so we leave it as the default ("website").
+      // Facebook/WhatsApp scrapers generally still read product:price:*
+      // from `other` below even without a strict og:type=product.
       title: `${product.title} | Junooni`,
       description,
       images: product.thumbnail ? [product.thumbnail] : [],
-      url: `https://junooni.com/in/products/${handle}`,
+      url: canonicalUrl,
       siteName: "Junooni",
     },
     twitter: {
@@ -107,18 +151,21 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       title: `${product.title} | Junooni`,
       description,
       images: product.thumbnail ? [product.thumbnail] : [],
-      // Show price + shipping info on Twitter/X cards
-      label1: "Price",
-      data1: price ? `₹${price}` : "Check price on Junooni",
-      label2: "Ships to",
-      data2: "Pan India",
-    } as any, // Next.js types don't expose label/data yet but they render correctly
-    // Facebook / WhatsApp product meta tags
+    },
+    // FIX: label1/data1/label2/data2 aren't part of Next's twitter metadata
+    // schema and get silently dropped even with `as any` — Next's serializer
+    // only emits recognized fields. Custom twitter:label/data tags and the
+    // Facebook/WhatsApp product:price:* tags both belong here in `other`,
+    // which Next passes through verbatim as raw <meta> tags.
     other: {
       ...(price != null && {
         "product:price:amount": price.toString(),
         "product:price:currency": "INR",
       }),
+      "twitter:label1": "Price",
+      "twitter:data1": price ? `₹${price}` : "Check price on Junooni",
+      "twitter:label2": "Ships to",
+      "twitter:data2": "Pan India",
     },
   }
 }
@@ -152,16 +199,21 @@ export default async function ProductPage(props: Props) {
     firstVariant?.calculated_price?.currency_code?.toUpperCase() ?? "INR"
 
   // ── Availability ──────────────────────────────────────────────────────────
+  // FIX: was `v.inventory_quantity == null || v.inventory_quantity > 0`,
+  // which ignored manage_inventory/allow_backorder and could disagree with
+  // what the storefront buy button actually shows. See isVariantInStock().
   const inStock =
-    pricedProduct.variants?.some(
-      (v: any) => v.inventory_quantity == null || v.inventory_quantity > 0
-    ) ?? true
+    pricedProduct.variants?.some((v: any) => isVariantInStock(v)) ?? true
 
   // ── Creator / brand name from vendor ─────────────────────────────────────
   const creatorName =
     (pricedProduct as any).vendor?.name ??
     (pricedProduct as any).brand ??
     "Junooni"
+
+  // FIX: use the actual countryCode instead of hardcoding "in" everywhere below
+  const countryCode = params.countryCode
+  const productUrl = `https://junooni.com/${countryCode}/products/${pricedProduct.handle}`
 
   // ── Product schema ────────────────────────────────────────────────────────
   const productSchema: Record<string, any> = {
@@ -182,7 +234,7 @@ export default async function ProductPage(props: Props) {
     },
     offers: {
       "@type": "Offer",
-      url: `https://junooni.com/in/products/${pricedProduct.handle}`,
+      url: productUrl,
       priceCurrency: currencyCode,
       // FIX: price in major unit (rupees), not paisa
       ...(price != null ? { price } : {}),
@@ -202,7 +254,6 @@ export default async function ProductPage(props: Props) {
   }
 
   // ── Breadcrumb schema — Home → Category → Product ─────────────────────────
-  // FIX: use actual product category instead of generic /store
   const category = (pricedProduct as any).categories?.[0]
 
   const breadcrumbItems = [
@@ -210,26 +261,26 @@ export default async function ProductPage(props: Props) {
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://junooni.com/in",
+      item: `https://junooni.com/${countryCode}`,
     },
     category
       ? {
           "@type": "ListItem",
           position: 2,
           name: category.name,
-          item: `https://junooni.com/in/categories/${category.handle}`,
+          item: `https://junooni.com/${countryCode}/categories/${category.handle}`,
         }
       : {
           "@type": "ListItem",
           position: 2,
           name: "Store",
-          item: "https://junooni.com/in/store",
+          item: `https://junooni.com/${countryCode}/store`,
         },
     {
       "@type": "ListItem",
       position: 3,
       name: pricedProduct.title,
-      item: `https://junooni.com/in/products/${pricedProduct.handle}`,
+      item: productUrl,
     },
   ]
 

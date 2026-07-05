@@ -2922,13 +2922,28 @@ const generateInvoice = () => {
       const finalY = doc.lastAutoTable.finalY + 12;  // ✅ Reduced spacing
       
       // ✅ SIMPLIFIED: Consolidated summary data - removed unnecessary rows
-      const summaryData = [
-        ["Subtotal:", formatPriceForPDF(itemSubtotal)],
-        ["Your payout (before fees):", formatPriceForPDF(Math.abs(netVendorProfit))],
-        ["Processing fee (2% + 18% GST):", formatPriceForPDF(-totalProcessingFee)],
-        ["", ""],  // Single separator
-        ["Your Total Earnings:", formatPriceForPDF(Math.abs(finalVendorProfit))]
-      ];
+      // const summaryData = [
+      //   ["Subtotal:", formatPriceForPDF(itemSubtotal)],
+      //   ["Your payout (before fees):", formatPriceForPDF(Math.abs(netVendorProfit))],
+      //   ["Processing fee (2% + 18% GST):", formatPriceForPDF(-totalProcessingFee)],
+      //   ["", ""],  // Single separator
+      //   ["Your Total Earnings:", formatPriceForPDF(Math.abs(finalVendorProfit))]
+      // ];
+
+      const isCOD = feeType === 'flat_cod' || paymentMethod === 'cod' || paymentMethod === 'cash_on_delivery';
+
+      const summaryData = isCOD
+        ? [
+            ["Subtotal:", formatPriceForPDF(itemSubtotal)],
+            ["Your Total Earnings:", formatPriceForPDF(Math.abs(finalVendorProfit))]
+          ]
+        : [
+            ["Subtotal:", formatPriceForPDF(itemSubtotal)],
+            ["Your payout (before fees):", formatPriceForPDF(Math.abs(netVendorProfit))],
+            ["Processing fee (2% + 18% GST):", formatPriceForPDF(-totalProcessingFee)],
+            ["", ""],
+            ["Your Total Earnings:", formatPriceForPDF(Math.abs(finalVendorProfit))]
+          ];
       
       autoTable(doc, {
         body: summaryData,
@@ -2951,8 +2966,12 @@ const generateInvoice = () => {
           }
         },
         didParseCell: function(data) {
-          // ✅ Style the final total row
-          if (data.row.index === 4) {
+          const lastRowIndex = summaryData.length - 1;
+          const separatorRowIndex = isCOD ? -1 : lastRowIndex - 1;  // no separator row for COD
+          const processingFeeRowIndex = isCOD ? -1 : 2;             // no processing fee row for COD
+
+          // ✅ Style the final total row (always the last row, whatever the layout)
+          if (data.row.index === lastRowIndex) {
             data.cell.styles.fontStyle = "bold";
             data.cell.styles.fontSize = 13;
             data.cell.styles.textColor = [0, 100, 0];  // Green
@@ -2960,19 +2979,19 @@ const generateInvoice = () => {
           }
           
           // ✅ Separator row styling
-          if (data.row.index === 3) {
+          if (data.row.index === separatorRowIndex) {
             data.cell.styles.fillColor = [255, 255, 255];
             data.cell.styles.lineWidth = 0;
             data.cell.styles.minCellHeight = 3;  // ✅ Minimal height
           }
           
-          // ✅ Style other rows
-          if (data.row.index === 0 || data.row.index === 1) {
+          // ✅ Style Subtotal / payout rows
+          if (data.row.index === 0 || (!isCOD && data.row.index === 1)) {
             data.cell.styles.fontSize = 10;
           }
           
           // ✅ Processing fee in red
-          if (data.row.index === 2) {
+          if (data.row.index === processingFeeRowIndex) {
             data.cell.styles.fontSize = 10;
             if (data.column.index === 1) {
               data.cell.styles.textColor = [200, 0, 0];  // Red for fee
@@ -3014,7 +3033,7 @@ const generateInvoice = () => {
 
       const paymentMethod = detectPaymentMethod(order.payment_collections);
       const feeDescription = paymentMethod === 'cod' 
-        ? "* Flat ₹35 processing fee applied for COD orders"
+        ? ""
         : "* Payment processing fees include 2% gateway fee plus 18% GST for online payments";
       
       doc.setTextColor(100, 100, 100);
@@ -3255,12 +3274,12 @@ const generateInvoice = () => {
                   {isJunoonMarketplace(order) ? (
                     <Badge variant="outline" className="text-xs text-orange-700 border-orange-200 bg-orange-50">
                       <ShoppingBag className="w-3 h-3 mr-1" />
-                      JUNOONI Marketplace Product
+                      Sold via Junooni Marketplace
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-xs text-orange-700 border-orange-200 bg-orange-50">
                       <Home className="w-3 h-3 mr-1" />
-                      Your Store Product
+                      Sold via Your Store
                     </Badge>
                   )}
                 </div>

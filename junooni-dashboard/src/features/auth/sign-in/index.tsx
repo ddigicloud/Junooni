@@ -161,49 +161,71 @@ export default function JunooniLogin() {
   });
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
-    setIsLoading(true);
+  setIsLoading(true);
+  try {
+    const response = await axios.post(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass`, {
+      email: data.email,
+      password: data.password,
+    });
+    const token = response.data.token;
+    if (!token) throw new Error('No token received from server');
+
+    // ── DEBUG: decode and log full token payload ───────────────────────────
+    const tokenCheck = decodeTokenAndCheckActorId(token);
+    console.log('[sign-in] full token payload:', JSON.stringify(tokenCheck.payload, null, 2));
+    console.log('[sign-in] actor_id:', tokenCheck.payload?.actor_id);
+    console.log('[sign-in] app_metadata:', tokenCheck.payload?.app_metadata);
+    // ──────────────────────────────────────────────────────────────────────
+
+    localStorage.setItem("vendorToken", token);
+    localStorage.setItem("vendorTokenTimestamp", Date.now().toString());
+    localStorage.setItem('vendorEmail', data.email);
+
     try {
-      const response = await axios.post(`${import.meta.env.VITE_MEDUSA_BACKEND_URL}/auth/vendor/emailpass`, {
-        email: data.email,
-        password: data.password,
-      });
-      const token = response.data.token;
-      if (!token) throw new Error('No token received from server');
-
-      localStorage.setItem("vendorToken", token);
-      localStorage.setItem("vendorTokenTimestamp", Date.now().toString());
-      localStorage.setItem('vendorEmail', data.email);
-
-      const tokenCheck = decodeTokenAndCheckActorId(token);
-      if (!tokenCheck.isValid) throw new Error('Invalid token received from server');
-      if (tokenCheck.isExpired) throw new Error('Token is expired');
+      console.log('[sign-in] calling /vendors/me with token...');
+      const vendorRes = await axios.get(
+        `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log('[sign-in] /vendors/me response:', JSON.stringify(vendorRes.data, null, 2));
+      const handle = vendorRes.data?.vendor?.handle;
 
       sessionStorage.setItem('navigationSource', 'sign-in');
-
-      if (tokenCheck.hasActorId) {
+      if (handle) {
         showToast('success', 'Welcome back!', 'Redirecting to your dashboard...');
         setTimeout(() => navigate({ to: '/dashboard' }), 1500);
       } else {
-        showToast('success', 'Welcome to Junooni!', "Let's complete your profile setup...");
+        showToast('success', 'Welcome!', "Let's complete your profile setup...");
         setTimeout(() => navigate({ to: '/onboarding', search: { step: 'basic-info' } }), 1500);
       }
-    } catch (error: any) {
-      localStorage.removeItem('vendorToken');
-      localStorage.removeItem('vendorEmail');
-      sessionStorage.removeItem('navigationSource');
-
-      let errorTitle = 'Sign In Failed';
-      let errorMessage = 'Please check your credentials and try again.';
-      if (error.response?.data?.message) errorMessage = error.response.data.message;
-      else if (error.response?.status === 401) { errorTitle = 'Invalid Credentials'; errorMessage = 'The email or password you entered is incorrect.'; }
-      else if (error.response?.status >= 500) { errorTitle = 'Server Error'; errorMessage = 'Our servers are experiencing issues. Please try again later.'; }
-      else if (error.message) errorMessage = error.message;
-
-      showToast('error', errorTitle, errorMessage);
-    } finally {
-      setIsLoading(false);
+    } catch (vendorErr: any) {
+      console.error('[sign-in] /vendors/me error:', vendorErr.response?.status, vendorErr.response?.data);
+      if (vendorErr.response?.status === 404) {
+        sessionStorage.setItem('navigationSource', 'sign-in');
+        showToast('success', 'Welcome!', "Let's complete your profile setup...");
+        setTimeout(() => navigate({ to: '/onboarding', search: { step: 'basic-info' } }), 1500);
+      } else {
+        throw vendorErr;
+      }
     }
+
+  } catch (error: any) {
+    localStorage.removeItem('vendorToken');
+    localStorage.removeItem('vendorEmail');
+    sessionStorage.removeItem('navigationSource');
+
+    let errorTitle = 'Sign In Failed';
+    let errorMessage = 'Please check your credentials and try again.';
+    if (error.response?.data?.message) errorMessage = error.response.data.message;
+    else if (error.response?.status === 401) { errorTitle = 'Invalid Credentials'; errorMessage = 'The email or password you entered is incorrect.'; }
+    else if (error.response?.status >= 500) { errorTitle = 'Server Error'; errorMessage = 'Our servers are experiencing issues. Please try again later.'; }
+    else if (error.message) errorMessage = error.message;
+
+    showToast('error', errorTitle, errorMessage);
+  } finally {
+    setIsLoading(false);
   }
+}
 
   return (
     <div className="relative w-full min-h-screen">

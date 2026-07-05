@@ -53,13 +53,24 @@ const queryClient = new QueryClient({
     onError: (error) => {
       if (error instanceof AxiosError) {
         if (error.response?.status === 401) {
-          toast({
-            variant: 'destructive',
-            title: 'Session expired!',
-          })
-          useAuthStore.getState().auth.reset()
-          const redirect = `${router.history.location.href}`
-          router.navigate({ to: '/sign-in', search: { redirect } })
+          const currentPath = router.history.location.pathname
+          const PUBLIC_PATHS = ['/sign-in', '/sign-up', '/forgot-password', '/']
+          const isPublicPath = PUBLIC_PATHS.some(
+            (p) => currentPath === p || currentPath.startsWith(p + '/')
+          )
+
+          // Don't show "session expired" or redirect if the user is
+          // already on a public page — a 401 there is expected
+          // (they're simply not logged in yet).
+          if (!isPublicPath) {
+            toast({
+              variant: 'destructive',
+              title: 'Session expired!',
+            })
+            useAuthStore.getState().auth.reset()
+            const redirect = `${router.history.location.href}`
+            router.navigate({ to: '/sign-in', search: { redirect } })
+          }
         }
         if (error.response?.status === 500) {
           toast({

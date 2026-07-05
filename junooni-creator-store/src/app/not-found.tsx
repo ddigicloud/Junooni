@@ -254,10 +254,10 @@ export default function NotFound() {
             </div>
           </div>
 
-          <h1 className="nf-title">Store not found</h1>
+          <h1 className="nf-title">Page not found</h1>
 
           <p className="nf-desc">
-            This storefront doesn't exist or the link may be incorrect. Double-check the URL or head back to Junooni.
+            This page doesn't exist or the link may be incorrect. Double-check the URL or head back to Junooni.
           </p>
 
           <div className="nf-divider" />

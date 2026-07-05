@@ -241,8 +241,10 @@ export default function StoreEditorPage() {
             const hasTerms   = existingPages.some((p: any) => p.template === "terms")
             const hasPrivacy = existingPages.some((p: any) => p.template === "privacy")
             const hasReturns = existingPages.some((p: any) => p.template === "returns")
+            const hasContact = existingPages.some((p: any) => p.template === "contact")
 
-            if (!hasTerms || !hasPrivacy || !hasReturns) {
+
+            if (!hasTerms || !hasPrivacy || !hasReturns || !hasContact) {
               const today = new Date().toLocaleDateString("en-IN", {
                 day: "numeric", month: "long", year: "numeric"
               })
@@ -264,6 +266,12 @@ export default function StoreEditorPage() {
                 title: "Returns & Refunds", slug: "returns-refunds", template: "returns",
                 in_nav: false, in_footer: true, created_at: new Date().toISOString(),
                 content: PAGE_TEMPLATES.find(t => t.id === "returns")!.defaultContent.replace("{{CREATED_DATE}}", today),
+              })
+              if (!hasContact) seedPages.push({
+                id: `page_${Date.now() + 3}_contact`,
+                title: "Contact", slug: "contact", template: "contact",
+                in_nav: false, in_footer: true, created_at: new Date().toISOString(),
+                content: PAGE_TEMPLATES.find(t => t.id === "contact")!.defaultContent,
               })
               loadedStore.pages = { pages: seedPages }
               fetch(`${backendUrl}/vendors/me/store`, {

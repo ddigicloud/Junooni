@@ -991,7 +991,7 @@ const DashboardPage = () => {
 
       setStorePreference({
         sell_on_marketplace: vendorData.vendor?.sell_on_marketplace ?? false,
-        sell_on_own_store: vendorData.vendor?.sell_on_own_store ?? false,
+        sell_on_own_store: isNewVendor ? true : (vendorData.vendor?.sell_on_own_store ?? false),
       })
 
       if (isNewVendor) {

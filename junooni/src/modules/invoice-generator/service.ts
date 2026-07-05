@@ -185,7 +185,8 @@ class InvoiceGeneratorService extends MedusaService({
     const vendorGroups = this.groupItemsByVendor(safeItems)
     const totalVendorPages = vendorGroups.size
 
-    const invoiceId = `INV-${invoice.custom_display_id.toString().padStart(6, '0')}`
+    const safeInvoiceDisplayId = invoice.custom_display_id ?? invoice.id ?? Date.now()
+    const invoiceId = `INV-${safeInvoiceDisplayId.toString().padStart(6, '0')}`
     const invoiceDate = new Date(invoice.created_at).toLocaleDateString()
 
     // Get company name from first vendor for header

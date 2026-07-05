@@ -28,7 +28,13 @@ function renderMarkdown(md: string): string {
 
 function extractEmbeddable(html: string): { styles: string; body: string; scripts: string } {
   const isFullDoc = /<!DOCTYPE|<html/i.test(html)
-  if (!isFullDoc) return { styles: "", body: html, scripts: "" }
+
+  if (!isFullDoc) {
+    const scriptMatches = [...html.matchAll(/<script(?![^>]*\bsrc\b)[^>]*>([\s\S]*?)<\/script>/gi)]
+    const scripts = scriptMatches.map(m => m[1]).join("\n")
+    const body = html.replace(/<script(?![^>]*\bsrc\b)[^>]*>[\s\S]*?<\/script>/gi, "")
+    return { styles: "", body, scripts }
+  }
 
   const styleMatches = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)]
   let styles = styleMatches.map(m => m[1]).join("\n")

@@ -1,51 +1,58 @@
 // import { notFound } from "next/navigation"
 // import type { Metadata } from "next"
-// import { getStorefrontData } from "@/lib/api"
+// import { getStorefrontData, getStoreCategoryDetail } from "@/lib/api"
 // import CategoryDetailPageClient from "./CategoryDetailPageClient"
 
 // interface Props { params: { handle: string; categoryHandle: string } }
 
-// export const dynamic = "force-dynamic"
-// export const revalidate = 0
+// export const revalidate = 30
 
 // export async function generateMetadata({ params }: Props): Promise<Metadata> {
-//   const data = await getStorefrontData(params.handle, { noCache: true })
-//   if (!data) return { title: "Category" }
-//   const cat = data.categories.find((c: any) => c.handle === params.categoryHandle)
-//   return { title: `${cat?.name ?? "Category"} — ${data.vendor.name}` }
+//   const [storeData, catData] = await Promise.all([
+//     getStorefrontData(params.handle),
+//     getStoreCategoryDetail(params.handle, params.categoryHandle),
+//   ])
+//   if (!storeData) return { title: "Category" }
+//   return {
+//     title: `${catData?.category?.name ?? "Category"} — ${storeData.vendor.name}`,
+//     description: `Shop ${catData?.category?.name ?? "products"} from ${storeData.vendor.name} on JUNOONI.`,
+//   }
 // }
 
 // export default async function CategoryDetailPage({ params }: Props) {
-//   const data = await getStorefrontData(params.handle, { noCache: true })
-//   if (!data) notFound()
+//   const [storeData, catData] = await Promise.all([
+//     getStorefrontData(params.handle),
+//     getStoreCategoryDetail(params.handle, params.categoryHandle),
+//   ])
 
-//   const { vendor, store, products, categories, collections } = data
-//   const category = categories.find((c: any) => c.handle === params.categoryHandle)
-//   if (!category) notFound()
+//   if (!storeData) notFound()
+//   if (!catData?.category) notFound()
 
-//   const catProducts = products.filter((p: any) =>
-//     p.categories?.some((c: any) => c.handle === params.categoryHandle)
-//   )
+//   const { vendor, store, collections } = storeData
 
 //   return (
 //     <CategoryDetailPageClient
 //       vendor={vendor}
 //       initialStore={store}
-//       products={products ?? []}
-//       catProducts={catProducts}
-//       categories={categories ?? []}
-//       collections={collections ?? []}
-//       category={category}
+//       products={storeData.products ?? []}
+//       catProducts={catData.products ?? []}
+//       categories={catData.categories ?? []}
+//       collections={catData.collections ?? collections ?? []}
+//       category={catData.category}
 //       handle={params.handle}
 //       categoryHandle={params.categoryHandle}
 //     />
 //   )
 // }
 
+
+
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { getStorefrontData, getStoreCategoryDetail } from "@/lib/api"
 import CategoryDetailPageClient from "./CategoryDetailPageClient"
+import StoreHeader from "@/components/store/StoreHeader"
+import StoreFooter from "@/components/store/StoreFooter"
 
 interface Props { params: { handle: string; categoryHandle: string } }
 
@@ -57,9 +64,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     getStoreCategoryDetail(params.handle, params.categoryHandle),
   ])
   if (!storeData) return { title: "Category" }
+  if (!catData?.category) return { title: `Category not found — ${storeData.vendor.name}` }
   return {
-    title: `${catData?.category?.name ?? "Category"} — ${storeData.vendor.name}`,
-    description: `Shop ${catData?.category?.name ?? "products"} from ${storeData.vendor.name} on JUNOONI.`,
+    title: `${catData.category.name} — ${storeData.vendor.name}`,
+    description: `Shop ${catData.category.name} from ${storeData.vendor.name} on JUNOONI.`,
   }
 }
 
@@ -69,10 +77,66 @@ export default async function CategoryDetailPage({ params }: Props) {
     getStoreCategoryDetail(params.handle, params.categoryHandle),
   ])
 
+  // Vendor/store itself doesn't exist — fall back to the global branded 404
   if (!storeData) notFound()
-  if (!catData?.category) notFound()
 
   const { vendor, store, collections } = storeData
+
+  const brandPrimary   = store?.primary_color   ?? "#e65100"
+  const brandSecondary = store?.secondary_color ?? "#000"
+  const isDark         = store?.template === "bold"
+
+  const fontClass =
+    store?.font === "poppins"       ? "font-poppins" :
+    store?.font === "playfair"      ? "font-playfair" :
+    store?.font === "dm-sans"       ? "font-dm-sans" :
+    store?.font === "space-grotesk" ? "font-space-grotesk" :
+    store?.font === "nunito"        ? "font-nunito" :
+    store?.font === "raleway"       ? "font-raleway" :
+    store?.font === "montserrat"    ? "font-montserrat" :
+    "font-inter"
+
+  const brandStyles = {
+    "--brand-primary":   brandPrimary,
+    "--brand-secondary": brandSecondary,
+  } as React.CSSProperties
+
+  // ── Category not found — show proper 404 with store header/footer ──────
+  if (!catData?.category) {
+    return (
+      <div style={brandStyles} className={`min-h-screen ${isDark ? "bg-black text-white" : "bg-white"} ${fontClass}`}>
+        <StoreHeader
+          vendor={vendor} store={store}
+          categories={catData?.categories ?? []} collections={collections ?? []} products={storeData.products ?? []}
+        />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+          <div className="flex items-center justify-center w-20 h-20 mb-6 rounded-full"
+            style={{ background: `${brandPrimary}15` }}>
+            <span className="text-4xl">🔍</span>
+          </div>
+          <h1 className={`text-3xl font-bold mb-3 ${isDark ? "text-white" : "text-gray-900"}`}>
+            Category not found
+          </h1>
+          <p className={`text-base mb-8 max-w-md ${isDark ? "text-white/60" : "text-gray-500"}`}>
+            This category doesn't exist or may have been removed from this store.
+          </p>
+          <a href={`/${vendor.handle}/categories`}
+            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white transition-opacity rounded-full hover:opacity-90"
+            style={{ background: `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)` }}>
+            Browse all categories
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </a>
+        </div>
+        <StoreFooter
+          vendor={vendor} store={store}
+          categories={catData?.categories ?? []} collections={collections ?? []}
+        />
+      </div>
+    )
+  }
 
   return (
     <CategoryDetailPageClient
