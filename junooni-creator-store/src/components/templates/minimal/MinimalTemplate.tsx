@@ -11,6 +11,14 @@ import type { PublicVendor, VendorStore, Product, StoreSection, CategoryMeta, Co
 import ProductCarousel from "@/components/ui/ProductCarousel"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
+import minimaltee from "../../../../public/minimaltee.png"
+import minimalhoodie from "../../../../public/minimalhoodie.png"
+import minimalcap from "../../../../public/minimalcap.png"
+import minimalmug from "../../../../public/minimalmug.png"
+import minimalcollectionsummer from "../../../../public/minimal-collection-summer.png"
+import minimalcollectionfavourites from "../../../../public/minimal-collection-favourites.png"
+import minimalcollectionlimited from "../../../../public/minimal-collection-limited.png"
+import minimalcollectionaccessories from "../../../../public/minimal-collection-accessories.png"
 
 // NEW
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
@@ -79,10 +87,10 @@ function AnnouncementStrip({ section }: { section: any }) {
 }
 
 const FAKE_PRODUCTS = [
-  { id: "fake_1", title: "Classic Creator Tee", price: "₹699", color: "#f3f4f6", emoji: "👕" },
-  { id: "fake_2", title: "Limited Drop Hoodie", price: "₹1,299", color: "#e5e7eb", emoji: "👕" },
-  { id: "fake_3", title: "Signature Cap", price: "₹499", color: "#f9fafb", emoji: "🧢" },
-  { id: "fake_4", title: "Fan Favourite Mug", price: "₹399", color: "#f3f4f6", emoji: "☕" },
+  { id: "fake_1", title: "Classic Creator Tee", price: "₹699", image: minimaltee },
+  { id: "fake_2", title: "Limited Drop Hoodie", price: "₹1,299", image: minimalhoodie },
+  { id: "fake_3", title: "Signature Cap", price: "₹499", image: minimalcap },
+  { id: "fake_4", title: "Fan Favourite Mug", price: "₹399", image: minimalmug },
 ]
 
 function PlaceholderProductGrid({ columns = 3, brandPrimary }: { columns?: number; brandPrimary: string }) {
@@ -97,11 +105,12 @@ function PlaceholderProductGrid({ columns = 3, brandPrimary }: { columns?: numbe
     <div className={`grid ${gridClass} gap-6`}>
       {items.map((p) => (
         <div key={p.id} className="space-y-3 cursor-default select-none">
-          <div
-            className="aspect-square rounded-2xl flex items-center justify-center text-6xl"
-            style={{ backgroundColor: p.color }}
-          >
-            {p.emoji}
+          <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100">
+            <img
+              src={typeof p.image === "string" ? p.image : (p.image as any).src}
+              alt={p.title}
+              className="w-full h-full object-cover"
+            />
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-gray-900">{p.title}</p>
@@ -116,21 +125,22 @@ function PlaceholderProductGrid({ columns = 3, brandPrimary }: { columns?: numbe
 function PlaceholderCollectionGrid({ columns = 3, brandPrimary }: { columns?: number; brandPrimary: string }) {
   const gridClass = columns === 2 ? "grid-cols-1 sm:grid-cols-2" : columns === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"
   const FAKE_COLLECTIONS = [
-    { id: "fc_1", title: "Summer Drops", emoji: "☀️", color: "#fef9c3" },
-    { id: "fc_2", title: "Fan Favourites", emoji: "⭐", color: "#f0fdf4" },
-    { id: "fc_3", title: "Limited Edition", emoji: "🔥", color: "#fff1f2" },
-    { id: "fc_4", title: "Accessories", emoji: "🧢", color: "#eff6ff" },
+    { id: "fc_1", title: "Summer Drops", image: minimalcollectionsummer },
+    { id: "fc_2", title: "Fan Favourites", image: minimalcollectionfavourites },
+    { id: "fc_3", title: "Limited Edition", image: minimalcollectionlimited },
+    { id: "fc_4", title: "Accessories", image: minimalcollectionaccessories },
   ].slice(0, columns)
 
   return (
     <div className={`grid ${gridClass} gap-5`}>
       {FAKE_COLLECTIONS.map(col => (
-        <div key={col.id} className="relative overflow-hidden rounded-2xl aspect-[4/3] cursor-default select-none"
-          style={{ backgroundColor: col.color }}>
-          <div className="absolute inset-0 flex items-center justify-center text-6xl">
-            {col.emoji}
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent" />
+        <div key={col.id} className="relative overflow-hidden rounded-2xl aspect-[4/3] cursor-default select-none">
+          <img
+            src={typeof col.image === "string" ? col.image : (col.image as any).src}
+            alt={col.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-4">
             <p className="text-lg font-bold text-white">{col.title}</p>
             <p className="text-white/70 text-sm mt-0.5">0 products</p>
@@ -385,6 +395,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 src={section.background_image ?? store!.hero_image!}
                 alt="Hero"
                 fill
+                sizes="100vw"
                 className="object-cover"
                 style={{ opacity: overlayColor ? 1 : 0.15 }}
               />
@@ -423,12 +434,12 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                   }`}
                   style={{ color: headlineColor }}
                 >
-                  {section.headline ?? vendor.name}
+                  {section.headline || vendor.name || "Your Headline"}
                 </h1>
 
-                {(section.subtext ?? store?.tagline) && (
+                {(section.subtext || store?.tagline || "Your tagline goes here") && (
                   <p className="max-w-md mb-8 text-lg leading-relaxed" style={{ color: subtextColor }}>
-                    {section.subtext ?? store?.tagline}
+                    {section.subtext || store?.tagline || "Your tagline goes here"}
                   </p>
                 )}
 
@@ -465,7 +476,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               </motion.div>
 
               {/* Creator image/logo side */}
-              {((section as any).hero_image_right) && (
+              {((section as any).hero_image_right ?? "/minimal-template-banner.png") && (
                 <motion.div
                   className="w-full shrink-0 md:w-80 lg:w-96"
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -474,7 +485,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 >
                   <div className="relative overflow-hidden shadow-2xl aspect-square rounded-3xl">
                     <Image
-                      src={(section as any).hero_image_right ?? vendor.coverphoto ?? vendor.logo!}
+                      src={(section as any).hero_image_right ?? "/minimal-template-banner.png"}
                       alt={vendor.name}
                       fill
                       className="object-cover"
@@ -1500,7 +1511,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
 
 function defaultSections(vendor: PublicVendor): StoreSection[] {
   return [
-    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products" } as any,
+    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: "/minimal-template-banner.png" } as any,
     { type: "collection", title: "All Products", limit: 12 },
     { type: "divider" },
     { type: "about", title: "About Me" },

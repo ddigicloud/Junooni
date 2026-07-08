@@ -18,7 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import CreatorJunooni from '../../../assets/creator_merch.png';
+import CreatorJunooni from '../../../assets/creator_merch.jpeg';
 
 const formSchema = z.object({
   email: z

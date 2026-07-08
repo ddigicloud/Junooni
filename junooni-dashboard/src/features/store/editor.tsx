@@ -44,6 +44,7 @@ import { FooterColumnsEditor } from "./components/editor/FooterColumnsEditor"
 import { NavItemsEditor } from "./components/editor/NavItemsEditor"
 import { PageEditorPanel } from "./components/editor/PageEditorPanel"
 import { SectionSettings, ProductDetailSettings } from "./components/editor/SectionSettings"
+import minimalbanner from "../../../public/images/minimal-template-banner.png"
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -148,6 +149,7 @@ export default function StoreEditorPage() {
   const headerSections = homeSections.filter(s =>
     s.type === "announcement" || s.type === "ticker"
   )
+  console.log(JSON.stringify(store.sections?.sections, null, 2))
   const footerSections = homeSections.filter(s => s.type === "footer")
   const bodySections = currentLayoutKey === "home"
     ? homeSections.filter(s =>
@@ -309,6 +311,46 @@ export default function StoreEditorPage() {
               loadedStore.sections = { ...loadedStore.sections, sections: finalSecs }
             }
 
+            // Auto-patch hero banner and seed missing sections based on template
+            const storeTemplate = loadedStore.template ?? "minimal"
+            const correctBanner = storeTemplate === "editorial"
+            ? "/editorial-template-banner.png"
+            : storeTemplate === "bold"
+              ? "/bold-template-banner.png"
+              : "/minimal-template-banner.png"
+
+            finalSecs = finalSecs.map((s: any) => {
+              if (s.type === "hero" && (
+                !s.hero_image_right ||
+                (storeTemplate === "editorial" && s.hero_image_right !== "/editorial-template-banner.png") ||
+                (storeTemplate === "bold" && s.hero_image_right !== "/bold-template-banner.png") ||
+                (storeTemplate === "minimal" && s.hero_image_right !== "/minimal-template-banner.png")
+              )) {
+                return { ...s, hero_image_right: correctBanner }
+              }
+              return s
+            })
+
+            const hasCollection = finalSecs.some((s: any) => s.type === "collection")
+            const hasFeaturedCollections = finalSecs.some((s: any) => s.type === "featured_collections")
+            const hasAbout      = finalSecs.some((s: any) => s.type === "about")
+            const hasSocial     = finalSecs.some((s: any) => s.type === "social")
+            const missingSecs: any[] = []
+            if (!hasCollection) missingSecs.push({ id: genId(), type: "collection" as SectionType, title: "All Products", limit: 12, columns: 3 })
+            if (!hasFeaturedCollections) missingSecs.push({ id: genId(), type: "featured_collections" as SectionType, title: "Shop by Collection", collection_ids: [], columns: 3 })
+            if (!hasAbout)      missingSecs.push({ id: genId(), type: "about"      as SectionType, title: "About Me", text: "" })
+            if (!hasSocial)     missingSecs.push({ id: genId(), type: "social"     as SectionType, show_instagram: true, show_youtube: true, show_twitter: true })
+           
+
+            if (missingSecs.length > 0) {
+              const footerIdx = finalSecs.findIndex((s: any) => s.type === "footer")
+              finalSecs = footerIdx !== -1
+                ? [...finalSecs.slice(0, footerIdx), ...missingSecs, ...finalSecs.slice(footerIdx)]
+                : [...finalSecs, ...missingSecs]
+            }
+
+            loadedStore.sections = { ...loadedStore.sections, sections: finalSecs }
+
             setStore({
               ...loadedStore,
               instagram_url: loadedStore.instagram_url || vd.vendor?.instagram || "",
@@ -374,6 +416,7 @@ export default function StoreEditorPage() {
   const syncToIframe = useCallback(() => {
     if (!iframeReady) return
     console.log("[syncToIframe] posting STORE_UPDATE, checkout_settings:", store.checkout_settings)
+    console.log("[syncToIframe] sections:", JSON.stringify(store.sections?.sections?.slice(0,2)))
     isSyncingRef.current = true
     iframeRef.current?.contentWindow?.postMessage({ type: "STORE_UPDATE", store, selectedId }, "*")
     setTimeout(() => { isSyncingRef.current = false }, 100)
@@ -556,7 +599,7 @@ export default function StoreEditorPage() {
 
   const ns: StoreSection = {
     id: genId(), type,
-    ...(type === "hero"         ? { headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products" } : {}),
+    ...(type === "hero"         ? { headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: store.template === "editorial" ? "/editorial-template-banner.png" : "/minimal-template-banner.png" } : {}),
     ...(type === "collection"   ? { title: "All Products", limit: 12, columns: 3, show_sold_out: true } : {}),
     ...(type === "featured"     ? { title: "Featured Drops", limit: 4, columns: 4 } : {}),
     ...(type === "about"        ? { title: "About Me", text: "Share your story..." } : {}),
@@ -674,7 +717,7 @@ export default function StoreEditorPage() {
 const addSectionAferId = (type: SectionType, afterId: string | null) => {
     const ns: StoreSection = {
       id: genId(), type,
-      ...(type === "hero"         ? { headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products" } : {}),
+      ...(type === "hero"         ? { headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: store.template === "editorial" ? "/editorial-template-banner.png" : "/minimal-template-banner.png" } : {}),
       ...(type === "collection"   ? { title: "All Products", limit: 12, columns: 3, show_sold_out: true } : {}),
       ...(type === "featured"     ? { title: "Featured Drops", limit: 4, columns: 4 } : {}),
       ...(type === "about"        ? { title: "About Me", text: "Share your story..." } : {}),
@@ -1452,7 +1495,7 @@ const previewUrl = (() => {
                 .map((block, idx, arr) => (
                   <button key={block.type}
                     onClick={() => {
-                      addSection(block.type, null)
+                      addSection(block.type, insertAtIndex)
                       setBodySectionPickerOpen(false)
                       setInsertAtIndex(null)
                     }}

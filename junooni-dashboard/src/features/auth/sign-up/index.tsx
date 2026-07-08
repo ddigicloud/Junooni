@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { SignUpForm } from './components/sign-up-form'
-import CreatorJunooni from '../../../assets/junooni-creators.png'
+import CreatorJunooni from '../../../assets/junooni-creators.jpeg'
 import JunooniLogo from "@/assets/junooni-favicon.png";
 import Junoonibrandlogo from "@/assets/junooni_logo_brand_color.png";
 import { useState, useEffect } from 'react';
@@ -77,7 +77,7 @@ function RedirectToast({ onClose }: { onClose: () => void }) {
               No account found — sign up first! 👋
             </p>
             <p className="mt-0.5 text-xs text-orange-700 leading-relaxed">
-              Looks like you're new here. Create your Junooni creator account below — it only takes a minute.
+              Looks like you're new here. Create your JUNOONI creator account below — it only takes a minute.
             </p>
           </div>
 
@@ -174,7 +174,7 @@ export default function SignUp() {
               Create Your Account
             </h1>
             <p className="text-sm leading-relaxed text-gray-600 sm:text-base">
-              Join thousands of creators on Junooni
+              Join thousands of creators on JUNOONI
             </p>
           </div>
 

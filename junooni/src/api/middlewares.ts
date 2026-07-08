@@ -399,8 +399,8 @@ export default defineMiddlewares({
             /^\/vendors\/check-handle$/,
             /^\/vendors\/uploads$/,
             /^\/vendors\/payout$/,
-            /^\/vendors\/me$/,
-            /^\/vendors\/google-link$/, // ← ADD THIS: skip wildcard auth for google-link
+            // /^\/vendors\/me$/,
+            // /^\/vendors\/google-link$/, 
             /^\/vendors\/[^/]+\/products$/, // ← ADD THIS
             /^\/vendors\/check-email$/,   // ← ADD
             /^\/vendors\/send-otp$/,      // ← ADD

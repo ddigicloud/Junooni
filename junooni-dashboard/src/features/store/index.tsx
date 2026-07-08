@@ -25,12 +25,15 @@ import { ProfileDropdown } from "@/components/profile-dropdown"
 import AdminImpersonationBanner from "@/components/AdminImpersonationBanner"
 import { getStoreUrl, getPreviewUrl, getPageUrl } from "@/lib/store-urls"
 import storeBanner from "@/assets/store-banner.png"
+import boldpreview from "@/assets/bold-preview.png"
+import minimalpreview from "@/assets/minimal-preview.png"
+import editorialpreview from "@/assets/editorial-preview.png"
 
 const BRAND = { primary: "#e65100", secondary: "#ac1900" }
 
 type StoreTemplate = "minimal" | "bold" | "editorial"
 type StoreStatus   = "draft" | "live" | "paused"
-type StoreFont     = "inter" | "poppins" | "playfair"
+type StoreFont     = "inter" | "poppins" | "playfair" | "dm_sans" | "space_grotesk" | "nunito" | "raleway" | "montserrat"
 type SectionType   = "hero" | "featured" | "collection" | "about" | "social" | "announcement" | "divider" | "text" | "image" | "video" | "links" | "html"
 type PageTemplate  = "blank" | "about" | "faq" | "contact"
 
@@ -63,6 +66,9 @@ interface VendorStore {
   instagram_url?: string; youtube_url?: string; twitter_url?: string; facebook_url?: string
   password_enabled?: boolean
   store_password?: string | null
+  // Tracks whether the vendor has explicitly confirmed a template — distinct
+  // from `hasStore`, which only tells us a store row exists on the backend.
+  template_selected?: boolean
 }
 
 const DEFAULT_STORE: VendorStore = {
@@ -80,6 +86,10 @@ const DEFAULT_STORE: VendorStore = {
   pages: { pages: [] },
   seo_title: null, seo_description: null,
   password_enabled: false, store_password: null,
+  // Left undefined (not false) so existing stores loaded from the backend
+  // that predate this field aren't mistakenly forced through the picker —
+  // see needsTemplateSelection below.
+  template_selected: undefined,
 }
 
 function slugify(str: string) {
@@ -256,6 +266,21 @@ export default function StorePage() {
     load()
   }, [])
 
+  // ── Force template selection for brand-new vendors ──────────────────────
+  // A vendor with no store row yet (just enabled Own Store) must pick a
+  // template before seeing anything else. Vendors who already have a store
+  // record are only forced through this if the backend explicitly says
+  // template_selected === false — an absent/undefined value means this is
+  // an existing store that predates the field, so we don't retroactively
+  // block it.
+  const needsTemplateSelection = !hasStore || store.template_selected === false
+
+  useEffect(() => {
+    if (!isLoading && sellOnOwnStore && needsTemplateSelection) {
+      setActiveModal("template")
+    }
+  }, [isLoading, sellOnOwnStore, needsTemplateSelection])
+
   const saveStore = async (patch?: Partial<VendorStore>) => {
     setIsSaving(true)
     const payload = { ...(patch ? { ...store, ...patch } : store), subdomain: store.subdomain || vendorHandle || undefined }
@@ -273,6 +298,19 @@ export default function StorePage() {
     } catch (e) {
       toast({ title: "Save failed", description: String(e), variant: "destructive" })
     } finally { setIsSaving(false) }
+  }
+
+  // Called when the vendor confirms a template in the forced picker. Marks
+  // the template as selected (unlocking the rest of the dashboard) and
+  // persists it right away.
+  const confirmTemplateSelection = async () => {
+    setIsSaving(true)
+    try {
+      await saveStore({ template_selected: true })
+      setActiveModal(null)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handlePublish = async () => {
@@ -440,7 +478,7 @@ export default function StorePage() {
 
         {/* ── Hero Banner ── */}
         <div className="relative mb-6 overflow-hidden rounded-2xl" style={{ minHeight: "220px" }}>
-          
+
           {/* Banner image fills the entire section */}
           <img
             src={storeBanner}
@@ -654,18 +692,28 @@ export default function StorePage() {
 
       {/* ── Modals ── */}
       {activeModal && (
-        <Modal title={
-          activeModal === "branding" ? "Branding & identity"
-          : activeModal === "domain"   ? "Domain & SEO"
-          : activeModal === "pages"    ? "Custom pages"
-          : activeModal === "template" ? "Store look"
-          : activeModal === "launch"   ? "Go live"
-          : ""
-        } onClose={() => setActiveModal(null)}>
+        <Modal
+          title={
+            activeModal === "branding" ? "Branding & identity"
+            : activeModal === "domain"   ? "Domain & SEO"
+            : activeModal === "pages"    ? "Custom pages"
+            : activeModal === "template" ? (needsTemplateSelection ? "Welcome! Pick your store look" : "Store look")
+            : activeModal === "launch"   ? "Go live"
+            : ""
+          }
+          subtitle={activeModal === "template" && needsTemplateSelection ? "Choose a template to set up your store — you can change this anytime." : undefined}
+          // New vendors must pick a template before doing anything else, so
+          // this instance of the modal can't be dismissed by the X button
+          // or a backdrop click.
+          dismissible={!(activeModal === "template" && needsTemplateSelection)}
+          onClose={() => setActiveModal(null)}
+        >
 
           {(activeModal === "template" || activeModal === "launch") && (
             <TemplatePanel store={store} onChange={patch => setStore(p => ({ ...p, ...patch }))}
-              onSave={() => { saveStore(); setActiveModal(null) }} isSaving={isSaving}
+              onSave={needsTemplateSelection ? confirmTemplateSelection : () => { saveStore(); setActiveModal(null) }}
+              isSaving={isSaving}
+              isForced={needsTemplateSelection}
               vendorHandle={vendorHandle} isLive={isLive} onPublish={handlePublish} isPublishing={isPublishing} />
           )}
           {activeModal === "branding" && (
@@ -695,19 +743,40 @@ export default function StorePage() {
 
 // ─── Modal wrapper ──────────────────────────────────────────────────────────
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Modal({
+  title, subtitle, onClose, children, dismissible = true,
+}: {
+  title: string
+  subtitle?: string
+  onClose: () => void
+  children: React.ReactNode
+  /** When false, hides the close button and disables backdrop-click dismissal. */
+  dismissible?: boolean
+}) {
+  useEffect(() => {
+    if (dismissible) return
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") e.preventDefault() }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [dismissible])
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
       style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(6px)" }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
+      onClick={e => { if (dismissible && e.target === e.currentTarget) onClose() }}>
       <div className="w-full max-w-2xl max-h-[92vh] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="text-sm font-bold text-gray-900">{title}</h2>
-          <button onClick={onClose}
-            className="flex items-center justify-center w-8 h-8 text-gray-400 transition-colors rounded-lg hover:bg-gray-100 hover:text-gray-700">
-            <X className="w-4 h-4" />
-          </button>
+        <div className="flex items-start justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">{title}</h2>
+            {subtitle && <p className="mt-0.5 text-xs text-gray-400">{subtitle}</p>}
+          </div>
+          {dismissible && (
+            <button onClick={onClose}
+              className="flex items-center justify-center w-8 h-8 text-gray-400 transition-colors rounded-lg hover:bg-gray-100 hover:text-gray-700 shrink-0">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <div className="flex-1 px-4 py-6 overflow-y-auto">{children}</div>
       </div>
@@ -717,38 +786,78 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 // ─── Template + Launch panel ────────────────────────────────────────────────
 
-const TEMPLATES = [
-  { id: "minimal"   as StoreTemplate, name: "Minimal",   desc: "Clean, white, product-focused.",  preview: "bg-white" },
-  { id: "bold"      as StoreTemplate, name: "Bold",      desc: "Dark, big typography.",            preview: "bg-gray-900" },
-  { id: "editorial" as StoreTemplate, name: "Editorial", desc: "Magazine-style layout.",           preview: "bg-stone-50" },
+const TEMPLATES: { id: StoreTemplate; name: string; desc: string; preview: string; previewImage?: string }[] = [
+  { id: "minimal"   as StoreTemplate, name: "Minimal",   desc: "Clean, white, product-focused.",  preview: "bg-white" , previewImage: minimalpreview },
+  { id: "bold"      as StoreTemplate, name: "Bold",      desc: "Dark, big typography.",            preview: "bg-gray-900" , previewImage: boldpreview},
+  { id: "editorial" as StoreTemplate, name: "Editorial", desc: "Magazine-style layout.",           preview: "bg-stone-50" , previewImage: editorialpreview },
 ]
+// `family` is the actual CSS font-family used to render the name/sample text
+// below, so each card shows what the font really looks like rather than a
+// generic label. These match the typefaces offered in the Store Editor's
+// Typography sidebar, so the two pickers stay in sync.
 const FONTS = [
-  { id: "inter"    as StoreFont, name: "Inter",    sample: "Clean & Modern" },
-  { id: "poppins"  as StoreFont, name: "Poppins",  sample: "Friendly & Round" },
-  { id: "playfair" as StoreFont, name: "Playfair", sample: "Elegant & Serif" },
+  { id: "inter"         as StoreFont, name: "Inter",           family: "Inter, sans-serif",              sample: "Clean & Modern" },
+  { id: "poppins"       as StoreFont, name: "Poppins",         family: "Poppins, sans-serif",             sample: "Friendly & Round" },
+  { id: "playfair"      as StoreFont, name: "Playfair",        family: "'Playfair Display', serif",       sample: "Elegant & Serif" },
+  { id: "dm_sans"       as StoreFont, name: "DM Sans",         family: "'DM Sans', sans-serif",           sample: "Simple & Sharp" },
+  { id: "space_grotesk" as StoreFont, name: "Space Grotesk",   family: "'Space Grotesk', sans-serif",     sample: "Bold & Techy" },
+  { id: "nunito"        as StoreFont, name: "Nunito",          family: "Nunito, sans-serif",              sample: "Soft & Rounded" },
+  { id: "raleway"       as StoreFont, name: "Raleway",         family: "Raleway, sans-serif",             sample: "Light & Airy" },
+  { id: "montserrat"    as StoreFont, name: "Montserrat",      family: "Montserrat, sans-serif",          sample: "Strong & Geometric" },
 ]
 
-function TemplatePanel({ store, onChange, onSave, isSaving, vendorHandle, isLive, onPublish, isPublishing }: {
+function TemplatePanel({ store, onChange, onSave, isSaving, vendorHandle, isLive, onPublish, isPublishing, isForced = false }: {
   store: VendorStore; onChange: (p: Partial<VendorStore>) => void
   onSave: () => void; isSaving: boolean
   vendorHandle: string; isLive: boolean; onPublish: () => void; isPublishing: boolean
+  /** True when this is the mandatory first-run picker for a brand-new vendor. */
+  isForced?: boolean
 }) {
   return (
     <div className="space-y-7">
+      {isForced && (
+        <div className="flex items-start gap-2.5 text-xs bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+          <Sparkles className="w-4 h-4 shrink-0 mt-0.5" style={{ color: BRAND.primary }} />
+          <span className="text-orange-800">Pick a look to get your store started — you can always change it later from the dashboard.</span>
+        </div>
+      )}
+
+      {/* Local keyframes for the auto-scrolling template preview (Fourthwall-style). */}
+      <style>{`
+        @keyframes storePreviewScroll {
+          0%, 12%  { transform: translateY(0); }
+          50%      { transform: translateY(-38%); }
+          88%, 100% { transform: translateY(0); }
+        }
+        .store-preview-scroll {
+          animation: storePreviewScroll 9s ease-in-out infinite;
+        }
+      `}</style>
+
       <div>
         <p className="mb-1 text-sm font-bold text-gray-800">Template</p>
         <p className="mb-4 text-xs text-gray-400">Choose a layout style for your store homepage.</p>
         <div className="grid grid-cols-3 gap-3">
           {TEMPLATES.map(t => (
             <button key={t.id} onClick={() => onChange({ template: t.id })}
-              className={`text-left p-3 rounded-xl border-2 transition-all ${store.template === t.id ? "shadow-sm" : "border-gray-200 hover:border-gray-300"}`}
+              className={`text-left p-3 rounded-xl border-2 transition-all group ${store.template === t.id ? "shadow-sm" : "border-gray-200 hover:border-gray-300"}`}
               style={store.template === t.id ? { borderColor: BRAND.primary } : {}}>
-              <div className={`w-full h-14 rounded-lg mb-2.5 ${t.preview} border border-gray-200 flex items-center justify-center overflow-hidden`}>
-                <div className="w-10/12 space-y-1">
-                  <div className={`h-1.5 rounded w-2/3 mx-auto ${t.id === "bold" ? "bg-white/30" : "bg-gray-300"}`} />
-                  <div className="grid grid-cols-3 gap-0.5">{[1,2,3].map(i => <div key={i} className={`h-3 rounded ${t.id === "bold" ? "bg-white/10" : "bg-gray-100"}`} />)}</div>
+              {t.previewImage ? (
+                <div className="relative w-full h-32 mb-2.5 overflow-hidden rounded-lg border border-gray-200 bg-white">
+                  <img
+                    src={t.previewImage}
+                    alt={`${t.name} template preview`}
+                    className="absolute top-0 left-0 w-full h-auto store-preview-scroll group-hover:[animation-play-state:paused]"
+                  />
                 </div>
-              </div>
+              ) : (
+                <div className={`w-full h-32 rounded-lg mb-2.5 ${t.preview} border border-gray-200 flex items-center justify-center overflow-hidden`}>
+                  <div className="w-10/12 space-y-1">
+                    <div className={`h-1.5 rounded w-2/3 mx-auto ${t.id === "bold" ? "bg-white/30" : "bg-gray-300"}`} />
+                    <div className="grid grid-cols-3 gap-0.5">{[1,2,3].map(i => <div key={i} className={`h-3 rounded ${t.id === "bold" ? "bg-white/10" : "bg-gray-100"}`} />)}</div>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-0.5">
                 <p className="text-xs font-bold text-gray-800">{t.name}</p>
                 {store.template === t.id && <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ background: BRAND.primary }}><Check className="w-2 h-2 text-white" /></div>}
@@ -767,25 +876,29 @@ function TemplatePanel({ store, onChange, onSave, isSaving, vendorHandle, isLive
             <button key={f.id} onClick={() => onChange({ font: f.id })}
               className={`p-3.5 rounded-xl border-2 text-left transition-all ${store.font === f.id ? "shadow-sm" : "border-gray-200 hover:border-gray-300"}`}
               style={store.font === f.id ? { borderColor: BRAND.primary } : {}}>
-              <p className="text-sm font-bold text-gray-900">{f.name}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{f.sample}</p>
+              <p className="text-sm font-bold text-gray-900" style={{ fontFamily: f.family }}>{f.name}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5" style={{ fontFamily: f.family }}>{f.sample}</p>
             </button>
           ))}
         </div>
       </div>
 
+
       <div className="flex gap-3 pt-4 border-t border-gray-100">
         <button onClick={onSave} disabled={isSaving}
           className="flex items-center justify-center flex-1 gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-60"
           style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}Save changes
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : isForced ? <ArrowRight className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+          {isForced ? "Continue with this look" : "Save changes"}
         </button>
-        <button onClick={onPublish} disabled={isPublishing}
-          className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 transition-all border border-gray-200 rounded-xl hover:border-gray-400 hover:bg-gray-50 disabled:opacity-60">
-          {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" />
-            : isLive ? <><Radio className="w-4 h-4 text-red-500" />Unpublish</>
-            : <><Rocket className="w-4 h-4" />Go live</>}
-        </button>
+        {!isForced && (
+          <button onClick={onPublish} disabled={isPublishing}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 transition-all border border-gray-200 rounded-xl hover:border-gray-400 hover:bg-gray-50 disabled:opacity-60">
+            {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" />
+              : isLive ? <><Radio className="w-4 h-4 text-red-500" />Unpublish</>
+              : <><Rocket className="w-4 h-4" />Go live</>}
+          </button>
+        )}
       </div>
     </div>
   )

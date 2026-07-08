@@ -20,6 +20,9 @@ import { SECTION_BLOCKS as SECTION_BLOCKS_WITH_ICONS } from "./sectionBlocks"
 import { genId, getLayoutKeyForPath, getPageSections, setPageSections, getDefaultFooterColumns } from "./helpers"
 import { StyleSection, Field, EditorInput, EditorTextarea, UploadOnlyImageField } from "./ui"
 import { PageEditorPanel } from "./PageEditorPanel"
+import boldpreview from "@/assets/bold-preview.png"
+import minimalpreview from "@/assets/minimal-preview.png"
+import editorialpreview from "@/assets/editorial-preview.png"
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -293,6 +296,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
     const [drillSection, setDrillSection] = useState<StoreSection | null>(null)
     const [drillVirtual, setDrillVirtual] = useState<string | null>(null)
     const [localDragging, setLocalDragging] = useState(false)
+    const draggingIdRef = React.useRef<string | null>(null)
     // Replace the existing dragOverId state + ref with this:
     const [dragOverId, setDragOverIdState] = useState<string | null>(null)
     const dragOverIdRef = React.useRef<string | null>(null)
@@ -708,28 +712,28 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         setSelectedId(null)
                     })
                     }}
-                    onDrop={e => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                    const midY = rect.top + rect.height / 2
-                    let dropId = s.id
-                    if (e.clientY >= midY) {
-                      let el: HTMLElement | null = e.currentTarget as HTMLElement
-                      while (el && !el.dataset.dragId) el = el.parentElement
-                      const outerWrapper = el?.parentElement
-                      let nextSibling = outerWrapper?.nextElementSibling
-                      while (nextSibling && !nextSibling.querySelector("[data-drag-id]")) {
-                        nextSibling = nextSibling.nextElementSibling
-                      }
-                      dropId = nextSibling?.querySelector("[data-drag-id]")?.getAttribute("data-drag-id") ?? s.id
-                    }
-                    handleDrop(e, dropId)
-                    setIsDragging(null)
-                    setDragOver(null)
-                    setDragOverId(null)
-                    setSelectedId(null)
-                    }}
+                    // onDrop={e => {
+                    // e.preventDefault()
+                    // e.stopPropagation()
+                    // const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    // const midY = rect.top + rect.height / 2
+                    // let dropId = s.id
+                    // if (e.clientY >= midY) {
+                    //   let el: HTMLElement | null = e.currentTarget as HTMLElement
+                    //   while (el && !el.dataset.dragId) el = el.parentElement
+                    //   const outerWrapper = el?.parentElement
+                    //   let nextSibling = outerWrapper?.nextElementSibling
+                    //   while (nextSibling && !nextSibling.querySelector("[data-drag-id]")) {
+                    //     nextSibling = nextSibling.nextElementSibling
+                    //   }
+                    //   dropId = nextSibling?.querySelector("[data-drag-id]")?.getAttribute("data-drag-id") ?? s.id
+                    // }
+                    // handleDrop(e, dropId)
+                    // setIsDragging(null)
+                    // setDragOver(null)
+                    // setDragOverId(null)
+                    // setSelectedId(null)
+                    // }}
                    onDragOver={e => {
                     e.preventDefault()
                     e.stopPropagation()
@@ -932,22 +936,34 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             isDragging !== s.id
 
                         return (
-                            <div key={s.id} className="relative">
+                        <div key={s.id} className="relative">
                             {isDragTarget && (
-                                <div className="absolute flex items-center pointer-events-none inset-x-2"
+                            <div className="absolute flex items-center pointer-events-none inset-x-2"
                                 style={{ top: "-2px", zIndex: 10 }}>
                                 <div className="w-2 h-2 bg-blue-400 rounded-full shrink-0" />
                                 <div className="flex-1 h-0.5 bg-blue-400 rounded-full" />
                                 <div className="w-2 h-2 bg-blue-400 rounded-full shrink-0" />
-                                </div>
+                            </div>
                             )}
                             <div
                                 draggable
                                 onDragStart={e => {
                                 e.dataTransfer.effectAllowed = "move"
+                                const ghost = document.createElement("div")
+                                ghost.style.cssText = "position:fixed;top:-999px;left:-999px;opacity:0;width:1px;height:1px;"
+                                document.body.appendChild(ghost)
+                                e.dataTransfer.setDragImage(ghost, 0, 0)
+                                ;(e.currentTarget as any)._dragGhost = ghost
+                                draggingIdRef.current = s.id
                                 handleDragStart(s.id)
                                 }}
-                                onDragEnd={() => {
+                                onDragEnd={e => {
+                                const ghost = (e.currentTarget as any)._dragGhost
+                                if (ghost && document.body.contains(ghost)) {
+                                    document.body.removeChild(ghost)
+                                }
+                                ;(e.currentTarget as any)._dragGhost = null
+                                draggingIdRef.current = null
                                 requestAnimationFrame(() => {
                                     setIsDragging(null)
                                     setDragOver(null)
@@ -956,10 +972,43 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                                 }}
                                 onDragOver={e => {
                                 e.preventDefault()
+                                e.stopPropagation()
                                 e.dataTransfer.dropEffect = "move"
-                                setDragOver(globalIdx)
+                                if (draggingIdRef.current === s.id) return
+                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                                const midY = rect.top + rect.height / 2
+                                const targetIdx = e.clientY < midY ? globalIdx : globalIdx + 1
+                                const draggingGlobalIdx = sections.findIndex(x => x.id === draggingIdRef.current)
+                                // Skip no-op positions: dropping right where the item already is
+                                if (targetIdx === draggingGlobalIdx || targetIdx === draggingGlobalIdx + 1) {
+                                    if (dragOver !== null) setDragOver(null)
+                                    return
+                                }
+                                if (dragOver !== targetIdx) setDragOver(targetIdx)
                                 }}
-                                onDrop={e => handleDrop(e, globalIdx)}
+                               onDrop={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                if (!draggingIdRef.current) return
+                                const draggingId = draggingIdRef.current
+                                // Capture BEFORE patchStore — e.currentTarget becomes null after handler returns
+                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                                const clientY = e.clientY
+                                patchStore(p => {
+                                    const arr = [...(p.sections?.sections ?? [])]
+                                    const from = arr.findIndex(x => x.id === draggingId)
+                                    if (from === -1) return p
+                                    const [moved] = arr.splice(from, 1)
+                                    const midY = rect.top + rect.height / 2
+                                    let insertAt = clientY < midY ? globalIdx : globalIdx + 1
+                                    if (from < insertAt) insertAt -= 1
+                                    arr.splice(insertAt, 0, moved)
+                                    return { ...p, sections: { ...p.sections, sections: arr } }
+                                })
+                                draggingIdRef.current = null
+                                setIsDragging(null)
+                                setDragOver(null)
+                                }}
                                 onClick={() => { setDrillSection(s); setSelectedId(s.id) }}
                                 className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-150 select-none group/row border-l-2 ${
                                 isDragging === s.id ? "opacity-40 scale-[0.98]" : ""
@@ -1012,9 +1061,20 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             }}
                             onDrop={e => {
                                 e.preventDefault()
+                                e.stopPropagation()
                                 if (!isDragging) return
-                                const storeHeaderIdx = sections.findIndex(s => s.type === "header")
-                                handleDrop(e, storeHeaderIdx !== -1 ? storeHeaderIdx - 1 : lastGlobalIdx + 1)
+                                patchStore(p => {
+                                const arr = [...(p.sections?.sections ?? [])]
+                                const from = arr.findIndex(s => s.id === isDragging)
+                                if (from === -1) return p
+                                const [moved] = arr.splice(from, 1)
+                                const headerIdx = arr.findIndex(s => s.type === "header")
+                                const insertAt = headerIdx !== -1 ? headerIdx : arr.length
+                                arr.splice(insertAt, 0, moved)
+                                return { ...p, sections: { ...p.sections, sections: arr } }
+                                })
+                                setIsDragging(null)
+                                setDragOver(null)
                             }}
                             >
                             {isDropTargetBeforeHeader && (
@@ -2210,90 +2270,62 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     const brandPrimary = storePrimaryColor ?? "#e65100"
                     const isSelected = storeTemplate === t.id || (!storeTemplate && t.id === "minimal")
                     return (
-                    <button key={t.id} onClick={() => setStore(p => ({ ...p, template: t.id }))}
+                    <button key={t.id} onClick={() => setStore(p => {
+                    const bannerPath = t.id === "editorial"
+                        ? "/editorial-template-banner.png"
+                        : t.id === "bold"
+                        ? "/bold-template-banner.png"
+                        : "/minimal-template-banner.png"
+
+                    const updatedSections = (p.sections?.sections ?? []).map((s: any) => {
+                        if (s.type === "hero") {
+                        return { ...s, hero_image_right: bannerPath }
+                        }
+                        return s
+                    })
+
+                    return {
+                        ...p,
+                        template: t.id,
+                        sections: { ...p.sections, sections: updatedSections }
+                    }
+                    })}
                         className={`w-full text-left rounded-xl border transition-all overflow-hidden ${
                         isSelected
                             ? "border-orange-500/60 ring-1 ring-orange-500/30"
                             : isDark ? "border-gray-700 hover:border-gray-500" : "border-gray-200 hover:border-gray-400"
                         }`}>
 
-                        {t.id === "minimal" && (
-                        <svg viewBox="0 0 220 130" xmlns="http://www.w3.org/2000/svg" className="w-full">
-                            <rect width="220" height="130" fill="#ffffff"/>
-                            <rect width="220" height="18" fill="#ffffff"/>
-                            <rect x="8" y="6" width="28" height="6" rx="2" fill={brandPrimary}/>
-                            <rect x="140" y="6" width="20" height="6" rx="2" fill="#e5e7eb"/>
-                            <rect x="164" y="6" width="20" height="6" rx="2" fill="#e5e7eb"/>
-                            <rect x="188" y="6" width="20" height="6" rx="2" fill="#e5e7eb"/>
-                            <line x1="0" y1="18" x2="220" y2="18" stroke="#f3f4f6" strokeWidth="1"/>
-                            <rect x="0" y="18" width="220" height="52" fill="#f9fafb"/>
-                            <rect x="12" y="27" width="60" height="8" rx="2" fill="#1f2937"/>
-                            <rect x="12" y="39" width="45" height="5" rx="1.5" fill="#9ca3af"/>
-                            <rect x="12" y="49" width="26" height="9" rx="4.5" fill={brandPrimary}/>
-                            <rect x="42" y="49" width="22" height="9" rx="4.5" fill="none" stroke="#d1d5db" strokeWidth="1"/>
-                            <rect x="148" y="22" width="60" height="44" rx="6" fill="#e5e7eb"/>
-                            <rect x="0" y="74" width="220" height="2" fill="#f3f4f6"/>
-                            <rect x="8" y="80" width="48" height="42" rx="3" fill="#f3f4f6"/>
-                            <rect x="60" y="80" width="48" height="42" rx="3" fill="#f3f4f6"/>
-                            <rect x="112" y="80" width="48" height="42" rx="3" fill="#f3f4f6"/>
-                            <rect x="164" y="80" width="48" height="42" rx="3" fill="#f3f4f6"/>
-                            <rect x="8" y="125" width="28" height="4" rx="1" fill="#e5e7eb"/>
-                            <rect x="60" y="125" width="28" height="4" rx="1" fill="#e5e7eb"/>
-                        </svg>
-                        )}
-
-                        {t.id === "bold" && (
-                        <svg viewBox="0 0 220 130" xmlns="http://www.w3.org/2000/svg" className="w-full">
-                            <rect width="220" height="130" fill="#0a0a0a"/>
-                            <rect width="220" height="18" fill="#111111"/>
-                            <rect x="8" y="6" width="32" height="6" rx="2" fill="#ffffff"/>
-                            <rect x="150" y="6" width="16" height="6" rx="2" fill="#374151"/>
-                            <rect x="170" y="6" width="16" height="6" rx="2" fill="#374151"/>
-                            <rect x="190" y="6" width="16" height="6" rx="2" fill="#374151"/>
-                            <rect x="0" y="18" width="220" height="68" fill="#111111"/>
-                            <rect x="0" y="18" width="220" height="68" fill="url(#boldGrad)" opacity="0.4"/>
-                            <defs>
-                            <linearGradient id="boldGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={brandPrimary} stopOpacity="0.3"/>
-                                <stop offset="100%" stopColor="#000000" stopOpacity="0.8"/>
-                            </linearGradient>
-                            </defs>
-                            <rect x="12" y="30" width="72" height="10" rx="2" fill="#ffffff"/>
-                            <rect x="12" y="44" width="52" height="6" rx="2" fill="#6b7280"/>
-                            <rect x="12" y="56" width="30" height="12" rx="6" fill={brandPrimary}/>
-                            <rect x="0" y="90" width="220" height="40" fill="#111111"/>
-                            <rect x="8" y="96" width="46" height="28" rx="3" fill="#1f1f1f"/>
-                            <rect x="58" y="96" width="46" height="28" rx="3" fill="#1f1f1f"/>
-                            <rect x="108" y="96" width="46" height="28" rx="3" fill="#1f1f1f"/>
-                            <rect x="158" y="96" width="54" height="28" rx="3" fill="#1f1f1f"/>
-                            <rect x="8" y="120" width="24" height="3" rx="1" fill="#374151"/>
-                            <rect x="58" y="120" width="24" height="3" rx="1" fill="#374151"/>
-                        </svg>
-                        )}
-
-                        {t.id === "editorial" && (
-                        <svg viewBox="0 0 220 130" xmlns="http://www.w3.org/2000/svg" className="w-full">
-                            <rect width="220" height="130" fill="#faf9f7"/>
-                            <rect width="220" height="20" fill="#faf9f7"/>
-                            <rect x="80" y="7" width="60" height="6" rx="1" fill="#1c1c1c"/>
-                            <rect x="8" y="8" width="14" height="4" rx="1" fill="#9ca3af"/>
-                            <rect x="26" y="8" width="14" height="4" rx="1" fill="#9ca3af"/>
-                            <rect x="196" y="8" width="16" height="4" rx="1" fill="#9ca3af"/>
-                            <line x1="0" y1="20" x2="220" y2="20" stroke="#e7e5e0" strokeWidth="1"/>
-                            <rect x="0" y="20" width="110" height="70" fill="#e7e5e0"/>
-                            <rect x="116" y="28" width="96" height="8" rx="1" fill="#1c1c1c"/>
-                            <rect x="116" y="40" width="80" height="5" rx="1" fill="#9ca3af"/>
-                            <rect x="116" y="48" width="88" height="5" rx="1" fill="#9ca3af"/>
-                            <rect x="116" y="56" width="72" height="5" rx="1" fill="#9ca3af"/>
-                            <rect x="116" y="68" width="34" height="10" rx="5" fill={brandPrimary}/>
-                            <line x1="0" y1="92" x2="220" y2="92" stroke="#e7e5e0" strokeWidth="1"/>
-                            <rect x="8" y="98" width="68" height="26" rx="2" fill="#e7e5e0"/>
-                            <rect x="82" y="98" width="44" height="26" rx="2" fill="#e7e5e0"/>
-                            <rect x="132" y="98" width="38" height="26" rx="2" fill="#e7e5e0"/>
-                            <rect x="176" y="98" width="38" height="26" rx="2" fill="#e7e5e0"/>
-                            <rect x="8" y="126" width="36" height="3" rx="1" fill="#9ca3af"/>
-                        </svg>
-                        )}
+                        <div className="w-full overflow-hidden" style={{ height: "130px" }}>
+                            <div
+                                className="w-full transition-transform duration-[3s] ease-in-out"
+                                style={{ transform: "translateY(0)" }}
+                                onMouseEnter={e => {
+                                const el = e.currentTarget as HTMLElement
+                                const img = el.querySelector("img") as HTMLImageElement
+                                if (img) {
+                                    const scrollDist = img.naturalHeight * (el.offsetWidth / img.naturalWidth) - 130
+                                    el.style.transform = `translateY(-${scrollDist}px)`
+                                    el.style.transitionDuration = `${Math.max(2, scrollDist / 60)}s`
+                                }
+                                }}
+                                onMouseLeave={e => {
+                                const el = e.currentTarget as HTMLElement
+                                el.style.transform = "translateY(0)"
+                                el.style.transitionDuration = "1s"
+                                }}
+                            >
+                                <img
+                                src={
+                                    t.id === "bold" ? (typeof boldpreview === "string" ? boldpreview : (boldpreview as any).src) :
+                                    t.id === "editorial" ? (typeof editorialpreview === "string" ? editorialpreview : (editorialpreview as any).src) :
+                                    (typeof minimalpreview === "string" ? minimalpreview : (minimalpreview as any).src)
+                                }
+                                alt={`${t.name} template preview`}
+                                className="w-full block"
+                                />
+                            </div>
+                            </div>
 
                         <div className={`flex items-center justify-between px-3 py-2 ${
                         t.id === "bold"

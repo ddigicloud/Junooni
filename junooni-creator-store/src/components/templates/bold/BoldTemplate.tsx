@@ -3,12 +3,35 @@ import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
+import { ShoppingCart, Loader2, Check, Minus, Plus } from "lucide-react"
+import { addToCart } from "@/lib/cart"
+import { useCart } from "@/context/CartContext"
 import type { PublicVendor, VendorStore, Product, StoreSection, CategoryMeta, CollectionMeta } from "@/lib/types"
 import ProductCard from "@/components/ui/ProductCard"
 import AnnouncementBar from "@/components/sections/AnnouncementBar"
 import SocialSection from "@/components/sections/SocialSection"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
+import boldtee from "../../../../public/bold-tee.png"
+import boldcap from "../../../../public/bold-cap.png"
+import boldhoodie from "../../../../public/bold-hoodie.png"
+import boldmug from "../../../../public/bold-mug.png"
+import boldcollectionsummer from "../../../../public/bold-collection-summer.png"
+import boldcollectionfavourites from "../../../../public/bold-collection-favourites.png"
+import boldcollectionlimited from "../../../../public/bold-collection-limited.png"
+import boldcollectionaccessories from "../../../../public/bold-collection-accessories.png"
+
+
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
+
+function resolveUrl(url: string | undefined | null, handle: string, bare = false): string {
+  if (!url) return "#"
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:")) return url
+  if (url.startsWith("#")) return url
+  if (bare) return url.startsWith("/") ? url : `/${url}`
+  if (url.startsWith(`/${handle}/`) || url === `/${handle}`) return url
+  return `/${handle}${url.startsWith("/") ? url : `/${url}`}`
+}
 
 interface Props {
   vendor: PublicVendor
@@ -18,10 +41,80 @@ interface Props {
   collections: CollectionMeta[]
 }
 
+// ── Placeholder components ────────────────────────────────────────────────────
+
+const FAKE_PRODUCTS = [
+  { id: "fake_1", title: "Classic Creator Tee", price: "₹699", image: boldtee },
+  { id: "fake_2", title: "Limited Drop Hoodie", price: "₹1,299", image: boldhoodie },
+  { id: "fake_3", title: "Signature Cap", price: "₹499", image: boldcap },
+  { id: "fake_4", title: "Fan Favourite Mug", price: "₹399", image: boldmug },
+]
+
+function PlaceholderProductGrid({ columns = 3, brandPrimary }: { columns?: number; brandPrimary: string }) {
+  const gridClass = columns === 2 ? "grid-cols-2" : columns === 4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3"
+  return (
+    <div className={`grid ${gridClass} gap-4`}>
+      {FAKE_PRODUCTS.slice(0, columns > 3 ? 4 : 3).map((p) => (
+        <div key={p.id} className="space-y-3 cursor-default select-none">
+          <div className="aspect-square rounded-2xl overflow-hidden border border-white/10">
+            <img
+              src={typeof p.image === "string" ? p.image : (p.image as any).src}
+              alt={p.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-bold text-white uppercase tracking-wide">{p.title}</p>
+            <p className="text-sm font-semibold" style={{ color: brandPrimary }}>{p.price}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PlaceholderCollectionGrid({ columns = 3, brandPrimary }: { columns?: number; brandPrimary: string }) {
+  const gridClass = columns === 2 ? "grid-cols-1 sm:grid-cols-2" : columns === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"
+  const FAKE_COLLECTIONS = [
+    { id: "fc_1", title: "Summer Drops", image: boldcollectionsummer },
+    { id: "fc_2", title: "Fan Favourites", image: boldcollectionfavourites },
+    { id: "fc_3", title: "Limited Edition", image: boldcollectionlimited },
+    { id: "fc_4", title: "Accessories", image: boldcollectionaccessories },
+  ].slice(0, columns)
+  return (
+    <div className={`grid ${gridClass} gap-5`}>
+      {FAKE_COLLECTIONS.map(col => (
+        <div key={col.id} className="relative overflow-hidden rounded-2xl aspect-[4/3] cursor-default select-none border border-white/10">
+          <img
+            src={typeof col.image === "string" ? col.image : (col.image as any).src}
+            alt={col.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-4">
+            <p className="text-lg font-black text-white uppercase tracking-tight">{col.title}</p>
+            <p className="text-white/50 text-sm mt-0.5">0 products</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function BoldTemplate({ vendor, store: initialStore, products, categories, collections }: Props) {
-  // Live editor override — receives store updates from parent editor via postMessage
   const [liveStore, setLiveStore] = useState(initialStore)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+  const [isEditorMode, setIsEditorMode] = useState(false)
+  const [bare, setBare] = useState(false)
+
+  useEffect(() => {
+    setIsEditorMode(window.parent !== window)
+    const hostname = window.location.hostname.replace(/:.*$/, "").toLowerCase()
+    const isMarketplace = hostname === ROOT_DOMAIN || hostname === "localhost" || hostname === "junooni.com"
+    setBare(!isMarketplace)
+  }, [])
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
@@ -31,44 +124,53 @@ export default function BoldTemplate({ vendor, store: initialStore, products, ca
       }
     }
     window.addEventListener("message", handler)
-    // Tell parent we are ready
     window.parent?.postMessage({ type: "IFRAME_READY" }, "*")
     return () => window.removeEventListener("message", handler)
   }, [])
 
-  const store = liveStore
+  const store = liveStore ?? initialStore
   const sections = store?.sections?.sections ?? defaultSections(vendor)
   const brandPrimary = store?.primary_color ?? "#e65100"
-  const fontClass = store?.font === "poppins" ? "font-poppins" : store?.font === "playfair" ? "font-playfair" : "font-inter"
+  const fontClass =
+    store?.font === "poppins"       ? "font-poppins" :
+    store?.font === "playfair"      ? "font-playfair" :
+    store?.font === "dm-sans"       ? "font-dm-sans" :
+    store?.font === "space-grotesk" ? "font-space-grotesk" :
+    store?.font === "nunito"        ? "font-nunito" :
+    store?.font === "raleway"       ? "font-raleway" :
+    store?.font === "montserrat"    ? "font-montserrat" :
+    "font-inter"
+  const handle = vendor.handle
+
+  const headerZoneSectionIds = new Set(
+    sections
+      .filter((s: any) => s.type === "announcement" || s.type === "ticker")
+      .map((s: any) => s.id)
+  )
 
   return (
     <div className={`min-h-screen bg-black text-white ${fontClass}`}>
-      {/* ── HEADER + ANNOUNCEMENT — wrapped in single sticky container ── */}
-      {(() => {
-        const stickyHdr = (store as any)?.sticky_header !== false // default true
-        const stickyAnn = (store as any)?.sticky_announcement !== false
-        const wrapSticky = stickyHdr || stickyAnn
-        const annSections = sections.filter(s => s.type === "announcement" && !(s as any).hidden)
+      <style>{`
+        .rte-content a { text-decoration: underline; text-decoration-color: currentColor; }
+        .rte-content ul { list-style: disc; padding-left: 1.25rem; }
+        .rte-content ol { list-style: decimal; padding-left: 1.25rem; }
+      `}</style>
 
-        return (
-          <div className={wrapSticky ? "sticky top-0 z-40" : "relative"}>
-            {annSections.map((s, i) => (
-              <AnnouncementBar key={i} section={s as any} />
-            ))}
-            <StoreHeader vendor={vendor} store={store} categories={categories} collections={collections} products={products} />
-          </div>
-        )
-      })()}
+      {/* ── HEADER ── */}
+      <StoreHeader vendor={vendor} store={store} categories={categories} collections={collections} products={products} />
 
-      {/* ── PAGE SECTIONS ────────────────────────────────────────────────────── */}
-      {sections.filter(s => !(s as any).hidden).map((section, i) => {
+      {/* ── PAGE SECTIONS ── */}
+      {sections.filter(s => !(s as any).hidden && !headerZoneSectionIds.has((s as any).id)).map((section) => {
         const secId = (section as any).id
         const isSelected = secId && selectedSectionId === secId
-        const isEditorMode = typeof window !== "undefined" && window.parent !== window
+        const secBg = (section as any).background_color
+        const secText = (section as any).text_color
         return (
           <div
-            key={i}
+            key={secId}
+            data-section-id={secId}
             onClick={() => isEditorMode && secId && window.parent?.postMessage({ type: "SECTION_CLICK", sectionId: secId }, "*")}
+            onDoubleClick={() => isEditorMode && secId && window.parent?.postMessage({ type: "SECTION_DBLCLICK", sectionId: secId }, "*")}
             className={`relative transition-all ${isEditorMode && secId ? "cursor-pointer" : ""}`}
             style={isSelected ? { outline: "2px solid #e65100", outlineOffset: "-2px" } : {}}
           >
@@ -86,12 +188,17 @@ export default function BoldTemplate({ vendor, store: initialStore, products, ca
               categories={categories}
               collections={collections}
               brandPrimary={brandPrimary}
+              sectionBg={secBg}
+              sectionText={secText}
+              bare={bare}
+              isEditorMode={isEditorMode}
+              handle={handle}
             />
           </div>
         )
       })}
 
-      {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
+      {/* ── FOOTER ── */}
       <StoreFooter vendor={vendor} store={store} categories={categories} collections={collections} />
     </div>
   )
@@ -100,7 +207,8 @@ export default function BoldTemplate({ vendor, store: initialStore, products, ca
 // ── Section renderer ──────────────────────────────────────────────────────────
 
 function BoldSection({
-  section, vendor, store, products, categories, collections, brandPrimary,
+  section, vendor, store, products, categories, collections,
+  brandPrimary, sectionBg, sectionText, bare, isEditorMode, handle,
 }: {
   section: StoreSection
   vendor: PublicVendor
@@ -109,96 +217,224 @@ function BoldSection({
   categories: CategoryMeta[]
   collections: CollectionMeta[]
   brandPrimary: string
+  sectionBg?: string
+  sectionText?: string
+  bare: boolean
+  isEditorMode: boolean
+  handle: string
 }) {
-  const handle = vendor.handle
-
   if ((section as any).hidden) return null
 
   switch (section.type) {
+
+    // ── Announcement ───────────────────────────────────────────────────────────
     case "announcement": return null
 
-    case "hero": return (
-      <section className="relative min-h-screen flex items-center overflow-hidden">
-        {/* Background — cover photo or hero image with overlay */}
-        {(section.background_image ?? vendor.coverphoto) && (
-          <>
-            <Image
-              src={section.background_image ?? vendor.coverphoto!}
-              alt="Hero"
-              fill
-              className="object-cover"
-              priority
-            />
-            <div className="absolute inset-0 bg-black/60" />
-          </>
-        )}
-        {/* Background gradient fallback */}
-        {!section.background_image && !vendor.coverphoto && (
-          <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at 30% 50%, ${brandPrimary}33, transparent 60%), radial-gradient(ellipse at 70% 50%, ${brandPrimary}22, transparent 60%)` }} />
-        )}
-
-        <div className="relative z-10 max-w-6xl mx-auto px-6 py-32">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          >
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] mb-6" style={{ color: brandPrimary }}>
-              Official Merch
-            </p>
-            <h1 className="text-6xl md:text-8xl font-black text-white mb-6 leading-none tracking-tight">
-              {section.headline ?? vendor.name}
-            </h1>
-            {(section.subtext ?? store?.tagline) && (
-              <p className="text-xl text-white/70 mb-10 max-w-lg">
-                {section.subtext ?? store?.tagline}
-              </p>
-            )}
-            {section.cta_label && (
-              <Link
-                href={section.cta_url ?? `/${handle}#products`}
-                className="inline-block px-10 py-5 rounded-full font-bold text-lg transition-all hover:scale-105"
-                style={{ background: brandPrimary, color: "#fff" }}
-              >
-                {section.cta_label}
-              </Link>
-            )}
-          </motion.div>
-        </div>
-      </section>
-    )
-
-    case "featured": {
-      const featured = section.product_ids?.length
-        ? products.filter(p => section.product_ids!.includes(p.id))
-        : products.slice(0, 4)
-      if (!featured.length) return null
+    // ── Ticker ─────────────────────────────────────────────────────────────────
+    case "ticker": {
+      const items: string[] = (section as any).ticker_items ?? ["Free shipping on orders above ₹999", "New drops every week", "Official creator merchandise"]
+      const sep = (section as any).ticker_separator ?? "✦"
+      const speed = (section as any).ticker_speed ?? 40
+      const bg = sectionBg ?? (section as any).background_color ?? "#e65100"
+      const fg = sectionText ?? (section as any).text_color ?? "#ffffff"
+      const line = items.join(`  ${sep}  `)
+      const repeated = Array(8).fill(line).join(`  ${sep}  `)
+      const fullLine = `${repeated}  ${sep}  `
+      const duration = Math.max(5, 100 - speed)
       return (
-        <section id="products" className="py-20 px-6">
-          <div className="max-w-6xl mx-auto">
-            {section.title && (
-              <h2 className="text-4xl font-black text-white mb-12 uppercase tracking-tight">{section.title}</h2>
-            )}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {featured.map(p => <ProductCard key={p.id} product={p} handle={handle} variant="dark" />)}
+        <section className="overflow-hidden py-2.5" style={{ backgroundColor: bg }}>
+          <style>{`
+            @keyframes bold-ticker {
+              0%   { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .bold-ticker-inner {
+              display: inline-flex;
+              white-space: nowrap;
+              animation: bold-ticker ${duration}s linear infinite;
+            }
+          `}</style>
+          <div
+            className="text-sm font-bold tracking-widest uppercase bold-ticker-inner"
+            style={{ color: fg }}
+            dangerouslySetInnerHTML={{ __html: fullLine + fullLine }}
+          />
+        </section>
+      )
+    }
+
+    // ── Hero ───────────────────────────────────────────────────────────────────
+    case "hero": {
+      const overlayColor     = (section as any).overlay_color      as string | undefined
+      const overlayTextColor = (section as any).overlay_text_color as string | undefined
+      const headlineColor = overlayTextColor ?? sectionText ?? "#ffffff"
+      const subtextColor  = overlayTextColor ? `${overlayTextColor}99` : sectionText ? `${sectionText}99` : "rgba(255,255,255,0.7)"
+      const secCtaLabel = (section as any).cta_secondary_label as string | undefined
+      const secCtaUrl   = (section as any).cta_secondary_url   as string | undefined
+
+      return (
+        <section className="relative min-h-[40vh] flex items-center overflow-hidden"
+          style={{ backgroundColor: sectionBg ?? "#000000" }}>
+
+          {/* Background image */}
+          {(section.background_image ?? store?.hero_image) && (
+            <div className="absolute inset-0">
+              <Image
+                src={section.background_image ?? store!.hero_image!}
+                alt="Hero"
+                fill
+                sizes="100vw"
+                className="object-cover"
+                style={{ opacity: overlayColor ? 1 : 0.4 }}
+              />
+              {overlayColor && (
+                <div className="absolute inset-0" style={{ backgroundColor: overlayColor, opacity: 0.6 }} />
+              )}
+              {!overlayColor && (
+                <div className="absolute inset-0 bg-black/50" />
+              )}
+            </div>
+          )}
+
+          {/* Gradient fallback */}
+          {!section.background_image && !store?.hero_image && (
+            <div className="absolute inset-0" style={{
+              background: `radial-gradient(ellipse at 30% 50%, ${brandPrimary}33, transparent 60%), radial-gradient(ellipse at 70% 50%, ${brandPrimary}22, transparent 60%)`
+            }} />
+          )}
+
+          <div className="relative z-10 max-w-6xl mx-auto px-6 py-32 w-full">
+            <div className="flex flex-col md:flex-row items-center gap-12">
+
+              {/* Text side */}
+              <motion.div
+                className="flex-1"
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              >
+                {((section as any).hero_badge ?? "Official Merch") && (
+                  <p className="text-sm font-bold uppercase tracking-[0.3em] mb-6" style={{ color: brandPrimary }}>
+                    {(section as any).hero_badge ?? "Official Merch"}
+                  </p>
+                )}
+
+                <h1
+                  className={`font-black leading-none tracking-tight mb-6 ${
+                    (section as any).headline_size === "sm" ? "text-4xl md:text-5xl" :
+                    (section as any).headline_size === "md" ? "text-5xl md:text-6xl" :
+                    "text-6xl md:text-8xl"
+                  }`}
+                  style={{ color: headlineColor }}
+                >
+                  {section.headline || vendor.name || "Your Headline"}
+                </h1>
+
+                {(section.subtext || store?.tagline || "Your tagline goes here") && (
+                  <p className="text-xl mb-10 max-w-lg" style={{ color: subtextColor }}>
+                    {section.subtext || store?.tagline || "Your tagline goes here"}
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-4">
+                  {section.cta_label && (
+                    <Link
+                      href={resolveUrl(section.cta_url ?? "/products", handle, bare)}
+                      className="inline-block px-10 py-5 rounded-full font-bold text-lg transition-all hover:scale-105 hover:shadow-2xl"
+                      style={{ background: brandPrimary, color: "#fff" }}
+                    >
+                      {section.cta_label}
+                    </Link>
+                  )}
+                  {secCtaLabel && (
+                    <Link
+                      href={resolveUrl(secCtaUrl ?? "/products", handle, bare)}
+                      className="inline-block px-10 py-5 rounded-full font-bold text-lg border-2 transition-all hover:scale-105"
+                      style={{ borderColor: headlineColor, color: headlineColor }}
+                    >
+                      {secCtaLabel}
+                    </Link>
+                  )}
+                </div>
+              </motion.div>
+
+              {/* Right-side image */}
+              {((section as any).hero_image_right ?? "/bold-template-banner.png") && (
+                <motion.div
+                  className="w-full shrink-0 md:w-80 lg:w-96"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.7, delay: 0.1 }}
+                >
+                  <div className="relative overflow-hidden shadow-2xl aspect-square rounded-3xl ring-1 ring-white/20">
+                    <Image
+                      src={(section as any).hero_image_right ?? "/bold-template-banner.png"}
+                      alt={vendor.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 400px"
+                      className="object-cover"
+                      priority
+                    />
+                  </div>
+                </motion.div>
+              )}
             </div>
           </div>
         </section>
       )
     }
 
-    case "collection": {
-      const limited = products.slice(0, section.limit ?? 12)
-      if (!limited.length) return null
+    // ── Featured products ──────────────────────────────────────────────────────
+    case "featured": {
+      const featured = section.product_ids?.length
+        ? products.filter(p => section.product_ids!.includes(p.id))
+        : products.slice(0, 4)
+
+      if (!featured.length && !isEditorMode) return null
+
       return (
-        <section id="products" className="py-20 px-6 bg-white/5">
+        <section id="products" className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-6xl mx-auto">
             {section.title && (
-              <h2 className="text-4xl font-black text-white mb-12 uppercase tracking-tight">{section.title}</h2>
+              <h2 className="text-4xl font-black mb-12 uppercase tracking-tight"
+                style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {limited.map(p => <ProductCard key={p.id} product={p} handle={handle} variant="dark" />)}
-            </div>
+            {featured.length === 0 ? (
+              <PlaceholderProductGrid columns={(section as any).columns ?? 4} brandPrimary={brandPrimary} />
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {featured.map(p => <ProductCard key={p.id} product={p} handle={handle} variant="dark" />)}
+              </div>
+            )}
+          </div>
+        </section>
+      )
+    }
+
+    // ── All products collection ────────────────────────────────────────────────
+    case "collection": {
+      const limited = products.slice(0, section.limit ?? 12)
+      if (!limited.length && !isEditorMode) return null
+      return (
+        <section id="products" className="py-20 px-6"
+          style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
+          <div className="max-w-6xl mx-auto">
+            {section.title && (
+              <h2 className="text-4xl font-black mb-4 uppercase tracking-tight"
+                style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>
+            )}
+            {section.show_product_count !== false && (
+              <p className="text-sm mb-12" style={{ color: sectionText ? `${sectionText}60` : "rgba(255,255,255,0.4)" }}>
+                {limited.length > 0 ? `${products.length} products available` : "No products yet"}
+              </p>
+            )}
+            {limited.length === 0 ? (
+              <PlaceholderProductGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {limited.map(p => <ProductCard key={p.id} product={p} handle={handle} variant="dark" />)}
+              </div>
+            )}
           </div>
         </section>
       )
@@ -211,23 +447,39 @@ function BoldSection({
         ? collections.filter(c => selectedIds.includes(c.id) || selectedIds.includes(c.handle))
         : collections
 
-      if (!toShow.length) return null
+      if (!toShow.length) {
+        if (!isEditorMode) return null
+        return (
+          <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-end justify-between mb-12">
+                <h2 className="text-4xl font-black uppercase tracking-tight"
+                  style={{ color: sectionText ?? "#ffffff" }}>
+                  {(section as any).title ?? "Collections"}
+                </h2>
+              </div>
+              <PlaceholderCollectionGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
+            </div>
+          </section>
+        )
+      }
 
       const cols = (section as any).columns ?? 3
-      const gridClass = cols === 2
-        ? "grid-cols-1 sm:grid-cols-2"
-        : cols === 4
-          ? "grid-cols-2 sm:grid-cols-4"
-          : "grid-cols-1 sm:grid-cols-3"
+      const gridClass = cols === 2 ? "grid-cols-1 sm:grid-cols-2"
+        : cols === 4 ? "grid-cols-2 sm:grid-cols-4"
+        : "grid-cols-1 sm:grid-cols-3"
 
       return (
-        <section className="py-20 px-6 bg-white/5">
+        <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
           <div className="max-w-6xl mx-auto">
             <div className="flex items-end justify-between mb-12">
-              <h2 className="text-4xl font-black text-white uppercase tracking-tight">
+              <h2 className="text-4xl font-black uppercase tracking-tight"
+                style={{ color: sectionText ?? "#ffffff" }}>
                 {(section as any).title ?? "Collections"}
               </h2>
-              <Link href={`/${handle}/collections`} className="text-sm font-semibold uppercase tracking-widest hover:opacity-70 transition-opacity" style={{ color: brandPrimary }}>
+              <Link href={bare ? `/collections` : `/${handle}/collections`}
+                className="text-sm font-bold uppercase tracking-widest hover:opacity-70 transition-opacity"
+                style={{ color: brandPrimary }}>
                 View all →
               </Link>
             </div>
@@ -236,18 +488,14 @@ function BoldSection({
                 const thumb = (col as any).thumbnail
                   ?? products.find(p => (p as any).collection?.handle === col.handle)?.thumbnail
                   ?? products.find(p =>
-                      ((section as any).collection_ids ?? []).length === 0 ||
-                      (p as any).collection?.id === col.id
-                    )?.images?.[0]?.url
-
+                    ((section as any).collection_ids ?? []).length === 0 ||
+                    (p as any).collection?.id === col.id
+                  )?.images?.[0]?.url
                 const productCount = products.filter(p => (p as any).collection?.handle === col.handle).length
-
                 return (
-                  <Link
-                    key={col.id}
-                    href={`/${handle}/collections/${col.handle}`}
-                    className="group relative overflow-hidden rounded-2xl bg-white/10 aspect-[4/3] block"
-                  >
+                  <Link key={col.id}
+                    href={bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`}
+                    className="group relative overflow-hidden rounded-2xl bg-white/10 aspect-[4/3] block">
                     {thumb ? (
                       <Image src={thumb} alt={col.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
@@ -258,14 +506,10 @@ function BoldSection({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
                       <p className="text-white font-black text-lg uppercase tracking-tight leading-tight">{col.title}</p>
-                      {productCount > 0 && (
-                        <p className="text-white/50 text-sm mt-0.5">{productCount} product{productCount !== 1 ? "s" : ""}</p>
-                      )}
+                      {productCount > 0 && <p className="text-white/50 text-sm mt-0.5">{productCount} product{productCount !== 1 ? "s" : ""}</p>}
                     </div>
                     <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="text-xs font-bold text-white uppercase tracking-widest bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full">
-                        Shop →
-                      </span>
+                      <span className="text-xs font-bold text-white uppercase tracking-widest bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full">Shop →</span>
                     </div>
                   </Link>
                 )
@@ -276,65 +520,62 @@ function BoldSection({
       )
     }
 
+    // ── About ──────────────────────────────────────────────────────────────────
     case "about": return (
-      <section id="about" className="py-20 px-6 bg-white/5">
+      <section id="about" className="py-20 px-6"
+        style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
         <div className={`max-w-6xl mx-auto flex flex-col ${section.image_position === "right" ? "md:flex-row-reverse" : "md:flex-row"} gap-12 items-center`}>
-          {(section.image ?? vendor.coverphoto) && (
+          {(section.image ?? vendor.coverphoto ?? vendor.logo) && (
             <div className="w-full md:w-1/2 aspect-square rounded-3xl overflow-hidden relative">
-              <Image src={section.image ?? vendor.coverphoto!} alt={vendor.name} fill className="object-cover" />
+              <Image src={section.image ?? vendor.coverphoto ?? vendor.logo!} alt={vendor.name} fill className="object-cover" />
             </div>
           )}
           <div className="w-full md:w-1/2">
-            <h2 className="text-4xl font-black text-white mb-6 uppercase">{section.title ?? "About"}</h2>
-            <p className="text-white/70 leading-relaxed text-lg">{section.text ?? vendor.creator_bio}</p>
+            <h2 className="text-4xl font-black mb-6 uppercase tracking-tight"
+              style={{ color: sectionText ?? "#ffffff" }}>
+              {section.title ?? "About"}
+            </h2>
+            <p className="text-lg leading-relaxed"
+              style={{ color: sectionText ? `${sectionText}cc` : "rgba(255,255,255,0.7)" }}>
+              {section.text || vendor.creator_bio || "Share your story with your fans here."}
+            </p>
             {vendor.creator_title && (
-              <p className="mt-6 text-sm font-semibold uppercase tracking-widest" style={{ color: brandPrimary }}>{vendor.creator_title}</p>
+              <p className="mt-6 text-sm font-bold uppercase tracking-widest" style={{ color: brandPrimary }}>
+                {vendor.creator_title}
+              </p>
             )}
           </div>
         </div>
       </section>
     )
 
+    // ── Social ─────────────────────────────────────────────────────────────────
     case "social": return <SocialSection section={section} vendor={vendor} variant="dark" />
 
-    case "divider": return <div className="border-t border-white/10 mx-6" />
-
-    case "html": {
-      const htmlContent = (section as any).html_content
-      if (!htmlContent) return null
-      const isFullDoc = /<!DOCTYPE|<html/i.test(htmlContent)
-      const srcDoc = isFullDoc ? htmlContent : `<!DOCTYPE html>
-<html><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>*{box-sizing:border-box}body{margin:0;padding:0;font-family:system-ui,sans-serif;background:transparent;color:white}</style>
-</head><body>${htmlContent}</body></html>`
+    // ── Divider ────────────────────────────────────────────────────────────────
+    case "divider": {
+      const thickness = (section as any).divider_thickness ?? 1
+      const color = (section as any).divider_color ?? "rgba(255,255,255,0.1)"
+      const paddingTop = (section as any).padding_top ?? 16
+      const paddingBottom = (section as any).padding_bottom ?? 16
       return (
-        <section className="w-full">
-          <iframe
-            srcDoc={srcDoc}
-            className="w-full border-0"
-            style={{ minHeight: "200px" }}
-            sandbox="allow-scripts allow-same-origin allow-forms"
-            onLoad={(e) => {
-              try {
-                const doc = (e.currentTarget as HTMLIFrameElement).contentDocument
-                if (doc?.body) {
-                  (e.currentTarget as HTMLIFrameElement).style.height = doc.body.scrollHeight + 32 + "px"
-                }
-              } catch {}
-            }}
-            title="Custom HTML section"
-          />
-        </section>
+        <div className="px-6" style={{
+          backgroundColor: sectionBg ?? "transparent",
+          paddingTop: `${paddingTop}px`,
+          paddingBottom: `${paddingBottom}px`,
+        }}>
+          <div style={{ height: `${thickness}px`, backgroundColor: color, borderRadius: `${thickness}px` }} />
+        </div>
       )
     }
 
+    // ── Text ───────────────────────────────────────────────────────────────────
     case "text": {
       if (!(section as any).text) return null
       return (
-        <section className="py-12 px-6">
-          <div className="max-w-3xl mx-auto prose prose-lg prose-invert text-white/70"
+        <section className="py-12 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+          <div className="max-w-3xl mx-auto prose prose-lg prose-invert rte-content"
+            style={{ color: sectionText ?? "rgba(255,255,255,0.7)" }}
             dangerouslySetInnerHTML={{
               __html: (section as any).text
                 .replace(/^### (.+)$/gm, "<h3>$1</h3>")
@@ -351,23 +592,183 @@ function BoldSection({
       )
     }
 
+    // ── Image ──────────────────────────────────────────────────────────────────
     case "image": {
-      if (!(section as any).image) return null
+      const img = (section as any).image
+
+      if (!img) {
+        if (!isEditorMode) return null
+        return (
+          <section style={{
+            backgroundColor: sectionBg ?? "transparent",
+            paddingTop:    `${(section as any).padding_top    ?? 0}px`,
+            paddingBottom: `${(section as any).padding_bottom ?? 0}px`,
+          }}>
+            <div className="flex items-center justify-center h-48 border-2 border-dashed border-white/20 mx-6 rounded-xl">
+              <div className="text-center">
+                <span className="text-4xl">🖼️</span>
+                <p className="text-sm text-white/40 mt-2">Upload an image in the left panel</p>
+              </div>
+            </div>
+          </section>
+        )
+      }
+
+      const heightMode = (section as any).image_height_mode ?? "auto"
+      const widthMode  = (section as any).image_width_mode  ?? "full"
+      const fit        = (section as any).image_fit         ?? "cover"
+      const overlayPct = (section as any).overlay_opacity   ?? 0
+      const radius     = (section as any).border_radius     ?? 0
+
+      const imgStyle: React.CSSProperties = {
+        objectFit: fit as any, borderRadius: radius, width: "100%", display: "block",
+        ...(heightMode === "fixed"  ? { height: `${(section as any).image_height_px ?? 400}px` } : {}),
+        ...(heightMode === "screen" ? { height: `${(section as any).image_height_vh ?? 70}vh`  } : {}),
+        ...(heightMode === "auto"   ? { height: "auto", maxHeight: "600px"                      } : {}),
+      }
+
+      const wrapStyle: React.CSSProperties = {
+        backgroundColor: sectionBg ?? "transparent",
+        paddingTop:    `${(section as any).padding_top    ?? 0}px`,
+        paddingBottom: `${(section as any).padding_bottom ?? 0}px`,
+      }
+
+      const innerStyle: React.CSSProperties = {
+        ...(widthMode === "contained" ? { maxWidth: "1280px", margin: "0 auto", padding: "0 24px" } : {}),
+        ...(widthMode === "custom"    ? { maxWidth: `${(section as any).image_width_pct ?? 80}%`, margin: "0 auto" } : {}),
+      }
+
+      const imgContent = (
+        <div style={{ position: "relative", borderRadius: radius, overflow: "hidden" }}>
+          <img src={img} alt={(section as any).image_alt ?? section.title ?? "Section image"} style={imgStyle} />
+          {overlayPct > 0 && (
+            <div style={{ position: "absolute", inset: 0, background: (section as any).overlay_color ?? "#000000", opacity: overlayPct / 100 }} />
+          )}
+          {section.title && (
+            <div className="absolute inset-0 flex items-center justify-center px-6">
+              <h2 className="text-3xl font-black text-white uppercase tracking-tight drop-shadow-lg">{section.title}</h2>
+            </div>
+          )}
+        </div>
+      )
+
       return (
-        <section className="w-full">
-          <img src={(section as any).image} alt={section.title ?? "Section image"} className="w-full object-cover max-h-[600px]" />
+        <section style={wrapStyle}>
+          <div style={innerStyle}>
+            {(section as any).image_link ? <a href={(section as any).image_link}>{imgContent}</a> : imgContent}
+          </div>
         </section>
       )
     }
 
+    // ── Image with Text ────────────────────────────────────────────────────────
+    case "image_text": {
+      const imageLeft = (section.image_position ?? "left") === "left"
+      const mobileImageTop = ((section as any).mobile_image_position ?? "top") === "top"
+      return (
+        <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+          <div className="max-w-6xl mx-auto">
+            <div className={`flex gap-12 items-center ${mobileImageTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
+              <div className="w-full md:w-1/2 shrink-0">
+                {section.image ? (
+                  <div className="relative overflow-hidden rounded-2xl shadow-2xl aspect-[4/3] ring-1 ring-white/10">
+                    <Image src={section.image} alt={section.title ?? "Section image"} fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center rounded-2xl bg-white/5 aspect-[4/3] ring-1 ring-white/10">
+                    <span className="text-5xl opacity-20">🖼️</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                {section.title && (
+                  <h2 className="mb-4 text-3xl font-black leading-tight uppercase tracking-tight"
+                    style={{ color: sectionText ?? "#ffffff" }}
+                    dangerouslySetInnerHTML={{ __html: section.title }} />
+                )}
+                {section.text && (
+                  <div className="mb-8 text-base leading-relaxed prose-sm prose prose-invert rte-content max-w-none"
+                    style={{ color: sectionText ? `${sectionText}cc` : "rgba(255,255,255,0.7)" }}
+                    dangerouslySetInnerHTML={{ __html: section.text }} />
+                )}
+                {section.cta_label && (
+                  <Link href={resolveUrl(section.cta_url, handle, bare)}
+                    className="inline-block px-8 py-4 rounded-full font-bold text-sm uppercase tracking-widest transition-all hover:scale-105"
+                    style={{ background: brandPrimary, color: "#fff" }}>
+                    {section.cta_label}
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    // ── Video with Text ────────────────────────────────────────────────────────
+    case "video_text": {
+      const videoUrl: string = (section as any).video_text_url ?? ""
+      const imageLeft = (section.image_position ?? "left") === "left"
+      const mobileVideoTop = ((section as any).mobile_image_position ?? "top") === "top"
+
+      const getEmbedUrl = (url: string): string | null => {
+        const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/)
+        if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`
+        const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
+        if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`
+        return null
+      }
+
+      const embedUrl = videoUrl ? getEmbedUrl(videoUrl) : null
+
+      return (
+        <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+          <div className="max-w-6xl mx-auto">
+            <div className={`flex gap-12 items-center ${mobileVideoTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
+              <div className="w-full md:w-1/2 shrink-0">
+                {embedUrl ? (
+                  <div className="relative w-full overflow-hidden shadow-2xl rounded-2xl ring-1 ring-white/10" style={{ paddingBottom: "56.25%" }}>
+                    <iframe src={embedUrl} className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen style={{ border: 0 }} />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center bg-white/5 rounded-2xl aspect-video ring-1 ring-white/10">
+                    <span className="text-5xl opacity-20">🎬</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                {section.title && (
+                  <h2 className="mb-4 text-3xl font-black leading-tight uppercase tracking-tight"
+                    style={{ color: sectionText ?? "#ffffff" }}
+                    dangerouslySetInnerHTML={{ __html: section.title }} />
+                )}
+                {section.text && (
+                  <div className="mb-8 text-base leading-relaxed prose-sm prose prose-invert rte-content max-w-none"
+                    style={{ color: sectionText ? `${sectionText}cc` : "rgba(255,255,255,0.7)" }}
+                    dangerouslySetInnerHTML={{ __html: section.text }} />
+                )}
+                {section.cta_label && (
+                  <Link href={resolveUrl(section.cta_url, handle, bare)}
+                    className="inline-block px-8 py-4 rounded-full font-bold text-sm uppercase tracking-widest transition-all hover:scale-105"
+                    style={{ background: brandPrimary, color: "#fff" }}>
+                    {section.cta_label}
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    // ── Video ──────────────────────────────────────────────────────────────────
     case "video": {
       const rawUrl: string = (section as any).video_url ?? ""
       if (!rawUrl) return null
-
       const getEmbedUrl = (url: string): string | null => {
-        const ytMatch = url.match(
-          /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/
-        )
+        const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/)
         if (ytMatch) {
           const autoplay = (section as any).video_autoplay ? "1" : "0"
           return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=${autoplay}&mute=1&rel=0&modestbranding=1`
@@ -379,52 +780,92 @@ function BoldSection({
         }
         return null
       }
-
       const embedUrl = getEmbedUrl(rawUrl)
       if (!embedUrl) return null
-
-      const isYouTube = rawUrl.includes("youtube") || rawUrl.includes("youtu.be")
-
       return (
-        <section className="py-20 px-6">
+        <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-4xl mx-auto">
             {section.title && (
-              <h2 className="text-4xl font-black text-white mb-10 uppercase tracking-tight">{section.title}</h2>
+              <h2 className="text-4xl font-black mb-10 uppercase tracking-tight"
+                style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>
             )}
-            <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10"
-              style={{ paddingBottom: "56.25%" }}>
-              <iframe
-                src={embedUrl}
-                title={section.title ?? "Video"}
+            <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10" style={{ paddingBottom: "56.25%" }}>
+              <iframe src={embedUrl} title={section.title ?? "Video"}
                 className="absolute inset-0 w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                style={{ border: 0 }}
-              />
-              {isYouTube && !(section as any).video_autoplay && (
-                <div className="absolute bottom-3 right-3 pointer-events-none">
-                  <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1">
-                    <svg viewBox="0 0 90 20" className="h-3 w-auto fill-white opacity-80">
-                      <path d="M27.9727 3.12324C27.6435 1.89323 26.6768 0.926623 25.4468 0.597366C23.2197 2.24288e-07 14.285 0 14.285 0C14.285 0 5.35042 2.24288e-07 3.12323 0.597366C1.89323 0.926623 0.926623 1.89323 0.597366 3.12324C2.24288e-07 5.35042 0 10 0 10C0 10 2.24288e-07 14.6496 0.597366 16.8768C0.926623 18.1068 1.89323 19.0734 3.12323 19.4026C5.35042 20 14.285 20 14.285 20C14.285 20 23.2197 20 25.4468 19.4026C26.6768 19.0734 27.6435 18.1068 27.9727 16.8768C28.5701 14.6496 28.5701 10 28.5701 10C28.5701 10 28.5701 5.35042 27.9727 3.12324ZM11.4253 14.2854V5.71458L18.8477 10.0001L11.4253 14.2854Z"/>
-                      <path d="M34.6024 13.0036L31.3945 1.41846H34.1932L35.3174 6.6242C35.6043 7.8785 35.8136 8.9 35.954 9.6893H36.0468C36.1813 8.7574 36.3905 7.7358 36.6773 6.6242L37.8641 1.41846H40.6627L37.3945 13.0036V18.561H34.6023V13.0036H34.6024ZM41.4697 18.561V6.08839H43.9675V7.77215H44.0604C44.6487 6.40806 45.5843 5.72598 46.8673 5.72598C47.9247 5.72598 48.6481 6.1401 49.0378 6.96833C49.4275 7.77277 49.6226 9.01684 49.6226 10.7006V18.561H47.0675V10.9045C47.0675 9.90776 46.9749 9.21135 46.7897 8.81518C46.6046 8.4191 46.2711 8.22104 45.7892 8.22104C45.4353 8.22104 45.1154 8.33802 44.8295 8.57197C44.5436 8.80592 44.3306 9.13281 44.1907 9.55263V18.561H41.4697ZM51.9353 3.02631V1.41846H54.6563V3.02631H51.9353ZM51.9353 18.561V6.08839H54.6563V18.561H51.9353ZM57.3801 13.0959C57.3801 13.6375 57.4122 14.0516 57.4764 14.3385C57.5405 14.6253 57.6654 14.8546 57.8508 15.026C58.0361 15.1974 58.3066 15.2832 58.6621 15.2832C59.175 15.2832 59.5227 15.097 59.7082 14.7246C59.8936 14.3522 59.9869 13.7564 59.9973 12.9368L62.4053 13.0876C62.4157 13.2386 62.4209 13.4362 62.4209 13.6803C62.4209 14.9187 62.0739 15.8507 61.3799 16.4762C60.686 17.1016 59.6863 17.4143 58.381 17.4143C56.8232 17.4143 55.7177 16.9603 55.0643 16.0524C54.411 15.1445 54.0843 13.7277 54.0843 11.8019V9.83501C54.0843 7.8364 54.4185 6.40468 55.0871 5.54074C55.7556 4.6768 56.8736 4.24483 58.441 4.24483C59.5508 4.24483 60.4147 4.45441 61.0325 4.87353C61.6503 5.29266 62.0826 5.93781 62.3295 6.80838C62.5765 7.67896 62.7 8.85891 62.7 10.3482V12.2842H57.3801V13.0959ZM59.9973 9.1545V8.04199C59.9973 7.28258 59.9084 6.71525 59.7305 6.33998C59.5527 5.96472 59.2374 5.77708 58.7844 5.77708C58.3508 5.77708 58.0444 5.96883 57.8647 6.35231C57.685 6.73579 57.5912 7.29899 57.5834 8.04199V9.1545H59.9973Z"/>
-                    </svg>
-                  </div>
-                </div>
-              )}
+                allowFullScreen style={{ border: 0 }} />
             </div>
           </div>
         </section>
       )
     }
 
+    // ── Featured Product ───────────────────────────────────────────────────────
+    case "featured_product": {
+      const productId: string = (section as any).featured_product_id ?? ""
+      const product = productId ? products.find(p => p.id === productId) : products[0]
+      if (!product && !isEditorMode) return null
+      return (
+        <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
+          <div className="max-w-6xl mx-auto">
+            {!product ? (
+              <div className={`flex flex-col gap-12 items-start ${(section.image_position ?? "left") === "left" ? "md:flex-row" : "md:flex-row-reverse"}`}>
+                <div className="w-full md:w-[48%] shrink-0">
+                  <div className="aspect-square rounded-3xl flex items-center justify-center text-8xl bg-white/5 ring-1 ring-white/10 cursor-default select-none">👕</div>
+                </div>
+                <div className="flex-1 space-y-5 md:pt-2">
+                  <h2 className="text-3xl font-black uppercase tracking-tight" style={{ color: sectionText ?? "#ffffff" }}>Classic Creator Tee</h2>
+                  <p className="text-base leading-relaxed" style={{ color: sectionText ? `${sectionText}bb` : "rgba(255,255,255,0.6)" }}>Your product description will appear here.</p>
+                  <p className="text-2xl font-black" style={{ color: brandPrimary }}>₹699</p>
+                </div>
+              </div>
+            ) : (
+              <BoldFeaturedProduct
+                section={section}
+                product={product as any}
+                handle={handle}
+                brandPrimary={brandPrimary}
+                sectionBg={sectionBg}
+                sectionText={sectionText}
+                bare={bare}
+              />
+            )}
+          </div>
+        </section>
+      )
+    }
+
+    // ── HTML ───────────────────────────────────────────────────────────────────
+    case "html": {
+      const htmlContent = (section as any).html_content
+      if (!htmlContent) return null
+      const isFullDoc = /<!DOCTYPE|<html/i.test(htmlContent)
+      const srcDoc = isFullDoc ? htmlContent : `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:0;font-family:system-ui,sans-serif;background:transparent;color:white}</style></head><body>${htmlContent}</body></html>`
+      return (
+        <section className="w-full" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+          <iframe srcDoc={srcDoc} className="w-full border-0" style={{ minHeight: "200px" }}
+            sandbox="allow-scripts allow-same-origin allow-forms"
+            onLoad={e => {
+              try {
+                const doc = (e.currentTarget as HTMLIFrameElement).contentDocument
+                if (doc?.body) (e.currentTarget as HTMLIFrameElement).style.height = doc.body.scrollHeight + 32 + "px"
+              } catch {}
+            }}
+            title="Custom HTML section" />
+        </section>
+      )
+    }
+
+    // ── Links ──────────────────────────────────────────────────────────────────
     case "links": {
       const links = (section as any).links ?? []
       if (!links.length) return null
       return (
-        <section className="py-16 px-6">
+        <section className="py-16 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-lg mx-auto">
             {section.title && (
-              <h2 className="text-4xl font-black text-white mb-10 uppercase tracking-tight text-center">{section.title}</h2>
+              <h2 className="text-4xl font-black mb-10 uppercase tracking-tight text-center"
+                style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>
             )}
             <div className="space-y-3">
               {links.map((link: any, i: number) => (
@@ -447,12 +888,232 @@ function BoldSection({
   }
 }
 
-// ── Default sections when no store config exists ──────────────────────────────
+// ── BoldFeaturedProduct ───────────────────────────────────────────────────────
+
+function BoldFeaturedProduct({ section, product, handle, brandPrimary, sectionBg, sectionText, bare }: {
+  section: any; product: any; handle: string; brandPrimary: string
+  sectionBg?: string; sectionText?: string; bare: boolean
+}) {
+  const { openCart, refreshCart } = useCart()
+
+  const showTitle  = section.featured_product_show_title  !== false
+  const showPrice  = section.featured_product_show_price  !== false
+  const showColors = section.featured_product_show_colors !== false
+  const heading    = section.featured_product_heading as string | undefined
+  const imageLeft  = (section.image_position ?? "left") === "left"
+
+  const hexColorMap: Record<string, string> = {}
+  try {
+    const rawHex = product?.metadata?.color_hex_values
+    if (rawHex) {
+      const parsed: { name: string; hex: string }[] = JSON.parse(rawHex)
+      for (const c of parsed) hexColorMap[c.name.toLowerCase().trim()] = c.hex
+    }
+  } catch {}
+
+  const fallbackMap: Record<string, string> = {
+    "white":"#ffffff","black":"#000000","red":"#ef4444","blue":"#3b82f6","green":"#22c55e",
+    "yellow":"#eab308","purple":"#a855f7","pink":"#ec4899","orange":"#f97316","gray":"#6b7280",
+    "grey":"#6b7280","navy":"#1e3a8a","brown":"#92400e","cream":"#fffdd0","beige":"#f5f5dc",
+    "multicolor":"linear-gradient(135deg,#f00,#f70,#ff0,#0f0,#00f,#8b00ff)",
+  }
+
+  const resolveHex = (name: string) => hexColorMap[name.toLowerCase().trim()] ?? fallbackMap[name.toLowerCase().trim()] ?? null
+  const isLightHex = (hex: string) => {
+    if (!hex.startsWith("#") || hex.length < 7) return false
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
+    return (r*299 + g*587 + b*114)/1000 > 200
+  }
+
+  const productOpts: any[] = product?.options ?? []
+  const colorOption = productOpts.find((o: any) => o.title?.toLowerCase() === "color" || o.title?.toLowerCase() === "colour")
+  const sizeOption  = productOpts.find((o: any) => o.title?.toLowerCase() === "size")
+  const colorNames: string[] = colorOption?.values?.map((v: any) => v.value).filter(Boolean) ?? []
+  const sizeNames:  string[] = sizeOption?.values?.map((v: any) => v.value).filter(Boolean) ?? []
+  const allImages: any[] = product?.images ?? []
+
+  const getImagesForColor = (colorName: string): string | null => {
+    const colorSlug = colorName.toLowerCase().replace(/\s+/g, "_")
+    const frontMatch = allImages.find((img: any) => img.url?.toLowerCase().includes(colorSlug) && img.url?.toLowerCase().includes("front"))
+    if (frontMatch) return frontMatch.url
+    const anyMatch = allImages.find((img: any) => img.url?.toLowerCase().includes(colorSlug))
+    return anyMatch?.url ?? null
+  }
+
+  const [selectedColor, setSelectedColor] = useState<string>(colorNames[0] ?? "")
+  const [selectedSize,  setSelectedSize]  = useState<string>(sizeNames[0] ?? "")
+  const [quantity, setQuantity] = useState(1)
+  const [isAdding, setIsAdding] = useState(false)
+  const [added, setAdded] = useState(false)
+  const [cartError, setCartError] = useState<string | null>(null)
+
+  const displayImage = (selectedColor ? getImagesForColor(selectedColor) : null) ?? product?.thumbnail ?? null
+
+  const findVariant = () => {
+    if (!product?.variants?.length) return null
+    return product.variants.find((v: any) => {
+      const opts: any[] = v.options ?? []
+      const hasColor = !selectedColor || opts.some((o: any) => (o.value ?? o.option_value ?? "").toLowerCase() === selectedColor.toLowerCase())
+      const hasSize  = !selectedSize  || opts.some((o: any) => (o.value ?? o.option_value ?? "").toLowerCase() === selectedSize.toLowerCase())
+      if (opts.length === 0) {
+        const title = v.title ?? ""
+        return (!selectedColor || title.toLowerCase().includes(selectedColor.toLowerCase())) &&
+               (!selectedSize  || title.toLowerCase().includes(selectedSize.toLowerCase()))
+      }
+      return hasColor && hasSize
+    }) ?? product.variants[0]
+  }
+
+  const selectedVariant = findVariant()
+
+  const getPrice = (): string => {
+    const v = selectedVariant ?? product?.variants?.[0]
+    if (!v) return ""
+    if (v.calculated_price?.calculated_amount != null) return `₹${Number(v.calculated_price.calculated_amount).toLocaleString("en-IN")}`
+    const raw = v.prices?.[0]?.amount
+    if (raw != null) return `₹${Number(raw).toLocaleString("en-IN")}`
+    return ""
+  }
+
+  const handleAddToCart = async () => {
+    if (!selectedVariant?.id) { setCartError("Please select all options"); return }
+    setIsAdding(true); setCartError(null)
+    try {
+      await addToCart({ handle, variantId: selectedVariant.id, quantity })
+      await refreshCart()
+      setAdded(true); openCart()
+      setTimeout(() => setAdded(false), 2500)
+    } catch (e: any) {
+      setCartError(e?.message ?? "Failed to add to cart")
+    } finally { setIsAdding(false) }
+  }
+
+  if (!product) return null
+
+  return (
+    <div className={`flex flex-col gap-12 items-start ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
+      <div className="w-full md:w-[48%] shrink-0">
+        <div className="relative overflow-hidden bg-white/5 rounded-3xl aspect-square ring-1 ring-white/10">
+          {displayImage ? (
+            <Image key={displayImage} src={displayImage} alt={product.title ?? "Product"} fill
+              sizes="(max-width: 768px) 100vw, 50vw" className="object-cover transition-opacity duration-300" />
+          ) : (
+            <div className="flex items-center justify-center w-full h-full">
+              <span className="text-6xl opacity-20">🛍️</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 space-y-5 md:pt-2">
+        {heading && (
+          <h2 className="text-3xl font-black uppercase tracking-tight" style={{ color: sectionText ?? "#ffffff" }}>
+            {heading}
+          </h2>
+        )}
+        {showTitle && product.title && (
+          <p className="text-lg font-bold uppercase tracking-wide" style={{ color: sectionText ?? "rgba(255,255,255,0.8)" }}>{product.title}</p>
+        )}
+        {section.text && (
+          <div className="text-base leading-relaxed prose-sm prose prose-invert rte-content max-w-none"
+            style={{ color: sectionText ? `${sectionText}bb` : "rgba(255,255,255,0.6)" }}
+            dangerouslySetInnerHTML={{ __html: section.text }} />
+        )}
+        {showPrice && getPrice() && (
+          <p className="text-2xl font-black" style={{ color: brandPrimary }}>{getPrice()}</p>
+        )}
+
+        {showColors && colorNames.length > 0 && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest mb-2.5" style={{ color: "rgba(255,255,255,0.5)" }}>
+              Color{selectedColor && <span className="ml-2 font-normal normal-case"> — {selectedColor}</span>}
+            </p>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {colorNames.slice(0, 88).map(colorName => {
+                const hex = resolveHex(colorName)
+                const isGrad = hex?.startsWith("linear-gradient")
+                const light = hex && !isGrad ? isLightHex(hex) : false
+                const isSelected = selectedColor === colorName
+                return (
+                  <button key={colorName} title={colorName} onClick={() => setSelectedColor(colorName)}
+                    className="w-8 h-8 transition-all rounded-full shrink-0 hover:scale-110"
+                    style={{
+                      ...(isGrad ? { background: hex! } : { backgroundColor: hex ?? colorName }),
+                      boxShadow: isSelected
+                        ? `0 0 0 2.5px #000, 0 0 0 4.5px ${brandPrimary}`
+                        : light ? "0 0 0 1.5px rgba(255,255,255,0.3), 0 1px 4px rgba(0,0,0,0.5)"
+                        : "0 0 0 1.5px rgba(255,255,255,0.15), 0 1px 4px rgba(0,0,0,0.5)",
+                      transform: isSelected ? "scale(1.15)" : "scale(1)",
+                    }}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {sizeNames.length > 0 && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest mb-2.5" style={{ color: "rgba(255,255,255,0.5)" }}>
+              Size{selectedSize && <span className="ml-2 font-normal normal-case"> — {selectedSize}</span>}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {sizeNames.map(size => {
+                const isSelected = selectedSize === size
+                return (
+                  <button key={size} onClick={() => setSelectedSize(size)}
+                    className="px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide border-2 transition-all"
+                    style={{
+                      borderColor: isSelected ? brandPrimary : "rgba(255,255,255,0.2)",
+                      backgroundColor: isSelected ? brandPrimary : "transparent",
+                      color: isSelected ? "#ffffff" : "rgba(255,255,255,0.8)",
+                      transform: isSelected ? "scale(1.05)" : "scale(1)",
+                    }}>
+                    {size}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {cartError && (
+          <p className="px-3 py-2 text-sm text-red-400 border border-red-900 rounded-lg bg-red-900/20">{cartError}</p>
+        )}
+
+        <div className="flex items-center gap-3 pt-1">
+          <div className="flex items-center overflow-hidden border-2 rounded-full shrink-0"
+            style={{ borderColor: "rgba(255,255,255,0.2)" }}>
+            <button onClick={() => setQuantity(q => Math.max(1, q - 1))}
+              className="flex items-center justify-center w-10 h-12 transition-colors text-white/60 hover:text-white">
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <span className="w-8 text-sm font-bold text-center text-white">{quantity}</span>
+            <button onClick={() => setQuantity(q => q + 1)}
+              className="flex items-center justify-center w-10 h-12 transition-colors text-white/60 hover:text-white">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <button onClick={handleAddToCart} disabled={isAdding}
+            className="flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-full text-white font-bold text-sm uppercase tracking-widest transition-all hover:scale-[1.02] hover:shadow-xl disabled:opacity-70"
+            style={{ background: added ? "#16a34a" : brandPrimary }}>
+            {isAdding ? <><Loader2 className="w-4 h-4 animate-spin" />Adding...</> :
+             added    ? <><Check className="w-4 h-4" />Added!</> :
+                        <><ShoppingCart className="w-4 h-4" />Add to Cart</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Default sections ──────────────────────────────────────────────────────────
 
 function defaultSections(vendor: PublicVendor): StoreSection[] {
   return [
-    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop the Drop", cta_url: `/${vendor.handle}#products` },
+    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop the Drop", cta_url: "/products", hero_image_right: "/bold-template-banner.png" } as any,
     { type: "collection", title: "The Collection", limit: 12 },
+    { type: "featured_collections", title: "Shop by Collection", collection_ids: [], columns: 3 } as any,
     ...(vendor.creator_bio ? [{ type: "about" as const, title: "The Artist" }] : []),
     { type: "social", show_instagram: true, show_youtube: true, show_twitter: true },
   ]
