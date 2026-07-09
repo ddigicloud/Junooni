@@ -219,7 +219,7 @@ export default function ProductCard({
 
   return (
     <div className="relative group">
-      <Link href={`/${handle}/products/${product.handle}`}>
+      <Link href={`/products/${product.handle}`}>
         <div className={`rounded-2xl overflow-hidden ${isDark ? "bg-white/5" : "bg-gray-50"} ${
           showHover ? "transition-transform duration-200 group-hover:-translate-y-1" : ""
         }`}>

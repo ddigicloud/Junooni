@@ -845,6 +845,7 @@ const TrackingInfo = ({ item }: { item: OrderItem }) => {
         
         <div className="p-3 border border-green-200 rounded bg-green-50">
           <div className="space-y-2">
+    
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">Tracking Number:</span>
               {trackingInfo.tracking_url && trackingInfo.tracking_url !== '#' ? (
@@ -854,11 +855,15 @@ const TrackingInfo = ({ item }: { item: OrderItem }) => {
                   rel="noopener noreferrer"
                   className="flex items-center text-blue-600 hover:text-blue-800 hover:underline"
                 >
-                  {trackingInfo.tracking_number}
+                  {trackingInfo.tracking_number && trackingInfo.tracking_number !== 'N/A'
+                    ? trackingInfo.tracking_number
+                    : trackingInfo.tracking_url}
                   <ExternalLink className="w-3 h-3 ml-1" />
                 </a>
+              ) : trackingInfo.tracking_number && trackingInfo.tracking_number !== 'N/A' ? (
+                <span className="text-gray-700">{trackingInfo.tracking_number}</span>
               ) : (
-                <span className="font-mono text-gray-700">{trackingInfo.tracking_number}</span>
+                <span className="text-gray-400">Not available</span>
               )}
             </div>
             
@@ -2312,11 +2317,19 @@ if (itemFulfillment) {
   if (itemFulfillment.shipped_at) {
     fulfillmentStatus = 'shipped';
   } else if (itemFulfillment.packed_at) {
-    fulfillmentStatus = 'fulfilled'; // This is the key - packed means fulfilled and ready to ship
+    fulfillmentStatus = 'fulfilled';
   } else if (itemFulfillment.created_at) {
     fulfillmentStatus = 'fulfilled';
   }
 }
+
+const labels = itemFulfillment?.labels || [];
+const trackingNumbers = labels
+  .map((l: any) => l.tracking_number)
+  .filter(Boolean);
+const trackingUrls = labels
+  .map((l: any) => l.tracking_url && l.tracking_url !== '#' ? l.tracking_url : l.label_url)
+  .filter((url: string) => url && url !== '#');
       return {
       id: item.id || `item_${index}`,
       title: item.title || item.product_title || "Unknown Product",
@@ -2340,14 +2353,14 @@ if (itemFulfillment) {
       image_url: imageUrl,
       thumbnail_url: thumbnailUrl,
       // ✅ NEW: Use tracking information from backend
-      tracking_numbers: item.tracking_numbers || [],
-      tracking_urls: item.tracking_urls || [],
+      tracking_numbers: trackingNumbers.length > 0 ? trackingNumbers : (item.tracking_numbers || []),
+      tracking_urls: trackingUrls.length > 0 ? trackingUrls : (item.tracking_urls || []),
       //shipped_at: item.shipped_at,
       delivered_at: item.delivered_at,
       fulfillment_type: fulfillmentType,
       //packed_at: item.packed_at,
       shipping_provider: item.shipping_provider,
-      has_tracking: item.has_tracking || false,
+      has_tracking: trackingUrls.length > 0 || trackingNumbers.length > 0,
       // ✅ NEW: Fulfillment and shipment data
       tax_lines: item.tax_lines || [],
       fulfillment_id: fulfillmentId,
@@ -3417,10 +3430,10 @@ const generateInvoice = () => {
                 Back to Orders
               </Link>
             </Button>
-            <Button size="sm" className="text-xs px-3 py-1.5 bg-[#e65100] hover:bg-[#d95f00]" onClick={generateInvoice}>
+            {/* <Button size="sm" className="text-xs px-3 py-1.5 bg-[#e65100] hover:bg-[#d95f00]" onClick={generateInvoice}>
               <Download className="w-4 h-4 mr-2" />
               Download Vendor Invoice
-            </Button>
+            </Button> */}
           </div>
         </Card>
         

@@ -11,14 +11,14 @@ import type { PublicVendor, VendorStore, Product, StoreSection, CategoryMeta, Co
 import ProductCarousel from "@/components/ui/ProductCarousel"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
-import minimaltee from "../../../../public/minimaltee.png"
-import minimalhoodie from "../../../../public/minimalhoodie.png"
-import minimalcap from "../../../../public/minimalcap.png"
-import minimalmug from "../../../../public/minimalmug.png"
-import minimalcollectionsummer from "../../../../public/minimal-collection-summer.png"
-import minimalcollectionfavourites from "../../../../public/minimal-collection-favourites.png"
-import minimalcollectionlimited from "../../../../public/minimal-collection-limited.png"
-import minimalcollectionaccessories from "../../../../public/minimal-collection-accessories.png"
+import minimaltee from "../../../../public/minimaltee.jpeg"
+import minimalhoodie from "../../../../public/minimalhoodie.jpeg"
+import minimalcap from "../../../../public/minimalcap.jpeg"
+import minimalmug from "../../../../public/minimalmug.jpeg"
+import minimalcollectionsummer from "../../../../public/minimal-collection-summer.jpeg"
+import minimalcollectionfavourites from "../../../../public/minimal-collection-favourites.jpeg"
+import minimalcollectionlimited from "../../../../public/minimal-collection-limited.jpeg"
+import minimalcollectionaccessories from "../../../../public/minimal-collection-accessories.jpeg"
 
 // NEW
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
@@ -105,11 +105,11 @@ function PlaceholderProductGrid({ columns = 3, brandPrimary }: { columns?: numbe
     <div className={`grid ${gridClass} gap-6`}>
       {items.map((p) => (
         <div key={p.id} className="space-y-3 cursor-default select-none">
-          <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100">
+          <div className="overflow-hidden bg-gray-100 aspect-square rounded-2xl">
             <img
               src={typeof p.image === "string" ? p.image : (p.image as any).src}
               alt={p.title}
-              className="w-full h-full object-cover"
+              className="object-cover w-full h-full"
             />
           </div>
           <div className="space-y-1">
@@ -138,7 +138,7 @@ function PlaceholderCollectionGrid({ columns = 3, brandPrimary }: { columns?: nu
           <img
             src={typeof col.image === "string" ? col.image : (col.image as any).src}
             alt={col.title}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 object-cover w-full h-full"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-4">
@@ -157,7 +157,7 @@ function PlaceholderFeaturedProduct({ brandPrimary, sectionBg, sectionText, imag
   return (
     <div className={`flex flex-col gap-12 items-start ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
       <div className="w-full md:w-[48%] shrink-0">
-        <div className="aspect-square rounded-3xl flex items-center justify-center text-8xl cursor-default select-none"
+        <div className="flex items-center justify-center cursor-default select-none aspect-square rounded-3xl text-8xl"
           style={{ backgroundColor: "#f3f4f6" }}>
           👕
         </div>
@@ -173,7 +173,7 @@ function PlaceholderFeaturedProduct({ brandPrimary, sectionBg, sectionText, imag
           Your product description will appear here. Tell your fans what makes this drop special.
         </p>
         <p className="text-2xl font-bold" style={{ color: brandPrimary }}>₹699</p>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           {["S", "M", "L", "XL"].map(s => (
             <span key={s} className="px-4 py-1.5 rounded-full text-sm font-semibold border-2 cursor-default select-none"
               style={{ borderColor: `${brandPrimary}30`, color: sectionText ?? "#374151" }}>
@@ -795,10 +795,10 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
             paddingTop:    `${(section as any).padding_top    ?? 0}px`,
             paddingBottom: `${(section as any).padding_bottom ?? 0}px`,
           }}>
-            <div className="flex items-center justify-center h-48 border-2 border-dashed border-gray-300 mx-6 rounded-xl">
+            <div className="flex items-center justify-center h-48 mx-6 border-2 border-gray-300 border-dashed rounded-xl">
               <div className="text-center">
                 <span className="text-4xl">🖼️</span>
-                <p className="text-sm text-gray-400 mt-2">Upload an image in the left panel</p>
+                <p className="mt-2 text-sm text-gray-400">Upload an image in the left panel</p>
               </div>
             </div>
           </section>
@@ -841,7 +841,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
       const titleEl = section.title ? (
         <div className={`flex w-full ${justifyMap[titlePos]}`}>
           <h2
-            className="text-2xl font-bold px-2 py-1"
+            className="px-2 py-1 text-2xl font-bold"
             style={{ color: (section as any).title_color ?? (sectionText ?? "#111827") }}
           >
             {section.title}

@@ -60,19 +60,21 @@ module.exports = defineConfig({
 
     // ─── Order (custom display ID) ─────────────────────────────────────────────
     {
-      key: Modules.ORDER,
-      resolve: "@medusajs/medusa/order",
-      options: {
-        generateCustomDisplayId: async (
-          order: OrderTypes.CreateOrderDTO,
-          sharedContext: Context
-        ): Promise<string> => {
-          const year = new Date().getFullYear()
-          const random = Math.floor(Math.random() * 900000) + 100000
-          return `JN-${year}-${random}`
-        },
-      },
+  key: Modules.ORDER,
+  resolve: "@medusajs/medusa/order",
+  options: {
+    generateCustomDisplayId: async (
+      order: OrderTypes.CreateOrderDTO,
+      sharedContext: Context
+    ): Promise<string> => {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      const id = Array.from({ length: 5 }, () =>
+        chars.charAt(Math.floor(Math.random() * chars.length))
+      ).join("")
+      return id
     },
+  },
+},
 
     // ─── Notifications (Resend) ────────────────────────────────────────────────
     {

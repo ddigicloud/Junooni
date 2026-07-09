@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { ForgotForm } from './components/forgot-password-form'
 import { KeyRound } from 'lucide-react'
-import CreatorJunooni from '../../../assets/forget-password.png'
+import CreatorJunooni from '../../../assets/forget-password.jpeg'
 import JunooniLogo from "@/assets/junooni-favicon.png";
 import Junoonibrandlogo from "@/assets/junooni_logo_brand_color.png";
 

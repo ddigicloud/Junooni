@@ -20,9 +20,9 @@ import { SECTION_BLOCKS as SECTION_BLOCKS_WITH_ICONS } from "./sectionBlocks"
 import { genId, getLayoutKeyForPath, getPageSections, setPageSections, getDefaultFooterColumns } from "./helpers"
 import { StyleSection, Field, EditorInput, EditorTextarea, UploadOnlyImageField } from "./ui"
 import { PageEditorPanel } from "./PageEditorPanel"
-import boldpreview from "@/assets/bold-preview.png"
-import minimalpreview from "@/assets/minimal-preview.png"
-import editorialpreview from "@/assets/editorial-preview.png"
+import boldpreview from "@/assets/bold-preview.jpeg"
+import minimalpreview from "@/assets/minimal-preview.jpeg"
+import editorialpreview from "@/assets/editorial-preview.jpeg"
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -2322,7 +2322,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                                     (typeof minimalpreview === "string" ? minimalpreview : (minimalpreview as any).src)
                                 }
                                 alt={`${t.name} template preview`}
-                                className="w-full block"
+                                className="block w-full"
                                 />
                             </div>
                             </div>

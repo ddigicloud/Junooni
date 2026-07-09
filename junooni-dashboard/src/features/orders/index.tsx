@@ -110,7 +110,7 @@ interface VendorOrderItem {
 
 interface VendorOrder {
   id: string
-  custom_display_id: number
+  custom_display_id: string | number
   customer: {
     first_name: string
     last_name: string
@@ -803,18 +803,14 @@ export default function OrdersPage() {
         const transformedOrders = ordersArray.map((order: any, index: number) => {
           try {
 
-            let custom_display_id = 0;
-            if (order.custom_display_id !== undefined && order.custom_display_id !== null) {
-              custom_display_id = parseInt(String(order.custom_display_id)) || 0;
-            } else {
-              const numbers = order.id.match(/\d+/g);
-              if (numbers && numbers.length > 0) {
-                custom_display_id = parseInt(numbers[numbers.length - 1]) || 0;
-              }
+          let custom_display_id: string | number = "";
+            if (order.custom_display_id !== undefined && order.custom_display_id !== null && String(order.custom_display_id).trim() !== "") {
+              custom_display_id = order.custom_display_id;
             }
 
-            if (custom_display_id === 0) {
-              custom_display_id = (page - 1) * limit + index + 1;
+            if (custom_display_id === "") {
+              const totalOrdersCount = data.count || data.total || ordersArray.length;
+              custom_display_id = totalOrdersCount - ((page - 1) * limit + index);
             }
 
             // ✅ Safer customer data extraction
@@ -939,9 +935,11 @@ export default function OrdersPage() {
           } catch (transformError) {
     
             // Return a minimal order object to prevent complete failure
-            return {
+           return {
               id: order.id || `order_${index}`,
-              custom_display_id: (page - 1) * limit + index + 1,
+              custom_display_id: (order.custom_display_id ? parseInt(String(order.custom_display_id)) : 0) ||
+                (order.display_id ? parseInt(String(order.display_id)) : 0) ||
+                (page - 1) * limit + index + 1,
               customer: { first_name: "Guest", last_name: "", email: "customer@example.com" },
               created_at: new Date().toISOString(),
               vendor_total: 0,
@@ -1827,7 +1825,7 @@ useEffect(() => {
                       </TableHeader>
                       <TableBody>
                         {filteredOrders.map((order) => (
-                          <TableRow key={order.id} className="cursor-pointer  group hover:bg-gray-50"  onClick={() => viewOrderDetails(order.id)}>
+                          <TableRow key={order.id} className="cursor-pointer group hover:bg-gray-50"  onClick={() => viewOrderDetails(order.id)}>
                             <TableCell className="text-sm font-medium">
                               <Button 
                                 variant="link" 

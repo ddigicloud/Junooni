@@ -12,13 +12,13 @@ import AnnouncementBar from "@/components/sections/AnnouncementBar"
 import SocialSection from "@/components/sections/SocialSection"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
-import creatortee from "../../../../public/editorial-creator-tee.png"
-import signaturecap from "../../../../public/editorial-signature-cap.png"
-import editorialhoodie from "../../../../public/editorial-hoodie.png"
-import editorialcollectionsummer from "../../../../public/editorial-collection-summer.png"
-import editorialcollectionfavourites from "../../../../public/editorial-collection-favourites.png"
-import editorialcollectionaccessories from "../../../../public/editorial-collection-accessories.png"
-import editorialcollectionlimited from "../../../../public/editorial-collection-limited.png"
+import creatortee from "../../../../public/editorial-creator-tee.jpeg"
+import signaturecap from "../../../../public/editorial-signature-cap.jpeg"
+import editorialhoodie from "../../../../public/editorial-hoodie.jpeg"
+import editorialcollectionsummer from "../../../../public/editorial-collection-summer.jpeg"
+import editorialcollectionfavourites from "../../../../public/editorial-collection-favourites.jpeg"
+import editorialcollectionaccessories from "../../../../public/editorial-collection-accessories.jpeg"
+import editorialcollectionlimited from "../../../../public/editorial-collection-limited.jpeg"
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
 
@@ -51,9 +51,9 @@ function PlaceholderProductGrid({ columns = 3, brandPrimary }: { columns?: numbe
     <div className={`grid ${gridClass} gap-6`}>
       {FAKE_PRODUCTS.slice(0, columns > 3 ? 4 : 3).map((p) => (
         <div key={p.id} className="space-y-3 cursor-default select-none">
-          <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100">
+          <div className="overflow-hidden bg-gray-100 aspect-square rounded-2xl">
             <img src={typeof p.image === "string" ? p.image : p.image.src} alt={p.title}
-              className="w-full h-full object-cover" />
+              className="object-cover w-full h-full" />
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-gray-900">{p.title}</p>
@@ -80,7 +80,7 @@ function PlaceholderCollectionGrid({ columns = 3, brandPrimary }: { columns?: nu
           <img
             src={typeof col.image === "string" ? col.image : (col.image as any).src}
             alt={col.title}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 object-cover w-full h-full"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-4">
@@ -277,8 +277,8 @@ function EditorialSection({
             </div>
           )}
 
-          <div className="relative z-10 max-w-6xl mx-auto px-6 py-16 md:py-24">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="relative z-10 max-w-6xl px-6 py-16 mx-auto md:py-24">
+            <div className="grid items-center gap-12 md:grid-cols-2">
 
               {/* Text side */}
               <motion.div
@@ -289,7 +289,7 @@ function EditorialSection({
                 {/* Editorial label / badge */}
                 {((section as any).hero_badge ?? "Official Collection") && (
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="h-px w-8" style={{ background: brandPrimary }} />
+                    <div className="w-8 h-px" style={{ background: brandPrimary }} />
                     <span className="text-xs uppercase tracking-[0.3em] font-medium" style={{ color: headlineColor }}>
                       {(section as any).hero_badge ?? "Official Collection"}
                     </span>
@@ -317,7 +317,7 @@ function EditorialSection({
                   {section.cta_label && (
                     <Link
                       href={resolveUrl(section.cta_url ?? "/products", handle, bare)}
-                      className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-widest border-b-2 pb-1 transition-opacity hover:opacity-70"
+                      className="inline-flex items-center gap-2 pb-1 text-sm font-semibold tracking-widest uppercase transition-opacity border-b-2 hover:opacity-70"
                       style={{ borderColor: brandPrimary, color: headlineColor }}
                     >
                       {section.cta_label} <span>→</span>
@@ -372,7 +372,7 @@ function EditorialSection({
 
       const [first, ...rest] = featured
       return (
-        <section id="products" className="py-16 px-6 border-t border-gray-100"
+        <section id="products" className="px-6 py-16 border-t border-gray-100"
           style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-6xl mx-auto">
             {section.title && (
@@ -385,7 +385,7 @@ function EditorialSection({
             {featured.length === 0 ? (
               <PlaceholderProductGrid columns={3} brandPrimary={brandPrimary} />
             ) : first && (
-              <div className="grid md:grid-cols-2 gap-8 mb-8">
+              <div className="grid gap-8 mb-8 md:grid-cols-2">
                 <ProductCard product={first} handle={handle} />
                 <div className="grid grid-cols-2 gap-4">
                   {rest.slice(0, 4).map(p => (
@@ -404,7 +404,7 @@ function EditorialSection({
       const limited = products.slice(0, section.limit ?? 12)
       if (!limited.length && !isEditorMode) return null
       return (
-        <section id="products" className="py-16 px-6 border-t border-gray-100"
+        <section id="products" className="px-6 py-16 border-t border-gray-100"
           style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-6xl mx-auto">
             {section.title && (
@@ -417,7 +417,7 @@ function EditorialSection({
             {limited.length === 0 ? (
               <PlaceholderProductGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
                 {limited.map(p => <ProductCard key={p.id} product={p} handle={handle} />)}
               </div>
             )}
@@ -436,7 +436,7 @@ function EditorialSection({
       if (!toShow.length) {
         if (!isEditorMode) return null
         return (
-          <section className="py-16 px-6 border-t border-gray-100"
+          <section className="px-6 py-16 border-t border-gray-100"
             style={{ backgroundColor: sectionBg ?? "transparent" }}>
             <div className="max-w-6xl mx-auto">
               <div className="flex items-center gap-4 mb-10">
@@ -457,7 +457,7 @@ function EditorialSection({
         : "grid-cols-1 sm:grid-cols-3"
 
       return (
-        <section className="py-16 px-6 border-t border-gray-100"
+        <section className="px-6 py-16 border-t border-gray-100"
           style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center gap-4 mb-10">
@@ -468,7 +468,7 @@ function EditorialSection({
               <div className="flex-1 h-px bg-gray-200" />
               {toShow.length > 0 && (
                 <Link href={bare ? `/collections` : `/${handle}/collections`}
-                  className="text-xs uppercase tracking-widest font-semibold" style={{ color: brandPrimary }}>
+                  className="text-xs font-semibold tracking-widest uppercase" style={{ color: brandPrimary }}>
                   View all →
                 </Link>
               )}
@@ -487,14 +487,14 @@ function EditorialSection({
                     href={bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`}
                     className="group relative overflow-hidden rounded-2xl bg-gray-100 aspect-[4/3] block">
                     {thumb
-                      ? <Image src={thumb} alt={col.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                      : <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"><span className="text-4xl">🛍️</span></div>}
+                      ? <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                      : <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200"><span className="text-4xl">🛍️</span></div>}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <p className="text-white font-bold text-lg leading-tight">{col.title}</p>
+                      <p className="text-lg font-bold leading-tight text-white">{col.title}</p>
                       {productCount > 0 && <p className="text-white/70 text-sm mt-0.5">{productCount} product{productCount !== 1 ? "s" : ""}</p>}
                     </div>
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute transition-opacity opacity-0 top-3 right-3 group-hover:opacity-100">
                       <span className="text-xs font-semibold text-white bg-black/50 backdrop-blur-sm px-2.5 py-1 rounded-full">Shop →</span>
                     </div>
                   </Link>
@@ -508,29 +508,29 @@ function EditorialSection({
 
     // ── About ───────────────────────────────────────────────────────────────
     case "about": return (
-      <section id="about" className="py-16 px-6 border-t border-gray-100"
+      <section id="about" className="px-6 py-16 border-t border-gray-100"
         style={{ backgroundColor: sectionBg ?? "transparent" }}>
-        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-12">
+        <div className="grid max-w-6xl gap-12 mx-auto md:grid-cols-3">
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 mb-4">
-              <div className="h-px w-6" style={{ background: brandPrimary }} />
+              <div className="w-6 h-px" style={{ background: brandPrimary }} />
               <span className="text-xs uppercase tracking-[0.3em] font-semibold"
                 style={{ color: sectionText ? `${sectionText}80` : "#9ca3af" }}>
                 {section.title ?? "About"}
               </span>
             </div>
             {(section.image ?? vendor.logo) && (
-              <div className="aspect-square relative rounded-xl overflow-hidden mt-6">
+              <div className="relative mt-6 overflow-hidden aspect-square rounded-xl">
                 <Image src={section.image ?? vendor.logo!} alt={vendor.name} fill className="object-cover" />
               </div>
             )}
           </div>
-          <div className="md:col-span-2 flex flex-col justify-center">
+          <div className="flex flex-col justify-center md:col-span-2">
             <p className="text-lg leading-relaxed" style={{ color: sectionText ?? "#374151", fontFamily: "var(--font-playfair)" }}>
               {section.text || vendor.creator_bio || "Share your story with your fans here."}
             </p>
             {vendor.creator_title && (
-              <p className="mt-6 text-sm uppercase tracking-widest" style={{ color: brandPrimary }}>{vendor.creator_title}</p>
+              <p className="mt-6 text-sm tracking-widest uppercase" style={{ color: brandPrimary }}>{vendor.creator_title}</p>
             )}
           </div>
         </div>
@@ -565,7 +565,7 @@ function EditorialSection({
     case "text": {
       if (!(section as any).text) return null
       return (
-        <section className="py-12 px-6 border-t border-gray-100"
+        <section className="px-6 py-12 border-t border-gray-100"
           style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-3xl mx-auto prose prose-lg rte-content"
             style={{ color: sectionText ?? "#374151" }}
@@ -597,10 +597,10 @@ function EditorialSection({
             paddingTop:    `${(section as any).padding_top    ?? 0}px`,
             paddingBottom: `${(section as any).padding_bottom ?? 0}px`,
           }}>
-            <div className="flex items-center justify-center h-48 border-2 border-dashed border-gray-300 mx-6 rounded-xl">
+            <div className="flex items-center justify-center h-48 mx-6 border-2 border-gray-300 border-dashed rounded-xl">
               <div className="text-center">
                 <span className="text-4xl">🖼️</span>
-                <p className="text-sm text-gray-400 mt-2">Upload an image in the left panel</p>
+                <p className="mt-2 text-sm text-gray-400">Upload an image in the left panel</p>
               </div>
             </div>
           </section>
@@ -675,7 +675,7 @@ function EditorialSection({
       const imageLeft = (section.image_position ?? "left") === "left"
       const mobileImageTop = ((section as any).mobile_image_position ?? "top") === "top"
       return (
-        <section className="py-16 px-6 border-t border-gray-100"
+        <section className="px-6 py-16 border-t border-gray-100"
           style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-6xl mx-auto">
             <div className={`flex gap-10 items-center ${mobileImageTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
@@ -703,7 +703,7 @@ function EditorialSection({
                 )}
                 {section.cta_label && (
                   <Link href={resolveUrl(section.cta_url, handle, bare)}
-                    className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-widest border-b-2 pb-1 transition-opacity hover:opacity-70"
+                    className="inline-flex items-center gap-2 pb-1 text-sm font-semibold tracking-widest uppercase transition-opacity border-b-2 hover:opacity-70"
                     style={{ borderColor: brandPrimary, color: brandPrimary }}>
                     {section.cta_label} <span>→</span>
                   </Link>
@@ -732,7 +732,7 @@ function EditorialSection({
       const embedUrl = videoUrl ? getEmbedUrl(videoUrl) : null
 
       return (
-        <section className="py-16 px-6 border-t border-gray-100"
+        <section className="px-6 py-16 border-t border-gray-100"
           style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-6xl mx-auto">
             <div className={`flex gap-10 items-center ${mobileVideoTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
@@ -762,7 +762,7 @@ function EditorialSection({
                 )}
                 {section.cta_label && (
                   <Link href={resolveUrl(section.cta_url, handle, bare)}
-                    className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-widest border-b-2 pb-1 transition-opacity hover:opacity-70"
+                    className="inline-flex items-center gap-2 pb-1 text-sm font-semibold tracking-widest uppercase transition-opacity border-b-2 hover:opacity-70"
                     style={{ borderColor: brandPrimary, color: brandPrimary }}>
                     {section.cta_label} <span>→</span>
                   </Link>
@@ -794,7 +794,7 @@ function EditorialSection({
       const embedUrl = getEmbedUrl(rawUrl)
       if (!embedUrl) return null
       return (
-        <section className="py-12 px-6 border-t border-gray-100"
+        <section className="px-6 py-12 border-t border-gray-100"
           style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-4xl mx-auto">
             {section.title && (
@@ -804,7 +804,7 @@ function EditorialSection({
                 <div className="flex-1 h-px bg-gray-200" />
               </div>
             )}
-            <div className="relative w-full rounded-2xl overflow-hidden shadow-xl" style={{ paddingBottom: "56.25%" }}>
+            <div className="relative w-full overflow-hidden shadow-xl rounded-2xl" style={{ paddingBottom: "56.25%" }}>
               <iframe src={embedUrl} title={section.title ?? "Video"}
                 className="absolute inset-0 w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -821,13 +821,13 @@ function EditorialSection({
       const product = productId ? products.find(p => p.id === productId) : products[0]
       if (!product && !isEditorMode) return null
       return (
-        <section className="py-16 px-6 border-t border-gray-100"
+        <section className="px-6 py-16 border-t border-gray-100"
           style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-6xl mx-auto">
             {!product ? (
               <div className={`flex flex-col gap-12 items-start ${(section.image_position ?? "left") === "left" ? "md:flex-row" : "md:flex-row-reverse"}`}>
                 <div className="w-full md:w-[48%] shrink-0">
-                  <div className="aspect-square rounded-3xl flex items-center justify-center text-8xl bg-gray-100 cursor-default select-none">👕</div>
+                  <div className="flex items-center justify-center bg-gray-100 cursor-default select-none aspect-square rounded-3xl text-8xl">👕</div>
                 </div>
                 <div className="flex-1 space-y-5 md:pt-2">
                   <h2 className="text-3xl font-bold" style={{ color: sectionText ?? "#111827", fontFamily: "var(--font-playfair)" }}>Classic Creator Tee</h2>
@@ -877,7 +877,7 @@ function EditorialSection({
       const links = (section as any).links ?? []
       if (!links.length) return null
       return (
-        <section className="py-12 px-6 border-t border-gray-100"
+        <section className="px-6 py-12 border-t border-gray-100"
           style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-lg mx-auto">
             {section.title && (
@@ -1116,12 +1116,12 @@ function EditorialFeaturedProduct({ section, product, handle, brandPrimary, sect
           <div className="flex items-center overflow-hidden border-2 rounded-full shrink-0"
             style={{ borderColor: "#e5e7eb" }}>
             <button onClick={() => setQuantity(q => Math.max(1, q - 1))}
-              className="flex items-center justify-center w-10 h-12 transition-colors text-gray-500">
+              className="flex items-center justify-center w-10 h-12 text-gray-500 transition-colors">
               <Minus className="w-3.5 h-3.5" />
             </button>
             <span className="w-8 text-sm font-semibold text-center text-gray-900">{quantity}</span>
             <button onClick={() => setQuantity(q => q + 1)}
-              className="flex items-center justify-center w-10 h-12 transition-colors text-gray-500">
+              className="flex items-center justify-center w-10 h-12 text-gray-500 transition-colors">
               <Plus className="w-3.5 h-3.5" />
             </button>
           </div>

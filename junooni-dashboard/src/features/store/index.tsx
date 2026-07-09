@@ -24,10 +24,10 @@ import {
 import { ProfileDropdown } from "@/components/profile-dropdown"
 import AdminImpersonationBanner from "@/components/AdminImpersonationBanner"
 import { getStoreUrl, getPreviewUrl, getPageUrl } from "@/lib/store-urls"
-import storeBanner from "@/assets/store-banner.png"
-import boldpreview from "@/assets/bold-preview.png"
-import minimalpreview from "@/assets/minimal-preview.png"
-import editorialpreview from "@/assets/editorial-preview.png"
+import storeBanner from "@/assets/store-banner.jpeg"
+import boldpreview from "@/assets/bold-preview.jpeg"
+import minimalpreview from "@/assets/minimal-preview.jpeg"
+import editorialpreview from "@/assets/editorial-preview.jpeg"
 
 const BRAND = { primary: "#e65100", secondary: "#ac1900" }
 
@@ -126,15 +126,15 @@ const SETUP_STEPS = (store: VendorStore, hasStore: boolean): SetupStep[] => [
     cta: "Add branding",
     ctaAction: "modal",
   },
-  {
-    id: "launch",
-    title: "Go live",
-    desc: "Your store is in Draft mode. Publish it so fans can find and buy from it.",
-    icon: <Rocket className="w-5 h-5" />,
-    check: (s) => s.status === "live",
-    cta: "Publish store",
-    ctaAction: "modal",
-  },
+  // {
+  //   id: "launch",
+  //   title: "Go live",
+  //   desc: "Your store is in Draft mode. Publish it so fans can find and buy from it.",
+  //   icon: <Rocket className="w-5 h-5" />,
+  //   check: (s) => s.status === "live",
+  //   cta: "Publish store",
+  //   ctaAction: "modal",
+  // },
 ]
 
 // ─── Confirm Dialog ──────────────────────────────────────────────────────────
@@ -884,21 +884,32 @@ function TemplatePanel({ store, onChange, onSave, isSaving, vendorHandle, isLive
       </div>
 
 
-      <div className="flex gap-3 pt-4 border-t border-gray-100">
-        <button onClick={onSave} disabled={isSaving}
-          className="flex items-center justify-center flex-1 gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-60"
+      <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
+        <button onClick={onPublish} disabled={isPublishing}
+          className="flex items-center justify-center w-full gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-60"
           style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : isForced ? <ArrowRight className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+          {isPublishing
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : isLive
+              ? <><Radio className="w-4 h-4" />Unpublish Store</>
+              : <><Rocket className="w-4 h-4" />Go live</>}
+        </button>
+        <button
+          onClick={onSave}
+          disabled={isSaving || !isLive}
+          className="flex items-center justify-center w-full gap-2 py-2.5 text-sm font-bold transition-all rounded-xl disabled:cursor-not-allowed"
+          style={
+            isLive
+              ? { background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})`, color: "white" }
+              : { background: "#f3f4f6", color: "#9ca3af", border: "1px solid #e5e7eb" }
+          }>
+          {isSaving
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : isForced
+              ? <ArrowRight className="w-4 h-4" />
+              : <Save className="w-4 h-4" />}
           {isForced ? "Continue with this look" : "Save changes"}
         </button>
-        {!isForced && (
-          <button onClick={onPublish} disabled={isPublishing}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 transition-all border border-gray-200 rounded-xl hover:border-gray-400 hover:bg-gray-50 disabled:opacity-60">
-            {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" />
-              : isLive ? <><Radio className="w-4 h-4 text-red-500" />Unpublish</>
-              : <><Rocket className="w-4 h-4" />Go live</>}
-          </button>
-        )}
       </div>
     </div>
   )

@@ -12,14 +12,14 @@ import AnnouncementBar from "@/components/sections/AnnouncementBar"
 import SocialSection from "@/components/sections/SocialSection"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
-import boldtee from "../../../../public/bold-tee.png"
-import boldcap from "../../../../public/bold-cap.png"
-import boldhoodie from "../../../../public/bold-hoodie.png"
-import boldmug from "../../../../public/bold-mug.png"
-import boldcollectionsummer from "../../../../public/bold-collection-summer.png"
-import boldcollectionfavourites from "../../../../public/bold-collection-favourites.png"
-import boldcollectionlimited from "../../../../public/bold-collection-limited.png"
-import boldcollectionaccessories from "../../../../public/bold-collection-accessories.png"
+import boldtee from "../../../../public/bold-tee.jpeg"
+import boldcap from "../../../../public/bold-cap.jpeg"
+import boldhoodie from "../../../../public/bold-hoodie.jpeg"
+import boldmug from "../../../../public/bold-mug.jpeg"
+import boldcollectionsummer from "../../../../public/bold-collection-summer.jpeg"
+import boldcollectionfavourites from "../../../../public/bold-collection-favourites.jpeg"
+import boldcollectionlimited from "../../../../public/bold-collection-limited.jpeg"
+import boldcollectionaccessories from "../../../../public/bold-collection-accessories.jpeg"
 
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
@@ -56,15 +56,15 @@ function PlaceholderProductGrid({ columns = 3, brandPrimary }: { columns?: numbe
     <div className={`grid ${gridClass} gap-4`}>
       {FAKE_PRODUCTS.slice(0, columns > 3 ? 4 : 3).map((p) => (
         <div key={p.id} className="space-y-3 cursor-default select-none">
-          <div className="aspect-square rounded-2xl overflow-hidden border border-white/10">
+          <div className="overflow-hidden border aspect-square rounded-2xl border-white/10">
             <img
               src={typeof p.image === "string" ? p.image : (p.image as any).src}
               alt={p.title}
-              className="w-full h-full object-cover"
+              className="object-cover w-full h-full"
             />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-bold text-white uppercase tracking-wide">{p.title}</p>
+            <p className="text-sm font-bold tracking-wide text-white uppercase">{p.title}</p>
             <p className="text-sm font-semibold" style={{ color: brandPrimary }}>{p.price}</p>
           </div>
         </div>
@@ -88,11 +88,11 @@ function PlaceholderCollectionGrid({ columns = 3, brandPrimary }: { columns?: nu
           <img
             src={typeof col.image === "string" ? col.image : (col.image as any).src}
             alt={col.title}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 object-cover w-full h-full"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-4">
-            <p className="text-lg font-black text-white uppercase tracking-tight">{col.title}</p>
+            <p className="text-lg font-black tracking-tight text-white uppercase">{col.title}</p>
             <p className="text-white/50 text-sm mt-0.5">0 products</p>
           </div>
         </div>
@@ -303,8 +303,8 @@ function BoldSection({
             }} />
           )}
 
-          <div className="relative z-10 max-w-6xl mx-auto px-6 py-32 w-full">
-            <div className="flex flex-col md:flex-row items-center gap-12">
+          <div className="relative z-10 w-full max-w-6xl px-6 py-32 mx-auto">
+            <div className="flex flex-col items-center gap-12 md:flex-row">
 
               {/* Text side */}
               <motion.div
@@ -331,7 +331,7 @@ function BoldSection({
                 </h1>
 
                 {(section.subtext || store?.tagline || "Your tagline goes here") && (
-                  <p className="text-xl mb-10 max-w-lg" style={{ color: subtextColor }}>
+                  <p className="max-w-lg mb-10 text-xl" style={{ color: subtextColor }}>
                     {section.subtext || store?.tagline || "Your tagline goes here"}
                   </p>
                 )}
@@ -340,7 +340,7 @@ function BoldSection({
                   {section.cta_label && (
                     <Link
                       href={resolveUrl(section.cta_url ?? "/products", handle, bare)}
-                      className="inline-block px-10 py-5 rounded-full font-bold text-lg transition-all hover:scale-105 hover:shadow-2xl"
+                      className="inline-block px-10 py-5 text-lg font-bold transition-all rounded-full hover:scale-105 hover:shadow-2xl"
                       style={{ background: brandPrimary, color: "#fff" }}
                     >
                       {section.cta_label}
@@ -349,7 +349,7 @@ function BoldSection({
                   {secCtaLabel && (
                     <Link
                       href={resolveUrl(secCtaUrl ?? "/products", handle, bare)}
-                      className="inline-block px-10 py-5 rounded-full font-bold text-lg border-2 transition-all hover:scale-105"
+                      className="inline-block px-10 py-5 text-lg font-bold transition-all border-2 rounded-full hover:scale-105"
                       style={{ borderColor: headlineColor, color: headlineColor }}
                     >
                       {secCtaLabel}
@@ -393,16 +393,16 @@ function BoldSection({
       if (!featured.length && !isEditorMode) return null
 
       return (
-        <section id="products" className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+        <section id="products" className="px-6 py-20" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-6xl mx-auto">
             {section.title && (
-              <h2 className="text-4xl font-black mb-12 uppercase tracking-tight"
+              <h2 className="mb-12 text-4xl font-black tracking-tight uppercase"
                 style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>
             )}
             {featured.length === 0 ? (
               <PlaceholderProductGrid columns={(section as any).columns ?? 4} brandPrimary={brandPrimary} />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 {featured.map(p => <ProductCard key={p.id} product={p} handle={handle} variant="dark" />)}
               </div>
             )}
@@ -416,22 +416,22 @@ function BoldSection({
       const limited = products.slice(0, section.limit ?? 12)
       if (!limited.length && !isEditorMode) return null
       return (
-        <section id="products" className="py-20 px-6"
+        <section id="products" className="px-6 py-20"
           style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
           <div className="max-w-6xl mx-auto">
             {section.title && (
-              <h2 className="text-4xl font-black mb-4 uppercase tracking-tight"
+              <h2 className="mb-4 text-4xl font-black tracking-tight uppercase"
                 style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>
             )}
             {section.show_product_count !== false && (
-              <p className="text-sm mb-12" style={{ color: sectionText ? `${sectionText}60` : "rgba(255,255,255,0.4)" }}>
+              <p className="mb-12 text-sm" style={{ color: sectionText ? `${sectionText}60` : "rgba(255,255,255,0.4)" }}>
                 {limited.length > 0 ? `${products.length} products available` : "No products yet"}
               </p>
             )}
             {limited.length === 0 ? (
               <PlaceholderProductGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                 {limited.map(p => <ProductCard key={p.id} product={p} handle={handle} variant="dark" />)}
               </div>
             )}
@@ -450,10 +450,10 @@ function BoldSection({
       if (!toShow.length) {
         if (!isEditorMode) return null
         return (
-          <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
+          <section className="px-6 py-20" style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
             <div className="max-w-6xl mx-auto">
               <div className="flex items-end justify-between mb-12">
-                <h2 className="text-4xl font-black uppercase tracking-tight"
+                <h2 className="text-4xl font-black tracking-tight uppercase"
                   style={{ color: sectionText ?? "#ffffff" }}>
                   {(section as any).title ?? "Collections"}
                 </h2>
@@ -470,15 +470,15 @@ function BoldSection({
         : "grid-cols-1 sm:grid-cols-3"
 
       return (
-        <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
+        <section className="px-6 py-20" style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
           <div className="max-w-6xl mx-auto">
             <div className="flex items-end justify-between mb-12">
-              <h2 className="text-4xl font-black uppercase tracking-tight"
+              <h2 className="text-4xl font-black tracking-tight uppercase"
                 style={{ color: sectionText ?? "#ffffff" }}>
                 {(section as any).title ?? "Collections"}
               </h2>
               <Link href={bare ? `/collections` : `/${handle}/collections`}
-                className="text-sm font-bold uppercase tracking-widest hover:opacity-70 transition-opacity"
+                className="text-sm font-bold tracking-widest uppercase transition-opacity hover:opacity-70"
                 style={{ color: brandPrimary }}>
                 View all →
               </Link>
@@ -497,18 +497,18 @@ function BoldSection({
                     href={bare ? `/collections/${col.handle}` : `/${handle}/collections/${col.handle}`}
                     className="group relative overflow-hidden rounded-2xl bg-white/10 aspect-[4/3] block">
                     {thumb ? (
-                      <Image src={thumb} alt={col.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <Image src={thumb} alt={col.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-white/5">
+                      <div className="flex items-center justify-center w-full h-full bg-white/5">
                         <span className="text-4xl">🛍️</span>
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <p className="text-white font-black text-lg uppercase tracking-tight leading-tight">{col.title}</p>
+                      <p className="text-lg font-black leading-tight tracking-tight text-white uppercase">{col.title}</p>
                       {productCount > 0 && <p className="text-white/50 text-sm mt-0.5">{productCount} product{productCount !== 1 ? "s" : ""}</p>}
                     </div>
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute transition-opacity opacity-0 top-3 right-3 group-hover:opacity-100">
                       <span className="text-xs font-bold text-white uppercase tracking-widest bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full">Shop →</span>
                     </div>
                   </Link>
@@ -522,16 +522,16 @@ function BoldSection({
 
     // ── About ──────────────────────────────────────────────────────────────────
     case "about": return (
-      <section id="about" className="py-20 px-6"
+      <section id="about" className="px-6 py-20"
         style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
         <div className={`max-w-6xl mx-auto flex flex-col ${section.image_position === "right" ? "md:flex-row-reverse" : "md:flex-row"} gap-12 items-center`}>
           {(section.image ?? vendor.coverphoto ?? vendor.logo) && (
-            <div className="w-full md:w-1/2 aspect-square rounded-3xl overflow-hidden relative">
+            <div className="relative w-full overflow-hidden md:w-1/2 aspect-square rounded-3xl">
               <Image src={section.image ?? vendor.coverphoto ?? vendor.logo!} alt={vendor.name} fill className="object-cover" />
             </div>
           )}
           <div className="w-full md:w-1/2">
-            <h2 className="text-4xl font-black mb-6 uppercase tracking-tight"
+            <h2 className="mb-6 text-4xl font-black tracking-tight uppercase"
               style={{ color: sectionText ?? "#ffffff" }}>
               {section.title ?? "About"}
             </h2>
@@ -540,7 +540,7 @@ function BoldSection({
               {section.text || vendor.creator_bio || "Share your story with your fans here."}
             </p>
             {vendor.creator_title && (
-              <p className="mt-6 text-sm font-bold uppercase tracking-widest" style={{ color: brandPrimary }}>
+              <p className="mt-6 text-sm font-bold tracking-widest uppercase" style={{ color: brandPrimary }}>
                 {vendor.creator_title}
               </p>
             )}
@@ -573,7 +573,7 @@ function BoldSection({
     case "text": {
       if (!(section as any).text) return null
       return (
-        <section className="py-12 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+        <section className="px-6 py-12" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-3xl mx-auto prose prose-lg prose-invert rte-content"
             style={{ color: sectionText ?? "rgba(255,255,255,0.7)" }}
             dangerouslySetInnerHTML={{
@@ -604,10 +604,10 @@ function BoldSection({
             paddingTop:    `${(section as any).padding_top    ?? 0}px`,
             paddingBottom: `${(section as any).padding_bottom ?? 0}px`,
           }}>
-            <div className="flex items-center justify-center h-48 border-2 border-dashed border-white/20 mx-6 rounded-xl">
+            <div className="flex items-center justify-center h-48 mx-6 border-2 border-dashed border-white/20 rounded-xl">
               <div className="text-center">
                 <span className="text-4xl">🖼️</span>
-                <p className="text-sm text-white/40 mt-2">Upload an image in the left panel</p>
+                <p className="mt-2 text-sm text-white/40">Upload an image in the left panel</p>
               </div>
             </div>
           </section>
@@ -646,7 +646,7 @@ function BoldSection({
           )}
           {section.title && (
             <div className="absolute inset-0 flex items-center justify-center px-6">
-              <h2 className="text-3xl font-black text-white uppercase tracking-tight drop-shadow-lg">{section.title}</h2>
+              <h2 className="text-3xl font-black tracking-tight text-white uppercase drop-shadow-lg">{section.title}</h2>
             </div>
           )}
         </div>
@@ -666,7 +666,7 @@ function BoldSection({
       const imageLeft = (section.image_position ?? "left") === "left"
       const mobileImageTop = ((section as any).mobile_image_position ?? "top") === "top"
       return (
-        <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+        <section className="px-6 py-20" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-6xl mx-auto">
             <div className={`flex gap-12 items-center ${mobileImageTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
               <div className="w-full md:w-1/2 shrink-0">
@@ -682,7 +682,7 @@ function BoldSection({
               </div>
               <div className="flex-1">
                 {section.title && (
-                  <h2 className="mb-4 text-3xl font-black leading-tight uppercase tracking-tight"
+                  <h2 className="mb-4 text-3xl font-black leading-tight tracking-tight uppercase"
                     style={{ color: sectionText ?? "#ffffff" }}
                     dangerouslySetInnerHTML={{ __html: section.title }} />
                 )}
@@ -693,7 +693,7 @@ function BoldSection({
                 )}
                 {section.cta_label && (
                   <Link href={resolveUrl(section.cta_url, handle, bare)}
-                    className="inline-block px-8 py-4 rounded-full font-bold text-sm uppercase tracking-widest transition-all hover:scale-105"
+                    className="inline-block px-8 py-4 text-sm font-bold tracking-widest uppercase transition-all rounded-full hover:scale-105"
                     style={{ background: brandPrimary, color: "#fff" }}>
                     {section.cta_label}
                   </Link>
@@ -722,7 +722,7 @@ function BoldSection({
       const embedUrl = videoUrl ? getEmbedUrl(videoUrl) : null
 
       return (
-        <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+        <section className="px-6 py-20" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-6xl mx-auto">
             <div className={`flex gap-12 items-center ${mobileVideoTop ? "flex-col" : "flex-col-reverse"} ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
               <div className="w-full md:w-1/2 shrink-0">
@@ -740,7 +740,7 @@ function BoldSection({
               </div>
               <div className="flex-1">
                 {section.title && (
-                  <h2 className="mb-4 text-3xl font-black leading-tight uppercase tracking-tight"
+                  <h2 className="mb-4 text-3xl font-black leading-tight tracking-tight uppercase"
                     style={{ color: sectionText ?? "#ffffff" }}
                     dangerouslySetInnerHTML={{ __html: section.title }} />
                 )}
@@ -751,7 +751,7 @@ function BoldSection({
                 )}
                 {section.cta_label && (
                   <Link href={resolveUrl(section.cta_url, handle, bare)}
-                    className="inline-block px-8 py-4 rounded-full font-bold text-sm uppercase tracking-widest transition-all hover:scale-105"
+                    className="inline-block px-8 py-4 text-sm font-bold tracking-widest uppercase transition-all rounded-full hover:scale-105"
                     style={{ background: brandPrimary, color: "#fff" }}>
                     {section.cta_label}
                   </Link>
@@ -783,13 +783,13 @@ function BoldSection({
       const embedUrl = getEmbedUrl(rawUrl)
       if (!embedUrl) return null
       return (
-        <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+        <section className="px-6 py-20" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-4xl mx-auto">
             {section.title && (
-              <h2 className="text-4xl font-black mb-10 uppercase tracking-tight"
+              <h2 className="mb-10 text-4xl font-black tracking-tight uppercase"
                 style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>
             )}
-            <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10" style={{ paddingBottom: "56.25%" }}>
+            <div className="relative w-full overflow-hidden shadow-2xl rounded-2xl ring-1 ring-white/10" style={{ paddingBottom: "56.25%" }}>
               <iframe src={embedUrl} title={section.title ?? "Video"}
                 className="absolute inset-0 w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -806,15 +806,15 @@ function BoldSection({
       const product = productId ? products.find(p => p.id === productId) : products[0]
       if (!product && !isEditorMode) return null
       return (
-        <section className="py-20 px-6" style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
+        <section className="px-6 py-20" style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
           <div className="max-w-6xl mx-auto">
             {!product ? (
               <div className={`flex flex-col gap-12 items-start ${(section.image_position ?? "left") === "left" ? "md:flex-row" : "md:flex-row-reverse"}`}>
                 <div className="w-full md:w-[48%] shrink-0">
-                  <div className="aspect-square rounded-3xl flex items-center justify-center text-8xl bg-white/5 ring-1 ring-white/10 cursor-default select-none">👕</div>
+                  <div className="flex items-center justify-center cursor-default select-none aspect-square rounded-3xl text-8xl bg-white/5 ring-1 ring-white/10">👕</div>
                 </div>
                 <div className="flex-1 space-y-5 md:pt-2">
-                  <h2 className="text-3xl font-black uppercase tracking-tight" style={{ color: sectionText ?? "#ffffff" }}>Classic Creator Tee</h2>
+                  <h2 className="text-3xl font-black tracking-tight uppercase" style={{ color: sectionText ?? "#ffffff" }}>Classic Creator Tee</h2>
                   <p className="text-base leading-relaxed" style={{ color: sectionText ? `${sectionText}bb` : "rgba(255,255,255,0.6)" }}>Your product description will appear here.</p>
                   <p className="text-2xl font-black" style={{ color: brandPrimary }}>₹699</p>
                 </div>
@@ -861,10 +861,10 @@ function BoldSection({
       const links = (section as any).links ?? []
       if (!links.length) return null
       return (
-        <section className="py-16 px-6" style={{ backgroundColor: sectionBg ?? "transparent" }}>
+        <section className="px-6 py-16" style={{ backgroundColor: sectionBg ?? "transparent" }}>
           <div className="max-w-lg mx-auto">
             {section.title && (
-              <h2 className="text-4xl font-black mb-10 uppercase tracking-tight text-center"
+              <h2 className="mb-10 text-4xl font-black tracking-tight text-center uppercase"
                 style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>
             )}
             <div className="space-y-3">
@@ -1007,12 +1007,12 @@ function BoldFeaturedProduct({ section, product, handle, brandPrimary, sectionBg
 
       <div className="flex-1 space-y-5 md:pt-2">
         {heading && (
-          <h2 className="text-3xl font-black uppercase tracking-tight" style={{ color: sectionText ?? "#ffffff" }}>
+          <h2 className="text-3xl font-black tracking-tight uppercase" style={{ color: sectionText ?? "#ffffff" }}>
             {heading}
           </h2>
         )}
         {showTitle && product.title && (
-          <p className="text-lg font-bold uppercase tracking-wide" style={{ color: sectionText ?? "rgba(255,255,255,0.8)" }}>{product.title}</p>
+          <p className="text-lg font-bold tracking-wide uppercase" style={{ color: sectionText ?? "rgba(255,255,255,0.8)" }}>{product.title}</p>
         )}
         {section.text && (
           <div className="text-base leading-relaxed prose-sm prose prose-invert rte-content max-w-none"

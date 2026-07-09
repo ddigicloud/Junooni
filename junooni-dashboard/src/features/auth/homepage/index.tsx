@@ -14,7 +14,7 @@ import step1Img from '/src/assets/step-1.png';
 import step2Img from '/src/assets/step-2.png';
 import step3Img from '/src/assets/step-3.png';
 import junoonilogo from '/src/assets/junooni_logo_brand_color.png';
-import gallery1 from '/src/assets/gallery-1.png';
+import gallery1 from '/src/assets/gallery-1.jpeg';
 import gallery2 from '/src/assets/gallery-2.png';
 import gallery3 from '/src/assets/gallery-3.png';
 import gallery4 from '/src/assets/gallery-4.png';
@@ -260,7 +260,7 @@ const JunooniLandingPage = () => {
               return (
                 <div
                   key={p.key}
-                  className="relative p-6 bg-white border-2 border-dashed sm:p-8 rounded-2xl border-orange-300"
+                  className="relative p-6 bg-white border-2 border-orange-300 border-dashed sm:p-8 rounded-2xl"
                 >
                   {/* ticket-stub notches */}
                   <div className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#FFF8F0] top-1/2 left-0" />
