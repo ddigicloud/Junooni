@@ -164,7 +164,7 @@ const CONTACT_PAGE_CONTENT = `<div id="junooni-contact-wrap" style="font-family:
 </style>
 
 <h2>Get in touch</h2>
-<p class="subtitle">Have a question about your order, or need help? Fill out the form and we'll get back to you within 24 hours.</p>
+<p class="subtitle">Have a question about your order, or need help? Fill out the form and we will get back to you within 24 hours.</p>
 
 <div class="jcf-info">
   <span class="jcf-info-icon">💬</span>
@@ -195,10 +195,10 @@ const CONTACT_PAGE_CONTENT = `<div id="junooni-contact-wrap" style="font-family:
       <label for="jcf-cat">Category</label>
       <select id="jcf-cat" name="category">
         <option value="">Select a topic</option>
-        <option>Orders &amp; Shipping</option>
-        <option>Returns &amp; Refunds</option>
+        <option>Orders and Shipping</option>
+        <option>Returns and Refunds</option>
         <option>Product Information</option>
-        <option>Payment &amp; Billing</option>
+        <option>Payment and Billing</option>
         <option>Technical Issues</option>
         <option>Other</option>
       </select>
@@ -208,25 +208,22 @@ const CONTACT_PAGE_CONTENT = `<div id="junooni-contact-wrap" style="font-family:
     <label for="jcf-msg">Message *</label>
     <textarea id="jcf-msg" name="message" rows="5" required placeholder="Tell us how we can help. Include any relevant order numbers or error messages."></textarea>
   </div>
-  <button type="submit" class="jcf-submit" id="jcf-btn">Send Message →</button>
+  <button type="submit" class="jcf-submit" id="jcf-btn">Send Message</button>
   <div class="jcf-status" id="jcf-status"></div>
 </form>
 
 <script>
 (function(){
-  var form = document.getElementById('jcf-form');
-  var btn  = document.getElementById('jcf-submit');
+  var form   = document.getElementById('jcf-form');
   var status = document.getElementById('jcf-status');
   if(!form) return;
 
   function getHandle(){
-    var parts = window.location.pathname.replace(/^\/+|\/+$/g,'').split('/');
-    var host = window.location.hostname;
-    var isMarketplace = host === 'junooni.com' || host === 'localhost';
-    return isMarketplace ? (parts[0] || '') : '';
+    var el = document.getElementById('junooni-contact-wrap');
+    return el ? (el.getAttribute('data-handle') || '') : '';
   }
 
-  var backendUrl = 'http://localhost:9000';
+  var backendUrl = '${import.meta.env.VITE_MEDUSA_BACKEND_URL || "http://localhost:9000"}';
 
   form.addEventListener('submit', async function(e){
     e.preventDefault();
@@ -234,35 +231,35 @@ const CONTACT_PAGE_CONTENT = `<div id="junooni-contact-wrap" style="font-family:
     status.className = 'jcf-status';
     status.textContent = '';
 
-    var nameEl    = document.getElementById('jcf-name');
-    var emailEl   = document.getElementById('jcf-email');
-    var orderEl   = document.getElementById('jcf-order');
-    var catEl     = document.getElementById('jcf-cat');
-    var msgEl     = document.getElementById('jcf-msg');
+    var nameEl  = document.getElementById('jcf-name');
+    var emailEl = document.getElementById('jcf-email');
+    var orderEl = document.getElementById('jcf-order');
+    var catEl   = document.getElementById('jcf-cat');
+    var msgEl   = document.getElementById('jcf-msg');
+    var btn     = document.getElementById('jcf-btn');
 
-    var name    = nameEl ? nameEl.value.trim() : '';
+    var name    = nameEl  ? nameEl.value.trim()  : '';
     var email   = emailEl ? emailEl.value.trim() : '';
     var order   = orderEl ? orderEl.value.trim() : '';
-    var cat     = catEl ? catEl.value : '';
-    var message = msgEl ? msgEl.value.trim() : '';
+    var cat     = catEl   ? catEl.value          : '';
+    var message = msgEl   ? msgEl.value.trim()   : '';
 
     if(!name || !email || !message){
       status.className = 'jcf-status error';
-      status.textContent = '⚠️ Please fill in your name, email, and message.';
+      status.textContent = 'Please fill in your name, email, and message.';
       return;
     }
 
-    btn.disabled = true;
-    btn.textContent = 'Sending...';
+    if(btn){ btn.disabled = true; btn.textContent = 'Sending...'; }
 
-    var handle = getHandle();
+    var handle  = getHandle();
     var payload = JSON.stringify({
-      name: name,
-      email: email,
+      name:        name,
+      email:       email,
       orderNumber: order,
-      category: cat,
-      message: message,
-      storeName: handle,
+      category:    cat,
+      message:     message,
+      storeName:   handle,
     });
 
     try {
@@ -270,25 +267,24 @@ const CONTACT_PAGE_CONTENT = `<div id="junooni-contact-wrap" style="font-family:
         ? (backendUrl + '/storefront/' + handle + '/contact')
         : (backendUrl + '/store/chat-support');
 
-      var res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: payload,
+      var res  = await fetch(endpoint, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    payload,
       });
       var json = await res.json();
       if(res.ok && json.success){
         status.className = 'jcf-status success';
-        status.textContent = '✅ Message sent! We\'ll reply within 24-48 hours. Check your inbox for confirmation.';
+        status.textContent = 'Message sent! You will get a reply within 24-48 hours. Check your inbox for confirmation.';
         form.reset();
       } else {
         throw new Error(json.error || 'Failed to send');
       }
     } catch(err){
       status.className = 'jcf-status error';
-      status.innerHTML = '❌ ' + (err.message || 'Something went wrong.') + ' Email us at <a href="mailto:support@junooni.com" style="color:#991b1b;font-weight:600">support@junooni.com</a>';
+      status.innerHTML = 'Something went wrong: ' + (err.message || 'Please email support@junooni.com directly.');
     } finally {
-      btn.disabled = false;
-      btn.textContent = 'Send Message →';
+      if(btn){ btn.disabled = false; btn.textContent = 'Send Message'; }
     }
   });
 })();

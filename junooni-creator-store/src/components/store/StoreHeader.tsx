@@ -121,6 +121,7 @@ export default function StoreHeader({
       setActiveDropdown(null)
       setSearchOpen(false)
       setSearchQuery("")
+      setMobileOpen(false) 
     }
     window.addEventListener("scroll", handler, { passive: true })
     return () => window.removeEventListener("scroll", handler)

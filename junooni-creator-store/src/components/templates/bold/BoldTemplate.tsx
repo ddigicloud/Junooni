@@ -20,6 +20,7 @@ import boldcollectionsummer from "../../../../public/bold-collection-summer.jpeg
 import boldcollectionfavourites from "../../../../public/bold-collection-favourites.jpeg"
 import boldcollectionlimited from "../../../../public/bold-collection-limited.jpeg"
 import boldcollectionaccessories from "../../../../public/bold-collection-accessories.jpeg"
+import boldTemplateBanner from "../../../../public/bold-template-banner.jpeg"
 
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
@@ -359,7 +360,7 @@ function BoldSection({
               </motion.div>
 
               {/* Right-side image */}
-              {((section as any).hero_image_right ?? "/bold-template-banner.png") && (
+              {((section as any).hero_image_right ?? boldTemplateBanner) && (
                 <motion.div
                   className="w-full shrink-0 md:w-80 lg:w-96"
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -368,7 +369,7 @@ function BoldSection({
                 >
                   <div className="relative overflow-hidden shadow-2xl aspect-square rounded-3xl ring-1 ring-white/20">
                     <Image
-                      src={(section as any).hero_image_right ?? "/bold-template-banner.png"}
+                      src={(section as any).hero_image_right ?? boldTemplateBanner}
                       alt={vendor.name}
                       fill
                       sizes="(max-width: 768px) 100vw, 400px"
@@ -1111,7 +1112,7 @@ function BoldFeaturedProduct({ section, product, handle, brandPrimary, sectionBg
 
 function defaultSections(vendor: PublicVendor): StoreSection[] {
   return [
-    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop the Drop", cta_url: "/products", hero_image_right: "/bold-template-banner.png" } as any,
+    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop the Drop", cta_url: "/products", hero_image_right: undefined } as any,
     { type: "collection", title: "The Collection", limit: 12 },
     { type: "featured_collections", title: "Shop by Collection", collection_ids: [], columns: 3 } as any,
     ...(vendor.creator_bio ? [{ type: "about" as const, title: "The Artist" }] : []),

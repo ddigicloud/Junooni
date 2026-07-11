@@ -19,6 +19,7 @@ import editorialcollectionsummer from "../../../../public/editorial-collection-s
 import editorialcollectionfavourites from "../../../../public/editorial-collection-favourites.jpeg"
 import editorialcollectionaccessories from "../../../../public/editorial-collection-accessories.jpeg"
 import editorialcollectionlimited from "../../../../public/editorial-collection-limited.jpeg"
+import editorialtemplatebanner from "../../../../public/editorial-template-banner.jpeg"
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
 
@@ -339,7 +340,7 @@ function EditorialSection({
               </motion.div>
 
               {/* Right-side image */}
-              {((section as any).hero_image_right ?? "/editorial-template-banner.png") && (
+              {((section as any).hero_image_right ?? editorialtemplatebanner) && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -347,7 +348,7 @@ function EditorialSection({
                   className="aspect-[3/4] relative rounded-2xl overflow-hidden shadow-2xl"
                 >
                   <Image
-                    src={(section as any).hero_image_right ?? "/editorial-template-banner.png"}
+                    src={(section as any).hero_image_right ?? editorialtemplatebanner}
                     alt={vendor.name}
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
@@ -1142,7 +1143,7 @@ function EditorialFeaturedProduct({ section, product, handle, brandPrimary, sect
 
 function defaultSections(vendor: PublicVendor): StoreSection[] {
   return [
-    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop the Collection", cta_url: "/products", hero_image_right: "/editorial-template-banner.png" } as any,
+    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop the Collection", cta_url: "/products", hero_image_right: undefined } as any,
     { type: "collection", title: "The Collection", limit: 12 },
     ...(vendor.creator_bio ? [{ type: "about" as const, title: "The Creator" }] : []),
     { type: "social", show_instagram: true, show_youtube: true, show_twitter: true },

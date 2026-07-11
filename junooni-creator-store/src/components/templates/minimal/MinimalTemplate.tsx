@@ -19,6 +19,7 @@ import minimalcollectionsummer from "../../../../public/minimal-collection-summe
 import minimalcollectionfavourites from "../../../../public/minimal-collection-favourites.jpeg"
 import minimalcollectionlimited from "../../../../public/minimal-collection-limited.jpeg"
 import minimalcollectionaccessories from "../../../../public/minimal-collection-accessories.jpeg"
+import minimaltemplatebanner from "../../../../public/minimal-template-banner.jpeg"
 
 // NEW
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "junooni.com"
@@ -476,7 +477,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               </motion.div>
 
               {/* Creator image/logo side */}
-              {((section as any).hero_image_right ?? "/minimal-template-banner.png") && (
+              {((section as any).hero_image_right ?? minimaltemplatebanner) && (
                 <motion.div
                   className="w-full shrink-0 md:w-80 lg:w-96"
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -1511,7 +1512,7 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
 
 function defaultSections(vendor: PublicVendor): StoreSection[] {
   return [
-    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: "/minimal-template-banner.png" } as any,
+    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: undefined } as any,
     { type: "collection", title: "All Products", limit: 12 },
     { type: "divider" },
     { type: "about", title: "About Me" },

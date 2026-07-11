@@ -659,7 +659,13 @@ export default function CustomPageClient({
       {/* Page content */}
       {htmlMode ? (
         <div style={{ width: "100%", height: "auto", overflow: "visible" }}>
-          <InjectedHTML html={content} brandPrimary={resolvedBrandPrimary} />
+          <InjectedHTML
+            html={content.replace(
+              'id="junooni-contact-wrap"',
+              `id="junooni-contact-wrap" data-handle="${vendor.handle}"`
+            )}
+            brandPrimary={resolvedBrandPrimary}
+          />
         </div>
       ) : (
         <div className={`flex-1 w-full px-4 py-16 sm:px-6 ${resolvedIsDark ? "text-white" : "text-gray-900"}`}>
