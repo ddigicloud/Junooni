@@ -137,6 +137,7 @@ interface LeftPanelProps {
   token: string
   backendUrl: string
   triggerDrillId?: string | null
+  switchTheme: (templateId: string) => void
 }
 
 // ─── LeftPanel ────────────────────────────────────────────────────────────────
@@ -290,7 +291,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
     handleDragStart, handleDragOver, handleDrop, handleBodyDrop, handleBodyDragOver,
     setRightPanelOpen, setLeftPanelOpen, setHeaderPickerOpen,
     editingPage, setEditingPage, savePage, deletePage, startNewPage,
-    previewPagePath, hasStore, token, backendUrl, triggerDrillId, store,
+    previewPagePath, hasStore, token, backendUrl, triggerDrillId, store, switchTheme,
   } = props
 
     const [drillSection, setDrillSection] = useState<StoreSection | null>(null)
@@ -607,6 +608,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
               products={vendorProducts}
               vendorHandle={vendorHandle}
               currentLayoutKey={currentLayoutKey}
+              storeTemplate={storeTemplate}
             />
           ) : null}
         </div>
@@ -770,20 +772,35 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     setSelectedId(s.id)
                     }}
                     className={[
-                    "group/row flex items-center gap-2.5 px-2.5 py-1 rounded-lg cursor-pointer transition-colors duration-100 select-none border-l-2",
-                    isSelected
-                        ? isDark ? "bg-gray-800 border-l-orange-500" : "bg-orange-50/80 border-l-orange-500"
-                        : isDark ? "border-l-transparent bg-gray-800/60 hover:bg-gray-700/80" : "border-l-transparent bg-gray-100 hover:bg-gray-200/80",
+                      "group/row flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl cursor-pointer select-none transition-all duration-150",
+                      isSelected
+                        ? isDark
+                          ? "bg-orange-500/15 ring-1 ring-orange-500/30"
+                          : "bg-orange-500/10 ring-1 ring-orange-400/25"
+                        : isDark
+                          ? "hover:bg-gray-700/60"
+                          : "bg-gray-100/80 hover:bg-gray-200/70",
                     ].join(" ")}
-                    style={{ transition: "opacity 0.15s" }}
+                    style={{ transition: "all 0.15s ease" }}
                 >
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
-                    style={{ color: block?.color ?? "#666" }}>
+                   <div className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-all duration-150 ${
+                      isSelected ? "ring-1 ring-orange-400/30" : ""
+                    }`}
+                    style={{
+                      color: isSelected ? (block?.color ?? "#f97316") : (block?.color ?? "#666"),
+                      background: isSelected
+                        ? `${block?.color ?? "#f97316"}22`
+                        : "transparent",
+                    }}>
                     {block?.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                    <p className={`text-[14px] font-medium truncate ${isSelected ? textPrimary : isDark ? "text-gray-300" : "text-gray-800"}`}>
-                        {block?.label ?? s.type}
+                   <p className={`text-[13px] font-semibold truncate transition-colors duration-150 ${
+                      isSelected
+                        ? "text-orange-500"
+                        : isDark ? "text-gray-300" : "text-gray-700"
+                    }`}>
+                      {block?.label ?? s.type}
                     </p>
                     </div>
                     <button
@@ -875,7 +892,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed text-xs font-medium transition-all ${
                     isOpen
                         ? isDark ? "bg-orange-500/10 text-orange-400 border-orange-500/30" : "bg-orange-50 text-orange-500 border-orange-300"
-                        : isDark ? "border-indigo-800/50 text-indigo-400 hover:border-indigo-600 hover:bg-indigo-900/20" : "border-indigo-300 text-indigo-500 hover:border-indigo-400 hover:bg-indigo-50"
+                        : isDark ? "border-orange-800/50 text-orange-400 hover:border-orange-600 hover:bg-orange-900/20" : "border-orange-300 text-orange-500 hover:border-orange-400 hover:bg-orange-50"
                     }`}
                 >
                     <Plus className="w-3 h-3" /> Add section
@@ -1150,21 +1167,21 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             }}
                             className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
                             isHeaderSelected
-                                ? "bg-indigo-500/15 border-indigo-500/40"
+                                ? "bg-orange-500/15 border-orange-500/40"
                                 : isDropTarget
-                                ? isDark ? "border-blue-400/60 bg-blue-900/20" : "border-blue-400/60 bg-blue-50"
-                                : `${isDark ? "border-indigo-800/40 bg-indigo-900/20 hover:border-indigo-600/50" : "border-indigo-200/60 bg-indigo-50/50 hover:border-indigo-400/60"}`
+                                ? isDark ? "border-orange-400/60 bg-orange-900/20" : "border-orange-400/60 bg-orange-50"
+                                : `${isDark ? "border-orange-800/40 bg-orange-900/20 hover:border-orange-600/50" : "border-orange-200/60 bg-orange-50/50 hover:border-orange-400/60"}`
                             }`}
                         >
-                            <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-indigo-500/20">
-                            <svg width="12" height="10" viewBox="0 0 12 10" fill="none" className="text-indigo-500">
+                            <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                            <svg width="12" height="10" viewBox="0 0 12 10" fill="none" className="text-orange-500">
                                 <rect x="0" y="0" width="12" height="1.5" rx="0.75" fill="currentColor"/>
                                 <rect x="0" y="4" width="8" height="1.5" rx="0.75" fill="currentColor"/>
                                 <rect x="0" y="8" width="10" height="1.5" rx="0.75" fill="currentColor"/>
                             </svg>
                             </div>
                             <div className="flex-1 min-w-0">
-                            <p className={`text-[13px] font-medium truncate ${isDark ? "text-indigo-300" : "text-indigo-700"}`}>
+                            <p className={`text-[13px] font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>
                                 Store Header
                             </p>
                             <p className={`text-[10px] ${textFaint}`}>Nav • Logo • Search • Cart</p>
@@ -1240,8 +1257,8 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     onClick={() => setHeaderPickerOpen(true)}
                     className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed text-xs font-medium transition-all ${
                         isDark
-                        ? "border-indigo-800/50 text-indigo-400 hover:border-indigo-600 hover:bg-indigo-900/20"
-                        : "border-indigo-300 text-indigo-500 hover:border-indigo-400 hover:bg-indigo-50"
+                        ? "border-orange-800/50 text-orange-400 hover:orange-indigo-600 hover:bg-orange-900/20"
+                        : "border-orange-300 text-orange-500 hover:border-orange-400 hover:bg-orange-50"
                     }`}
                     >
                     <Plus className="w-3 h-3" /> Add header section
@@ -1693,11 +1710,11 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             </div>
                             )}
                         {layoutBodySections.map((s, i, arr) => {
-                            const globalIdx = sections.findIndex(x => x.id === s.id)
+                            //const globalIdx = sections.findIndex(x => x.id === s.id)
                             return (
                                 <React.Fragment key={s.id}>
                                 <SectionRow s={s} idx={i} />
-                                {i < arr.length - 1 && <AddBetweenLine afterIndex={globalIdx} />}
+                                {i < arr.length - 1 && <AddBetweenLine afterIndex={i} />}
                                 </React.Fragment>
                             )
                             })}
@@ -1771,11 +1788,11 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                         </div>
                         )}
                        {layoutBodySections.map((s, i, arr) => {
-                        const globalIdx = sections.findIndex(x => x.id === s.id)
+                        //const globalIdx = sections.findIndex(x => x.id === s.id)
                         return (
                             <React.Fragment key={s.id}>
                             <SectionRow s={s} idx={i} />
-                            {i < arr.length - 1 && <AddBetweenLine afterIndex={globalIdx} />}
+                            {i < arr.length - 1 && <AddBetweenLine afterIndex={i} />}
                             </React.Fragment>
                         )
                         })}
@@ -1904,15 +1921,15 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                             }}
                             className={`flex items-center gap-2 px-2 py-2 rounded-lg border cursor-pointer transition-all ${
                             isFooterSelected
-                                ? "bg-sky-500/15 border-sky-500/40"
-                                : `${isDark ? "border-sky-800/40 bg-sky-900/20 hover:border-sky-600/50" : "border-sky-200/60 bg-sky-50/50 hover:border-sky-400/60"}`
+                                ? "bg-orange-500/15 border-orange-500/40"
+                                : `${isDark ? "border-orange-800/40 bg-orange-900/20 hover:border-orange-600/50" : "border-orange-200/60 bg-orange-50/50 hover:border-orange-400/60"}`
                             }`}
                         >
-                            <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-sky-500/20">
-                            <Layout className="w-3 h-3 text-sky-500" />
+                            <div className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-orange-500/20">
+                            <Layout className="w-3 h-3 text-orange-500" />
                             </div>
                             <div className="flex-1 min-w-0">
-                            <p className={`text-[13px] font-medium truncate ${isDark ? "text-sky-300" : "text-sky-700"}`}>Store Footer</p>
+                            <p className={`text-[13px] font-medium truncate ${isDark ? "text-orange-300" : "text-orange-700"}`}>Store Footer</p>
                             <p className={`text-[10px] ${textFaint}`}>Links • Social • Copyright</p>
                             </div>
                             {/* <span className={`text-[9px] px-1.5 py-0.5 rounded-full transition-colors ${
@@ -2263,103 +2280,151 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
 
             {/* ══ THEME TAB ═══════════════════════════════════════════════ */}
             {activeTab === "theme" && (
-            <div className="p-3 space-y-3">
-                <p className={`text-[10px] uppercase tracking-wider ${textFaint}`}>Template</p>
-                <div className="space-y-2">
-                {TEMPLATES.map(t => {
-                    const brandPrimary = storePrimaryColor ?? "#e65100"
-                    const isSelected = storeTemplate === t.id || (!storeTemplate && t.id === "minimal")
+            <div className="p-3 space-y-4">
+
+                {/* ── Active theme ── */}
+                <div>
+                <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${textFaint}`}>
+                    Active theme
+                </p>
+                {(() => {
+                    const activeId = storeTemplate ?? "minimal"
+                    const active = TEMPLATES.find(t => t.id === activeId) ?? TEMPLATES[0]
+                    const previewSrc =
+                    activeId === "bold"      ? (typeof boldpreview === "string" ? boldpreview : (boldpreview as any).src) :
+                    activeId === "editorial" ? (typeof editorialpreview === "string" ? editorialpreview : (editorialpreview as any).src) :
+                    (typeof minimalpreview === "string" ? minimalpreview : (minimalpreview as any).src)
+
                     return (
-                    <button key={t.id} onClick={() => setStore(p => {
-                    const bannerPath = t.id === "editorial"
-                        ? "/editorial-template-banner.png"
-                        : t.id === "bold"
-                        ? "/bold-template-banner.png"
-                        : "/minimal-template-banner.png"
-
-                    const updatedSections = (p.sections?.sections ?? []).map((s: any) => {
-                        if (s.type === "hero") {
-                        return { ...s, hero_image_right: bannerPath }
-                        }
-                        return s
-                    })
-
-                    return {
-                        ...p,
-                        template: t.id,
-                        sections: { ...p.sections, sections: updatedSections }
-                    }
-                    })}
-                        className={`w-full text-left rounded-xl border transition-all overflow-hidden ${
-                        isSelected
-                            ? "border-orange-500/60 ring-1 ring-orange-500/30"
-                            : isDark ? "border-gray-700 hover:border-gray-500" : "border-gray-200 hover:border-gray-400"
-                        }`}>
-
+                    <div className={`rounded-xl border-2 overflow-hidden ${isDark ? "border-orange-500/60" : "border-orange-500/60"}`}>
+                        {/* Scrolling preview */}
                         <div className="w-full overflow-hidden" style={{ height: "130px" }}>
+                        <div
+                            className="w-full transition-transform duration-[3s] ease-in-out"
+                            style={{ transform: "translateY(0)" }}
+                            onMouseEnter={e => {
+                            const el = e.currentTarget as HTMLElement
+                            const img = el.querySelector("img") as HTMLImageElement
+                            if (img) {
+                                const scrollDist = img.naturalHeight * (el.offsetWidth / img.naturalWidth) - 130
+                                el.style.transform = `translateY(-${scrollDist}px)`
+                                el.style.transitionDuration = `${Math.max(2, scrollDist / 60)}s`
+                            }
+                            }}
+                            onMouseLeave={e => {
+                            const el = e.currentTarget as HTMLElement
+                            el.style.transform = "translateY(0)"
+                            el.style.transitionDuration = "1s"
+                            }}
+                        >
+                            <img src={previewSrc} alt={`${active.name} preview`} className="block w-full" />
+                        </div>
+                        </div>
+
+                        {/* Footer bar */}
+                        <div className={`flex items-center justify-between px-3 py-2 ${
+                        activeId === "bold" ? "bg-gray-900" :
+                        activeId === "editorial" ? "bg-stone-100" :
+                        isDark ? "bg-gray-800" : "bg-gray-50"
+                        }`}>
+                        <div>
+                            <div className="flex items-center gap-1.5">
+                            <p className={`text-xs font-semibold ${
+                                activeId === "bold" ? "text-white" :
+                                activeId === "editorial" ? "text-stone-800" : textPrimary
+                            }`}>{active.name}</p>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 font-semibold">
+                                Live theme
+                            </span>
+                            </div>
+                            <p className={`text-[10px] ${
+                            activeId === "bold" ? "text-gray-500" :
+                            activeId === "editorial" ? "text-stone-500" : textFaint
+                            }`}>{active.desc}</p>
+                        </div>
+                        </div>
+                    </div>
+                    )
+                })()}
+                </div>
+
+                {/* ── Inactive themes ── */}
+                <div>
+                <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${textFaint}`}>
+                    Inactive themes
+                </p>
+                <div className="space-y-2">
+                    {TEMPLATES.filter(t => t.id !== (storeTemplate ?? "minimal")).map(t => {
+                    const previewSrc =
+                        t.id === "bold"      ? (typeof boldpreview === "string" ? boldpreview : (boldpreview as any).src) :
+                        t.id === "editorial" ? (typeof editorialpreview === "string" ? editorialpreview : (editorialpreview as any).src) :
+                        (typeof minimalpreview === "string" ? minimalpreview : (minimalpreview as any).src)
+
+                    const hasSavedData = !!(store.theme_data?.[t.id]?.sections?.length)
+
+                    return (
+                        <div key={t.id} className={`rounded-xl border overflow-hidden ${
+                        isDark ? "border-gray-700" : "border-gray-200"
+                        }`}>
+                        {/* Scrolling preview */}
+                        <div className="w-full overflow-hidden" style={{ height: "100px" }}>
                             <div
-                                className="w-full transition-transform duration-[3s] ease-in-out"
-                                style={{ transform: "translateY(0)" }}
-                                onMouseEnter={e => {
+                            className="w-full transition-transform duration-[3s] ease-in-out"
+                            style={{ transform: "translateY(0)" }}
+                            onMouseEnter={e => {
                                 const el = e.currentTarget as HTMLElement
                                 const img = el.querySelector("img") as HTMLImageElement
                                 if (img) {
-                                    const scrollDist = img.naturalHeight * (el.offsetWidth / img.naturalWidth) - 130
-                                    el.style.transform = `translateY(-${scrollDist}px)`
-                                    el.style.transitionDuration = `${Math.max(2, scrollDist / 60)}s`
+                                const scrollDist = img.naturalHeight * (el.offsetWidth / img.naturalWidth) - 100
+                                el.style.transform = `translateY(-${scrollDist}px)`
+                                el.style.transitionDuration = `${Math.max(2, scrollDist / 60)}s`
                                 }
-                                }}
-                                onMouseLeave={e => {
+                            }}
+                            onMouseLeave={e => {
                                 const el = e.currentTarget as HTMLElement
                                 el.style.transform = "translateY(0)"
                                 el.style.transitionDuration = "1s"
-                                }}
+                            }}
                             >
-                                <img
-                                src={
-                                    t.id === "bold" ? (typeof boldpreview === "string" ? boldpreview : (boldpreview as any).src) :
-                                    t.id === "editorial" ? (typeof editorialpreview === "string" ? editorialpreview : (editorialpreview as any).src) :
-                                    (typeof minimalpreview === "string" ? minimalpreview : (minimalpreview as any).src)
-                                }
-                                alt={`${t.name} template preview`}
-                                className="block w-full"
-                                />
+                            <img src={previewSrc} alt={`${t.name} preview`} className="block w-full" />
                             </div>
-                            </div>
+                        </div>
 
+                        {/* Footer bar */}
                         <div className={`flex items-center justify-between px-3 py-2 ${
-                        t.id === "bold"
-                            ? "bg-gray-900"
-                            : t.id === "editorial"
-                            ? "bg-stone-100"
-                            : isDark ? "bg-gray-800" : "bg-gray-50"
+                            t.id === "bold" ? "bg-gray-900" :
+                            t.id === "editorial" ? "bg-stone-100" :
+                            isDark ? "bg-gray-800" : "bg-gray-50"
                         }`}>
-                        <div>
+                            <div>
                             <p className={`text-xs font-semibold ${
-                            t.id === "bold" ? "text-white" : t.id === "editorial" ? "text-stone-800" : textPrimary
+                                t.id === "bold" ? "text-white" :
+                                t.id === "editorial" ? "text-stone-800" : textPrimary
                             }`}>{t.name}</p>
                             <p className={`text-[10px] ${
-                            t.id === "bold" ? "text-gray-500" : t.id === "editorial" ? "text-stone-500" : textFaint
-                            }`}>{t.desc}</p>
+                                t.id === "bold" ? "text-gray-500" :
+                                t.id === "editorial" ? "text-stone-500" : textFaint
+                            }`}>
+                                {hasSavedData ? "Has saved customizations" : t.desc}
+                            </p>
+                            </div>
+                            <button
+                            onClick={() => switchTheme(t.id)}
+                            className={`text-[10px] px-2.5 py-1.5 rounded-lg font-semibold transition-all ${
+                                isDark
+                                ? "bg-gray-700 text-gray-200 hover:bg-orange-500/20 hover:text-orange-400"
+                                : "bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-600"
+                            }`}
+                            >
+                            Activate
+                            </button>
                         </div>
-                        {isSelected && <Check className="w-4 h-4 text-orange-400 shrink-0" />}
                         </div>
-                    </button>
                     )
-                })}
+                    })}
                 </div>
-                {/* <div className={`pt-3 border-t ${panelBorder} space-y-2`}>
-                <p className={`text-[10px] uppercase tracking-wider ${textFaint}`}>Store identity</p>
-                <div>
-                    <label className={`text-[10px] ${textFaint} block mb-1`}>Tagline</label>
-                    <EditorInput value={storeTagline ?? ""} onChange={v => setStore(p => ({ ...p, tagline: v }))} placeholder="Official merch store" isDark={isDark} />
                 </div>
-                <div>
-                    <label className={`text-[10px] ${textFaint} block mb-1`}>Hero background image URL</label>
-                    <EditorInput value={storeHeroImage ?? ""} onChange={v => setStore(p => ({ ...p, hero_image: v || undefined }))} placeholder="https://..." isDark={isDark} />
-                    {storeHeroImage && <img src={storeHeroImage} alt="hero" className="object-cover w-full h-16 mt-2 rounded-lg opacity-60" />}
-                </div>
-                </div> */}
+
             </div>
             )}
         </div>

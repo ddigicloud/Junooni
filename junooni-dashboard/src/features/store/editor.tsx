@@ -149,7 +149,7 @@ export default function StoreEditorPage() {
   const headerSections = homeSections.filter(s =>
     s.type === "announcement" || s.type === "ticker"
   )
-  console.log(JSON.stringify(store.sections?.sections, null, 2))
+  //console.log(JSON.stringify(store.sections?.sections, null, 2))
   const footerSections = homeSections.filter(s => s.type === "footer")
   const bodySections = currentLayoutKey === "home"
     ? homeSections.filter(s =>
@@ -174,6 +174,8 @@ export default function StoreEditorPage() {
   const pages   = store.pages?.pages ?? []
   const isLive  = store.status === "live"
 
+  
+
   // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
@@ -192,6 +194,12 @@ export default function StoreEditorPage() {
           vd = await vRes.json()
           setVendorHandle(vd.vendor?.handle ?? "")
         }
+
+        // capture store name for template substitution
+        //console.log("🔍 Full vendor response:", JSON.stringify(vd, null, 2))
+        const storeName = vd.vendor?.name ?? vd.vendor?.handle ?? "My Store"
+        const storeEmail = vd.vendor?.admins?.[0]?.email ?? "support@junooni.com"
+        //console.log("🔍 storeName resolved to:", storeName)
 
         const sRes = await fetch(`${backendUrl}/vendors/me/store`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -255,19 +263,28 @@ export default function StoreEditorPage() {
                 id: `page_${Date.now()}_terms`,
                 title: "Terms of Service", slug: "terms-of-service", template: "terms",
                 in_nav: false, in_footer: true, created_at: new Date().toISOString(),
-                content: PAGE_TEMPLATES.find(t => t.id === "terms")!.defaultContent.replace("{{CREATED_DATE}}", today),
+                content: PAGE_TEMPLATES.find(t => t.id === "terms")!.defaultContent
+                .replace(/{{CREATED_DATE}}/g, today)
+                .replace(/\[Your Store Name\]/g, storeName)
+                .replace(/\[your@email\.com\]/g, vd.vendor?.email ?? "support@junooni.com"),
               })
               if (!hasPrivacy) seedPages.push({
                 id: `page_${Date.now() + 1}_privacy`,
                 title: "Privacy Policy", slug: "privacy-policy", template: "privacy",
                 in_nav: false, in_footer: true, created_at: new Date().toISOString(),
-                content: PAGE_TEMPLATES.find(t => t.id === "privacy")!.defaultContent.replace("{{CREATED_DATE}}", today),
+                content: PAGE_TEMPLATES.find(t => t.id === "privacy")!.defaultContent
+                .replace(/{{CREATED_DATE}}/g, today)
+                .replace(/\[Your Store Name\]/g, storeName)
+                .replace(/\[your@email\.com\]/g, storeEmail),
               })
               if (!hasReturns) seedPages.push({
                 id: `page_${Date.now() + 2}_returns`,
                 title: "Returns & Refunds", slug: "returns-refunds", template: "returns",
                 in_nav: false, in_footer: true, created_at: new Date().toISOString(),
-                content: PAGE_TEMPLATES.find(t => t.id === "returns")!.defaultContent.replace("{{CREATED_DATE}}", today),
+                content: PAGE_TEMPLATES.find(t => t.id === "returns")!.defaultContent
+                .replace(/{{CREATED_DATE}}/g, today)
+                .replace(/\[Your Store Name\]/g, storeName)
+                .replace(/\[your@email\.com\]/g, storeEmail),
               })
               if (!hasContact) seedPages.push({
                 id: `page_${Date.now() + 3}_contact`,
@@ -320,12 +337,7 @@ export default function StoreEditorPage() {
               : "/minimal-template-banner.png"
 
             finalSecs = finalSecs.map((s: any) => {
-              if (s.type === "hero" && (
-                !s.hero_image_right ||
-                (storeTemplate === "editorial" && s.hero_image_right !== "/editorial-template-banner.png") ||
-                (storeTemplate === "bold" && s.hero_image_right !== "/bold-template-banner.png") ||
-                (storeTemplate === "minimal" && s.hero_image_right !== "/minimal-template-banner.png")
-              )) {
+              if (s.type === "hero" && !s.hero_image_right) {
                 return { ...s, hero_image_right: correctBanner }
               }
               return s
@@ -415,8 +427,8 @@ export default function StoreEditorPage() {
   const isSyncingRef = useRef(false)
   const syncToIframe = useCallback(() => {
     if (!iframeReady) return
-    console.log("[syncToIframe] posting STORE_UPDATE, checkout_settings:", store.checkout_settings)
-    console.log("[syncToIframe] sections:", JSON.stringify(store.sections?.sections?.slice(0,2)))
+    // console.log("[syncToIframe] posting STORE_UPDATE, checkout_settings:", store.checkout_settings)
+    // console.log("[syncToIframe] sections:", JSON.stringify(store.sections?.sections?.slice(0,2)))
     isSyncingRef.current = true
     iframeRef.current?.contentWindow?.postMessage({ type: "STORE_UPDATE", store, selectedId }, "*")
     setTimeout(() => { isSyncingRef.current = false }, 100)
@@ -443,7 +455,7 @@ export default function StoreEditorPage() {
       }
       if (e.data?.type === "IFRAME_NAVIGATION") {
         const path: string = e.data.path ?? "/"
-        console.log("[IframeNav] raw path:", path, "| isProd:", import.meta.env.PROD)
+        // console.log("[IframeNav] raw path:", path, "| isProd:", import.meta.env.PROD)
 
         // Dev: path comes as /junooni/products/x — strip handle prefix
         // Prod: path comes as /products/x — use as-is
@@ -540,6 +552,69 @@ export default function StoreEditorPage() {
   // ── Section helpers ───────────────────────────────────────────────────────
   const patchStore = useCallback((updater: (p: VendorStore) => VendorStore) => setStore(updater), [])
 
+  const buildDefaultSectionsForTheme = (templateId: string) => {
+    const correctBanner =
+      templateId === "editorial" ? "/editorial-template-banner.png" :
+      templateId === "bold"      ? "/bold-template-banner.png"      :
+                                   "/minimal-template-banner.png"
+
+    const defaultNavItems: NavItem[] = [
+      { id: "nav_home",     label: "Home",        url: "/" },
+      { id: "nav_products", label: "All Products", url: "/products" },
+    ]
+
+    return [
+      { id: genId(), type: "header" as SectionType, logo_position: "left", show_social_icons: false, nav_items: defaultNavItems },
+      { id: genId(), type: "hero" as SectionType, headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: correctBanner },
+      { id: genId(), type: "collection" as SectionType, title: "All Products", limit: 12, columns: 3, show_sold_out: true },
+      { id: genId(), type: "featured_collections" as SectionType, title: "Shop by Collection", collection_ids: [], columns: 3 },
+      { id: genId(), type: "about" as SectionType, title: "About Me", text: "" },
+      { id: genId(), type: "social" as SectionType, show_instagram: true, show_youtube: true, show_twitter: true },
+      { id: genId(), type: "footer" as SectionType, show_newsletter: false },
+    ]
+  }
+
+  // Keep theme_data always in sync with current active theme
+  useEffect(() => {
+    if (!store.template || isLoading) return
+    const currentThemeId = store.template
+    patchStore(p => ({
+      ...p,
+      theme_data: {
+        ...(p.theme_data ?? {}),
+        [currentThemeId]: {
+          sections: p.sections?.sections ?? [],
+          page_layouts: (p.sections as any)?.page_layouts ?? {},
+        },
+      },
+    }))
+  }, [store.sections, store.template, isLoading])
+
+  const switchTheme = useCallback((newTemplateId: string) => {
+    if (newTemplateId === store.template) return
+    patchStore(p => {
+      const currentThemeId = p.template ?? "minimal"
+      const updatedThemeData = {
+        ...(p.theme_data ?? {}),
+        [currentThemeId]: {
+          sections: p.sections?.sections ?? [],
+          page_layouts: (p.sections as any)?.page_layouts ?? {},
+        },
+      }
+      const savedTheme = updatedThemeData[newTemplateId]
+      const newSections = savedTheme?.sections?.length
+        ? savedTheme.sections
+        : buildDefaultSectionsForTheme(newTemplateId)
+      const newPageLayouts = savedTheme?.page_layouts ?? {}
+      return {
+        ...p,
+        template: newTemplateId,
+        theme_data: updatedThemeData,
+        sections: { sections: newSections, page_layouts: newPageLayouts },
+      }
+    })
+  }, [store.template, patchStore])
+
   const updateSection = useCallback((id: string, patch: Partial<StoreSection>) => {
     patchStore(p => {
       const homeSecs = p.sections?.sections ?? []
@@ -597,6 +672,8 @@ export default function StoreEditorPage() {
   const key = getLayoutKeyForPath(previewPagePath)
   const capturedInsertAtIndex = explicitInsertIndex !== undefined ? explicitInsertIndex : insertAtIndex
 
+  
+
   const ns: StoreSection = {
     id: genId(), type,
     ...(type === "hero"         ? { headline: "Your Headline", subtext: "Your tagline goes here", cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: store.template === "editorial" ? "/editorial-template-banner.png" : "/minimal-template-banner.png" } : {}),
@@ -621,7 +698,7 @@ export default function StoreEditorPage() {
   patchStore(p => {
     if (key === "home") {
       const arr = [...(p.sections?.sections ?? [])]
-      console.log("🟡 addSection patchStore called", { type, capturedInsertAtIndex, arrLength: arr.length })
+      // console.log("🟡 addSection patchStore called", { type, capturedInsertAtIndex, arrLength: arr.length })
 
       // ── Special fixed-position types ──────────────────────────────────────
       if (type === "header") {
@@ -633,6 +710,11 @@ export default function StoreEditorPage() {
         arr.push(ns)
         return { ...p, sections: { ...(p.sections ?? {}), sections: arr } }
       }
+
+      // console.log("🔴 capturedInsertAtIndex:", capturedInsertAtIndex)
+      // console.log("🔴 bodyOnlyArr length:", arr.filter(s => !["header", "footer"].includes(s.type)).length)
+      // console.log("🔴 bodyOnlyArr:", arr.filter(s => !["header", "footer"].includes(s.type)).map(s => s.type))
+      // console.log("🔴 targetSection:", arr.filter(s => !["header", "footer"].includes(s.type))[capturedInsertAtIndex ?? 0]?.type)
 
       // ── Announcement / Ticker: ONLY auto-place in header zone
       //    when capturedInsertAtIndex is null (added via header picker,
@@ -654,8 +736,12 @@ export default function StoreEditorPage() {
 
       // ── All other body sections (including announcement/ticker with
       //    explicit insertAtIndex from body zone) ──────────────────────────
+      // const bodyOnlyArr = arr.filter(s =>
+      //   !["header", "footer"].includes(s.type)
+      // )
+
       const bodyOnlyArr = arr.filter(s =>
-        !["header", "footer"].includes(s.type)
+        !["header", "announcement", "ticker", "footer"].includes(s.type)
       )
 
       if (capturedInsertAtIndex !== null && capturedInsertAtIndex !== -1) {
@@ -860,10 +946,10 @@ const addSectionAferId = (type: SectionType, afterId: string | null) => {
   // ── Preview URL ───────────────────────────────────────────────────────────
 const basePreviewUrl = vendorHandle ? getPreviewUrl(vendorHandle) : null
 
-console.log("[PreviewURL] vendorHandle:", vendorHandle)
-console.log("[PreviewURL] basePreviewUrl:", basePreviewUrl)
-console.log("[PreviewURL] previewPagePath:", previewPagePath)
-console.log("[PreviewURL] isProd:", import.meta.env.PROD)
+// console.log("[PreviewURL] vendorHandle:", vendorHandle)
+// console.log("[PreviewURL] basePreviewUrl:", basePreviewUrl)
+// console.log("[PreviewURL] previewPagePath:", previewPagePath)
+// console.log("[PreviewURL] isProd:", import.meta.env.PROD)
 
 const previewUrl = (() => {
   if (!basePreviewUrl || !vendorHandle) return null
@@ -1178,21 +1264,21 @@ const previewUrl = (() => {
           <PageSwitcherDropdown
             currentPath={previewPagePath}
             onSelect={path => {
-              console.log("[PageSwitcher] onSelect fired — path:", path)
-              console.log("[PageSwitcher] current previewPagePath:", previewPagePath)
-              console.log("[PageSwitcher] vendorHandle:", vendorHandle)
-              console.log("[PageSwitcher] isProd:", import.meta.env.PROD)
+              // console.log("[PageSwitcher] onSelect fired — path:", path)
+              // console.log("[PageSwitcher] current previewPagePath:", previewPagePath)
+              // console.log("[PageSwitcher] vendorHandle:", vendorHandle)
+              // console.log("[PageSwitcher] isProd:", import.meta.env.PROD)
               
               setPreviewPagePath(path)
               setSelectedId(null)
               setRightPanelOpen(false)
               setIsNavigating(true)
 
-              console.log("[PageSwitcher] posting NAVIGATE to iframe with path:", path)
+              //console.log("[PageSwitcher] posting NAVIGATE to iframe with path:", path)
               iframeRef.current?.contentWindow?.postMessage({ type: "NAVIGATE", path }, "*")
 
               setTimeout(() => {
-                console.log("[PageSwitcher] posting STORE_UPDATE after 500ms")
+                //console.log("[PageSwitcher] posting STORE_UPDATE after 500ms")
                 iframeRef.current?.contentWindow?.postMessage({ type: "STORE_UPDATE", store, selectedId }, "*")
               }, 500)
             }}
@@ -1276,7 +1362,7 @@ const previewUrl = (() => {
          {!leftPanelCollapsed && (
             <LeftPanel
               activeTab={activeTab} setActiveTab={setActiveTab}
-              store={store}
+              store={store} switchTheme={switchTheme}
               isDark={isDark} panelBg={panelBg} panelBorder={panelBorder}
               bodySectionPickerOpen={bodySectionPickerOpen}
               setBodySectionPickerOpen={setBodySectionPickerOpen}

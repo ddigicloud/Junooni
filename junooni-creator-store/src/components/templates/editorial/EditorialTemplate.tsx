@@ -1,7 +1,7 @@
 "use client"
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { ShoppingCart, Loader2, Check, Minus, Plus } from "lucide-react"
 import { addToCart } from "@/lib/cart"
@@ -250,116 +250,44 @@ function EditorialSection({
     case "hero": {
       const overlayColor     = (section as any).overlay_color      as string | undefined
       const overlayTextColor = (section as any).overlay_text_color as string | undefined
-      const headlineColor = overlayTextColor ?? sectionText ?? "#111827"
-      const subtextColor  = overlayTextColor
-        ? `${overlayTextColor}99`
-        : sectionText ? `${sectionText}99` : "#6b7280"
-      const secCtaLabel = (section as any).cta_secondary_label as string | undefined
-      const secCtaUrl   = (section as any).cta_secondary_url   as string | undefined
+      const headlineColor    = overlayTextColor ?? sectionText ?? "#111827"
+      const secCtaLabel      = (section as any).cta_secondary_label as string | undefined
+      const secCtaUrl        = (section as any).cta_secondary_url   as string | undefined
+
+      // ── Collect all images for the card deck ──────────────────────────────
+      const heroImages: string[] = (() => {
+        const imgs: string[] = []
+        const main = (section as any).hero_image_right
+        if (main) imgs.push(main)
+        // Additional uploaded images stored as hero_images array
+        const extra: string[] = (section as any).hero_images ?? []
+        extra.forEach(img => { if (img && !imgs.includes(img)) imgs.push(img) })
+        // Always ensure at least 3 items so deck always shows 3 cards
+        const placeholder = typeof editorialtemplatebanner === "string"
+          ? editorialtemplatebanner
+          : (editorialtemplatebanner as any).src ?? (editorialtemplatebanner as any).default ?? ""
+        while (imgs.length < 3) imgs.push(placeholder)
+        return imgs
+      })()
 
       return (
-        <section className="relative overflow-hidden border-b border-gray-100"
-          style={{ backgroundColor: sectionBg ?? "#fafaf8" }}>
-
-          {/* Background image */}
-          {(section.background_image ?? store?.hero_image) && (
-            <div className="absolute inset-0">
-              <Image
-                src={section.background_image ?? store!.hero_image!}
-                alt="Hero"
-                fill
-                sizes="100vw"
-                className="object-cover"
-                style={{ opacity: overlayColor ? 1 : 0.12 }}
-              />
-              {overlayColor && (
-                <div className="absolute inset-0" style={{ backgroundColor: overlayColor, opacity: 0.55 }} />
-              )}
-            </div>
-          )}
-
-          <div className="relative z-10 max-w-6xl px-6 py-16 mx-auto md:py-24">
-            <div className="grid items-center gap-12 md:grid-cols-2">
-
-              {/* Text side */}
-              <motion.div
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.7 }}
-              >
-                {/* Editorial label / badge */}
-                {((section as any).hero_badge ?? "Official Collection") && (
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-8 h-px" style={{ background: brandPrimary }} />
-                    <span className="text-xs uppercase tracking-[0.3em] font-medium" style={{ color: headlineColor }}>
-                      {(section as any).hero_badge ?? "Official Collection"}
-                    </span>
-                  </div>
-                )}
-
-                <h1
-                  className={`mb-4 font-extrabold leading-tight ${
-                    (section as any).headline_size === "sm" ? "text-3xl md:text-4xl" :
-                    (section as any).headline_size === "md" ? "text-4xl md:text-5xl" :
-                    "text-5xl md:text-6xl"
-                  }`}
-                  style={{ color: headlineColor, fontFamily: "var(--font-playfair)" }}
-                >
-                  {section.headline || vendor.name || "Your Headline"}
-                </h1>
-
-                {(section.subtext || store?.tagline || "Your tagline goes here") && (
-                  <p className="max-w-md mb-8 text-lg leading-relaxed" style={{ color: subtextColor }}>
-                    {section.subtext || store?.tagline || "Your tagline goes here"}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap gap-3">
-                  {section.cta_label && (
-                    <Link
-                      href={resolveUrl(section.cta_url ?? "/products", handle, bare)}
-                      className="inline-flex items-center gap-2 pb-1 text-sm font-semibold tracking-widest uppercase transition-opacity border-b-2 hover:opacity-70"
-                      style={{ borderColor: brandPrimary, color: headlineColor }}
-                    >
-                      {section.cta_label} <span>→</span>
-                    </Link>
-                  )}
-                  {secCtaLabel && (
-                    <Link
-                      href={resolveUrl(secCtaUrl ?? "/products", handle, bare)}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold text-sm border-2 transition-all hover:border-gray-400"
-                      style={{
-                        color: headlineColor,
-                        borderColor: overlayTextColor ? `${overlayTextColor}50` : sectionText ? `${sectionText}40` : "#e5e7eb",
-                      }}
-                    >
-                      {secCtaLabel}
-                    </Link>
-                  )}
-                </div>
-              </motion.div>
-
-              {/* Right-side image */}
-              {((section as any).hero_image_right ?? editorialtemplatebanner) && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.8, delay: 0.1 }}
-                  className="aspect-[3/4] relative rounded-2xl overflow-hidden shadow-2xl"
-                >
-                  <Image
-                    src={(section as any).hero_image_right ?? editorialtemplatebanner}
-                    alt={vendor.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
-                    priority
-                  />
-                </motion.div>
-              )}
-            </div>
-          </div>
-        </section>
+        <EditorialHeroSection
+          section={section}
+          vendor={vendor}
+          store={store}
+          brandPrimary={brandPrimary}
+          sectionBg={sectionBg}
+          sectionText={sectionText}
+          headlineColor={headlineColor}
+          overlayColor={overlayColor}
+          overlayTextColor={overlayTextColor}
+          secCtaLabel={secCtaLabel}
+          secCtaUrl={secCtaUrl}
+          heroImages={heroImages}
+          handle={handle}
+          bare={bare}
+          editorialtemplatebanner={editorialtemplatebanner}
+        />
       )
     }
 
@@ -907,6 +835,308 @@ function EditorialSection({
 
     default: return null
   }
+}
+
+// ── EditorialHeroSection — Stacked Card Deck Hero ─────────────────────────────
+
+// ── EditorialHeroSection — Stacked Card Deck Hero ─────────────────────────────
+
+function EditorialHeroSection({
+  section, vendor, store, brandPrimary, sectionBg, sectionText,
+  headlineColor, overlayColor, overlayTextColor, secCtaLabel, secCtaUrl,
+  heroImages, handle, bare, editorialtemplatebanner,
+}: {
+  section: any; vendor: any; store: any; brandPrimary: string
+  sectionBg?: string; sectionText?: string; headlineColor: string
+  overlayColor?: string; overlayTextColor?: string
+  secCtaLabel?: string; secCtaUrl?: string
+  heroImages: string[]; handle: string; bare: boolean
+  editorialtemplatebanner: any
+}) {
+  const total = heroImages.length
+  // `order` is the actual display order — order[0] is always the front card
+  const [order, setOrder] = useState(() => heroImages.map((_, i) => i))
+  const [departing, setDeparting] = useState<number | null>(null) // index of card doing fling anim
+  const [showArrows, setShowArrows] = useState(false)
+  const isAnimating = departing !== null
+  const autoSlide = !!(section as any).auto_slide
+  const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const touchStartX = useRef<number | null>(null)
+
+  // sync order array length when heroImages changes
+  useEffect(() => {
+    setOrder(heroImages.map((_, i) => i))
+    setDeparting(null)
+  }, [heroImages.length])
+
+  // auto-slide
+  useEffect(() => {
+    if (!autoSlide || total <= 1) return
+    autoRef.current = setTimeout(goNext, 3000)
+    return () => { if (autoRef.current) clearTimeout(autoRef.current) }
+  }, [order, autoSlide, total])
+
+  const goNext = () => {
+    if (isAnimating || total <= 1) return
+    const frontIdx = order[0]
+    setDeparting(frontIdx)
+    // After CSS keyframe finishes (600ms), move front card to back of order
+    setTimeout(() => {
+      setOrder(prev => {
+        const next = [...prev]
+        const [front] = next.splice(0, 1)
+        next.push(front)
+        return next
+      })
+      setDeparting(null)
+    }, 600)
+  }
+
+  const goPrev = () => {
+    if (isAnimating || total <= 1) return
+    setOrder(prev => {
+      const next = [...prev]
+      const back = next.pop()!
+      next.unshift(back)
+      return next
+    })
+  }
+
+  const onTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
+  const onTouchEnd   = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return
+    const diff = touchStartX.current - e.changedTouches[0].clientX
+    if (Math.abs(diff) > 40) diff > 0 ? goNext() : goPrev()
+    touchStartX.current = null
+  }
+
+  const bgColor = sectionBg ?? "#f7f4ef"
+  const isLight = !bgColor.startsWith("#0") && !bgColor.startsWith("#1") && bgColor !== "#000000"
+
+  // Slot visual config: slot 0 = front, 1 = mid, 2 = back
+ const slotConfig = [
+    { x: 0,  y: 0,  rot: 0,  scale: 1,    brightness: 1,    opacity: 1,    z: 30 },
+    { x: 28, y: 14, rot: 5,  scale: 0.93, brightness: 0.92, opacity: 0.95, z: 20 },
+    { x: 52, y: 26, rot: 10, scale: 0.86, brightness: 0.82, opacity: 0.88, z: 10 },
+  ]
+
+  const activeImageIdx = order[0] ?? 0
+  const animId = `fling-${departing}`
+
+  return (
+    <section
+      className="relative overflow-hidden"
+      style={{ backgroundColor: bgColor, minHeight: "min(90vh, 700px)" }}
+    >
+      {/* Inject fling keyframe — only while animating */}
+      {departing !== null && (
+        <style>{`
+          @keyframes ${animId} {
+            0%   { transform: translate(0px,    0px)    rotate(0deg)   scale(1);    opacity: 1;    filter: brightness(1); }
+            60%  { transform: translate(-160px, -120px) rotate(-18deg) scale(0.85); opacity: 0.5;  filter: brightness(0.6); }
+            100% { transform: translate(-220px, -80px)  rotate(-22deg) scale(0.78); opacity: 0;    filter: brightness(0.3); }
+          }
+        `}</style>
+      )}
+
+      <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-10 py-16 md:py-24 flex flex-col md:flex-row items-center gap-12 md:gap-0 min-h-[min(90vh,700px)]">
+
+        {/* ── LEFT text ── */}
+        <motion.div
+          className="flex-1 flex flex-col justify-center md:pr-12"
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {(section.hero_badge ?? "Official Collection") && (
+            <div className="flex items-center gap-3 mb-7">
+              <div className="w-8 h-px" style={{ background: brandPrimary }} />
+              <span className="text-[10px] uppercase tracking-[0.4em] font-semibold"
+                style={{ color: brandPrimary }}>
+                {section.hero_badge ?? "Official Collection"}
+              </span>
+            </div>
+          )}
+
+          <h1
+            className={`font-extrabold leading-[1.0] mb-5 ${
+              section.headline_size === "sm" ? "text-4xl md:text-5xl" :
+              section.headline_size === "md" ? "text-5xl md:text-6xl" :
+              "text-5xl md:text-7xl"
+            }`}
+            style={{ color: headlineColor, fontFamily: "var(--font-playfair)", letterSpacing: "-0.02em" }}
+          >
+            {section.headline || vendor.name || "Your Headline"}
+          </h1>
+
+          <div className="w-16 h-0.5 mb-5" style={{ background: brandPrimary }} />
+
+          {(section.subtext || store?.tagline) && (
+            <p className="text-base leading-relaxed mb-8 max-w-xs"
+              style={{ color: isLight ? "#6b7280" : `${headlineColor}99` }}>
+              {section.subtext || store?.tagline}
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-4 mb-8">
+            {section.cta_label && (
+              <Link
+                href={resolveUrl(section.cta_url ?? "/products", handle, bare)}
+                className="inline-flex items-center gap-2.5 px-7 py-3.5 text-sm font-bold tracking-widest uppercase text-white transition-all hover:opacity-90 hover:gap-4"
+                style={{ background: brandPrimary, borderRadius: "2px" }}
+              >
+                {section.cta_label} <span>→</span>
+              </Link>
+            )}
+            {secCtaLabel && (
+              <Link
+                href={resolveUrl(secCtaUrl ?? "/products", handle, bare)}
+                className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-widest transition-all hover:gap-3"
+                style={{ color: isLight ? "#374151" : headlineColor, opacity: 0.7 }}
+              >
+                {secCtaLabel} <span>↗</span>
+              </Link>
+            )}
+          </div>
+
+          {/* {total > 1 && (
+            <div className="flex items-center gap-2">
+              {heroImages.map((_, i) => (
+                <button key={i}
+                  onClick={() => !isAnimating && setOrder(prev => {
+                    // rotate order until i is at front
+                    const idx = prev.indexOf(i)
+                    if (idx <= 0) return prev
+                    return [...prev.slice(idx), ...prev.slice(0, idx)]
+                  })}
+                  style={{
+                    width: order[0] === i ? "24px" : "6px",
+                    height: "6px",
+                    borderRadius: "3px",
+                    background: order[0] === i ? brandPrimary : (isLight ? "#d1d5db" : "#ffffff40"),
+                    transition: "all 0.3s ease",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                />
+              ))}
+              <span className="ml-2 text-[10px] font-semibold tabular-nums"
+                style={{ color: isLight ? "#9ca3af" : "#ffffff60" }}>
+                {String(activeImageIdx + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+              </span>
+            </div>
+          )} */}
+        </motion.div>
+
+        {/* ── RIGHT card deck ── */}
+        <div
+          className="relative flex-shrink-0 flex items-center justify-center"
+          style={{ width: "min(360px, 88vw)", height: "min(480px, 72vw)" }}
+          onMouseEnter={() => setShowArrows(true)}
+          onMouseLeave={() => setShowArrows(false)}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
+          {/*
+            KEY INSIGHT: each card is keyed by its IMAGE INDEX not slot position.
+            This means the same DOM node always renders the same image.
+            We only control visual slot via inline style transforms.
+            The departing card gets a CSS @keyframe animation applied directly —
+            no React state drives its position mid-animation.
+          */}
+          {order.map((imgIdx, slot) => {
+            if (slot > 2) return null // only render 3 cards
+            const cfg = slotConfig[slot]
+            const isFront    = slot === 0
+            const isDeparting = imgIdx === departing
+
+            const restStyle: React.CSSProperties = {
+              position: "absolute",
+              inset: 0,
+              borderRadius: "16px",
+              overflow: "hidden",
+              boxShadow: isFront
+                ? "0 25px 60px rgba(0,0,0,0.25), 0 8px 20px rgba(0,0,0,0.15)"
+                : "0 10px 30px rgba(0,0,0,0.15)",
+              zIndex: cfg.z,
+              transformOrigin: "bottom left",
+              willChange: "transform",
+              // When departing: play keyframe, ignore transform/opacity/filter below
+              // When NOT departing: CSS transition snaps cards into slot positions
+              ...(isDeparting ? {
+                animation: `${animId} 600ms cubic-bezier(0.4, 0, 0.2, 1) forwards`,
+                transition: "none",
+                pointerEvents: "none",
+              } : {
+                transform: `translate(${cfg.x}px, ${cfg.y}px) rotate(${cfg.rot}deg) scale(${cfg.scale})`,
+                opacity: cfg.opacity,
+                filter: `brightness(${cfg.brightness})`,
+                transition: "transform 500ms cubic-bezier(0.34, 1.2, 0.64, 1), opacity 400ms ease, filter 400ms ease",
+                cursor: isFront && total > 1 ? "pointer" : "default",
+              }),
+            }
+
+            return (
+              <div
+                key={imgIdx}
+                style={restStyle}
+                onClick={() => isFront && !isDeparting && goNext()}
+              >
+                <img
+                  src={heroImages[imgIdx]}
+                  alt={`${vendor.name} — look ${imgIdx + 1}`}
+                  className="w-full h-full object-cover object-top select-none"
+                  draggable={false}
+                />
+
+                {isFront && !isDeparting && (
+                  <div className="absolute inset-0 pointer-events-none"
+                    style={{ background: "linear-gradient(to top, rgba(0,0,0,0.18) 0%, transparent 55%)" }} />
+                )}
+
+                {isFront && !isDeparting && total > 1 && (
+                  <>
+                    <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white backdrop-blur-sm pointer-events-none"
+                      style={{ background: "rgba(0,0,0,0.35)" }}>
+                      {activeImageIdx + 1} / {total}
+                    </div>
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-medium text-white backdrop-blur-sm pointer-events-none"
+                      style={{ background: "rgba(0,0,0,0.22)" }}>
+                      tap to flip ↩
+                    </div>
+                  </>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Arrows */}
+          {total > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); goNext() }}
+                className="absolute -right-2 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center hover:scale-110"
+                style={{
+                  color: brandPrimary,
+                  opacity: showArrows ? 1 : 0,
+                  pointerEvents: showArrows ? "auto" : "none",
+                  transition: "opacity 0.2s ease, transform 0.15s ease",
+                  background: "none",
+                  border: "none",
+                  padding: "4px",
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 14 14" fill="none">
+                  <path d="M5 2l5 5-5 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </section>
+  )
 }
 
 // ── EditorialFeaturedProduct ──────────────────────────────────────────────────

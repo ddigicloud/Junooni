@@ -571,7 +571,7 @@ function ColorOverride({ section, onChange, isDark, textFaint }: {
 
 export function SectionSettings({ section, onChange, token, backendUrl, isDark,
   collections = [], categories = [], pages = [], products = [],
-  vendorHandle = "", currentLayoutKey = "home", storeLogo = "",
+  vendorHandle = "", currentLayoutKey = "home", storeLogo = "", storeTemplate = "",
 }: {
   section: StoreSection
   onChange: (p: Partial<StoreSection>) => void
@@ -585,6 +585,7 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
   vendorHandle?: string
   storeLogo?: string
   currentLayoutKey?: string
+  storeTemplate?: string
 }) {
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -616,11 +617,19 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
   return (
     <div className="space-y-3">
       <input ref={fileRef} type="file" accept="image/*" className="hidden"
-        onChange={async e => {
+       onChange={async e => {
           if (!e.target.files?.[0]) return
           setUploadingKey(uploadTarget)
           const url = await uploadFile(e.target.files[0])
-          if (url) onChange({ [uploadTarget]: url })
+          if (url) {
+            if (uploadTarget === "__hero_images__") {
+              // Append to hero_images array
+              const existing: string[] = (section as any).hero_images ?? []
+              onChange({ hero_images: [...existing, url] } as any)
+            } else {
+              onChange({ [uploadTarget]: url })
+            }
+          }
           setUploadingKey(null)
           e.target.value = ""
         }} />
@@ -669,14 +678,130 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           <LinkInput value={section.cta_secondary_url ?? ""}
             onChange={v => onChange({ cta_secondary_url: v })} placeholder="/products" isDark={isDark} pages={pages} collections={collections} categories={categories}/>
         </Field>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <div className="relative shrink-0"
+            onClick={() => onChange({ auto_slide: !(section as any).auto_slide })}>
+            <div className={`w-8 h-4 rounded-full transition-colors ${(section as any).auto_slide ? "bg-orange-500" : "bg-gray-600"}`} />
+            <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(section as any).auto_slide ? "translate-x-4" : ""}`} />
+          </div>
+          <span className={`text-xs ${textPrimary}`}>Auto-slide cards</span>
+        </label>
+        <p className={`text-[10px] ${textFaint} opacity-60 -mt-2`}>
+          Only applies to Editorial template card deck
+        </p>
         <UploadOnlyImageField label="Background image" value={section.background_image ?? ""}
           onChange={v => onChange({ background_image: v || undefined })}
           onUpload={() => triggerUpload("background_image")}
           isUploading={uploadingKey === "background_image"} isDark={isDark} />
-        <UploadOnlyImageField label="Right side image" value={(section as any).hero_image_right ?? ""}
+        <UploadOnlyImageField label="Right side image"
+          value={[
+            "/minimal-template-banner.png",
+            "/bold-template-banner.png",
+            "/editorial-template-banner.png",
+          ].includes((section as any).hero_image_right ?? "") ? "" : ((section as any).hero_image_right ?? "")}
           onChange={v => onChange({ hero_image_right: v || undefined } as any)}
           onUpload={() => triggerUpload("hero_image_right")}
           isUploading={uploadingKey === "hero_image_right"} isDark={isDark} previewHeight={120} />
+
+        {/* ── Additional images for Editorial card deck ── */}
+        {/* ── Additional images — only for editorial template ── */}
+        {storeTemplate === "editorial" && (
+        <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+          <div className="flex items-center justify-between mb-2">
+            <label className={`text-[10px] ${textFaint}`}>
+              Card deck images
+            </label>
+            <span className={`text-[10px] ${textFaint} opacity-50`}>
+              {((section as any).hero_images ?? []).length} / 6
+            </span>
+          </div>
+          <p className={`text-[10px] ${textFaint} opacity-60 mb-3`}>
+            Upload up to 6 images — they cycle as cards in the editorial template hero.
+          </p>
+
+          {/* Existing uploaded images */}
+          <div className="space-y-2 mb-2">
+            {((section as any).hero_images ?? []).map((img: string, i: number) => (
+              <div key={i} className={`flex items-center gap-2 p-2 rounded-lg border ${isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-gray-50"}`}>
+                <img
+                  src={img}
+                  alt={`Card ${i + 1}`}
+                  className="w-10 h-10 object-cover rounded-lg shrink-0"
+                />
+                <span className={`flex-1 text-[10px] truncate ${textFaint}`}>
+                  Image {i + 1}
+                </span>
+                {/* Move up */}
+                {i > 0 && (
+                  <button
+                    onClick={() => {
+                      const imgs = [...((section as any).hero_images ?? [])]
+                      ;[imgs[i - 1], imgs[i]] = [imgs[i], imgs[i - 1]]
+                      onChange({ hero_images: imgs } as any)
+                    }}
+                    className={`p-1 rounded transition-colors ${isDark ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-500"}`}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M5 2L2 6h6L5 2z" fill="currentColor"/>
+                    </svg>
+                  </button>
+                )}
+                {/* Move down */}
+                {i < ((section as any).hero_images ?? []).length - 1 && (
+                  <button
+                    onClick={() => {
+                      const imgs = [...((section as any).hero_images ?? [])]
+                      ;[imgs[i], imgs[i + 1]] = [imgs[i + 1], imgs[i]]
+                      onChange({ hero_images: imgs } as any)
+                    }}
+                    className={`p-1 rounded transition-colors ${isDark ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-500"}`}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M5 8L2 4h6L5 8z" fill="currentColor"/>
+                    </svg>
+                  </button>
+                )}
+                {/* Remove */}
+                <button
+                  onClick={() => {
+                    const imgs = ((section as any).hero_images ?? []).filter((_: string, j: number) => j !== i)
+                    onChange({ hero_images: imgs.length > 0 ? imgs : undefined } as any)
+                  }}
+                  className="p-1 rounded hover:bg-red-900/30 text-red-400 shrink-0"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Add image button */}
+           {((section as any).hero_image_right && !([
+            "/minimal-template-banner.png",
+            "/bold-template-banner.png",
+              "/editorial-template-banner.png",
+            ].includes((section as any).hero_image_right ?? ""))) &&
+            ((section as any).hero_images ?? []).length < 6 && (
+            <button
+              onClick={() => {
+                setUploadTarget("__hero_images__")
+                fileRef.current?.click()
+              }}
+              disabled={uploadingKey === "__hero_images__"}
+              className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed text-xs transition-all ${
+                isDark
+                  ? "border-gray-700 text-gray-400 hover:border-orange-500/50 hover:text-orange-400"
+                  : "border-gray-300 text-gray-500 hover:border-orange-400 hover:text-orange-500"
+              }`}
+            >
+              {uploadingKey === "__hero_images__"
+                ? <><Loader2 className="w-3 h-3 animate-spin" />Uploading...</>
+                : <><Plus className="w-3 h-3" />Add image</>
+              }
+            </button>
+          )}
+        </div>
+         )}
         <div className={`pt-2 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
           <p className={`text-[10px] ${textFaint} mb-2`}>Hero overlay & text</p>
           <div className="grid grid-cols-2 gap-2">

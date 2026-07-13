@@ -262,6 +262,22 @@ export function RichTextEditor({ value, onChange, placeholder, isDark, rows = 3,
             return
           }
           if (!singleLine && e.key === "Enter" && !e.shiftKey) {
+            // If cursor is inside a list item, let the browser handle it
+            // natively so bullet/number continuation works correctly
+            const sel = window.getSelection()
+            if (sel && sel.rangeCount > 0) {
+              let node: Node | null = sel.getRangeAt(0).startContainer
+              while (node && node !== editorRef.current) {
+                if (node instanceof HTMLElement &&
+                  (node.tagName === "LI" || node.tagName === "UL" || node.tagName === "OL")) {
+                  // Let browser handle list continuation naturally
+                  setTimeout(() => onChange(editorRef.current?.innerHTML ?? ""), 0)
+                  return
+                }
+                node = node.parentNode
+              }
+            }
+            // Outside a list — insert line break instead of new paragraph
             e.preventDefault()
             document.execCommand("insertLineBreak")
             onChange(editorRef.current?.innerHTML ?? "")

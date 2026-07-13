@@ -130,10 +130,26 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
       return {}
     }
 
-    const commonOptions = {
-      from: this.options.from,
+    // const commonOptions = {
+    //   from: this.options.from,
+    //   to: [notification.to],
+    //   subject: this.getTemplateSubject(notification.template as Templates),
+    // }
+
+    const storeName = (notification.data as any)?.storeName
+    const vendorHandle = (notification.data as any)?.order?.metadata?.vendor_ids?.[0]
+
+    // For vendor store orders, send from {handle}@junooni.com
+    // For marketplace orders, fall back to default (orders@junooni.com)
+    const defaultFrom = storeName && vendorHandle
+      ? `${storeName} <${vendorHandle}@junooni.com>`
+      : this.options.from
+
+   const commonOptions = {
+      from: (notification as any).from || this.options.from,
       to: [notification.to],
       subject: this.getTemplateSubject(notification.template as Templates),
+      replyTo: "support@junooni.com",
     }
 
     let emailOptions: CreateEmailOptions

@@ -11,7 +11,6 @@ interface TourStep {
   kind: StepKind;
   targetId?: string;
   modalDetectId?: string;
-  // For dom-wait: wait until this element EXISTS in DOM, then advance
   domWaitId?: string;
   title: string;
   description: string;
@@ -19,6 +18,10 @@ interface TourStep {
   requiresClick?: boolean;
   arrowDirection?: "left" | "right" | "top" | "bottom";
   preferSide?: "top" | "bottom" | "left" | "right";
+  // NEW: skip scrollIntoView for elements already in fixed sidebars
+  noScroll?: boolean;
+  // NEW: push tooltip right to make room for the bouncing arrow (only My Store step)
+  arrowGap?: boolean;
 }
 
 const TOUR_STEPS: TourStep[] = [
@@ -193,10 +196,37 @@ const TOUR_STEPS: TourStep[] = [
       "Your shortcut panel. Add products, view orders, open settings, or change your store mode — all from one place.",
     emoji: "⚡",
   },
-  // Sidebar steps
-  { id: "sidebar-dashboard", kind: "spotlight", targetId: "tour-sidebar-dashboard", preferSide: "right", title: "Dashboard", description: "Your home base. Revenue, orders, and a quick overview of everything happening in your store.", emoji: "🏠" },
-  { id: "sidebar-products",  kind: "spotlight", targetId: "tour-sidebar-products",  preferSide: "right", title: "Products",   description: "Manage all your listings — edit designs, update prices, toggle visibility, and add new products.", emoji: "📋" },
-  { id: "sidebar-orders",    kind: "spotlight", targetId: "tour-sidebar-orders",    preferSide: "right", title: "Orders",     description: "Full order management. Filter by status, view tracking details, and handle returns or claims.", emoji: "📦" },
+  // Sidebar steps — noScroll:true because sidebar is fixed-positioned
+  {
+    id: "sidebar-dashboard",
+    kind: "spotlight",
+    targetId: "tour-sidebar-dashboard",
+    preferSide: "right",
+    noScroll: true,
+    title: "Dashboard",
+    description: "Your home base. Revenue, orders, and a quick overview of everything happening in your store.",
+    emoji: "🏠",
+  },
+  {
+    id: "sidebar-products",
+    kind: "spotlight",
+    targetId: "tour-sidebar-products",
+    preferSide: "right",
+    noScroll: true,
+    title: "Products",
+    description: "Manage all your listings — edit designs, update prices, toggle visibility, and add new products.",
+    emoji: "📋",
+  },
+  {
+    id: "sidebar-orders",
+    kind: "spotlight",
+    targetId: "tour-sidebar-orders",
+    preferSide: "right",
+    noScroll: true,
+    title: "Orders",
+    description: "Full order management. Filter by status, view tracking details, and handle returns or claims.",
+    emoji: "📦",
+  },
 
   // ── My Store toggle — user MUST click to expand so My Collections becomes visible ──
   {
@@ -204,12 +234,14 @@ const TOUR_STEPS: TourStep[] = [
     kind: "spotlight",
     targetId: "tour-sidebar-mystore",
     preferSide: "right",
+    noScroll: true,
     title: "My Store",
     description:
-      "Customise your storefront — logo, banner, colours, and page layout. Click the chevron now to expand and see My Collections inside.",
+      "Customise your storefront — logo, banner, colours, and page layout. Click the chevron now to expand and see what's inside.",
     emoji: "🎨",
     requiresClick: true,
     arrowDirection: "right",
+    arrowGap: true,
   },
 
   // ── Wait until My Collections element appears in the DOM (toggle opened) ──
@@ -220,18 +252,52 @@ const TOUR_STEPS: TourStep[] = [
     title: "", description: "", emoji: "",
   },
 
-  // ── Now spotlight My Collections (it exists in DOM) ──
-  { id: "sidebar-collections", kind: "spotlight", targetId: "tour-sidebar-collections", preferSide: "right", title: "My Collections", description: "Group products into collections — 'Summer Drop', 'Fan Merch', 'Limited Edition' — to make browsing easier for fans.", emoji: "📁" },
-  { id: "sidebar-membership",  kind: "spotlight", targetId: "tour-sidebar-membership",  preferSide: "right", title: "Membership",     description: "Offer exclusive memberships to your fans — early access, special discounts, and member-only products.", emoji: "⭐" },
+  // ── My Collections ──
+  {
+    id: "sidebar-collections",
+    kind: "spotlight",
+    targetId: "tour-sidebar-collections",
+    preferSide: "right",
+    noScroll: true,
+    title: "My Collections",
+    description: "Group products into collections — 'Summer Drop', 'Fan Merch', 'Limited Edition' — to make browsing easier for fans.",
+    emoji: "📁",
+  },
+  // ── Store Editor (NEW) ──
+  {
+    id: "sidebar-store-editor",
+    kind: "spotlight",
+    targetId: "tour-sidebar-store-editor",
+    preferSide: "right",
+    noScroll: true,
+    title: "Store Editor",
+    description: "Design your storefront visually — drag and drop sections, customise colours, add banners, and preview exactly how customers will see your store.",
+    emoji: "🖌️",
+  },
+  // ── Membership ──
+  {
+    id: "sidebar-membership",
+    kind: "spotlight",
+    targetId: "tour-sidebar-membership",
+    preferSide: "right",
+    noScroll: true,
+    title: "Membership",
+    description: "Offer exclusive memberships to your fans — early access, special discounts, and member-only products.",
+    emoji: "⭐",
+  },
 ];
 
 // ─── Geometry ─────────────────────────────────────────────────────────────────
 interface SpotlightRect { top: number; left: number; width: number; height: number; }
 interface TooltipPos    { top: number; left: number; arrowSide: "top"|"bottom"|"left"|"right"; arrowLeft: string; }
 
-const TW = 340, TH = 300, EP = 10, TO = 16, MG = 16;
+const TW = 320, TH = 280, EP = 10, TO = 20, MG = 16;
 
-function pickPos(sl: SpotlightRect, vw: number, vh: number, preferSide?: string): TooltipPos {
+// Minimum gap between sidebar right edge and tooltip left edge
+// Sidebar is ~260px; we want the tooltip at least 80px away so the arrow has room
+const SIDEBAR_TOOLTIP_MIN_LEFT = 360;
+
+function pickPos(sl: SpotlightRect, vw: number, vh: number, preferSide?: string, forceMinLeft?: boolean): TooltipPos {
   const tw = Math.min(TW, vw - MG * 2);
   const slCenterX = sl.left + sl.width / 2;
   const slCenterY = sl.top + sl.height / 2;
@@ -259,20 +325,43 @@ function pickPos(sl: SpotlightRect, vw: number, vh: number, preferSide?: string)
   let as: TooltipPos["arrowSide"];
   let rawTop: number, rawLeft: number;
 
-  if (side === "bottom") { rawTop = sl.top + sl.height + TO; rawLeft = slCenterX - tw / 2; as = "top"; }
-  else if (side === "top") { rawTop = sl.top - TH - TO; rawLeft = slCenterX - tw / 2; as = "bottom"; }
-  else if (side === "right") { rawTop = slCenterY - TH / 2; rawLeft = sl.left + sl.width + TO; as = "left"; }
-  else { rawTop = slCenterY - TH / 2; rawLeft = sl.left - tw - TO; as = "right"; }
+  if (side === "bottom") {
+    rawTop  = sl.top + sl.height + TO;
+    rawLeft = slCenterX - tw / 2;
+    as = "top";
+  } else if (side === "top") {
+    rawTop  = sl.top - TH - TO;
+    rawLeft = slCenterX - tw / 2;
+    as = "bottom";
+  } else if (side === "right") {
+    rawTop  = slCenterY - TH / 2;
+    // Only push tooltip right when the step needs a bouncing arrow gap (My Store step)
+    rawLeft = forceMinLeft
+      ? Math.max(sl.left + sl.width + TO, SIDEBAR_TOOLTIP_MIN_LEFT)
+      : sl.left + sl.width + TO;
+    as = "left";
+  } else {
+    rawTop  = slCenterY - TH / 2;
+    rawLeft = sl.left - tw - TO;
+    as = "right";
+  }
 
+  // Clamp horizontal
   const cl = Math.max(MG, Math.min(rawLeft, vw - tw - MG));
+  // Clamp vertical — keep tooltip vertically aligned near target
   let ct = rawTop;
   ct = Math.min(ct, vh - TH - MG);
   ct = Math.max(ct, MG);
 
+  // Arrow offset within the tooltip face
   let arrowPx: number;
-  if (side === "bottom" || side === "top") arrowPx = slCenterX - cl;
-  else arrowPx = slCenterY - ct;
-  arrowPx = Math.max(20, Math.min(arrowPx, tw - 20));
+  if (side === "bottom" || side === "top") {
+    arrowPx = slCenterX - cl;
+  } else {
+    // For left/right sides: arrow points at target's vertical center
+    arrowPx = slCenterY - ct;
+  }
+  arrowPx = Math.max(20, Math.min(arrowPx, (side === "bottom" || side === "top" ? tw : TH) - 20));
 
   return { top: ct, left: cl, arrowSide: as, arrowLeft: `${arrowPx}px` };
 }
@@ -283,8 +372,8 @@ function arrowStyle(side: TooltipPos["arrowSide"], al: string): React.CSSPropert
   switch (side) {
     case "top":    return { ...b, top:-11, left:al, transform:"translateX(-50%)", borderWidth:"0 11px 11px", borderColor:`transparent transparent ${C}` };
     case "bottom": return { ...b, bottom:-11, left:al, transform:"translateX(-50%)", borderWidth:"11px 11px 0", borderColor:`${C} transparent transparent` };
-    case "left":   return { ...b, left:-11, top:"50%", transform:"translateY(-50%)", borderWidth:"11px 11px 11px 0", borderColor:`transparent ${C} transparent transparent` };
-    case "right":  return { ...b, right:-11, top:"50%", transform:"translateY(-50%)", borderWidth:"11px 0 11px 11px", borderColor:`transparent transparent transparent ${C}` };
+    case "left":   return { ...b, left:-11, top:al, transform:"translateY(-50%)", borderWidth:"11px 11px 11px 0", borderColor:`transparent ${C} transparent transparent` };
+    case "right":  return { ...b, right:-11, top:al, transform:"translateY(-50%)", borderWidth:"11px 0 11px 11px", borderColor:`transparent transparent transparent ${C}` };
   }
 }
 
@@ -302,32 +391,66 @@ const ArrowIcon = ({ rotate = 0, size = 26 }: { rotate?: number; size?: number }
 
 const ClickArrow: React.FC<ClickArrowProps> = ({ sl, direction }) => {
   const btnSize = 46;
-  const gap = 10;
-  let containerStyle: React.CSSProperties = { position:"fixed", zIndex:10010, pointerEvents:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6 };
+  // FIX 2: increase gap for "right" direction so arrow sits in the space between
+  // sidebar and the tooltip card (which now starts at SIDEBAR_TOOLTIP_MIN_LEFT)
+  const gap = direction === "right" ? 50 : 10;
+
+  let containerStyle: React.CSSProperties = {
+    position: "fixed",
+    zIndex: 10010,
+    pointerEvents: "none",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  };
   let animName: string, rotate = 0;
 
   if (direction === "left") {
     containerStyle.top  = sl.top + sl.height / 2 - btnSize / 2;
     containerStyle.left = sl.left - btnSize * 2 - gap * 2;
-    containerStyle.flexDirection = "row"; animName = "tour-slide-right"; rotate = 0;
+    containerStyle.flexDirection = "row";
+    animName = "tour-slide-right";
+    rotate = 0;
   } else if (direction === "right") {
     containerStyle.top  = sl.top + sl.height / 2 - btnSize / 2;
-    containerStyle.left = sl.left + sl.width + gap;
-    containerStyle.flexDirection = "row"; animName = "tour-slide-left"; rotate = 180;
+    // Place arrow centred in the gap between sidebar edge and tooltip
+    // Sidebar right edge: sl.left + sl.width
+    // Tooltip left edge: SIDEBAR_TOOLTIP_MIN_LEFT
+    // Midpoint of gap:
+    const midpoint = (sl.left + sl.width + SIDEBAR_TOOLTIP_MIN_LEFT) / 2;
+    containerStyle.left = midpoint - btnSize / 2;
+    containerStyle.flexDirection = "row";
+    animName = "tour-slide-left";
+    rotate = 180;
   } else if (direction === "top") {
     containerStyle.top  = sl.top - btnSize - gap * 3;
     containerStyle.left = sl.left + sl.width / 2 - btnSize / 2;
-    containerStyle.flexDirection = "column"; animName = "tour-slide-down"; rotate = 90;
+    containerStyle.flexDirection = "column";
+    animName = "tour-slide-down";
+    rotate = 90;
   } else {
     containerStyle.top  = sl.top + sl.height + gap;
     containerStyle.left = sl.left + sl.width / 2 - btnSize / 2;
-    containerStyle.flexDirection = "column"; animName = "tour-slide-up"; rotate = -90;
+    containerStyle.flexDirection = "column";
+    animName = "tour-slide-up";
+    rotate = -90;
   }
 
   return (
     <div style={containerStyle}>
-      <div style={{ display:"flex", flexDirection: direction === "top" || direction === "bottom" ? "column" : "row", gap:2, animation:`${animName} 0.55s ease-in-out infinite alternate` }}>
-        <div style={{ width:btnSize, height:btnSize, borderRadius:"50%", background:BRAND_PRIMARY, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 0 0 4px ${BRAND_PRIMARY}44, 0 6px 20px ${BRAND_PRIMARY}88` }}>
+      <div style={{
+        display: "flex",
+        flexDirection: direction === "top" || direction === "bottom" ? "column" : "row",
+        gap: 2,
+        animation: `${animName} 0.55s ease-in-out infinite alternate`,
+      }}>
+        <div style={{
+          width: btnSize, height: btnSize, borderRadius: "50%",
+          background: BRAND_PRIMARY,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: `0 0 0 4px ${BRAND_PRIMARY}44, 0 6px 20px ${BRAND_PRIMARY}88`,
+        }}>
           <ArrowIcon rotate={rotate} size={22} />
         </div>
       </div>
@@ -339,72 +462,79 @@ const ClickArrow: React.FC<ClickArrowProps> = ({ sl, direction }) => {
 interface TooltipCardProps {
   step: TourStep; visibleIndex: number; visibleSteps: TourStep[]; progress: number;
   isTrans: boolean; isLast: boolean;
-  // canSkipClick: true when requiresClick but the action is already done (e.g. toggle already open)
   canSkipClick?: boolean;
   onBack: () => void; onNext: () => void; onJump: (i: number) => void; onComplete: () => void;
 }
 
-const TooltipCard: React.FC<TooltipCardProps> = ({ step, visibleIndex, visibleSteps, progress, isTrans, isLast, canSkipClick, onBack, onNext, onJump, onComplete }) => {
-  // Show normal Next/Back buttons if: not requiresClick, OR requiresClick but action already done
+const TooltipCard: React.FC<TooltipCardProps> = ({
+  step, visibleIndex, visibleSteps, progress, isTrans, isLast, canSkipClick,
+  onBack, onNext, onJump, onComplete,
+}) => {
   const showNextButton = !step.requiresClick || canSkipClick;
 
   return (
-  <div style={{ background:BRAND_PRIMARY, borderRadius:14, boxShadow:"0 24px 64px rgba(230,81,0,0.38), 0 4px 16px rgba(0,0,0,0.22)" }}>
-    <div style={{ padding:"16px 18px 18px" }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <span style={{ fontSize:10.5, fontWeight:700, letterSpacing:"0.09em", color:"rgba(255,255,255,0.68)", textTransform:"uppercase" }}>
-            Step {visibleIndex + 1} of {visibleSteps.length}
-          </span>
+    <div style={{ background: BRAND_PRIMARY, borderRadius: 14, boxShadow: "0 24px 64px rgba(230,81,0,0.38), 0 4px 16px rgba(0,0,0,0.22)" }}>
+      <div style={{ padding: "16px 18px 18px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.09em", color: "rgba(255,255,255,0.68)", textTransform: "uppercase" }}>
+              Step {visibleIndex + 1} of {visibleSteps.length}
+            </span>
+          </div>
         </div>
-      </div>
-      <h3 style={{ margin:"0 0 7px", fontSize:16, fontWeight:700, color:"white", lineHeight:1.3 }}>{step.title}</h3>
-      <p style={{ margin:"0 0 16px", fontSize:13, color:"rgba(255,255,255,0.88)", lineHeight:1.65 }}>
-        {step.requiresClick && canSkipClick
-          ? step.description.replace("Click the chevron now to expand and see My Collections inside.", "My Collections is already expanded. Click Next to continue.")
-          : step.description}
-      </p>
+        <h3 style={{ margin: "0 0 7px", fontSize: 16, fontWeight: 700, color: "white", lineHeight: 1.3 }}>{step.title}</h3>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "rgba(255,255,255,0.88)", lineHeight: 1.65 }}>
+          {step.requiresClick && canSkipClick
+            ? step.description.replace(
+                "Click the chevron now to expand and see what's inside.",
+                "Already expanded! Click Next to continue."
+              )
+            : step.description}
+        </p>
 
-      {!showNextButton ? (
-        // requiresClick and action NOT yet done — hide Next, only show Back
-        <div>
-          <div style={{ display:"flex", gap:4, marginBottom:10, flexWrap:"wrap" }}>
-            {visibleSteps.map((s, i) => (
-              <div key={s.id} style={{ width:i===visibleIndex?16:5, height:5, borderRadius:999, background:i===visibleIndex?"white":"rgba(255,255,255,0.32)", transition:"all 0.28s ease", flexShrink:0 }} />
-            ))}
-          </div>
-          {visibleIndex > 0 && (
-            <div style={{ display:"flex", justifyContent:"flex-end" }}>
-              <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, padding:"7px 14px", background:"rgba(255,255,255,0.14)", border:"1px solid rgba(255,255,255,0.24)", borderRadius:8, color:"white", fontSize:12, fontWeight:500, cursor:"pointer", pointerEvents:"auto", whiteSpace:"nowrap" }}
-                onMouseEnter={e=>(e.currentTarget.style.background="rgba(255,255,255,0.24)")}
-                onMouseLeave={e=>(e.currentTarget.style.background="rgba(255,255,255,0.14)")}
-              ><ChevronLeft size={13} /> Back</button>
+        {!showNextButton ? (
+          <div>
+            <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+              {visibleSteps.map((s, i) => (
+                <div key={s.id} style={{ width: i === visibleIndex ? 16 : 5, height: 5, borderRadius: 999, background: i === visibleIndex ? "white" : "rgba(255,255,255,0.32)", transition: "all 0.28s ease", flexShrink: 0 }} />
+              ))}
             </div>
-          )}
-        </div>
-      ) : (
-        <div>
-          <div style={{ display:"flex", gap:4, marginBottom:10, flexWrap:"wrap" }}>
-            {visibleSteps.map((s, i) => (
-              <div key={s.id} onClick={() => onJump(i)} style={{ width:i===visibleIndex?16:5, height:5, borderRadius:999, background:i===visibleIndex?"white":"rgba(255,255,255,0.32)", transition:"all 0.28s ease", cursor:"pointer", flexShrink:0 }} />
-            ))}
-          </div>
-          <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
             {visibleIndex > 0 && (
-              <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, padding:"7px 14px", background:"rgba(255,255,255,0.14)", border:"1px solid rgba(255,255,255,0.24)", borderRadius:8, color:"white", fontSize:12, fontWeight:500, cursor:"pointer", whiteSpace:"nowrap" }}
-                onMouseEnter={e=>(e.currentTarget.style.background="rgba(255,255,255,0.24)")}
-                onMouseLeave={e=>(e.currentTarget.style.background="rgba(255,255,255,0.14)")}
-              ><ChevronLeft size={13} /> Back</button>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={onBack}
+                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 14px", background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.24)", borderRadius: 8, color: "white", fontSize: 12, fontWeight: 500, cursor: "pointer", pointerEvents: "auto", whiteSpace: "nowrap" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.24)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.14)")}
+                ><ChevronLeft size={13} /> Back</button>
+              </div>
             )}
-            <button onClick={isLast ? onComplete : onNext} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 18px", background:"white", border:"none", borderRadius:8, color:BRAND_PRIMARY, fontSize:13, fontWeight:700, cursor:"pointer", boxShadow:"0 2px 8px rgba(0,0,0,0.14)", transition:"transform 0.14s, box-shadow 0.14s", whiteSpace:"nowrap" }}
-              onMouseEnter={e=>{ e.currentTarget.style.transform="scale(1.04)"; e.currentTarget.style.boxShadow="0 4px 14px rgba(0,0,0,0.2)"; }}
-              onMouseLeave={e=>{ e.currentTarget.style.transform="scale(1)"; e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.14)"; }}
-            >{isLast ? <>🎉 Let's go!</> : <>Next <ArrowRight size={13} /></>}</button>
           </div>
-        </div>
-      )}
+        ) : (
+          <div>
+            <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+              {visibleSteps.map((s, i) => (
+                <div key={s.id} onClick={() => onJump(i)}
+                  style={{ width: i === visibleIndex ? 16 : 5, height: 5, borderRadius: 999, background: i === visibleIndex ? "white" : "rgba(255,255,255,0.32)", transition: "all 0.28s ease", cursor: "pointer", flexShrink: 0 }} />
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              {visibleIndex > 0 && (
+                <button onClick={onBack}
+                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 14px", background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.24)", borderRadius: 8, color: "white", fontSize: 12, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.24)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.14)")}
+                ><ChevronLeft size={13} /> Back</button>
+              )}
+              <button onClick={isLast ? onComplete : onNext}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 18px", background: "white", border: "none", borderRadius: 8, color: BRAND_PRIMARY, fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.14)", transition: "transform 0.14s, box-shadow 0.14s", whiteSpace: "nowrap" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.04)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.2)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.14)"; }}
+              >{isLast ? <>🎉 Let's go!</> : <>Next <ArrowRight size={13} /></>}</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  </div>
   );
 };
 
@@ -436,41 +566,55 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   }, []);
 
-  // Compute spotlight + tooltip
+  // FIX 1: compute positions — skip scrollIntoView for fixed sidebar elements
   const computePositions = useCallback((idx: number) => {
     const step = TOUR_STEPS[idx];
     if (step.kind !== "spotlight" || !step.targetId) return;
     const el = document.getElementById(step.targetId);
     if (!el) return;
 
-    el.scrollIntoView({ behavior:"smooth", block:"center" });
-    if (scrollTimer.current) clearTimeout(scrollTimer.current);
-    scrollTimer.current = setTimeout(() => {
+    const doCompute = () => {
       cancelAnimationFrame(rafRef.current);
+      // Double-rAF ensures layout is fully settled before measuring
       rafRef.current = requestAnimationFrame(() => {
-        const r = el.getBoundingClientRect();
-        const vw = window.innerWidth, vh = window.innerHeight;
-        const sl: SpotlightRect = { top:r.top-EP, left:r.left-EP, width:r.width+EP*2, height:r.height+EP*2 };
-        setSpotlightRect(sl);
-        setTooltipPos(pickPos(sl, vw, vh, TOUR_STEPS[idx].preferSide));
+        rafRef.current = requestAnimationFrame(() => {
+          const r = el.getBoundingClientRect();
+          const vw = window.innerWidth, vh = window.innerHeight;
+          const sl: SpotlightRect = {
+            top:    r.top    - EP,
+            left:   r.left   - EP,
+            width:  r.width  + EP * 2,
+            height: r.height + EP * 2,
+          };
+          setSpotlightRect(sl);
+          setTooltipPos(pickPos(sl, vw, vh, TOUR_STEPS[idx].preferSide, TOUR_STEPS[idx].arrowGap));
+        });
       });
-    }, 350);
+    };
+
+    if (step.noScroll) {
+      // Element is in a fixed container — measure immediately, no scroll needed
+      doCompute();
+    } else {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+      scrollTimer.current = setTimeout(doCompute, 400);
+    }
   }, []);
 
-  // ── dom-wait: wait until domWaitId appears in DOM, then advance ──
+  // dom-wait
   const startDomWait = useCallback((idx: number) => {
     const step = TOUR_STEPS[idx];
     if (step.kind !== "dom-wait" || !step.domWaitId) return;
     clearWatchers();
 
-    // Find next non-wait step
     let targetStep = idx + 1;
-    while (targetStep < TOUR_STEPS.length &&
+    while (
+      targetStep < TOUR_STEPS.length &&
       (TOUR_STEPS[targetStep].kind === "modal-wait" ||
        TOUR_STEPS[targetStep].kind === "modal-close-wait" ||
-       TOUR_STEPS[targetStep].kind === "dom-wait")) {
-      targetStep++;
-    }
+       TOUR_STEPS[targetStep].kind === "dom-wait")
+    ) targetStep++;
 
     let triggered = false;
     const advance = () => {
@@ -481,11 +625,7 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
       setTimeout(() => { setCurrentStep(targetStep); setIsTrans(false); }, 400);
     };
 
-    const check = () => {
-      const el = document.getElementById(step.domWaitId!);
-      if (el) advance();
-    };
-
+    const check = () => { if (document.getElementById(step.domWaitId!)) advance(); };
     const obs = new MutationObserver(check);
     obs.observe(document.body, { childList: true, subtree: true });
     obsRef.current = obs;
@@ -493,7 +633,7 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
     check();
   }, [clearWatchers]);
 
-  // MutationObserver for modal-wait steps
+  // modal-wait
   const startModalWatch = useCallback((idx: number) => {
     const step = TOUR_STEPS[idx];
     if (step.kind !== "modal-wait" || !step.modalDetectId) return;
@@ -503,7 +643,6 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
     while (targetStep < TOUR_STEPS.length && TOUR_STEPS[targetStep].kind === "modal-wait") targetStep++;
 
     let triggered = false;
-
     const advance = () => {
       if (triggered) return;
       triggered = true;
@@ -532,17 +671,17 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
     check();
   }, [clearWatchers]);
 
-  // Watch for modal to DISAPPEAR
+  // modal-close-wait
   const startModalCloseWatch = useCallback((idx: number) => {
     const step = TOUR_STEPS[idx];
     if (step.kind !== "modal-close-wait" || !step.modalDetectId) return;
     clearWatchers();
 
     let targetStep = idx + 1;
-    while (targetStep < TOUR_STEPS.length &&
-      (TOUR_STEPS[targetStep].kind === "modal-wait" || TOUR_STEPS[targetStep].kind === "modal-close-wait")) {
-      targetStep++;
-    }
+    while (
+      targetStep < TOUR_STEPS.length &&
+      (TOUR_STEPS[targetStep].kind === "modal-wait" || TOUR_STEPS[targetStep].kind === "modal-close-wait")
+    ) targetStep++;
 
     let triggered = false;
     const advance = () => {
@@ -578,24 +717,24 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
   useEffect(() => {
     if (!isVisible) return;
     const step = TOUR_STEPS[currentStep];
-    // Reset canSkipClick on every step change; will be set true below if needed
     setCanSkipClick(false);
 
     if (step.kind === "spotlight") {
       setSpotlightRect(null); setTooltipPos(null);
       computePositions(currentStep);
+
       if (step.requiresClick) {
         const nextStep = TOUR_STEPS[currentStep + 1];
-        if (nextStep?.kind === "modal-wait") startModalWatch(currentStep + 1);
-        else if (nextStep?.kind === "modal-close-wait") startModalCloseWatch(currentStep + 1);
-        else if (nextStep?.kind === "dom-wait") {
+        if (nextStep?.kind === "modal-wait") {
+          startModalWatch(currentStep + 1);
+        } else if (nextStep?.kind === "modal-close-wait") {
+          startModalCloseWatch(currentStep + 1);
+        } else if (nextStep?.kind === "dom-wait") {
           const domWaitTarget = TOUR_STEPS[currentStep + 1].domWaitId;
           const alreadyExists = domWaitTarget ? !!document.getElementById(domWaitTarget) : false;
           if (alreadyExists) {
-            // Toggle already open — show Next button so user isn't stuck
             setCanSkipClick(true);
           } else {
-            // Toggle not open yet — hide Next, wait for user to click
             setCanSkipClick(false);
             startDomWait(currentStep + 1);
           }
@@ -639,7 +778,6 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
     if (nextStep?.kind === "dom-wait" && nextStep.domWaitId) {
       const el = document.getElementById(nextStep.domWaitId);
       if (el) {
-        // Find the step after the dom-wait
         let skipTo = nextIdx + 1;
         while (skipTo < TOUR_STEPS.length && (
           TOUR_STEPS[skipTo].kind === "modal-wait" ||
@@ -652,10 +790,8 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
       }
     }
 
-    if (nextIdx < TOUR_STEPS.length) {
-      setIsTrans(true);
-      setTimeout(() => { setCurrentStep(nextIdx); setIsTrans(false); }, 200);
-    } else { handleComplete(); }
+    setIsTrans(true);
+    setTimeout(() => { setCurrentStep(nextIdx); setIsTrans(false); }, 200);
   };
 
   const goBack = () => {
@@ -677,8 +813,9 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
     setTimeout(onComplete, 300);
   };
 
-  // Visible steps (exclude wait steps from dots/count)
-  const visibleSteps = TOUR_STEPS.filter(s => s.kind !== "modal-wait" && s.kind !== "modal-close-wait" && s.kind !== "dom-wait");
+  const visibleSteps = TOUR_STEPS.filter(s =>
+    s.kind !== "modal-wait" && s.kind !== "modal-close-wait" && s.kind !== "dom-wait"
+  );
   const visibleIndex = visibleSteps.findIndex(s => s.id === TOUR_STEPS[currentStep]?.id);
   const progress = ((currentStep + 1) / TOUR_STEPS.length) * 100;
   const step = TOUR_STEPS[currentStep];
@@ -693,43 +830,48 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
 
   return (
     <>
-      <div style={{ position:"fixed", inset:0, zIndex:9998, opacity:isVisible?1:0, transition:"opacity 0.3s ease", pointerEvents:"none" }}>
+      <div style={{ position: "fixed", inset: 0, zIndex: 9998, opacity: isVisible ? 1 : 0, transition: "opacity 0.3s ease", pointerEvents: "none" }}>
         {/* Dark mask */}
         {spotlightRect ? (
-          <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none" }}>
+          <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
             <defs>
               <mask id="tour-mask">
                 <rect width="100%" height="100%" fill="white" />
-                <rect x={spotlightRect.left} y={spotlightRect.top} width={spotlightRect.width} height={spotlightRect.height} rx="10" fill="black"
-                  style={{ transition:isTrans?"none":"all 0.38s cubic-bezier(0.4,0,0.2,1)" }} />
+                <rect
+                  x={spotlightRect.left} y={spotlightRect.top}
+                  width={spotlightRect.width} height={spotlightRect.height}
+                  rx="10" fill="black"
+                  style={{ transition: isTrans ? "none" : "all 0.38s cubic-bezier(0.4,0,0.2,1)" }}
+                />
               </mask>
             </defs>
             <rect width="100%" height="100%" fill="rgba(0,0,0,0.70)" mask="url(#tour-mask)" />
           </svg>
         ) : (
-          <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.70)", pointerEvents:"none" }} />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.70)", pointerEvents: "none" }} />
         )}
 
         {/* Glow ring */}
         {spotlightRect && (
           <div style={{
-            position:"absolute", top:spotlightRect.top, left:spotlightRect.left,
-            width:spotlightRect.width, height:spotlightRect.height,
-            borderRadius:10, border:`2.5px solid ${BRAND_PRIMARY}`,
-            boxShadow:`0 0 0 4px ${BRAND_PRIMARY}33, 0 0 20px 6px ${BRAND_PRIMARY}44`,
-            pointerEvents:"none",
-            transition:isTrans?"none":"all 0.38s cubic-bezier(0.4,0,0.2,1)",
-            animation:"tour-pulse 2.2s ease-in-out infinite",
+            position: "absolute",
+            top: spotlightRect.top, left: spotlightRect.left,
+            width: spotlightRect.width, height: spotlightRect.height,
+            borderRadius: 10, border: `2.5px solid ${BRAND_PRIMARY}`,
+            boxShadow: `0 0 0 4px ${BRAND_PRIMARY}33, 0 0 20px 6px ${BRAND_PRIMARY}44`,
+            pointerEvents: "none",
+            transition: isTrans ? "none" : "all 0.38s cubic-bezier(0.4,0,0.2,1)",
+            animation: "tour-pulse 2.2s ease-in-out infinite",
           }} />
         )}
 
         {/* Skip button */}
         <button onClick={handleComplete} style={{
-          position:"fixed", top:16, right:16, zIndex:10001,
-          display:"flex", alignItems:"center", gap:6,
-          padding:"8px 14px", background:"rgba(255,255,255,0.13)",
-          backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,0.28)",
-          borderRadius:999, color:"white", fontSize:13, fontWeight:500, cursor:"pointer", pointerEvents:"auto",
+          position: "fixed", top: 16, right: 16, zIndex: 10001,
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "8px 14px", background: "rgba(255,255,255,0.13)",
+          backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.28)",
+          borderRadius: 999, color: "white", fontSize: 13, fontWeight: 500, cursor: "pointer", pointerEvents: "auto",
         }}>
           <X size={13} /> Skip tour
         </button>
@@ -737,15 +879,16 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
         {/* Spotlight tooltip */}
         {tooltipPos && step.kind === "spotlight" && (
           <div style={{
-            position:"fixed", top:tooltipPos.top, left:tooltipPos.left,
-            width:Math.min(TW, window.innerWidth - MG * 2),
-            zIndex:10000,
-            opacity:isTrans?0:1,
-            transform:isTrans?"scale(0.96)":"scale(1)",
-            transition:isTrans
+            position: "fixed",
+            top: tooltipPos.top, left: tooltipPos.left,
+            width: Math.min(TW, window.innerWidth - MG * 2),
+            zIndex: 10000,
+            opacity: isTrans ? 0 : 1,
+            transform: isTrans ? "scale(0.96)" : "scale(1)",
+            transition: isTrans
               ? "opacity 0.15s ease, transform 0.15s ease"
               : "top 0.38s cubic-bezier(0.4,0,0.2,1), left 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.2s ease, transform 0.2s ease",
-            pointerEvents:"auto",
+            pointerEvents: "auto",
           }}>
             <div style={arrowStyle(tooltipPos.arrowSide, tooltipPos.arrowLeft)} />
             <TooltipCard
@@ -760,20 +903,20 @@ const DashboardTour: React.FC<DashboardTourProps> = ({ onComplete }) => {
         {/* dom-wait / modal-wait indicator */}
         {(step.kind === "modal-wait" || step.kind === "dom-wait") && (
           <div style={{
-            position:"fixed", bottom:32, left:"50%", transform:"translateX(-50%)",
-            zIndex:10000, background:"rgba(255,255,255,0.13)", backdropFilter:"blur(10px)",
-            border:"1px solid rgba(255,255,255,0.25)", borderRadius:999,
-            padding:"10px 20px", color:"white", fontSize:13, fontWeight:500,
-            display:"flex", alignItems:"center", gap:8,
-            animation:"tour-fade-in 0.3s ease",
+            position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)",
+            zIndex: 10000, background: "rgba(255,255,255,0.13)", backdropFilter: "blur(10px)",
+            border: "1px solid rgba(255,255,255,0.25)", borderRadius: 999,
+            padding: "10px 20px", color: "white", fontSize: 13, fontWeight: 500,
+            display: "flex", alignItems: "center", gap: 8,
+            animation: "tour-fade-in 0.3s ease",
           }}>
-            <span style={{ display:"inline-block", animation:"tour-spin 1.2s linear infinite", fontSize:16 }}>⏳</span>
+            <span style={{ display: "inline-block", animation: "tour-spin 1.2s linear infinite", fontSize: 16 }}>⏳</span>
             {step.kind === "dom-wait" ? "Click to expand My Store…" : "Waiting for you to open the panel…"}
           </div>
         )}
       </div>
 
-      {/* Bouncing arrow — outside overlay so never clipped. Hide if action already done. */}
+      {/* Bouncing arrow — outside overlay so never clipped */}
       {spotlightRect && step.requiresClick && step.arrowDirection && !canSkipClick && (
         <ClickArrow sl={spotlightRect} direction={step.arrowDirection} />
       )}

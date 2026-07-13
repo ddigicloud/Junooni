@@ -174,4 +174,11 @@ export interface VendorStore {
   discord_url?: string
   product_detail?: ProductDetailSettings
   custom_css?: string
+  // Add this to VendorStore interface
+  theme_data?: {
+    [templateId: string]: {
+      sections: StoreSection[]
+      page_layouts?: Partial<Record<string, { sections: StoreSection[] }>>
+    }
+  }
 }

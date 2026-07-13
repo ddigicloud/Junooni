@@ -34,6 +34,7 @@ const TOUR_IDS: Record<string, string> = {
   'Orders':         'tour-sidebar-orders',
   'My Store':       'tour-sidebar-mystore',
   'My Collections': 'tour-sidebar-collections',
+  'Store Editor' :    'tour-sidebar-store-editor',
   'Membership':     'tour-sidebar-membership',
 }
 
