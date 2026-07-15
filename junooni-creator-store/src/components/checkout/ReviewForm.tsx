@@ -17,9 +17,9 @@ const loadRazorpayScript = (): Promise<boolean> =>
   })
 
 export default function ReviewForm({
-  cart, handle, brandPrimary = "#e65100",
+  cart, handle, brandPrimary = "#e65100", isDark = false,
 }: {
-  cart: any; handle: string; brandPrimary?: string
+  cart: any; handle: string; brandPrimary?: string; isDark?: boolean
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -146,16 +146,16 @@ export default function ReviewForm({
   const loading = isPending || isProcessing
 
   return (
-    <div className="overflow-hidden bg-white border border-gray-100 shadow-sm rounded-2xl">
+    <div className={`overflow-hidden ${isDark ? "bg-gray-900" : "bg-white"} border ${isDark ? "border-white/10" : "border-gray-100"} shadow-sm rounded-2xl`}>
       {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+      <div className={`flex items-center gap-3 px-6 py-4 border-b ${isDark ? "border-white/10" : "border-gray-100"}`}>
         <div
           className="flex items-center justify-center w-8 h-8 rounded-full"
           style={{ background: brandPrimary }}
         >
           <ShieldCheck className="w-4 h-4 text-white" />
         </div>
-        <h2 className="text-base font-semibold text-gray-900">Review & Place Order</h2>
+        <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Review & Place Order</h2>
       </div>
 
       {/* Body */}
@@ -172,8 +172,8 @@ export default function ReviewForm({
             <CheckCircle2 className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900">Almost there!</p>
-            <p className="text-xs text-gray-500">Review your order details before completing your purchase</p>
+            <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Almost there!</p>
+            <p className={`text-xs ${isDark ? "text-white/50" : "text-gray-500"}`}>Review your order details before completing your purchase</p>
           </div>
         </div>
 

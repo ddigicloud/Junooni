@@ -44,7 +44,7 @@ export default function StoreHeader({
 
   const brandPrimary = store?.primary_color ?? "#e65100"
   const isDark = store?.template === "bold"
-  const handle = vendor.handle
+  const handle = vendor?.handle ?? ""
   const stickyHeader = (store as any)?.sticky_header !== false
 
   // ── Bare mode detection ────────────────────────────────────────────────────
@@ -292,30 +292,30 @@ return (
           `}>
             {(store as any)?.store_logo
               ? <Image src={(store as any).store_logo} alt={vendor.name} width={240} height={logoSizeDesktop * 2} className="object-contain w-auto md:hidden" style={{ height: logoSizeMobile }} />
-              : vendor.logo
+              : vendor?.logo
               ? <div className="overflow-hidden rounded-full ring-2 ring-gray-100 md:hidden" style={{ width: logoSizeMobile, height: logoSizeMobile }}>
                   <Image src={vendor.logo} alt={vendor.name} width={logoSizeMobile} height={logoSizeMobile} className="object-cover" />
                 </div>
               : <div className="flex items-center justify-center font-bold text-white rounded-full md:hidden"
                   style={{ width: logoSizeMobile, height: logoSizeMobile, background: brandPrimary, fontSize: logoSizeMobile * 0.4 }}>
-                  {vendor.name[0]?.toUpperCase()}
+                  {vendor?.name?.[0]?.toUpperCase()}
                 </div>
             }
             {(store as any)?.store_logo
               ? <Image src={(store as any).store_logo} alt={vendor.name} width={240} height={logoSizeDesktop * 2} className="hidden object-contain w-auto md:block" style={{ height: logoSizeDesktop }} />
-              : vendor.logo
+              : vendor?.logo
               ? <div className="hidden overflow-hidden rounded-full ring-2 ring-gray-100 md:block" style={{ width: logoSizeDesktop, height: logoSizeDesktop }}>
                   <Image src={vendor.logo} alt={vendor.name} width={logoSizeDesktop} height={logoSizeDesktop} className="object-cover" />
                 </div>
               : <div className="items-center justify-center hidden font-bold text-white rounded-full md:flex"
                   style={{ width: logoSizeDesktop, height: logoSizeDesktop, background: brandPrimary, fontSize: logoSizeDesktop * 0.4 }}>
-                  {vendor.name[0]?.toUpperCase()}
+                  {vendor?.name?.[0]?.toUpperCase()}
                 </div>
             }
             {!(store as any)?.store_logo && (
               <span className={`font-semibold ${textBase}`}
                 style={{ fontSize: logoSizeDesktop * 0.38, ...(headerText ? { color: headerText } : {}) }}>
-                {vendor.name}
+                {vendor?.name}
               </span>
             )}
           </Link>

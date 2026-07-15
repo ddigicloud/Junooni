@@ -7,10 +7,10 @@ import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
 
 const FAKE_CATEGORIES = [
-  { id: "fcat_1", name: "T-Shirts", emoji: "👕", color: "#f3f4f6", count: 12 },
-  { id: "fcat_2", name: "Hoodies", emoji: "🧥", color: "#e5e7eb", count: 8 },
-  { id: "fcat_3", name: "Accessories", emoji: "🧢", color: "#f9fafb", count: 6 },
-  { id: "fcat_4", name: "Limited Drops", emoji: "🔥", color: "#fff1f2", count: 4 },
+  { id: "fcat_1", name: "T-Shirts",     image: "/minimaltee.jpeg",     count: 12 },
+  { id: "fcat_2", name: "Hoodies",      image: "/minimalhoodie.jpeg",  count: 8  },
+  { id: "fcat_3", name: "Accessories",  image: "/minimalcap.jpeg",     count: 6  },
+  { id: "fcat_4", name: "Limited Drops",image: "/minimalmug.jpeg",     count: 4  },
 ]
 
 interface Props {
@@ -432,9 +432,12 @@ export default function CategoriesPageClient({
                 <div key={cat.id} className={`rounded-2xl overflow-hidden border cursor-default select-none ${
                   isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
                 } shadow-sm`}>
-                  <div className="aspect-square flex items-center justify-center text-6xl"
-                    style={{ backgroundColor: cat.color }}>
-                    {cat.emoji}
+                  <div className="aspect-square relative bg-gray-100 overflow-hidden">
+                    <img
+                      src={cat.image}
+                      alt={cat.name}
+                      className="w-full h-full object-cover opacity-60"
+                    />
                   </div>
                   <div className="p-4">
                     <h2 className="font-semibold text-sm mb-0.5"

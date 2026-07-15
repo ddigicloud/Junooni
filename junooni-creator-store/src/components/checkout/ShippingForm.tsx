@@ -12,9 +12,9 @@ function formatPrice(amount: number) {
 }
 
 export default function ShippingForm({
-  cart, shippingMethods, handle, brandPrimary = "#e65100",
+  cart, shippingMethods, handle, brandPrimary = "#e65100", isDark = false,
 }: {
-  cart: any; shippingMethods: any[]; handle: string; brandPrimary?: string
+  cart: any; shippingMethods: any[]; handle: string; brandPrimary?: string; isDark?: boolean
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -49,14 +49,14 @@ export default function ShippingForm({
   if (!showSelector) {
     const method = cart.shipping_methods[0]
     return (
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-6">
+      <div className={`rounded-2xl border shadow-sm p-6 ${isDark ? "bg-gray-900 border-white/10" : "bg-white border-gray-100"}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center"
               style={{ background: `${brandPrimary}20` }}>
               <CheckCircle2 className="w-4 h-4" style={{ color: brandPrimary }} />
             </div>
-            <h2 className="text-base font-semibold text-gray-900">Shipping Method</h2>
+            <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Shipping Method</h2>
             <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white"
               style={{ background: brandPrimary }}>Done</span>
           </div>
@@ -68,7 +68,7 @@ export default function ShippingForm({
             Edit
           </button>
         </div>
-        <p className="text-sm text-gray-600 mb-5">
+        <p className={`text-sm mb-5 ${isDark ? "text-white/50" : "text-gray-600"}`}>
           {method.name ?? "Standard Shipping"} —{" "}
           {method.amount ? formatPrice(method.amount) : "Free"}
         </p>
@@ -85,14 +85,14 @@ export default function ShippingForm({
 
   // ── Selector / edit view ─────────────────────────────────────────────────────
   return (
-    <div className="rounded-2xl border-2 bg-white shadow-sm overflow-hidden"
+   <div className={`rounded-2xl border-2 shadow-sm overflow-hidden ${isDark ? "bg-gray-900" : "bg-white"}`}
       style={{ borderColor: brandPrimary }}>
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+      <div className={`flex items-center gap-3 px-6 py-4 border-b ${isDark ? "border-white/10" : "border-gray-100"}`}>
         <div className="w-8 h-8 rounded-full flex items-center justify-center"
           style={{ background: brandPrimary }}>
           <Truck className="w-4 h-4 text-white" />
         </div>
-        <h2 className="text-base font-semibold text-gray-900">Shipping Method</h2>
+        <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Shipping Method</h2>
         {hasShipping && (
           <button
             onClick={() => router.push(`/${handle}/checkout?step=payment`)}
@@ -116,7 +116,9 @@ export default function ShippingForm({
               return (
                 <label key={method.id}
                   className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    isSelected ? "bg-orange-50" : "border-gray-200 hover:border-gray-300"
+                    isSelected
+                      ? isDark ? "bg-white/10" : "bg-orange-50"
+                      : isDark ? "border-white/10 hover:border-white/20" : "border-gray-200 hover:border-gray-300"
                   }`}
                   style={isSelected ? { borderColor: brandPrimary } : {}}
                 >
@@ -125,7 +127,7 @@ export default function ShippingForm({
                     className="w-4 h-4 " style={{ accentColor: brandPrimary }}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-gray-900">{method.name}</p>
+                    <p className={`font-medium text-sm ${isDark ? "text-white" : "text-gray-900"}`}>{method.name}</p>
                   </div>
                   <p className="text-sm font-semibold shrink-0" style={{ color: brandPrimary }}>
                     {method.amount ? formatPrice(method.amount) : "Free"}

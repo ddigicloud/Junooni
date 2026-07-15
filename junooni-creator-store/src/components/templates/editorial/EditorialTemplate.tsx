@@ -9,6 +9,7 @@ import { useCart } from "@/context/CartContext"
 import type { PublicVendor, VendorStore, Product, StoreSection, CategoryMeta, CollectionMeta } from "@/lib/types"
 import ProductCard from "@/components/ui/ProductCard"
 import AnnouncementBar from "@/components/sections/AnnouncementBar"
+import ProductCarousel from "@/components/ui/ProductCarousel"
 import SocialSection from "@/components/sections/SocialSection"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
@@ -256,16 +257,26 @@ function EditorialSection({
 
       // ── Collect all images for the card deck ──────────────────────────────
       const heroImages: string[] = (() => {
-        const imgs: string[] = []
-        const main = (section as any).hero_image_right
-        if (main) imgs.push(main)
-        // Additional uploaded images stored as hero_images array
-        const extra: string[] = (section as any).hero_images ?? []
-        extra.forEach(img => { if (img && !imgs.includes(img)) imgs.push(img) })
-        // Always ensure at least 3 items so deck always shows 3 cards
+        const PLACEHOLDERS = [
+          "/minimal-template-banner.png",
+          "/bold-template-banner.png",
+          "/editorial-template-banner.png",
+        ]
         const placeholder = typeof editorialtemplatebanner === "string"
           ? editorialtemplatebanner
           : (editorialtemplatebanner as any).src ?? (editorialtemplatebanner as any).default ?? ""
+
+        const imgs: string[] = []
+
+        // Only push hero_image_right if it's a real uploaded image
+        const main = (section as any).hero_image_right
+        if (main && !PLACEHOLDERS.includes(main)) imgs.push(main)
+
+        // Additional uploaded images
+        const extra: string[] = (section as any).hero_images ?? []
+        extra.forEach(img => { if (img && !imgs.includes(img)) imgs.push(img) })
+
+        // Always ensure at least 3 items so deck always shows 3 cards
         while (imgs.length < 3) imgs.push(placeholder)
         return imgs
       })()
@@ -333,9 +344,9 @@ function EditorialSection({
       const limited = products.slice(0, section.limit ?? 12)
       if (!limited.length && !isEditorMode) return null
       return (
-        <section id="products" className="px-6 py-16 border-t border-gray-100"
+        <section id="products" className="py-16 border-t border-gray-100"
           style={{ backgroundColor: sectionBg ?? "transparent" }}>
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-6xl mx-auto px-6">
             {section.title && (
               <div className="flex items-center gap-4 mb-10">
                 <h2 className="text-xs uppercase tracking-[0.3em] font-semibold"
@@ -343,14 +354,16 @@ function EditorialSection({
                 <div className="flex-1 h-px bg-gray-200" />
               </div>
             )}
-            {limited.length === 0 ? (
-              <PlaceholderProductGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
-            ) : (
-              <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
-                {limited.map(p => <ProductCard key={p.id} product={p} handle={handle} />)}
-              </div>
-            )}
           </div>
+          {limited.length === 0 ? (
+            <div className="px-6">
+              <PlaceholderProductGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
+            </div>
+          ) : (
+            <div className="px-6">
+              <ProductCarousel products={limited} handle={handle} bare={bare} brandPrimary={brandPrimary} variant="light" />
+            </div>
+          )}
         </section>
       )
     }

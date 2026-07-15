@@ -22,7 +22,7 @@ import { StyleSection, Field, EditorInput, EditorTextarea, UploadOnlyImageField 
 import { PageEditorPanel } from "./PageEditorPanel"
 import boldpreview from "@/assets/bold-preview.jpeg"
 import minimalpreview from "@/assets/minimal-preview.jpeg"
-import editorialpreview from "@/assets/editorial-preview.jpeg"
+import editorialpreview from "@/assets/editorial-preview.png"
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

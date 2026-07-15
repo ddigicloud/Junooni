@@ -295,7 +295,7 @@ export default function BillingHistoryPage() {
                   : "Your payment history will appear here once payments are processed."}
               </p>
               {currentPlan === "free" && (
-                <button onClick={() => navigate({ to: "/store/membership" })}
+                <button onClick={() => navigate({ to: "/membership" })}
                   className="px-4 py-2 mt-4 text-sm font-semibold text-white transition-opacity rounded-xl hover:opacity-80"
                   style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
                   View Plans

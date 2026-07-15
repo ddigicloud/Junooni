@@ -686,22 +686,59 @@ export function SectionSettings({ section, onChange, token, backendUrl, isDark,
           </div>
           <span className={`text-xs ${textPrimary}`}>Auto-slide cards</span>
         </label>
-        <p className={`text-[10px] ${textFaint} opacity-60 -mt-2`}>
+        {/* <p className={`text-[10px] ${textFaint} opacity-60 -mt-2`}>
           Only applies to Editorial template card deck
-        </p>
+        </p> */}
+
+        {/* ── Show right image toggle — minimal template only ── */}
+        {storeTemplate === "minimal" && (
+          <div className={`pt-3 border-t ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+            <label className="flex items-center gap-2 cursor-pointer mb-3">
+              <div className="relative shrink-0"
+                onClick={() => onChange({ hide_right_image: !(section as any).hide_right_image } as any)}>
+                <div className={`w-8 h-4 rounded-full transition-colors ${(section as any).hide_right_image ? "bg-gray-600" : "bg-orange-500"}`} />
+                <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${(section as any).hide_right_image ? "" : "translate-x-4"}`} />
+              </div>
+              <span className={`text-xs ${textPrimary}`}>Show right side image</span>
+            </label>
+
+            {/* Text alignment — only when image is hidden */}
+            {(section as any).hide_right_image && (
+              <div>
+                <label className={`text-[10px] ${textFaint} block mb-1.5`}>Text alignment</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["left", "center", "right"] as const).map(align => (
+                    <button key={align}
+                      onClick={() => onChange({ text_alignment: align } as any)}
+                      className={`py-1.5 rounded-lg border text-xs capitalize transition-all ${
+                        ((section as any).text_alignment ?? "left") === align
+                          ? "border-orange-500/50 bg-orange-500/10 text-orange-400"
+                          : isDark ? "border-gray-700 text-gray-400" : "border-gray-200 text-gray-500"
+                      }`}>
+                      {align}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <UploadOnlyImageField label="Background image" value={section.background_image ?? ""}
           onChange={v => onChange({ background_image: v || undefined })}
           onUpload={() => triggerUpload("background_image")}
           isUploading={uploadingKey === "background_image"} isDark={isDark} />
-        <UploadOnlyImageField label="Right side image"
-          value={[
-            "/minimal-template-banner.png",
-            "/bold-template-banner.png",
-            "/editorial-template-banner.png",
-          ].includes((section as any).hero_image_right ?? "") ? "" : ((section as any).hero_image_right ?? "")}
-          onChange={v => onChange({ hero_image_right: v || undefined } as any)}
-          onUpload={() => triggerUpload("hero_image_right")}
-          isUploading={uploadingKey === "hero_image_right"} isDark={isDark} previewHeight={120} />
+        {!(section as any).hide_right_image && (
+            <UploadOnlyImageField label="Right side image"
+              value={[
+                "/minimal-template-banner.png",
+                "/bold-template-banner.png",
+                "/editorial-template-banner.png",
+              ].includes((section as any).hero_image_right ?? "") ? "" : ((section as any).hero_image_right ?? "")}
+              onChange={v => onChange({ hero_image_right: v || undefined } as any)}
+              onUpload={() => triggerUpload("hero_image_right")}
+              isUploading={uploadingKey === "hero_image_right"} isDark={isDark} previewHeight={120} />
+          )}
 
         {/* ── Additional images for Editorial card deck ── */}
         {/* ── Additional images — only for editorial template ── */}

@@ -575,6 +575,7 @@ export default function StoreEditorPage() {
   }
 
   // Keep theme_data always in sync with current active theme
+  // Keep theme_data always in sync with current active theme (sections + styles)
   useEffect(() => {
     if (!store.template || isLoading) return
     const currentThemeId = store.template
@@ -585,32 +586,81 @@ export default function StoreEditorPage() {
         [currentThemeId]: {
           sections: p.sections?.sections ?? [],
           page_layouts: (p.sections as any)?.page_layouts ?? {},
+          styles: {
+            primary_color:   p.primary_color,
+            secondary_color: p.secondary_color,
+            font:            p.font,
+            button_style:    (p as any).button_style,
+            border_radius:   (p as any).border_radius,
+            product_card:    (p as any).product_card,
+            accent_color:    (p as any).accent_color,
+            custom_css:      (p as any).custom_css,
+            product_detail:  (p as any).product_detail,
+            checkout_settings: (p as any).checkout_settings,
+          },
         },
       },
     }))
-  }, [store.sections, store.template, isLoading])
+  }, [store.sections, store.template, store.primary_color, store.secondary_color, store.font, (store as any).product_detail, (store as any).checkout_settings, isLoading])
 
   const switchTheme = useCallback((newTemplateId: string) => {
     if (newTemplateId === store.template) return
     patchStore(p => {
       const currentThemeId = p.template ?? "minimal"
+
+      // Snapshot current theme — sections + styles
       const updatedThemeData = {
         ...(p.theme_data ?? {}),
         [currentThemeId]: {
           sections: p.sections?.sections ?? [],
           page_layouts: (p.sections as any)?.page_layouts ?? {},
+          styles: {
+            primary_color:   p.primary_color,
+            secondary_color: p.secondary_color,
+            font:            p.font,
+            button_style:    (p as any).button_style,
+            border_radius:   (p as any).border_radius,
+            product_card:    (p as any).product_card,
+            accent_color:    (p as any).accent_color,
+            custom_css:      (p as any).custom_css,
+            product_detail:  (p as any).product_detail,
+            checkout_settings: (p as any).checkout_settings,
+          },
         },
       }
+
       const savedTheme = updatedThemeData[newTemplateId]
+
+      // Restore sections
       const newSections = savedTheme?.sections?.length
         ? savedTheme.sections
         : buildDefaultSectionsForTheme(newTemplateId)
       const newPageLayouts = savedTheme?.page_layouts ?? {}
+
+      // Restore styles — if new theme has no saved styles, use defaults per theme
+      const defaultStyles: Record<string, { primary_color: string; secondary_color: string; font: string }> = {
+        minimal:   { primary_color: "#e65100", secondary_color: "#000000", font: "inter" },
+        bold:      { primary_color: "#ff3b30", secondary_color: "#1c1c1e", font: "montserrat" },
+        editorial: { primary_color: "#2d6a4f", secondary_color: "#1b1b1b", font: "playfair" },
+      }
+      const restoredStyles = savedTheme?.styles ?? defaultStyles[newTemplateId] ?? defaultStyles.minimal
+
       return {
         ...p,
         template: newTemplateId,
         theme_data: updatedThemeData,
         sections: { sections: newSections, page_layouts: newPageLayouts },
+        // Restore style fields to top-level store
+        primary_color:   restoredStyles.primary_color   ?? p.primary_color,
+        secondary_color: restoredStyles.secondary_color ?? p.secondary_color,
+        font:            restoredStyles.font            ?? p.font,
+        ...((restoredStyles as any).button_style  ? { button_style:  (restoredStyles as any).button_style  } : {}),
+        ...((restoredStyles as any).border_radius ? { border_radius: (restoredStyles as any).border_radius } : {}),
+        ...((restoredStyles as any).product_card  ? { product_card:  (restoredStyles as any).product_card  } : {}),
+        ...((restoredStyles as any).accent_color  ? { accent_color:  (restoredStyles as any).accent_color  } : {}),
+        ...((restoredStyles as any).custom_css    ? { custom_css:    (restoredStyles as any).custom_css    } : {}),
+        ...((restoredStyles as any).product_detail     ? { product_detail:     (restoredStyles as any).product_detail     } : {}),
+        ...((restoredStyles as any).checkout_settings  ? { checkout_settings:  (restoredStyles as any).checkout_settings  } : {}),
       }
     })
   }, [store.template, patchStore])

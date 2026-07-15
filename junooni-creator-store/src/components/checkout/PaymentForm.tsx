@@ -27,9 +27,9 @@ function getProviderLabel(id: string) {
 }
 
 export default function PaymentForm({
-  cart, paymentMethods, handle, brandPrimary = "#e65100",
+  cart, paymentMethods, handle, brandPrimary = "#e65100", isDark = false,
 }: {
-  cart: any; paymentMethods: any[]; handle: string; brandPrimary?: string
+  cart: any; paymentMethods: any[]; handle: string; brandPrimary?: string; isDark?: boolean
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -65,14 +65,14 @@ export default function PaymentForm({
   if (!showSelector) {
     const info = getProviderLabel(activeSession.provider_id)
     return (
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-6">
+      <div className={`rounded-2xl border ${isDark ? "border-white/10" : "border-gray-100"} ${isDark ? "bg-gray-900" : "bg-white"} shadow-sm p-6`}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center"
               style={{ background: `${brandPrimary}20` }}>
               <CheckCircle2 className="w-4 h-4" style={{ color: brandPrimary }} />
             </div>
-            <h2 className="text-base font-semibold text-gray-900">Payment</h2>
+            <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Payment</h2>
             <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white"
               style={{ background: brandPrimary }}>Done</span>
           </div>
@@ -84,7 +84,7 @@ export default function PaymentForm({
             Edit
           </button>
         </div>
-        <p className="text-sm text-gray-600 ml-11 mb-4">{info.icon} {info.label}</p>
+        <p className={`text-sm ${isDark ? "text-white/50" : "text-gray-600"} ml-11 mb-4`}>{info.icon} {info.label}</p>
         <button
           onClick={() => router.push(`/${handle}/checkout?step=review${isPreview ? "&__preview=1" : ""}`)}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm transition-all hover:opacity-90"
@@ -98,18 +98,18 @@ export default function PaymentForm({
 
   // ── Selector / edit view ─────────────────────────────────────────────────────
   return (
-    <div className="rounded-2xl border-2 bg-white shadow-sm overflow-hidden"
+    <div className={`rounded-2xl border-2 ${isDark ? "bg-gray-900" : "bg-white"} shadow-sm overflow-hidden`}
       style={{ borderColor: brandPrimary }}>
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+      <div className={`flex items-center gap-3 px-6 py-4 border-b ${isDark ? "border-white/10" : "border-gray-100"}`}>
         <div className="w-8 h-8 rounded-full flex items-center justify-center"
           style={{ background: brandPrimary }}>
           <CreditCard className="w-4 h-4 text-white" />
         </div>
-        <h2 className="text-base font-semibold text-gray-900">Payment</h2>
+        <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Payment</h2>
         {hasPayment && (
           <button
             onClick={() => router.push(`/${handle}/checkout?step=review`)}
-            className="ml-auto text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            className={`ml-auto text-sm ${isDark ? "text-white/50" : "text-gray-400"} hover:${isDark ? "text-white" : "text-gray-600"} transition-colors`}
           >
             Cancel
           </button>
@@ -117,7 +117,7 @@ export default function PaymentForm({
       </div>
 
       <div className="p-6 space-y-4">
-        <p className="text-xs text-gray-400 flex items-center gap-1.5">
+        <p className={`text-xs ${isDark ? "text-white/50" : "text-gray-400"} flex items-center gap-1.5`}>
           <span>🔒</span> Your payment info is secure and encrypted
         </p>
 
@@ -134,11 +134,19 @@ export default function PaymentForm({
               >
                 <input type="radio" name="payment_method" value={method.id}
                   checked={isSelected} onChange={() => setSelected(method.id)}
-                  className="w-4 h-4 mt-0.5 " style={{ accentColor: brandPrimary }}
+                  className="w-4 h-4 mt-0.5" style={{ accentColor: brandPrimary }}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm text-gray-900">{info.icon} {info.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{info.desc}</p>
+                  <p className={`font-medium text-sm ${
+                    isSelected || !isDark ? "text-gray-900" : "text-white"
+                  }`}>
+                    {info.icon} {info.label}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${
+                    isSelected || !isDark ? "text-gray-500" : "text-white/50"
+                  }`}>
+                    {info.desc}
+                  </p>
                 </div>
               </label>
             )

@@ -7,10 +7,10 @@ import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
 
 const FAKE_COLLECTIONS = [
-  { id: "fcol_1", title: "Summer Drops", emoji: "☀️", color: "#fef9c3", count: 8 },
-  { id: "fcol_2", title: "Fan Favourites", emoji: "⭐", color: "#f0fdf4", count: 12 },
-  { id: "fcol_3", title: "Limited Edition", emoji: "🔥", color: "#fff1f2", count: 4 },
-  { id: "fcol_4", title: "Accessories", emoji: "🧢", color: "#eff6ff", count: 6 },
+  { id: "fcol_1", title: "Summer Drops",    image: "/minimaltee.jpeg",    count: 8  },
+  { id: "fcol_2", title: "Fan Favourites",  image: "/minimalhoodie.jpeg", count: 12 },
+  { id: "fcol_3", title: "Limited Edition", image: "/minimalcap.jpeg",    count: 4  },
+  { id: "fcol_4", title: "Accessories",     image: "/minimalmug.jpeg",    count: 6  },
 ]
 
 interface Props {
@@ -431,9 +431,12 @@ export default function CollectionsPageClient({
                 <div key={col.id} className={`rounded-2xl overflow-hidden border cursor-default select-none ${
                   isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"
                 }`}>
-                  <div className="aspect-[4/5] flex items-center justify-center text-7xl"
-                    style={{ backgroundColor: col.color }}>
-                    {col.emoji}
+                  <div className="aspect-[4/5] relative bg-gray-100 overflow-hidden">
+                    <img
+                      src={col.image}
+                      alt={col.title}
+                      className="w-full h-full object-cover opacity-60"
+                    />
                   </div>
                   <div className="p-5">
                     <h2 className="font-semibold text-base mb-0.5"

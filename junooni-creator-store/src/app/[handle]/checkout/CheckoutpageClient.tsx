@@ -224,7 +224,7 @@ const paymentComplete = isPreviewMode || (
 
         <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
           <div className="min-w-0 space-y-4">
-            <AddressForm cart={activeCart} handle={handle} brandPrimary={brandPrimary} isDark={isDark} />
+           <AddressForm cart={activeCart} handle={handle} brandPrimary={brandPrimary} isDark={isDark} />
 
             {(step === "delivery" || step === "payment" || step === "review") && addressComplete && (
               <ShippingForm
@@ -232,6 +232,7 @@ const paymentComplete = isPreviewMode || (
                 shippingMethods={shippingMethods ?? []}
                 handle={handle}
                 brandPrimary={brandPrimary}
+                isDark={isDark}
               />
             )}
 
@@ -241,11 +242,12 @@ const paymentComplete = isPreviewMode || (
                 paymentMethods={paymentMethods ?? []}
                 handle={handle}
                 brandPrimary={brandPrimary}
+                isDark={isDark}
               />
             )}
 
             {step === "review" && paymentComplete && (
-              <ReviewForm cart={activeCart} handle={handle} brandPrimary={brandPrimary} />
+              <ReviewForm cart={activeCart} handle={handle} brandPrimary={brandPrimary} isDark={isDark} />
             )}
 
             {/* ── Editor-added sections ── */}
@@ -280,25 +282,34 @@ const paymentComplete = isPreviewMode || (
           </div>
 
           {/* ── Order Summary ── */}
-          <div className={`rounded-2xl border ${isDark ? "border-white/10 bg-white/5" : "border-gray-100 bg-white"} shadow-sm p-6 sticky top-24`}>
+          <div className={`rounded-2xl border ${isDark ? "border-white/10 bg-gray-900" : "border-gray-100 bg-white"} shadow-sm p-6 sticky top-24`}>
             <h3 className={`text-xs font-semibold uppercase tracking-widest mb-4 ${isDark ? "text-white/40" : "text-gray-400"}`}>
               Order Summary
             </h3>
 
             {activeCart.items?.length === 0 ? (
-              <div className={`py-8 text-center text-sm ${isDark ? "text-white/30" : "text-gray-400"}`}>
-                <p>No items in cart</p>
-                <p className="mt-1 text-xs opacity-60">Add products to see your order summary</p>
+              <div className="py-6 text-center">
+                <img
+                  src="/minimaltee.jpeg"
+                  alt="No items"
+                  className="w-16 h-16 object-cover rounded-xl mx-auto mb-3 opacity-40"
+                />
+                <p className={`text-sm ${isDark ? "text-white/40" : "text-gray-400"}`}>No items in cart</p>
+                <p className={`mt-1 text-xs opacity-60 ${isDark ? "text-white/30" : "text-gray-400"}`}>Add products to see your order summary</p>
               </div>
             ) : (
               <div className="mb-4 space-y-4">
                 {activeCart.items?.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-3">
-                    <div className="relative bg-gray-100 w-14 h-14 rounded-xl shrink-0 overflow">
-                      {item.thumbnail ? (
+                    <div className="relative bg-gray-100 w-14 h-14 rounded-xl shrink-0 overflow-hidden">
+                      {item.thumbnail && !item.thumbnail.includes("placehold") ? (
                         <Image src={item.thumbnail} alt={item.title} fill className="object-cover rounded-xl" />
                       ) : (
-                        <div className="flex items-center justify-center w-full h-full text-2xl">👕</div>
+                        <img
+                          src="/minimaltee.jpeg"
+                          alt={item.title}
+                          className="w-full h-full object-cover rounded-xl opacity-60"
+                        />
                       )}
                       <div
                         className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-white text-[10px] flex items-center justify-center font-bold"

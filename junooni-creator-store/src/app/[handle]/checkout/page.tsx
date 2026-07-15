@@ -32,6 +32,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
     retrieveCart(handle),
   ])
 
+  console.log("🔍 cart?.id:", cart?.id, "isEditorPreview:", isEditorPreview)
   if (!data) notFound()
 
   if (!isEditorPreview && (!cart || !cart.items?.length)) {
@@ -62,8 +63,17 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   }
 
   const [shippingMethods, paymentMethods] = await Promise.all([
-    listCartShippingMethods(handle, cart?.id ?? ""),
-    listCartPaymentMethods(cart?.region?.id ?? ""),
+    cart?.id
+      ? listCartShippingMethods(handle, cart.id)
+      : isEditorPreview
+        ? Promise.resolve([
+            { id: "preview_standard", name: "Standard Shipping (3-5 days)", amount: 0 },
+            { id: "preview_express",  name: "Express Shipping (1-2 days)",  amount: 9900 },
+          ])
+        : Promise.resolve([]),
+    cart?.region?.id
+      ? listCartPaymentMethods(cart.region.id)
+      : Promise.resolve([]),
   ])
 
   return (

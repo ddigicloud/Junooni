@@ -241,7 +241,7 @@ export default function MinimalTemplate({ vendor, store: initialStore, products,
     store?.font === "raleway"    ? "font-raleway" :
     store?.font === "montserrat" ? "font-montserrat" :
     "font-inter"
-  const handle = vendor.handle
+  const handle = vendor?.handle ?? ""
   const productCard = (store as any)?.product_card ?? {}
   const cardAspectRatio = productCard.aspect_ratio ?? "square"
   const cardAlignment   = productCard.alignment ?? "left"
@@ -351,7 +351,7 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
   bare: boolean
   isEditorMode: boolean
 }) {
-  const handle = vendor.handle
+  const handle = vendor?.handle ?? ""
   if ((section as any).hidden) return null
 
   switch (section.type) {
@@ -408,7 +408,13 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
           )}
 
           <div className="relative z-10 px-6 py-16 mx-auto max-w-7xl md:py-24">
-            <div className="flex flex-col items-center gap-12 md:flex-row">
+            <div className={`flex flex-col gap-12 ${
+              (section as any).hide_right_image
+                ? (section as any).text_alignment === "center" ? "items-center text-center"
+                : (section as any).text_alignment === "right"  ? "items-end text-right"
+                : "items-start text-left"
+                : "items-center md:flex-row"
+            }`}>
               {/* Text side */}
               <motion.div
                 className="flex-1"
@@ -439,12 +445,24 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
                 </h1>
 
                 {(section.subtext || store?.tagline || "Your tagline goes here") && (
-                  <p className="max-w-md mb-8 text-lg leading-relaxed" style={{ color: subtextColor }}>
+                  <p className={`max-w-md mb-8 text-lg leading-relaxed ${
+                    (section as any).hide_right_image
+                      ? (section as any).text_alignment === "center" ? "mx-auto"
+                      : (section as any).text_alignment === "right"  ? "ml-auto"
+                      : ""
+                      : ""
+                  }`} style={{ color: subtextColor }}>
                     {section.subtext || store?.tagline || "Your tagline goes here"}
                   </p>
                 )}
 
-                <div className="flex flex-wrap gap-3">
+               <div className={`flex flex-wrap gap-3 ${
+                  (section as any).hide_right_image
+                    ? (section as any).text_alignment === "center" ? "justify-center"
+                    : (section as any).text_alignment === "right"  ? "justify-end"
+                    : "justify-start"
+                    : "justify-start"
+                }`}>
                   {/* Primary CTA */}
                   {section.cta_label && (
                     <Link
@@ -477,7 +495,8 @@ function MinimalSection({ section, vendor, store, products, categories, collecti
               </motion.div>
 
               {/* Creator image/logo side */}
-              {((section as any).hero_image_right ?? minimaltemplatebanner) && (
+             {/* Creator image/logo side — hidden when hide_right_image is true */}
+              {!(section as any).hide_right_image && ((section as any).hero_image_right ?? minimaltemplatebanner) && (
                 <motion.div
                   className="w-full shrink-0 md:w-80 lg:w-96"
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -1510,9 +1529,9 @@ function FeaturedProductWidget({ section, product, handle, brandPrimary, section
 
 // ── Default sections ──────────────────────────────────────────────────────────
 
-function defaultSections(vendor: PublicVendor): StoreSection[] {
+function defaultSections(vendor: PublicVendor | undefined): StoreSection[] {
   return [
-    { type: "hero", headline: vendor.name, subtext: vendor.creator_title ?? undefined, cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: undefined } as any,
+    { type: "hero", headline: vendor?.name ?? undefined, subtext: vendor?.creator_title ?? undefined, cta_label: "Shop Now", cta_secondary_label: "Browse all", cta_secondary_url: "/products", hero_image_right: undefined } as any,
     { type: "collection", title: "All Products", limit: 12 },
     { type: "divider" },
     { type: "about", title: "About Me" },

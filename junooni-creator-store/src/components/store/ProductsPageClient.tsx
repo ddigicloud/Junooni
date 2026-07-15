@@ -5,6 +5,7 @@ import ProductGrid from "@/components/store/ProductGrid"
 import PageSections from "@/components/store/PageSections"
 import StoreHeader from "@/components/store/StoreHeader"
 import StoreFooter from "@/components/store/StoreFooter"
+import PlaceholderProductGrid from "@/components/store/PlaceholderProductGrid"
 
 interface Props {
   vendor: any
@@ -160,30 +161,34 @@ export default function ProductsPageClient({
           )}
         </div>
 
-        <ProductGrid
-          products={products}
-          categories={categories}
-          collections={collections}
-          handle={handle}
-          brandPrimary={brandPrimary}
-          textColor={gridTextColor} 
-          isDark={isDark}
-          columns={gridColumns}
-          showProductCount={showProductCount}
-          limit={gridLimit}
-          showSoldOut={showSoldOut}
-          showFilters={showFilters}
-          showSort={showSort}
-          showPriceFilter={showPriceFilter}
-          showCategoryFilter={showCategoryFilter}
-          showCollectionFilter={showCollectionFilter}
-          cardAspectRatio={cardAspectRatio}
-          cardAlignment={cardAlignment}
-          cardShowPrice={cardShowPrice}
-          cardShowHover={cardShowHover}
-          cardShowSoldOut={cardShowSoldOut}
-          filterOrder={filterOrder}
-        />
+        {products.length === 0 ? (
+          <PlaceholderProductGrid columns={gridColumns} brandPrimary={brandPrimary} />
+        ) :  (
+          <ProductGrid
+            products={products}
+            categories={categories}
+            collections={collections}
+            handle={handle}
+            brandPrimary={brandPrimary}
+            textColor={gridTextColor}
+            isDark={isDark}
+            columns={gridColumns}
+            showProductCount={showProductCount}
+            limit={gridLimit}
+            showSoldOut={showSoldOut}
+            showFilters={showFilters}
+            showSort={showSort}
+            showPriceFilter={showPriceFilter}
+            showCategoryFilter={showCategoryFilter}
+            showCollectionFilter={showCollectionFilter}
+            cardAspectRatio={cardAspectRatio}
+            cardAlignment={cardAlignment}
+            cardShowPrice={cardShowPrice}
+            cardShowHover={cardShowHover}
+            cardShowSoldOut={cardShowSoldOut}
+            filterOrder={filterOrder}
+          />
+        )}
       </div>
 
       <PageSections

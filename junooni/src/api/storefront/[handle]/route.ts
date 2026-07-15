@@ -130,9 +130,33 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 
   // ── 5. Shell-only: skip the expensive products query and return early ──
   if (req.query.shell === "true") {
+    // Fetch all vendor product IDs so we can compute collection counts
+    let shellProductIds: Set<string> = new Set()
+    try {
+      const { data: allIds } = await query.index({
+        entity: "product",
+        fields: ["id"],
+        filters: {
+          status: "published",
+          sales_channels: { id: [CREATOR_STORE_SC] },
+          vendor: { id: [vendor.id] },
+        },
+        pagination: { take: 1000, skip: 0 },
+      })
+      if (allIds?.length) shellProductIds = new Set(allIds.map((p: any) => p.id))
+    } catch (err) {
+      console.error("[store-front] shell id-only count query failed:", err)
+    }
+
     const shellCollections = rawVendorCollections
       .filter((c: any) => c.is_visible !== false)
       .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((c: any) => ({
+        ...c,
+        product_count: (c.product_ids ?? []).filter((id: string) =>
+          shellProductIds.has(id)
+        ).length,
+      }))
 
     return res.json({
       vendor:      publicVendor,

@@ -6,20 +6,23 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { setAddresses } from "@/lib/cart"
 import { Loader2, MapPin, CheckCircle2, ArrowRight } from "lucide-react"
 
-const INPUT_CLASS =
-  "w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all"
+function getInputClass(isDark: boolean) {
+  return isDark
+    ? "w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 transition-all"
+    : "w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all"
+}
 
-function Field({ label, name, type = "text", placeholder, required, defaultValue, brandPrimary }: {
+function Field({ label, name, type = "text", placeholder, required, defaultValue, brandPrimary, isDark = false }: {
   label: string; name: string; type?: string; placeholder?: string
-  required?: boolean; defaultValue?: string; brandPrimary: string
+  required?: boolean; defaultValue?: string; brandPrimary: string; isDark?: boolean
 }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">
+      <label className={`block text-xs font-semibold mb-1.5 uppercase tracking-wider ${isDark ? "text-white/50" : "text-gray-600"}`}>
         {label} {required && <span style={{ color: brandPrimary }}>*</span>}
       </label>
       <input type={type} name={name} placeholder={placeholder} required={required}
-        defaultValue={defaultValue} className={INPUT_CLASS} />
+        defaultValue={defaultValue} className={getInputClass(isDark)} />
     </div>
   )
 }
@@ -61,14 +64,14 @@ export default function AddressForm({
 
   if (!showForm) {
     return (
-      <div className="p-6 bg-white border border-gray-100 shadow-sm rounded-2xl">
+      <div className={`p-6 border shadow-sm rounded-2xl ${isDark ? "bg-gray-900 border-white/10" : "bg-white border-gray-100"}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-8 h-8 rounded-full"
               style={{ background: `${brandPrimary}20` }}>
               <CheckCircle2 className="w-4 h-4" style={{ color: brandPrimary }} />
             </div>
-            <h2 className="text-base font-semibold text-gray-900">Shipping Address</h2>
+            <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Shipping Address</h2>
             <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white"
               style={{ background: brandPrimary }}>Done</span>
           </div>
@@ -79,14 +82,14 @@ export default function AddressForm({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 mb-5 text-sm text-gray-600 sm:grid-cols-2">
+       <div className={`grid grid-cols-1 gap-4 mb-5 text-sm sm:grid-cols-2 ${isDark ? "text-white/50" : "text-gray-600"}`}>
           <div>
-            <p className="font-medium text-gray-900">{addr.first_name} {addr.last_name}</p>
+            <p className={`font-medium ${isDark ? "text-white" : "text-gray-900"}`}>{addr.first_name} {addr.last_name}</p>
             <p>{addr.address_1}</p>
             <p>{addr.city}, {addr.province} {addr.postal_code}</p>
           </div>
           <div>
-            <p className="font-medium text-gray-900">Contact</p>
+            <p className={`font-medium ${isDark ? "text-white" : "text-gray-900"}`}>Contact</p>
             <p>{addr.phone}</p>
             <p>{cart.email}</p>
           </div>
@@ -102,14 +105,14 @@ export default function AddressForm({
   }
 
   return (
-    <div className="overflow-hidden bg-white border-2 shadow-sm rounded-2xl"
+    <div className={`overflow-hidden border-2 shadow-sm rounded-2xl ${isDark ? "bg-gray-900" : "bg-white"}`}
       style={{ borderColor: brandPrimary }}>
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+      <div className={`flex items-center gap-3 px-6 py-4 border-b ${isDark ? "border-white/10" : "border-gray-100"}`}>
         <div className="flex items-center justify-center w-8 h-8 rounded-full"
           style={{ background: brandPrimary }}>
           <MapPin className="w-4 h-4 text-white" />
         </div>
-        <h2 className="text-base font-semibold text-gray-900">Shipping Address</h2>
+        <h2 className={`text-base font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Shipping Address</h2>
         {hasAddress && (
           <button onClick={() => router.push(`/${handle}/checkout?step=delivery`)}
             className="ml-auto text-sm text-gray-400 transition-colors hover:text-gray-600">
@@ -120,8 +123,8 @@ export default function AddressForm({
 
       <form action={formAction} className="p-6 space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="First name" name="first_name" placeholder="Rahul" required brandPrimary={brandPrimary} defaultValue={addr?.first_name} />
-          <Field label="Last name" name="last_name" placeholder="Sharma" required brandPrimary={brandPrimary} defaultValue={addr?.last_name} />
+          <Field label="First name" name="first_name" placeholder="Rahul" required brandPrimary={brandPrimary} defaultValue={addr?.first_name} isDark={isDark}/>
+          <Field label="Last name" name="last_name" placeholder="Sharma" required brandPrimary={brandPrimary} defaultValue={addr?.last_name} isDark={isDark} />
         </div>
         <Field label="Email" name="email" type="email" placeholder="rahul@example.com" required brandPrimary={brandPrimary} defaultValue={cart?.email} />
         <Field label="Phone" name="phone" type="tel" placeholder="+91 98765 43210" required brandPrimary={brandPrimary} defaultValue={addr?.phone} />
@@ -135,7 +138,7 @@ export default function AddressForm({
 
         <label className="flex items-center gap-3 py-1 cursor-pointer">
           <input type="checkbox" name="same_as_billing" defaultChecked className="w-4 h-4 rounded" style={{ accentColor: brandPrimary }} />
-          <span className="text-sm text-gray-600">Billing address same as shipping</span>
+          <span className={`text-sm ${isDark ? "text-white/50" : "text-gray-600"}`}>Billing address same as shipping</span>
         </label>
 
         {message && (

@@ -11,6 +11,7 @@ import ProductCard from "@/components/ui/ProductCard"
 import AnnouncementBar from "@/components/sections/AnnouncementBar"
 import SocialSection from "@/components/sections/SocialSection"
 import StoreHeader from "@/components/store/StoreHeader"
+import ProductCarousel from "@/components/ui/ProductCarousel"
 import StoreFooter from "@/components/store/StoreFooter"
 import boldtee from "../../../../public/bold-tee.jpeg"
 import boldcap from "../../../../public/bold-cap.jpeg"
@@ -417,27 +418,29 @@ function BoldSection({
       const limited = products.slice(0, section.limit ?? 12)
       if (!limited.length && !isEditorMode) return null
       return (
-        <section id="products" className="px-6 py-20"
-          style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
-          <div className="max-w-6xl mx-auto">
-            {section.title && (
-              <h2 className="mb-4 text-4xl font-black tracking-tight uppercase"
-                style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>
-            )}
-            {section.show_product_count !== false && (
-              <p className="mb-12 text-sm" style={{ color: sectionText ? `${sectionText}60` : "rgba(255,255,255,0.4)" }}>
-                {limited.length > 0 ? `${products.length} products available` : "No products yet"}
-              </p>
-            )}
+          <section id="products" className="py-20"
+            style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
+            <div className="max-w-6xl mx-auto px-6">
+              {section.title && (
+                <h2 className="mb-4 text-4xl font-black tracking-tight uppercase"
+                  style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>
+              )}
+              {section.show_product_count !== false && (
+                <p className="mb-8 text-sm" style={{ color: sectionText ? `${sectionText}60` : "rgba(255,255,255,0.4)" }}>
+                  {limited.length > 0 ? `${products.length} products available` : "No products yet"}
+                </p>
+              )}
+            </div>
             {limited.length === 0 ? (
-              <PlaceholderProductGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
+              <div className="px-6">
+                <PlaceholderProductGrid columns={(section as any).columns ?? 3} brandPrimary={brandPrimary} />
+              </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-                {limited.map(p => <ProductCard key={p.id} product={p} handle={handle} variant="dark" />)}
+              <div className="px-6">
+                <ProductCarousel products={limited} handle={handle} bare={bare} brandPrimary={brandPrimary} variant="dark" />
               </div>
             )}
-          </div>
-        </section>
+          </section>
       )
     }
 
