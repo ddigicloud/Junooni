@@ -7,8 +7,8 @@ export interface ProductsPrimaryButtonsHandle {
 import { useState, useEffect, forwardRef, useImperativeHandle, ForwardRefRenderFunction } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
-import sellSometing from '@/assets/onlineShoping.png'
-import windowSoping from '@/assets/window_shoping.png'
+import sellSometing from '@/assets/onlineShoping.jpeg'
+import windowSoping from '@/assets/window_shoping.jpeg'
 import { useNavigate } from '@tanstack/react-router'
 
 // Define BRAND object for styling

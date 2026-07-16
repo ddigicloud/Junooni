@@ -21,7 +21,7 @@ import { genId, getLayoutKeyForPath, getPageSections, setPageSections, getDefaul
 import { StyleSection, Field, EditorInput, EditorTextarea, UploadOnlyImageField } from "./ui"
 import { PageEditorPanel } from "./PageEditorPanel"
 import boldpreview from "@/assets/bold-preview.jpeg"
-import minimalpreview from "@/assets/minimal-preview.jpeg"
+import minimalpreview from "@/assets/minimal-preview.png"
 import editorialpreview from "@/assets/editorial-preview.png"
 
 // ─── Props ────────────────────────────────────────────────────────────────────

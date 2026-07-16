@@ -425,7 +425,7 @@ export default function CollectionsPageClient({
             </h1>
           </div>
 
-          {collections.length === 0 ? (
+          {collections.length === 0 && isEditorMode ? (
             <div className={`grid ${gridColClass} gap-6`}>
               {FAKE_COLLECTIONS.slice(0, gridColumns).map(col => (
                 <div key={col.id} className={`rounded-2xl overflow-hidden border cursor-default select-none ${

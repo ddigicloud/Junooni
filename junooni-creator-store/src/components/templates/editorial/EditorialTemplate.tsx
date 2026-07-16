@@ -769,7 +769,13 @@ function EditorialSection({
             {!product ? (
               <div className={`flex flex-col gap-12 items-start ${(section.image_position ?? "left") === "left" ? "md:flex-row" : "md:flex-row-reverse"}`}>
                 <div className="w-full md:w-[48%] shrink-0">
-                  <div className="flex items-center justify-center bg-gray-100 cursor-default select-none aspect-square rounded-3xl text-8xl">👕</div>
+                  <div className="overflow-hidden cursor-default select-none aspect-square rounded-3xl">
+                    <img
+                      src={creatortee.src}
+                      alt="Product"
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
                 </div>
                 <div className="flex-1 space-y-5 md:pt-2">
                   <h2 className="text-3xl font-bold" style={{ color: sectionText ?? "#111827", fontFamily: "var(--font-playfair)" }}>Classic Creator Tee</h2>

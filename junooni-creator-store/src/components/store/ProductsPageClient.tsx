@@ -162,8 +162,8 @@ export default function ProductsPageClient({
         </div>
 
         {products.length === 0 ? (
-          <PlaceholderProductGrid columns={gridColumns} brandPrimary={brandPrimary} />
-        ) :  (
+          isEditorMode ? <PlaceholderProductGrid columns={gridColumns} brandPrimary={brandPrimary} /> : null
+        ) : (
           <ProductGrid
             products={products}
             categories={categories}

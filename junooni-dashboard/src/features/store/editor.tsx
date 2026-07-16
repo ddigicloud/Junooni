@@ -1502,11 +1502,11 @@ const previewUrl = (() => {
                 onLoad={() => setIframeReady(true)}
                 title="Store preview" allow="same-origin" />
             )}
-            {iframeReady && !selectedId && (
+            {/* {iframeReady && !selectedId && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-black/70 backdrop-blur-sm rounded-full text-xs text-white/70 pointer-events-none whitespace-nowrap">
                 Click any section to edit it
               </div>
-            )}
+            )} */}
           </div>
         </div>
 

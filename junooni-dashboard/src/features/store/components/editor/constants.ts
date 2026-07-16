@@ -130,20 +130,22 @@ const CONTACT_PAGE_CONTENT = `<div id="junooni-contact-wrap" style="font-family:
 
 <style>
 #junooni-contact-wrap h2{font-size:1.75rem;font-weight:700;margin-bottom:8px;color:inherit}
-#junooni-contact-wrap p.subtitle{color:#6b7280;margin-bottom:28px;font-size:15px}
+#junooni-contact-wrap p.subtitle{color:inherit;opacity:0.6;margin-bottom:28px;font-size:15px}
 .jcf-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:520px){.jcf-grid{grid-template-columns:1fr}}
 .jcf-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
-.jcf-field label{font-size:13px;font-weight:500;color:#374151}
+.jcf-field label{font-size:13px;font-weight:500;color:inherit;opacity:0.75}
 .jcf-field input,.jcf-field select,.jcf-field textarea{
-  padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;
+  padding:10px 14px;border:1.5px solid rgba(128,128,128,0.35);border-radius:8px;
   font-size:14px;font-family:inherit;outline:none;
-  transition:border-color 0.2s,box-shadow 0.2s;background:#fff;
-  box-sizing:border-box;width:100%
+  transition:border-color 0.2s,box-shadow 0.2s;background:rgba(128,128,128,0.08);
+  box-sizing:border-box;width:100%;color:inherit;-webkit-text-fill-color:inherit
 }
 .jcf-field input:focus,.jcf-field select:focus,.jcf-field textarea:focus{
   border-color:#e65100;box-shadow:0 0 0 3px rgba(230,81,0,0.08)
 }
+.jcf-field input::placeholder,.jcf-field textarea::placeholder{color:inherit;opacity:0.35}
+.jcf-field select option{background:#1a1a1a;color:#fff}
 .jcf-submit{
   background:linear-gradient(135deg,#e65100 0%,#ac1900 100%);
   color:#fff;border:none;padding:13px 36px;border-radius:50px;

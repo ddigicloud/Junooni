@@ -158,9 +158,12 @@ function PlaceholderFeaturedProduct({ brandPrimary, sectionBg, sectionText, imag
   return (
     <div className={`flex flex-col gap-12 items-start ${imageLeft ? "md:flex-row" : "md:flex-row-reverse"}`}>
       <div className="w-full md:w-[48%] shrink-0">
-        <div className="flex items-center justify-center cursor-default select-none aspect-square rounded-3xl text-8xl"
-          style={{ backgroundColor: "#f3f4f6" }}>
-          👕
+        <div className="overflow-hidden cursor-default select-none aspect-square rounded-3xl">
+          <img
+            src={minimaltee.src}
+            alt="Product"
+            className="object-cover w-full h-full"
+          />
         </div>
       </div>
       <div className="flex-1 space-y-5 md:pt-2">

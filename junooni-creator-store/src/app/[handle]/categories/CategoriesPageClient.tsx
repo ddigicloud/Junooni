@@ -426,7 +426,7 @@ export default function CategoriesPageClient({
             </h1>
           </div>
 
-          {categories.length === 0 ? (
+          {categories.length === 0 && isEditorMode ? (
             <div className={`grid ${gridColClass} gap-4`}>
               {FAKE_CATEGORIES.slice(0, gridColumns).map(cat => (
                 <div key={cat.id} className={`rounded-2xl overflow-hidden border cursor-default select-none ${
