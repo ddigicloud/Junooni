@@ -47,36 +47,83 @@
 //   }
   
 
+// src/api/vendors/[id]/products/route.ts
+// src/api/vendors/[id]/products/route.ts
 import {
   MedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 export const GET = async (
   req: MedusaRequest,
   res: MedusaResponse
 ) => {
   const { id: vendorId } = req.params
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const query = req.scope.resolve("query")
+  const total = Date.now()
 
-  // ✅ Query through the link table instead of expanding from vendor directly
-  const { data: links } = await query.graph({
-    entity: "vendor_product",  // the link entity name
+  console.log(`[vendors/${vendorId}/products] ROUTE HIT`)
+
+  // ── Cache check ────────────────────────────────────────────────────────
+  let cache: any = null
+  try { cache = req.scope.resolve("cache") } catch {}
+  const cacheKey = `vendor-products-published-${vendorId}`
+
+  if (cache) {
+    try {
+      const cached = await cache.get(cacheKey)
+      if (cached) {
+        console.log(`[vendors/${vendorId}/products] CACHE HIT in ${Date.now() - total}ms`)
+        return res.json(cached)
+      }
+      console.log(`[vendors/${vendorId}/products] cache MISS`)
+    } catch {}
+  }
+
+  // ── Fetch only indexed fields ──────────────────────────────────────────
+  const indexStart = Date.now()
+  const { data: rawProducts } = await query.index({
+    entity: "product",
     fields: [
-      "product.*",
-      "product.images.*",
-      "product.variants.*",
-      "product.variants.prices.*",
-      "product.options.*",
-      "product.tags.*",
+      "id",
+      "title",
+      "handle",
+      "thumbnail",
+      "status",
+      "created_at",
+      "metadata", 
+      "variants.id",
+      "variants.thumbnail",        // ← full blob, we slim it below
+      "vendor.id",
+      "vendor.name",
+      "vendor.handle",
+      "vendor.verified",
     ],
     filters: {
-      vendor_id: vendorId,
+      status: "published",
+      vendor: { id: vendorId },
     },
   })
+  console.log(`[vendors/${vendorId}/products] query.index DONE in ${Date.now() - indexStart}ms | products=${rawProducts?.length}`)
 
-  const products = links.map((link: any) => link.product).filter(Boolean)
+  // ── Slim metadata — only keep what listing page needs ─────────────────
+  const products = (rawProducts ?? []).map((p: any) => ({
+    ...p,
+    metadata: p.metadata ? {
+      color_hex_values: p.metadata.color_hex_values ?? null,
+    } : null,
+  }))
 
-  res.json({ products })
+  const response = { products }
+
+  // ── Cache for 5 minutes ────────────────────────────────────────────────
+  if (cache) {
+    try {
+      await cache.set(cacheKey, response, 60 * 5)
+      console.log(`[vendors/${vendorId}/products] CACHED for 5 mins`)
+    } catch {}
+  }
+
+  console.log(`[vendors/${vendorId}/products] TOTAL ${Date.now() - total}ms`)
+  res.json(response)
 }

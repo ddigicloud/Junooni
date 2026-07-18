@@ -18,6 +18,7 @@ module.exports = defineConfig({
   },
   featureFlags: {
     view_configurations: true,
+    index: true,
   },
   modules: [
     // ─── Auth (emailpass + Google OAuth for customers + Google OAuth for vendors) ─

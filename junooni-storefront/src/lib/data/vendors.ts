@@ -87,15 +87,18 @@ export const retriveVendorsProducts = async (
     .fetch<any>(`/vendors/${vendor_id}/products`, {
       method: "GET",
       query: {
-        fields: "*variants.calculated_price,+metadata,*images,*categories,*collection,*vendor",
+        // ← NO calculated_price — that was the 9s killer
+        fields: "id,title,handle,thumbnail,status,created_at,+metadata,images.id,images.url,variants.id,variants.title,variants.prices.amount,variants.prices.currency_code,vendor.id,vendor.name,vendor.handle,vendor.verified",
         ...(region_id && { region_id }),
       },
       headers,
-      cache: "no-store", // ← replaces the old `next: { ...getCacheOptions(...) }` line
+      next: { revalidate: 300 },
     })
     .then((response) => {
-      console.log(`[retriveVendorsProducts] DONE in ${Date.now() - start}ms`)
-      return response
+      const all = response?.products ?? []
+      const published = all.filter((p: any) => p.status === "published")
+      console.log(`[retriveVendorsProducts] DONE in ${Date.now() - start}ms | all=${all.length} published=${published.length}`)
+      return { products: published }
     })
     .catch((err) => {
       console.error(`[retriveVendorsProducts] ERROR in ${Date.now() - start}ms:`, JSON.stringify(err))
@@ -104,7 +107,6 @@ export const retriveVendorsProducts = async (
 
   return result
 }
-
 /**
  * Retrieves a specific vendor by handle.
  * Sanitizes empty string fields to null so img src never gets "".
@@ -164,6 +166,8 @@ export async function getVendorByHandle(
     }
   }
 }
+
+
 interface FollowersResponse {
   count: number
   follow: Array<{

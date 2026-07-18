@@ -117,33 +117,65 @@ export const GET = async (
   res: MedusaResponse
 ) => {
   const vendorId = req.query.vendor_id as string | undefined
+  const handle = req.query.handle as string | undefined
   const marketplaceModuleService: MarketplaceModuleService =
     req.scope.resolve("marketplaceModuleService")
   const pgClient = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
 
+  console.log(`[GET /vendors] START vendorId=${vendorId} handle=${handle}`)
+  const total = Date.now()
+
   try {
     if (vendorId) {
+      // ── SINGLE VENDOR BY ID ───────────────────────────────────────────
       const vendor = await marketplaceModuleService.retrieveVendor(vendorId, {
         relations: ["admins"]
       })
       if (!vendor) {
         throw new MedusaError(MedusaError.Types.NOT_FOUND, "Vendor not found")
       }
-      // Attach plan fields from raw SQL
       await attachPlanFields(pgClient, vendor)
+      console.log(`[GET /vendors] single vendor DONE in ${Date.now() - total}ms`)
       return res.json({ vendor })
 
+    } else if (handle) {
+      // ── SINGLE VENDOR BY HANDLE (storefront) ──────────────────────────
+      // Fetch only 1 vendor from DB instead of all 92
+      const listStart = Date.now()
+      const vendors = await marketplaceModuleService.listVendors?.(
+        { handle },  // ← DB-level filter
+        {}           // ← no relations needed for storefront
+      )
+      console.log(`[GET /vendors] listVendors by handle DONE in ${Date.now() - listStart}ms | count=${vendors?.length}`)
+
+      if (vendors?.length) {
+        const planStart = Date.now()
+        await Promise.all(vendors.map(v => attachPlanFields(pgClient, v)))
+        console.log(`[GET /vendors] attachPlanFields DONE in ${Date.now() - planStart}ms`)
+      }
+
+      console.log(`[GET /vendors] TOTAL ${Date.now() - total}ms | returning ${vendors?.length} vendors`)
+      return res.json({ vendors })
+
     } else {
+      // ── LIST ALL VENDORS (admin) ──────────────────────────────────────
+      const listStart = Date.now()
       const vendors = await marketplaceModuleService.listVendors?.(
         {},
         { relations: ["admins"] }
       )
-      // Attach plan fields for all vendors in parallel
+      console.log(`[GET /vendors] listVendors ALL DONE in ${Date.now() - listStart}ms | count=${vendors?.length}`)
+
       if (vendors?.length) {
+        const planStart = Date.now()
         await Promise.all(vendors.map(v => attachPlanFields(pgClient, v)))
+        console.log(`[GET /vendors] attachPlanFields ALL DONE in ${Date.now() - planStart}ms`)
       }
+
+      console.log(`[GET /vendors] TOTAL ${Date.now() - total}ms | returning ${vendors?.length} vendors`)
       return res.json({ vendors })
     }
+
   } catch (error) {
     if (error instanceof MedusaError) throw error
     console.error("Error in vendors endpoint:", error)

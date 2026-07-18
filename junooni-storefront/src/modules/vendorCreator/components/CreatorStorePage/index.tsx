@@ -354,6 +354,8 @@ const CreatorStorePage: React.FC<CreatorStorePageProps & {
 }) => {
   // const [vendorProducts, setVendorProducts] = useState<Product[]>([])
   // const [isLoading, setIsLoading] = useState<boolean>(true)
+  console.log(`[CreatorStorePage] RENDER | initialVendorProducts.length=${initialVendorProducts.length} | isLoading default=${initialVendorProducts.length === 0}`)
+
   const [vendorProducts, setVendorProducts] = useState<Product[]>(initialVendorProducts)
   const [isLoading, setIsLoading] = useState(initialVendorProducts.length === 0)
   const [followers, setFollowers] = useState([])
@@ -372,23 +374,19 @@ const CreatorStorePage: React.FC<CreatorStorePageProps & {
 
   // Fetch products client-side after first paint
 useEffect(() => {
-   console.log("CLIENT EFFECT FIRING", vendor.id, region.id)
-  if (initialVendorProducts.length > 0) return // already have products from server
-
   const load = async () => {
-    console.log("LOADING PRODUCTS FOR", vendor.id, region.id)
     setIsLoading(true)
     try {
-    const { fetchVendorProductsClient } = await import("@lib/data/vendors-client")
+      const { fetchVendorProductsClient } = await import("@lib/data/vendors-client")
       const products = await fetchVendorProductsClient(vendor.id, region.id)
-      setVendorProducts(products)
+      const publishedProducts = products.filter((p: any) => p.status === "published")
+      setVendorProducts(publishedProducts)
     } catch {
       setVendorProducts([])
     } finally {
       setIsLoading(false)
     }
   }
-
   load()
 }, [vendor.id, region.id])
 
@@ -1771,97 +1769,28 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
 
   // ADD STEP 3 FUNCTION HERE:
 // Function to get the appropriate image based on selected color
-// Function to get the appropriate image based on selected color
 const getVariantImage = () => {
-  // Use hovered color if available, otherwise use selected color
   const activeColor = hoveredColor || selectedColor
-  
-  if (!activeColor) {
-    return productImage
-  }
+  if (!activeColor) return productImage
 
-  // Find the color name that matches the active hex
   const activeColorName = productColors.find(c => c.hex === activeColor)?.name
+  if (!activeColorName) return productImage
 
-  if (!activeColorName) {
-    return productImage
-  }
+  const colorSlug = activeColorName.toLowerCase().replace(/\s+/g, '_')
 
-  //console.log('🖼️ Looking for images for color:', activeColorName)
-
-  // Strategy 1: Check variant metadata for color-specific images
   if (product?.variants && Array.isArray(product.variants)) {
-    for (const variant of product.variants) {
-      const variantMetadata = (variant as any)?.metadata
-
-      if (variantMetadata) {
-        // Check color_images field
-        if (variantMetadata.color_images) {
-          try {
-            const colorImages = JSON.parse(variantMetadata.color_images)
-            
-            if (Array.isArray(colorImages)) {
-              const matchingColorImage = colorImages.find((img: any) => 
-                img.color?.toLowerCase() === activeColorName.toLowerCase()
-              )
-              
-              if (matchingColorImage && matchingColorImage.url) {
-                //console.log('🖼️ Found matching color image:', matchingColorImage.url)
-                return matchingColorImage.url
-              }
-            }
-          } catch (error) {
-            //console.log('🖼️ Error parsing color_images:', error)
-          }
-        }
-
-        // Check variant_images field
-        if (variantMetadata.variant_images) {
-          try {
-            const variantImages = JSON.parse(variantMetadata.variant_images)
-            
-            if (Array.isArray(variantImages) && variantImages.length > 0) {
-              const variantColors = extractProductColors(variantMetadata)
-              const hasMatchingColor = variantColors.some(color => 
-                color.hex.toLowerCase() === activeColor.toLowerCase()
-              )
-              
-              if (hasMatchingColor && variantImages[0]) {
-                //console.log('🖼️ Found matching variant image:', variantImages[0])
-                return variantImages[0]
-              }
-            }
-          } catch (error) {
-            //console.log('🖼️ Error parsing variant_images:', error)
-          }
-        }
-      }
-    }
-  }
-
-  // Strategy 2: Search product images for color-specific filenames
-  if (product?.images && Array.isArray(product.images) && product.images.length > 1) {
-    const colorVariations = [
-      activeColorName.toLowerCase(),
-      activeColorName.toLowerCase().replace(/\s+/g, ''),
-      activeColorName.toLowerCase().replace(/\s+/g, '-'),
-      activeColorName.toLowerCase().replace(/\s+/g, '_'),
-    ]
-    
-    const colorImage = product.images.find((img: any) => {
-      const imageUrl = img.url || ''
-      return colorVariations.some(variation => 
-        imageUrl.toLowerCase().includes(variation)
-      )
+    // ← match by thumbnail URL containing color slug, not by title
+    const matchingVariant = product.variants.find((v: any) => {
+      const thumb = (v as any)?.thumbnail || ''
+      return thumb.toLowerCase().includes(colorSlug)
     })
-    
-    if (colorImage) {
-      //console.log('🖼️ Found filename-based color image:', colorImage.url)
-      return colorImage.url
+
+    const variantThumbnail = (matchingVariant as any)?.thumbnail
+    if (variantThumbnail) {
+      return variantThumbnail
     }
   }
 
-  //console.log('🖼️ No matching image found, returning default')
   return productImage
 }
   // ADD STEP 5 USEEFFECT HERE:

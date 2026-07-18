@@ -5,6 +5,8 @@ export async function GET(req: NextRequest) {
   const vendor_id = searchParams.get("vendor_id")
   const region_id = searchParams.get("region_id")
 
+  console.log(`[/api/vendor-products] CALLED | vendor_id=${vendor_id}`)
+
   if (!vendor_id) {
     return NextResponse.json({ products: [] })
   }
@@ -12,18 +14,17 @@ export async function GET(req: NextRequest) {
   try {
     const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://localhost:9000"
     const API_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
-    console.log(`[vendor-products API] MEDUSA_URL=${process.env.MEDUSA_BACKEND_URL}`)
-    console.log(`[vendor-products API] API_KEY=${process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY?.slice(0, 10)}...`)
 
-    // Use the vendor-scoped endpoint directly — same one that works server-side
-    const url = new URL(`${MEDUSA_URL}/store/vendors/${vendor_id}/products`)
+    // ← FIXED: use /vendors/ not /store/vendors/
+    const url = new URL(`${MEDUSA_URL}/vendors/${vendor_id}/products`)
     if (region_id) url.searchParams.set("region_id", region_id)
     url.searchParams.set(
       "fields",
-      "*variants.calculated_price,+metadata,*images,*categories,*collection,*vendor"
+      "id,title,handle,thumbnail,status,created_at,+metadata,images.id,images.url,variants.id,variants.title,variants.prices.amount,variants.prices.currency_code,vendor.id,vendor.name,vendor.handle,vendor.verified"
     )
 
-    console.log(`[vendor-products API] fetching: ${url.toString()}`)
+    console.log(`[/api/vendor-products] fetching: ${url.toString()}`)
+    const start = Date.now()
 
     const res = await fetch(url.toString(), {
       headers: {
@@ -32,20 +33,21 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    console.log(`[vendor-products API] status=${res.status}`)
+    console.log(`[/api/vendor-products] status=${res.status} in ${Date.now() - start}ms`)
 
     if (!res.ok) {
       const errorText = await res.text()
-      console.error(`[vendor-products API] error: ${errorText}`)
+      console.error(`[/api/vendor-products] error: ${errorText}`)
       return NextResponse.json({ products: [] })
     }
 
     const data = await res.json()
-    console.log(`[vendor-products API] products=${data?.products?.length ?? 0}`)
+    const published = (data?.products ?? []).filter((p: any) => p.status === "published")
+    console.log(`[/api/vendor-products] returning ${published.length} published products`)
 
-    return NextResponse.json({ products: data?.products ?? [] })
+    return NextResponse.json({ products: published })
   } catch (err) {
-    console.error("[vendor-products API] ERROR:", err)
+    console.error("[/api/vendor-products] ERROR:", err)
     return NextResponse.json({ products: [] }, { status: 500 })
   }
 }

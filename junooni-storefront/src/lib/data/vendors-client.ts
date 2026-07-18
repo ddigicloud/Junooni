@@ -13,8 +13,13 @@ export const fetchVendorProductsClient = async (
     const data = await res.json()
     console.log(`[vendor-products API] full response:`, JSON.stringify(data)?.slice(0, 500))
     console.log(`[vendor-products API] products=${data?.products?.length ?? 0}`)
-    console.log(`[fetchVendorProductsClient] products=${data?.products?.length}`)
-    return data?.products ?? []
+
+    // ← ADDED: safety net filter in case the API ever returns non-published products
+    const products = (data?.products ?? []).filter(
+      (p: any) => p.status === "published"
+    )
+    console.log(`[fetchVendorProductsClient] published products=${products.length}`)
+    return products
   } catch (err) {
     console.error(`[fetchVendorProductsClient] ERROR:`, err)
     return []
