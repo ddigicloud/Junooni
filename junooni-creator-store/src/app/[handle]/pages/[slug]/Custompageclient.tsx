@@ -195,6 +195,8 @@ export default function CustomPageClient({
     store?.font === "montserrat"    ? "font-montserrat" :
     "font-inter"
 
+  const pageCustomBg   = (livePage as any).bg_color   ?? null
+  const pageCustomText = (livePage as any).text_color ?? null
   const bgColor = resolvedIsDark ? "bg-black text-white" : "bg-white text-gray-900"
 
   const content  = livePage.content ?? ""
@@ -647,7 +649,13 @@ export default function CustomPageClient({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className={`min-h-screen ${bgColor} ${fontClass}`}>
+    <div
+      className={`min-h-screen ${pageCustomBg ? "" : bgColor} ${fontClass}`}
+      style={{
+        ...(pageCustomBg   ? { backgroundColor: pageCustomBg }   : {}),
+        ...(pageCustomText ? { color:           pageCustomText }  : {}),
+      }}
+    >
       <StoreHeader
         vendor={vendor}
         store={store}
@@ -668,14 +676,25 @@ export default function CustomPageClient({
           />
         </div>
       ) : (
-        <div className={`flex-1 w-full px-4 py-16 sm:px-6 ${resolvedIsDark ? "text-white" : "text-gray-900"}`}>
+        <div
+          className="flex-1 w-full px-4 py-16 sm:px-6"
+          style={{ color: pageCustomText ?? (resolvedIsDark ? "#ffffff" : "#111827") }}
+        >
           <div className="w-full max-w-4xl mx-auto">
-            <h1 className={`text-4xl font-bold mb-8 ${resolvedIsDark ? "text-white" : "text-gray-900"}`}>
+            <h1
+              className="text-4xl font-bold mb-8"
+              style={{ color: pageCustomText ?? (resolvedIsDark ? "#ffffff" : "#111827") }}
+            >
               {livePage.title}
             </h1>
             <div
-              className={`prose prose-lg max-w-none ${resolvedIsDark ? "prose-invert" : ""}`}
-              style={{ "--tw-prose-links": resolvedBrandPrimary } as React.CSSProperties}
+              className={`prose prose-lg max-w-none ${resolvedIsDark && !pageCustomText ? "prose-invert" : ""}`}
+              style={{
+                "--tw-prose-links": resolvedBrandPrimary,
+                "--tw-prose-body": pageCustomText ?? undefined,
+                "--tw-prose-headings": pageCustomText ?? undefined,
+                color: pageCustomText ?? undefined,
+              } as React.CSSProperties}
               dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
             />
           </div>

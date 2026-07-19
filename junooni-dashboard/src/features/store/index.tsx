@@ -26,8 +26,8 @@ import AdminImpersonationBanner from "@/components/AdminImpersonationBanner"
 import { getStoreUrl, getPreviewUrl, getPageUrl } from "@/lib/store-urls"
 import storeBanner from "@/assets/store-banner.jpeg"
 import boldpreview from "@/assets/bold-preview.jpeg"
-import minimalpreview from "@/assets/minimal-preview.png"
-import editorialpreview from "@/assets/editorial-preview.png"
+import minimalpreview from "@/assets/minimal-preview.jpeg"
+import editorialpreview from "@/assets/editorial-preview.jpeg"
 
 const BRAND = { primary: "#e65100", secondary: "#ac1900" }
 

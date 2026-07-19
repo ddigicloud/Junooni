@@ -202,7 +202,7 @@ const Catalog = () => {
     // ── Cache hit
     const cached = pageCache[cacheKey];
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
-      console.log(`[Catalog] ⚡ Cache hit: ${cacheKey} — ${cached.data.length} products`);
+      //console.log(`[Catalog] ⚡ Cache hit: ${cacheKey} — ${cached.data.length} products`);
       setProducts(cached.data);
       setTotalDocs(cached.totalDocs);
       setTotalPages(cached.totalPages);
@@ -211,7 +211,7 @@ const Catalog = () => {
     }
 
     setLoading(true);
-    console.log(`[Catalog] 📡 Fetching page=${page} category=${category} search="${search}"`);
+    //console.log(`[Catalog] 📡 Fetching page=${page} category=${category} search="${search}"`);
     const requestStart = performance.now();
 
     try {
@@ -233,7 +233,7 @@ const Catalog = () => {
       }
 
       const url = `${vite_payload}/api/blank-products?${params.toString()}&${SELECT_FIELDS}`;
-      console.log(`[Catalog] 🌐 GET ${url.replace(vite_payload, "[PAYLOAD]")}`);
+      //console.log(`[Catalog] 🌐 GET ${url.replace(vite_payload, "[PAYLOAD]")}`);
 
       const response = await fetch(url, {
         credentials: "include",
@@ -242,7 +242,7 @@ const Catalog = () => {
       });
 
       const ttfbMs = Math.round(performance.now() - requestStart);
-      console.log(`[Catalog] 📬 status=${response.status} TTFB=${ttfbMs}ms`);
+      //console.log(`[Catalog] 📬 status=${response.status} TTFB=${ttfbMs}ms`);
 
       if (!response.ok) throw new Error(`API returned ${response.status}`);
 
@@ -257,8 +257,8 @@ const Catalog = () => {
       const active = fetched.filter((p) => p.status === "active");
       active.forEach((p) => getOrCreateMeta(p.id));
 
-      console.log(`[Catalog] 📦 parse=${parseMs}ms | active=${active.length} | totalDocs=${serverTotalDocs} totalPages=${serverTotalPages}`);
-      console.log(`[Catalog] 🔍 TTFB=${ttfbMs}ms | parse=${parseMs}ms | total=${ttfbMs + parseMs}ms`);
+      // console.log(`[Catalog] 📦 parse=${parseMs}ms | active=${active.length} | totalDocs=${serverTotalDocs} totalPages=${serverTotalPages}`);
+      // console.log(`[Catalog] 🔍 TTFB=${ttfbMs}ms | parse=${parseMs}ms | total=${ttfbMs + parseMs}ms`);
 
       // Store in cache
       pageCache[cacheKey] = {
@@ -273,10 +273,10 @@ const Catalog = () => {
       setTotalPages(serverTotalPages);
 
       const totalMs = Math.round(performance.now() - mountTime.current);
-      console.log(`%c[Catalog] ✅ Rendered page=${page} in ${Math.round(performance.now() - fetchStart)}ms | since mount=${totalMs}ms`, "color: green; font-weight: bold");
+      //console.log(`%c[Catalog] ✅ Rendered page=${page} in ${Math.round(performance.now() - fetchStart)}ms | since mount=${totalMs}ms`, "color: green; font-weight: bold");
 
-      if (ttfbMs > 3000) console.warn(`[Catalog] 🔴 SLOW TTFB (${ttfbMs}ms)`);
-      if (parseMs > 500)  console.warn(`[Catalog] 🔴 SLOW PARSE (${parseMs}ms)`);
+      // if (ttfbMs > 3000) console.warn(`[Catalog] 🔴 SLOW TTFB (${ttfbMs}ms)`);
+      // if (parseMs > 500)  console.warn(`[Catalog] 🔴 SLOW PARSE (${parseMs}ms)`);
 
     } catch (err) {
       console.error("[Catalog] ❌ fetchProducts failed:", err);
@@ -288,7 +288,7 @@ const Catalog = () => {
   // ── Page change ───────────────────────────────────────────────────────────
   const handlePageChange = useCallback((page: number) => {
     if (page === currentPage) return;
-    console.log(`[Catalog] 📄 Page: ${currentPage} → ${page}`);
+    //console.log(`[Catalog] 📄 Page: ${currentPage} → ${page}`);
     setCurrentPage(page);
     setProducts([]);
     setLoading(true);

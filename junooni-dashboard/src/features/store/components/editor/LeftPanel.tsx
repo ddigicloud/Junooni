@@ -21,8 +21,8 @@ import { genId, getLayoutKeyForPath, getPageSections, setPageSections, getDefaul
 import { StyleSection, Field, EditorInput, EditorTextarea, UploadOnlyImageField } from "./ui"
 import { PageEditorPanel } from "./PageEditorPanel"
 import boldpreview from "@/assets/bold-preview.jpeg"
-import minimalpreview from "@/assets/minimal-preview.png"
-import editorialpreview from "@/assets/editorial-preview.png"
+import minimalpreview from "@/assets/minimal-preview.jpeg"
+import editorialpreview from "@/assets/editorial-preview.jpeg"
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -579,6 +579,7 @@ export const LeftPanel = React.memo(function LeftPanel(props: LeftPanelProps) {
                     }}
                     isNew={false}
                     isDark={isDark}
+                    storeTemplate={storeTemplate}
                     onDraftChange={(updated) => {
                     patchStore(p => {
                         const existing = p.pages?.pages ?? []

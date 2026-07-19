@@ -1112,7 +1112,13 @@ const renderMockupDirectly = async (
 
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
-      resolve(offscreenCanvas.toDataURL('image/png', 0.95));
+      
+      // Output WebP directly — avoids a second compression pass later
+      const supportsWebP = offscreenCanvas.toDataURL('image/webp').startsWith('data:image/webp');
+      resolve(supportsWebP
+        ? offscreenCanvas.toDataURL('image/webp', 0.75)
+        : offscreenCanvas.toDataURL('image/jpeg', 0.80)
+      );
 
     } catch (error) {
       reject(error);
@@ -7662,68 +7668,9 @@ const navigateToCreatePage = useCallback(async (transformedData) => {
   const originalColorSpecificImages = transformedData.colorSpecificImages || {};
   let finalColorSpecificMockups = transformedData.designData?.mockupData?.colorSpecificMockups || [];
 
-  // 🔥 STEP 1: Create upload-quality version (high quality, just resize)
-  // This is what gets uploaded to the store - good quality
-  let uploadQualityImages: Record<string, any[]> = {};
-let transferQualityImages: Record<string, any[]> = {};
-
-try {
-  const colorCount = Object.keys(originalColorSpecificImages).length;
-  if (colorCount > 0) {
-    console.log(`🗜️ Compressing ${colorCount} color groups to WebP...`);
-
-    await Promise.all(
-      Object.keys(originalColorSpecificImages).map(async (colorHex) => {
-        const mockups = originalColorSpecificImages[colorHex] || [];
-
-        const compressed = await Promise.all(
-          mockups.map(async (m: any) => {
-            if (!m.imageData) return { upload: m, transfer: m };
-
-            const [uploadData, transferData] = await Promise.all([
-              compressMockupImage(m.imageData, 0.85, 1200),
-              compressMockupImage(m.imageData, 0.4, 600),
-            ]);
-
-            return {
-              upload:   { ...m, imageData: uploadData },
-              transfer: { ...m, imageData: transferData },
-            };
-          })
-        );
-
-        uploadQualityImages[colorHex]   = compressed.map(c => c.upload);
-        transferQualityImages[colorHex] = compressed.map(c => c.transfer);
-      })
-    );
-
-    const uploadMB   = JSON.stringify(uploadQualityImages).length / 1024 / 1024;
-    const transferMB = JSON.stringify(transferQualityImages).length / 1024 / 1024;
-    console.log(`✅ Upload WebP 0.85: ${uploadMB.toFixed(2)}MB`);
-    console.log(`✅ Transfer WebP 0.4: ${transferMB.toFixed(2)}MB`);
-  }
-} catch (e) {
-  console.warn('Compression failed, falling back to originals:', e);
-  uploadQualityImages   = { ...originalColorSpecificImages };
-  transferQualityImages = { ...originalColorSpecificImages };
-}
-
-  // Compress colorSpecificMockups for transfer
-  try {
-    finalColorSpecificMockups = await Promise.all(
-      finalColorSpecificMockups.map(async (group: any) => ({
-        ...group,
-        mockups: await Promise.all(
-          (group.mockups || []).map(async (m: any) => ({
-            ...m,
-            imageData: m.imageData
-              ? await compressMockupImage(m.imageData, 0.4, 600)
-              : m.imageData
-          }))
-        )
-      }))
-    );
-  } catch (e) {}
+  // Images already generated at 600px WebP — no compression pass needed
+  const uploadQualityImages = { ...originalColorSpecificImages };
+  const transferQualityImages = { ...originalColorSpecificImages };
 
   // Clear old sessionStorage
   try {
@@ -7929,19 +7876,19 @@ for (const mockup of allMockups) {
         let result;
         
         if (hasDesignElements) {
-          result = await mockupGenerator.generateSingleMockup(
-            mockup, designElements, canvasConfigs, printableAreas,
-            mockup.target_color, productData, 1000, true
-          );
-        } else {
-          const emptyDesignElements: Record<string, DesignElement[]> = {};
-          mockupAreas.forEach(area => { emptyDesignElements[area] = []; });
-          
-          result = await mockupGenerator.generateSingleMockup(
-            mockup, emptyDesignElements, canvasConfigs, printableAreas,
-            mockup.target_color, productData, 1000, true
-          );
-        }
+            result = await mockupGenerator.generateSingleMockup(
+              mockup, designElements, canvasConfigs, printableAreas,
+              mockup.target_color, productData, 600, true
+            );
+          } else {
+            const emptyDesignElements: Record<string, DesignElement[]> = {};
+            mockupAreas.forEach(area => { emptyDesignElements[area] = []; });
+            
+            result = await mockupGenerator.generateSingleMockup(
+              mockup, emptyDesignElements, canvasConfigs, printableAreas,
+              mockup.target_color, productData, 600, true
+            );
+          }
 
         engineUsage[result.engine]++;
 
@@ -7993,7 +7940,7 @@ for (const mockup of allMockups) {
           if (hasDesignElements) {
             result = await mockupGenerator.generateSingleMockup(
               mockup, designElements, canvasConfigs, printableAreas,
-              mockup.target_color, productData, 1000, true
+              mockup.target_color, productData, 600, true
             );
           } else {
             const emptyDesignElements: Record<string, DesignElement[]> = {};
@@ -8001,7 +7948,7 @@ for (const mockup of allMockups) {
             
             result = await mockupGenerator.generateSingleMockup(
               mockup, emptyDesignElements, canvasConfigs, printableAreas,
-              mockup.target_color, productData, 1000, true
+              mockup.target_color, productData, 600, true
             );
           }
 

@@ -17,11 +17,12 @@ function extractLastUpdated(content: string): string | null {
   return match ? match[1] : null
 }
 
-export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew, isDark, onDraftChange }: {
+export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete, isNew, isDark, onDraftChange, storeTemplate }: {
   page: StorePage
   vendorHandle: string
   isNew: boolean
   isDark: boolean
+  storeTemplate?: string
   onSave: (p: StorePage) => void | Promise<void>
   onCancel: () => void
   onDelete: () => void
@@ -40,6 +41,9 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
   const inputCls    = isDark
     ? "bg-gray-800 border border-gray-700 text-gray-200"
     : "bg-white border border-gray-300 text-gray-800"
+  const isBoldTheme      = isDark || storeTemplate === "bold"
+  const defaultBgColor   = isBoldTheme ? "#000000" : "#ffffff"
+  const defaultTextColor = isBoldTheme ? "#ffffff" : "#111827"
 
   return (
     <div className="space-y-3">
@@ -121,7 +125,10 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
         )}
 
         <RichTextEditor
-          value={draft.content.replace(/\*Last updated:.*?\*\n*/g, "").trim()}
+          value={draft.content
+            .replace(/\*Last updated:.*?\*\n*/g, "")
+            .replace(/^##\s+/gm, "")
+            .trim()}
           onChange={v => {
             const isLegal = draft.template === "terms" || draft.template === "privacy"
             const today = new Date().toLocaleDateString("en-IN", {
@@ -163,6 +170,64 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
           </label>
         ))}
       </div> */}
+
+      {/* Background & Text color */}
+       {/* Background & Text color */}
+      <div className={`pt-3 border-t space-y-2 ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+        <p className={`text-[10px] uppercase tracking-wider font-semibold ${textFaint}`}>Page colors</p>
+
+        {/* Background */}
+        <div>
+          <label className={`text-[10px] ${textFaint} block mb-1`}>Background</label>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="color"
+              value={(draft as any).bg_color ?? defaultBgColor}
+              onChange={e => up({ bg_color: e.target.value } as any)}
+              className="w-7 h-7 rounded border-0 cursor-pointer shrink-0"
+            />
+            <input
+              type="text"
+              value={(draft as any).text_color ?? ""}
+              onChange={e => up({ text_color: e.target.value } as any)}
+              className={`w-24 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${inputCls}`}
+              placeholder={defaultTextColor}
+            />
+            {(draft as any).bg_color && (
+              <button onClick={() => up({ bg_color: undefined } as any)}
+                className="text-gray-400 hover:text-red-400 shrink-0">
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Text color */}
+        <div>
+          <label className={`text-[10px] ${textFaint} block mb-1`}>Text</label>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="color"
+              value={(draft as any).text_color ?? defaultTextColor}
+              onChange={e => up({ text_color: e.target.value } as any)}
+              className="w-7 h-7 rounded border-0 cursor-pointer shrink-0"
+            />
+            <input
+              type="text"
+              value={(draft as any).text_color ?? ""}
+              onChange={e => up({ text_color: e.target.value } as any)}
+              className={`w-24 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${inputCls}`}
+              placeholder={defaultTextColor}
+            />
+            {(draft as any).text_color && (
+              <button onClick={() => up({ text_color: undefined } as any)}
+                className="text-gray-400 hover:text-red-400 shrink-0">
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Actions */}
       <div className="flex gap-2 pt-1">
