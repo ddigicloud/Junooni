@@ -342,8 +342,8 @@ function BoldSection({
                   {section.cta_label && (
                     <Link
                       href={resolveUrl(section.cta_url ?? "/products", handle, bare)}
-                      className="inline-block px-10 py-5 text-lg font-bold transition-all rounded-full hover:scale-105 hover:shadow-2xl"
-                      style={{ background: brandPrimary, color: "#fff" }}
+                      className="inline-block px-10 py-5 text-lg font-bold transition-all border-2 rounded-full hover:scale-105"
+                      style={{ borderColor: headlineColor, color: headlineColor }}
                     >
                       {section.cta_label}
                     </Link>
@@ -420,7 +420,7 @@ function BoldSection({
       return (
           <section id="products" className="py-20"
             style={{ backgroundColor: sectionBg ?? "rgba(255,255,255,0.03)" }}>
-            <div className="max-w-6xl mx-auto px-6">
+            <div className="max-w-6xl px-6 mx-auto">
               {section.title && (
                 <h2 className="mb-4 text-4xl font-black tracking-tight uppercase"
                   style={{ color: sectionText ?? "#ffffff" }}>{section.title}</h2>

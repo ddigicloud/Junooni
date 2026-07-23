@@ -1946,9 +1946,14 @@ if (!mergedLocationStateRef.current && location.state) {
   const [enhancedProductData, setEnhancedProductData] = useState<PayloadProductData | null>(null);
   // Add this state variable with your other state declarations
   const [dynamicLocationId, setDynamicLocationId] = useState<string>('');
+  // Sales channel state
+  const [vendorSalesChannels, setVendorSalesChannels] = useState<string[]>([]);
+  const [selectedSalesChannels, setSelectedSalesChannels] = useState<string[]>([]);
+  const [isLoadingSalesChannels, setIsLoadingSalesChannels] = useState(false);
+  const [salesChannelsDirty, setSalesChannelsDirty] = useState(false);
   // near other hooks at component top
-const didPopulateRef = useRef(false);
-// Canvas pricing and mockup data
+  const didPopulateRef = useRef(false);
+  // Canvas pricing and mockup data
   const [canvasPricingData, setCanvasPricingData] = useState<any>(null);
   const [canvasMockupData, setCanvasMockupData] = useState<any>(null);
   const [imageAreaAnalysis, setImageAreaAnalysis] = useState<any>(null);
@@ -1959,6 +1964,10 @@ const [availableAreas, setAvailableAreas] = useState<string[]>([]);
 const [isProcessingDesignImages, setIsProcessingDesignImages] = useState<boolean>(false);
 const [hasProcessedInitialData, setHasProcessedInitialData] = useState<boolean>(false);
 const [isSubmittingForm, setIsSubmittingForm] = useState<boolean>(false);
+const SALES_CHANNEL_LABELS: Record<string, string> = {
+  [SALES_CHANNEL_MARKETPLACE]: 'Junooni Marketplace',
+  [SALES_CHANNEL_OWN_STORE]: 'My Own Store',
+};
 
 // ✅ ADD: New state for PayloadCMS fulfillment data
 const [payloadFulfillmentData, setPayloadFulfillmentData] = useState<{
@@ -4945,6 +4954,44 @@ useEffect(() => {
     };
   }, []);
 
+  // Load vendor sales channels
+  // Load vendor sales channels
+  useEffect(() => {
+    setIsLoadingSalesChannels(true);
+    fetchCurrentVendor()
+      .then(vendor => {
+        let allowed: string[] = [];
+        if (!vendor) {
+          allowed = [SALES_CHANNEL_MARKETPLACE];
+        } else {
+          if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
+          if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
+          if (allowed.length === 0) allowed = [SALES_CHANNEL_MARKETPLACE];
+        }
+        setVendorSalesChannels(allowed);
+
+        // Default selected = ALL allowed channels the vendor has access to
+        // This ensures Own Store only vendors see their channel pre-checked
+        setSelectedSalesChannels(allowed);
+
+        // Set initial status based on which channels are pre-selected
+        const hasMarketplace = allowed.includes(SALES_CHANNEL_MARKETPLACE);
+        const hasOwnStore = allowed.includes(SALES_CHANNEL_OWN_STORE);
+        if (hasOwnStore && !hasMarketplace) {
+          form.setValue('status', 'published');
+        } else {
+          form.setValue('status', 'proposed');
+        }
+      })
+      .catch(err => {
+        console.error('Vendor fetch failed (non-fatal):', err);
+        setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+        setSelectedSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+        form.setValue('status', 'proposed');
+      })
+      .finally(() => setIsLoadingSalesChannels(false));
+  }, []);
+
   useEffect(() => {
     const loadCategories = async () => {
       setIsLoadingCategories(true);
@@ -6401,51 +6448,20 @@ if (!printTechId || !printTechName) {
 
               // STEP C: Assign sales channels based on vendor flags
             // STEP C: Assign sales channels based on vendor flags
-            try {
-              const vendor = await fetchCurrentVendor();
+            // STEP C: Assign sales channels based on user selection
+              try {
+                const channelsToAssign = selectedSalesChannels.length > 0
+                  ? selectedSalesChannels
+                  : [SALES_CHANNEL_MARKETPLACE];
 
-              if (!vendor) {
-                // Vendor hasn't completed onboarding — assign marketplace by default
-                console.warn('⚠️ Could not fetch vendor profile, assigning marketplace channel by default');
                 await assignProductSalesChannels({
                   productId: result.id,
-                  salesChannelIds: [SALES_CHANNEL_MARKETPLACE],
+                  salesChannelIds: channelsToAssign,
                 });
-              } else {
-                console.log('🔍 Vendor flags:', {
-                  id: vendor?.id,
-                  name: vendor?.name,
-                  sell_on_marketplace: vendor?.sell_on_marketplace,
-                  sell_on_own_store: vendor?.sell_on_own_store,
-                });
-
-                const channelsToAssign: string[] = [];
-
-                if (vendor?.sell_on_marketplace === true) {
-                  channelsToAssign.push(SALES_CHANNEL_MARKETPLACE);
-                }
-                if (vendor?.sell_on_own_store === true) {
-                  channelsToAssign.push(SALES_CHANNEL_OWN_STORE);
-                }
-
-                if (channelsToAssign.length > 0) {
-                  await assignProductSalesChannels({
-                    productId: result.id,
-                    salesChannelIds: channelsToAssign,
-                  });
-                  console.log(`✅ Assigned ${channelsToAssign.length} sales channel(s):`, channelsToAssign);
-                } else {
-                  // Both flags false — still assign marketplace as safe default
-                  console.warn('⚠️ Both flags false, assigning marketplace as default');
-                  await assignProductSalesChannels({
-                    productId: result.id,
-                    salesChannelIds: [SALES_CHANNEL_MARKETPLACE],
-                  });
-                }
+                console.log('✅ Assigned sales channels:', channelsToAssign);
+              } catch (scError) {
+                console.error('❌ Sales channel assignment failed (non-fatal):', scError);
               }
-            } catch (scError) {
-              console.error('❌ Sales channel assignment failed (non-fatal):', scError);
-            }
 
           }
         } catch (inventoryError) {
@@ -6475,16 +6491,26 @@ if (!printTechId || !printTechName) {
 
   // For debugging when create button doesn't work
   const handleManualSubmit = (e: React.FormEvent) => {
-  if (e) e.preventDefault();
-  
-  // Prevent multiple rapid clicks
-  if (isSubmittingForm) {
-    //console.log('🚫 Already submitting, ignoring click');
-    return;
-  }
-  
-  form.handleSubmit(onSubmit)();
-};
+    if (e) e.preventDefault();
+    
+    if (isSubmittingForm) {
+      return;
+    }
+
+    // Status is driven by channel selection:
+    // Marketplace present → proposed (needs admin approval)
+    // Own Store only → published (creator controls)
+    const marketplaceSelected = selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE);
+    const ownStoreSelected = selectedSalesChannels.includes(SALES_CHANNEL_OWN_STORE);
+
+    if (marketplaceSelected) {
+      form.setValue('status', 'proposed');
+    } else if (ownStoreSelected && !marketplaceSelected) {
+      form.setValue('status', 'published');
+    }
+    
+    form.handleSubmit(onSubmit)();
+  };
 
   // ===== ERROR HANDLING =====
   if (error && error.includes('Failed to load')) {
@@ -7329,10 +7355,36 @@ if (!printTechId || !printTechName) {
                   render={({ field }) => (
                     <FormItem className="mb-5">
                       <FormLabel className="font-medium text-gray-700">Product Status</FormLabel>
-                      <Select onValueChange={field.onChange}  value={field.value || "proposed"}  defaultValue="proposed">
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ''}
+                          defaultValue=""
+                        >
                         <FormControl>
                           <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Select status">
+                              {field.value === 'draft' && (
+                                <div className="flex items-center">
+                                  <span className="w-2 h-2 mr-2 bg-gray-400 rounded-full"></span>
+                                  Draft
+                                </div>
+                              )}
+                              {field.value === 'proposed' && (
+                                <div className="flex items-center">
+                                  <span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>
+                                  Proposed
+                                </div>
+                              )}
+                              {field.value === 'published' && (
+                                <div className="flex items-center">
+                                  <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
+                                  Published
+                                </div>
+                              )}
+                              {!field.value && (
+                                <span className="text-gray-400">Select status</span>
+                              )}
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -7342,12 +7394,25 @@ if (!printTechId || !printTechName) {
                               Draft
                             </div>
                           </SelectItem>
-                          <SelectItem value="proposed">
-                            <div className="flex items-center">
-                              <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
-                              Proposed
-                            </div>
-                          </SelectItem>
+                          {/* Show Proposed only when Marketplace is selected */}
+                          {selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
+                            <SelectItem value="proposed">
+                              <div className="flex items-center">
+                                <span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>
+                                Proposed
+                              </div>
+                            </SelectItem>
+                          )}
+                          {/* Show Published only when Own Store only (no Marketplace) */}
+                          {selectedSalesChannels.includes(SALES_CHANNEL_OWN_STORE) &&
+                           !selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
+                            <SelectItem value="published">
+                              <div className="flex items-center">
+                                <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
+                                Published
+                              </div>
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormDescription className="text-sm text-gray-500">
@@ -7480,6 +7545,97 @@ if (!printTechId || !printTechName) {
                     </FormItem>
                   )}
                 />
+
+                {/* Sales Channel Selection */}
+              <div className="mt-5">
+                <Separator className="mb-4" />
+                <h3 className="mb-1 font-medium text-gray-700">Sales Channels</h3>
+                <p className="mb-3 text-sm text-gray-500">
+                  Choose where this product is available for sale
+                </p>
+
+                {isLoadingSalesChannels ? (
+                  <p className="text-sm text-gray-400">Loading channels...</p>
+                ) : vendorSalesChannels.length === 0 ? (
+                  <p className="text-sm text-gray-400">No sales channels available</p>
+                ) : (
+                  <div className="space-y-3">
+                    {vendorSalesChannels.map((channelId) => {
+                      const isChecked = selectedSalesChannels.includes(channelId);
+                      const isOnlyChannel = vendorSalesChannels.length === 1;
+                      const isLastSelected = isChecked && selectedSalesChannels.length === 1;
+                      const isDisabled = isOnlyChannel || isLastSelected;
+
+                      return (
+                        <div
+                          key={channelId}
+                          className={`flex items-center gap-3 p-3 border rounded-md ${
+                            isDisabled
+                              ? 'border-gray-100 bg-gray-50 opacity-70'
+                              : 'border-gray-200'
+                          }`}
+                        >
+                          <Checkbox
+                            id={`sc-create-${channelId}`}
+                            checked={isChecked}
+                            disabled={isDisabled}
+                            onCheckedChange={(checked) => {
+                              if (isDisabled) return;
+                              const next = checked
+                                ? [...selectedSalesChannels, channelId]
+                                : selectedSalesChannels.filter(id => id !== channelId);
+                              setSelectedSalesChannels(next);
+                              setSalesChannelsDirty(true);
+
+                              // Status logic:
+                              // Marketplace selected → proposed (admin approves, no creator control)
+                              // Own Store only → published (creator controls directly, no proposed step)
+                              const marketplaceInNext = next.includes(SALES_CHANNEL_MARKETPLACE);
+                              const ownStoreInNext = next.includes(SALES_CHANNEL_OWN_STORE);
+
+                              if (marketplaceInNext) {
+                                form.setValue('status', 'proposed');
+                              } else if (ownStoreInNext && !marketplaceInNext) {
+                                // No proposed for Own Store — creator goes straight to published or draft
+                                form.setValue('status', 'published');
+                              }
+                            }}
+                            className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]"
+                          />
+
+                          <div className="flex-1">
+                            <label
+                              htmlFor={`sc-create-${channelId}`}
+                              className={`text-sm font-medium ${
+                                isDisabled
+                                  ? 'text-gray-400 cursor-not-allowed'
+                                  : 'text-gray-700 cursor-pointer'
+                              }`}
+                            >
+                              {SALES_CHANNEL_LABELS[channelId] || channelId}
+                            </label>
+
+                            {isOnlyChannel && (
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                Cannot be changed — only available channel
+                              </p>
+                            )}
+                            {isLastSelected && !isOnlyChannel && (
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                At least one channel must be selected
+                              </p>
+                            )}
+                          </div>
+
+                          {isChecked && (
+                            <span className="text-xs text-[#e65100] font-medium">Active</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               </section>
               
               {/* Shipping & Fulfillment Info Card */}

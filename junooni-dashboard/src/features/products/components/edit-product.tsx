@@ -856,6 +856,7 @@ const isNewVariant = (variant) => {
       console.log(`🏁 Total blocking load time: ${(performance.now() - t0).toFixed(0)}ms`);
 
       // ── Lazy: sales channels (non-blocking) ───────────────────────────
+     // ── Lazy: sales channels (non-blocking) ───────────────────────────
       setIsLoadingSalesChannels(true);
       fetchCurrentVendor()
         .then(vendor => {
@@ -876,7 +877,11 @@ const isNewVariant = (variant) => {
           setVendorSalesChannels(allowed);
 
           const currentChannelIds = (product?.sales_channels || []).map((sc: any) => sc.id);
-          setSelectedSalesChannels(currentChannelIds.filter((sc: string) => allowed.includes(sc)));
+          const activeChannels = currentChannelIds.filter((sc: string) => allowed.includes(sc));
+
+          // If product has no matching channels yet, default to all allowed channels
+          const finalSelected = activeChannels.length > 0 ? activeChannels : allowed;
+          setSelectedSalesChannels(finalSelected);
         })
         .catch(err => {
           console.error('Vendor fetch failed (non-fatal):', err);
@@ -1936,6 +1941,26 @@ const isNewVariant = (variant) => {
     setHasUnsavedVariantChanges(false);
   };
 
+  // Instantly downgrade status to proposed when marketplace product is edited
+  useEffect(() => {
+    if (!productLoaded) return;
+
+    const currentStatus = form.getValues('status');
+
+    if (
+      currentStatus === 'published' &&
+      selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE)
+    ) {
+      form.setValue('status', 'proposed', { shouldDirty: true });
+    }
+  }, [
+    form.formState.isDirty,
+    hasUnsavedVariantChanges,
+    hasImageChanges,
+    salesChannelsDirty,
+  ]);
+
+  
   // Monitor option changes to update variants, but only after initial load
   useEffect(() => {
     // Skip this effect until product is fully loaded
@@ -2536,7 +2561,11 @@ const onSubmit = async (values: ProductFormValues) => {
                       subtitle: values.subtitle?.trim() || "",
                       handle: values.handle.trim() || values.title.toLowerCase().replace(/\s+/g, '-'),
                       description: values.description.trim() || "",
-                      status: values.status,
+                      // If product is published AND marketplace channel is active,
+                      // downgrade to proposed so admin re-approves the updated product
+                      status: values.status === 'published' && selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE)
+                        ? 'proposed'
+                        : values.status,
                       thumbnail: values.thumbnail || "",
                       discountable: Boolean(values.discountable),
                       weight: values.weight ? parseFloat(values.weight) || 0 : 0,
@@ -4104,14 +4133,19 @@ const isFormDirty =
                                 Draft
                               </div>
                             </SelectItem>
-                            <SelectItem value="proposed">
-                              <div className="flex items-center">
-                                <span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>
-                                Proposed
-                              </div>
-                            </SelectItem>
-                            {/* Only show the published option if already published */}
-                            {field.value === "published" && (
+                            {/* Proposed only when Marketplace is selected */}
+                            {selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
+                              <SelectItem value="proposed">
+                                <div className="flex items-center">
+                                  <span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>
+                                  Proposed
+                                </div>
+                              </SelectItem>
+                            )}
+                            {/* Published only when Own Store only (no Marketplace) */}
+                            {(field.value === "published" ||
+                              (selectedSalesChannels.includes(SALES_CHANNEL_OWN_STORE) &&
+                               !selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE))) && (
                               <SelectItem value="published">
                                 <div className="flex items-center">
                                   <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
@@ -4276,15 +4310,28 @@ const isFormDirty =
                               id={`sc-${channelId}`}
                               checked={isChecked}
                               disabled={isDisabled}
-                              onCheckedChange={(checked) => {
-                                if (isDisabled) return
+                             onCheckedChange={(checked) => {
+                                if (isDisabled) return;
 
-                                setSelectedSalesChannels((prev) =>
-                                  checked
-                                    ? [...prev, channelId]
-                                    : prev.filter((id) => id !== channelId)
-                                )
-                                setSalesChannelsDirty(true)
+                                const next = checked
+                                  ? [...selectedSalesChannels, channelId]
+                                  : selectedSalesChannels.filter((id) => id !== channelId);
+
+                                setSelectedSalesChannels(next);
+                                setSalesChannelsDirty(true);
+
+                                // Status logic:
+                                // Marketplace selected → proposed (admin approves, no creator control)
+                                // Own Store only → published (creator controls directly, no proposed step)
+                                const marketplaceInNext = next.includes(SALES_CHANNEL_MARKETPLACE);
+                                const ownStoreInNext = next.includes(SALES_CHANNEL_OWN_STORE);
+
+                                if (marketplaceInNext) {
+                                  form.setValue('status', 'proposed');
+                                } else if (ownStoreInNext && !marketplaceInNext) {
+                                  // No proposed for Own Store only — skip straight to published or draft
+                                  form.setValue('status', 'published');
+                                }
                               }}
                               className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]"
                             />

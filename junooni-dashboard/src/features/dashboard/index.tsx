@@ -12,6 +12,7 @@ import Junoonilogo from '../../assets/junooni_logo_brand_color.png'
 import AdminImpersonationBanner from '@/components/AdminImpersonationBanner'
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import StoreTypeModal, { StoreModeBadge, type StorePreference,} from "@/features/dashboard/components/StoreTypeModal"
+import AIAssistant from '@/components/AIAssistant'
 import { 
   CircleUser, 
   Package, 
@@ -1512,7 +1513,8 @@ const DashboardPage = () => {
             </p>
           </div>
         </div>
-        <ChatwootWidget />
+        <AIAssistant vendorId={vendor?.id ?? ""} />
+        {/* <ChatwootWidget /> */}
         {/* Replay tour button */}
         {!showTour && (
           <button

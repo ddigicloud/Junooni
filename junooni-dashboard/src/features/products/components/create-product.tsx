@@ -604,26 +604,32 @@ const handleFileChange = (
     try {
       const vendor = await fetchCurrentVendor();
       if (!vendor) {
-        // Fallback — assign marketplace only
         setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
         setSelectedSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+        form.setValue('status', 'proposed');
         return;
       }
 
       const allowed: string[] = [];
       if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
       if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
-
-      // If no flags set, default to marketplace
       if (allowed.length === 0) allowed.push(SALES_CHANNEL_MARKETPLACE);
 
       setVendorSalesChannels(allowed);
-
-      // Auto-select all available channels by default
       setSelectedSalesChannels([...allowed]);
+
+      // Set initial status based on which channels are available
+      const hasMarketplace = allowed.includes(SALES_CHANNEL_MARKETPLACE);
+      const hasOwnStore = allowed.includes(SALES_CHANNEL_OWN_STORE);
+      if (hasOwnStore && !hasMarketplace) {
+        form.setValue('status', 'published');
+      } else {
+        form.setValue('status', 'proposed');
+      }
     } catch {
       setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
       setSelectedSalesChannels([SALES_CHANNEL_MARKETPLACE]);
+      form.setValue('status', 'proposed');
     } finally {
       setIsLoadingChannels(false);
     }
@@ -2154,10 +2160,32 @@ return {
                   render={({ field }) => (
                     <FormItem className="mb-5">
                       <FormLabel className="font-medium text-gray-700">Product Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl>
                           <SelectTrigger className="border-gray-300 focus:ring-[#e65100]">
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Select status">
+                              {field.value === 'draft' && (
+                                <div className="flex items-center">
+                                  <span className="w-2 h-2 mr-2 bg-gray-400 rounded-full"></span>
+                                  Draft
+                                </div>
+                              )}
+                              {field.value === 'proposed' && (
+                                <div className="flex items-center">
+                                  <span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>
+                                  Proposed
+                                </div>
+                              )}
+                              {field.value === 'published' && (
+                                <div className="flex items-center">
+                                  <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
+                                  Published
+                                </div>
+                              )}
+                              {!field.value && (
+                                <span className="text-gray-400">Select status</span>
+                              )}
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -2167,12 +2195,25 @@ return {
                               Draft
                             </div>
                           </SelectItem>
-                          <SelectItem value="published">
-                            <div className="flex items-center">
-                              <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
-                              Proposed
-                            </div>
-                          </SelectItem>
+                          {/* Proposed only when Marketplace is selected */}
+                          {selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
+                            <SelectItem value="proposed">
+                              <div className="flex items-center">
+                                <span className="w-2 h-2 mr-2 bg-yellow-400 rounded-full"></span>
+                                Proposed
+                              </div>
+                            </SelectItem>
+                          )}
+                          {/* Published only when Own Store only (no Marketplace) */}
+                          {selectedSalesChannels.includes(SALES_CHANNEL_OWN_STORE) &&
+                           !selectedSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
+                            <SelectItem value="published">
+                              <div className="flex items-center">
+                                <span className="w-2 h-2 mr-2 bg-green-500 rounded-full"></span>
+                                Published
+                              </div>
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormDescription className="text-sm text-gray-500">
@@ -2295,11 +2336,22 @@ return {
                                 disabled={isDisabled}
                                 onCheckedChange={(checked) => {
                                   if (isDisabled) return;
-                                  setSelectedSalesChannels(prev =>
-                                    checked
-                                      ? [...prev, channelId]
-                                      : prev.filter(id => id !== channelId)
-                                  );
+                                  const next = checked
+                                    ? [...selectedSalesChannels, channelId]
+                                    : selectedSalesChannels.filter(id => id !== channelId);
+                                  setSelectedSalesChannels(next);
+
+                                  // Status logic:
+                                  // Marketplace selected → proposed (admin approves)
+                                  // Own Store only → published (creator controls directly)
+                                  const marketplaceInNext = next.includes(SALES_CHANNEL_MARKETPLACE);
+                                  const ownStoreInNext = next.includes(SALES_CHANNEL_OWN_STORE);
+
+                                  if (marketplaceInNext) {
+                                    form.setValue('status', 'proposed');
+                                  } else if (ownStoreInNext && !marketplaceInNext) {
+                                    form.setValue('status', 'published');
+                                  }
                                 }}
                                 className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]"
                               />

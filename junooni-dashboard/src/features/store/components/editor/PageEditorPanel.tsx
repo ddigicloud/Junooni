@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { ChevronLeft, Save, ExternalLink, X, Trash2  } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ChevronLeft, Save, X, Trash2  } from "lucide-react"
 import type { StorePage, PageTemplate } from "./types"
 import { PAGE_TEMPLATES, BRAND } from "./constants"
 import { slugify } from "./helpers"
@@ -11,7 +11,6 @@ function getPageUrl(vendorHandle: string, slug: string): string {
   return `${base}/${vendorHandle}/pages/${slug}`
 }
 
-// ADD this helper above the component
 function extractLastUpdated(content: string): string | null {
   const match = content.match(/\*Last updated: (.+?)\*/)
   return match ? match[1] : null
@@ -41,9 +40,21 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
   const inputCls    = isDark
     ? "bg-gray-800 border border-gray-700 text-gray-200"
     : "bg-white border border-gray-300 text-gray-800"
+
   const isBoldTheme      = isDark || storeTemplate === "bold"
   const defaultBgColor   = isBoldTheme ? "#000000" : "#ffffff"
   const defaultTextColor = isBoldTheme ? "#ffffff" : "#111827"
+
+  // Seed theme-appropriate defaults on first open if no colors set
+  useEffect(() => {
+    if (!(draft as any).bg_color || !(draft as any).text_color) {
+      const patch: any = {}
+      if (!(draft as any).bg_color)   patch.bg_color   = defaultBgColor
+      if (!(draft as any).text_color) patch.text_color = defaultTextColor
+      up(patch)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="space-y-3">
@@ -97,17 +108,8 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
             className={`flex-1 rounded-r-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-orange-500 ${inputCls}`}
           />
         </div>
-        {/* <a
-          href={getPageUrl(vendorHandle, draft.slug)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[10px] text-orange-400 hover:text-orange-300 mt-1 flex items-center gap-1"
-        >
-          <ExternalLink className="w-2.5 h-2.5" />Preview page
-        </a> */}
       </div>
 
-      {/* Content */}
       {/* Content */}
       <div>
         <label className={`text-[10px] ${textFaint} block mb-1`}>Content</label>
@@ -143,36 +145,7 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
         />
       </div>
 
-      {/* Visibility */}
-      {/* <div className="space-y-2">
-        <p className={`text-[10px] ${textFaint}`}>Visibility</p>
-        {[
-          { key: "in_nav",    label: "Show in header nav", color: "blue"   },
-          { key: "in_footer", label: "Show in footer",     color: "purple" },
-        ].map(({ key, label, color }) => (
-          <label
-            key={key}
-            className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${
-              (draft as any)[key]
-                ? `border-${color}-500/40 bg-${color}-500/10`
-                : isDark ? "border-gray-700 hover:border-gray-600" : "border-gray-200"
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={!!(draft as any)[key]}
-              onChange={e => up({ [key]: e.target.checked } as any)}
-              className="w-3.5 h-3.5 accent-orange-500"
-            />
-            <span className={`text-xs ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-              {label}
-            </span>
-          </label>
-        ))}
-      </div> */}
-
       {/* Background & Text color */}
-       {/* Background & Text color */}
       <div className={`pt-3 border-t space-y-2 ${isDark ? "border-gray-800" : "border-gray-200"}`}>
         <p className={`text-[10px] uppercase tracking-wider font-semibold ${textFaint}`}>Page colors</p>
 
@@ -184,17 +157,16 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
               type="color"
               value={(draft as any).bg_color ?? defaultBgColor}
               onChange={e => up({ bg_color: e.target.value } as any)}
-              className="w-7 h-7 rounded border-0 cursor-pointer shrink-0"
+              className="border-0 rounded cursor-pointer w-7 h-7 shrink-0"
             />
             <input
               type="text"
-              value={(draft as any).text_color ?? ""}
-              onChange={e => up({ text_color: e.target.value } as any)}
+              value={(draft as any).bg_color ?? defaultBgColor}
+              onChange={e => up({ bg_color: e.target.value || defaultBgColor } as any)}
               className={`w-24 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${inputCls}`}
-              placeholder={defaultTextColor}
             />
-            {(draft as any).bg_color && (
-              <button onClick={() => up({ bg_color: undefined } as any)}
+            {(draft as any).bg_color && (draft as any).bg_color !== defaultBgColor && (
+              <button onClick={() => up({ bg_color: defaultBgColor } as any)}
                 className="text-gray-400 hover:text-red-400 shrink-0">
                 <X className="w-3 h-3" />
               </button>
@@ -210,17 +182,16 @@ export function PageEditorPanel({ page, vendorHandle, onSave, onCancel, onDelete
               type="color"
               value={(draft as any).text_color ?? defaultTextColor}
               onChange={e => up({ text_color: e.target.value } as any)}
-              className="w-7 h-7 rounded border-0 cursor-pointer shrink-0"
+              className="border-0 rounded cursor-pointer w-7 h-7 shrink-0"
             />
             <input
               type="text"
-              value={(draft as any).text_color ?? ""}
-              onChange={e => up({ text_color: e.target.value } as any)}
+              value={(draft as any).text_color ?? defaultTextColor}
+              onChange={e => up({ text_color: e.target.value || defaultTextColor } as any)}
               className={`w-24 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none ${inputCls}`}
-              placeholder={defaultTextColor}
             />
-            {(draft as any).text_color && (
-              <button onClick={() => up({ text_color: undefined } as any)}
+            {(draft as any).text_color && (draft as any).text_color !== defaultTextColor && (
+              <button onClick={() => up({ text_color: defaultTextColor } as any)}
                 className="text-gray-400 hover:text-red-400 shrink-0">
                 <X className="w-3 h-3" />
               </button>

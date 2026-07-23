@@ -188,6 +188,22 @@ export default defineMiddlewares({
     authenticate(["vendor", "user"], ["session", "bearer"]),
   ],
 },
+
+{
+  matcher: "/vendors/ai-assistant",
+  method: ["POST", "OPTIONS"],
+  middlewares: [
+    (req, res, next) => {
+      cors({ origin: true, credentials: true })(req, res, next)
+    },
+    (req, res, next) => {
+      if (req.method === "OPTIONS") { res.status(204).end(); return }
+      next()
+    },
+    authenticate(["vendor", "user"], ["session", "bearer"]),
+  ],
+},
+
     {
       matcher: "/vendors/products*",
       method: ["GET", "OPTIONS", "POST", "PUT", "DELETE"],

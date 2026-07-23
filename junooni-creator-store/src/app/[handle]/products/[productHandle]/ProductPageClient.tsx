@@ -379,12 +379,17 @@ const elementOrder: string[] = storedOrder.length === 0
   // ── State ──────────────────────────────────────────────────────────────────
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
     Object.fromEntries(
-      productOpts.map((o: any) => [
-        o.title.toLowerCase(),
-        o.values?.[0]?.value ?? ""
-      ])
+      productOpts.map((o: any) => {
+        const titleLower = o.title.toLowerCase()
+        const isColor = titleLower === "color" || titleLower === "colour"
+        return [
+          titleLower,
+          isColor ? (o.values?.[0]?.value ?? "") : ""
+        ]
+      })
     )
   )
+
   // convenience aliases for backward compat
   const selectedColor = selectedOptions["color"] ?? selectedOptions["colour"] ?? ""
   const selectedSize  = selectedOptions["size"]  ?? ""
@@ -468,8 +473,20 @@ const elementOrder: string[] = storedOrder.length === 0
 
   // ── Add to cart ────────────────────────────────────────────────────────────
   const handleAddToCart = async () => {
-    if (!selectedVariant?.id) { setCartError("Please select all options"); return }
-    setIsAdding(true); setCartError(null)
+  const unselected = productOpts
+    .filter((o: any) => {
+      const t = o.title.toLowerCase()
+      return t !== "color" && t !== "colour" && !selectedOptions[t]
+    })
+    .map((o: any) => o.title)
+
+  if (unselected.length > 0) {
+    setCartError(`Please select: ${unselected.join(", ")}`)
+    return
+  }
+
+  if (!selectedVariant?.id) { setCartError("Please select all options"); return }
+  setIsAdding(true); setCartError(null)
     try {
       await addToCart({ handle: vendor.handle, variantId: selectedVariant.id, quantity })
       await refreshCart()
@@ -753,11 +770,15 @@ useEffect(() => {
                       : `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)`,
                 borderColor: style === "outline" && !isOutOfStock ? brandPrimary : undefined,
                 color: isOutOfStock
-                  ? (isDark ? "#9ca3af" : "#6b7280")
-                  : style === "outline" && !added
-                    ? brandPrimary
-                    : "#ffffff",
-              }}
+                ? (isDark ? "#9ca3af" : "#6b7280")
+                : style === "outline" && !added
+                  ? brandPrimary
+                  : added
+                    ? "#ffffff"
+                    : isDark
+                      ? "#ffffff"
+                      : "#111827",
+                            }}
             >
               {isOutOfStock ? (
                 <>

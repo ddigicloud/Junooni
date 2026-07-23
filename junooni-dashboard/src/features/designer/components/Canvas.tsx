@@ -1,5 +1,5 @@
 // src/components/Designer/Canvas.tsx - Complete Rewrite with Fixed Mockup Calculation
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo, startTransition } from 'react';
 import Konva from 'konva';
 import JunooniLogo from "@/assets/junooni_logo_brand_color.png";
 import {
@@ -873,6 +873,19 @@ const renderMockupDirectly = async (
   targetResolution: number = 1000
 ): Promise<string> => {
 
+  // ── Check module-level cache first (survives tab switches) ──────────────
+  const cacheKey = _getCacheKey(
+    mockup.id,
+    mockup.viewAngle || 'front',
+    productColor,
+    _hashDesignElements(designElements),
+    targetResolution
+  );
+  if (_renderCache.has(cacheKey)) {
+    return _renderCache.get(cacheKey)!;
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
   return new Promise(async (resolve, reject) => {
     try {
       const offscreenCanvas = document.createElement('canvas');
@@ -890,13 +903,7 @@ const renderMockupDirectly = async (
         mockup.photoColor?.toLowerCase() === '#00000000';
       const maskColor = mockup.maskColor || productColor || '#ffffff';
 
-      const mockupBaseImg = await new Promise<HTMLImageElement>((res, rej) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => res(img);
-        img.onerror = () => rej(new Error('Failed to load mockup base'));
-        img.src = resolveImageUrl(mockup.photo.url);
-      });
+     const mockupBaseImg = await _loadImageCached(resolveImageUrl(mockup.photo.url));
 
       if (requiresColorMasking) {
         ctx.fillStyle = maskColor;
@@ -1021,13 +1028,7 @@ const renderMockupDirectly = async (
 
           for (const alphaMask of areaMasks) {
             try {
-              const maskImg = await new Promise<HTMLImageElement>((res, rej) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => res(img);
-                img.onerror = () => rej();
-                img.src = resolveImageUrl(alphaMask.maskImg.url);
-              });
+             const maskImg = await _loadImageCached(resolveImageUrl(alphaMask.maskImg.url));
 
               if (alphaMask.alfamask === 'luminance' || alphaMask.alfamask === 'red_channel') {
                 const tmpCanvas = document.createElement('canvas');
@@ -1092,13 +1093,8 @@ const renderMockupDirectly = async (
       if (mockup.light && mockup.light.length > 0) {
         for (const lightOverlay of mockup.light) {
           try {
-            const lightImg = await new Promise<HTMLImageElement>((res, rej) => {
-              const img = new Image();
-              img.crossOrigin = 'anonymous';
-              img.onload = () => res(img);
-              img.onerror = () => rej();
-              img.src = resolveImageUrl(lightOverlay.overImage.url);
-            });
+            const lightImg = await _loadImageCached(resolveImageUrl(lightOverlay.overImage.url));
+
             ctx.globalAlpha = lightOverlay.ovlayOpa || 0.5;
             ctx.globalCompositeOperation = (lightOverlay.overbldMde as GlobalCompositeOperation) || 'normal';
             ctx.drawImage(lightImg, 0, 0, targetResolution, targetResolution);
@@ -1115,10 +1111,15 @@ const renderMockupDirectly = async (
       
       // Output WebP directly — avoids a second compression pass later
       const supportsWebP = offscreenCanvas.toDataURL('image/webp').startsWith('data:image/webp');
-      resolve(supportsWebP
+      const imageData = supportsWebP
         ? offscreenCanvas.toDataURL('image/webp', 0.75)
-        : offscreenCanvas.toDataURL('image/jpeg', 0.80)
-      );
+        : offscreenCanvas.toDataURL('image/jpeg', 0.80);
+
+      // ── Write to module cache so tab switches & color changes are instant ─
+      _renderCache.set(cacheKey, imageData);
+      // ─────────────────────────────────────────────────────────────────────
+
+      resolve(imageData);
 
     } catch (error) {
       reject(error);
@@ -2995,10 +2996,24 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
   // 🔥 NEW: Use renderMockupDirectly ONLY for Canvas engine
   useEffect(() => {
     if (!shouldUseDirectRender) {
-      // For PIXI, use the old component-based approach
       setIsRendering(false);
       return;
     }
+
+    // ── Check module cache synchronously before even showing spinner ─────
+    const cacheKey = _getCacheKey(
+      mockup.id,
+      mockup.viewAngle || 'front',
+      productColor,
+      _hashDesignElements(designElements),
+      displayDimensions.width
+    );
+    if (_renderCache.has(cacheKey)) {
+      setPreviewImage(_renderCache.get(cacheKey)!);
+      setIsRendering(false);
+      return;
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     let isMounted = true;
     
@@ -3006,7 +3021,6 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
       try {
         setIsRendering(true);
         
-        // Use direct rendering for Canvas engine only
         const imageData = await renderMockupDirectly(
           mockup,
           designElements,
@@ -3021,7 +3035,6 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
           setIsRendering(false);
         }
       } catch (error) {
-        //console.error('Canvas preview render failed:', error);
         if (isMounted) {
           setThumbnailError('Failed to render preview');
           setIsRendering(false);
@@ -4264,6 +4277,52 @@ const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
   );
 };
 
+
+// ─── Module-level render cache (survives Design ↔ Preview tab switches) ───────
+const _renderCache = new Map<string, string>();
+
+// ── Image element cache — avoids re-fetching mockup base photos from network ──
+const _imageCache = new Map<string, HTMLImageElement>();
+
+const _loadImageCached = (url: string): Promise<HTMLImageElement> => {
+  if (_imageCache.has(url)) {
+    return Promise.resolve(_imageCache.get(url)!);
+  }
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { _imageCache.set(url, img); res(img); };
+    img.onerror = () => rej(new Error(`Failed to load: ${url}`));
+    img.src = url;
+  });
+};
+
+const _getCacheKey = (
+  mockupId: string,
+  viewAngle: string,
+  productColor: string,
+  designHash: string,
+  resolution: number
+): string => `${mockupId}||${viewAngle}||${productColor}||${designHash}||${resolution}`;
+
+const _hashDesignElements = (elements: Record<string, DesignElement[]>): string => {
+  try {
+    let hash = 0;
+    Object.entries(elements).forEach(([area, els]) => {
+      els.forEach(el => {
+        const str = `${area}:${el.id}:${el.x}:${el.y}:${el.width}:${el.height}:${el.rotation}:${el.scaleX}:${el.scaleY}:${el.visible}`;
+        for (let i = 0; i < str.length; i++) {
+          hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+        }
+      });
+    });
+    return hash.toString(36);
+  } catch {
+    return 'nohash';
+  }
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 // =====================================
 // MAIN CANVAS COMPONENT
 // =====================================
@@ -4345,19 +4404,17 @@ const [selectedColors, setSelectedColors] = useState<Array<{ name: string; value
   });
   
 const [activeColor, setActiveColor] = useState<string>(() => {
-  // Use dynamic color detection instead of hardcoded fallback
   if (productData?.colorOptions && productData.colorOptions.length > 0) {
     const primaryColor = productData.colorOptions.find((color: any) => color?.isPrimary);
     const firstColor = primaryColor || productData.colorOptions[0];
-    
-    if (firstColor?.colorHex) {
-      return firstColor.colorHex;
-    }
+    if (firstColor?.colorHex) return firstColor.colorHex;
   }
-  
-  // Only fallback to white if no product colors exist
   return '#ffffff';
 });
+
+// ── Visual-only highlight state — updates instantly on click,
+//    activeColor updates after via startTransition (non-blocking) ──────────
+const [highlightedColor, setHighlightedColor] = useState<string>(activeColor);
   
 const [activeSize, setActiveSize] = useState<string>(() => {
   if (productData?.sizeOptions && productData.sizeOptions.length > 0) {
@@ -9131,19 +9188,28 @@ const handleFileUpload = useCallback(async (files) => {
         return;
       }
       setSelectedColors(prev => prev.filter(c => c.value !== colorHex));
-      
       if (activeColor === colorHex) {
         const newActiveColor = selectedColors.find(c => c.value !== colorHex);
         if (newActiveColor) {
-          setActiveColor(newActiveColor.value);
+          setHighlightedColor(newActiveColor.value);
+          startTransition(() => setActiveColor(newActiveColor.value));
         }
       }
     } else {
       setSelectedColors(prev => [...prev, { name: colorName, value: colorHex }]);
-      // ✅ SET NEWLY SELECTED COLOR AS ACTIVE
-      setActiveColor(colorHex);
+      setHighlightedColor(colorHex);
+      startTransition(() => setActiveColor(colorHex));
     }
   }, [selectedColors, activeColor]);
+
+  // ── Fast handler specifically for preview color circle clicks ─────────────
+  const handlePreviewColorClick = useCallback((colorValue: string) => {
+    setHighlightedColor(colorValue);          // instant — tiny state, no heavy re-render
+    startTransition(() => {
+      setActiveColor(colorValue);             // deferred — triggers full preview re-render
+    });
+  }, []);
+  // ──────────────────────────────────────────────────────────────────────────
   
   const removeColor = useCallback((colorHex: string) => {
     if (selectedColors.length <= 1) {
@@ -9601,29 +9667,42 @@ const renderPreview = useCallback(() => {
               <div className="w-[300px]">
                 <div className="flex flex-wrap justify-center gap-3 py-2">
                   {selectedColors.map((color) => {
-                    const isActive = activeColor === color.value;
-                    
+                    const isActive = highlightedColor === color.value;
+
+                    const isLightColor = (() => {
+                      const hex = color.value.replace('#', '');
+                      if (hex.length < 6) return false;
+                      const r = parseInt(hex.substring(0, 2), 16);
+                      const g = parseInt(hex.substring(2, 4), 16);
+                      const b = parseInt(hex.substring(4, 6), 16);
+                      const luminance = (r * 299 + g * 587 + b * 114) / 1000;
+                      return luminance > 200;
+                    })();
+
                     return (
                       <button
                         key={color.value}
-                        onClick={() => setActiveColor(color.value)}
+                        onClick={() => handlePreviewColorClick(color.value)}
                         className="flex flex-col items-center group"
                         title={`${color.name} - Click to activate`}
                       >
-                        <div className="relative">
-                          <div
-                            className={`w-10 h-10 rounded-full border-3 transition-all transform hover:scale-110 shadow-md ${
-                              isActive
-                                ? 'scale-110'
-                                : 'border-gray-300 group-hover:border-gray-400 group-hover:shadow-lg'
-                            }`}
-                            style={{ 
-                              backgroundColor: color.value,
-                              borderColor: isActive ? '#e65100' : undefined,
-                              boxShadow: isActive ? '0 0 0 4px rgba(230, 81, 0, 0.3)' : undefined
-                            }}
-                          />
-                        </div>
+                        <div
+                          className={`w-10 h-10 rounded-full border-3 transition-all transform hover:scale-110 ${
+                            isActive
+                              ? 'scale-110'
+                              : 'group-hover:border-gray-400 group-hover:shadow-lg'
+                          }`}
+                          style={{
+                            backgroundColor: color.value,
+                            borderColor: isActive ? '#e65100' : isLightColor ? '#9ca3af' : '#d1d5db',
+                            boxShadow: isActive 
+                              ? '0 0 0 4px rgba(230, 81, 0, 0.3)' 
+                              : isLightColor 
+                                ? '0 0 0 1px #9ca3af'   // ← crisp ring instead of soft shadow
+                                : undefined
+                          }}
+                        />
+                        {/* </div> */}
                       </button>
                     );
                   })}
@@ -9830,16 +9909,28 @@ const renderPreview = useCallback(() => {
             )}
             
             {/* ðŸ”¥ DESKTOP: Color Circles BELOW Preview (unchanged) */}
-            {!isMobile && productData?.color_Images&& (
+            {/* DESKTOP: Color Circles BELOW Preview */}
+            {!isMobile && productData?.color_Images && (
               <div className="w-[400px]">
                 <div className="flex flex-wrap justify-center gap-3 py-0">
                   {selectedColors.map((color) => {
-                    const isActive = activeColor === color.value;
-                    
+                    const isActive = highlightedColor === color.value;
+
+                    // Detect if the color is white/very light to add a visible border
+                    const isLightColor = (() => {
+                      const hex = color.value.replace('#', '');
+                      if (hex.length < 6) return false;
+                      const r = parseInt(hex.substring(0, 2), 16);
+                      const g = parseInt(hex.substring(2, 4), 16);
+                      const b = parseInt(hex.substring(4, 6), 16);
+                      const luminance = (r * 299 + g * 587 + b * 114) / 1000;
+                      return luminance > 200; // threshold for "light" colors
+                    })();
+
                     return (
                       <button
                         key={color.value}
-                        onClick={() => setActiveColor(color.value)}
+                        onClick={() => handlePreviewColorClick(color.value)}
                         className="flex flex-col items-center group"
                         title={`${color.name} - Click to activate`}
                       >
@@ -9848,12 +9939,17 @@ const renderPreview = useCallback(() => {
                             className={`w-10 h-10 rounded-full border-3 transition-all transform hover:scale-110 shadow-md ${
                               isActive
                                 ? 'scale-110'
-                                : 'border-gray-300 group-hover:border-gray-400 group-hover:shadow-lg'
+                                : 'group-hover:border-gray-400 group-hover:shadow-lg'
                             }`}
                             style={{ 
                               backgroundColor: color.value,
-                              borderColor: isActive ? '#e65100' : undefined,
-                              boxShadow: isActive ? '0 0 0 4px #e65100' : undefined
+                              borderColor: isActive 
+                                ? '#e65100' 
+                                : isLightColor 
+                                  ? '#9ca3af'   // gray-400 — visible against white
+                                  : '#d1d5db', // gray-300 — default
+                              border: isLightColor && !isActive ? '2px solid #9ca3af' : undefined,
+                              boxShadow: isActive ? '0 0 0 4px rgba(230, 81, 0, 0.3)' : undefined
                             }}
                           />
                         </div>
@@ -11217,16 +11313,90 @@ useEffect(() => {
     return () => clearInterval(validator);
   }, [designElements]);
 
+
+  // ── Pre-warm render cache for ALL selected colors when entering Preview ──
+useEffect(() => {
+  if (activeView !== 'preview') return;
+  if (!allMockups.length || !selectedColors.length) return;
+
+  const prewarm = async () => {
+    for (const color of selectedColors) {
+      const colorMockups = getMockupsForColor(
+        productData,
+        color.value,
+        activeTechnology,
+        productData?.size_Images ? activeSize : undefined
+      );
+
+      for (const mockup of colorMockups) {
+        const engineType = determineRequiredEngine(mockup);
+        if (engineType !== 'canvas') continue; // only pre-warm Canvas mockups
+
+        // Collect design elements for this mockup's areas
+        const mockupAreaNames = mockup.area?.map((a: any) => a.areaName?.toLowerCase()) || [];
+        const filteredElements: Record<string, DesignElement[]> = {};
+        mockupAreaNames.forEach((areaName: string) => {
+          if (designElements[areaName]) {
+            filteredElements[areaName] = designElements[areaName];
+          }
+        });
+
+        // Thumbnail size
+        const designHash = _hashDesignElements(filteredElements);
+
+        // Pre-warm BOTH sizes used in the UI
+        const sizesToWarm = [
+          mockup.tmbwidthpx || 220,   // thumbnail strip
+          mockup.mocwidthpx || 500,   // main hero preview
+        ];
+
+        for (const resolution of sizesToWarm) {
+          const cacheKey = _getCacheKey(
+            mockup.id,
+            mockup.viewAngle || 'front',
+            color.value,
+            designHash,
+            resolution
+          );
+
+          if (_renderCache.has(cacheKey)) continue; // already cached
+
+          try {
+            await renderMockupDirectly(
+              mockup,
+              filteredElements,
+              getAllCanvasConfigs,
+              getAllPrintableAreas,
+              color.value,
+              resolution
+            );
+            // renderMockupDirectly writes to _renderCache internally (Change 3 from prev session)
+          } catch {
+            // non-fatal — skip failed pre-warm
+          }
+
+          // Yield between renders to keep UI responsive
+          await new Promise(r => setTimeout(r, 30));
+        }
+      }
+    }
+  };
+
+  prewarm();
+}, [activeView]); // only re-run when switching TO preview
+// ────────────────────────────────────────────────────────────────────────
+
   // Auto-select hero mockup based on active color
   // Auto-select hero mockup based on active color - PRESERVE AREA on color change
 // Auto-select hero mockup based on active color AND active area
 // Auto-select hero mockup based on active color AND active area
 // Auto-select hero mockup based on active color AND active area
 useEffect(() => {
-  // 🔥 Safety check for required values
   if (!allMockups.length || !activeColor || !activeArea) {
     return;
   }
+  // Keep highlight in sync when activeColor changes from non-circle sources
+  setHighlightedColor(activeColor);
   
   // 🔥 NEW: If user has manually selected in preview mode, don't auto-change
   if (userSelectedMockupInPreview && activeView === 'preview') {
@@ -11528,14 +11698,16 @@ useEffect(() => {
 
 // ðŸ”¥ NEW: Main pricing recalculation effect
 useEffect(() => {
-  // Recalculate pricing whenever design elements change or technology changes
+  // ── Invalidate render cache when design changes ───────────────────────
+  _renderCache.clear();
+  // ─────────────────────────────────────────────────────────────────────
+
   if (Object.keys(designElements).length > 0) {
     const hasVisibleElements = Object.values(designElements).some(elements => 
       elements.some(element => element.visible !== false)
     );
     
     if (hasVisibleElements) {
-      // Debounce pricing calculation to avoid excessive recalculations
       const timeoutId = setTimeout(() => {
         updatePricingData();
       }, 300);
