@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { RichTextEditor } from "./components/editor/ui"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import AIAssistant from '@/components/AIAssistant'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Globe, Palette, Layout, Eye, Save, Trash2,
@@ -236,6 +237,7 @@ export default function StorePage() {
   const [isNewPage, setIsNewPage] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [currentPlan, setCurrentPlan] = useState<string>("free")
+  const [vendorId, setVendorId] = useState<string>("")
 
   const token = localStorage.getItem("vendorToken")
   const backendUrl = import.meta.env.VITE_MEDUSA_BACKEND_URL
@@ -255,6 +257,7 @@ export default function StorePage() {
           setVendorName(vd.vendor?.name ?? "")
           setSellOnOwnStore(coerce(vd.vendor?.sell_on_own_store))
           setCurrentPlan(vd.vendor?.plan ?? "free")
+          setVendorId(vd.vendor?.id ?? "")
         }
         if (sRes.ok) {
           const sd = await sRes.json()
@@ -737,6 +740,7 @@ export default function StorePage() {
           )}
         </Modal>
       )}
+      <AIAssistant vendorId={vendorId} />
     </div>
   )
 }

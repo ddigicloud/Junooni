@@ -110,6 +110,7 @@ import {
 const API_BASE_URL = import.meta.env.VITE_MEDUSA_BACKEND_URL ;
 // Define the storefront domain for product view links
 const STOREFRONT_DOMAIN = 'https://www.junooni.com';
+const OWN_STORE_DOMAIN = 'junooni.com'; // subdomain pattern: {handle}.junooni.com
 const SALES_CHANNEL_MARKETPLACE = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
 const SALES_CHANNEL_OWN_STORE   = 'sc_01KMAP3HD1EVDF9FT7EHHHV8HP';
 
@@ -142,6 +143,7 @@ const EditProduct = () => {
   
   // For the product URL
   const [productViewUrl, setProductViewUrl] = useState("");
+  const [ownStoreViewUrl, setOwnStoreViewUrl] = useState("");
   
   // For managing the new option value being added for each option
   const [newOptionValues, setNewOptionValues] = useState<Record<number, string>>({});
@@ -882,6 +884,25 @@ const isNewVariant = (variant) => {
           // If product has no matching channels yet, default to all allowed channels
           const finalSelected = activeChannels.length > 0 ? activeChannels : allowed;
           setSelectedSalesChannels(finalSelected);
+
+          const isOnMarketplace = finalSelected.includes(SALES_CHANNEL_MARKETPLACE);
+          const isOnOwnStore = finalSelected.includes(SALES_CHANNEL_OWN_STORE);
+          const storeHandle = vendor?.store_handle || vendor?.handle || null;
+
+          // Set marketplace URL
+          if (isOnMarketplace) {
+            setProductViewUrl(`${STOREFRONT_DOMAIN}/products/${product.handle}`);
+          } else {
+            setProductViewUrl('');
+          }
+
+          // Set own store URL
+          if (isOnOwnStore && storeHandle) {
+            setOwnStoreViewUrl(`https://${storeHandle}.junooni.com/products/${product.handle}`);
+          } else {
+            setOwnStoreViewUrl('');
+          }
+
         })
         .catch(err => {
           console.error('Vendor fetch failed (non-fatal):', err);
@@ -1930,9 +1951,9 @@ const isNewVariant = (variant) => {
   };
 
   // Open product in storefront
-  const handleViewProduct = () => {
-    if (productViewUrl) {
-      window.open(productViewUrl, '_blank');
+  const handleViewProduct = (url: string) => {
+    if (url) {
+      window.open(url, '_blank');
     }
   };
 
@@ -3300,16 +3321,38 @@ const isFormDirty =
     {/* Buttons */}
     <div className="flex flex-row w-full gap-2 md:gap-3 md:w-auto">
       {/* View Product Button */}
-      <Button
-        variant="outline"
-        onClick={handleViewProduct}
-        className="flex-1 md:flex-none border-[#e65100] text-[#e65100] hover:bg-orange-50"
-        disabled={!productViewUrl}
-      >
-        <IconExternalLink size={18} className="mr-2" />
-        <span className="hidden sm:inline">View Product</span>
-        <span className="sm:hidden">View Product</span>
-      </Button>
+      {/* Show one or two buttons depending on active sales channels */}
+      {productViewUrl && (
+        <Button
+          variant="outline"
+          onClick={() => handleViewProduct(productViewUrl)}
+          className="flex-1 md:flex-none border-[#e65100] text-[#e65100] hover:bg-orange-50"
+        >
+          <IconExternalLink size={18} className="mr-2" />
+          <span>Marketplace</span>
+        </Button>
+      )}
+      {ownStoreViewUrl && (
+        <Button
+          variant="outline"
+          onClick={() => handleViewProduct(ownStoreViewUrl)}
+          className="flex-1 md:flex-none border-[#e65100] text-[#e65100] hover:bg-orange-50"
+        >
+          <IconExternalLink size={18} className="mr-2" />
+          <span>My Store</span>
+        </Button>
+      )}
+      {/* Fallback if channels haven't loaded yet */}
+      {!productViewUrl && !ownStoreViewUrl && (
+        <Button
+          variant="outline"
+          disabled
+          className="flex-1 md:flex-none border-gray-300 text-gray-400"
+        >
+          <IconExternalLink size={18} className="mr-2" />
+          <span>View Product</span>
+        </Button>
+      )}
 
       {/* Cancel Button - Hidden on mobile, visible on md and up */}
       <Button

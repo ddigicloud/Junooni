@@ -3,94 +3,155 @@
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { sdk } from "@lib/config"
-import { setGoogleAuthCookie } from "@lib/data/customer"
+import { setGoogleAuthCookie, wishListCreate, followerCreate } from "@lib/data/customer"
 
 export default function GoogleCallbackPage() {
   const searchParams = useSearchParams()
-  const router = useRouter()
+  const router       = useRouter()
   const [error, setError] = useState("")
 
   useEffect(() => {
     async function handleCallback() {
       try {
-        // Step 1 — collect all query params Google sent back
+        // ── Step 1: Collect query params ──────────────────────────────────
         const params: Record<string, string> = {}
-        searchParams.forEach((value, key) => {
-          params[key] = value
-        })
+        searchParams.forEach((value, key) => { params[key] = value })
 
-        // Step 2 — validate with Medusa, get JWT token string
+        if (!params.code) throw new Error("No authorization code received from Google")
+
+        // ── Step 2: Exchange code for token ───────────────────────────────
         const result = await sdk.auth.callback("customer", "google", params)
+        console.log("[google-callback] raw result:", typeof result, result)
+
+        if (result && typeof result === "object" && "location" in result) {
+          window.location.href = (result as any).location
+          return
+        }
 
         let token: string | null = null
-
         if (typeof result === "string") {
           token = result
         } else if (result && typeof result === "object") {
           token = (result as any).token || (result as any).jwt || null
         }
 
-        if (!token) {
-          throw new Error(`No token received. Result: ${JSON.stringify(result)}`)
-        }
+        if (!token) throw new Error(`No token received. Result: ${JSON.stringify(result)}`)
 
-        // Step 3 — decode JWT payload to get Google user info
-        const payload = JSON.parse(atob(token.split(".")[1]))
-        const email = payload?.user_metadata?.email || payload?.email || ""
+        // ── Step 3: Decode token ──────────────────────────────────────────
+        // Medusa docs: actor_id is empty if customer not yet registered
+        // actor_id gets populated after customer.create() + token refresh
+        const payload   = JSON.parse(atob(token.split(".")[1]))
+        const email     = payload?.user_metadata?.email || payload?.email || ""
         const firstName = payload?.user_metadata?.given_name ||
                           payload?.user_metadata?.name?.split(" ")[0] || ""
-        const lastName = payload?.user_metadata?.family_name ||
-                         payload?.user_metadata?.name?.split(" ").slice(1).join(" ") || ""
+        const lastName  = payload?.user_metadata?.family_name ||
+                          payload?.user_metadata?.name?.split(" ").slice(1).join(" ") || ""
+        const actorId   = payload?.actor_id || ""
 
-        const authHeaders = {
-          Authorization: `Bearer ${token}`,
-          "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
+        console.log("[google-callback] email:", email, "| actor_id:", actorId)
+
+        const backendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || ""
+        const pubKey     = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
+        const authHeaders: Record<string, string> = {
+          Authorization:            `Bearer ${token}`,
+          "Content-Type":           "application/json",
+          "x-publishable-api-key":  pubKey,
         }
 
-        // Step 4 — check if customer record exists
-        let isNewCustomer = false
-        try {
-          await sdk.client.fetch("/store/customers/me", {
-            method: "GET",
-            headers: authHeaders,
-          })
-        } catch {
-          isNewCustomer = true
-        }
+        if (actorId) {
+          // ── Existing customer: already registered, just log in ──────────
+          console.log("[google-callback] existing customer, actor_id:", actorId)
 
-        if (isNewCustomer) {
-          // Step 5a — NEW customer: create record with full name from Google
-          await sdk.store.customer.create(
-            { email, first_name: firstName, last_name: lastName },
-            {},
-            authHeaders
-          )
-          // Refresh token so it includes the new customer's actor_id
-          const refreshed = await sdk.auth.refresh()
-          if (typeof refreshed === "string") token = refreshed
-
-        } else {
-          // Step 5b — EXISTING customer: update name if Google has it
+          // Optionally update name from Google profile
           if (firstName || lastName) {
-            await sdk.store.customer.update(
-              { first_name: firstName, last_name: lastName },
-              {},
-              authHeaders
-            ).catch(() => null) // don't fail login if update fails
+            await fetch(`${backendUrl}/store/customers/me`, {
+              method:  "POST",
+              headers: authHeaders,
+              body:    JSON.stringify({ first_name: firstName, last_name: lastName }),
+            }).catch(() => null)
           }
+
+          await setGoogleAuthCookie(token)
+          await new Promise(r => setTimeout(r, 300))
+          router.replace("/in/account")
+          return
         }
 
-        // Step 6 — save token to Next.js HTTP cookie via server action
-        await setGoogleAuthCookie(token)
+        // actor_id is empty — customer not registered with this Google identity yet
+        // ── Step 4: Try linking to existing emailpass account ─────────────
+        let finalToken = token
+        let isLinked   = false
 
-        // Step 7 — small delay to ensure cookie propagates before navigation
-        await new Promise(resolve => setTimeout(resolve, 300))
+        try {
+          const linkRes  = await fetch(`${backendUrl}/store/customers/google-link`, {
+            method:  "POST",
+            headers: authHeaders,
+            body:    JSON.stringify({ email }),
+          })
+          const linkData = await linkRes.json()
+          console.log("[google-callback] google-link:", linkRes.status, linkData)
 
-        // Step 8 — redirect to account dashboard
+          if (linkRes.ok && linkData.token) {
+            finalToken = linkData.token
+            isLinked   = true
+            console.log("[google-callback] linked to existing emailpass customer")
+          }
+        } catch (e) {
+          console.warn("[google-callback] google-link error:", e)
+        }
+
+        if (isLinked) {
+          await setGoogleAuthCookie(finalToken)
+          await new Promise(r => setTimeout(r, 300))
+          router.replace("/in/account")
+          return
+        }
+
+        // ── Step 5: Truly new customer — create record ────────────────────
+        console.log("[google-callback] creating new customer:", email)
+        try {
+          await fetch(`${backendUrl}/store/customers`, {
+            method:  "POST",
+            headers: authHeaders,
+            body:    JSON.stringify({
+              email,
+              first_name: firstName,
+              last_name:  lastName,
+            }),
+          })
+        } catch (createErr: any) {
+          console.warn("[google-callback] create customer error:", createErr?.message)
+          // May have been created between our check — continue
+        }
+
+        // ── Step 6: Refresh token to get actor_id populated ───────────────
+        // Per Medusa docs: after creating customer, call /auth/token/refresh
+        // with the original Google token to get a new token with actor_id set
+        try {
+          const refreshRes  = await fetch(`${backendUrl}/auth/token/refresh`, {
+            method:  "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          const refreshData = await refreshRes.json()
+          console.log("[google-callback] token refresh:", refreshRes.status, refreshData)
+          if (refreshRes.ok && refreshData.token) {
+            finalToken = refreshData.token
+          }
+        } catch (refreshErr) {
+          console.warn("[google-callback] token refresh failed:", refreshErr)
+        }
+
+        // ── Step 7: Save token, create wishlist + follow list ─────────────
+        await setGoogleAuthCookie(finalToken)
+        await new Promise(r => setTimeout(r, 400))
+
+        try { await wishListCreate() } catch (e) { console.warn("wishlist:", e) }
+        try { await followerCreate() } catch (e) { console.warn("follower:", e) }
+
         router.replace("/in/account")
 
       } catch (err: any) {
-        console.error("Google callback error:", err)
+        console.error("[google-callback] error:", err)
         setError(err?.message || "Google sign-in failed. Please try again.")
       }
     }

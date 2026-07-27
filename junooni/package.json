@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.113.0",
+    "@google/generative-ai": "^0.24.1",
     "@medusajs/admin-sdk": "2.13.6",
     "@medusajs/auth-google": "2.13.6",
     "@medusajs/cli": "2.13.6",

@@ -497,6 +497,16 @@ export default defineMiddlewares({
     }),
   ],
 },
+{
+  matcher: "/store/customers/create-with-existing-identity",
+  method: ["OPTIONS", "POST"],
+  middlewares: [
+    (req, res, next) => {
+      if (req.method === "OPTIONS") { res.status(204).end(); return }
+      cors({ origin: true, credentials: false })(req, res, next)
+    },
+  ],
+},
     {
       matcher: "/store/customers/me/wishlists/items",
       method: "POST",

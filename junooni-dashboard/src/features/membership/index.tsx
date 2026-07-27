@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ProfileDropdown } from "@/components/profile-dropdown"
 import AdminImpersonationBanner from "@/components/AdminImpersonationBanner"
+import AIAssistant from '@/components/AIAssistant'
 import {
   Check, Zap, Star, Building2, Sparkles, ArrowLeft,
   Crown, Package, Globe, Receipt, Tag, Wallet, Headphones,
@@ -124,6 +125,7 @@ export default function MembershipPage() {
   const [processingPlanId, setProcessingPlanId] = useState<string | null>(null)
   const [vendorName, setVendorName] = useState("")
   const [vendorEmail, setVendorEmail] = useState("")
+  const [vendorId, setVendorId] = useState<string>("")
 
   const token = localStorage.getItem("vendorToken")
   const backendUrl = import.meta.env.VITE_MEDUSA_BACKEND_URL
@@ -141,6 +143,7 @@ export default function MembershipPage() {
           setVendorName(vd.vendor?.name ?? "")
           setVendorEmail(vd.vendor?.admins?.[0]?.email ?? vd.vendor?.login_email ?? "")
           setCurrentPlan(vd.vendor?.plan ?? "free")
+          setVendorId(vd.vendor?.id ?? "")
         }
         if (subRes.ok) {
           const sd = await subRes.json()
@@ -561,6 +564,7 @@ export default function MembershipPage() {
         </div>
 
       </div>
+      <AIAssistant vendorId={vendorId} />
     </div>
   )
 }

@@ -5762,6 +5762,7 @@ const combinedArtworkPayload = {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '')
         .substring(0, 40)
+        .replace(/-+$/g, '')            // strip trailing hyphens after truncation
       + `-${timestamp}-${random}`;
 
 

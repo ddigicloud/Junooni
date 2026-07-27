@@ -6,6 +6,7 @@ import DateFilter from '../orders/components/DateFilter/DateFilter'; // Adjust p
 import { CalendarDays } from "lucide-react";
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Separator } from '@/components/ui/separator'
+import { fetchVendorId } from "@/utils/vendor";
 import { 
   Download, Search, MoreHorizontal, Filter, 
   Loader2, Calendar, CreditCard, 
@@ -17,6 +18,7 @@ import {
 import { Link } from "@tanstack/react-router"
 import Junoonilogo from '../../assets/junooni_logo_brand_color.png' // Adjust path as needed
 import { Button } from "@/components/ui/button"
+import AIAssistant from '@/components/AIAssistant'
 import {
   Card,
   CardContent,
@@ -647,6 +649,7 @@ export default function OrdersPage() {
   const [count, setCount] = useState(0);
   const [authError, setAuthError] = useState(false);
   const [vendorInfo, setVendorInfo] = useState<any>(null);
+  const [vendorId, setVendorId] = useState<string>("")
   
   // ✅ NEW: Product fulfillment type lookup
   const [productFulfillmentMap, setProductFulfillmentMap] = useState<Map<string, string>>(new Map());
@@ -727,6 +730,9 @@ export default function OrdersPage() {
     
     try {
       const token = localStorage.getItem("vendorToken");
+
+      const id = await fetchVendorId();
+      setVendorId(id);
       
       if (!token) {
         setAuthError(true);
@@ -2170,7 +2176,8 @@ useEffect(() => {
           </div>
         )}
       </div>
-      
+
+      <AIAssistant vendorId={vendorId} />
       {/* Footer */}
       <div className="py-6 mt-4 border-t border-gray-200">
         <div className="container px-4 mx-auto text-center">

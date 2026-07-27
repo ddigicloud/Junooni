@@ -17,6 +17,9 @@ import { Package, Plus, AlertTriangle, Loader2, ChevronLeft, ChevronRight } from
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import AIAssistant from '@/components/AIAssistant'
+import { fetchVendorId } from "@/utils/vendor";
+
 
 // Junooni brand colors
 const BRAND = {
@@ -221,6 +224,7 @@ export default function Products() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const popupButtonsRef = useRef<ProductsPrimaryButtonsHandle>(null);
+  const [vendorId, setVendorId] = useState<string>("")
   
   // Pagination state
  const [currentPage, setCurrentPage] = useState(1)
@@ -263,6 +267,9 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
           const responseBody = await response.json();
           throw new Error(`HTTP error! Status: ${response.status}, Message: ${responseBody.message}`);
         }
+
+        const id = await fetchVendorId();
+        setVendorId(id);
 
         const responseBody = await response.json();
         setProducts(responseBody.products || []);
@@ -709,7 +716,8 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
           {/* Footer */}
         </div>
       </div>
-      <ChatwootWidget />
+      <AIAssistant vendorId={vendorId} />
+      {/* <ChatwootWidget /> */}
     </ProductsProvider>
   </div>
 )

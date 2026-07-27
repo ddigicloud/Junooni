@@ -61,56 +61,131 @@ export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
 export async function signup(_currentState: unknown, formData: FormData) {
   const password = formData.get("password") as string
   const customerForm = {
-    email: formData.get("email") as string,
+    email:      formData.get("email") as string,
     first_name: formData.get("first_name") as string,
-    last_name: formData.get("last_name") as string,
-    phone: formData.get("phone") as string,
+    last_name:  formData.get("last_name") as string,
+    phone:      formData.get("phone") as string,
   }
 
   try {
-    const token = await sdk.auth.register("customer", "emailpass", {
-      email: customerForm.email,
+    let token: string
+
+    try {
+      token = await sdk.auth.register("customer", "emailpass", {
+        email:    customerForm.email,
+        password: password,
+      }) as string
+
+    } catch (registerError: any) {
+  const msg = registerError?.toString() || ""
+
+  if (msg.includes("Identity with email already exists")) {
+    // First try login with same password (fastest path)
+    const loginAttempt = await sdk.auth.login("customer", "emailpass", {
+      email:    customerForm.email,
       password: password,
-    })
+    }).catch(() => null)
 
-    await setAuthToken(token as string)
+    if (loginAttempt && typeof loginAttempt === "string") {
+      // Same password — reuse shared identity
+      token = loginAttempt
+    } else {
+      // Different password — use backend route to link customer to existing identity
+      const backendUrl = process.env.MEDUSA_BACKEND_URL || "http://localhost:9000"
+      const linkRes    = await fetch(
+        `${backendUrl}/store/customers/create-with-existing-identity`,
+        {
+          method:  "POST",
+          headers: {
+            "Content-Type":          "application/json",
+            "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
+          },
+          body: JSON.stringify({
+            email:      customerForm.email,
+            first_name: customerForm.first_name,
+            last_name:  customerForm.last_name,
+            phone:      customerForm.phone,
+          }),
+        }
+      )
+      const linkData = await linkRes.json()
+      console.log("[signup] create-with-existing-identity:", linkData)
 
-    const headers = {
-      ...(await getAuthHeaders()),
+      if (linkRes.status === 409 && linkData.type === "customer_exists") {
+        return "A customer account with this email already exists. Please sign in instead."
+      }
+
+      if (!linkRes.ok || !linkData.token) {
+        return linkData.message || "Registration failed. Please try again."
+      }
+
+      // Customer created and linked — set token and finish
+      await setAuthToken(linkData.token)
+      const customerCacheTag = await getCacheTag("customers")
+      revalidateTag(customerCacheTag)
+      await transferCart()
+      await wishListCreate()
+      await followerCreate()
+      return linkData.customer
+    }
+  } else {
+    throw registerError
+  }
+}
+
+    await setAuthToken(token)
+    const headers = { ...(await getAuthHeaders()) }
+
+    // Try creating customer — may fail if guest customer already exists
+    let createdCustomer: any
+    try {
+      const result = await sdk.store.customer.create(customerForm, {}, headers)
+      createdCustomer = result.customer
+    } catch (createErr: any) {
+      const createMsg = createErr?.toString() || ""
+      console.log("[signup] customer create error:", createMsg)
+
+      if (createMsg.includes("guest customer") || createMsg.includes("already exists")) {
+        // Guest customer exists with this email — just log them in
+        const loginToken = await sdk.auth.login("customer", "emailpass", {
+          email:    customerForm.email,
+          password: password,
+        })
+        await setAuthToken(loginToken as string)
+        const customerCacheTag = await getCacheTag("customers")
+        revalidateTag(customerCacheTag)
+        await transferCart()
+        return "Account linked successfully. You are now signed in."
+      }
+      throw createErr
     }
 
-    const { customer: createdCustomer } = await sdk.store.customer.create(
-      customerForm,
-      {},
-      headers,
-    )
-
-   
-
     const loginToken = await sdk.auth.login("customer", "emailpass", {
-      email: customerForm.email,
-      password,
+      email:    customerForm.email,
+      password: password,
     })
-
     await setAuthToken(loginToken as string)
 
     const customerCacheTag = await getCacheTag("customers")
     revalidateTag(customerCacheTag)
-
     await transferCart()
-   
-    if(createdCustomer){
-      await wishListCreate();
-      await followerCreate();
+
+    if (createdCustomer) {
+      await wishListCreate()
+      await followerCreate()
     }
 
     return createdCustomer
-  } catch (error: any) {
-    return error.toString()
-  }
-    
-}
 
+  } catch (error: any) {
+    const msg = error?.toString() || ""
+    console.log("[signup] outer catch:", msg)
+    if (msg.includes("guest customer with the email already exists")) {
+      return "An account with this email already exists. Please sign in instead."
+    }
+    return msg
+  }
+}
 
 export async function login(_currentState: unknown, formData: FormData) {
   const email = formData.get("email") as string

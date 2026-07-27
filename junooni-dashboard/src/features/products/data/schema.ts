@@ -51,7 +51,10 @@ export const ProductSchema = z.object({
   description: z.string().optional(),
   storyBehindDesign: z.string().optional(),
   // Status and categorization
-  status: z.enum(['published', 'draft', 'archived','proposed','rejected']).default('published'),
+  status: z.union([
+    z.enum(['published', 'draft', 'archived', 'proposed', 'rejected']),
+    z.literal('').transform(() => 'draft' as const),
+  ]).default('draft'),
   category: z.string().optional(),
   
   category_ids: z.array(z.string()).optional().default([]),

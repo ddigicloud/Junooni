@@ -118,6 +118,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, isEditing = fals
   const [vendorSalesChannels, setVendorSalesChannels] = useState<string[]>([]);
   const [selectedSalesChannels, setSelectedSalesChannels] = useState<string[]>([]);
   const [isLoadingChannels, setIsLoadingChannels] = useState(false);
+  const [vendorHasMarketplace, setVendorHasMarketplace] = useState(false);
 
   // Ref for the hidden file input for drag-and-drop.
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -604,33 +605,49 @@ const handleFileChange = (
     try {
       const vendor = await fetchCurrentVendor();
       if (!vendor) {
-        setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
-        setSelectedSalesChannels([SALES_CHANNEL_MARKETPLACE]);
-        form.setValue('status', 'proposed');
+        setVendorSalesChannels([]);
+        setSelectedSalesChannels([]);
+        form.setValue('status', 'draft');
         return;
       }
 
+      const gstVerified = vendor.gst_verification_status === 'verified';
       const allowed: string[] = [];
-      if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
-      if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
-      if (allowed.length === 0) allowed.push(SALES_CHANNEL_MARKETPLACE);
 
+      // Only show Marketplace if GST is verified AND vendor has marketplace enabled
+      if (gstVerified && vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
+
+      // Only show Own Store if vendor has own store enabled
+      if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
+
+      // Store whether vendor has marketplace enabled (regardless of GST)
+      setVendorHasMarketplace(Boolean(vendor.sell_on_marketplace));
+
+      // No fallback — if nothing is allowed, show empty and set draft
       setVendorSalesChannels(allowed);
       setSelectedSalesChannels([...allowed]);
 
-      // Set initial status based on which channels are available
       const hasMarketplace = allowed.includes(SALES_CHANNEL_MARKETPLACE);
       const hasOwnStore = allowed.includes(SALES_CHANNEL_OWN_STORE);
-      if (hasOwnStore && !hasMarketplace) {
+
+      if (hasMarketplace && hasOwnStore) {
+        // Both available — default to proposed (marketplace requires admin approval)
+        form.setValue('status', 'proposed');
+      } else if (hasMarketplace) {
+        form.setValue('status', 'proposed');
+      } else if (hasOwnStore) {
+        // Own store only — vendor controls directly, publish immediately
         form.setValue('status', 'published');
       } else {
-        form.setValue('status', 'proposed');
+        // No channels available at all
+        form.setValue('status', 'draft');
       }
     } catch {
-      setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
-      setSelectedSalesChannels([SALES_CHANNEL_MARKETPLACE]);
-      form.setValue('status', 'proposed');
-    } finally {
+      // On error, show nothing and set draft to be safe
+      setVendorSalesChannels([]);
+      setSelectedSalesChannels([]);
+      form.setValue('status', 'draft');
+    }finally {
       setIsLoadingChannels(false);
     }
   };
@@ -2303,87 +2320,106 @@ return {
                 />
 
                 {/* Sales Channel Selection */}
-                {vendorSalesChannels.length > 0 && (
-                  <div className="mt-5">
-                    <Separator className="mb-4" />
-                    <h3 className="mb-1 font-medium text-gray-700">Sales Channels</h3>
-                    <p className="mb-3 text-sm text-gray-500">
-                      Choose where this product will be available for sale
-                    </p>
+                {/* Sales Channel Selection */}
+                <div className="mt-5">
+                  <Separator className="mb-4" />
+                  <h3 className="mb-1 font-medium text-gray-700">Sales Channels</h3>
+                  <p className="mb-3 text-sm text-gray-500">
+                    Choose where this product will be available for sale
+                  </p>
 
-                    {isLoadingChannels ? (
-                      <p className="text-sm text-gray-400">Loading channels...</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {vendorSalesChannels.map(channelId => {
-                          const isChecked = selectedSalesChannels.includes(channelId);
-                          const isOnlyChannel = vendorSalesChannels.length === 1;
-                          const isLastSelected = isChecked && selectedSalesChannels.length === 1;
-                          const isDisabled = isOnlyChannel || isLastSelected;
+                  {isLoadingChannels ? (
+                    <p className="text-sm text-gray-400">Loading channels...</p>
+                  ) : (
+                    <>
+                      {vendorSalesChannels.length > 0 && (
+                        <div className="space-y-3">
+                          {vendorSalesChannels.map(channelId => {
+                            const isChecked = selectedSalesChannels.includes(channelId);
+                            const isOnlyChannel = vendorSalesChannels.length === 1;
+                            const isLastSelected = isChecked && selectedSalesChannels.length === 1;
+                            const isDisabled = isOnlyChannel || isLastSelected;
 
-                          return (
-                            <div
-                              key={channelId}
-                              className={`flex items-center gap-3 p-3 border rounded-md ${
-                                isDisabled
-                                  ? 'border-gray-100 bg-gray-50 opacity-70'
-                                  : 'border-gray-200'
-                              }`}
-                            >
-                              <Checkbox
-                                id={`sc-create-${channelId}`}
-                                checked={isChecked}
-                                disabled={isDisabled}
-                                onCheckedChange={(checked) => {
-                                  if (isDisabled) return;
-                                  const next = checked
-                                    ? [...selectedSalesChannels, channelId]
-                                    : selectedSalesChannels.filter(id => id !== channelId);
-                                  setSelectedSalesChannels(next);
+                            return (
+                              <div
+                                key={channelId}
+                                className={`flex items-center gap-3 p-3 border rounded-md ${
+                                  isDisabled
+                                    ? 'border-gray-100 bg-gray-50 opacity-70'
+                                    : 'border-gray-200'
+                                }`}
+                              >
+                                <Checkbox
+                                  id={`sc-create-${channelId}`}
+                                  checked={isChecked}
+                                  disabled={isDisabled}
+                                  onCheckedChange={(checked) => {
+                                    if (isDisabled) return;
+                                    const next = checked
+                                      ? [...selectedSalesChannels, channelId]
+                                      : selectedSalesChannels.filter(id => id !== channelId);
+                                    setSelectedSalesChannels(next);
 
-                                  // Status logic:
-                                  // Marketplace selected → proposed (admin approves)
-                                  // Own Store only → published (creator controls directly)
-                                  const marketplaceInNext = next.includes(SALES_CHANNEL_MARKETPLACE);
-                                  const ownStoreInNext = next.includes(SALES_CHANNEL_OWN_STORE);
+                                    const marketplaceInNext = next.includes(SALES_CHANNEL_MARKETPLACE);
+                                    const ownStoreInNext = next.includes(SALES_CHANNEL_OWN_STORE);
 
-                                  if (marketplaceInNext) {
-                                    form.setValue('status', 'proposed');
-                                  } else if (ownStoreInNext && !marketplaceInNext) {
-                                    form.setValue('status', 'published');
-                                  }
-                                }}
-                                className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]"
-                              />
-                              <div className="flex-1">
-                                <label
-                                  htmlFor={`sc-create-${channelId}`}
-                                  className={`text-sm font-medium ${
-                                    isDisabled
-                                      ? 'text-gray-400 cursor-not-allowed'
-                                      : 'text-gray-700 cursor-pointer'
-                                  }`}
-                                >
-                                  {SALES_CHANNEL_LABELS[channelId] || channelId}
-                                </label>
-                                {isOnlyChannel && (
-                                  <p className="mt-0.5 text-xs text-gray-400">
-                                    Only available channel
-                                  </p>
-                                )}
-                                {isLastSelected && !isOnlyChannel && (
-                                  <p className="mt-0.5 text-xs text-gray-400">
-                                    At least one channel must be selected
-                                  </p>
-                                )}
+                                    if (marketplaceInNext) {
+                                      form.setValue('status', 'proposed');
+                                    } else if (ownStoreInNext && !marketplaceInNext) {
+                                      form.setValue('status', 'published');
+                                    }
+                                  }}
+                                  className="data-[state=checked]:bg-[#e65100] data-[state=checked]:border-[#e65100]"
+                                />
+                                <div className="flex-1">
+                                  <label
+                                    htmlFor={`sc-create-${channelId}`}
+                                    className={`text-sm font-medium ${
+                                      isDisabled
+                                        ? 'text-gray-400 cursor-not-allowed'
+                                        : 'text-gray-700 cursor-pointer'
+                                    }`}
+                                  >
+                                    {SALES_CHANNEL_LABELS[channelId] || channelId}
+                                  </label>
+                                  {isOnlyChannel && (
+                                    <p className="mt-0.5 text-xs text-gray-400">
+                                      Only available channel
+                                    </p>
+                                  )}
+                                  {isLastSelected && !isOnlyChannel && (
+                                    <p className="mt-0.5 text-xs text-gray-400">
+                                      At least one channel must be selected
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* GST notice — shown when Marketplace is not available */}
+                      {vendorHasMarketplace && !vendorSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
+                        <div className="flex items-start gap-2 p-3 mt-3 text-sm border border-amber-200 rounded-md bg-amber-50">
+                          <IconInfoCircle size={16} className="mt-0.5 text-amber-500 shrink-0" />
+                          <p className="text-amber-700">
+                            <span className="font-medium">Junooni Marketplace unavailable.</span>{' '}
+                            Complete GST verification in{' '}
+                            <button
+                              type="button"
+                              className="font-medium underline hover:text-amber-900"
+                              onClick={() => window.location.href = '/profile'}
+                            >
+                              business settings
+                            </button>{' '}
+                            to list on the marketplace.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </section>
               
               {/* Shipping & Fulfillment Info Card */}

@@ -423,6 +423,18 @@ export default function StoreEditorPage() {
     setHasUnsavedChanges(true)
   }, [store, isLoading])
 
+  // ── Guard: redirect to /store if template not yet selected 
+  useEffect(() => {
+  if (isLoading) return
+  if (!hasStore) {
+    navigate({ to: "/store" })
+    return
+  }
+  if ((store as any).template_selected === false) {
+    navigate({ to: "/store" })
+  }
+}, [isLoading, hasStore, store, navigate])
+
   // ── postMessage sync ──────────────────────────────────────────────────────
   const isSyncingRef = useRef(false)
   const syncToIframe = useCallback(() => {
