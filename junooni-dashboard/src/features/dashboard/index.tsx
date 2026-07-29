@@ -1513,7 +1513,7 @@ const DashboardPage = () => {
             </p>
           </div>
         </div>
-        <AIAssistant vendorId={vendor?.id ?? ""} />
+        {/* <AIAssistant vendorId={vendor?.id ?? ""} /> */}
         {/* <ChatwootWidget /> */}
         {/* Replay tour button */}
         {!showTour && (

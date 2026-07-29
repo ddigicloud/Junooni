@@ -9,11 +9,12 @@ import AccountSidebar from "../components/account-sidebar"
 import { listOrders } from "@lib/data/orders"
 import Help from "@modules/order/components/help"
 import {
-  wishlistItems,
+  // wishlistItems,
   loyaltyPoints,
   followerList,
   signout,
 } from "@lib/data/customer"
+import { wishlistItems } from '@lib/data/wishlist-client'
 import { retriveVendorsFollowers } from "@lib/data/vendors"
 import { assets } from "@assets/assets"
 import { User, Package, Heart, Star, LogOut, MapPin, Settings, ChevronRight } from "lucide-react"

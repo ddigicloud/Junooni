@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const API_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
 
     const res = await fetch(
-      `${MEDUSA_URL}/store/vendors/${vendor_id}/followers?fields=*`,
+      `${MEDUSA_URL}/vendors/${vendor_id}/followers?fields=*`,
       {
         headers: {
           "x-publishable-api-key": API_KEY,

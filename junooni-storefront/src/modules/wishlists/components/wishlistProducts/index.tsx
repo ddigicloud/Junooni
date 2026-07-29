@@ -1,12 +1,14 @@
 "use client"
 
 import { assets } from "@assets/assets"
-import {
-  wishlistItems,
-  ItemDelete,
-  matchItemWithVariant,
-} from "@lib/data/customer"
+// import {
+//   wishlistItems,
+//   ItemDelete,
+//   matchItemWithVariant,
+// } from "@lib/data/customer"
 import Image from "next/image"
+import { wishlistItems, ItemDelete } from "@lib/data/wishlist-client"
+import { matchItemWithVariant } from "@lib/data/customer"
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Text } from "@medusajs/ui"

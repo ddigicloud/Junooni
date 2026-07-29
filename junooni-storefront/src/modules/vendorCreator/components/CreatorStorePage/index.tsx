@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import WishlistButton from "@modules/wishlists/components/wishlist-button"
@@ -42,11 +42,12 @@ import {
 } from "../../../../types/vendor"
 import { assets } from "@assets/assets"
 import Twittericon from "@assets/twitter.png"
-import {
-  Addfollower,
-  deletefollower,
-  retrieveCustomer,
-} from "@lib/data/customer"
+// import {
+//   Addfollower,
+//   deletefollower,
+//   retrieveCustomer,
+// } from "@lib/data/customer"
+import { retrieveCustomer } from "@lib/data/customer"
 import { toast } from "react-toastify"
 import profileplaceholder from "@assets/profile-logo.png"
 
@@ -366,6 +367,7 @@ const CreatorStorePage: React.FC<CreatorStorePageProps & {
   const [isFollowing, setIsFollowing] = useState<boolean>(false)
   const [currentCustomer, setCurrentCustomer] = useState(null)
   const [showShareOptions, setShowShareOptions] = useState<boolean>(false)
+  const userHasToggled = useRef(false)
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState<number>(1)
@@ -443,17 +445,37 @@ useEffect(() => {
     }
   }, [vendor?.id])
 
-  // Check following status when both customer and followers are available
   useEffect(() => {
-    //console.log(followers)
-    if (currentCustomer && followers.length > 0) {
-      const isAlreadyFollowing = followers.some(
-        (item) => item.follow?.customer_id === currentCustomer.id
-      )
-      //console.log("Following status checked:", isAlreadyFollowing)
-      setIsFollowing(isAlreadyFollowing)
-    }
-  }, [currentCustomer, followers])
+  console.log("=== FOLLOW STATUS CHECK ===")
+  console.log("currentCustomer:", currentCustomer)
+  console.log("followers array:", followers)
+  console.log("followers length:", followers.length)
+  
+  if (followers.length > 0) {
+    console.log("First follower structure:", JSON.stringify(followers[0], null, 2))
+  }
+
+  if (!currentCustomer || !followers) return
+
+  const isAlreadyFollowing = followers.some(
+    (item) => item?.follow?.customer_id === currentCustomer.id
+  )
+  console.log("isAlreadyFollowing result:", isAlreadyFollowing)
+  setIsFollowing(isAlreadyFollowing)
+}, [currentCustomer, followers])
+
+  // Check following status when both customer and followers are available
+useEffect(() => {
+  if (!currentCustomer || !followers) return
+
+  // If user has manually toggled, don't overwrite their action
+  if (userHasToggled.current) return
+
+  const isAlreadyFollowing = followers.some(
+    (item) => item?.follow?.customer_id === currentCustomer.id
+  )
+  setIsFollowing(isAlreadyFollowing)
+}, [currentCustomer, followers])
 
   // Updated follow/unfollow handler
 const handleFollowToggle = async () => {
@@ -467,28 +489,32 @@ const handleFollowToggle = async () => {
     })
   }
 
-    try {
-      if (isFollowing) {
-        //console.log("Unfollowing vendor:", vendor.id)
-        await deletefollower(vendor.id)
-        setIsFollowing(false)
-      } else {
-        //console.log("Following vendor:", vendor.id)
-        await Addfollower(vendor.id)
-        setIsFollowing(true)
-      }
-
-      // Refresh followers with delay
-      setTimeout(async () => {
-        const updatedFollowers = await retriveVendorsFollowers(vendor.id)
-        if (updatedFollowers && updatedFollowers.follow) {
-          setFollowers(updatedFollowers.follow.filter((f) => f && f.follow))
-        }
-      }, 1000)
-    } catch (error) {
-      //console.error("Error toggling follow status:", error)
+  try {
+    if (isFollowing) {
+      const { deleteFollowerClient } = await import("@lib/data/vendors-client")
+      await deleteFollowerClient(vendor.id)
+      userHasToggled.current = true
+      setIsFollowing(false)
+    } else {
+      const { addFollowerClient } = await import("@lib/data/vendors-client")
+      const result = await addFollowerClient(vendor.id)
+      console.log("=== ADD FOLLOWER RESULT ===", JSON.stringify(result))
+      userHasToggled.current = true
+      setIsFollowing(true)
     }
+
+    setTimeout(async () => {
+      const { fetchVendorFollowersClient } = await import("@lib/data/vendors-client")
+      const updatedFollowers = await fetchVendorFollowersClient(vendor.id)
+      if (updatedFollowers?.follow) {
+        setFollowers(updatedFollowers.follow.filter((f) => f?.follow))
+      }
+    }, 1500)
+
+  } catch (error) {
+    console.error("Error toggling follow status:", error)
   }
+}
 
   // Share functionality
   const handleShare = async (type: string) => {

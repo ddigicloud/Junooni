@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from "react"
 import { LogOut } from "lucide-react"
 import { listOrders } from "@lib/data/orders"
-import { wishlistItems } from "@lib/data/customer"
+// import { wishlistItems } from "@lib/data/customer"
+import { wishlistItems } from '@lib/data/wishlist-client'
 import { followerList, loyaltyPoints } from "@lib/data/customer"
 import { retriveVendorsFollowers } from "@lib/data/vendors"
 import { signout } from "@lib/data/customer"

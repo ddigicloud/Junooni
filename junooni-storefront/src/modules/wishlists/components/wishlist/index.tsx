@@ -6,7 +6,8 @@ import { useState, useEffect, useRef } from 'react';
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { Heart, ShoppingBag, Sparkles } from 'lucide-react'
-import { wishlistItems } from '@lib/data/customer'
+import { wishlistItems } from '@lib/data/wishlist-client'
+// import { wishlistItems } from '@lib/data/customer'
 import { WishlistProducts } from '../wishlistProducts'
 
 // Define TypeScript interfaces for products

@@ -219,16 +219,21 @@ export default function AIAssistant({ vendorId }: Props) {
   }
 
   const sendToBackend = async (msgs: Message[], extra?: Record<string, any>) => {
-    const token = localStorage.getItem("vendorToken") ?? ""
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-      credentials: "include",
-      body: JSON.stringify({ messages: msgs, vendorId, ...extra }),
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return res.json()
-  }
+  const token = localStorage.getItem("vendorToken") ?? ""
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+    credentials: "include",
+    body: JSON.stringify({
+      messages: msgs,
+      vendorId,
+      currentPage: window.location.pathname, // ← tells JUNI which page the creator is on
+      ...extra,
+    }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
 
   const sendMessage = async (overrideText?: string) => {
     const userText = (overrideText ?? input).trim()

@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { Heart, Trash, X } from 'lucide-react'
-import { wishlistAddItem, wishlistItems, ItemDelete } from '@lib/data/customer'
+import { wishlistAddItem, wishlistItems, ItemDelete } from '@lib/data/wishlist-client'
+// import { wishlistAddItem, wishlistItems, ItemDelete } from '@lib/data/customer'
 import { useRouter } from 'next/navigation'
 
 // Define interfaces for API response types

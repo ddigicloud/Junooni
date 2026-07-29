@@ -17,8 +17,6 @@ import { Package, Plus, AlertTriangle, Loader2, ChevronLeft, ChevronRight } from
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import AIAssistant from '@/components/AIAssistant'
-import { fetchVendorId } from "@/utils/vendor";
 
 
 // Junooni brand colors
@@ -268,8 +266,8 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
           throw new Error(`HTTP error! Status: ${response.status}, Message: ${responseBody.message}`);
         }
 
-        const id = await fetchVendorId();
-        setVendorId(id);
+        // const id = await fetchVendorId();
+        // setVendorId(id);
 
         const responseBody = await response.json();
         setProducts(responseBody.products || []);
@@ -716,7 +714,6 @@ const [itemsPerPage, setItemsPerPage] = useState(10)
           {/* Footer */}
         </div>
       </div>
-      <AIAssistant vendorId={vendorId} />
       {/* <ChatwootWidget /> */}
     </ProductsProvider>
   </div>

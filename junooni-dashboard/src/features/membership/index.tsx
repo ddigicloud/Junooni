@@ -7,7 +7,6 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ProfileDropdown } from "@/components/profile-dropdown"
 import AdminImpersonationBanner from "@/components/AdminImpersonationBanner"
-import AIAssistant from '@/components/AIAssistant'
 import {
   Check, Zap, Star, Building2, Sparkles, ArrowLeft,
   Crown, Package, Globe, Receipt, Tag, Wallet, Headphones,
@@ -564,7 +563,6 @@ export default function MembershipPage() {
         </div>
 
       </div>
-      <AIAssistant vendorId={vendorId} />
     </div>
   )
 }

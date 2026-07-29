@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { Heart } from 'lucide-react'
-import { wishlistItems, wishlistAddItem, ItemDelete } from '@lib/data/customer'
+// import { wishlistItems, wishlistAddItem, ItemDelete } from '@lib/data/customer'
+import { wishlistAddItem, wishlistItems, ItemDelete } from '@lib/data/wishlist-client'
 import { useRouter } from 'next/navigation'
 
 interface InlineWishlistButtonProps {

@@ -5,8 +5,8 @@ import { SearchProvider } from '@/context/search-context'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import SkipToMain from '@/components/skip-to-main'
-import { useMemo } from 'react'
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import AIAssistant from '@/components/AIAssistant'
 
 export const Route = createFileRoute('/_authenticated')({
   component: RouteComponent,
@@ -16,97 +16,136 @@ function RouteComponent() {
   const defaultOpen = Cookies.get('sidebar:state') !== 'false'
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
-  
-  // Correctly detect loading state using TanStack Router's API
+  const [vendorId, setVendorId] = useState<string>(
+    localStorage.getItem("vendorId") ?? ""
+  )
+
   const routerState = useRouterState()
   const isPending = routerState.status === 'pending'
-  
-  // Use useMemo to efficiently determine sidebar visibility based on current route
+
   const showSidebar = useMemo(() => {
-    // Get the full URL path from the router
     const path = router.state.location.pathname
-    
-    // Define the list of routes where sidebar should be hidden
-    const hideSidebarRoutes = ['/productCatalog','/designer', '/store/editor']
-    
-    // Check if the current path starts with any of the hide routes
-    const shouldHideSidebar = hideSidebarRoutes.some(route => 
+    const hideSidebarRoutes = ['/productCatalog', '/designer', '/store/editor']
+    const shouldHideSidebar = hideSidebarRoutes.some(route =>
       path === route || path.startsWith(`${route}/`)
     ) || path === '/'
-    
-    // Return the inverse of shouldHideSidebar
     return !shouldHideSidebar
-  }, [router.state.location.pathname]) // Only recalculate when the path changes
-  
+  }, [router.state.location.pathname])
 
-  // Check if vendor exists
+  // ── Fetch vendorId once on mount ──────────────────────────────────────────
+  useEffect(() => {
+    const fetchVendorId = async () => {
+      // Already cached — use immediately
+      const cached = localStorage.getItem("vendorId")
+      if (cached) {
+        setVendorId(cached)
+        setIsLoading(false)
+        return
+      }
+
+      const token = localStorage.getItem('vendorToken')
+      if (!token) {
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        )
+
+        if (!response.ok) {
+          setIsLoading(false)
+          return
+        }
+
+        const data = await response.json()
+
+        if (data?.vendor?.id) {
+          localStorage.setItem("vendorId", data.vendor.id)
+          setVendorId(data.vendor.id)
+        }
+
+        setIsLoading(false)
+      } catch {
+        setIsLoading(false)
+      }
+    }
+
+    fetchVendorId()
+  }, []) // runs once on mount
+
+  // ── Check vendor exists + handle routing on path change ───────────────────
   useEffect(() => {
     const checkVendorExists = async () => {
       try {
         const token = localStorage.getItem('vendorToken')
-        
-        // if (!token) {
-        //   // If no token, redirect to sign-in
-        //   router.navigate({ to: '/sign-up' })
-        //   return
-        // }
-        
-        // Get the current path
         const path = router.state.location.pathname
-        
-        // Skip vendor check for onboarding and sign-in pages
-        if (path.includes('/onboarding') || path.includes('/sign-in') || path.includes('/')) {
+
+        if (path === '/' || path.includes('/onboarding') || path.includes('/sign-in')) {
           setIsLoading(false)
           return
         }
-        
-        // Check if vendor exists using vendors/me endpoint
-        const response = await fetch('${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+
+        if (!token) {
+          setIsLoading(false)
+          return
+        }
+
+        const response = await fetch(
+          `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/me`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
           }
-        })
-        
-        // If response is not ok or empty, redirect to onboarding
+        )
+
         if (!response.ok) {
-          //console.log("Vendor profile not found. Redirecting to onboarding page.")
-            router.navigate({ to: '/onboarding', search: '?step=basic-info' } as any)
+          router.navigate({ to: '/onboarding', search: '?step=basic-info' } as any)
           return
         }
-        
+
         const data = await response.json()
-        
-        // Check if vendor data exists in the response
-        if (!data || !data.vendor) {
-          //console.log("Vendor data empty. Redirecting to onboarding page.")
-           router.navigate({ to: '/onboarding', search: '?step=basic-info' } as any)
+
+        if (!data?.vendor) {
+          router.navigate({ to: '/onboarding', search: '?step=basic-info' } as any)
           return
         }
-        
+
+        // Keep vendorId fresh on every route change
+        if (data.vendor.id) {
+          localStorage.setItem("vendorId", data.vendor.id)
+          setVendorId(data.vendor.id)
+        }
+
         setIsLoading(false)
-      } catch (error) {
-        //console.error("Error checking vendor existence:", error)
+      } catch {
         setIsLoading(false)
       }
     }
-    
+
     checkVendorExists()
   }, [router.state.location.pathname])
-
 
   return (
     <SearchProvider>
       <SidebarProvider defaultOpen={showSidebar ? defaultOpen : false}>
         <SkipToMain />
-        {/* Only show sidebar when showSidebar is true */}
         {showSidebar && <AppSidebar />}
         <div
           id='content'
           className={cn(
             'ml-auto w-full max-w-full',
-            // Only apply sidebar offset if sidebar is shown
             showSidebar && [
               'peer-data-[state=collapsed]:w-[calc(100%-var(--sidebar-width-icon)-1rem)]',
               'peer-data-[state=expanded]:w-[calc(100%-var(--sidebar-width))]',
@@ -118,15 +157,17 @@ function RouteComponent() {
           )}
         >
           {isPending ? (
-            // Loading state - display while route is changing
             <div className="flex items-center justify-center w-full h-full">
               <div className="w-12 h-12 border-t-2 border-b-2 border-orange-500 rounded-full animate-spin"></div>
             </div>
           ) : (
-            // Render the actual route content when loading is complete
             <Outlet />
           )}
         </div>
+
+        {/* JUNI AI Assistant — available on every authenticated page */}
+        {vendorId && <AIAssistant vendorId={vendorId} />}
+
       </SidebarProvider>
     </SearchProvider>
   )
