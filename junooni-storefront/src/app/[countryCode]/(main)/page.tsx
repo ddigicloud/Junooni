@@ -195,7 +195,7 @@ export default async function Home(props: {
   const [region, { collections }, vendorsList] = await Promise.all([
     getRegion(countryCode),
     listCollections({
-      fields: "id, handle, title, *metadata",
+      fields: "id, handle, title, metadata",
     }),
     retriveVendors(),
   ])

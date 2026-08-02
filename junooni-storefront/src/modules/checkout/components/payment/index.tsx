@@ -54,6 +54,21 @@ const Payment = ({
     (paymentSession: any) => paymentSession.status === "pending"
   )
 
+  // Hide COD if any cart item is creator-fulfilled
+  const hasCreatorFulfillment = cart.items?.some((item: any) => {
+    try {
+      const ft = item.product?.metadata?.fulfillment_type
+      const parsed = typeof ft === "string" ? JSON.parse(ft) : ft
+      return parsed?.type === "Creator-fulfillment"
+    } catch {
+      return false
+    }
+  }) ?? false
+
+  const filteredPaymentMethods = hasCreatorFulfillment
+    ? availablePaymentMethods.filter((m) => !m.id.includes("system_default"))
+    : availablePaymentMethods
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cardBrand, setCardBrand] = useState<string | null>(null)
@@ -220,7 +235,7 @@ const Payment = ({
                 onChange={(value: string) => setPaymentMethod(value)}
                 className="space-y-4"
               >
-                {availablePaymentMethods.map((paymentMethod) => (
+                {filteredPaymentMethods.map((paymentMethod) => (
                   <div key={paymentMethod.id}>
                     {isStripeFunc(paymentMethod.id) ? (
                       <div className="overflow-hidden transition-all duration-200 rounded-lg ">

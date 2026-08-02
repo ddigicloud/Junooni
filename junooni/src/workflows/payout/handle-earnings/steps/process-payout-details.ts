@@ -30,36 +30,60 @@ const processAllPayoutDetailsStep = createStep(
     const payments        = order.payment_collections?.flatMap((col: any) => col.payments         || []) || []
     const paymentSessions = order.payment_collections?.flatMap((col: any) => col.payment_sessions || []) || []
 
-    const allProviderIds: string[] = [
+    const actualProviderIds: string[] = [
       ...payments.map((p: any)        => p.provider_id),
       ...paymentSessions.map((s: any) => s.provider_id),
       order.metadata?.payment_provider,
-      order.metadata?.payment_method,
       order.metadata?.provider_id,
+      // ❌ DO NOT include order.metadata?.payment_method here —
+      // it gets written as "razorpay" upstream even for COD orders
     ].filter(Boolean).map((id: string) => String(id).toLowerCase())
 
     console.log("╔══════════════════════════════════════════════════════════╗")
     console.log(`║  processAllPayoutDetailsStep: ${orderId}`)
     console.log(`║  payment_collections count: ${order.payment_collections?.length ?? 0}`)
     console.log(`║  payments found: ${payments.length} | sessions found: ${paymentSessions.length}`)
-    console.log(`║  Provider IDs found: ${allProviderIds.join(', ') || 'none'}`)
-    console.log(`║  order.metadata: ${JSON.stringify(order.metadata || {})}`)
+    console.log(`║  Actual provider IDs: ${actualProviderIds.join(', ') || 'none'}`)
+    console.log(`║  metadata.payment_method (excluded): ${order.metadata?.payment_method ?? 'not set'}`)
+    console.log(`║  metadata.cod_order: ${order.metadata?.cod_order ?? 'not set'}`)
     console.log("╚══════════════════════════════════════════════════════════╝")
 
-    const hasRazorpay = allProviderIds.some(id => id.includes('razorpay'))
-    const hasCOD      = allProviderIds.some(id =>
+    // Priority 1: pp_system_default = COD (Junooni uses this for all COD orders)
+    const hasSystemDefault = actualProviderIds.some(id => id === "pp_system_default")
+    // Priority 2: explicit razorpay provider string
+    const hasRazorpay      = actualProviderIds.some(id => id.includes('razorpay'))
+    // Priority 3: explicit cod/manual/cash string in provider
+    const hasCODProvider   = actualProviderIds.some(id =>
       id.includes('cod') || id.includes('cash_on_delivery') || id.includes('manual')
     )
+    // Priority 4: metadata.cod_order flag — last resort when providers not loaded
+    const metadataCodFlag  = order.metadata?.cod_order === true
 
-    // Logic:
-    //  • Razorpay found          → ONLINE  → deduct 2.36%
-    //  • Explicit COD/manual     → COD     → NO fee deducted
-    //  • Nothing found yet       → ONLINE  → safe default (COD always has a provider_id)
-    const isCOD = !hasRazorpay && hasCOD
+    let isCOD: boolean
+    let detectionSource: string
+
+    if (hasSystemDefault) {
+      isCOD = true
+      detectionSource = "pp_system_default provider"
+    } else if (hasRazorpay) {
+      isCOD = false
+      detectionSource = "razorpay provider"
+    } else if (hasCODProvider) {
+      isCOD = true
+      detectionSource = "cod/manual provider string"
+    } else if (metadataCodFlag) {
+      isCOD = true
+      detectionSource = "metadata.cod_order flag (fallback)"
+    } else {
+      isCOD = false
+      detectionSource = "default (no COD signals found)"
+    }
+
     const paymentMethod = isCOD ? 'cod' : 'razorpay'
 
-    console.log(`💳 Payment: ${paymentMethod} | hasRazorpay=${hasRazorpay} | hasCOD=${hasCOD}`)
-    console.log(`💳 Fee: ${isCOD ? "COD — NO fee deducted from vendor" : "Online — Razorpay 2.36% will be deducted"}`)
+    console.log(`💳 Detection source: ${detectionSource}`)
+    console.log(`💳 Payment: ${paymentMethod} | hasSystemDefault=${hasSystemDefault} | hasRazorpay=${hasRazorpay} | hasCODProvider=${hasCODProvider} | metadataCodFlag=${metadataCodFlag}`)
+    console.log(`💳 Fee: ${isCOD ? "COD — flat ₹35 split across vendor items" : "Online — Razorpay 2.36% will be deducted"}`)
 
     // ── STEP 2: Group items by vendor ─────────────────────────────────────────
     const vendorItemsMap = new Map<string, any[]>()
@@ -87,7 +111,7 @@ const processAllPayoutDetailsStep = createStep(
       }
 
       // COD ₹35 split — only relevant when isCOD=true but fee=0 for COD anyway
-      const codFeePerItem = isCOD ? 35 / vendorItems.length : 0
+      const codFeePerItem = 0
 
       console.log("──────────────────────────────────────────────────────────")
       console.log(`🏪 Vendor: ${vendorId} | Products: ${vendorItems.length}`)
@@ -162,9 +186,9 @@ const processAllPayoutDetailsStep = createStep(
             fulfillmentType,
             costPriceRupees,
             item.quantity,
-            taxTotalRupees,                   // 0 → service uses 5/105 fallback
-            paymentMethod,                    // 'razorpay' | 'cod'
-            isCOD ? codFeePerItem : undefined // pre-split COD fee (irrelevant when 0)
+            taxTotalRupees,
+            paymentMethod,
+            undefined // never deduct COD fee from vendor — customer already paid it
           )
 
           console.log('📊 Earnings (rupees):', {

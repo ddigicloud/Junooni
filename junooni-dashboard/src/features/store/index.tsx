@@ -74,7 +74,7 @@ interface VendorStore {
 
 const DEFAULT_STORE: VendorStore = {
   subdomain: null, custom_domain: null, domain_verified: false,
-  template: "minimal", status: "draft", font: "inter",
+  template: "minimal", status: "live", font: "inter",
   primary_color: "#e65100", secondary_color: "#000000",
   hero_image: null, tagline: null, announcement_text: null,
   store_logo: null, store_favicon: null,
@@ -889,7 +889,7 @@ function TemplatePanel({ store, onChange, onSave, isSaving, vendorHandle, isLive
 
 
       <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
-        <button onClick={onPublish} disabled={isPublishing}
+        {/* <button onClick={onPublish} disabled={isPublishing}
           className="flex items-center justify-center w-full gap-2 py-2.5 text-sm font-bold text-white transition-all rounded-xl hover:opacity-90 disabled:opacity-60"
           style={{ background: `linear-gradient(135deg, ${BRAND.primary}, ${BRAND.secondary})` }}>
           {isPublishing
@@ -897,7 +897,7 @@ function TemplatePanel({ store, onChange, onSave, isSaving, vendorHandle, isLive
             : isLive
               ? <><Radio className="w-4 h-4" />Unpublish Store</>
               : <><Rocket className="w-4 h-4" />Go live</>}
-        </button>
+        </button> */}
         <button
           onClick={onSave}
           disabled={isSaving || !isLive}

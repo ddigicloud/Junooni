@@ -2,9 +2,19 @@ import { useState, useRef, useEffect } from "react"
 import JUNI from "../assets/JUNI.png"
 import JUNI2 from "../assets/JUNI-video.mp4"
 
+// ── Interfaces ────────────────────────────────────────────────────────────────
+
+interface ActionButton {
+  label: string
+  url: string
+  icon?: string
+}
+
 interface Message {
   role: "user" | "assistant"
   content: string
+  actions?: ActionButton[]
+  suggestions?: string[]
 }
 
 type TicketState = "idle" | "confirm" | "collect" | "sending"
@@ -13,11 +23,20 @@ interface Props {
   vendorId: string
 }
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
 const API_URL = import.meta.env.VITE_MEDUSA_BACKEND_URL
   ? `${import.meta.env.VITE_MEDUSA_BACKEND_URL}/vendors/ai-assistant`
   : "http://localhost:9000/vendors/ai-assistant"
 
 const BRAND = "#E8621A"
+
+const DEFAULT_SUGGESTIONS = [
+  "How do I create a product?",
+  "What are my pending orders?",
+  "How do payouts work?",
+  "How to promote my store?",
+]
 
 const SUPPORT_TRIGGERS = [
   "talk to support", "contact support", "human support",
@@ -37,18 +56,68 @@ const SUPPORT_TRIGGERS = [
   "mujhe baat karni", "kisi se baat",
 ]
 
+// ── Helper functions ──────────────────────────────────────────────────────────
+
 function detectsSupportIntent(msg: string) {
   const lower = msg.toLowerCase()
   return SUPPORT_TRIGGERS.some((t) => lower.includes(t))
 }
+
 function isYes(msg: string) {
   return ["yes","y","haan","ha","han","haa","ok","okay","sure","yeah","yep"].includes(msg.trim().toLowerCase())
 }
+
 function isNo(msg: string) {
   return ["no","n","nahi","nope","nah","na","not now","cancel"].includes(msg.trim().toLowerCase())
 }
 
-// ── Simple markdown renderer ──────────────────────────────────────────────────
+// Parse [ACTION:label:url] markers from AI response
+function parseActions(text: string): { clean: string; actions: ActionButton[] } {
+  const actions: ActionButton[] = []
+  const clean = text.replace(/\[ACTION:([^\]:]+):([^\]]+)\]/g, (_: string, label: string, url: string) => {
+    actions.push({ label: label.trim(), url: url.trim() })
+    return ""
+  }).trim()
+  return { clean, actions }
+}
+
+// Auto-detect relevant action buttons from reply content
+function detectRelevantActions(text: string): ActionButton[] {
+  const lower = text.toLowerCase()
+  const relevant: ActionButton[] = []
+  if (lower.includes("product") || lower.includes("design") || lower.includes("catalog"))
+    relevant.push({ label: "View Products", url: "/products", icon: "📦" })
+  if (lower.includes("add product") || lower.includes("create product") || lower.includes("new product"))
+    relevant.push({ label: "Add Product", url: "/products/new", icon: "➕" })
+  if (lower.includes("order") || lower.includes("fulfillment") || lower.includes("shipping") || lower.includes("dispatch"))
+    relevant.push({ label: "View Orders", url: "/orders", icon: "🛍️" })
+  if (lower.includes("payout") || lower.includes("wallet") || lower.includes("earning") || lower.includes("payment") || lower.includes("withdraw"))
+    relevant.push({ label: "Payouts", url: "/payouts", icon: "💰" })
+  if (lower.includes("store") || lower.includes("profile") || lower.includes("banner") || lower.includes("customize") || lower.includes("branding"))
+    relevant.push({ label: "My Store", url: "/store", icon: "🏪" })
+  if (lower.includes("membership") || lower.includes("plan") || lower.includes("upgrade") || lower.includes("creator plan") || lower.includes("studio plan"))
+    relevant.push({ label: "Membership Plans", url: "/membership", icon: "⭐" })
+  return relevant.slice(0, 2)
+}
+
+// Detect contextual follow-up suggestions
+function detectSuggestions(text: string): string[] {
+  const lower = text.toLowerCase()
+  if (lower.includes("product") || lower.includes("design"))
+    return ["How do I set the price?", "What file format for designs?", "How long is product review?"]
+  if (lower.includes("order") || lower.includes("fulfillment"))
+    return ["How do I track orders?", "What is COD fee?", "What if customer returns?"]
+  if (lower.includes("payout") || lower.includes("wallet") || lower.includes("earning"))
+    return ["Minimum withdrawal amount?", "When do I get paid?", "How is GST handled?"]
+  if (lower.includes("store") || lower.includes("profile"))
+    return ["How to add cover photo?", "Can I use custom domain?", "How to add social links?"]
+  if (lower.includes("membership") || lower.includes("plan"))
+    return ["What's included in Creator plan?", "How to upgrade?", "Is there a free plan?"]
+  return ["How do I add a product?", "Track my orders", "When will I get paid?"]
+}
+
+// ── Markdown renderer ─────────────────────────────────────────────────────────
+
 function renderMarkdown(text: string, isUser: boolean): React.ReactNode {
   const lines = text.split("\n")
   const elements: React.ReactNode[] = []
@@ -73,7 +142,6 @@ function renderMarkdown(text: string, isUser: boolean): React.ReactNode {
   while (i < lines.length) {
     const line = lines[i]
     if (/^---+$/.test(line.trim())) { i++; continue }
-
     if (line.startsWith("### ")) {
       elements.push(<div key={i} style={{ fontWeight: 700, fontSize: "11.5px", color: isUser ? "rgba(255,255,255,0.9)" : BRAND, marginTop: "10px", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.05em" }}>{line.replace(/^### /, "")}</div>)
       i++; continue
@@ -110,8 +178,8 @@ function renderMarkdown(text: string, isUser: boolean): React.ReactNode {
   return <>{elements}</>
 }
 
+// ── Gemini-style 4-point star ─────────────────────────────────────────────────
 
-// ── Gemini-style 4-point star (static, used in header) ───────────────────────
 function GeminiStar({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
@@ -129,7 +197,8 @@ function GeminiStar({ size = 16 }: { size?: number }) {
   )
 }
 
-// ── Gemini-style typing: animated gradient diamond ───────────────────────────
+// ── Gemini-style typing indicator ─────────────────────────────────────────────
+
 function TypingIndicator() {
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: "8px" }}>
@@ -155,20 +224,13 @@ function TypingIndicator() {
         <style>{`
           @keyframes juni-gem-1 { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.6)} }
           @keyframes juni-gem-2 { 0%,100%{opacity:0.3;transform:scale(0.6)} 50%{opacity:1;transform:scale(1)} }
-          @keyframes juni-gem-gradient {
-            0%   { stop-color: #E8621A; }
-            25%  { stop-color: #FF7A35; }
-            50%  { stop-color: #c94e10; }
-            75%  { stop-color: #FF9A5C; }
-            100% { stop-color: #E8621A; }
-          }
+          @keyframes juni-gem-gradient { 0%{stop-color:#E8621A} 25%{stop-color:#FF7A35} 50%{stop-color:#c94e10} 75%{stop-color:#FF9A5C} 100%{stop-color:#E8621A} }
           .gem-s1 { animation: juni-gem-gradient 2s linear infinite; }
           .gem-s2 { animation: juni-gem-gradient 2s linear infinite 0.5s; }
           .gem-star-big { animation: juni-gem-1 1.6s ease-in-out infinite; transform-origin: center; }
           .gem-star-sm1 { animation: juni-gem-2 1.6s ease-in-out infinite 0.3s; transform-origin: center; }
           .gem-star-sm2 { animation: juni-gem-2 1.6s ease-in-out infinite 0.6s; transform-origin: center; }
         `}</style>
-        {/* Gemini-style multi-star with gradient animation */}
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
           <defs>
             <linearGradient id="tg1" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -176,15 +238,12 @@ function TypingIndicator() {
               <stop offset="100%" className="gem-s2" />
             </linearGradient>
           </defs>
-          {/* Main big star */}
           <g className="gem-star-big">
             <path d="M14 2C14 2 15.5 11 20 14C15.5 17 14 26 14 26C14 26 12.5 17 8 14C12.5 11 14 2 14 2Z" fill="url(#tg1)" />
           </g>
-          {/* Small top-right star */}
           <g className="gem-star-sm1">
             <path d="M22 4C22 4 22.8 7.5 25 9C22.8 10.5 22 14 22 14C22 14 21.2 10.5 19 9C21.2 7.5 22 4 22 4Z" fill="url(#tg1)" opacity="0.7" />
           </g>
-          {/* Small bottom-left star */}
           <g className="gem-star-sm2">
             <path d="M6 17C6 17 6.6 19.5 8 20.5C6.6 21.5 6 24 6 24C6 24 5.4 21.5 4 20.5C5.4 19.5 6 17 6 17Z" fill="url(#tg1)" opacity="0.5" />
           </g>
@@ -195,11 +254,14 @@ function TypingIndicator() {
   )
 }
 
+// ── Main Component ────────────────────────────────────────────────────────────
+
 export default function AIAssistant({ vendorId }: Props) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([{
     role: "assistant",
     content: "Hey! I'm JUNI ✦\nYour JUNOONI store assistant. Ask me anything about your store, orders, earnings, or the platform!",
+    suggestions: DEFAULT_SUGGESTIONS,
   }])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
@@ -215,25 +277,32 @@ export default function AIAssistant({ vendorId }: Props) {
   }, [messages, loading, open])
 
   const addMessage = (role: "user" | "assistant", content: string) => {
-    setMessages((prev) => [...prev, { role, content }])
+    if (role === "assistant") {
+      const { clean, actions: parsedActions } = parseActions(content)
+      const autoActions = parsedActions.length > 0 ? parsedActions : detectRelevantActions(clean)
+      const suggestions = detectSuggestions(clean)
+      setMessages((prev) => [...prev, { role, content: clean, actions: autoActions, suggestions }])
+    } else {
+      setMessages((prev) => [...prev, { role, content }])
+    }
   }
 
   const sendToBackend = async (msgs: Message[], extra?: Record<string, any>) => {
-  const token = localStorage.getItem("vendorToken") ?? ""
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-    credentials: "include",
-    body: JSON.stringify({
-      messages: msgs,
-      vendorId,
-      currentPage: window.location.pathname, // ← tells JUNI which page the creator is on
-      ...extra,
-    }),
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
-}
+    const token = localStorage.getItem("vendorToken") ?? ""
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      credentials: "include",
+      body: JSON.stringify({
+        messages: msgs,
+        vendorId,
+        currentPage: window.location.pathname,
+        ...extra,
+      }),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.json()
+  }
 
   const sendMessage = async (overrideText?: string) => {
     const userText = (overrideText ?? input).trim()
@@ -309,17 +378,14 @@ export default function AIAssistant({ vendorId }: Props) {
         .juni-msg    { animation: juni-msg-in 0.16s ease forwards; }
         .juni-qbtn:hover { opacity:0.88; transform:translateY(-1px); }
         .juni-send:hover:not(:disabled) { filter:brightness(1.1); transform:scale(1.06); }
+        .juni-action-btn:hover { background:#fff5f0 !important; border-color:#E8621A !important; color:#E8621A !important; transform:translateY(-1px); }
+        .juni-suggest-btn:hover { background:#fff5f0 !important; border-color:#f0c8b0 !important; color:#E8621A !important; }
         ::-webkit-scrollbar { width:4px; }
         ::-webkit-scrollbar-thumb { background:#e0d0c8; border-radius:4px; }
-        @keyframes juni-cloud-pulse {
-          0%,100% { box-shadow: 0 4px 20px rgba(232,98,26,0.35), 0 0 0 0 rgba(232,98,26,0.2); }
-          50%      { box-shadow: 0 4px 24px rgba(232,98,26,0.5), 0 0 0 6px rgba(232,98,26,0.08); }
-        }
-        
         .juni-cloud-fab:hover { transform: scale(1.04) translateY(-2px) !important; }
       `}</style>
 
-      {/* FAB: JUNI image circle + "Ask JUNI" cloud tooltip above */}
+      {/* ── FAB: Animated JUNI video + cloud tooltip ────────────────────────── */}
       {!open && (
         <div
           onClick={() => setOpen(true)}
@@ -329,19 +395,13 @@ export default function AIAssistant({ vendorId }: Props) {
             alignItems: "center", gap: "6px", cursor: "pointer",
           }}
         >
-          {/* White cloud with "Ask JUNI" */}
-          {/* Thinking-cloud "Ask JUNI" bubble, offset left with trailing circles */}
+          {/* Thought cloud with trailing bubbles */}
           <div style={{ position: "relative", width: "100%", height: "26px" }}>
             <div style={{
-              position: "absolute",
-              bottom: "6px",
-              left: "-14px",
-              background: "#fff",
-              borderRadius: "16px",
-              padding: "6px 13px",
+              position: "absolute", bottom: "6px", left: "-14px",
+              background: "#fff", borderRadius: "16px", padding: "6px 13px",
               boxShadow: "0 3px 16px rgba(0,0,0,0.12)",
-              border: "1px solid rgba(232,98,26,0.15)",
-              whiteSpace: "nowrap",
+              border: "1px solid rgba(232,98,26,0.15)", whiteSpace: "nowrap",
             }}>
               <span style={{
                 color: BRAND, fontWeight: 700, fontSize: "13px",
@@ -349,57 +409,44 @@ export default function AIAssistant({ vendorId }: Props) {
                 letterSpacing: "0.01em",
               }}>Ask JUNI</span>
             </div>
-
-            {/* trailing thought circles cascading toward JUNI's head */}
             <div style={{
               position: "absolute", bottom: "-6px", left: "8px",
               width: "10px", height: "10px", borderRadius: "50%",
-              background: "#fff",
-              border: "1px solid rgba(232,98,26,0.15)",
+              background: "#fff", border: "1px solid rgba(232,98,26,0.15)",
               boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
             }} />
             <div style={{
               position: "absolute", bottom: "-13px", left: "20px",
               width: "6px", height: "6px", borderRadius: "50%",
-              background: "#fff",
-              border: "1px solid rgba(232,98,26,0.15)",
+              background: "#fff", border: "1px solid rgba(232,98,26,0.15)",
               boxShadow: "0 1px 5px rgba(0,0,0,0.1)",
             }} />
           </div>
 
-          {/* JUNI circle image */}
+          {/* JUNI animated circle */}
           <div className="juni-cloud-fab" style={{
             width: "56px", height: "56px", borderRadius: "50%",
             background: "linear-gradient(135deg, #fff5f0, #ffe0cc)",
-            // border: "2.5px solid #E8621A",
-            // boxShadow: "0 4px 20px rgba(232,98,26,0.4)",
             overflow: "hidden",
             display: "flex", alignItems: "center", justifyContent: "center",
             transition: "transform 0.2s ease",
           }}>
-            <video
-              src={JUNI2}
-              autoPlay loop muted playsInline
+            <video src={JUNI2} autoPlay loop muted playsInline
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           </div>
         </div>
       )}
 
-      {/* Close button when panel is open */}
+      {/* ── Close button when panel open ─────────────────────────────────────── */}
       {open && (
-        <div
-          onClick={() => setOpen(false)}
-          style={{
-            position: "fixed", bottom: "24px", right: "24px",
-            width: "52px", height: "52px", borderRadius: "50%",
-            background: "#1a1a1a",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", zIndex: 9999,
-            transition: "all 0.2s ease",
-          }}
-        >
+        <div onClick={() => setOpen(false)} style={{
+          position: "fixed", bottom: "24px", right: "24px",
+          width: "52px", height: "52px", borderRadius: "50%",
+          background: "#1a1a1a", boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", zIndex: 9999, transition: "all 0.2s ease",
+        }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
             <path d="M18 6L6 18M6 6l12 12"/>
           </svg>
@@ -410,12 +457,10 @@ export default function AIAssistant({ vendorId }: Props) {
       {open && (
         <div className="juni-panel" style={{
           position: "fixed", bottom: "88px", right: "24px",
-          width: "370px", height: "450px",
-          background: "#fff",
-          borderRadius: "20px",
+          width: "370px", height: "440px",
+          background: "#fff", borderRadius: "20px",
           boxShadow: "0 12px 48px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08)",
-          zIndex: 9998,
-          display: "flex", flexDirection: "column",
+          zIndex: 9998, display: "flex", flexDirection: "column",
           overflow: "hidden",
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           border: "1px solid rgba(0,0,0,0.06)",
@@ -424,8 +469,7 @@ export default function AIAssistant({ vendorId }: Props) {
           {/* Header */}
           <div style={{
             background: "linear-gradient(135deg, #FF7A35 0%, #E8621A 60%, #c94e10 100%)",
-            padding: "14px 16px",
-            display: "flex", alignItems: "center", gap: "12px",
+            padding: "14px 16px", display: "flex", alignItems: "center", gap: "12px",
             flexShrink: 0, position: "relative", overflow: "hidden",
           }}>
             <div style={{
@@ -434,49 +478,31 @@ export default function AIAssistant({ vendorId }: Props) {
               background: "radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)",
               pointerEvents: "none",
             }} />
-
-            {/* JUNI avatar */}
             <div style={{
               width: "40px", height: "40px", borderRadius: "50%",
               background: "rgba(255,255,255,0.2)",
               border: "2px solid rgba(255,255,255,0.45)",
               overflow: "hidden", flexShrink: 0,
             }}>
-              {/* <img src={JUNI} alt="JUNI"
+              <video src={JUNI2} autoPlay muted playsInline
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={(e) => { e.currentTarget.style.display="none"; e.currentTarget.parentElement!.innerHTML='<div style="color:white;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;height:100%">J</div>' }}
-              /> */}
-              <video
-              src={JUNI2}
-              autoPlay muted playsInline
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
+              />
             </div>
-
             <div style={{ flex: 1 }}>
-              <div style={{
-                color: "#fff", fontWeight: 700, fontSize: "15px",
-                display: "flex", alignItems: "center", gap: "6px",
-              }}>
+              <div style={{ color: "#fff", fontWeight: 700, fontSize: "15px", display: "flex", alignItems: "center", gap: "6px" }}>
                 JUNI <GeminiStar size={14} />
               </div>
               <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "11.5px", marginTop: "2px", display: "flex", alignItems: "center", gap: "5px" }}>
-                <span style={{
-                  width: "6px", height: "6px", borderRadius: "50%",
-                  background: "#7dff9a", boxShadow: "0 0 6px #7dff9a",
-                  display: "inline-block",
-                }} />
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#7dff9a", boxShadow: "0 0 6px #7dff9a", display: "inline-block" }} />
                 {ticketState === "confirm" ? "Raising a support ticket..." :
                  ticketState === "collect" ? "Write your support message" :
                  "Your JUNOONI store assistant"}
               </div>
             </div>
-
             <button onClick={() => setOpen(false)} style={{
-              background: "rgba(255,255,255,0.2)", border: "none",
-              borderRadius: "50%", width: "28px", height: "28px",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", flexShrink: 0, transition: "background 0.15s",
+              background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "50%",
+              width: "28px", height: "28px", display: "flex", alignItems: "center",
+              justifyContent: "center", cursor: "pointer", flexShrink: 0, transition: "background 0.15s",
             }}
               onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.35)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.2)")}
@@ -489,8 +515,7 @@ export default function AIAssistant({ vendorId }: Props) {
 
           {/* Messages */}
           <div style={{
-            flex: 1, overflowY: "auto",
-            padding: "16px 14px",
+            flex: 1, overflowY: "auto", padding: "16px 14px",
             display: "flex", flexDirection: "column", gap: "12px",
             background: "#fafafa",
           }}>
@@ -500,11 +525,11 @@ export default function AIAssistant({ vendorId }: Props) {
                 flexDirection: msg.role === "user" ? "row-reverse" : "row",
                 alignItems: "flex-end", gap: "8px",
               }}>
+                {/* Avatar */}
                 {msg.role === "assistant" && (
                   <div style={{
                     width: "28px", height: "28px", borderRadius: "50%",
                     background: "linear-gradient(135deg, #fff5f0, #ffe0cc)",
-                    // border: "1.5px solid #f0c8b0",
                     flexShrink: 0, overflow: "hidden",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
@@ -514,20 +539,67 @@ export default function AIAssistant({ vendorId }: Props) {
                     />
                   </div>
                 )}
-                <div style={{
-                  maxWidth: "78%", padding: "10px 14px",
-                  borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                  background: msg.role === "user"
-                    ? "linear-gradient(135deg, #FF7A35, #E8621A)"
-                    : "#fff",
-                  color: msg.role === "user" ? "#fff" : "#1a1a1a",
-                  fontSize: "13.5px", lineHeight: "1.6",
-                  boxShadow: msg.role === "user"
-                    ? "0 2px 12px rgba(232,98,26,0.3)"
-                    : "0 1px 4px rgba(0,0,0,0.08)",
-                  border: msg.role === "assistant" ? "1px solid #f0f0f0" : "none",
-                }}>
-                  {renderMarkdown(msg.content, msg.role === "user")}
+
+                {/* Bubble + actions + suggestions */}
+                <div style={{ maxWidth: "82%", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {/* Main bubble */}
+                  <div style={{
+                    padding: "10px 14px",
+                    borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                    background: msg.role === "user" ? "linear-gradient(135deg, #FF7A35, #E8621A)" : "#fff",
+                    color: msg.role === "user" ? "#fff" : "#1a1a1a",
+                    fontSize: "13.5px", lineHeight: "1.6",
+                    boxShadow: msg.role === "user" ? "0 2px 12px rgba(232,98,26,0.3)" : "0 1px 4px rgba(0,0,0,0.08)",
+                    border: msg.role === "assistant" ? "1px solid #f0f0f0" : "none",
+                  }}>
+                    {renderMarkdown(msg.content, msg.role === "user")}
+                  </div>
+
+                  {/* Action buttons (dashboard navigation) */}
+                  {msg.role === "assistant" && msg.actions && msg.actions.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", paddingLeft: "2px" }}>
+                      {msg.actions.map((action, ai) => (
+                        <a key={ai} href={action.url}
+                          className="juni-action-btn"
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: "5px",
+                            padding: "6px 12px",
+                            background: "#fff", border: "1.5px solid #f0d0c0",
+                            borderRadius: "20px", color: BRAND,
+                            fontSize: "12.5px", fontWeight: 600,
+                            textDecoration: "none",
+                            boxShadow: "0 1px 4px rgba(232,98,26,0.12)",
+                            transition: "all 0.15s ease", cursor: "pointer",
+                          }}
+                        >
+                          {action.icon && <span>{action.icon}</span>}
+                          <span>{action.label}</span>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                            <path d="M7 17L17 7M7 7h10v10"/>
+                          </svg>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Suggestion chips — only on last assistant message */}
+                  {msg.role === "assistant" && i === messages.length - 1 && msg.suggestions && msg.suggestions.length > 0 && !loading && ticketState === "idle" && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", paddingLeft: "2px", marginTop: "2px" }}>
+                      {msg.suggestions.map((s, si) => (
+                        <button key={si} onClick={() => sendMessage(s)}
+                          className="juni-suggest-btn"
+                          style={{
+                            padding: "5px 11px",
+                            background: "#fafafa", border: "1px solid #e8e8e8",
+                            borderRadius: "16px", color: "#666",
+                            fontSize: "12px", cursor: "pointer",
+                            transition: "all 0.15s ease", textAlign: "left",
+                            fontFamily: "inherit",
+                          }}
+                        >{s}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -535,26 +607,18 @@ export default function AIAssistant({ vendorId }: Props) {
             {/* Yes/No quick replies */}
             {ticketState === "confirm" && !loading && (
               <div style={{ display: "flex", gap: "8px", paddingLeft: "36px" }}>
-                <button className="juni-qbtn"
-                  onMouseDown={() => sendMessage("yes")}
-                  style={{
-                    padding: "8px 16px",
-                    background: "linear-gradient(135deg, #FF7A35, #E8621A)",
-                    color: "#fff", border: "none", borderRadius: "20px",
-                    cursor: "pointer", fontSize: "13px", fontWeight: 600,
-                    boxShadow: "0 2px 10px rgba(232,98,26,0.3)",
-                    transition: "all 0.15s ease",
-                  }}
-                >✅ Yes, raise a ticket</button>
-                <button className="juni-qbtn"
-                  onMouseDown={() => sendMessage("no")}
-                  style={{
-                    padding: "8px 16px", background: "#f0f0f0",
-                    color: "#555", border: "none", borderRadius: "20px",
-                    cursor: "pointer", fontSize: "13px", fontWeight: 600,
-                    transition: "all 0.15s ease",
-                  }}
-                >✕ No thanks</button>
+                <button className="juni-qbtn" onMouseDown={() => sendMessage("yes")} style={{
+                  padding: "8px 16px", background: "linear-gradient(135deg, #FF7A35, #E8621A)",
+                  color: "#fff", border: "none", borderRadius: "20px",
+                  cursor: "pointer", fontSize: "13px", fontWeight: 600,
+                  boxShadow: "0 2px 10px rgba(232,98,26,0.3)", transition: "all 0.15s ease",
+                }}>✅ Yes, raise a ticket</button>
+                <button className="juni-qbtn" onMouseDown={() => sendMessage("no")} style={{
+                  padding: "8px 16px", background: "#f0f0f0",
+                  color: "#555", border: "none", borderRadius: "20px",
+                  cursor: "pointer", fontSize: "13px", fontWeight: 600,
+                  transition: "all 0.15s ease",
+                }}>✕ No thanks</button>
               </div>
             )}
 
@@ -581,18 +645,15 @@ export default function AIAssistant({ vendorId }: Props) {
                 border: ticketState === "collect" ? "1.5px solid #E8621A" : "1.5px solid #e8e8e8",
                 fontSize: "13.5px", outline: "none",
                 background: "#fafafa", color: "#1a1a1a",
-                transition: "border-color 0.2s",
+                transition: "border-color 0.2s", fontFamily: "inherit",
               }}
               onFocus={(e) => { if (ticketState !== "collect") e.currentTarget.style.borderColor = "#E8621A" }}
               onBlur={(e) => { if (ticketState !== "collect") e.currentTarget.style.borderColor = "#e8e8e8" }}
             />
-            <button className="juni-send"
-              onClick={() => sendMessage()}
+            <button className="juni-send" onClick={() => sendMessage()}
               disabled={loading || !input.trim()}
               style={{
-                background: loading || !input.trim()
-                  ? "#e0e0e0"
-                  : "linear-gradient(135deg, #FF7A35, #E8621A)",
+                background: loading || !input.trim() ? "#e0e0e0" : "linear-gradient(135deg, #FF7A35, #E8621A)",
                 color: "#fff", border: "none", borderRadius: "50%",
                 width: "38px", height: "38px",
                 cursor: loading || !input.trim() ? "not-allowed" : "pointer",

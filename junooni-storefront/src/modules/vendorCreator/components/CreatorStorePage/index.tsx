@@ -358,7 +358,8 @@ const CreatorStorePage: React.FC<CreatorStorePageProps & {
   console.log(`[CreatorStorePage] RENDER | initialVendorProducts.length=${initialVendorProducts.length} | isLoading default=${initialVendorProducts.length === 0}`)
 
   const [vendorProducts, setVendorProducts] = useState<Product[]>(initialVendorProducts)
-  const [isLoading, setIsLoading] = useState(initialVendorProducts.length === 0)
+  // const [isLoading, setIsLoading] = useState(initialVendorProducts.length === 0)
+  const [isLoading, setIsLoading] = useState(false)
   const [followers, setFollowers] = useState([])
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true)
 
@@ -375,22 +376,22 @@ const CreatorStorePage: React.FC<CreatorStorePageProps & {
   const PRODUCTS_PER_PAGE = 12
 
   // Fetch products client-side after first paint
-useEffect(() => {
-  const load = async () => {
-    setIsLoading(true)
-    try {
-      const { fetchVendorProductsClient } = await import("@lib/data/vendors-client")
-      const products = await fetchVendorProductsClient(vendor.id, region.id)
-      const publishedProducts = products.filter((p: any) => p.status === "published")
-      setVendorProducts(publishedProducts)
-    } catch {
-      setVendorProducts([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-  load()
-}, [vendor.id, region.id])
+// useEffect(() => {
+//   const load = async () => {
+//     setIsLoading(true)
+//     try {
+//       const { fetchVendorProductsClient } = await import("@lib/data/vendors-client")
+//       const products = await fetchVendorProductsClient(vendor.id, region.id)
+//       const publishedProducts = products.filter((p: any) => p.status === "published")
+//       setVendorProducts(publishedProducts)
+//     } catch {
+//       setVendorProducts([])
+//     } finally {
+//       setIsLoading(false)
+//     }
+//   }
+//   load()
+// }, [vendor.id, region.id])
 
   // Fetch followers data
   useEffect(() => {
@@ -1771,27 +1772,31 @@ const DynamicProductCard: React.FC<ExtendedProductCardProps> = ({
   //     })
   // }, [product.id])
 
-  const [averageRating, setAverageRating] = useState(0)
-  const [reviewCount, setReviewCount] = useState(0)
-  const [isLoadingReviews, setIsLoadingReviews] = useState(true)
+  // const [averageRating, setAverageRating] = useState(0)
+  // const [reviewCount, setReviewCount] = useState(0)
+  // const [isLoadingReviews, setIsLoadingReviews] = useState(true)
 
-  useEffect(() => {
-    // Only fetch if no server data provided
-    if (reviewData) {
-      setAverageRating(reviewData.averageRating)
-      setReviewCount(reviewData.reviewCount)
-      setIsLoadingReviews(false)
-      return
-    }
-    getProductReviews({ productId: product.id, limit: 100, offset: 0 })
-      .then(({ average_rating, reviews }) => {
-        setAverageRating(average_rating ?? 0)
-        setReviewCount(reviews?.length ?? 0)
-      })
-      .catch(() => {})
-      .finally(() => setIsLoadingReviews(false))
-  }, [product.id])
+  // useEffect(() => {
+  //   // Only fetch if no server data provided
+  //   if (reviewData) {
+  //     setAverageRating(reviewData.averageRating)
+  //     setReviewCount(reviewData.reviewCount)
+  //     setIsLoadingReviews(false)
+  //     return
+  //   }
+  //   getProductReviews({ productId: product.id, limit: 100, offset: 0 })
+  //     .then(({ average_rating, reviews }) => {
+  //       setAverageRating(average_rating ?? 0)
+  //       setReviewCount(reviews?.length ?? 0)
+  //     })
+  //     .catch(() => {})
+  //     .finally(() => setIsLoadingReviews(false))
+  // }, [product.id])
 
+  // ✅ Reviews come from server via reviewsMap — no client fetch needed
+  const averageRating = reviewData?.averageRating ?? 0
+  const reviewCount = reviewData?.reviewCount ?? 0
+  const isLoadingReviews = false
 
   // ADD STEP 3 FUNCTION HERE:
 // Function to get the appropriate image based on selected color

@@ -382,7 +382,7 @@ class PayoutModuleService extends MedusaService({
     // ONLINE → Razorpay 2.36% of gross order total
     // COD    → Flat ₹35 per order split across vendor's products (or full ₹35 for standalone calls)
     const paymentProcessingFee: number = isCOD
-      ? (overrideCodFee ?? 35)
+      ? 0 // COD fee is collected from customer as a line item, not deducted from vendor
       : orderTotalRupees * 0.0236
 
     let vendorShare = 0

@@ -53,7 +53,7 @@ export const getCollectionByHandle = async (
 
   return sdk.client
     .fetch<HttpTypes.StoreCollectionListResponse>(`/store/collections`, {
-      query: { handle, fields: "*products,*products.vendor,*products.categories" },
+      query: { handle, fields: "id,handle,title,products.id,products.title,products.handle,products.thumbnail,products.status" },
       next
       // cache: "force-cache",
     })
