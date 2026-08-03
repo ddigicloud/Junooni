@@ -1802,6 +1802,16 @@ const getMockupsForColor = (
   return filteredMockups;
 };
 
+const VARIANT_HARD_LIMIT = 100;
+
+const calculateProjectedVariants = (
+  colors: Array<{ name: string; value: string }>,
+  sizes: string[],
+  productData: PayloadProductData
+): number => {
+  return colors.length * sizes.length;
+};
+
 /**
  * Enhanced calculation for color and size specific scenarios
  */
@@ -4444,10 +4454,11 @@ const [activeSize, setActiveSize] = useState<string>(() => {
   const transformerRef = useRef<Konva.Transformer>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [customWidth, setCustomWidth] = useState<string>('');
-const [customHeight, setCustomHeight] = useState<string>('');
-const [lockAspectRatio, setLockAspectRatio] = useState(true);
+  const [customHeight, setCustomHeight] = useState<string>('');
+  const [lockAspectRatio, setLockAspectRatio] = useState(true);
   
   const [forceUpdate, setForceUpdate] = useState(0);
+  const [variantLimitWarning, setVariantLimitWarning] = useState<string | null>(null);
   const triggerUpdate = useCallback(() => {
     setForceUpdate(prev => prev + 1);
   }, []);
@@ -9187,6 +9198,7 @@ const handleFileUpload = useCallback(async (files) => {
       if (selectedColors.length === 1) {
         return;
       }
+      setVariantLimitWarning(null);
       setSelectedColors(prev => prev.filter(c => c.value !== colorHex));
       if (activeColor === colorHex) {
         const newActiveColor = selectedColors.find(c => c.value !== colorHex);
@@ -9196,11 +9208,22 @@ const handleFileUpload = useCallback(async (files) => {
         }
       }
     } else {
+      const projectedColors = [...selectedColors, { name: colorName, value: colorHex }];
+      const projected = calculateProjectedVariants(projectedColors, selectedSizes, productData);
+      
+      if (projected > VARIANT_HARD_LIMIT) {
+        setVariantLimitWarning(
+          `Adding "${colorName}" would create ${projected} variants — limit is ${VARIANT_HARD_LIMIT}. Remove a color or size first.`
+        );
+        return;
+      }
+      
+      setVariantLimitWarning(null);
       setSelectedColors(prev => [...prev, { name: colorName, value: colorHex }]);
       setHighlightedColor(colorHex);
       startTransition(() => setActiveColor(colorHex));
     }
-  }, [selectedColors, activeColor]);
+  }, [selectedColors, selectedSizes, activeColor, productData]);
 
   // ── Fast handler specifically for preview color circle clicks ─────────────
   const handlePreviewColorClick = useCallback((colorValue: string) => {
@@ -9216,6 +9239,7 @@ const handleFileUpload = useCallback(async (files) => {
       return;
     }
     
+    setVariantLimitWarning(null);
     setSelectedColors(prev => prev.filter(c => c.value !== colorHex));
     
     if (activeColor === colorHex) {
@@ -10921,31 +10945,88 @@ const renderCanvas = useCallback(() => {
             <div className="space-y-4">
               <h3 className="font-medium">Enhanced Color Selection</h3>
               
-              <div className={`flex flex-wrap gap-2 mb-4`}>
+              {/* Variant counter */}
+            {(() => {
+                const current = calculateProjectedVariants(selectedColors, selectedSizes, productData);
+                const isAtLimit = current >= VARIANT_HARD_LIMIT;
+                const isNearLimit = current >= Math.round(VARIANT_HARD_LIMIT * 0.8);
+                const pct = Math.min(100, Math.round((current / VARIANT_HARD_LIMIT) * 100));
+                return (
+                  <div className={`p-3 rounded-lg border ${
+                    isAtLimit   ? 'bg-red-50 border-red-300' :
+                    isNearLimit ? 'bg-amber-50 border-amber-300' :
+                                  'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-gray-700">Variants</span>
+                      <span className={`text-xs font-bold ${
+                        isAtLimit ? 'text-red-600' : isNearLimit ? 'text-amber-600' : 'text-gray-600'
+                      }`}>
+                        {current} / {VARIANT_HARD_LIMIT}
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-400' : 'bg-green-500'
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      {selectedColors.length} color{selectedColors.length !== 1 ? 's' : ''} × {selectedSizes.length} size{selectedSizes.length !== 1 ? 's' : ''}
+                    </p>
+                    {variantLimitWarning && (
+                      <p className="mt-2 text-xs font-medium text-red-600">⚠️ {variantLimitWarning}</p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="flex flex-wrap gap-2 mb-4">
                 {productData?.colorOptions?.map((color: any) => {
                   const isSelected = selectedColors.some(c => c.value === color.colorHex);
+                  const projected = calculateProjectedVariants(
+                    [...selectedColors, { name: color.colorName, value: color.colorHex }],
+                    selectedSizes,
+                    productData
+                  );
+                  const isDisabled = !isSelected && projected > VARIANT_HARD_LIMIT;
                   const tickColor = isLightColor(color.colorHex) ? '#000000' : '#FFFFFF';
                   
                   return (
                     <button
                       key={color.colorHex}
-                      onClick={() => handleColorChange(color.colorHex, color.colorName)}
-                      className={`w-8 h-8 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center touch-manipulation ${
+                      onClick={() => {
+                        if (isDisabled) {
+                          setVariantLimitWarning(
+                            `Adding "${color.colorName}" would create ${projected} variants — limit is ${VARIANT_HARD_LIMIT}.`
+                          );
+                          return;
+                        }
+                        setVariantLimitWarning(null);
+                        handleColorChange(color.colorHex, color.colorName);
+                      }}
+                      title={isDisabled
+                        ? `Would create ${projected} variants (max ${VARIANT_HARD_LIMIT})`
+                        : color.colorName}
+                      className={`w-8 h-8 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg border-2 transition-all flex items-center justify-center touch-manipulation ${
                         isSelected
-                          ? 'border-orange-500 ring-2 ring-orange-200 scale-110' 
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-orange-500 ring-2 ring-orange-200 scale-110'
+                          : isDisabled
+                          ? 'border-gray-200 opacity-30 cursor-not-allowed grayscale'
+                          : 'border-gray-300 hover:border-gray-400 hover:scale-105'
                       }`}
                       style={{ backgroundColor: color.colorHex }}
-                      title={color.colorName}
                     >
                       {isSelected && (
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          viewBox="0 0 24 24" 
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
                           fill={tickColor}
-                          width="16" 
+                          width="16"
                           height="16"
-                          style={{ 
+                          style={{
                             filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
                             strokeWidth: '0.5px',
                             stroke: tickColor === '#FFFFFF' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)'
