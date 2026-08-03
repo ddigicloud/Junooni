@@ -73,8 +73,7 @@ import { listProducts } from "@lib/data/products"
 import { HttpTypes } from "@medusajs/types"
 import ProductActions from "@modules/products/components/product-actions"
 
-// Minimal fields — only what ProductActions actually needs.
-// No size_chart, no vendor wildcard, no categories, no tags.
+// Only what ProductActions needs — no size_chart, no vendor, no categories
 const PRODUCT_ACTIONS_FIELDS = [
   "id",
   "title",
@@ -101,13 +100,6 @@ const PRODUCT_ACTIONS_FIELDS = [
   "+metadata",
 ].join(",")
 
-/**
- * Fetches real-time pricing and variant data for a product and renders
- * the product actions component (size selector, add to cart, etc.)
- *
- * Intentionally uses a narrow fields string — this component does NOT
- * need vendor info, size charts, categories, tags, or related data.
- */
 export default async function ProductActionsWrapper({
   id,
   region,
@@ -119,6 +111,9 @@ export default async function ProductActionsWrapper({
   onOptionUpdate?: (optionId: string, value: string, metadata?: Record<string, any>) => void
   selectedOptions?: Record<string, string>
 }) {
+  console.log(`[ProductActionsWrapper] START | product_id=${id}`)
+  const t0 = Date.now()
+
   const product = await listProducts({
     queryParams: {
       id: [id],
@@ -127,9 +122,11 @@ export default async function ProductActionsWrapper({
     regionId: region.id,
   }).then(({ response }) => response.products[0])
 
-  if (!product) {
-    return null
-  }
+  console.log(
+    `[ProductActionsWrapper] DONE | product_id=${id} | ${Date.now() - t0}ms | found=${!!product} | variants=${product?.variants?.length ?? 0}`
+  )
+
+  if (!product) return null
 
   return (
     <ProductActions

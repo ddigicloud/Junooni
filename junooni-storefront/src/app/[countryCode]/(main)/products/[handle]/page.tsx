@@ -319,81 +319,55 @@ type Props = {
   params: Promise<{ countryCode: string; handle: string }>
 }
 
-export async function generateStaticParams() {
-  try {
-    const countryCodes = await listRegions().then((regions) =>
-      regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
-    )
+// ── PDP fields — surgically minimal, every field justified ─────────────────
+// NO *size_chart — not rendered anywhere in ProductTemplate
+// NO wildcards — all explicit dot-notation
+const PDP_FIELDS = [
+  "+images.url",
+  "*variants.calculated_price",
+  "+variants.inventory_quantity",
+  "+variants.manage_inventory",
+  "+variants.allow_backorder",
+  "+variants.inventory_items.inventory.location_levels.stocked_quantity",
+  "+variants.inventory_items.inventory.location_levels.reserved_quantity",
+  "+variants.sku",
+  "+variants.options.value",
+  "+variants.options.option.title",
+  "+variants.images",
+  "+variants.metadata",
+  "+options.title",
+  "+options.values.value",
+  "vendor.id",
+  "vendor.name",
+  "vendor.handle",
+  "vendor.logo",
+  "vendor.verified",
+  "categories.name",
+  "categories.handle",
+  "collection.title",
+  "collection.handle",
+  "+metadata",
+  "+tags.id",
+].join(",")
 
-    if (!countryCodes) return []
-
-    const products = await listProducts({
-      countryCode: "US",
-      queryParams: { fields: "handle" },
-    }).then(({ response }) => response.products)
-
-    return countryCodes
-      .map((countryCode) =>
-        products.map((product) => ({ countryCode, handle: product.handle }))
-      )
-      .flat()
-      .filter((param) => param.handle)
-  } catch (error) {
-    console.error(
-      `Failed to generate static paths for product pages: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }.`
-    )
-    return []
-  }
-}
-
-// ── Cached product fetch — React.cache deduplicates within a single request ──
-// generateMetadata and ProductPage both call this; only ONE network fetch happens.
+// ── React.cache — one network request shared by generateMetadata + ProductPage
 const getProduct = cache(async (handle: string, countryCode: string) => {
-  return listProducts({
+  console.log(`[PDP] getProduct START | handle=${handle} | countryCode=${countryCode}`)
+  const t0 = Date.now()
+
+  const product = await listProducts({
     countryCode,
-    queryParams: {
-      handle,
-      fields: [
-        "id",
-        "title",
-        "handle",
-        "thumbnail",
-        "description",
-        "*variants.calculated_price",
-        "+variants.inventory_quantity",
-        "+variants.manage_inventory",
-        "+variants.allow_backorder",
-        "+variants.sku",
-        "+variants.options.value",
-        "+variants.options.option_id",
-        "+variants.options.option.title",
-        "+variants.inventory_items.inventory.location_levels.stocked_quantity",
-        "+variants.inventory_items.inventory.location_levels.reserved_quantity",
-        "+options.id",
-        "+options.title",
-        "+options.values.value",
-        "+metadata",
-        "+tags.id",
-        "+tags.value",
-        "vendor.id",
-        "vendor.name",
-        "vendor.handle",
-        "vendor.logo",
-        "vendor.verified",
-        "categories.id",
-        "categories.name",
-        "categories.handle",
-        "collection.id",
-        "collection.title",
-        "collection.handle",
-        "+images.id",
-        "+images.url",
-        "*size_chart",   // kept for product detail page only (not related products)
-      ].join(","),
-    },
+    queryParams: { handle, fields: PDP_FIELDS },
   }).then(({ response }) => response.products[0])
+
+  const ms = Date.now() - t0
+  if (product) {
+    console.log(`[PDP] getProduct DONE | handle=${handle} | ${ms}ms | found=true`)
+  } else {
+    console.warn(`[PDP] getProduct DONE | handle=${handle} | ${ms}ms | found=false`)
+  }
+
+  return product
 })
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -401,17 +375,14 @@ const getProduct = cache(async (handle: string, countryCode: string) => {
 const stripHtml = (html: string | null | undefined, fallback: string) =>
   html ? html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim() || fallback : fallback
 
-// Medusa v2 returns prices in smallest unit (paisa for INR) — divide by 100
 const toMajorUnit = (amount: number | null | undefined) =>
   amount != null ? amount / 100 : undefined
 
-// One year from today for priceValidUntil
 const priceValidUntil = () =>
   new Date(new Date().setFullYear(new Date().getFullYear() + 1))
     .toISOString()
     .split("T")[0]
 
-// Robust stock check — mirrors the storefront's own logic.
 const isVariantInStock = (v: any): boolean => {
   if (v.manage_inventory === false) return true
   if (v.allow_backorder) return true
@@ -429,8 +400,37 @@ const isVariantInStock = (v: any): boolean => {
       sum + ((ll.stocked_quantity ?? 0) - (ll.reserved_quantity ?? 0)),
     0
   )
-
   return available > 0
+}
+
+// ── generateStaticParams ───────────────────────────────────────────────────
+
+export async function generateStaticParams() {
+  try {
+    const countryCodes = await listRegions().then((regions) =>
+      regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
+    )
+    if (!countryCodes) return []
+
+    const products = await listProducts({
+      countryCode: "US",
+      queryParams: { fields: "handle" },
+    }).then(({ response }) => response.products)
+
+    return countryCodes
+      .map((countryCode) =>
+        products.map((product) => ({ countryCode, handle: product.handle }))
+      )
+      .flat()
+      .filter((param) => param.handle)
+  } catch (error) {
+    console.error(
+      `[PDP] generateStaticParams FAILED: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    )
+    return []
+  }
 }
 
 // ── generateMetadata ───────────────────────────────────────────────────────
@@ -438,13 +438,18 @@ const isVariantInStock = (v: any): boolean => {
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params
   const { handle, countryCode } = params
-  const region = await getRegion(countryCode)
 
+  console.log(`[PDP] generateMetadata START | handle=${handle}`)
+  const t0 = Date.now()
+
+  const region = await getRegion(countryCode)
   if (!region) notFound()
 
-  // Uses React.cache — no duplicate fetch if ProductPage already called this
+  // React.cache — no extra fetch if ProductPage already called this
   const product = await getProduct(handle, countryCode)
   if (!product) notFound()
+
+  console.log(`[PDP] generateMetadata DONE | handle=${handle} | ${Date.now() - t0}ms`)
 
   const description = stripHtml(
     product.description,
@@ -452,13 +457,10 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   )
 
   const creatorName =
-    (product as any).vendor?.name ??
-    (product as any).brand ??
-    null
+    (product as any).vendor?.name ?? (product as any).brand ?? null
 
   const firstVariant = product.variants?.[0]
   const price = toMajorUnit(firstVariant?.calculated_price?.calculated_amount)
-
   const canonicalUrl = `https://junooni.com/${countryCode}/products/${handle}`
 
   return {
@@ -466,14 +468,14 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     description,
     keywords: [
       product.title,
-      ...(creatorName ? [`${creatorName} merch`, `${creatorName} merchandise`] : []),
+      ...(creatorName
+        ? [`${creatorName} merch`, `${creatorName} merchandise`]
+        : []),
       "official creator merch India",
       "creator merchandise",
       "Junooni",
     ],
-    alternates: {
-      canonical: canonicalUrl,
-    },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title: `${product.title} | Junooni`,
       description,
@@ -504,14 +506,18 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 export default async function ProductPage(props: Props) {
   const params = await props.params
-  const region = await getRegion(params.countryCode)
 
+  console.log(`[PDP] ProductPage START | handle=${params.handle}`)
+  const t0 = Date.now()
+
+  const region = await getRegion(params.countryCode)
   if (!region) notFound()
 
-  // React.cache — returns the same promise/result as generateMetadata's call.
-  // Zero additional network requests.
+  // React.cache — returns same result as generateMetadata, zero extra fetch
   const pricedProduct = await getProduct(params.handle, params.countryCode)
   if (!pricedProduct) notFound()
+
+  console.log(`[PDP] ProductPage RENDER | handle=${params.handle} | ${Date.now() - t0}ms | variants=${pricedProduct.variants?.length} | images=${pricedProduct.images?.length}`)
 
   // ── Images ────────────────────────────────────────────────────────────────
   const images: string[] = []
@@ -520,7 +526,7 @@ export default async function ProductPage(props: Props) {
     if (img.url && !images.includes(img.url)) images.push(img.url)
   })
 
-  // ── Price — divide by 100 (Medusa stores in paisa) ────────────────────────
+  // ── Price ─────────────────────────────────────────────────────────────────
   const firstVariant = pricedProduct.variants?.[0]
   const price = toMajorUnit(firstVariant?.calculated_price?.calculated_amount)
   const currencyCode =
@@ -530,7 +536,7 @@ export default async function ProductPage(props: Props) {
   const inStock =
     pricedProduct.variants?.some((v: any) => isVariantInStock(v)) ?? true
 
-  // ── Creator / brand name from vendor ─────────────────────────────────────
+  // ── Creator ───────────────────────────────────────────────────────────────
   const creatorName =
     (pricedProduct as any).vendor?.name ??
     (pricedProduct as any).brand ??
@@ -539,7 +545,7 @@ export default async function ProductPage(props: Props) {
   const countryCode = params.countryCode
   const productUrl = `https://junooni.com/${countryCode}/products/${pricedProduct.handle}`
 
-  // ── Product schema ────────────────────────────────────────────────────────
+  // ── Product JSON-LD ───────────────────────────────────────────────────────
   const productSchema: Record<string, any> = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -550,10 +556,7 @@ export default async function ProductPage(props: Props) {
     ),
     image: images.length > 0 ? images : undefined,
     sku: firstVariant?.sku ?? pricedProduct.id,
-    brand: {
-      "@type": "Brand",
-      name: creatorName,
-    },
+    brand: { "@type": "Brand", name: creatorName },
     offers: {
       "@type": "Offer",
       url: productUrl,
@@ -572,41 +575,38 @@ export default async function ProductPage(props: Props) {
     },
   }
 
-  // ── Breadcrumb schema — Home → Category → Product ─────────────────────────
+  // ── Breadcrumb JSON-LD ────────────────────────────────────────────────────
   const category = (pricedProduct as any).categories?.[0]
-
-  const breadcrumbItems = [
-    {
-      "@type": "ListItem",
-      position: 1,
-      name: "Home",
-      item: `https://junooni.com/${countryCode}`,
-    },
-    category
-      ? {
-          "@type": "ListItem",
-          position: 2,
-          name: category.name,
-          item: `https://junooni.com/${countryCode}/categories/${category.handle}`,
-        }
-      : {
-          "@type": "ListItem",
-          position: 2,
-          name: "Store",
-          item: `https://junooni.com/${countryCode}/store`,
-        },
-    {
-      "@type": "ListItem",
-      position: 3,
-      name: pricedProduct.title,
-      item: productUrl,
-    },
-  ]
-
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: breadcrumbItems,
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: `https://junooni.com/${countryCode}`,
+      },
+      category
+        ? {
+            "@type": "ListItem",
+            position: 2,
+            name: category.name,
+            item: `https://junooni.com/${countryCode}/categories/${category.handle}`,
+          }
+        : {
+            "@type": "ListItem",
+            position: 2,
+            name: "Store",
+            item: `https://junooni.com/${countryCode}/store`,
+          },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: pricedProduct.title,
+        item: productUrl,
+      },
+    ],
   }
 
   return (

@@ -277,23 +277,29 @@ import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { getRegion, retrieveRegion } from "./regions"
 import { StoreProductReview } from "types/global"
 
+// ─── Debug helper ──────────────────────────────────────────────────────────
+// Logs: caller label | fields used | response size in KB | time in ms
+// Remove or set DEBUG_PRODUCTS=false in env to silence in production.
+const DEBUG = process.env.DEBUG_PRODUCTS !== "false"
+
+function logFetch(
+  label: string,
+  fields: string,
+  startMs: number,
+  responseBytes: number
+) {
+  if (!DEBUG) return
+  const ms = (Date.now() - startMs).toFixed(0)
+  const kb = (responseBytes / 1024).toFixed(1)
+  const fieldPreview = fields.length > 120 ? fields.slice(0, 120) + "…" : fields
+  console.log(
+    `[products] ${label} | ${ms}ms | ${kb}KB | fields: ${fieldPreview}`
+  )
+}
+
 // ── Default fields for listProducts ───────────────────────────────────────
-//
-// Previously: "*variants.calculated_price,+variants.inventory_quantity,
-//              +metadata,+tags,*vendor,*categories,*collection,*size_chart"
-//
-// Problems with the old string:
-//   • *vendor      — wildcard expand, pulls the full vendor object tree
-//   • *categories  — wildcard expand, pulls full category tree
-//   • *collection  — wildcard expand
-//   • *size_chart  — wildcard expand, largest offender on products with
-//                    many sizes — causes heap OOM when fetched for 12+
-//                    products simultaneously (e.g. related products)
-//
-// Fix: explicit dot-notation fields only. size_chart is intentionally
-// excluded from the default — it's only needed on the PDP, where page.tsx
-// adds it explicitly to its own getProduct() call.
-//
+// Explicit dot-notation only — zero wildcards.
+// size_chart intentionally excluded — only PDP adds it via queryParams.fields.
 const DEFAULT_PRODUCT_FIELDS = [
   "id",
   "title",
@@ -301,38 +307,27 @@ const DEFAULT_PRODUCT_FIELDS = [
   "thumbnail",
   "description",
   "*variants.calculated_price",
-  "+variants.id",
-  "+variants.title",
-  "+variants.sku",
   "+variants.inventory_quantity",
   "+variants.manage_inventory",
   "+variants.allow_backorder",
-  "+variants.options.id",
+  "+variants.sku",
   "+variants.options.value",
-  "+variants.options.option_id",
-  "+variants.options.option.id",
   "+variants.options.option.title",
   "+variants.inventory_items.inventory.location_levels.stocked_quantity",
   "+variants.inventory_items.inventory.location_levels.reserved_quantity",
-  "+options.id",
   "+options.title",
-  "+options.values.id",
   "+options.values.value",
   "+metadata",
   "+tags.id",
-  "+tags.value",
   "vendor.id",
   "vendor.name",
   "vendor.handle",
   "vendor.logo",
   "vendor.verified",
-  "categories.id",
   "categories.name",
   "categories.handle",
-  "collection.id",
   "collection.title",
   "collection.handle",
-  "+images.id",
   "+images.url",
 ].join(",")
 
@@ -368,19 +363,27 @@ export const listProducts = async ({
   }
 
   if (!region) {
-    return {
-      response: { products: [], count: 0 },
-      nextPage: null,
-    }
+    return { response: { products: [], count: 0 }, nextPage: null }
   }
 
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
+  const headers = { ...(await getAuthHeaders()) }
+  const next = { ...(await getCacheOptions("products")) }
 
-  const next = {
-    ...(await getCacheOptions("products")),
-  }
+  const fields = queryParams?.fields ?? DEFAULT_PRODUCT_FIELDS
+
+  // ── Log the outgoing request ───────────────────────────────────────────
+  const caller = queryParams?.handle
+    ? `handle=${queryParams.handle}`
+    : queryParams?.id
+    ? `id=${JSON.stringify(queryParams.id)}`
+    : queryParams?.collection_id
+    ? `collection=${JSON.stringify(queryParams.collection_id)}`
+    : queryParams?.tag_id
+    ? `tags=${JSON.stringify(queryParams.tag_id)}`
+    : `limit=${limit}/offset=${offset}`
+
+  console.log(`[products] → FETCH START | ${caller} | limit=${limit}`)
+  const t0 = Date.now()
 
   return sdk.client
     .fetch<{ products: HttpTypes.StoreProduct[]; count: number }>(
@@ -391,9 +394,7 @@ export const listProducts = async ({
           limit,
           offset,
           region_id: region?.id,
-          // Callers can override fields by passing queryParams.fields.
-          // The default is lean — no wildcard expands, no size_chart.
-          fields: DEFAULT_PRODUCT_FIELDS,
+          fields,
           ...queryParams,
         },
         headers,
@@ -401,21 +402,26 @@ export const listProducts = async ({
       }
     )
     .then(({ products, count }) => {
-      const nextPage = count > offset + limit ? pageParam + 1 : null
+      // ── Log response ────────────────────────────────────────────────────
+      const json = JSON.stringify({ products, count })
+      logFetch(caller, fields, t0, json.length)
 
-      return {
-        response: {
-          products,
-          count,
-        },
-        nextPage: nextPage,
-        queryParams,
+      // ── Warn on suspiciously large responses ────────────────────────────
+      if (json.length > 100_000) {
+        console.warn(
+          `[products] ⚠️  LARGE RESPONSE ${(json.length / 1024).toFixed(0)}KB | ${caller}` +
+          ` | ${products.length} products` +
+          ` | fields include size_chart=${fields.includes("size_chart")}` +
+          ` | wildcards=${(fields.match(/\*/g) || []).length}`
+        )
       }
+
+      const nextPage = count > offset + limit ? pageParam + 1 : null
+      return { response: { products, count }, nextPage, queryParams }
     })
 }
 
-// ── Lean fields for store listing only ────────────────────────────────────
-// No size_chart, no tags, minimal variant data — just enough for a grid card.
+// ── Lean fields for store listing ─────────────────────────────────────────
 const STORE_LIST_FIELDS = [
   "id",
   "title",
@@ -456,28 +462,23 @@ export const listProductsForStore = async ({
   const headers = { ...(await getAuthHeaders()) }
   const next = { ...(await getCacheOptions("products", 60)) }
 
+  console.log(`[products] → listProductsForStore START | limit=${limit} offset=${offset}`)
+  const t0 = Date.now()
+
   const { products, count } = await sdk.client.fetch<{
     products: HttpTypes.StoreProduct[]
     count: number
   }>(`/store/products`, {
     method: "GET",
-    query: {
-      limit,
-      offset,
-      region_id: region.id,
-      fields: STORE_LIST_FIELDS,
-    },
+    query: { limit, offset, region_id: region.id, fields: STORE_LIST_FIELDS },
     headers,
     next,
   })
 
+  logFetch(`listProductsForStore`, STORE_LIST_FIELDS, t0, JSON.stringify({ products, count }).length)
   return { products, count }
 }
 
-/**
- * Fetches up to 100 products, sorts them client-side, then returns a paginated slice.
- * Uses the default lean fields — no size_chart.
- */
 export const listProductsWithSort = async ({
   page = 0,
   queryParams,
@@ -495,33 +496,22 @@ export const listProductsWithSort = async ({
 }> => {
   const limit = queryParams?.limit || 12
 
+  console.log(`[products] → listProductsWithSort START | sort=${sortBy} page=${page}`)
+
   const {
     response: { products, count },
   } = await listProducts({
     pageParam: 0,
-    queryParams: {
-      ...queryParams,
-      limit: 100,
-    },
+    queryParams: { ...queryParams, limit: 100 },
     countryCode,
   })
 
   const sortedProducts = sortProducts(products, sortBy)
-
   const pageParam = (page - 1) * limit
-
   const nextPage = count > pageParam + limit ? pageParam + limit : null
-
   const paginatedProducts = sortedProducts.slice(pageParam, pageParam + limit)
 
-  return {
-    response: {
-      products: paginatedProducts,
-      count,
-    },
-    nextPage,
-    queryParams,
-  }
+  return { response: { products: paginatedProducts, count }, nextPage, queryParams }
 }
 
 // ── Reviews ────────────────────────────────────────────────────────────────
@@ -535,13 +525,8 @@ export const getProductReviews = async ({
   limit?: number
   offset?: number
 }) => {
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
-
-  const next = {
-    ...(await getCacheOptions(`product-reviews-${productId}`)),
-  }
+  const headers = { ...(await getAuthHeaders()) }
+  const next = { ...(await getCacheOptions(`product-reviews-${productId}`)) }
 
   return sdk.client.fetch<{
     reviews: StoreProductReview[]
@@ -551,11 +536,7 @@ export const getProductReviews = async ({
     count: number
   }>(`/store/products/${productId}/reviews`, {
     headers,
-    query: {
-      limit,
-      offset,
-      order: "-created_at",
-    },
+    query: { limit, offset, order: "-created_at" },
     next,
   })
 }
@@ -568,16 +549,12 @@ export const addProductReview = async (input: {
   rating: number
   product_id: string
 }) => {
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
+  const headers = { ...(await getAuthHeaders()) }
 
   return sdk.client.fetch(`/store/reviews`, {
     method: "POST",
     headers,
     body: input,
-    next: {
-      ...(await getCacheOptions(`product-reviews-${input.product_id}`)),
-    },
+    next: { ...(await getCacheOptions(`product-reviews-${input.product_id}`)) },
   })
 }
