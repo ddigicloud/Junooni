@@ -1,329 +1,42 @@
-// import { Metadata } from "next"
-// import { notFound } from "next/navigation"
-// import { listProducts } from "@lib/data/products"
-// import { getRegion, listRegions } from "@lib/data/regions"
-// import ProductTemplate from "@modules/products/templates"
-// import JsonLd from "../../components/JsonLd"
-
-// type Props = {
-//   params: Promise<{ countryCode: string; handle: string }>
-// }
-
-// export async function generateStaticParams() {
-//   try {
-//     const countryCodes = await listRegions().then((regions) =>
-//       regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
-//     )
-
-//     if (!countryCodes) return []
-
-//     const products = await listProducts({
-//       countryCode: "US",
-//       queryParams: { fields: "handle" },
-//     }).then(({ response }) => response.products)
-
-//     return countryCodes
-//       .map((countryCode) =>
-//         products.map((product) => ({ countryCode, handle: product.handle }))
-//       )
-//       .flat()
-//       .filter((param) => param.handle)
-//   } catch (error) {
-//     console.error(
-//       `Failed to generate static paths for product pages: ${
-//         error instanceof Error ? error.message : "Unknown error"
-//       }.`
-//     )
-//     return []
-//   }
-// }
-
-// // ── Helpers ────────────────────────────────────────────────────────────────
-
-// const stripHtml = (html: string | null | undefined, fallback: string) =>
-//   html ? html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim() || fallback : fallback
-
-// // Medusa v2 returns prices in smallest unit (paisa for INR) — divide by 100
-// const toMajorUnit = (amount: number | null | undefined) =>
-//   amount != null ? amount / 100 : undefined
-
-// // One year from today for priceValidUntil
-// const priceValidUntil = () =>
-//   new Date(new Date().setFullYear(new Date().getFullYear() + 1))
-//     .toISOString()
-//     .split("T")[0]
-
-// // FIX: robust stock check — mirrors the storefront's own logic.
-// // The flat `variant.inventory_quantity` field is not reliable on its own:
-// // it ignores manage_inventory / allow_backorder, and doesn't reflect the
-// // same location-level stock the storefront's buy button actually checks.
-// // NOTE: requires `fields` to expand
-// // `+variants.manage_inventory,+variants.allow_backorder,
-// //  +variants.inventory_items.inventory.location_levels.stocked_quantity,
-// //  +variants.inventory_items.inventory.location_levels.reserved_quantity`
-// // If your `listProducts` fields string doesn't include these yet, add them —
-// // otherwise this falls back to treating everything as in stock.
-// const isVariantInStock = (v: any): boolean => {
-//   if (v.manage_inventory === false) return true
-//   if (v.allow_backorder) return true
-
-//   const levels = v.inventory_items?.flatMap(
-//     (ii: any) => ii.inventory?.location_levels ?? []
-//   )
-
-//   if (!levels || levels.length === 0) {
-//     // No location-level data available — fall back to inventory_quantity if present,
-//     // otherwise assume in stock rather than wrongly flagging OutOfStock.
-//     return v.inventory_quantity == null || v.inventory_quantity > 0
-//   }
-
-//   const available = levels.reduce(
-//     (sum: number, ll: any) =>
-//       sum + ((ll.stocked_quantity ?? 0) - (ll.reserved_quantity ?? 0)),
-//     0
-//   )
-
-//   return available > 0
-// }
-
-// // ── generateMetadata ───────────────────────────────────────────────────────
-
-// export async function generateMetadata(props: Props): Promise<Metadata> {
-//   const params = await props.params
-//   const { handle, countryCode } = params
-//   const region = await getRegion(countryCode)
-
-//   if (!region) notFound()
-
-//   const product = await listProducts({
-//     countryCode,
-//     queryParams: { handle },
-//   }).then(({ response }) => response.products[0])
-
-//   if (!product) notFound()
-
-//   const description = stripHtml(
-//     product.description,
-//     `Buy ${product.title} — exclusive creator merchandise on Junooni. Official merch, pan-India shipping.`
-//   )
-
-//   const creatorName =
-//     (product as any).vendor?.name ??
-//     (product as any).brand ??
-//     null
-
-//   const firstVariant = product.variants?.[0]
-//   const price = toMajorUnit(firstVariant?.calculated_price?.calculated_amount)
-
-//   // FIX: use the actual countryCode instead of hardcoding "in"
-//   const canonicalUrl = `https://junooni.com/${countryCode}/products/${handle}`
-
-//   return {
-//     title: `${product.title} | Junooni`,
-//     description,
-//     keywords: [
-//       product.title,
-//       ...(creatorName ? [`${creatorName} merch`, `${creatorName} merchandise`] : []),
-//       "official creator merch India",
-//       "creator merchandise",
-//       "Junooni",
-//     ],
-//     alternates: {
-//       canonical: canonicalUrl,
-//     },
-//     openGraph: {
-//       // NOTE: Open Graph's spec supports type: "product", but Next.js's
-//       // metadata resolver validates this against its own internal enum
-//       // (website/article/book/profile/etc) and throws at runtime for
-//       // anything outside it — "as any" only fools TypeScript, not Next's
-//       // resolver. There's no supported way to emit og:type=product through
-//       // the Metadata API, so we leave it as the default ("website").
-//       // Facebook/WhatsApp scrapers generally still read product:price:*
-//       // from `other` below even without a strict og:type=product.
-//       title: `${product.title} | Junooni`,
-//       description,
-//       images: product.thumbnail ? [product.thumbnail] : [],
-//       url: canonicalUrl,
-//       siteName: "Junooni",
-//     },
-//     twitter: {
-//       card: "summary_large_image",
-//       title: `${product.title} | Junooni`,
-//       description,
-//       images: product.thumbnail ? [product.thumbnail] : [],
-//     },
-//     // FIX: label1/data1/label2/data2 aren't part of Next's twitter metadata
-//     // schema and get silently dropped even with `as any` — Next's serializer
-//     // only emits recognized fields. Custom twitter:label/data tags and the
-//     // Facebook/WhatsApp product:price:* tags both belong here in `other`,
-//     // which Next passes through verbatim as raw <meta> tags.
-//     other: {
-//       ...(price != null && {
-//         "product:price:amount": price.toString(),
-//         "product:price:currency": "INR",
-//       }),
-//       "twitter:label1": "Price",
-//       "twitter:data1": price ? `₹${price}` : "Check price on Junooni",
-//       "twitter:label2": "Ships to",
-//       "twitter:data2": "Pan India",
-//     },
-//   }
-// }
-
-// // ── Page ───────────────────────────────────────────────────────────────────
-
-// export default async function ProductPage(props: Props) {
-//   const params = await props.params
-//   const region = await getRegion(params.countryCode)
-
-//   if (!region) notFound()
-
-//   const pricedProduct = await listProducts({
-//     countryCode: params.countryCode,
-//     queryParams: { handle: params.handle },
-//   }).then(({ response }) => response.products[0])
-
-//   if (!pricedProduct) notFound()
-
-//   // ── Images ────────────────────────────────────────────────────────────────
-//   const images: string[] = []
-//   if (pricedProduct.thumbnail) images.push(pricedProduct.thumbnail)
-//   pricedProduct.images?.forEach((img: any) => {
-//     if (img.url && !images.includes(img.url)) images.push(img.url)
-//   })
-
-//   // ── Price — divide by 100 (Medusa stores in paisa) ────────────────────────
-//   const firstVariant = pricedProduct.variants?.[0]
-//   const price = toMajorUnit(firstVariant?.calculated_price?.calculated_amount)
-//   const currencyCode =
-//     firstVariant?.calculated_price?.currency_code?.toUpperCase() ?? "INR"
-
-//   // ── Availability ──────────────────────────────────────────────────────────
-//   // FIX: was `v.inventory_quantity == null || v.inventory_quantity > 0`,
-//   // which ignored manage_inventory/allow_backorder and could disagree with
-//   // what the storefront buy button actually shows. See isVariantInStock().
-//   const inStock =
-//     pricedProduct.variants?.some((v: any) => isVariantInStock(v)) ?? true
-
-//   // ── Creator / brand name from vendor ─────────────────────────────────────
-//   const creatorName =
-//     (pricedProduct as any).vendor?.name ??
-//     (pricedProduct as any).brand ??
-//     "Junooni"
-
-//   // FIX: use the actual countryCode instead of hardcoding "in" everywhere below
-//   const countryCode = params.countryCode
-//   const productUrl = `https://junooni.com/${countryCode}/products/${pricedProduct.handle}`
-
-//   // ── Product schema ────────────────────────────────────────────────────────
-//   const productSchema: Record<string, any> = {
-//     "@context": "https://schema.org",
-//     "@type": "Product",
-//     name: pricedProduct.title,
-//     description: stripHtml(
-//       pricedProduct.description,
-//       `Buy ${pricedProduct.title} — exclusive creator merchandise on Junooni.`
-//     ),
-//     image: images.length > 0 ? images : undefined,
-//     // FIX: use variant SKU, not product UUID
-//     sku: firstVariant?.sku ?? pricedProduct.id,
-//     // FIX: brand = creator name, not Junooni
-//     brand: {
-//       "@type": "Brand",
-//       name: creatorName,
-//     },
-//     offers: {
-//       "@type": "Offer",
-//       url: productUrl,
-//       priceCurrency: currencyCode,
-//       // FIX: price in major unit (rupees), not paisa
-//       ...(price != null ? { price } : {}),
-//       // ADDED: required for rich result eligibility
-//       priceValidUntil: priceValidUntil(),
-//       // ADDED: explicit new condition
-//       itemCondition: "https://schema.org/NewCondition",
-//       availability: inStock
-//         ? "https://schema.org/InStock"
-//         : "https://schema.org/OutOfStock",
-//       seller: {
-//         "@type": "Organization",
-//         name: "Junooni",
-//         url: "https://junooni.com",
-//       },
-//     },
-//   }
-
-//   // ── Breadcrumb schema — Home → Category → Product ─────────────────────────
-//   const category = (pricedProduct as any).categories?.[0]
-
-//   const breadcrumbItems = [
-//     {
-//       "@type": "ListItem",
-//       position: 1,
-//       name: "Home",
-//       item: `https://junooni.com/${countryCode}`,
-//     },
-//     category
-//       ? {
-//           "@type": "ListItem",
-//           position: 2,
-//           name: category.name,
-//           item: `https://junooni.com/${countryCode}/categories/${category.handle}`,
-//         }
-//       : {
-//           "@type": "ListItem",
-//           position: 2,
-//           name: "Store",
-//           item: `https://junooni.com/${countryCode}/store`,
-//         },
-//     {
-//       "@type": "ListItem",
-//       position: 3,
-//       name: pricedProduct.title,
-//       item: productUrl,
-//     },
-//   ]
-
-//   const breadcrumbSchema = {
-//     "@context": "https://schema.org",
-//     "@type": "BreadcrumbList",
-//     itemListElement: breadcrumbItems,
-//   }
-
-//   return (
-//     <>
-//       <JsonLd data={productSchema} />
-//       <JsonLd data={breadcrumbSchema} />
-//       <ProductTemplate
-//         product={pricedProduct}
-//         region={region}
-//         countryCode={params.countryCode}
-//       />
-//     </>
-//   )
-// }
-
-
-
-
-
 import { Metadata } from "next"
 import { cache } from "react"
 import { notFound } from "next/navigation"
 import { listProducts } from "@lib/data/products"
-import { getRegion, listRegions } from "@lib/data/regions"
+import { getRegion } from "@lib/data/regions"
 import ProductTemplate from "@modules/products/templates"
 import JsonLd from "../../components/JsonLd"
+
+export const dynamic = "force-dynamic"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
 }
 
-// ── PDP fields — surgically minimal, every field justified ─────────────────
-// NO *size_chart — not rendered anywhere in ProductTemplate
-// NO wildcards — all explicit dot-notation
+// ── Backend URL for the custom size_chart route ────────────────────────────
+const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"
+const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
+
+// ── PDP fields via listProducts (store API) ────────────────────────────────
+// listProducts handles region_id → calculated_price works correctly.
+// size_chart is NOT available via store API (custom module) — fetched separately.
 const PDP_FIELDS = [
+  // ── Base product fields (explicitly required) ──
+  "+title",           // <-- THIS was missing
+  "+description",
+  "+handle",
+  "+thumbnail",
+  "+status",
+  "+subtitle",
+  "+material",
+  "+weight",
+  "+length",
+  "+height",
+  "+width",
+  "+origin_country",
+  "+discountable",
+  // ── Images ────────────────────────────────────
   "+images.url",
+  // ── Variants ──────────────────────────────────
   "*variants.calculated_price",
   "+variants.inventory_quantity",
   "+variants.manage_inventory",
@@ -335,8 +48,10 @@ const PDP_FIELDS = [
   "+variants.options.option.title",
   "+variants.images",
   "+variants.metadata",
+  // ── Options ───────────────────────────────────
   "+options.title",
   "+options.values.value",
+  // ── Relations ─────────────────────────────────
   "vendor.id",
   "vendor.name",
   "vendor.handle",
@@ -350,7 +65,7 @@ const PDP_FIELDS = [
   "+tags.id",
 ].join(",")
 
-// ── React.cache — one network request shared by generateMetadata + ProductPage
+// ── React.cache — one fetch shared by generateMetadata + ProductPage ───────
 const getProduct = cache(async (handle: string, countryCode: string) => {
   console.log(`[PDP] getProduct START | handle=${handle} | countryCode=${countryCode}`)
   const t0 = Date.now()
@@ -360,14 +75,48 @@ const getProduct = cache(async (handle: string, countryCode: string) => {
     queryParams: { handle, fields: PDP_FIELDS },
   }).then(({ response }) => response.products[0])
 
-  const ms = Date.now() - t0
-  if (product) {
-    console.log(`[PDP] getProduct DONE | handle=${handle} | ${ms}ms | found=true`)
-  } else {
-    console.warn(`[PDP] getProduct DONE | handle=${handle} | ${ms}ms | found=false`)
-  }
-
+  console.log(
+    `[PDP] getProduct DONE | handle=${handle} | ${Date.now() - t0}ms | found=${!!product}`
+  )
   return product
+})
+
+// ── Fetch size_chart separately via the fixed custom route ─────────────────
+// size_chart is a custom Medusa module — not accessible via store API.
+// The custom /store/products/:id route now uses explicit fields + QueryContext
+// so it's fast (no wildcards). We only call it if we need size_chart.
+// React.cache ensures this also deduplicates within the same request.
+const getSizeChart = cache(async (productId: string, regionId: string) => {
+  try {
+    const url = `${BACKEND_URL}/store/products/${productId}?region_id=${regionId}`
+    console.log("[getSizeChart] fetching:", url)
+    console.log("[getSizeChart] PUBLISHABLE_KEY exists:", !!PUBLISHABLE_KEY)
+
+    const res = await fetch(url, {
+      headers: {
+        "x-publishable-api-key": PUBLISHABLE_KEY,
+        "Content-Type": "application/json",
+      },
+      next: { revalidate: 120 },
+    })
+
+    console.log("[getSizeChart] response status:", res.status)
+
+    if (!res.ok) {
+      const errorText = await res.text()
+      console.log("[getSizeChart] error body:", errorText)
+      return null
+    }
+
+    const json = await res.json()
+    console.log("[getSizeChart] product keys:", Object.keys(json.product || {}))
+    console.log("[getSizeChart] size_chart value:", JSON.stringify(json.product?.size_chart))
+    
+    return json.product?.size_chart ?? null
+  } catch (e) {
+    console.log("[getSizeChart] CAUGHT ERROR:", e)
+    return null
+  }
 })
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -386,52 +135,30 @@ const priceValidUntil = () =>
 const isVariantInStock = (v: any): boolean => {
   if (v.manage_inventory === false) return true
   if (v.allow_backorder) return true
-
   const levels = v.inventory_items?.flatMap(
     (ii: any) => ii.inventory?.location_levels ?? []
   )
-
   if (!levels || levels.length === 0) {
     return v.inventory_quantity == null || v.inventory_quantity > 0
   }
-
-  const available = levels.reduce(
-    (sum: number, ll: any) =>
-      sum + ((ll.stocked_quantity ?? 0) - (ll.reserved_quantity ?? 0)),
-    0
+  return (
+    levels.reduce(
+      (sum: number, ll: any) =>
+        sum + ((ll.stocked_quantity ?? 0) - (ll.reserved_quantity ?? 0)),
+      0
+    ) > 0
   )
-  return available > 0
 }
 
-// ── generateStaticParams ───────────────────────────────────────────────────
-
+// ── generateStaticParams DISABLED ─────────────────────────────────────────
+// Fetching all product handles at startup fires 20+ concurrent Medusa
+// requests → DB pool exhaustion → crash loop.
+// force-dynamic + dynamicParams=true handles all PDPs on-demand instead.
 export async function generateStaticParams() {
-  try {
-    const countryCodes = await listRegions().then((regions) =>
-      regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
-    )
-    if (!countryCodes) return []
-
-    const products = await listProducts({
-      countryCode: "US",
-      queryParams: { fields: "handle" },
-    }).then(({ response }) => response.products)
-
-    return countryCodes
-      .map((countryCode) =>
-        products.map((product) => ({ countryCode, handle: product.handle }))
-      )
-      .flat()
-      .filter((param) => param.handle)
-  } catch (error) {
-    console.error(
-      `[PDP] generateStaticParams FAILED: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`
-    )
-    return []
-  }
+  return []
 }
+
+export const dynamicParams = true
 
 // ── generateMetadata ───────────────────────────────────────────────────────
 
@@ -445,7 +172,6 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const region = await getRegion(countryCode)
   if (!region) notFound()
 
-  // React.cache — no extra fetch if ProductPage already called this
   const product = await getProduct(handle, countryCode)
   if (!product) notFound()
 
@@ -455,10 +181,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     product.description,
     `Buy ${product.title} — exclusive creator merchandise on Junooni. Official merch, pan-India shipping.`
   )
-
-  const creatorName =
-    (product as any).vendor?.name ?? (product as any).brand ?? null
-
+  const creatorName = (product as any).vendor?.name ?? (product as any).brand ?? null
   const firstVariant = product.variants?.[0]
   const price = toMajorUnit(firstVariant?.calculated_price?.calculated_amount)
   const canonicalUrl = `https://junooni.com/${countryCode}/products/${handle}`
@@ -468,9 +191,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     description,
     keywords: [
       product.title,
-      ...(creatorName
-        ? [`${creatorName} merch`, `${creatorName} merchandise`]
-        : []),
+      ...(creatorName ? [`${creatorName} merch`, `${creatorName} merchandise`] : []),
       "official creator merch India",
       "creator merchandise",
       "Junooni",
@@ -513,12 +234,27 @@ export default async function ProductPage(props: Props) {
   const region = await getRegion(params.countryCode)
   if (!region) notFound()
 
-  // React.cache — returns same result as generateMetadata, zero extra fetch
+  // React.cache — same result as generateMetadata, zero extra fetch
   const pricedProduct = await getProduct(params.handle, params.countryCode)
   if (!pricedProduct) notFound()
 
-  console.log(`[PDP] ProductPage RENDER | handle=${params.handle} | ${Date.now() - t0}ms | variants=${pricedProduct.variants?.length} | images=${pricedProduct.images?.length}`)
+  // Fetch size_chart separately — runs in parallel with nothing, fast
+  // because the custom route now uses explicit fields (no wildcards)
+  const sizeChart = await getSizeChart(pricedProduct.id, region.id)
 
+  // Merge size_chart into product object so ProductActions can render the modal
+  const productWithSizeChart = sizeChart
+    ? { ...pricedProduct, size_chart: sizeChart }
+    : pricedProduct
+
+  console.log(
+    `[PDP] ProductPage RENDER | handle=${params.handle} | ${Date.now() - t0}ms` +
+    ` | variants=${pricedProduct.variants?.length} | images=${pricedProduct.images?.length}` +
+    ` | size_chart=${!!sizeChart}`
+  )
+
+  console.log("[PDP] sizeChart raw result:", JSON.stringify(sizeChart, null, 2))
+  console.log("[PDP] productWithSizeChart.size_chart:", !!(productWithSizeChart as any).size_chart)
   // ── Images ────────────────────────────────────────────────────────────────
   const images: string[] = []
   if (pricedProduct.thumbnail) images.push(pricedProduct.thumbnail)
@@ -533,19 +269,16 @@ export default async function ProductPage(props: Props) {
     firstVariant?.calculated_price?.currency_code?.toUpperCase() ?? "INR"
 
   // ── Availability ──────────────────────────────────────────────────────────
-  const inStock =
-    pricedProduct.variants?.some((v: any) => isVariantInStock(v)) ?? true
+  const inStock = pricedProduct.variants?.some((v: any) => isVariantInStock(v)) ?? true
 
   // ── Creator ───────────────────────────────────────────────────────────────
   const creatorName =
-    (pricedProduct as any).vendor?.name ??
-    (pricedProduct as any).brand ??
-    "Junooni"
-
+    (pricedProduct as any).vendor?.name ?? (pricedProduct as any).brand ?? "Junooni"
   const countryCode = params.countryCode
   const productUrl = `https://junooni.com/${countryCode}/products/${pricedProduct.handle}`
+  const category = (pricedProduct as any).categories?.[0]
 
-  // ── Product JSON-LD ───────────────────────────────────────────────────────
+  // ── JSON-LD schemas ───────────────────────────────────────────────────────
   const productSchema: Record<string, any> = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -567,45 +300,19 @@ export default async function ProductPage(props: Props) {
       availability: inStock
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
-      seller: {
-        "@type": "Organization",
-        name: "Junooni",
-        url: "https://junooni.com",
-      },
+      seller: { "@type": "Organization", name: "Junooni", url: "https://junooni.com" },
     },
   }
 
-  // ── Breadcrumb JSON-LD ────────────────────────────────────────────────────
-  const category = (pricedProduct as any).categories?.[0]
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: `https://junooni.com/${countryCode}`,
-      },
+      { "@type": "ListItem", position: 1, name: "Home", item: `https://junooni.com/${countryCode}` },
       category
-        ? {
-            "@type": "ListItem",
-            position: 2,
-            name: category.name,
-            item: `https://junooni.com/${countryCode}/categories/${category.handle}`,
-          }
-        : {
-            "@type": "ListItem",
-            position: 2,
-            name: "Store",
-            item: `https://junooni.com/${countryCode}/store`,
-          },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: pricedProduct.title,
-        item: productUrl,
-      },
+        ? { "@type": "ListItem", position: 2, name: category.name, item: `https://junooni.com/${countryCode}/categories/${category.handle}` }
+        : { "@type": "ListItem", position: 2, name: "Store", item: `https://junooni.com/${countryCode}/store` },
+      { "@type": "ListItem", position: 3, name: pricedProduct.title, item: productUrl },
     ],
   }
 
@@ -614,7 +321,7 @@ export default async function ProductPage(props: Props) {
       <JsonLd data={productSchema} />
       <JsonLd data={breadcrumbSchema} />
       <ProductTemplate
-        product={pricedProduct}
+        product={productWithSizeChart}
         region={region}
         countryCode={params.countryCode}
       />

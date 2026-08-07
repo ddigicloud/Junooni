@@ -87,7 +87,7 @@ const ProductPreview = ({
   product, 
   region, 
   selectedColors = [],
-  reviewData = { averageRating: 0, reviewCount: 0, isLoading: true },
+  reviewData = { averageRating: 0, reviewCount: 0, isLoading: false },
   isFeatured = false
 }: ProductPreviewProps) => {
   

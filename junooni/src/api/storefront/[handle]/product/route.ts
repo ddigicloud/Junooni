@@ -92,9 +92,9 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
       },
     })
 
-    console.log(`[products-route] query.index DONE at +${Date.now() - t0}ms, rows=${indexed?.length ?? 0}, metadata.count=${metadata?.count}`)
+    console.log(`[products-route] query.index DONE at +${Date.now() - t0}ms, rows=${indexed?.length ?? 0}, metadata.total=${metadata?.total}`)
 
-    total = metadata?.count ?? 0
+    total = metadata?.total ?? 0
 
     console.log(`[products-route] mapping/inventory-fake START at +${Date.now() - t0}ms`)
     products = (indexed ?? []).map((p: any) => ({

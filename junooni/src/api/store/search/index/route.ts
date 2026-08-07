@@ -250,7 +250,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<voi
         filters: { status: 'published' },
       })
 
-      return res.json({
+      res.json({
         dry_run: true,
         success: true,
         would_index: products.length,
@@ -268,7 +268,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<voi
 
     // ── STATUS CHECK ──────────────────────────────────────────────────────────
     if (!confirm_reset) {
-      return res.json({
+      res.json({
         message: 'Reindex utility — send {"confirm_reset": true} to start',
         current_job: reindexJobState,
         usage: {
@@ -282,7 +282,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<voi
 
     // ── PREVENT DOUBLE RUN ────────────────────────────────────────────────────
     if (reindexJobState.running) {
-      return res.status(409).json({
+      res.status(409).json({
         success: false,
         error: 'Reindex already in progress',
         started_at: reindexJobState.startedAt,
@@ -293,7 +293,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<voi
     // ── FIRE AND FORGET ───────────────────────────────────────────────────────
     setImmediate(() => runReindex(query, region_id))
 
-    return res.json({
+    res.json({
       success: true,
       message: `🚀 Reindex started in background (batches of ${BATCH_SIZE})`,
       check_status: 'GET /admin/products/force-reset',

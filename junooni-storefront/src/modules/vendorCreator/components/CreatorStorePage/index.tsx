@@ -1850,85 +1850,23 @@ const getVariantImage = () => {
 
   // Enhanced getPriceData function with comprehensive debugging
   const getPriceData = () => {
-    //console.log("💰 Getting price data for product:", product?.title)
-    //console.log("💰 Product variants:", product?.variants)
-    //console.log("💰 Region currency:", region?.currency_code)
+  const variant = product?.variants?.[0]
+  const currencyCode = region?.currency_code || "inr"
 
-    if (product?.variants?.length > 0) {
-      const variant = product.variants[0]
-      //console.log("💰 First variant:", variant)
-      
-      const currencyCode = region?.currency_code || "usd"
-      
-      // Method 1: Try calculated_price first
-      if (variant?.calculated_price) {
-        //console.log("💰 Using calculated_price:", variant.calculated_price)
-        
-        if (typeof variant.calculated_price === 'object') {
-          const possiblePrices = [
-            variant.calculated_price[currencyCode],
-            variant.calculated_price.amount,
-            variant.calculated_price.price_incl_tax,
-            variant.calculated_price.price_excl_tax,
-            variant.calculated_price.original_amount,
-            variant.calculated_price.calculated_amount
-          ]
-          
-          for (const priceValue of possiblePrices) {
-            if (priceValue && typeof priceValue === 'number') {
-              //console.log("💰 Found calculated price:", priceValue)
-              return {
-                amount: priceValue,
-                currencyCode: currencyCode,
-              }
-            }
-          }
-        } else if (typeof variant.calculated_price === 'number') {
-          //console.log("💰 Using direct calculated price:", variant.calculated_price)
-          return {
-            amount: variant.calculated_price,
-            currencyCode: currencyCode,
-          }
-        }
-      }
-      
-      // Method 2: Try standard prices array
-      if (variant?.prices?.length > 0) {
-        //console.log("💰 Using prices array:", variant.prices)
-        
-        const matchingPrice = variant.prices.find(
-          (p) => p.currency_code?.toLowerCase() === currencyCode.toLowerCase()
-        )
-        
-        const price = matchingPrice || variant.prices[0]
-        
-        if (price && typeof price.amount === "number") {
-          //console.log("💰 Found price:", price)
-          return {
-            amount: price.amount,
-            currencyCode: price.currency_code || currencyCode,
-          }
-        }
-      }
-      
-      // Method 3: Try other common price fields
-      const priceFields = ['price', 'unit_price', 'list_price', 'original_price', 'amount']
-      for (const field of priceFields) {
-        if (variant?.[field] && typeof variant[field] === 'number') {
-          //console.log(`💰 Using ${field}:`, variant[field])
-          return {
-            amount: variant[field],
-            currencyCode: currencyCode,
-          }
-        }
-      }
-      
-      //console.log("❌ No price found in variant:", Object.keys(variant))
-    }
-    
-    //console.log("❌ Returning default price 0")
-    return { amount: 0, currencyCode: region?.currency_code || "usd" }
+  if (!variant?.prices?.length) {
+    return { amount: 0, currencyCode }
   }
+
+  const match = variant.prices.find(
+    (p: any) => p.currency_code?.toLowerCase() === currencyCode.toLowerCase()
+  ) || variant.prices[0]
+
+  if (match?.amount > 0) {
+    return { amount: match.amount, currencyCode: match.currency_code || currencyCode }
+  }
+
+  return { amount: 0, currencyCode }
+}
 
   const priceData = getPriceData()
   //console.log("💰 Final price data:", priceData)
@@ -1942,42 +1880,18 @@ const getVariantImage = () => {
 
   // Enhanced PreviewPrice component with debugging
   const PreviewPrice = ({ price }) => {
-    //console.log("💰 PreviewPrice received:", price)
-    
-    const { amount, currencyCode } = price
-    const symbol = getCurrencySymbol(currencyCode)
-    
-    if (amount === 0) {
-      return <span className="text-black-500">N/A</span>
-    }
-    
-    // Handle different price formats
-    let displayAmount = amount
-    
-    // Convert from cents if amount is large (likely in cents)
-    if (amount > 1000) {
-      displayAmount = amount / 100
-    }
-    
-    // For JPY, no decimal places
-    const formattedPrice = currencyCode?.toLowerCase() === "jpy" 
-      ? Math.round(displayAmount).toString()
-      : displayAmount.toFixed(2)
-    
-    // console.log("💰 Displaying price:", {
-    //   original: amount,
-    //   converted: displayAmount,
-    //   formatted: formattedPrice,
-    //   symbol
-    // })
-    
-    return (
-      <span>
-        {symbol}
-        {formattedPrice}
-      </span>
-    )
-  }
+  const { amount, currencyCode } = price
+  const symbol = getCurrencySymbol(currencyCode)
+
+  if (amount === 0) return <span className="text-gray-400">N/A</span>
+
+  // Medusa stores INR in whole rupees (not paise) for this store
+  const formatted = currencyCode?.toLowerCase() === "jpy"
+    ? Math.round(amount).toString()
+    : amount.toFixed(2)
+
+  return <span>{symbol}{formatted}</span>
+}
 
   // Enhanced Color Display Component
   // Enhanced Color Display Component

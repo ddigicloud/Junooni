@@ -21,12 +21,12 @@ export const UnfollowCreatorWorkflow = createWorkflow(
     })
     
     validateFollowExistsStep({
-      follows
+      follows: follows as any
     })
 
     validateVendorInFollowStep({
-        follow: follows[0],
-        follow_creator_id: input.follow_creator_id
+      follow: follows[0] as any,
+      follow_creator_id: input.follow_creator_id
     })
 
     unfollowCreatorStep(input)
@@ -41,7 +41,7 @@ export const UnfollowCreatorWorkflow = createWorkflow(
     }).config({ name: "refetch-follow" })
 
     return new WorkflowResponse({
-     follow: updatedFollows[0]
+      follow: updatedFollows[0] as any
     })
   }
 )

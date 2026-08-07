@@ -1,7 +1,4 @@
 // Complete fixed route.ts - /vendors/orders/[id]
-// Enhanced with proper claims, returns, replacement item handling, and VENDOR-SPECIFIC fulfillment status
-// FIXED: Proper vendor ID retrieval using listVendorAdmins
-// FIXED: Junooni fulfillment payout calculation now deducts tax_total
 
 import {
   AuthenticatedMedusaRequest,
@@ -15,10 +12,6 @@ import { MARKETPLACE_MODULE } from "../../../../modules/marketplace";
 // ✅ FIXED: Calculate vendor-specific fulfillment status with proper delivered/shipped handling
 // ✅ CRITICAL FIX: Enhanced vendor item filtering for calculateVendorFulfillmentStatus
 const calculateVendorFulfillmentStatus = (vendorItems: any[], order: any) => {
-  // //console.log(`📦 ===========================================`);
-  // //console.log(`📦 VENDOR FULFILLMENT STATUS CALCULATION`);
-  // //console.log(`📦 ===========================================`);
-  // //console.log(`📦 Calculating vendor-specific fulfillment status for ${vendorItems.length} vendor items...`);
   
   // ✅ ENHANCED: Log all vendor items with IDs for debugging
   ////console.log(`📋 VENDOR ITEMS (${vendorItems.length}):`);
@@ -562,7 +555,15 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
   if (enhanced.variant_id && (!enhanced.unit_price || !enhanced.variant_sku || !enhanced.title || enhanced.title === 'Replacement Item')) {
     //console.log(`🔍 Fetching variant details for replacement item...`);
     
-    const variantDetails = await fetchVariantDetails(enhanced.variant_id, scope);
+    const variantDetails = await (async () => {
+      const query = scope.resolve(ContainerRegistrationKeys.QUERY)
+      const { data } = await query.graph({
+        entity: "variant",
+        fields: ["id","title","sku","prices.amount","prices.currency_code","product.id","product.title","product.metadata"],
+        filters: { id: enhanced.variant_id }
+      })
+      return data[0] ?? null
+    })()
     if (variantDetails) {
       // Update title if needed
       if (!enhanced.title || enhanced.title === 'Replacement Item') {
@@ -605,7 +606,15 @@ const enhanceReplacementItem = async (replacementItem: any, originalClaimedItems
   if ((!enhanced.unit_price || !enhanced.variant_sku) && enhanced.title && enhanced.title !== 'Replacement Item') {
     //console.log(`🔍 Searching for product by title to get missing details...`);
     
-    const productDetails = await searchProductByTitle(enhanced.title, scope);
+    const productDetails = await (async () => {
+      const query = scope.resolve(ContainerRegistrationKeys.QUERY)
+      const { data } = await query.graph({
+        entity: "product",
+        fields: ["id","title","variants.id","variants.title","variants.sku","variants.prices.amount","variants.prices.currency_code","metadata"],
+        filters: { title: enhanced.title }
+      })
+      return data[0] ?? null
+    })()
     if (productDetails && productDetails.variants && productDetails.variants.length > 0) {
       // Try to find the best matching variant
       let bestVariant = null;
@@ -1052,7 +1061,15 @@ const analyzeClaimsAndReturns = async (claims: any[], returns: any[], vendorItem
           // Fallback: Check database for product metadata
           if (!replacementItemBelongsToVendor && productId) {
             try {
-              const productMetadata = await fetchProductMetadata(productId, scope);
+              const productMetadata = await (async () => {
+                const query = scope.resolve(ContainerRegistrationKeys.QUERY)
+                const { data } = await query.graph({
+                  entity: "product",
+                  fields: ["id","metadata"],
+                  filters: { id: productId }
+                })
+                return data[0]?.metadata ?? null
+              })()
               if (productMetadata?.vendor_id === vendorId) {
                 replacementItemBelongsToVendor = true;
                 //console.log(`   ✅ Replacement belongs to vendor via database metadata`);
@@ -2062,14 +2079,14 @@ export const GET = async (
       },
     });
 
-    if (!orders || orders.length === 0) {
-      //console.log(`❌ Order not found: ${orderId}`);
-      return res.status(404).json({
-        error: "Order not found"
-      });
-    }
+    const orderRows = (orders as any).rows ?? orders
+      if (!orderRows || orderRows.length === 0) {
+        return res.status(404).json({
+          error: "Order not found"
+        });
+      }
 
-    const order = orders[0];
+    const order = orderRows[0];
     //console.log(`📄 Found order ${orderId}`);
     // ✅ NEW: Enrich payment collections with full details
 if (order.payment_collections && order.payment_collections.length > 0) {
@@ -2186,15 +2203,7 @@ if (order.payment_collections && order.payment_collections.length > 0) {
     // ==========================================
     // Prepare response
     // ==========================================
-    const revenueBreakdown = vendorOrderView.revenue_breakdown || {};
-
-    // console.log(`✅ Successfully processed vendor order ${orderId}:`, {
-    //   vendor_id: vendorId,
-    //   admin_id: adminId,
-    //   items_found: vendorOrderView.vendor_items.length,
-    //   vendor_revenue: vendorOrderView.vendor_total,
-    //   fulfillment_status: vendorOrderView.fulfillment_status
-    // });
+    const revenueBreakdown = (vendorOrderView.revenue_breakdown || {}) as any;
 
     res.json({
       order: vendorOrderView,
@@ -2205,7 +2214,7 @@ if (order.payment_collections && order.payment_collections.length > 0) {
       vendor_fulfillment_calculated: true,
       payment_status_info: {
         vendor_payment_status: vendorOrderView.payment_status,
-        global_payment_status: order.payment_status,
+        global_payment_status: (order as any).payment_status,
         status_source: 'vendor_metadata'
       },
       revenue_insights: {

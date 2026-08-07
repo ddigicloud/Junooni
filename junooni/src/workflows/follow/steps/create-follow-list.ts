@@ -17,7 +17,7 @@ export const createFollowListStep = createStep(
 
     return new StepResponse(list, list.id)
   },
-  async (id, { container }) => {
+  async (id: string | null | undefined, { container }) => {
     if (!id) {
       return
     }

@@ -204,7 +204,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
       },
     })
 
-    totalProducts = metadata?.count ?? 0
+    totalProducts = metadata?.total ?? 0
 
     products = (indexedProducts ?? []).map((p: any) => ({
       ...p,

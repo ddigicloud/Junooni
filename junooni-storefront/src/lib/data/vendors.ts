@@ -88,7 +88,7 @@ export const retriveVendorsProducts = async (
       method: "GET",
       query: {
         // ← NO calculated_price — that was the 9s killer
-        fields: "id,title,handle,thumbnail,status,created_at,+metadata,images.id,images.url,variants.id,variants.title,variants.prices.amount,variants.prices.currency_code,vendor.id,vendor.name,vendor.handle,vendor.verified",
+        fields: "id,title,handle,thumbnail,status,created_at,+metadata,images.id,images.url,variants.id,variants.title,variants.calculated_price,vendor.id,vendor.name,vendor.handle,vendor.verified",
         ...(region_id && { region_id }),
       },
       headers,

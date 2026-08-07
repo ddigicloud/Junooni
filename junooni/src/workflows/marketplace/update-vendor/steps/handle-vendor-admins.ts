@@ -88,10 +88,11 @@ const handleVendorAdminsStep = createStep(
             });
           }
           
-          await marketplaceModuleService.updateVendorAdmins(admin.id, {
+          await marketplaceModuleService.updateVendorAdmins([{
+            id: admin.id,
             first_name: admin.first_name,
             last_name: admin.last_name,
-          });
+          }]);
         } else if (admin.email) {
           // This is a new admin - create them
           const newAdmin = await marketplaceModuleService.createVendorAdmins({
@@ -120,7 +121,7 @@ const handleVendorAdminsStep = createStep(
       
       throw new MedusaError(
         MedusaError.Types.DB_ERROR,
-        `Error updating vendor admins: ${error.message}`
+        `Error updating vendor admins: ${(error as any).message}`
       );
     }
   },
@@ -129,7 +130,7 @@ const handleVendorAdminsStep = createStep(
     const marketplaceModuleService: MarketplaceModuleService =
       container.resolve(MARKETPLACE_MODULE);
       
-    const { vendor, changes } = stepOutput;
+    const { vendor, changes } = stepOutput as any;
     
     // Undo all changes in reverse order
     try {
@@ -147,12 +148,15 @@ const handleVendorAdminsStep = createStep(
       
       // 3. Revert updates to existing admins
       for (const admin of changes.updated) {
-        await marketplaceModuleService.updateVendorAdmins(admin.id, admin.previousValues);
+        await marketplaceModuleService.updateVendorAdmins([{
+          id: admin.id,
+          ...admin.previousValues,
+        }]);
       }
       
       console.log(`Compensation completed for vendor admin updates on vendor ${vendor.id}`);
     } catch (error) {
-      console.error(`Error during compensation for vendor admin updates: ${error.message}`);
+      console.error(`Error during compensation for vendor admin updates: ${(error as any).message}`);
     }
   }
 );

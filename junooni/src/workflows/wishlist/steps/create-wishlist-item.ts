@@ -17,7 +17,7 @@ export const createWishlistItemStep = createStep(
 
     return new StepResponse(item, item.id)
   },
-  async (id, { container }) => {
+  async (id: string | null | undefined, { container }) => {
     if (!id) {
       return
     }

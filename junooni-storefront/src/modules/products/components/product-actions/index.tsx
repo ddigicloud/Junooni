@@ -57,6 +57,8 @@ export default function ProductActions({
   product,
   disabled,
 }: ProductActionsProps) {
+  console.log("[ProductActions] product.size_chart:", product.size_chart)
+  console.log("[ProductActions] has chart data:", !!product.size_chart?.chart)
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
   const [isAdding, setIsAdding] = useState(false)
   const [quantity, setQuantity] = useState(1) // Quantity state
@@ -216,7 +218,7 @@ export default function ProductActions({
                     return (
                       <div key={option.id}>
                         {/* Custom header for Size with Size Chart link */}
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3 mb-3">
                           <span className="font-semibold text-base">Select {option.title}</span>
                           {product.size_chart && product.size_chart.chart && (
                             <button

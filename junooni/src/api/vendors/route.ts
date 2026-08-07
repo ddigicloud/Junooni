@@ -2,7 +2,7 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse
 } from "@medusajs/framework/http"
-import { MedusaError, ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { MedusaError } from "@medusajs/framework/utils"
 import { z } from "zod"
 import createVendorWorkflow, {
   CreateVendorWorkflowInput
@@ -53,37 +53,6 @@ export const PostVendorCreateSchema = VendorFieldsSchema.extend({
 
 type RequestBody = z.infer<typeof PostVendorCreateSchema>
 
-// ─── Helper: fetch plan fields via raw SQL ────────────────────────────────────
-// Needed because plan columns were added via ALTER TABLE, not via model.define()
-// Once you add plan fields to the vendor model and regenerate, remove this helper.
-
-async function attachPlanFields(pgClient: any, vendor: any): Promise<void> {
-  try {
-    const result = await pgClient.raw(`
-      SELECT
-        COALESCE(plan, 'free')            AS plan,
-        plan_billing_cycle,
-        plan_activated_at,
-        razorpay_subscription_id,
-        razorpay_payment_id
-      FROM "vendor"
-      WHERE id = ?
-    `, [vendor.id])
-
-    const row = result.rows?.[0] ?? result[0]?.[0]
-    if (row) {
-      vendor.plan                     = row.plan ?? "free"
-      vendor.plan_billing_cycle       = row.plan_billing_cycle ?? null
-      vendor.plan_activated_at        = row.plan_activated_at ?? null
-      vendor.razorpay_subscription_id = row.razorpay_subscription_id ?? null
-      vendor.razorpay_payment_id      = row.razorpay_payment_id ?? null
-    }
-  } catch (e) {
-    // Columns may not exist yet — default to free silently
-    vendor.plan = vendor.plan ?? "free"
-  }
-}
-
 // ─── POST /vendors ────────────────────────────────────────────────────────────
 
 export const POST = async (
@@ -117,61 +86,54 @@ export const GET = async (
   res: MedusaResponse
 ) => {
   const vendorId = req.query.vendor_id as string | undefined
-  const handle = req.query.handle as string | undefined
+  const handle   = req.query.handle   as string | undefined
+
   const marketplaceModuleService: MarketplaceModuleService =
     req.scope.resolve("marketplaceModuleService")
-  const pgClient = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
 
   console.log(`[GET /vendors] START vendorId=${vendorId} handle=${handle}`)
   const total = Date.now()
 
   try {
     if (vendorId) {
-      // ── SINGLE VENDOR BY ID ───────────────────────────────────────────
+      // ── SINGLE VENDOR BY ID ─────────────────────────────────────────
       const vendor = await marketplaceModuleService.retrieveVendor(vendorId, {
         relations: ["admins"]
       })
       if (!vendor) {
         throw new MedusaError(MedusaError.Types.NOT_FOUND, "Vendor not found")
       }
-      await attachPlanFields(pgClient, vendor)
+      // plan fields returned automatically by ORM — no extra query needed
       console.log(`[GET /vendors] single vendor DONE in ${Date.now() - total}ms`)
       return res.json({ vendor })
 
     } else if (handle) {
-      // ── SINGLE VENDOR BY HANDLE (storefront) ──────────────────────────
-      // Fetch only 1 vendor from DB instead of all 92
+      // ── SINGLE VENDOR BY HANDLE (storefront) ────────────────────────
       const listStart = Date.now()
       const vendors = await marketplaceModuleService.listVendors?.(
-        { handle },  // ← DB-level filter
-        {}           // ← no relations needed for storefront
+        { handle },
+        {}
       )
-      console.log(`[GET /vendors] listVendors by handle DONE in ${Date.now() - listStart}ms | count=${vendors?.length}`)
-
-      if (vendors?.length) {
-        const planStart = Date.now()
-        await Promise.all(vendors.map(v => attachPlanFields(pgClient, v)))
-        console.log(`[GET /vendors] attachPlanFields DONE in ${Date.now() - planStart}ms`)
-      }
-
+      console.log(
+        `[GET /vendors] listVendors by handle DONE in ${Date.now() - listStart}ms | count=${vendors?.length}`
+      )
+      // plan fields returned automatically by ORM — no attachPlanFields needed
       console.log(`[GET /vendors] TOTAL ${Date.now() - total}ms | returning ${vendors?.length} vendors`)
       return res.json({ vendors })
 
     } else {
-      // ── LIST ALL VENDORS (admin) ──────────────────────────────────────
+      // ── LIST ALL VENDORS (admin / creators page) ─────────────────────
       const listStart = Date.now()
       const vendors = await marketplaceModuleService.listVendors?.(
         {},
         { relations: ["admins"] }
       )
-      console.log(`[GET /vendors] listVendors ALL DONE in ${Date.now() - listStart}ms | count=${vendors?.length}`)
-
-      if (vendors?.length) {
-        const planStart = Date.now()
-        await Promise.all(vendors.map(v => attachPlanFields(pgClient, v)))
-        console.log(`[GET /vendors] attachPlanFields ALL DONE in ${Date.now() - planStart}ms`)
-      }
-
+      console.log(
+        `[GET /vendors] listVendors ALL DONE in ${Date.now() - listStart}ms | count=${vendors?.length}`
+      )
+      // plan fields returned automatically by ORM — no attachPlanFields needed
+      // Previously: 28 × raw SQL queries = pool exhaustion = 267s timeout cascade
+      // Now: 0 extra queries. Done.
       console.log(`[GET /vendors] TOTAL ${Date.now() - total}ms | returning ${vendors?.length} vendors`)
       return res.json({ vendors })
     }

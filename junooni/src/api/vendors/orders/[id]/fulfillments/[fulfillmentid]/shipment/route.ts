@@ -308,7 +308,7 @@ export async function POST(
   const { id: orderId, fulfillmentid: fulfillmentId } = req.params
 
   // Use req.body and add validation
-  const requestBody = req.body || {}
+  const requestBody = (req.body || {}) as any
   
   // Validate required fields
   if (!requestBody.labels || !Array.isArray(requestBody.labels) || requestBody.labels.length === 0) {

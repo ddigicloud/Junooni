@@ -567,7 +567,7 @@ export async function POST(
 
     // ✅ STEP 6: Get vendor items from order
     console.log(`\n📍 STEP 6: Getting Vendor Items`)
-    const vendorOrders = order.metadata?.vendor_orders || []
+    const vendorOrders = (order.metadata?.vendor_orders || []) as any[]
     console.log(`📦 Vendor orders in metadata: ${vendorOrders.length}`)
     
     const vendorInfo = vendorOrders.find((vo: any) => vo.vendor_id === vendorId)

@@ -74,19 +74,17 @@ import { getCacheOptions } from "./cookies"
 // Expanding products on the category endpoint is pure waste.
 //
 // IMPACT from logs before fix:
-//   mens-clothing    → 291,590 bytes, 14-15s response time
-//   womens-clothing  → 294,714 bytes, 15-16s response time
+//   mens-clothing     → 291,590 bytes, 14-15s response time
+//   womens-clothing   → 294,714 bytes, 15-16s response time
 //   oversized-t-shirt → 128,288 bytes, 13-15s response time
 //   20+ simultaneous calls → heap exhaustion → SIGABRT
 //
 // After fix: ~500 bytes per category, <100ms response time.
 //
 // KEPT — what callers actually use:
-//   id, name, handle, description        → display + routing
-//   category_children.*                  → nav tree (2 levels)
-//   parent_category.*                    → breadcrumbs (2 levels)
-//
-// ──────────────────────────────────────────────────────────────────────────
+//   id, name, handle, description → display + routing
+//   category_children.*           → nav tree (2 levels)
+//   parent_category.*             → breadcrumbs (2 levels)
 
 // Fields for listCategories — navbar + sidebar tree rendering
 const LIST_CATEGORIES_FIELDS = [
@@ -95,6 +93,7 @@ const LIST_CATEGORIES_FIELDS = [
   "handle",
   "description",
   "rank",
+  "metadata",
   // Child categories for nav tree (2 levels deep)
   "category_children.id",
   "category_children.name",
@@ -134,7 +133,11 @@ const GET_CATEGORY_FIELDS = [
 
 export const listCategories = async (query?: Record<string, any>) => {
   const next = {
-    ...(await getCacheOptions("categories")),
+    // FIX: 60s → 300s (5 min)
+    // Categories are fetched on every navbar render (every page load).
+    // They change only when admin adds/removes/renames a category.
+    // 5x reduction in Medusa DB hits for the highest-frequency call.
+    ...(await getCacheOptions("categories", 300)),
   }
 
   const limit = query?.limit || 100
@@ -158,7 +161,8 @@ export const getCategoryByHandle = async (categoryHandle: string[]) => {
   const handle = `${categoryHandle.join("/")}`
 
   const next = {
-    ...(await getCacheOptions("categories")),
+    // FIX: 60s → 300s (5 min)
+    ...(await getCacheOptions("categories", 300)),
   }
 
   return sdk.client

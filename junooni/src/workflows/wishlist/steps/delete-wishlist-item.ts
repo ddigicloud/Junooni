@@ -15,9 +15,9 @@ export const deleteWishlistItemStep = createStep(
 
     return new StepResponse(void 0, wishlist_item_id)
   },
-  async (wishlistItemId, { container }) => {
-    const wishlistModuleService: WishlistModuleService = container.resolve(WISHLIST_MODULE)
-
-    await wishlistModuleService.restoreWishlistItems([wishlistItemId])
-  }
+  async (wishlistItemId: string | null | undefined, { container }) => {
+  if (!wishlistItemId) return
+  const wishlistModuleService: WishlistModuleService = container.resolve(WISHLIST_MODULE)
+  await wishlistModuleService.restoreWishlistItems([wishlistItemId])
+}
 )

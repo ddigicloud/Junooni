@@ -29,6 +29,10 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
   const [reviewCount, setReviewCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
+  console.log("ProductInfo received product:", product)
+  console.log("ProductInfo product title:", product?.title)
+  console.log("ProductInfo product id:", product?.id)
+
   useEffect(() => {
     // Fetch actual review data
     setIsLoading(true);

@@ -1,22 +1,13 @@
 import { z } from "zod"
 
 export const PostStoreCreatePayoutDetail = z.object({
-  type: z.enum(["adjustment", "refund"], {
-    required_error: "Type is required",
-    invalid_type_error: "Type must be either 'adjustment' or 'refund'",
-  }),
-  amount: z.number({
-    required_error: "Amount is required",
-    invalid_type_error: "Amount must be a number",
-  }).refine((val) => val !== 0, {
+  type: z.enum(["adjustment", "refund"] as const),
+  amount:z.number().refine((val) => val !== 0, {
     message: "Amount cannot be zero",
   }).refine((val) => Number.isFinite(val), {
     message: "Amount must be a valid finite number",
   }),
-  reason: z.string({
-    required_error: "Reason is required",
-    invalid_type_error: "Reason must be a string",
-  }).min(5, {
+  reason:z.string().min(5, {
     message: "Reason must be at least 5 characters long",
   }).max(500, {
     message: "Reason cannot exceed 500 characters",

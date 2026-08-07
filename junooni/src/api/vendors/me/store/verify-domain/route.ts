@@ -61,7 +61,7 @@ export const POST = async (
   if (!parsed.success) {
     return res.status(400).json({
       verified: false,
-      message: parsed.error.errors[0]?.message ?? "Invalid request",
+      message: parsed.error.issues[0]?.message ?? "Invalid request",
     })
   }
 

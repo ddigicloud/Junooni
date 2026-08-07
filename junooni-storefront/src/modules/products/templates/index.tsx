@@ -38,6 +38,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
 
    //console.log('🔍 ProductTemplate - Full Product Object:', product);
     //console.log('🔍 ProductTemplate - Product Keys:', Object.keys(product));
+    console.log("[ProductTemplate] product.size_chart:", (product as any).size_chart)
   
   // Now this will work without TypeScript errors
   const extendedProduct = {
@@ -151,7 +152,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
               
               {/* Product Actions */}
               <Suspense fallback={<div className="h-40 my-6 bg-gray-100 rounded animate-pulse"></div>}>
-                <ProductActionsWrapper id={product.id} region={region} />
+                <ProductActionsWrapper id={product.id} region={region} sizeChart={(product as any).size_chart} />
               </Suspense>
               
               {/* Shipping & Returns */}

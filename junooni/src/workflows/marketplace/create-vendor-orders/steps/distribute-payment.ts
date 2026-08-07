@@ -10,7 +10,7 @@ type PaymentDistributionInput = {
 // Helper function to calculate vendor amounts
 function calculateVendorAmount(items: CartLineItemDTO[]): number {
   return items.reduce((total, item) => {
-    return total + (item.unit_price * item.quantity)
+    return total + (Number(item.unit_price) * Number(item.quantity))
   }, 0)
 }
 
@@ -22,7 +22,7 @@ const distributePaymentStep = createStep(
   ) => {
     console.log("💰 Payment distribution logging (SINGLE ORDER APPROACH)...")
     console.log("THE SINGLE ORDER ID:", parentOrder.id)
-    console.log("Payment status:", parentOrder.payment_status)
+    //console.log("Payment status:", parentOrder.payment_status)
     console.log("Vendor count:", Object.keys(vendorsItems).length)
 
     // Calculate vendor amounts for logging purposes

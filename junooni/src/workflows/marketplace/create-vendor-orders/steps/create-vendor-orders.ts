@@ -412,7 +412,7 @@ type StepInput = {
 
 function calculateVendorAmount(items: CartLineItemDTO[]): number {
   return items.reduce((total, item) => {
-    return total + (item.unit_price * item.quantity)
+    return total + (Number(item.unit_price) * Number(item.quantity))
   }, 0)
 }
 
@@ -814,7 +814,7 @@ const createVendorOrdersStep = createStep(
             (item as any).variant?.product?.metadata?.fulfillment_type ||
             (item as any).product?.metadata?.fulfillment_type ||
             null,
-          total: item.unit_price * item.quantity,
+          total: Number(item.unit_price) * Number(item.quantity),
           refunded_quantity: (item as any).refunded_quantity || 0,
           refunded_total: (item as any).refunded_total || 0,
           is_refunded: ((item as any).refunded_quantity || 0) >= item.quantity,
@@ -828,7 +828,7 @@ const createVendorOrdersStep = createStep(
               ? "partially_refunded"
               : "captured",
           net_amount:
-            item.unit_price * item.quantity - ((item as any).refunded_total || 0),
+            Number(item.unit_price) * Number(item.quantity) - ((item as any).refunded_total || 0),
         })),
       }
     })

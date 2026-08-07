@@ -73,7 +73,6 @@ import { listProducts } from "@lib/data/products"
 import { HttpTypes } from "@medusajs/types"
 import ProductActions from "@modules/products/components/product-actions"
 
-// Only what ProductActions needs — no size_chart, no vendor, no categories
 const PRODUCT_ACTIONS_FIELDS = [
   "id",
   "title",
@@ -100,14 +99,26 @@ const PRODUCT_ACTIONS_FIELDS = [
   "+metadata",
 ].join(",")
 
+// Match the shape used in product-actions/index.tsx
+type SizeChart = {
+  id: string
+  name?: string
+  chart?: string
+  created_at: string
+  updated_at: string
+  deleted_at?: string
+}
+
 export default async function ProductActionsWrapper({
   id,
   region,
+  sizeChart,         // ← accept it as a prop
   onOptionUpdate,
   selectedOptions,
 }: {
   id: string
   region: HttpTypes.StoreRegion
+  sizeChart?: SizeChart | null   // ← add this
   onOptionUpdate?: (optionId: string, value: string, metadata?: Record<string, any>) => void
   selectedOptions?: Record<string, string>
 }) {
@@ -128,9 +139,14 @@ export default async function ProductActionsWrapper({
 
   if (!product) return null
 
+  // Merge size_chart into the freshly fetched product
+  const productWithSizeChart = sizeChart
+    ? { ...product, size_chart: sizeChart }
+    : product
+
   return (
     <ProductActions
-      product={product}
+      product={productWithSizeChart as any}
       region={region}
       onOptionUpdate={onOptionUpdate}
       selectedOptions={selectedOptions}

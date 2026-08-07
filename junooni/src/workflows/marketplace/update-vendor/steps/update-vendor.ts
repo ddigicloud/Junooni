@@ -47,10 +47,9 @@ import {
         if (input.logo !== undefined) updateData.logo = input.logo
         
         // Update the vendor
-        const updatedVendor = await marketplaceModuleService.updateVendor(
-          input.vendorId,
-          updateData
-        )
+        const [updatedVendor] = await marketplaceModuleService.updateVendors([
+          { id: input.vendorId, ...updateData }
+        ])
         
         return new StepResponse(updatedVendor, updatedVendor.id)
       } catch (error) {
