@@ -170,16 +170,22 @@ export default function JunooniLogin() {
     const token = response.data.token;
     if (!token) throw new Error('No token received from server');
 
-    // ── DEBUG: decode and log full token payload ───────────────────────────
     const tokenCheck = decodeTokenAndCheckActorId(token);
     console.log('[sign-in] full token payload:', JSON.stringify(tokenCheck.payload, null, 2));
     console.log('[sign-in] actor_id:', tokenCheck.payload?.actor_id);
     console.log('[sign-in] app_metadata:', tokenCheck.payload?.app_metadata);
-    // ──────────────────────────────────────────────────────────────────────
 
     localStorage.setItem("vendorToken", token);
     localStorage.setItem("vendorTokenTimestamp", Date.now().toString());
     localStorage.setItem('vendorEmail', data.email);
+
+    // ── Fast path: actor_id is empty = signed up but never completed onboarding
+    if (!tokenCheck.actorId) {
+      sessionStorage.setItem('navigationSource', 'sign-in');
+      showToast('success', 'Welcome!', "Let's complete your profile setup...");
+      setTimeout(() => navigate({ to: '/onboarding', search: { step: 'basic-info' } }), 1500);
+      return;
+    }
 
     try {
       console.log('[sign-in] calling /vendors/me with token...');
@@ -200,7 +206,9 @@ export default function JunooniLogin() {
       }
     } catch (vendorErr: any) {
       console.error('[sign-in] /vendors/me error:', vendorErr.response?.status, vendorErr.response?.data);
-      if (vendorErr.response?.status === 404) {
+      if (vendorErr.response?.status === 404 || vendorErr.response?.status === 401) {
+        // 404 = no vendor row exists yet
+        // 401 = actor_id empty (signed up but never onboarded)
         sessionStorage.setItem('navigationSource', 'sign-in');
         showToast('success', 'Welcome!', "Let's complete your profile setup...");
         setTimeout(() => navigate({ to: '/onboarding', search: { step: 'basic-info' } }), 1500);

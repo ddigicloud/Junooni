@@ -190,6 +190,7 @@ export default defineMiddlewares({
 },
 
 {
+  bodyParser: { sizeLimit: "35mb" },
   matcher: "/vendors/ai-assistant",
   method: ["POST", "OPTIONS"],
   middlewares: [

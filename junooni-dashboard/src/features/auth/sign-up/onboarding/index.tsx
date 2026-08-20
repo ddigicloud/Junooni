@@ -816,8 +816,8 @@ const handleSaveAndExit = async () => {
         setTimeout(() => { setAutoSaveIndicator(""); navigate({ to: '/dashboard' }); }, 1500);
       } else {
         await handleCreateNewVendor();
-        toast({ title: "Profile created!", description: "Taking you to sign in..." });
-        setTimeout(() => { setAutoSaveIndicator(""); navigate({ to: '/sign-in' }); }, 1500);
+        toast({ title: "Profile created!", description: "Taking you to your dashboard..." });
+        setTimeout(() => { setAutoSaveIndicator(""); navigate({ to: '/dashboard' }); }, 1500);
       }
     } catch (error) {
       toast({ title: "Save failed", description: error.message || "Please try again.", variant: "destructive" });
@@ -848,7 +848,15 @@ const handleSaveAndExit = async () => {
     });
     if (!res.ok) throw new Error(`Failed to create vendor: ${res.status}`);
     const d = await res.json();
-    if (d.vendor) { setVendorData(d); setLocalPayload(null); setPendingFiles({ logo: null, coverphoto: null, cancelled_checkque: null }); }
+    if (d.vendor) {
+      setVendorData(d);
+      setLocalPayload(null);
+      setPendingFiles({ logo: null, coverphoto: null, cancelled_checkque: null });
+      if (d.token) {
+        localStorage.setItem('vendorToken', d.token);
+        localStorage.setItem('vendorTokenTimestamp', Date.now().toString());
+      }
+    }
   };
 
   const handleFinalSubmission = async () => {
@@ -860,7 +868,7 @@ const handleSaveAndExit = async () => {
     } else {
       await handleCreateNewVendor();
       toast({ title: "🎉 Profile created!", description: "Your creator store is ready!" });
-      setTimeout(() => navigate({ to: '/sign-in' }), 1000);
+      setTimeout(() => navigate({ to: '/dashboard' }), 1000);
     }
   };
 

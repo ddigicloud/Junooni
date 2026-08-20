@@ -48,6 +48,11 @@ import Twittericon from "@assets/twitter.png"
 //   retrieveCustomer,
 // } from "@lib/data/customer"
 import { retrieveCustomer } from "@lib/data/customer"
+import {
+  fetchVendorFollowersClient,
+  addFollowerClient,
+  deleteFollowerClient,
+} from "@lib/data/vendors-client"
 import { toast } from "react-toastify"
 import profileplaceholder from "@assets/profile-logo.png"
 
@@ -375,31 +380,13 @@ const CreatorStorePage: React.FC<CreatorStorePageProps & {
   const [sortOption, setSortOption] = useState<string>("featured")
   const PRODUCTS_PER_PAGE = 12
 
-  // Fetch products client-side after first paint
-// useEffect(() => {
-//   const load = async () => {
-//     setIsLoading(true)
-//     try {
-//       const { fetchVendorProductsClient } = await import("@lib/data/vendors-client")
-//       const products = await fetchVendorProductsClient(vendor.id, region.id)
-//       const publishedProducts = products.filter((p: any) => p.status === "published")
-//       setVendorProducts(publishedProducts)
-//     } catch {
-//       setVendorProducts([])
-//     } finally {
-//       setIsLoading(false)
-//     }
-//   }
-//   load()
-// }, [vendor.id, region.id])
-
   // Fetch followers data
   useEffect(() => {
     const fetchFollowers = async () => {
       try {
         //console.log("🔍 Fetching followers for vendor ID:", vendor.id)
         
-        const { fetchVendorFollowersClient } = await import("@lib/data/vendors-client")
+        //const { fetchVendorFollowersClient } = await import("@lib/data/vendors-client")
         const vendorFollowers = await fetchVendorFollowersClient(vendor.id)
         //console.log("📊 Followers response:", vendorFollowers)
         
@@ -492,12 +479,10 @@ const handleFollowToggle = async () => {
 
   try {
     if (isFollowing) {
-      const { deleteFollowerClient } = await import("@lib/data/vendors-client")
       await deleteFollowerClient(vendor.id)
       userHasToggled.current = true
       setIsFollowing(false)
     } else {
-      const { addFollowerClient } = await import("@lib/data/vendors-client")
       const result = await addFollowerClient(vendor.id)
       console.log("=== ADD FOLLOWER RESULT ===", JSON.stringify(result))
       userHasToggled.current = true
@@ -505,10 +490,9 @@ const handleFollowToggle = async () => {
     }
 
     setTimeout(async () => {
-      const { fetchVendorFollowersClient } = await import("@lib/data/vendors-client")
       const updatedFollowers = await fetchVendorFollowersClient(vendor.id)
       if (updatedFollowers?.follow) {
-        setFollowers(updatedFollowers.follow.filter((f) => f?.follow))
+        setFollowers(updatedFollowers.follow.filter((f: any) => f?.follow))
       }
     }, 1500)
 

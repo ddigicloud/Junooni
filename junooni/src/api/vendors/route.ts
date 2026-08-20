@@ -9,6 +9,8 @@ import createVendorWorkflow, {
 } from "../../workflows/marketplace/create-vendor"
 import MarketplaceModuleService from "../../modules/marketplace/service"
 import { CreatorCategoryEnum } from "../../modules/marketplace/types"
+import jwt from "jsonwebtoken"
+
 
 const VendorFieldsSchema = z.object({
   name: z.string(),
@@ -76,7 +78,21 @@ export const POST = async (
       } as CreateVendorWorkflowInput
     })
 
-  res.json({ vendor: result.vendor })
+  const jwtSecret = process.env.JWT_SECRET || "supersecret"
+
+  const newToken = jwt.sign(
+    {
+      actor_id: result.vendor.admins[0].id,
+      actor_type: "vendor",
+      auth_identity_id: req.auth_context.auth_identity_id,
+    },
+    jwtSecret,
+    {
+      expiresIn: "1d",
+    }
+  )
+
+  res.json({ vendor: result.vendor, token: newToken })
 }
 
 // ─── GET /vendors ─────────────────────────────────────────────────────────────

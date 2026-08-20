@@ -368,7 +368,7 @@ const handleSignOut = async () => {
             {/* Mobile Header and Quick Actions Only */}
             <div className="w-full min-h-screen pb-0 bg-gray-50">
               {/* Header - FIXED */}
-              <div className="sticky top-0 z-10 px-4 pt-16 pb-2 bg-white">
+              <div className="top-0 z-10 px-4 pt-16 pb-2 bg-white">
                 <div className="flex items-center justify-between px-2 py-2 bg-white border border-gray-200 rounded-sm">
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#4c5cbf] rounded-full">

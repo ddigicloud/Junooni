@@ -993,23 +993,13 @@ for (const item of sortedMediaItems) {
         const defaultStock = formValues.defaultVariantStock || 0;
         
         // Create a default option with a default value and ID
-        const defaultOptionId = generateUUID();
         options = [
           {
-            id: defaultOptionId,
             title: defaultTitle,
             values: [defaultValue]
           }
         ];
-        
-        // Create the default option value object for the variant - use the same ID
-        const defaultOptionValue = {
-          optionId: defaultOptionId,
-          optionName: defaultTitle,
-          value: defaultValue
-        };
-        
-        // Create a single default variant with the default option value
+
         variants = [{
           id: generateUUID(),
           title: 'Default',
@@ -1019,7 +1009,10 @@ for (const item of sortedMediaItems) {
           sku: defaultSku,
           allowBackorder: false,
           manageInventory: true,
-          optionValues: [defaultOptionValue]
+          optionValues: [{
+            optionName: defaultTitle,
+            value: defaultValue
+          }]
         }];
       }
       
@@ -1338,7 +1331,7 @@ return {
           <Button 
             type="button"
             onClick={handleManualSubmit} 
-            disabled={isSubmitting}
+            disabled={isSubmitting || !form.watch('status')}
             className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
           >
             {isSubmitting ? 
@@ -2401,7 +2394,7 @@ return {
 
                       {/* GST notice — shown when Marketplace is not available */}
                       {vendorHasMarketplace && !vendorSalesChannels.includes(SALES_CHANNEL_MARKETPLACE) && (
-                        <div className="flex items-start gap-2 p-3 mt-3 text-sm border border-amber-200 rounded-md bg-amber-50">
+                        <div className="flex items-start gap-2 p-3 mt-3 text-sm border rounded-md border-amber-200 bg-amber-50">
                           <IconInfoCircle size={16} className="mt-0.5 text-amber-500 shrink-0" />
                           <p className="text-amber-700">
                             <span className="font-medium">Junooni Marketplace unavailable.</span>{' '}
@@ -2679,7 +2672,7 @@ return {
               <Button 
                 type="button"
                 onClick={handleManualSubmit} 
-                disabled={isSubmitting}
+                disabled={isSubmitting || !form.watch('status')}
                 className="bg-[#e65100] hover:bg-[#d84315] text-white shadow-sm"
               >
                 {isSubmitting ? 

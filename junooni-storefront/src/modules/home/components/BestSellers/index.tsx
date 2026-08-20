@@ -26,7 +26,7 @@ export default async function BestSellers({
           regionId: region.id,
           queryParams: {
             collection_id: collection.id,
-            fields: "*vendor,*tags,*metadata,*variants.calculated_price",
+            fields: "*vendor,*tags,+metadata,*variants.calculated_price",
             limit: 10,
           },
         })

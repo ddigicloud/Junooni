@@ -321,8 +321,10 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
   // Render order card
   const renderOrderCard = (order: HttpTypes.StoreOrder) => {
     const displayItems = order.items?.filter(
-    (item: any) => !item.metadata?.is_cod_fee
-  )
+      (item: any) =>
+        !item.metadata?.is_cod_fee &&
+        !/cod\s*fee/i.test(item.title ?? "")
+    )
      const numberOfLines =
       displayItems?.reduce((acc, item) => acc + item.quantity, 0) ?? 0
 
@@ -390,11 +392,6 @@ const OrderOverview = ({ orders }: OrderOverviewProps) => {
               
               const variantThumbnail = getVariantImage(item)
               const variantImages = getVariantImages(item)
-              
-              // console.log('🎯 Final image data for Thumbnail component:', {
-              //   thumbnail: variantThumbnail,
-              //   images: variantImages
-              // })
               
               return (
                 <div

@@ -3029,32 +3029,39 @@ console.log('📸 First upload quality image format:',
       //console.log(`🎨 ${colorName}: ${mockups.length} mockups, ${originalsForColor.length} originals`);
 
       if (imageSettings.size_Images && !imageSettings.color_Images && allSizes.length > 0) {
-        for (const mockup of mockups) {
-          let extractedSize: string | null = null;
+  for (const mockup of mockups) {
+    let extractedSize: string | null = null;
 
-          const titleMatch = mockup.mockupTitle?.match(/\(([^)]+)\)/);
-          if (titleMatch && titleMatch[1]) extractedSize = titleMatch[1];
+    // 1. Best source: sizeName set directly by useStoreImport (no parsing needed)
+    if (mockup.sizeName) {
+      const directMatch = allSizes.find(
+        s => s.toLowerCase() === mockup.sizeName.toLowerCase()
+      );
+      if (directMatch) extractedSize = directMatch;
+    }
 
-          if (!extractedSize && mockup.storageKey) {
-            const keyParts = mockup.storageKey.split('_');
-            for (const part of keyParts) {
-              const matchingSize = allSizes.find(
-                size => size.toLowerCase().replace(/\s+/g, '_') === part.toLowerCase()
-              );
-              if (matchingSize) { extractedSize = matchingSize; break; }
-            }
-            if (!extractedSize) {
-              for (let i = 0; i < keyParts.length - 1; i++) {
-                const combined = `${keyParts[i]}_${keyParts[i + 1]}`;
-                const matchingSize = allSizes.find(
-                  size => size.toLowerCase().replace(/\s+/g, '_') === combined.toLowerCase()
-                );
-                if (matchingSize) { extractedSize = matchingSize; break; }
-              }
-            }
-          }
+    // 2. Fallback: title parentheses e.g. "Front Mockup (15 Pro Maxxx)"
+    if (!extractedSize) {
+      const titleMatch = mockup.mockupTitle?.match(/\(([^)]+)\)/);
+      if (titleMatch?.[1]) {
+        const titleSize = allSizes.find(
+          s => s.toLowerCase() === titleMatch[1].toLowerCase()
+        );
+        if (titleSize) extractedSize = titleSize;
+      }
+    }
 
-          if (!extractedSize || !allSizes.includes(extractedSize)) continue;
+    // 3. Last resort: search storageKey with hyphen-aware matching
+    //    storageKey now uses hyphens: "mockupid-front-ec5100-15-pro-maxxx"
+    if (!extractedSize && mockup.storageKey) {
+      const keyNorm = mockup.storageKey.toLowerCase();
+      extractedSize = allSizes.find(size => {
+        const sizeNorm = size.toLowerCase().replace(/[\s_]+/g, '-');
+        return keyNorm.includes(sizeNorm);
+      }) || null;
+    }
+
+    if (!extractedSize || !allSizes.includes(extractedSize)) continue;
 
         
           // 🔥 Use original quality for upload
@@ -3070,7 +3077,7 @@ console.log('📸 First upload quality image format:',
           const imageDataToUse = uploadQualityMockup?.imageData || mockup.imageData;
 
           const ext = getExt(imageDataToUse);
-          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-${extractedSize.toLowerCase().replace(/\s+/g, '_')}.${ext}`;
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase().replace(/[\s_]+/g, '-')}-${extractedSize.toLowerCase().replace(/[\s_]+/g, '-')}.${ext}`;
 
           const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
 
@@ -3117,7 +3124,7 @@ console.log('📸 First upload quality image format:',
           const imageDataToUse = uploadQualityMockup?.imageData || mockup.imageData;
 
           const ext = getExt(imageDataToUse);
-          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.${ext}`;
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase().replace(/[\s_]+/g, '-')}.${ext}`;
 
           const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
 
@@ -3163,7 +3170,7 @@ console.log('📸 First upload quality image format:',
           const imageDataToUse = uploadQualityMockup?.imageData || mockup.imageData;
 
           const ext = getExt(imageDataToUse);
-          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}-all-sizes.${ext}`;
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase().replace(/[\s_]+/g, '-')}-all-sizes.${ext}`;
 
           const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
 
@@ -3208,7 +3215,7 @@ console.log('📸 First upload quality image format:',
           const imageDataToUse = uploadQualityMockup?.imageData || mockup.imageData;
 
           const ext = getExt(imageDataToUse);
-          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase()}.${ext}`;
+          const fileName = `mockup-${mockup.viewAngle}-${colorName.toLowerCase().replace(/[\s_]+/g, '-')}.${ext}`;
 
           const processedImage = await processBase64ToFile(imageDataToUse, fileName, colorName);
 
@@ -6394,8 +6401,7 @@ if (!printTechId || !printTechName) {
               await batchUpdateInventoryLevels({ create: inventoryCreations });
             }
 
-            // STEP B: Associate variant images natively (Medusa v2.11.2+)
-            // STEP B: Associate variant images natively using real Medusa image IDs
+             // STEP B: Associate variant images natively using real Medusa image IDs
             for (const completedVariant of completeProduct.variants) {
               const colorOpt = completedVariant.options?.find(o =>
                 o.option?.title?.toLowerCase() === 'color'
@@ -6404,45 +6410,59 @@ if (!printTechId || !printTechName) {
                 o.option?.title?.toLowerCase() === 'size'
               );
 
-              const variantColor = colorOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
-              const variantSize = sizeOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
+              // Normalize to hyphens — uploaded filenames use hyphens:
+              // e.g. "mockup-front-light-pink-xl.webp" NOT "light_pink"
+              // Spaces and underscores both become hyphens for reliable matching.
+              const normalize = (s: string) =>
+                s.toLowerCase().replace(/^#/, '').replace(/[\s_]+/g, '-').replace(/[^a-z0-9-]/g, '');
 
-              // Match using completeProduct.images which have real img_ IDs AND correct URLs
+              const variantColorNorm = normalize(colorOpt?.value || '');
+              const variantSizeNorm  = normalize(sizeOpt?.value  || '');
+
+              // Match uploaded Medusa images by filename (URL contains filename)
               const matchingImageIds = (completeProduct.images || [])
                 .filter(img => {
-                  const urlLower = img.url.toLowerCase();
-                  const colorMatch = !variantColor || urlLower.includes(variantColor);
-                  const sizeMatch = !payloadImageSettings.size_Images ||
-                                    !variantSize ||
-                                    urlLower.includes(variantSize);
+                  // Use only the filename part of the URL for matching
+                  const filename = img.url.toLowerCase().split('/').pop() || img.url.toLowerCase();
+
+                  // Color must match (unless no color option on this variant)
+                  const colorMatch = !variantColorNorm || filename.includes(variantColorNorm);
+
+                  // Size must match only when size_Images is enabled in PayloadCMS
+                  const sizeMatch =
+                    !payloadImageSettings.size_Images ||
+                    !variantSizeNorm ||
+                    filename.includes(variantSizeNorm);
+
                   return colorMatch && sizeMatch;
                 })
-                .map(img => img.id); // ← real img_01KN1... IDs from Medusa
+                .map(img => img.id);
 
-              console.log(`🎯 ${completedVariant.title}: color="${variantColor}", matched ${matchingImageIds.length} images:`, matchingImageIds);
+              console.log(
+                `🎯 ${completedVariant.title}: color="${variantColorNorm}", size="${variantSizeNorm}", matched ${matchingImageIds.length} images:`,
+                matchingImageIds
+              );
 
               if (matchingImageIds.length > 0) {
                 try {
-                  // Find the front-view image URL to use as thumbnail
+                  // Prefer the front-view image as the variant thumbnail
                   const frontImage = (completeProduct.images || []).find(img => {
-                    const urlLower = img.url.toLowerCase();
-                    const colorMatch = !variantColor || urlLower.includes(variantColor);
-                    return colorMatch && urlLower.includes('front');
+                    const filename = img.url.toLowerCase().split('/').pop() || '';
+                    return matchingImageIds.includes(img.id) && filename.includes('front');
                   });
 
-                  const thumbnailUrl = frontImage?.url 
-                    || completeProduct.images?.find(img => matchingImageIds.includes(img.id))?.url;
+                  const thumbnailUrl =
+                    frontImage?.url ||
+                    completeProduct.images?.find(img => matchingImageIds.includes(img.id))?.url;
 
                   await updateVariantImages({
                     productId: result.id,
                     variantId: completedVariant.id,
                     imageIds: matchingImageIds,
-                    thumbnailUrl: thumbnailUrl,  // ← URL not ID
+                    thumbnailUrl: thumbnailUrl,
                   });
-                  
-                  // console.log(`✅ Associated images + thumbnail for ${completedVariant.title}`);
                 } catch (err) {
-                  console.error(`❌ Failed for ${completedVariant.title}:`, err);
+                  console.error(`❌ updateVariantImages failed for ${completedVariant.title}:`, err);
                 }
               }
             }
@@ -6570,7 +6590,6 @@ if (!printTechId || !printTechName) {
       {isPageLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-4 p-8 bg-white border border-gray-100 shadow-xl rounded-2xl">
-            {/* Spinner */}
             <div className="relative w-14 h-14">
               <div className="absolute inset-0 border-4 border-orange-100 rounded-full"></div>
               <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#e65100] animate-spin"></div>
@@ -6579,8 +6598,52 @@ if (!printTechId || !printTechName) {
               <p className="text-base font-semibold text-gray-800">Setting up your product</p>
               <p className="mt-1 text-sm text-gray-500">Loading design data and processing mockup images...</p>
             </div>
-            {/* Progress dots */}
             <div className="flex gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#e65100] animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-1.5 h-1.5 rounded-full bg-[#e65100] animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-1.5 h-1.5 rounded-full bg-[#e65100] animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Creation Overlay */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-90 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-5 p-10 bg-white border border-gray-100 shadow-2xl rounded-2xl max-w-sm w-full mx-4">
+            {/* Animated icon */}
+            <div className="relative w-20 h-20">
+              <div className="absolute inset-0 border-4 border-orange-100 rounded-full"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#e65100] animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#e65100" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/>
+                  <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>
+                </svg>
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-gray-800">Creating your product</p>
+              <p className="mt-1.5 text-sm text-gray-500">Just a few seconds. Please don't close this page.</p>
+            </div>
+            {/* Steps indicator */}
+            <div className="w-full space-y-2">
+              {[
+                'Uploading artwork',
+                'Processing mockups',
+                'Creating variants',
+                'Setting up inventory',
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-4 h-4 rounded-full border-2 border-[#e65100] flex items-center justify-center flex-shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-[#e65100] animate-pulse" style={{ animationDelay: `${i * 300}ms` }} />
+                  </div>
+                  <span className="text-xs text-gray-500">{step}</span>
+                </div>
+              ))}
+            </div>
+            {/* Progress dots */}
+            <div className="flex gap-1.5 mt-1">
               <div className="w-1.5 h-1.5 rounded-full bg-[#e65100] animate-bounce" style={{ animationDelay: '0ms' }}></div>
               <div className="w-1.5 h-1.5 rounded-full bg-[#e65100] animate-bounce" style={{ animationDelay: '150ms' }}></div>
               <div className="w-1.5 h-1.5 rounded-full bg-[#e65100] animate-bounce" style={{ animationDelay: '300ms' }}></div>

@@ -28,7 +28,8 @@ export default async function FeaturedProducts({
           regionId: region.id,
           queryParams: {
             collection_id: collection.id,
-            fields: "*vendor,*tags,*metadata,*variants.calculated_price",
+            // fields: "*vendor,*tags,*metadata,*variants.calculated_price",
+            fields: "*vendor,*tags,+metadata,*variants.calculated_price,*variants.options,*variants.options.option",
             // ✅ FIX 3: Limit to what's visible — don't over-fetch
             limit: 10,
           },
