@@ -587,9 +587,25 @@ const isNewVariant = (variant) => {
 
       if (product.options && product.options.length > 0) {
         transformedOptions = product.options.map((opt: any) => {
-          const optionValues = opt.values?.map((value: any) =>
-            typeof value === 'object' ? value.value : value
-          ) || [];
+          // Try values first, then product_values (the pivot-restricted subset)
+          const rawValues = (opt.values?.length ? opt.values : opt.product_values) || [];
+          let optionValues = rawValues
+            .map((value: any) => typeof value === 'object' ? value.value : value)
+            .filter(Boolean);
+
+          // Final fallback: recover from variants (same as before)
+          if (optionValues.length === 0 && product.variants?.length > 0) {
+            const valuesFromVariants = new Set<string>();
+            product.variants.forEach((v: any) => {
+              if (!v.options) return;
+              const match = (Array.isArray(v.options) ? v.options : []).find(
+                (ov: any) => ov.option_id === opt.id || ov.option?.id === opt.id
+              );
+              if (match?.value) valuesFromVariants.add(match.value);
+            });
+            optionValues = Array.from(valuesFromVariants);
+            console.log(`⚠️ v2.17 fallback: recovered "${opt.title}" values from variants:`, optionValues);
+          }
 
           const result: Option = {
             id: opt.id,
@@ -727,25 +743,39 @@ const isNewVariant = (variant) => {
           const stock = variant.inventory_quantity ?? 0;
 
           let optionValues: OptionValue[] = [];
-          if (variant.options) {
-            if (Array.isArray(variant.options)) {
-              optionValues = variant.options.map((optVal: any) => ({
-                optionId: optVal.option_id || optVal.option?.id,
-                optionName: optVal.option?.title || optionMap[optVal.option_id] || 'Option',
-                value: optVal.value
-              }));
-            } else if (typeof variant.options === 'object') {
-              optionValues = Object.entries(variant.options).map(([key, value]) => {
-                const matchingOption = transformedOptions.find(opt => opt.title === key);
-                return { optionId: matchingOption?.id || '', optionName: key, value: String(value) };
-              });
-            }
+                    if (variant.options && Array.isArray(variant.options) && variant.options.length > 0) {
+            optionValues = variant.options.map((optVal: any) => {
+              const optionName = optVal.option?.title
+                || optionMap[optVal.option_id]
+                || optionMap[optVal.optionId]
+                || '';
+
+              const fallbackOption = !optionName
+                ? transformedOptions.find(o => o.id === (optVal.option_id || optVal.option?.id))
+                : null;
+
+              return {
+                optionId: optVal.option_id || optVal.option?.id || '',
+                optionName: optionName || fallbackOption?.title || '',
+                value: optVal.value || ''
+              };
+            });
+          } else if (variant.options && typeof variant.options === 'object' && !Array.isArray(variant.options)) {
+            optionValues = Object.entries(variant.options).map(([key, value]) => {
+              const matchingOption = transformedOptions.find(opt => opt.title === key);
+              return { optionId: matchingOption?.id || '', optionName: key, value: String(value) };
+            });
           } else {
+            // Fallback: parse from variant title e.g. "White / One Size"
             const titleParts = variant.title.split(/\s*\/\s*/).map((part: string) => part.trim());
-            if (transformedOptions.length === titleParts.length) {
-              optionValues = transformedOptions.map((option, index) => ({
-                optionId: option.id, optionName: option.title, value: titleParts[index]
-              }));
+            if (transformedOptions.length > 0 && titleParts.length > 0) {
+              optionValues = transformedOptions
+                .slice(0, titleParts.length)
+                .map((option, index) => ({
+                  optionId: option.id,
+                  optionName: option.title,
+                  value: titleParts[index] || ''
+                }));
             }
           }
 
@@ -2290,12 +2320,12 @@ const onSubmit = async (values: ProductFormValues) => {
       try {
         // Filter and transform options to API format (remove empty ones)
         const validOptions = (values.options || []).filter(opt => 
-          opt && opt.title && 
-          Array.isArray(opt.optionValues) && 
-          opt.optionValues.length > 0
+          opt && opt.title &&
+          // Keep existing options (they have opt_ IDs) even if optionValues is empty
+          // Keep new options only if they have values
+          (opt.id?.startsWith('opt_') || (Array.isArray(opt.optionValues) && opt.optionValues.length > 0))
         );
-        
-        // Check if we have at least one option with values
+
         if (validOptions.length === 0) {
           setError('You must add at least one option (like Size or Color) with values');
           setIsSubmitting(false);
@@ -2304,18 +2334,22 @@ const onSubmit = async (values: ProductFormValues) => {
         
         // Format options to match API expectations 
         const options = validOptions.map((opt) => {
-          const option = {
+          if (opt.id && opt.id.startsWith('opt_')) {
+            // Existing Medusa option — DO NOT send values[]
+            // Sending values[] on PUT causes Medusa v2.17 to wipe and
+            // attempt recreation of option values, resulting in empty values[]
+            // Values are preserved via variant option assignments, not here
+            return {
+              id: opt.id,
+              title: opt.title,
+              // No values field for existing options
+            };
+          }
+          // New option being created — values needed
+          return {
             title: opt.title,
             values: opt.optionValues
           };
-          
-          // Include original ID only if editing an existing option
-          if (opt.id) {
-            // @ts-ignore
-            option.id = opt.id;
-          }
-          
-          return option;
         });
         
         // --- STEP 3: Process Variants (wrapped with try/catch) ---
@@ -2497,36 +2531,56 @@ const onSubmit = async (values: ProductFormValues) => {
                   // without relying on external functions
                   const formatVariantForApi = (variant) => {
                     if (!variant) return null;
-                    
-                    // Convert option values to the format expected by the API
-                    const options = {};
-                    if (variant.optionValues && Array.isArray(variant.optionValues)) {
-                      for (let i = 0; i < variant.optionValues.length; i++) {
-                        const opt = variant.optionValues[i];
-                        if (opt && opt.optionName && opt.value) {
-                          options[opt.optionName] = opt.value;
-                        }
-                      }
+
+                    // Get current form options for ID lookup
+                    const formOptions = form.getValues('options');
+
+                    // Build options array in Medusa v2 format: [{ option_id, value }]
+                    let options: { option_id: string; value: string }[] = [];
+
+                    if (variant.optionValues && Array.isArray(variant.optionValues) && variant.optionValues.length > 0) {
+                      options = variant.optionValues
+                        .filter(opt => opt && opt.value)
+                        .map(opt => {
+                          const matchedFormOpt = formOptions.find(fo =>
+                            fo.id === opt.optionId || fo.title === opt.optionName
+                          );
+                          return {
+                            option_id: matchedFormOpt?.id || opt.optionId || '',
+                            value: opt.value
+                          };
+                        })
+                        .filter(o => o.option_id && o.value);
                     }
-                    
+
+                    // Fallback: parse from variant title e.g. "White / One Size"
+                    if (options.length === 0 && variant.title && formOptions.length > 0) {
+                      const titleParts = variant.title.split(/\s*\/\s*/).map((p: string) => p.trim());
+                      options = formOptions
+                        .slice(0, titleParts.length)
+                        .map((fo, i) => ({
+                          option_id: fo.id,
+                          value: titleParts[i] || ''
+                        }))
+                        .filter(o => o.option_id && o.value);
+                    }
+
+                    console.log(`Variant "${variant.title}" optionValues raw:`, variant.optionValues, '→ formatted options:', options);
+
                     const price = typeof variant.price === 'string' ? parseFloat(variant.price) : (variant.price || 0);
-                    // Extract cost_price
-                    const costPrice = typeof variant.cost_price === 'string' 
-                      ? parseFloat(variant.cost_price) || 0 
+
+                    const costPrice = typeof variant.cost_price === 'string'
+                      ? parseFloat(variant.cost_price) || 0
                       : (variant.cost_price || 0);
-                      //console.log("Processing variant:", variant.id, "with cost price:", costPrice);
-                    
-                    // Get associated images - without complex filtering
-                    // Variant images now handled natively via updateVariantImages() after product update
+
                     const variantMetadata = {
                       ...(variant.metadata || {})
                     };
 
-                    // Preserve cost_price in metadata
                     if (costPrice !== undefined && costPrice !== null) {
                       variantMetadata.cost_price = costPrice;
                     }
-                    
+
                     return {
                       id: variant.id,
                       title: variant.title,
@@ -2569,12 +2623,12 @@ const onSubmit = async (values: ProductFormValues) => {
                     
                     }
                     
-                    // Log variant changes
-                    // console.log("Variant changes:", {
-                    //   create: createdVariants.length,
-                    //   update: updatedVariants.length,
-                    //   delete: deletedVariantIds.length
-                    // });
+                    //Log variant changes
+                    console.log("Variant changes:", {
+                      create: createdVariants.length,
+                      update: updatedVariants.length,
+                      delete: deletedVariantIds.length
+                    });
                     
                     // Construct the product object in API format (without variants)
                     const productData = {
@@ -2604,7 +2658,7 @@ const onSubmit = async (values: ProductFormValues) => {
                       //deleted_images: deletedImageIds.length > 0 ? deletedImageIds : undefined
                     };
                     
-                    //console.log("Updating product with data:", productData);
+                    console.log("Updating product with data:", productData);
                     
                     // --- STEP 8.5: Delete images from server ---
                       // ✅ FIX: Delete all images in parallel instead of one-by-one
@@ -2631,16 +2685,26 @@ const onSubmit = async (values: ProductFormValues) => {
                       
                       // Then, handle variants separately with batch API
                       // Then, handle variants separately with batch API
-                      if (createdVariants.length > 0 || updatedVariants.length > 0 || 
-                          (deletedVariantIds && deletedVariantIds.length > 0)) {
+                      const hasVariantChanges = 
+                        createdVariants.length > 0 || 
+                        updatedVariants.length > 0 || 
+                        (deletedVariantIds && deletedVariantIds.length > 0);
+
+                        console.log("=== updatedVariants being sent to batch API ===", JSON.stringify(updatedVariants, null, 2));
+                      if (hasVariantChanges) {
                         const variantResult = await batchUpdateVariants({
                           productId: id,
                           variantChanges: {
                             create: createdVariants.length > 0 ? createdVariants : undefined,
                             update: updatedVariants.length > 0 ? updatedVariants : undefined,
-                            delete: deletedVariantIds && deletedVariantIds.length > 0 ? deletedVariantIds : undefined,
+                            // Medusa v2 batch delete expects array of { id: string }
+                            delete: deletedVariantIds && deletedVariantIds.length > 0 
+                              ? deletedVariantIds.map(id => ({ id }))
+                              : undefined,
                           }
                         });
+
+                        console.log("=== batchUpdateVariants API response ===", JSON.stringify(variantResult, null, 2));
                       }
 
                       // Associate variant images natively (Medusa v2.11.2+)
@@ -3347,7 +3411,7 @@ const isFormDirty =
         <Button
           variant="outline"
           disabled
-          className="flex-1 md:flex-none border-gray-300 text-gray-400"
+          className="flex-1 text-gray-400 border-gray-300 md:flex-none"
         >
           <IconExternalLink size={18} className="mr-2" />
           <span>View Product</span>

@@ -74,7 +74,12 @@ export async function fetchProduct({ id }: { id: string }): Promise<Product> {
     'id','title','subtitle','handle','description','status',
     'thumbnail','discountable','weight','length','width','height',
     'material','origin_country','metadata',
-    'options.id','options.title','options.values.id','options.values.value',
+    'options.id','options.title',
+    // 'options.values.id','options.values.value',
+    'options.id','options.title','options.is_exclusive',
+    '+options.values.id','+options.values.value',
+    // Also fetch the product-level value restrictions:
+    '+options.product_values.id','+options.product_values.value',
     'variants.id','variants.title','variants.sku','variants.allow_backorder',
     'variants.manage_inventory',
     '+variants.inventory_quantity',
@@ -259,11 +264,7 @@ export async function batchUpdateVariants({
   variantChanges: {
     create?: any[];
     update?: any[];
-    delete?: {
-      ids: string[];
-      object: string;
-      deleted: boolean;
-    };
+    delete?: { id: string }[];  // ← correct: array of { id }
   };
 }): Promise<any> {
   const token = localStorage.getItem("vendorToken");
@@ -881,7 +882,9 @@ export async function fetchCurrentVendor(): Promise<any> {
 // }
 
 // ❌ REMOVE THIS - hardcoded and environment-specific
-const DEFAULT_SALES_CHANNEL_ID = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
+//const DEFAULT_SALES_CHANNEL_ID = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
+
+const DEFAULT_MEDUSA_SALES_CHANNEL = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H'; // Medusa auto-assigns this
 
 export async function assignProductSalesChannels({
   productId,
@@ -892,37 +895,30 @@ export async function assignProductSalesChannels({
 }): Promise<any> {
   const token = localStorage.getItem("vendorToken");
 
-  // Step 1: Get CURRENT sales channels on the product
-  const currentChannels = await fetchProductSalesChannels(productId);
-  console.log('Current channels before assign:', currentChannels);
+  if (!salesChannelIds.length) {
+    console.warn('assignProductSalesChannels: No channels provided — skipping');
+    return;
+  }
 
-  // Step 2: Assign the correct sales channels
-  const assignResults = await Promise.all(
-    salesChannelIds
-      .filter(Boolean) // ✅ Safety filter
-      .map(channelId =>
-        axios.post(
-          `${API_BASE_URL}/vendors/sales-channels/${channelId}/products/batch`,
-          { product_ids: [{ id: productId }] },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            withCredentials: true,
-          }
-        )
-      )
+  // Step 1: Build the complete list of channels to remove
+  // Always remove the Medusa default channel + any vendor channels not in desired list
+  const ALL_KNOWN_VENDOR_CHANNELS = [
+    SALES_CHANNEL_MARKETPLACE,  // sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H — same as default, skip
+    SALES_CHANNEL_OWN_STORE,    // sc_01KMAP3HD1EVDF9FT7EHHHV8HP
+    DEFAULT_MEDUSA_SALES_CHANNEL,
+  ];
+
+  const channelsToRemove = ALL_KNOWN_VENDOR_CHANNELS.filter(
+    ch => !salesChannelIds.includes(ch)
   );
 
-  // Step 3: Remove any channels that are NOT in the new list
-  const channelsToRemove = currentChannels.filter(
-    id => id && !salesChannelIds.includes(id)
-  );
+  console.log('🔴 assignProductSalesChannels:', {
+    desired: salesChannelIds,
+    removing: channelsToRemove,
+  });
 
-  console.log('Channels to remove:', channelsToRemove);
-
-  await Promise.all(
+  // Step 2: Remove unwanted channels in parallel (best-effort, non-fatal)
+  await Promise.allSettled(
     channelsToRemove.map(channelId =>
       axios.delete(
         `${API_BASE_URL}/vendors/sales-channels/${channelId}/products/batch`,
@@ -932,38 +928,61 @@ export async function assignProductSalesChannels({
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          withCredentials: true,
         }
-      ).catch(err => console.warn('Could not remove channel:', channelId, err))
+      ).catch(err => {
+        // 404 is fine — channel wasn't assigned
+        if (err?.response?.status !== 404) {
+          console.warn(`Could not remove channel ${channelId}:`, err?.response?.data || err.message);
+        }
+      })
     )
   );
 
-  console.log('✅ Sales channels updated:', salesChannelIds);
+  // Step 3: Add only the desired channels
+  const assignResults = await Promise.all(
+    salesChannelIds.map(channelId =>
+      axios.post(
+        `${API_BASE_URL}/vendors/sales-channels/${channelId}/products/batch`,
+        { product_ids: [{ id: productId }] },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      ).then(r => {
+        console.log('✅ Assigned channel:', channelId);
+        return r;
+      })
+    )
+  );
+
+  console.log('✅ Final channels assigned:', salesChannelIds);
   return assignResults.map(r => r.data);
 }
-
 /**
  * Fetch sales channels assigned to a product
  */
 export async function fetchProductSalesChannels(productId: string): Promise<string[]> {
   const token = localStorage.getItem("vendorToken");
+  //console.log('🟡 fetchProductSalesChannels called for:', productId);
   try {
     const response = await axios.get(
       `${API_BASE_URL}/vendors/products/${productId}`,
       {
         headers: { Authorization: `Bearer ${token}` },
-        params: { 
-          fields: '+sales_channels.id,+sales_channels.name'
-        },
+        params: { fields: '+sales_channels.id,+sales_channels.name' },
         withCredentials: true,
       }
     );
     const salesChannels = response.data.product?.sales_channels || [];
-    console.log('✅ Product sales channels:', salesChannels);
-    return salesChannels.map((sc: any) => sc.id);
+    //console.log('🟡 Raw sales_channels from API:', salesChannels);
+    const ids = salesChannels.map((sc: any) => sc.id);
+    //console.log('🟡 Extracted channel IDs:', ids);
+    return ids;
   } catch (error: any) {
-    console.error('❌ Error fetching product sales channels:', error?.response?.data || error.message);
-    return []; // Return empty array instead of throwing — non-fatal
+    //console.error('🟡 fetchProductSalesChannels ERROR:', error?.response?.data || error.message);
+    return [];
   }
 }
 

@@ -118,6 +118,24 @@ function parseMessageMarkers(text: string): {
 
   if (clean.includes("[SHOW_UPLOAD]")) { showUpload = true; clean = clean.replace(/\[SHOW_UPLOAD\]/g, "") }
 
+  // Handle [SHOW_COLOR_SIZE:...] — Gemini sometimes emits this non-standard marker
+  // Extract colors and sizes from it and hand off to the real pickers below
+  const colorSizeMatch = clean.match(/\[SHOW_COLOR_SIZE:([^\]]+)\]/)
+  if (colorSizeMatch) {
+    const inner = colorSizeMatch[1]
+    const colorPairs = [...inner.matchAll(/([A-Za-z][A-Za-z\s]+):#([0-9a-fA-F]{3,6})/g)]
+    if (colorPairs.length > 0) {
+      const colors: ColorOption[] = colorPairs.map(m => ({ name: m[1].trim(), hex: `#${m[2]}`, multiSelect: true }))
+      if (colors.length > 0) showColorPicker = { colors, multiSelect: true }
+    }
+    const sizesSection = inner.match(/sizes=([^,\]]+(?:,[^,\]]+)*)/)
+    if (sizesSection) {
+      const sizes: SizeOption[] = sizesSection[1].split(",").map(s => ({ name: s.trim() })).filter(s => s.name)
+      if (sizes.length > 0) showSizePicker = { sizes }
+    }
+    clean = clean.replace(/\[SHOW_COLOR_SIZE:[^\]]+\]/g, "")
+  }
+
   const colorMatch = clean.match(/\[SHOW_COLORS(_MULTI)?:([^\]]+)\]/)
   if (colorMatch) {
     const colors: ColorOption[] = colorMatch[2].split(",").map(s => s.trim()).map(raw => {
@@ -143,6 +161,10 @@ function parseMessageMarkers(text: string): {
 
   const posMatch = clean.match(/\[SHOW_POSITION:([^\]]+)\]/)
   if (posMatch) { showPositionPicker = { area: posMatch[1].trim() }; clean = clean.replace(/\[SHOW_POSITION:[^\]]+\]/g, "") }
+
+  // ⚠️ Catchall: strip any remaining unknown [SHOW_*:...] markers AFTER all real parsers
+  // This must be LAST — if it runs first it eats valid markers before they can be parsed
+  clean = clean.replace(/\[SHOW_[A-Z_]+:[^\]]*\]/g, "")
 
   // Multi-area markers (generated internally, not by Gemini)
   const sodMatch = clean.match(/\[SHOW_SAME_OR_DIFFERENT:([^\]]+)\]/)
@@ -172,13 +194,9 @@ function parseActions(text: string): ActionButton[] {
   return actions
 }
 
-function detectRelevantActions(text: string): ActionButton[] {
-  const lower = text.toLowerCase(); const r: ActionButton[] = []
-  if (lower.includes("product") || lower.includes("design")) r.push({ label: "View Products", url: "/products", icon: "📦" })
-  if (lower.includes("order") || lower.includes("fulfillment")) r.push({ label: "View Orders", url: "/orders", icon: "🛍️" })
-  if (lower.includes("payout") || lower.includes("wallet") || lower.includes("earning")) r.push({ label: "Payouts", url: "/payouts", icon: "💰" })
-  if (lower.includes("store") || lower.includes("profile")) r.push({ label: "My Store", url: "/store", icon: "🏪" })
-  return r.slice(0, 2)
+function detectRelevantActions(_text: string): ActionButton[] {
+  // Action pills disabled — they clutter the product creation chat flow
+  return []
 }
 
 function detectSuggestions(text: string): string[] {
@@ -634,16 +652,39 @@ export default function AIAssistant({ vendorId }: Props) {
     if (open) { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); setTimeout(() => inputRef.current?.focus(), 100) }
   }, [messages, loading, open])
 
+  // Typewriter effect — streams text character by character so it feels like AI is thinking/writing
   const addAssistantMessage = (content: string, extra?: Partial<Message>) => {
-    const markers      = parseMessageMarkers(content)
-    const parsedActs   = parseActions(markers.clean)
-    const autoActs     = parsedActs.length > 0 ? parsedActs : detectRelevantActions(markers.clean)
-    setMessages(prev => [...prev, {
-      role: "assistant", content: markers.clean, actions: autoActs, suggestions: detectSuggestions(markers.clean),
-      showUpload: markers.showUpload, showColorPicker: markers.showColorPicker, showSizePicker: markers.showSizePicker,
-      showColorSizePicker: markers.showColorSizePicker, showAreaPicker: markers.showAreaPicker, showSameOrDifferent: markers.showSameOrDifferent, showAreaUpload: markers.showAreaUpload, showPositionPicker: markers.showPositionPicker,
+    const markers    = parseMessageMarkers(content)
+    const parsedActs = parseActions(markers.clean)
+    const autoActs   = parsedActs.length > 0 ? parsedActs : detectRelevantActions(markers.clean)
+    const baseMsg: Message = {
+      role: "assistant", content: "", actions: autoActs, suggestions: detectSuggestions(markers.clean),
+      showUpload: markers.showUpload, showColorPicker: markers.showColorPicker,
+      showSizePicker: markers.showSizePicker, showColorSizePicker: markers.showColorSizePicker,
+      showAreaPicker: markers.showAreaPicker, showSameOrDifferent: markers.showSameOrDifferent,
+      showAreaUpload: markers.showAreaUpload, showPositionPicker: markers.showPositionPicker,
       ...extra,
-    }])
+    }
+    // Start with empty content, stream the text in
+    const msgIndex = Date.now()
+    setMessages(prev => [...prev, { ...baseMsg, _streamId: msgIndex } as any])
+
+    const fullText = markers.clean
+    const chunkSize = 1   // 1 char per tick — natural reading pace
+    const delay     = 22  // ms between ticks — ~45 chars/sec, feels human
+
+    let i = 0
+    const tick = () => {
+      i += chunkSize
+      const partial = fullText.slice(0, i)
+      setMessages(prev => prev.map(m => (m as any)._streamId === msgIndex
+        ? { ...m, content: partial }
+        : m
+      ))
+      if (i < fullText.length) setTimeout(tick, delay)
+    }
+    if (fullText.length > 0) setTimeout(tick, delay)
+    else setMessages(prev => prev.map(m => (m as any)._streamId === msgIndex ? { ...m, content: fullText } : m))
   }
 
   // FIX E3: Send only session ID in body — never the base64 blob
@@ -957,7 +998,7 @@ export default function AIAssistant({ vendorId }: Props) {
                             session.designsByArea[a] = { sessionId, base64, filename }
                           }
                           session.pendingAreaUploads = []
-                          sendMessage(`I uploaded my design: ${filename}. Design session ID: ${sessionId}`)
+                          sendMessage(`Design ready for ${areas ? areas[0] ?? "front" : "front"} area. Session: ${sessionId}. File: ${filename}`)
                         } else {
                           // Remove this area from pending
                           session.pendingAreaUploads = (session.pendingAreaUploads ?? []).filter(a => a !== area)
@@ -972,7 +1013,7 @@ export default function AIAssistant({ vendorId }: Props) {
                             )
                           } else {
                             // All areas uploaded — proceed
-                            sendMessage(`I uploaded all designs. Primary design session ID: ${sessionId}. Areas: ${areas.join(", ")}`)
+                            sendMessage(`All area designs ready. Session: ${sessionId}. Areas: ${areas.join(", ")}`)
                           }
                         }
                       }}
@@ -1141,7 +1182,7 @@ Does this look good?`,
 
                   {msg.showUpload && msg.role === "assistant" && (
                     <DesignUploader vendorId={vendorId}
-                      onUploadComplete={(sessionId, filename, base64) => { productSessionRef.current.designSessionId = sessionId; productSessionRef.current.designBase64 = base64; sendMessage(`I uploaded my design: ${filename}. Design session ID: ${sessionId}`) }}
+                      onUploadComplete={(sessionId, filename, base64) => { productSessionRef.current.designSessionId = sessionId; productSessionRef.current.designBase64 = base64; sendMessage(`Design ready. Session: ${sessionId}. File: ${filename}`) }}
                       onSkip={() => sendMessage("I will skip the design for now, just create the product")}
                     />
                   )}
@@ -1154,11 +1195,12 @@ Does this look good?`,
                         storeApprovedMockup(approvedSessionId)
                         // Send approval with pricing context for Gemini's STEP 5
                         // Gemini will present the breakdown naturally and ask for selling price
+                        // Pass pricing context silently in system field — not visible in chat
                         const p = productSessionRef.current.priceBreakdown
                         const pricingContext = p
-                          ? ` [SYSTEM: cost breakdown — blank: ₹${p.blankProductCost}, printing: ₹${p.basePrintingCost}${p.printingGSTAmount > 0 ? ` + ₹${p.printingGSTAmount} GST` : ''}, shipping: ₹${p.shippingCharges}, total cost: ₹${p.finalPrice}, suggested selling price: ₹${p.suggestedSellingPrice}]`
+                          ? ` CONTEXT_PRICING: blank=${p.blankProductCost} printing=${p.basePrintingCost} gst=${p.printingGSTAmount} shipping=${p.shippingCharges} cost=${p.finalPrice} suggested=${p.suggestedSellingPrice}`
                           : ""
-                        sendMessage(`The preview looks great! Let's proceed to create the product.${pricingContext}`)
+                        sendMessage(`Preview approved.${pricingContext}`)
                       }}
                       onRetry={() => sendMessage("Please regenerate the mockup preview.")}
                     />

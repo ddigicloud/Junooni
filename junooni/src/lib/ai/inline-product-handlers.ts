@@ -703,45 +703,52 @@ export async function handleCreateProductFromChat(
       }
     }
 
-    // ── Sales channels — determined server-side from vendor's actual setup ────
+    // ── Sales channels — read directly from vendor model fields ──────────────
+    // Vendor model has: sell_on_marketplace (boolean) and sell_on_own_store (boolean)
+    // These are the authoritative source — no guessing from subdomain/handle
     const channelIds: string[] = []
 
-    // Fetch vendor's own store config to see if they have an own store
-    let vendorHasOwnStore = false
     try {
       const vendorFull = await query.graph({
         entity: "vendor",
-        fields: ["id", "name", "subdomain", "customDomain", "handle", "storeName"],
+        fields: ["id", "sell_on_marketplace", "sell_on_own_store", "marketplace_status"],
         filters: { id: vendorId },
       })
       const v = vendorFull.data?.[0] as any
-      vendorHasOwnStore = !!(v?.subdomain || v?.customDomain || v?.handle)
-    } catch { /* use default */ }
 
-    // Always include marketplace if configured
-    if (MARKETPLACE_SC) channelIds.push(MARKETPLACE_SC)
+      const sellMarketplace = !!(v?.sell_on_marketplace)
+      const sellOwnStore    = !!(v?.sell_on_own_store)
+      const marketplaceApproved = v?.marketplace_status === "approved"
 
-    // Check what Gemini/creator explicitly chose
-    const geminiChannels = args.sales_channels ?? []
-    const creatorChoseOwnStoreOnly = geminiChannels.includes("own_store") && !geminiChannels.includes("marketplace")
-    const creatorChoseMarketplaceOnly = geminiChannels.includes("marketplace") && !geminiChannels.includes("own_store") && geminiChannels.length > 0
+      console.log(`[create_product_from_chat] Vendor channels: sell_on_marketplace=${sellMarketplace}(approved=${marketplaceApproved}), sell_on_own_store=${sellOwnStore}`)
 
-    if (vendorHasOwnStore && OWN_STORE_SC) {
-      if (!creatorChoseMarketplaceOnly) {
-        // Vendor has own store — include it unless creator explicitly chose marketplace only
-        if (!channelIds.includes(OWN_STORE_SC)) channelIds.push(OWN_STORE_SC)
+      // Check what creator explicitly chose (Gemini may have asked)
+      const geminiChannels = args.sales_channels ?? []
+      const creatorChoseMarketplaceOnly = geminiChannels.includes("marketplace") && !geminiChannels.includes("own_store") && geminiChannels.length > 0
+      const creatorChoseOwnStoreOnly    = geminiChannels.includes("own_store")   && !geminiChannels.includes("marketplace") && geminiChannels.length > 0
+
+      // Add marketplace if vendor is enabled for it AND approved
+      if (sellMarketplace && marketplaceApproved && MARKETPLACE_SC && !creatorChoseOwnStoreOnly) {
+        channelIds.push(MARKETPLACE_SC)
       }
+
+      // Add own store if vendor has it enabled
+      if (sellOwnStore && OWN_STORE_SC && !creatorChoseMarketplaceOnly) {
+        channelIds.push(OWN_STORE_SC)
+      }
+
+      // Fallback: if no channels resolved but vendor exists, default to marketplace
+      if (channelIds.length === 0) {
+        if (MARKETPLACE_SC) channelIds.push(MARKETPLACE_SC)
+        console.warn(`[create_product_from_chat] No channels from vendor flags — defaulting to marketplace`)
+      }
+
+    } catch (chanErr: any) {
+      console.warn(`[create_product_from_chat] Could not fetch vendor channels: ${chanErr.message}`)
+      if (MARKETPLACE_SC) channelIds.push(MARKETPLACE_SC)
     }
 
-    if (creatorChoseOwnStoreOnly && channelIds.includes(MARKETPLACE_SC)) {
-      // Creator explicitly chose own store only — remove marketplace
-      const idx = channelIds.indexOf(MARKETPLACE_SC)
-      if (idx > -1) channelIds.splice(idx, 1)
-    }
-
-    if (channelIds.length === 0 && MARKETPLACE_SC) channelIds.push(MARKETPLACE_SC)
-
-    console.log(`[create_product_from_chat] Sales channels: [${channelIds.join(",")}] vendorHasOwnStore=${vendorHasOwnStore}`)
+    console.log(`[create_product_from_chat] Final sales channels: [${channelIds.join(", ")}]`)
 
     // ── Product metadata — same keys as create.tsx productMetadata ────────────
     const productMetadata: Record<string, any> = {
@@ -976,76 +983,64 @@ export async function handleCreateProductFromChat(
     if (!product) throw new Error("No product returned from workflow.")
     console.log(`[create_product_from_chat] ✅ Created: ${product.id} — ${product.title}`)
 
-    // ── Link artwork to product via remoteLink ────────────────────────────────
-    // Table: product_product_vendorartworkmodule_vendor_artwork
-    // → Side 1 key: "product", Side 2 key: "vendorArtworkModule"
+    // ── Link artwork to product ───────────────────────────────────────────────
+    // Table confirmed from logs: product_product_vendorartworkmodule_vendor_artwork
+    // remoteLink key from table name: "product" + "vendorArtworkModule"
     if (artworkId && product.id) {
       let artworkLinked = false
 
-      // Attempt 1: correct keys derived from table name
-      // "product_product" → key="product", "vendorartworkmodule" → key="vendorArtworkModule"
+      // Attempt 1: remoteLink with key derived from table name (vendorArtworkModule)
       try {
         await remoteLink.create([{
-          product:              { product_id:       product.id },
-          vendorArtworkModule:  { vendor_artwork_id: artworkId  },
+          product:             { product_id:       product.id },
+          vendorArtworkModule: { vendor_artwork_id: artworkId  },
         }])
         artworkLinked = true
-        console.log(`[create_product_from_chat] ✅ Artwork linked via remoteLink (product/vendorArtworkModule)`)
+        console.log(`[create_product_from_chat] ✅ Artwork linked via remoteLink`)
       } catch (e1: any) {
-        console.warn(`[create_product_from_chat] Artwork link attempt 1 failed: ${e1.message}`)
+        console.warn(`[create_product_from_chat] Artwork remoteLink failed: ${e1.message}`)
       }
 
-      // Attempt 2: direct DB insert (most reliable — same pattern as vendor-product link)
+      // Attempt 2: Direct DB insert — hardcoded table/columns confirmed from debug
+      // Table: product_product_vendorartworkmodule_vendor_artwork
+      // Columns we expect: product_id, vendor_artwork_id (+ possibly id, created_at, deleted_at)
       if (!artworkLinked) {
         try {
-          const TABLE = "product_product_vendorartworkmodule_vendor_artwork"
+          const linkId = "link_" + Array.from({ length: 26 }, () =>
+            "0123456789ABCDEFGHJKMNPQRSTVWXYZ"[Math.floor(Math.random() * 32)]
+          ).join("")
 
-          // Check actual columns
-          const colResult = await pgClient.raw(
-            `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 ORDER BY ordinal_position`,
-            [TABLE]
-          )
-          const cols: string[] = (colResult.rows ?? []).map((r: any) => r.column_name)
-          console.log(`[create_product_from_chat] Link table columns: ${cols.join(", ")}`)
+          // Use knex queryBuilder instead of raw to avoid template literal binding issues
+          await pgClient("product_product_vendorartworkmodule_vendor_artwork").insert({
+            id:               linkId,
+            product_id:       product.id,
+            vendor_artwork_id: artworkId,
+            created_at:       pgClient.raw("NOW()"),
+            deleted_at:       null,
+          }).onConflict().ignore()
 
-          const hasId         = cols.includes("id")
-          const hasCreatedAt  = cols.includes("created_at")
-          const hasDeletedAt  = cols.includes("deleted_at")
-          const productCol    = cols.find(c => c === "product_id")
-          const artworkCol    = cols.find(c => c.includes("vendor_artwork") || c.includes("artwork"))
+          artworkLinked = true
+          console.log(`[create_product_from_chat] ✅ Artwork linked via knex insert (id=${linkId})`)
+        } catch (e2: any) {
+          console.warn(`[create_product_from_chat] Artwork knex insert failed: ${e2.message}`)
 
-          if (productCol && artworkCol) {
-            const linkId = "link_" + Array.from({ length: 26 }, () =>
+          // Attempt 3: plain pgClient.raw with simple string concatenation (no template literals)
+          try {
+            const linkId2 = "link_" + Array.from({ length: 26 }, () =>
               "0123456789ABCDEFGHJKMNPQRSTVWXYZ"[Math.floor(Math.random() * 32)]
             ).join("")
-
-            if (hasId) {
-              await pgClient.raw(
-                `INSERT INTO "${TABLE}" (id, ${productCol}, ${artworkCol}${hasCreatedAt ? ", created_at" : ""}${hasDeletedAt ? ", deleted_at" : ""})
-                 VALUES (?, ?, ?${hasCreatedAt ? ", NOW()" : ""}${hasDeletedAt ? ", NULL" : ""})
-                 ON CONFLICT DO NOTHING`,
-                [linkId, product.id, artworkId]
-              )
-            } else {
-              await pgClient.raw(
-                `INSERT INTO "${TABLE}" (${productCol}, ${artworkCol}${hasCreatedAt ? ", created_at" : ""})
-                 VALUES (?, ?${hasCreatedAt ? ", NOW()" : ""})
-                 ON CONFLICT DO NOTHING`,
-                [product.id, artworkId]
-              )
-            }
+            const sql = "INSERT INTO product_product_vendorartworkmodule_vendor_artwork (product_id, vendor_artwork_id, created_at, deleted_at) VALUES ('" + product.id + "', '" + artworkId + "', NOW(), NULL) ON CONFLICT DO NOTHING"
+            await pgClient.raw(sql)
             artworkLinked = true
-            console.log(`[create_product_from_chat] ✅ Artwork linked via direct DB insert (${productCol}=${product.id}, ${artworkCol}=${artworkId})`)
-          } else {
-            console.warn(`[create_product_from_chat] Could not identify columns — found: ${cols.join(", ")}`)
+            console.log(`[create_product_from_chat] ✅ Artwork linked via raw SQL string`)
+          } catch (e3: any) {
+            console.warn(`[create_product_from_chat] Artwork raw SQL failed: ${e3.message}`)
           }
-        } catch (e2: any) {
-          console.warn(`[create_product_from_chat] Artwork link DB attempt failed: ${e2.message}`)
         }
       }
 
       if (!artworkLinked) {
-        console.warn(`[create_product_from_chat] ⚠️ All artwork link attempts failed`)
+        console.warn(`[create_product_from_chat] ⚠️ Artwork-product link failed — artwork exists but unlinked`)
       }
     }
 
@@ -1159,20 +1154,32 @@ export async function handleCreateProductFromChat(
 
     // 2. Additional design mockups from session store (other colors AND other areas)
     if (Array.isArray(args.additional_mockup_sessions)) {
-      args.additional_mockup_sessions.forEach((sessionId: string) => {
+      const numColors = args.selected_colors.length
+      args.additional_mockup_sessions.forEach((sessionId: string, sessionIdx: number) => {
         const stored    = getMockupPreview(sessionId)
         const area      = getMockupArea(sessionId)      ?? ""
         const colorName = getMockupColorName(sessionId) ?? ""
 
         if (stored && stored.length > 100) {
-          // Find colorIndex by matching stored colorName against selected_colors
-          const colorIdx = args.selected_colors.findIndex(
-            (c: any) => c.name?.toLowerCase() === colorName.toLowerCase()
-          )
-          const safeColorIdx = colorIdx >= 0 ? colorIdx : 0
-          const safeColorName = colorName || (args.selected_colors[safeColorIdx]?.name ?? `color${safeColorIdx + 2}`).toLowerCase()
-          const areaLabel = area ? `-${area}` : ""
+          let safeColorIdx: number
+          let safeColorName: string
 
+          if (colorName) {
+            // Best case: colorName stored — find exact match
+            const colorIdx = args.selected_colors.findIndex(
+              (c: any) => c.name?.toLowerCase() === colorName.toLowerCase()
+            )
+            safeColorIdx  = colorIdx >= 0 ? colorIdx : (sessionIdx % numColors)
+            safeColorName = colorName
+          } else {
+            // Fallback: no colorName stored — infer from session order
+            // Sessions are stored: [color0/area0, color1/area0, color0/area1, ...]
+            // For single-area: [color0, color1, color2...] so idx directly = colorIdx (starting from 1 since 0=approved)
+            safeColorIdx  = (sessionIdx + 1) % numColors
+            safeColorName = (args.selected_colors[safeColorIdx]?.name ?? `color${safeColorIdx + 1}`).toLowerCase()
+          }
+
+          const areaLabel = area ? `-${area}` : ""
           designMockups.push({
             base64:     stored,
             label:      `${safeColorName.toLowerCase()}${areaLabel}-design-mockup`,

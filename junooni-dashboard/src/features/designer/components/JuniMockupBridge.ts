@@ -13,6 +13,7 @@
 import { renderMockupDirectly } from './MockupGeneratorClass'
 import type { DesignElement, TotalPricingBreakdown, AreaPricingInfo } from './types'
 import { resolveImageUrl, optimizeImage, cropTransparentPixels } from './utils'
+import { captureCanvasImageForArea } from './canvas-export-utils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 1: Data helpers (same as Canvas.tsx getCanvasConfig / getPrintableAreaFromPhoto)
@@ -469,8 +470,6 @@ export async function generateJuniMockupsAllAreasAllColors(opts: {
 // that the Canvas designer creates when exporting artwork.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { captureCanvasImageForArea } from './canvas-export-utils'
-
 export async function generateJuniCanvasLayout(opts: {
   blankData:        any
   technologyId:     string
@@ -533,9 +532,23 @@ export async function generateJuniCanvasLayout(opts: {
       getPrintableAreaFn,
       getCustomizationAreaFn,
     )
-    return layoutBase64  // data:image/png;base64,...
+    if (layoutBase64) {
+      console.log(`[JuniMockupBridge] Canvas layout generated: ${layoutBase64.length} chars for area="${areaKey}"`)
+      return layoutBase64
+    } else {
+      // captureCanvasImageForArea returned null — this means visibleElements was empty
+      // Fallback: use the mockup from renderMockupDirectly as the canvas layout
+      console.warn(`[JuniMockupBridge] captureCanvasImageForArea returned null for area="${areaKey}" — falling back to renderMockupDirectly`)
+      const mockupPhoto = findMockupPhoto(tech.mockupPhotos ?? [], area, selectedColorHex)
+      if (!mockupPhoto) return null
+      const { canvasConfigs, printableAreas } = getAllConfigs(tech)
+      const fallbackBase64 = await renderMockupDirectly(
+        mockupPhoto, designElements, canvasConfigs, printableAreas, selectedColorHex, 800
+      )
+      return fallbackBase64 ?? null
+    }
   } catch (err: any) {
-    console.error('[JuniMockupBridge] Canvas layout generation failed:', err.message)
+    console.error('[JuniMockupBridge] Canvas layout generation failed:', err.message, err.stack?.slice(0, 200))
     return null
   }
 }

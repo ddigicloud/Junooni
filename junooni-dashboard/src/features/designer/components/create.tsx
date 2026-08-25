@@ -1953,6 +1953,7 @@ if (!mergedLocationStateRef.current && location.state) {
   const [salesChannelsDirty, setSalesChannelsDirty] = useState(false);
   // near other hooks at component top
   const didPopulateRef = useRef(false);
+  const selectedSalesChannelsRef = useRef<string[]>([]);
   // Canvas pricing and mockup data
   const [canvasPricingData, setCanvasPricingData] = useState<any>(null);
   const [canvasMockupData, setCanvasMockupData] = useState<any>(null);
@@ -4961,6 +4962,10 @@ useEffect(() => {
     };
   }, []);
 
+  useEffect(() => {
+  selectedSalesChannelsRef.current = selectedSalesChannels;
+}, [selectedSalesChannels]);
+
   // Load vendor sales channels
   // Load vendor sales channels
   useEffect(() => {
@@ -4973,7 +4978,9 @@ useEffect(() => {
         } else {
           if (vendor.sell_on_marketplace) allowed.push(SALES_CHANNEL_MARKETPLACE);
           if (vendor.sell_on_own_store) allowed.push(SALES_CHANNEL_OWN_STORE);
-          if (allowed.length === 0) allowed = [SALES_CHANNEL_MARKETPLACE];
+          if (allowed.length === 0) {
+            console.warn('Vendor has no sales channels configured');
+          }
         }
         setVendorSalesChannels(allowed);
 
@@ -4991,10 +4998,10 @@ useEffect(() => {
         }
       })
       .catch(err => {
-        console.error('Vendor fetch failed (non-fatal):', err);
-        setVendorSalesChannels([SALES_CHANNEL_MARKETPLACE]);
-        setSelectedSalesChannels([SALES_CHANNEL_MARKETPLACE]);
-        form.setValue('status', 'proposed');
+        console.error('Vendor fetch failed:', err);
+        // Don't assume marketplace — leave empty and let user select
+        setVendorSalesChannels([]);
+        setSelectedSalesChannels([]);
       })
       .finally(() => setIsLoadingSalesChannels(false));
   }, []);
@@ -5127,7 +5134,7 @@ useEffect(() => {
             setError('Failed to populate form with imported data');
             // leave hasProcessedInitialData as false so it can retry if appropriate
           }
-        }, 2000); // keep your existing delay
+        }, 3000); // keep your existing delay
       } else {
         // if no designData present, still mark processed so we don't re-run endlessly
         //console.log('🎯 CREATE DEBUG: No designData present — marking processed');
@@ -6467,14 +6474,19 @@ if (!printTechId || !printTechName) {
               }
             }
 
+             //console.log('🟢 About to assign channels:', channelsToAssign);
+            console.log('🟢 selectedSalesChannels inside timeout:', selectedSalesChannels);
+
               // STEP C: Assign sales channels based on vendor flags
             // STEP C: Assign sales channels based on vendor flags
             // STEP C: Assign sales channels based on user selection
               try {
-                const channelsToAssign = selectedSalesChannels.length > 0
-                  ? selectedSalesChannels
-                  : [SALES_CHANNEL_MARKETPLACE];
-
+                // Use ref to get latest value — avoids stale closure inside setTimeout
+                const channelsToAssign = selectedSalesChannelsRef.current;
+                if (channelsToAssign.length === 0) {
+                  console.error('No sales channels selected — skipping assignment');
+                  return;
+                }
                 await assignProductSalesChannels({
                   productId: result.id,
                   salesChannelIds: channelsToAssign,
@@ -6488,7 +6500,7 @@ if (!printTechId || !printTechName) {
         } catch (inventoryError) {
           console.error('Post-creation error:', inventoryError);
         }
-      }, 2000);
+      }, 3000);
       
       setShowSuccess(true);
     }
@@ -6610,7 +6622,7 @@ if (!printTechId || !printTechName) {
       {/* Product Creation Overlay */}
       {isSubmitting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-90 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-5 p-10 bg-white border border-gray-100 shadow-2xl rounded-2xl max-w-sm w-full mx-4">
+          <div className="flex flex-col items-center w-full max-w-sm gap-5 p-10 mx-4 bg-white border border-gray-100 shadow-2xl rounded-2xl">
             {/* Animated icon */}
             <div className="relative w-20 h-20">
               <div className="absolute inset-0 border-4 border-orange-100 rounded-full"></div>

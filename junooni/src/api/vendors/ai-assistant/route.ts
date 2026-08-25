@@ -446,7 +446,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     const genAI = await getGenAI()
     const chat = genAI.chats.create({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.5-flash-lite",
       history: geminiHistory,
       config: {
         systemInstruction: systemPrompt,
