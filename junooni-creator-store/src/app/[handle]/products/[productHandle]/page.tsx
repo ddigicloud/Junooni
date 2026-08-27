@@ -18,7 +18,27 @@ export const revalidate = 0
 const fetchProduct = cache(async (handle: string, productHandle: string): Promise<any | null> => {
   const baseUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000"
   const pubKey  = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? ""
-  const url = `${baseUrl}/storefront/${handle}/product/${productHandle}`
+    const fields = [
+    'id','title','subtitle','handle','description','status',
+    'thumbnail','discountable','weight','length','width','height',
+    'material','origin_country','metadata',
+    'options.id','options.title','options.is_exclusive',
+    '+options.values.id','+options.values.value',
+    'variants.id','variants.title','variants.sku',
+    'variants.allow_backorder','variants.manage_inventory',
+    '+variants.inventory_quantity',
+    'variants.prices.amount','variants.prices.currency_code',
+    'variants.options.id','variants.options.value',
+    '+variants.options.option.id','+variants.options.option.title',
+    'variants.inventory_items.inventory_item_id',
+    'variants.metadata',
+    '+variants.images.id','+variants.images.url',
+    'images.id','images.url','images.rank','images.metadata',
+    'categories.id','categories.name',
+    '+sales_channels.id','+sales_channels.name',
+  ].join(',')
+
+  const url = `${baseUrl}/storefront/${handle}/product/${productHandle}?fields=${fields}`
 
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
   console.log(`[fetchProduct] ▶ START`)

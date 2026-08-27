@@ -848,12 +848,14 @@ export async function handleCreateProductFromChat(
         }
       }
 
-      // Canvas layout PNGs — one per area (Error 4 fix: all areas not just front)
+      // Canvas layout PNGs — one per area
       const allLayouts = args.all_canvas_layouts ?? (args.canvas_layout_base64 ? [args.canvas_layout_base64] : [])
+      console.log(`[create_product_from_chat] Canvas layouts: ${allLayouts.length} (all_canvas_layouts=${args.all_canvas_layouts?.length ?? 0}, canvas_layout_base64=${args.canvas_layout_base64?.length ?? 0} chars)`)
       const custAreas  = tech?.custAreas ?? []
       allLayouts.forEach((layoutBase64, idx) => {
         if (layoutBase64.length < 100) return
         const areaName = custAreas[idx]?.areaName ?? args.design_area ?? "front"
+        console.log(`[create_product_from_chat] Adding canvas layout: ${areaName}, ${layoutBase64.length} chars`)
         artworkFiles.push({
           filename: `canvas-${areaName.toLowerCase()}-complete-layout.png`,
           mimeType: "image/png",

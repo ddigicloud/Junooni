@@ -1191,7 +1191,7 @@ const isNewVariant = (variant) => {
         
         // For new variants, use default values and a generated ID
         // Preserve existing inventory item ID mapping if possible
-        const variantId = generateUUID();
+        //const variantId = generateUUID();
         
         // Find a previous variant that might have relevant data
         // This helps when adding a new option but wanting to keep pricing data
@@ -1208,16 +1208,18 @@ const isNewVariant = (variant) => {
         });
 
         
-        // Use the first matching variant's data as defaults
+                // Use the first matching variant's data as defaults
         const matchingOldVariant = singleOptionMatches[0];
-        
+
         return {
           ...newVariant,
-          id: variantId,
+          id: generateUUID(),
           price: matchingOldVariant?.price || 0,
           stock: matchingOldVariant?.stock || 0,
           sku: generateUniqueSku(`${newVariant.title}`),
-          // Mark as a new variant for inventory tracking
+          cost_price: matchingOldVariant?.cost_price || 0,
+          metadata: matchingOldVariant?.metadata || {},
+          inventoryItemId: matchingOldVariant?.inventoryItemId || null,
           isNewVariant: true
         };
       });
@@ -1263,21 +1265,56 @@ const isNewVariant = (variant) => {
       // This ensures incomplete variants are removed
       replaceVariants(variantsWithExistingData);
       
-      // Track deleted variants for inventory tracking
+           // Track deleted variants for batch delete
+      // An original variant is "removed" if none of the newly generated variants
+      // kept its var_ ID (either directly or via the option-value match in onSubmit)
       const existingVariantIds = currentVariants
         .filter(v => originalVariantIds.includes(v.id))
         .map(v => v.id);
-        
-      const newVariantIds = variantsWithExistingData
-        .filter(v => !v.isNewVariant)
-        .map(v => v.id);
-        
-      // Find variants that were removed by the regeneration
-      const removedVariantIds = existingVariantIds.filter(id => !newVariantIds.includes(id));
-      
-      // Add these to the deletedVariantIds for batch update
+
+      // A variant is "kept" if it still appears in the new list with its original var_ ID
+      const keptVariantIds = variantsWithExistingData
+        .map(v => v.id)
+        .filter(id => id && id.startsWith('var_'));
+
+      // Also check by option value match — a variant is kept if its option values
+      // still exist in the new set (even if under a new UUID)
+      const newOptionValueSets = variantsWithExistingData.map(v =>
+        (v.optionValues || [])
+          .map((o: any) => o.value?.toLowerCase().trim())
+          .filter(Boolean)
+          .sort()
+          .join('|')
+      );
+
+      const removedVariantIds = existingVariantIds.filter(existingId => {
+        // If the var_ ID is directly kept, not removed
+        if (keptVariantIds.includes(existingId)) return false;
+
+        // Find the original variant's option values
+        const originalVariant = currentVariants.find(v => v.id === existingId);
+        if (!originalVariant) return true;
+
+        const originalKey = (originalVariant.optionValues || [])
+          .map((o: any) => o.value?.toLowerCase().trim())
+          .filter(Boolean)
+          .sort()
+          .join('|');
+
+        // If the original option value combination still exists in new variants, not removed
+        if (originalKey && newOptionValueSets.includes(originalKey)) return false;
+
+        // Otherwise it was removed
+        return true;
+      });
+
+      // Add removed variants to deletedVariantIds (avoid duplicates)
       if (removedVariantIds.length > 0) {
-        setDeletedVariantIds(prev => [...prev, ...removedVariantIds]);
+        setDeletedVariantIds(prev => {
+          const combined = [...prev, ...removedVariantIds];
+          return [...new Set(combined)]; // deduplicate
+        });
+        console.log('🗑️ Variants marked for deletion:', removedVariantIds);
       }
       
     } else {
@@ -2527,30 +2564,65 @@ const onSubmit = async (values: ProductFormValues) => {
                 
                 // --- STEP 7: Prepare Variants --- 
                 try {
-                  // Use a simplified approach to format variants for the API
-                  // without relying on external functions
                   const formatVariantForApi = (variant) => {
                     if (!variant) return null;
 
-                    // Get current form options for ID lookup
                     const formOptions = form.getValues('options');
 
-                    // Build options array in Medusa v2 format: [{ option_id, value }]
                     let options: { option_id: string; value: string }[] = [];
 
                     if (variant.optionValues && Array.isArray(variant.optionValues) && variant.optionValues.length > 0) {
-                      options = variant.optionValues
-                        .filter(opt => opt && opt.value)
-                        .map(opt => {
-                          const matchedFormOpt = formOptions.find(fo =>
-                            fo.id === opt.optionId || fo.title === opt.optionName
-                          );
-                          return {
-                            option_id: matchedFormOpt?.id || opt.optionId || '',
-                            value: opt.value
-                          };
-                        })
-                        .filter(o => o.option_id && o.value);
+                            options = variant.optionValues
+                            .filter(opt => opt && opt.value)
+                            .map(opt => {
+                              // 1. Exact ID match (most reliable)
+                              let matchedFormOpt = formOptions.find(fo => fo.id === opt.optionId);
+
+                              // 2. Current title match (handles renamed options)
+                              if (!matchedFormOpt) {
+                                matchedFormOpt = formOptions.find(fo =>
+                                  fo.title?.toLowerCase() === opt.optionName?.toLowerCase()
+                                );
+                              }
+
+                              // 3. Find via originalData if title was renamed
+                              if (!matchedFormOpt && originalData?.options) {
+                                const originalOpt = originalData.options.find(
+                                  (o: any) => o.title?.toLowerCase() === opt.optionName?.toLowerCase()
+                                );
+                                if (originalOpt) {
+                                  matchedFormOpt = formOptions.find(fo => fo.id === originalOpt.id);
+                                }
+                              }
+
+                              const resolvedOptionId = matchedFormOpt?.id || opt.optionId || '';
+
+                                        // Extract plain string from opt.value — it may be:
+                                        // - a plain string: "blue"
+                                        // - an OptionValue object: { optionId, optionName, value: "blue" }
+                                        // - a nested object: { value: "blue" }
+                                        let resolvedValue: string;
+                                        if (typeof opt.value === 'string') {
+                                          resolvedValue = opt.value.trim();
+                                        } else if (opt.value && typeof opt.value === 'object') {
+                                          // Try every possible key the object might use
+                                          resolvedValue = String(
+                                            (opt.value as any).value ??
+                                            (opt.value as any).label ??
+                                            (opt.value as any).name ??
+                                            ''
+                                          ).trim();
+                                        } else {
+                                          resolvedValue = '';
+                                        }
+
+                              return {
+                                option_id: resolvedOptionId,
+                                value: resolvedValue
+                              };
+                            })
+                            // CRITICAL: filter out empty option_id or empty value
+                            .filter(o => o.option_id && o.value && o.value !== 'undefined' && o.value !== '[object Object]');
                     }
 
                     // Fallback: parse from variant title e.g. "White / One Size"
@@ -2565,13 +2637,28 @@ const onSubmit = async (values: ProductFormValues) => {
                         .filter(o => o.option_id && o.value);
                     }
 
+                        if (options.length === 0) {
+                          console.warn(`⚠️ Variant "${variant.title}" has no resolvable option_ids — skipping`);
+                          return null;
+                        }
+
+                        // Log exact payload being sent — confirm values are plain strings
+                        console.log(`📦 Variant "${variant.title}" final options payload:`, JSON.stringify(options));
+
                     console.log(`Variant "${variant.title}" optionValues raw:`, variant.optionValues, '→ formatted options:', options);
 
                     const price = typeof variant.price === 'string' ? parseFloat(variant.price) : (variant.price || 0);
 
-                    const costPrice = typeof variant.cost_price === 'string'
-                      ? parseFloat(variant.cost_price) || 0
-                      : (variant.cost_price || 0);
+                    const costPrice = (() => {
+                      const direct = typeof variant.cost_price === 'string'
+                        ? parseFloat(variant.cost_price) || 0
+                        : (variant.cost_price || 0);
+                      if (direct > 0) return direct;
+                      const fromMeta = typeof variant.metadata?.cost_price === 'string'
+                        ? parseFloat(variant.metadata.cost_price) || 0
+                        : (variant.metadata?.cost_price || 0);
+                      return fromMeta;
+                    })();
 
                     const variantMetadata = {
                       ...(variant.metadata || {})
@@ -2609,19 +2696,72 @@ const onSubmit = async (values: ProductFormValues) => {
                   
                   // --- STEP 8: Prepare Final Data For Submission ---
                   try {
-                    // Identify new variants and updated variants
+                                                                                // Identify new variants and updated variants.
+                    // Strategy: use the CURRENT FORM variants as the source of truth.
+                    // Any variant whose ID starts with 'var_' is an existing server variant → update.
+                    // Any variant with a UUID is new → create.
+                    // We do NOT use formattedVariants for classification because
+                    // generateVariantsFromOptions may have assigned new UUIDs to existing variants.
                     const createdVariants = [];
                     const updatedVariants = [];
-                    
+
+                    const currentFormVariants = form.getValues('variants');
+
+                    // Build a lookup: option value combo string → original var_ ID
+                    // e.g. "blue|xxl" → "var_01M112..."
+                    const originalVariants = currentFormVariants.filter(
+                      v => v.id && v.id.startsWith('var_')
+                    );
+
+                    // For each formatted variant, find its matching original var_ ID
+                    // by matching option values regardless of option name/title changes
                     for (let i = 0; i < formattedVariants.length; i++) {
                       const v = formattedVariants[i];
-                      if (originalVariantIds && Array.isArray(originalVariantIds) && !originalVariantIds.includes(v.id)) {
-                        createdVariants.push(v);
-                      } else if (originalVariantIds && Array.isArray(originalVariantIds) && originalVariantIds.includes(v.id)) {
+
+                      if (v.id && v.id.startsWith('var_')) {
+                        // Already has server ID
                         updatedVariants.push(v);
+                        continue;
                       }
-                    
+
+                      // v has a UUID — find matching original by option VALUES only
+                      // v.options = [{ option_id, value }]
+                      // orig.optionValues = [{ optionId, optionName, value }]
+                      const fmtValues = (v.options || [])
+                        .map((o: any) => o.value?.toLowerCase().trim())
+                        .filter(Boolean)
+                        .sort()
+                        .join('|');
+
+                      const matchedOriginal = originalVariants.find(orig => {
+                        const origValues = (orig.optionValues || [])
+                          .map((o: any) => o.value?.toLowerCase().trim())
+                          .filter(Boolean)
+                          .sort()
+                          .join('|');
+                        return fmtValues === origValues && fmtValues !== '';
+                      });
+
+                      if (matchedOriginal) {
+                        // Reuse the var_ ID — treat as update
+                        updatedVariants.push({ ...v, id: matchedOriginal.id });
+                        console.log(`✅ Matched to original var_: ${matchedOriginal.id} (values: ${fmtValues})`);
+                      } else {
+                        // Genuinely new combination
+                        createdVariants.push(v);
+                        console.log(`🆕 New variant (values: ${fmtValues})`);
+                      }
                     }
+
+                    // Only delete var_ IDs that are NOT being reused as updates
+                    const updatedVariantIds = new Set(updatedVariants.map(v => v.id));
+                    const safeDeletedVariantIds = deletedVariantIds.filter(
+                      id => !updatedVariantIds.has(id)
+                    );
+
+                    console.log("createdVariants IDs:", createdVariants.map(v => v.id));
+                    console.log("updatedVariants IDs:", updatedVariants.map(v => v.id));
+                    console.log("safeDeletedVariantIds:", safeDeletedVariantIds);
                     
                     //Log variant changes
                     console.log("Variant changes:", {
@@ -2688,41 +2828,80 @@ const onSubmit = async (values: ProductFormValues) => {
                       const hasVariantChanges = 
                         createdVariants.length > 0 || 
                         updatedVariants.length > 0 || 
-                        (deletedVariantIds && deletedVariantIds.length > 0);
+                        (safeDeletedVariantIds && safeDeletedVariantIds.length > 0);
 
-                        console.log("=== updatedVariants being sent to batch API ===", JSON.stringify(updatedVariants, null, 2));
+                      console.log("=== updatedVariants being sent to batch API ===", JSON.stringify(updatedVariants, null, 2));
                       if (hasVariantChanges) {
                         const variantResult = await batchUpdateVariants({
                           productId: id,
                           variantChanges: {
                             create: createdVariants.length > 0 ? createdVariants : undefined,
                             update: updatedVariants.length > 0 ? updatedVariants : undefined,
-                            // Medusa v2 batch delete expects array of { id: string }
-                            delete: deletedVariantIds && deletedVariantIds.length > 0 
-                              ? deletedVariantIds.map(id => ({ id }))
+                            delete: safeDeletedVariantIds && safeDeletedVariantIds.length > 0 
+                              ? safeDeletedVariantIds.map(id => ({ id }))
                               : undefined,
                           }
                         });
 
                         console.log("=== batchUpdateVariants API response ===", JSON.stringify(variantResult, null, 2));
+
+                        // Update inventory item SKU using real IDs from the refreshed product
+                        try {
+                          const token = localStorage.getItem("vendorToken");
+                          
+                          // Fetch fresh product to get real inventory item IDs (not temp_ UUIDs)
+                          const freshProduct = await fetchProduct({ id });
+                          const freshVariants = freshProduct?.variants || [];
+                          const formVariants = form.getValues('variants');
+
+                          for (const freshVariant of freshVariants) {
+                            // Get real inventory item ID from the fresh product
+                            const realInventoryItemId = freshVariant.inventory_items?.[0]?.inventory_item_id;
+                            if (!realInventoryItemId) continue;
+
+                            // Find matching form variant by title to get the desired SKU
+                            const matchingFormVariant = formVariants.find(
+                              fv => fv.title?.toLowerCase().trim() === freshVariant.title?.toLowerCase().trim()
+                            );
+                            const desiredSku = matchingFormVariant?.sku || freshVariant.sku;
+                            if (!desiredSku) continue;
+
+                            // Use the correct Medusa v2 endpoint: POST /vendors/inventory-items/:id
+                            const response = await fetch(
+                              `${API_BASE_URL}/vendors/inventory-items/${realInventoryItemId}`,
+                              {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${token}`,
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ sku: desiredSku })
+                              }
+                            );
+
+                            if (response.ok) {
+                              console.log(`✅ Updated inventory item SKU: ${realInventoryItemId} → ${desiredSku}`);
+                            } else {
+                              const err = await response.json().catch(() => ({}));
+                              console.warn(`⚠️ Failed to update inventory SKU for ${realInventoryItemId}:`, err);
+                            }
+                          }
+                        } catch (err) {
+                          console.warn('⚠️ Failed to update inventory item SKU (non-fatal):', err);
+                        }
                       }
 
                       // Associate variant images natively (Medusa v2.11.2+)
-                      // Uses variantInfo metadata from mediaItems — works for both existing and newly uploaded images
                       try {
                         const refreshedProduct = await fetchProduct({ id });
                         if (refreshedProduct?.variants && refreshedProduct?.images) {
 
-                          // Step 1: Build a map of optionValue → image IDs using variantInfo metadata
-                          // This is reliable for new uploads because variantInfo is preserved through the upload process
+                          // Build option value → image IDs map from updatedMedia variantInfo
                           const optionValueToImageIds: Record<string, string[]> = {};
-
                           for (const item of updatedMedia) {
-                            // Skip items without an ID or without variant association metadata
                             if (!item.id || !item.variantInfo) continue;
                             const { optionName, optionValues } = item.variantInfo;
                             if (!optionName || !optionValues?.length) continue;
-
                             for (const val of optionValues) {
                               const key = val.toLowerCase().replace(/\s+/g, '_');
                               if (!optionValueToImageIds[key]) optionValueToImageIds[key] = [];
@@ -2732,29 +2911,59 @@ const onSubmit = async (values: ProductFormValues) => {
                             }
                           }
 
-                          console.log("Option value → image ID map:", optionValueToImageIds);
+                          // ALSO build from colorValue directly (handles renamed option values)
+                          // This catches images that were uploaded for "grey" but variant is now "blue"
+                          // by checking the CURRENT form variant option values
+                          const currentFormVariants = form.getValues('variants');
 
-                          // Step 2: For each variant, find its matching images and associate them
                           for (const completedVariant of refreshedProduct.variants) {
+                            // Find color option value for this variant
                             const colorOpt = completedVariant.options?.find((o: any) =>
-                              o.option?.title?.toLowerCase() === 'color'
+                              o.option?.title?.toLowerCase() === 'color' ||
+                              isColorOption(o.option?.title || '')
                             );
                             const variantColor = colorOpt?.value?.toLowerCase().replace(/\s+/g, '_') || '';
 
-                            // Primary: use metadata-based map (works for new uploads)
+                            // Primary: metadata-based map
                             let matchingImageIds: string[] = optionValueToImageIds[variantColor] || [];
 
-                            // Fallback: if no metadata match, try URL-based matching for older existing images
-                            // that were uploaded before variantInfo tracking was implemented
+                            // Fallback 1: find images by colorValue in mediaItems
+                            // This handles the case where images exist but colorValue doesn't match new name
+                            if (matchingImageIds.length === 0) {
+                              // Get ALL images that have any variantInfo (color-associated images)
+                              const colorImages = updatedMedia.filter(item =>
+                                item.id && item.variantInfo?.optionName &&
+                                isColorOption(item.variantInfo.optionName)
+                              );
+
+                              // If there's only one color in the product now, assign all color images to it
+                              const uniqueColors = new Set(
+                                currentFormVariants
+                                  .flatMap(v => v.optionValues || [])
+                                  .filter(ov => isColorOption(ov.optionName))
+                                  .map(ov => ov.value?.toLowerCase())
+                              );
+
+                              if (uniqueColors.size === 1 && colorImages.length > 0) {
+                                matchingImageIds = colorImages.map(item => item.id).filter(Boolean);
+                                console.log(`🎨 Single color product — assigning all ${matchingImageIds.length} color images to ${variantColor}`);
+                              }
+                            }
+
+                            // Fallback 2: URL-based matching
                             if (matchingImageIds.length === 0 && variantColor) {
                               matchingImageIds = (refreshedProduct.images || [])
                                 .filter((img: any) => img.url.toLowerCase().includes(variantColor))
                                 .map((img: any) => img.id);
-                              console.log(`Fallback URL match for ${variantColor}:`, matchingImageIds);
+                            }
+
+                            // Fallback 3: assign ALL product images if only 1 variant exists
+                            if (matchingImageIds.length === 0 && refreshedProduct.variants.length === 1) {
+                              matchingImageIds = (refreshedProduct.images || []).map((img: any) => img.id);
+                              console.log(`📎 Single variant — assigning all ${matchingImageIds.length} images`);
                             }
 
                             if (matchingImageIds.length > 0) {
-                              // Find front image preferring metadata, then URL hint
                               const frontItem = updatedMedia.find(item =>
                                 item.id && matchingImageIds.includes(item.id) &&
                                 item.url.toLowerCase().includes('front')
@@ -2780,8 +2989,8 @@ const onSubmit = async (values: ProductFormValues) => {
                         }
                       } catch (err) {
                         console.error('Failed to associate variant images after update:', err);
-                        // Non-fatal — product still updated
                       }
+
                       
                       // Process inventory operations (wrap with try/catch)
                       try {
@@ -4821,4 +5030,4 @@ const isFormDirty =
     );
   };
   
-  export default EditProduct;   
+  export default EditProduct;

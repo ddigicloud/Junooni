@@ -767,6 +767,43 @@ export async function updateVariantImages({
 }
 
 /**
+ * Update a product option's metadata
+ */
+export async function updateProductOption({
+  productId,
+  optionId,
+  title,
+  metadata,
+}: {
+  productId: string;
+  optionId: string;
+  title: string;
+  metadata: Record<string, any>;
+}): Promise<any> {
+  const token = localStorage.getItem("vendorToken");
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/vendors/products/${productId}/options/${optionId}`,
+      { title, metadata },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error updating product option:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a product
+
+/**
  * Delete a product
  * @param id - The product ID to delete
  * @returns A Promise resolving to void
@@ -884,7 +921,14 @@ export async function fetchCurrentVendor(): Promise<any> {
 // ❌ REMOVE THIS - hardcoded and environment-specific
 //const DEFAULT_SALES_CHANNEL_ID = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H';
 
-const DEFAULT_MEDUSA_SALES_CHANNEL = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H'; // Medusa auto-assigns this
+const SALES_CHANNEL_MARKETPLACE = 'sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H'; // Default = Marketplace
+const SALES_CHANNEL_OWN_STORE   = 'sc_01KMAP3HD1EVDF9FT7EHHHV8HP'; // Own Store
+
+// All channels that could be on a product — used to clean up before assigning
+const ALL_JUNOONI_CHANNELS = [
+  SALES_CHANNEL_MARKETPLACE,
+  SALES_CHANNEL_OWN_STORE,
+];
 
 export async function assignProductSalesChannels({
   productId,
@@ -896,28 +940,26 @@ export async function assignProductSalesChannels({
   const token = localStorage.getItem("vendorToken");
 
   if (!salesChannelIds.length) {
-    console.warn('assignProductSalesChannels: No channels provided — skipping');
+    console.warn('assignProductSalesChannels: No channels provided');
     return;
   }
 
-  // Step 1: Build the complete list of channels to remove
-  // Always remove the Medusa default channel + any vendor channels not in desired list
-  const ALL_KNOWN_VENDOR_CHANNELS = [
-    SALES_CHANNEL_MARKETPLACE,  // sc_01JKWDD6MMQ7ZQCN6ZX4RXPP5H — same as default, skip
-    SALES_CHANNEL_OWN_STORE,    // sc_01KMAP3HD1EVDF9FT7EHHHV8HP
-    DEFAULT_MEDUSA_SALES_CHANNEL,
-  ];
+  console.log('🔴 assignProductSalesChannels called:', {
+    productId,
+    desired: salesChannelIds,
+  });
 
-  const channelsToRemove = ALL_KNOWN_VENDOR_CHANNELS.filter(
+  // Step 1: Remove ALL known channels first (clean slate)
+  // This handles: Medusa auto-assigns marketplace at creation,
+  // and we need to remove it if vendor is own-store-only.
+  // Use allSettled so 404s (not assigned) don't throw.
+  const channelsToRemove = ALL_JUNOONI_CHANNELS.filter(
     ch => !salesChannelIds.includes(ch)
   );
 
-  console.log('🔴 assignProductSalesChannels:', {
-    desired: salesChannelIds,
-    removing: channelsToRemove,
-  });
+  console.log('🔴 Channels to remove:', channelsToRemove);
+  console.log('🔴 Channels to add:', salesChannelIds);
 
-  // Step 2: Remove unwanted channels in parallel (best-effort, non-fatal)
   await Promise.allSettled(
     channelsToRemove.map(channelId =>
       axios.delete(
@@ -929,17 +971,19 @@ export async function assignProductSalesChannels({
             'Content-Type': 'application/json',
           },
         }
-      ).catch(err => {
-        // 404 is fine — channel wasn't assigned
+      ).then(() => {
+        console.log('✅ Removed channel:', channelId);
+      }).catch(err => {
+        // 404 = was never assigned, that's fine
         if (err?.response?.status !== 404) {
-          console.warn(`Could not remove channel ${channelId}:`, err?.response?.data || err.message);
+          console.warn(`⚠️ Could not remove channel ${channelId}:`, err?.response?.data || err.message);
         }
       })
     )
   );
 
-  // Step 3: Add only the desired channels
-  const assignResults = await Promise.all(
+  // Step 2: Add only desired channels
+  const results = await Promise.all(
     salesChannelIds.map(channelId =>
       axios.post(
         `${API_BASE_URL}/vendors/sales-channels/${channelId}/products/batch`,
@@ -951,14 +995,17 @@ export async function assignProductSalesChannels({
           },
         }
       ).then(r => {
-        console.log('✅ Assigned channel:', channelId);
+        console.log('✅ Added channel:', channelId);
         return r;
+      }).catch(err => {
+        console.error('❌ Failed to add channel:', channelId, err?.response?.data || err.message);
+        throw err;
       })
     )
   );
 
-  console.log('✅ Final channels assigned:', salesChannelIds);
-  return assignResults.map(r => r.data);
+  console.log('✅ Sales channel assignment complete. Final channels:', salesChannelIds);
+  return results.map(r => r.data);
 }
 /**
  * Fetch sales channels assigned to a product

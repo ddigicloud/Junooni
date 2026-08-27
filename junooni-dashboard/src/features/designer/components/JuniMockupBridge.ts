@@ -13,7 +13,6 @@
 import { renderMockupDirectly } from './MockupGeneratorClass'
 import type { DesignElement, TotalPricingBreakdown, AreaPricingInfo } from './types'
 import { resolveImageUrl, optimizeImage, cropTransparentPixels } from './utils'
-import { captureCanvasImageForArea } from './canvas-export-utils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 1: Data helpers (same as Canvas.tsx getCanvasConfig / getPrintableAreaFromPhoto)
@@ -517,38 +516,104 @@ export async function generateJuniCanvasLayout(opts: {
     } catch { /* canvas layout works without background image */ }
   }
 
-  // Adapter functions matching Canvas.tsx signatures
-  const getCanvasConfigFn     = (_areaId: string, _colorHex?: string) => canvasConfig
-  const getPrintableAreaFn    = (_areaId: string, _colorHex?: string) => printableArea
-  const getCustomizationAreaFn = (_areaId: string) => custArea
-
+  // Generate the side-by-side canvas layout using pure Canvas 2D API
+  // (no Konva dependency — works reliably in the JUNI chat browser context)
   try {
-    const layoutBase64 = await captureCanvasImageForArea(
-      areaKey,
-      designElements,
-      selectedColorHex,
-      canvasImages,
-      getCanvasConfigFn,
-      getPrintableAreaFn,
-      getCustomizationAreaFn,
+    // Left panel: clean mockup (design on garment, no annotations)
+    const { canvasConfigs, printableAreas } = getAllConfigs(tech)
+    const mockupPhoto = findMockupPhoto(tech.mockupPhotos ?? [], area, selectedColorHex)
+    if (!mockupPhoto) return null
+
+    const cleanBase64 = await renderMockupDirectly(
+      mockupPhoto, designElements, canvasConfigs, printableAreas, selectedColorHex, canvasConfig.width
     )
-    if (layoutBase64) {
-      console.log(`[JuniMockupBridge] Canvas layout generated: ${layoutBase64.length} chars for area="${areaKey}"`)
-      return layoutBase64
-    } else {
-      // captureCanvasImageForArea returned null — this means visibleElements was empty
-      // Fallback: use the mockup from renderMockupDirectly as the canvas layout
-      console.warn(`[JuniMockupBridge] captureCanvasImageForArea returned null for area="${areaKey}" — falling back to renderMockupDirectly`)
-      const mockupPhoto = findMockupPhoto(tech.mockupPhotos ?? [], area, selectedColorHex)
-      if (!mockupPhoto) return null
-      const { canvasConfigs, printableAreas } = getAllConfigs(tech)
-      const fallbackBase64 = await renderMockupDirectly(
-        mockupPhoto, designElements, canvasConfigs, printableAreas, selectedColorHex, 800
-      )
-      return fallbackBase64 ?? null
-    }
+    if (!cleanBase64) return null
+
+    // Load the clean panel image
+    const loadImg = (src: string): Promise<HTMLImageElement> =>
+      new Promise((res, rej) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = src })
+
+    const cleanImg = await loadImg(cleanBase64)
+
+    // Build side-by-side composite using Canvas 2D
+    const panelW  = cleanImg.width
+    const panelH  = cleanImg.height
+    const DIVIDER = 2
+    const GAP     = 24
+    const HEADER  = 36
+    const TOTAL_W = panelW * 2 + GAP * 2 + DIVIDER
+    const TOTAL_H = panelH + HEADER
+
+    const offscreen = document.createElement('canvas')
+    offscreen.width  = TOTAL_W
+    offscreen.height = TOTAL_H
+    const ctx = offscreen.getContext('2d')!
+
+    // Dark header bar
+    ctx.fillStyle = '#222222'
+    ctx.fillRect(0, 0, TOTAL_W, HEADER)
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `bold ${Math.round(HEADER * 0.45)}px Arial`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('For Manufacturer (Clean)', panelW / 2, HEADER / 2)
+    ctx.fillText('Internal Reference (With Dimensions)', panelW + GAP * 2 + DIVIDER + panelW / 2, HEADER / 2)
+
+    // Divider
+    ctx.fillStyle = '#888888'
+    ctx.fillRect(panelW + GAP, 0, DIVIDER, TOTAL_H)
+
+    // Left: clean panel
+    ctx.fillStyle = '#f8f8f8'
+    ctx.fillRect(0, HEADER, panelW, panelH)
+    ctx.drawImage(cleanImg, 0, HEADER, panelW, panelH)
+
+    // Left: dashed orange print area box
+    const pa = printableArea
+    const scale = panelW / canvasConfig.width
+    ctx.strokeStyle = '#e65100'
+    ctx.lineWidth = 2
+    ctx.setLineDash([6, 4])
+    ctx.strokeRect(pa.x * scale, HEADER + pa.y * scale, pa.width * scale, pa.height * scale)
+    ctx.setLineDash([])
+
+    // Right: annotated panel (same image + dimension badge)
+    ctx.fillStyle = '#f8f8f8'
+    ctx.fillRect(panelW + GAP * 2 + DIVIDER, HEADER, panelW, panelH)
+    ctx.drawImage(cleanImg, panelW + GAP * 2 + DIVIDER, HEADER, panelW, panelH)
+
+    // Right: red dashed print area box
+    const rx = panelW + GAP * 2 + DIVIDER
+    ctx.strokeStyle = '#FF0000'
+    ctx.lineWidth = 2
+    ctx.setLineDash([6, 4])
+    ctx.strokeRect(rx + pa.x * scale, HEADER + pa.y * scale, pa.width * scale, pa.height * scale)
+    ctx.setLineDash([])
+
+    // Dimension badge
+    const avgPPI = ((pa.width / canvasConfig.realWorldWidth) + (pa.height / canvasConfig.realWorldHeight)) / 2
+    const wIn    = (pa.width  / avgPPI).toFixed(2)
+    const hIn    = (pa.height / avgPPI).toFixed(2)
+    const label  = `${wIn}" × ${hIn}"`
+    const badgeW = label.length * 7 + 14
+    const bx     = rx + pa.x * scale
+    const by     = HEADER + pa.y * scale + 4
+    ctx.fillStyle = '#e65100'
+    ctx.beginPath()
+    ctx.roundRect?.(bx, by, badgeW, 22, 3) ?? ctx.rect(bx, by, badgeW, 22)
+    ctx.fill()
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '12px Arial'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(label, bx + 7, by + 11)
+
+    const layoutBase64 = offscreen.toDataURL('image/png', 1.0)
+    console.log(`[JuniMockupBridge] Canvas layout generated: ${layoutBase64.length} chars for area="${area}"`)
+    return layoutBase64
+
   } catch (err: any) {
-    console.error('[JuniMockupBridge] Canvas layout generation failed:', err.message, err.stack?.slice(0, 200))
+    console.error('[JuniMockupBridge] Canvas layout generation failed:', err.message)
     return null
   }
 }

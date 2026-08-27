@@ -15,6 +15,13 @@ import { cropTransparentPixels } from './utils';
 // Merges all visible image elements per area into a single axis-aligned
 // bounding-box (AABB) "manufacturing film" PNG, clamped to the printable area.
 
+// ── extractDesignImages ───────────────────────────────────────────────────────
+// Renders all visible image elements per area into a single manufacturing-film
+// PNG, capturing exactly what the creator sees (position, size, rotation,
+// opacity, scaleX/scaleY) — clamped to the printable area.
+// Output is at the highest pixel density the source images can provide,
+// but the LAYOUT always matches canvas display exactly.
+
 export const extractDesignImages = (
   designElements: Record<string, DesignElement[]>,
   getCanvasConfig: (areaId: string, colorHex?: string) => any,
@@ -25,75 +32,92 @@ export const extractDesignImages = (
   Object.entries(designElements).forEach(([area, elements]) => {
     if (!Array.isArray(elements)) return;
 
-    const visibleImageElements = elements.filter(el => el.type === 'image' && el.visible !== false && el.image);
+    const visibleImageElements = elements.filter(
+      el => el.type === 'image' && el.visible !== false && el.image
+    );
     if (visibleImageElements.length === 0) return;
 
     const canvasConfig  = getCanvasConfig(area);
     const printableArea = getPrintableAreaFromPhoto(area);
 
     try {
-      const sortedElements = [...visibleImageElements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+      const sortedElements = [...visibleImageElements].sort(
+        (a, b) => (a.zIndex || 0) - (b.zIndex || 0)
+      );
 
-      // Calculate AABB including rotation
+      // ── Step 1: Calculate AABB of all elements (display size, with rotation) ──
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
       sortedElements.forEach(element => {
-        const w  = element.width  * (element.scaleX || 1);
-        const h  = element.height * (element.scaleY || 1);
-        const cx = element.x + w / 2;
-        const cy = element.y + h / 2;
+        // displayW/displayH = what's visible on canvas (respects scaleX/scaleY)
+        const displayW = element.width  * (element.scaleX || 1);
+        const displayH = element.height * (element.scaleY || 1);
+        const cx = element.x + displayW / 2;
+        const cy = element.y + displayH / 2;
         const rotation = element.rotation || 0;
 
         if (Math.abs(rotation) > 0.1) {
           const rad = (rotation * Math.PI) / 180;
-          const cos = Math.cos(rad), sin = Math.sin(rad);
-          [{ x: -w/2, y: -h/2 }, { x: w/2, y: -h/2 }, { x: w/2, y: h/2 }, { x: -w/2, y: h/2 }].forEach(c => {
-            minX = Math.min(minX, cx + c.x * cos - c.y * sin);
-            maxX = Math.max(maxX, cx + c.x * cos - c.y * sin);
-            minY = Math.min(minY, cx + c.x * sin + c.y * cos);  // intentional: cx for y keeps symmetry
-            maxY = Math.max(maxY, cy + c.x * sin + c.y * cos);
-          });
-          // Redo correctly
-          minX = Infinity; minY = Infinity; maxX = -Infinity; maxY = -Infinity;
-          [{ x: -w/2, y: -h/2 }, { x: w/2, y: -h/2 }, { x: w/2, y: h/2 }, { x: -w/2, y: h/2 }].forEach(c => {
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+          const hw = displayW / 2;
+          const hh = displayH / 2;
+          // All 4 rotated corners
+          [
+            { x: -hw, y: -hh }, { x: hw, y: -hh },
+            { x:  hw, y:  hh }, { x: -hw, y: hh },
+          ].forEach(c => {
             const rx = cx + c.x * cos - c.y * sin;
             const ry = cy + c.x * sin + c.y * cos;
             minX = Math.min(minX, rx); maxX = Math.max(maxX, rx);
             minY = Math.min(minY, ry); maxY = Math.max(maxY, ry);
           });
         } else {
-          minX = Math.min(minX, element.x);       maxX = Math.max(maxX, element.x + w);
-          minY = Math.min(minY, element.y);       maxY = Math.max(maxY, element.y + h);
+          minX = Math.min(minX, element.x);            maxX = Math.max(maxX, element.x + displayW);
+          minY = Math.min(minY, element.y);            maxY = Math.max(maxY, element.y + displayH);
         }
       });
 
-      // Clamp to printable area
-      const pL = printableArea.x, pR = printableArea.x + printableArea.width;
-      const pT = printableArea.y, pB = printableArea.y + printableArea.height;
+      // ── Step 2: Clamp to printable area ──────────────────────────────────────
+      const pL = printableArea.x;
+      const pR = printableArea.x + printableArea.width;
+      const pT = printableArea.y;
+      const pB = printableArea.y + printableArea.height;
+
       const wasCropped = minX < pL || maxX > pR || minY < pT || maxY > pB;
       minX = Math.max(minX, pL); maxX = Math.min(maxX, pR);
       minY = Math.max(minY, pT); maxY = Math.min(maxY, pB);
 
       if (minX >= maxX || minY >= maxY) return;
 
-      const bwCanvas = maxX - minX;
-      const bhCanvas = maxY - minY;
+      const bwCanvas = maxX - minX; // bounding box width  in canvas pixels
+      const bhCanvas = maxY - minY; // bounding box height in canvas pixels
 
-      // Calculate output scale to preserve original pixel density
-      let maxRequiredScale = 0;
+      // ── Step 3: Choose output scale ───────────────────────────────────────────
+      // We want the highest quality possible without distorting the layout.
+      // Strategy: for each element, find how many original pixels fit into one
+      // canvas pixel of its display area → that's the quality multiplier.
+      // Cap at 4× to avoid insane canvas sizes; floor at 1×.
+      let maxQualityScale = 1;
       sortedElements.forEach(el => {
-        const origW = el.originalImageWidth || el.image!.naturalWidth || el.image!.width;
-        const origH = el.originalImageHeight || el.image!.naturalHeight || el.image!.height;
+        const origW    = el.originalImageWidth  || el.image!.naturalWidth  || el.image!.width;
+        const origH    = el.originalImageHeight || el.image!.naturalHeight || el.image!.height;
         const displayW = el.width  * (el.scaleX || 1);
         const displayH = el.height * (el.scaleY || 1);
-        const scaleNeeded = Math.max(origW / displayW, origH / displayH);
-        maxRequiredScale = Math.max(maxRequiredScale, scaleNeeded);
+        if (displayW > 0 && displayH > 0) {
+          const scaleX = origW / displayW;
+          const scaleY = origH / displayH;
+          // Use the smaller axis so we never upscale beyond true resolution
+          maxQualityScale = Math.max(maxQualityScale, Math.min(scaleX, scaleY));
+        }
       });
 
-      const outputScale  = Math.max(maxRequiredScale, 1);
+      // Cap: 4× max; if creator zoomed in past original resolution, stay at 1×
+      const outputScale  = Math.min(Math.max(maxQualityScale, 1), 4);
       const outputWidth  = Math.round(bwCanvas * outputScale);
       const outputHeight = Math.round(bhCanvas * outputScale);
 
+      // ── Step 4: Render each element exactly as the creator positioned it ──────
       const mergedCanvas = document.createElement('canvas');
       mergedCanvas.width  = outputWidth;
       mergedCanvas.height = outputHeight;
@@ -105,55 +129,79 @@ export const extractDesignImages = (
 
       sortedElements.forEach(element => {
         if (!element.image) return;
-        mergedCtx.save();
 
+        // Display dimensions on canvas (what creator sees inside the 8 handles)
         const displayW = element.width  * (element.scaleX || 1);
         const displayH = element.height * (element.scaleY || 1);
-        const centerX  = ((element.x + displayW / 2) - minX) * outputScale;
-        const centerY  = ((element.y + displayH / 2) - minY) * outputScale;
 
+        // Center of this element in canvas-space, shifted to bounding-box origin,
+        // then scaled to output pixels
+        const centerX = ((element.x + displayW / 2) - minX) * outputScale;
+        const centerY = ((element.y + displayH / 2) - minY) * outputScale;
+
+        // How large to draw the image in output pixels — exactly matches the
+        // canvas display size, scaled up by outputScale for quality
+        const drawW = displayW * outputScale;
+        const drawH = displayH * outputScale;
+
+        mergedCtx.save();
         mergedCtx.translate(centerX, centerY);
-        if (element.rotation) mergedCtx.rotate((element.rotation * Math.PI) / 180);
-        mergedCtx.globalAlpha = element.opacity || 1;
+        if (element.rotation) {
+          mergedCtx.rotate((element.rotation * Math.PI) / 180);
+        }
+        mergedCtx.globalAlpha = element.opacity ?? 1;
 
-        const origW = element.originalImageWidth  || element.image.naturalWidth  || element.image.width;
-        const origH = element.originalImageHeight || element.image.naturalHeight || element.image.height;
-        mergedCtx.drawImage(element.image, -origW / 2, -origH / 2, origW, origH);
+        // Draw centered on the translated origin at display dimensions × outputScale
+        mergedCtx.drawImage(
+          element.image,
+          -drawW / 2, -drawH / 2,
+          drawW, drawH
+        );
         mergedCtx.restore();
       });
 
       const mergedBase64 = mergedCanvas.toDataURL('image/png', 1.0);
 
-      const avgPPI = ((printableArea.width / canvasConfig.realWorldWidth) + (printableArea.height / canvasConfig.realWorldHeight)) / 2;
+      // ── Step 5: Physical dimension metadata ───────────────────────────────────
+      const avgPPI = (
+        (printableArea.width  / canvasConfig.realWorldWidth) +
+        (printableArea.height / canvasConfig.realWorldHeight)
+      ) / 2;
       const widthInches  = bwCanvas / avgPPI;
       const heightInches = bhCanvas / avgPPI;
-      const dpi = Math.round((outputWidth / widthInches + outputHeight / heightInches) / 2);
+      const dpi = Math.round(
+        (outputWidth / widthInches + outputHeight / heightInches) / 2
+      );
       const quality = dpi >= 300 ? 'Excellent' : dpi >= 150 ? 'Good' : 'Poor';
 
       designImages.push({
-        id: `film-${area}-${Date.now()}`,
+        id:   `film-${area}-${Date.now()}`,
         name: `${area}-manufacturing-film${wasCropped ? '-cropped' : ''}.png`,
         type: 'image/png',
         base64Data: mergedBase64,
-        originalWidth: outputWidth,
+        originalWidth:  outputWidth,
         originalHeight: outputHeight,
         area,
-        position: { x: minX, y: minY },
+        position:   { x: minX, y: minY },
         dimensions: { width: bwCanvas, height: bhCanvas },
         physicalDimensions: {
-          widthInches: Number(widthInches.toFixed(3)),
+          widthInches:  Number(widthInches.toFixed(3)),
           heightInches: Number(heightInches.toFixed(3)),
-          xInches: Number(((minX - printableArea.x) / printableArea.width * canvasConfig.realWorldWidth).toFixed(3)),
-          yInches: Number(((minY - printableArea.y) / printableArea.height * canvasConfig.realWorldHeight).toFixed(3)),
+          xInches: Number(
+            ((minX - printableArea.x) / printableArea.width  * canvasConfig.realWorldWidth ).toFixed(3)
+          ),
+          yInches: Number(
+            ((minY - printableArea.y) / printableArea.height * canvasConfig.realWorldHeight).toFixed(3)
+          ),
         },
-        isMerged: true,
+        isMerged:          true,
         isManufacturingFilm: true,
         wasCropped,
-        elementCount: sortedElements.length,
+        elementCount:   sortedElements.length,
         dpi,
-        printQuality: quality,
+        printQuality:   quality,
         outputScale,
-        description: `Manufacturing film for ${area.toUpperCase()}. ${sortedElements.length} element(s) merged. ${wasCropped ? 'Cropped to printable area.' : ''} DPI: ${dpi} (${quality}).`,
+        description: `Manufacturing film for ${area.toUpperCase()}. ${sortedElements.length} element(s). ${wasCropped ? 'Cropped to printable area.' : ''} DPI: ${dpi} (${quality}).`,
       });
 
     } catch (error) {

@@ -142,7 +142,7 @@ const activeCart = (cart?.items?.length > 0) ? cart : previewCart
   )
 
   const logoMark = (
-    <Link href={`/${handle}`} className="block transition-opacity hover:opacity-80">
+    <Link href="/" className="block transition-opacity hover:opacity-80">
       {logoMarkInner}
     </Link>
   )

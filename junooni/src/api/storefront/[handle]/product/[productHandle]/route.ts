@@ -63,16 +63,23 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   try {
     const { data: [productData] } = await query.graph({
       entity: "product",
-      fields: [
+            fields: [
         "id", "title", "handle", "thumbnail", "status", "description",
-        "variants.id", "variants.title",
+        "subtitle", "weight", "length", "width", "height",
+        "material", "origin_country", "discountable",
+        "variants.id", "variants.title", "variants.sku",
         "variants.manage_inventory",
         "variants.allow_backorder",
+        "variants.metadata",
+        "variants.inventory_items.inventory_item_id",
         "variants.inventory_items.inventory.location_levels.stocked_quantity",
         "variants.inventory_items.inventory.location_levels.reserved_quantity",
         "variants.prices.id", "variants.prices.amount", "variants.prices.currency_code",
-        "images.id", "images.url",
-        "options.id", "options.title",
+        "variants.options.id", "variants.options.value",
+        "variants.options.option.id", "variants.options.option.title",
+        "variants.images.id", "variants.images.url",
+        "images.id", "images.url", "images.rank",
+        "options.id", "options.title", "options.is_exclusive",
         "options.values.id", "options.values.value",
         "categories.id", "categories.name", "categories.handle",
         "metadata",

@@ -39,8 +39,7 @@ interface ProductSession {
   sameDesignForAllAreas?: boolean  // creator chose same image for all areas
   calculatedPrice?: number  // exact price from calculateJuniPricing (same as Canvas designer)
   priceBreakdown?: any    // full breakdown for display
-  canvasLayoutBase64?: string  // primary canvas layout PNG
-  allCanvasLayouts?: string[]   // one per area for multi-area products
+  canvasLayoutSessionIds?: string[]  // server-side session IDs for canvas layout PNGs
 }
 
 interface Message {
@@ -1112,36 +1111,55 @@ export default function AIAssistant({ vendorId }: Props) {
                                   productSessionRef.current.priceBreakdown  = firstPricing
                                 }
 
-                                // Generate canvas layouts for ALL areas
-                                // For multi-area: one layout per area; for single: one layout
-                                const areasToLayout = Object.keys(session.designsByArea ?? {}).length > 1
-                                  ? Object.keys(session.designsByArea ?? {})
-                                  : [session.area ?? "front"]
+                                // Generate canvas layout and store server-side (same as mockups)
+                                // Never keep large base64 in productSessionRef — it goes into every POST body
+                                const canvasLayoutSessionIds: string[] = []
 
-                                const canvasLayouts: string[] = []
-                                for (const layoutArea of areasToLayout) {
-                                  try {
-                                    const areaDesign = session.designsByArea?.[layoutArea]?.base64 ?? session.designBase64!
-                                    const layoutBase64 = await generateJuniCanvasLayout({
-                                      blankData:        session.blankData,
-                                      technologyId:     session.technologyId!,
-                                      selectedColorHex: session.selectedColors[0].hex,
-                                      designBase64:     areaDesign,
-                                      area:             layoutArea,
-                                    })
-                                    if (layoutBase64) {
-                                      canvasLayouts.push(layoutBase64)
-                                      console.log(`[JUNI] Canvas layout generated for area: ${layoutArea}`)
+                                // Try proper side-by-side layout first
+                                if (session.blankData && session.technologyId && session.designBase64) {
+                                  const areasToLayout = Object.keys(session.designsByArea ?? {}).length > 1
+                                    ? Object.keys(session.designsByArea ?? {})
+                                    : [session.area ?? "front"]
+
+                                  for (const layoutArea of areasToLayout) {
+                                    try {
+                                      const areaDesign = session.designsByArea?.[layoutArea]?.base64 ?? session.designBase64!
+                                      const layoutBase64 = await generateJuniCanvasLayout({
+                                        blankData:        session.blankData,
+                                        technologyId:     session.technologyId!,
+                                        selectedColorHex: session.selectedColors[0].hex,
+                                        designBase64:     areaDesign,
+                                        area:             layoutArea,
+                                      })
+                                      if (layoutBase64 && layoutBase64.length > 100) {
+                                        // Store server-side, send only session ID
+                                        const layoutRes = await fetch(API_URL, {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                          credentials: "include",
+                                          body: JSON.stringify({ action: "store_mockup", vendorId, base64: layoutBase64, area: layoutArea, colorName: "canvas-layout", messages: [] }),
+                                        })
+                                        if (layoutRes.ok) {
+                                          const ld = await layoutRes.json()
+                                          canvasLayoutSessionIds.push(ld.mockupSessionId)
+                                          console.log(`[JUNI] Canvas layout stored: session=${ld.mockupSessionId} area=${layoutArea}`)
+                                        }
+                                      }
+                                    } catch (layoutErr: any) {
+                                      console.warn(`[JUNI] Canvas layout failed for ${layoutArea}:`, layoutErr.message)
                                     }
-                                  } catch (layoutErr: any) {
-                                    console.warn(`[JUNI] Canvas layout failed for ${layoutArea}:`, layoutErr.message)
                                   }
                                 }
-                                // Store all canvas layouts as JSON array for backend
-                                if (canvasLayouts.length > 0) {
-                                  productSessionRef.current.canvasLayoutBase64 = canvasLayouts[0]  // primary
-                                  productSessionRef.current.allCanvasLayouts = canvasLayouts        // all areas
+
+                                // Fallback: use mockup sessions as canvas layout (already stored server-side)
+                                if (canvasLayoutSessionIds.length === 0 && slides.length > 0) {
+                                  canvasLayoutSessionIds.push(...slides.map(s => s.sessionId).filter(Boolean) as string[])
+                                  console.log(`[JUNI] Using mockup sessions as canvas layout fallback`)
                                 }
+
+                                // Store session IDs (tiny — safe in productSession)
+                                productSessionRef.current.canvasLayoutSessionIds = canvasLayoutSessionIds
+                                console.log(`[JUNI] canvasLayoutSessionIds stored: [${canvasLayoutSessionIds.join(", ")}] (${canvasLayoutSessionIds.length} sessions)`)
 
                                 addAssistantMessage(
                                   `Here's your preview! Swipe to see all ${slides.length > 1 ? `${slides.length} color variants` : 'options'} 👆

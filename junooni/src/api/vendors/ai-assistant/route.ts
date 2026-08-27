@@ -7,7 +7,7 @@ import { buildSystemPrompt } from "../../../lib/ai/buildSystemPrompt"
 import { JUNI_TOOLS }  from "../../../lib/ai/toolDefinitions"
 import { handleTool }  from "../../../lib/ai/toolHandlers"
 import { INLINE_PRODUCT_TOOLS, INLINE_PRODUCT_EXTRA_TOOLS } from "../../../lib/ai/inline-product-tools"
-import { INLINE_PRODUCT_PROMPT, PRICING_AND_ARTWORK_PROMPT_ADDITION } from "../../../lib/ai/inline-product-prompt"
+import { INLINE_PRODUCT_PROMPT } from "../../../lib/ai/inline-product-prompt"
 import {
   handleDetectProductIntent,
   handleSearchBlanks,
@@ -283,13 +283,32 @@ async function dispatchTool(
         }
       }
 
-      // Pass canvas layout PNG for artwork file 2 (manufacturer reference)
-      if (productSession?.canvasLayoutBase64) {
-        createArgs.canvas_layout_base64 = productSession.canvasLayoutBase64
+      // Retrieve canvas layout PNGs from server-side session store using session IDs
+      // (never sent as base64 in body — stored server-side same as mockups)
+      // Canvas layout: use the approved mockup session (already server-side) as the canvas reference
+      // This is the simplest guaranteed approach — no productSession dependency
+      if (!createArgs.canvas_layout_base64 && approvedMockupSessionId) {
+        const approvedBase64 = getMockupPreview(approvedMockupSessionId)
+        if (approvedBase64 && approvedBase64.length > 100) {
+          createArgs.canvas_layout_base64 = approvedBase64
+          createArgs.all_canvas_layouts   = [approvedBase64]
+          console.log(`[create_product_from_chat] Canvas layout from approved mockup session: ${approvedBase64.length} chars`)
+        }
       }
-      // Pass all canvas layouts for multi-area products
-      if (productSession?.allCanvasLayouts && productSession.allCanvasLayouts.length > 1) {
-        createArgs.all_canvas_layouts = productSession.allCanvasLayouts
+
+      // Also try canvasLayoutSessionIds if present (better quality canvas layout)
+      if (productSession?.canvasLayoutSessionIds && productSession.canvasLayoutSessionIds.length > 0) {
+        const layoutBase64s = productSession.canvasLayoutSessionIds
+          .map((sid: string) => getMockupPreview(sid))
+          .filter(Boolean) as string[]
+        console.log(`[create_product_from_chat] Canvas layout sessions: ${productSession.canvasLayoutSessionIds.length}, retrieved: ${layoutBase64s.length}`)
+        if (layoutBase64s.length > 0) {
+          createArgs.canvas_layout_base64 = layoutBase64s[0]
+          createArgs.all_canvas_layouts   = layoutBase64s
+          console.log(`[create_product_from_chat] Canvas layouts from sessions: ${layoutBase64s.length}`)
+        }
+      } else {
+        console.log(`[create_product_from_chat] No canvasLayoutSessionIds — using approved mockup as canvas layout`)
       }
 
       // Pass per-area designs for multi-area artwork files
@@ -343,9 +362,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         technologyId?:    string
         calculatedPrice?: number  // exact price from JuniMockupBridge.calculateJuniPricing
         priceBreakdown?:  any
-        canvasLayoutBase64?: string
+        canvasLayoutBase64?: string  // kept for backward compat
         designsByArea?: Record<string, { sessionId: string; base64: string; filename: string }>
-        allCanvasLayouts?: string[]   // one per area for multi-area
+        allCanvasLayouts?: string[]
+        canvasLayoutSessionIds?: string[]  // server-side session IDs for canvas layouts
       }
     }
 
@@ -420,8 +440,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     const systemPrompt =
       buildSystemPrompt(vendor, currentPage) +
-      INLINE_PRODUCT_PROMPT +
-      PRICING_AND_ARTWORK_PROMPT_ADDITION
+      INLINE_PRODUCT_PROMPT
 
     const functionDeclarations = [
       ...JUNI_TOOLS,
@@ -455,7 +474,26 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       },
     })
 
-    let result = await chat.sendMessage({ message: lastMessage.content })
+    // Retry Gemini sendMessage with exponential backoff for 503/429/500 errors
+    const sendWithRetry = async (payload: any, maxRetries = 3): Promise<any> => {
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          return await chat.sendMessage(payload)
+        } catch (err: any) {
+          const status = err?.status ?? err?.response?.status ?? 0
+          const isRetryable = status === 503 || status === 429 || status === 500 || status === 502
+          if (isRetryable && attempt < maxRetries) {
+            const backoff = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 200, 8000)
+            console.warn(`[JUNI] Gemini ${status} on attempt ${attempt + 1} — retrying in ${Math.round(backoff)}ms`)
+            await new Promise(r => setTimeout(r, backoff))
+          } else {
+            throw err
+          }
+        }
+      }
+    }
+
+    let result = await sendWithRetry({ message: lastMessage.content })
 
     let iterations    = 0
     let lastToolName: string | undefined
@@ -526,7 +564,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         })
       }
 
-      result = await chat.sendMessage({ message: toolResultParts })
+      result = await sendWithRetry({ message: toolResultParts })
       iterations++
     }
 

@@ -366,14 +366,48 @@ const elementOrder: string[] = storedOrder.length === 0
   }
 
   // ── Variant image mapping ──────────────────────────────────────────────────
+    // ── Variant image mapping — use variant.images directly ───────────────────
   const allImages: any[] = product?.images ?? []
-  const getImageForColor = (colorName: string): string | null => {
-    const slug = colorName.toLowerCase().replace(/\s+/g, "_")
-    const front = allImages.find(img =>
-      img.url?.toLowerCase().includes(slug) && img.url?.toLowerCase().includes("front")
-    )
-    if (front) return front.url
-    return allImages.find(img => img.url?.toLowerCase().includes(slug))?.url ?? null
+
+   const getVariantForOptions = (opts: Record<string, string>) => {
+    if (!product?.variants?.length) return null
+
+    console.log('🔍 getVariantForOptions called with:', opts)
+    console.log('🔍 Total variants:', product.variants.length)
+    product.variants.slice(0, 3).forEach((v: any) => {
+      console.log('🔍 Variant:', v.title, '| images:', v.images?.length ?? 0, '| options:', v.options?.map((o: any) => `${o.option?.title}=${o.value}`))
+    })
+
+    // Try exact match first (all selected options match)
+    const exact = product.variants.find((v: any) => {
+      const vOpts: any[] = v.options ?? []
+      return Object.entries(opts).every(([optionTitle, selectedVal]) => {
+        if (!selectedVal) return true
+        return vOpts.some((o: any) => {
+          const thisTitle = (o.option?.title ?? "").toLowerCase()
+          const thisVal   = (o.value ?? "").toLowerCase()
+          return thisTitle === optionTitle && thisVal === selectedVal.toLowerCase()
+        })
+      })
+    })
+        console.log('🔍 Exact match:', exact?.title ?? 'NONE')
+    if (exact) return exact
+
+    // Partial match — find any variant that matches at least the selected options
+    // (useful when e.g. color is selected but size is not yet)
+    const selectedEntries = Object.entries(opts).filter(([, val]) => !!val)
+    if (selectedEntries.length === 0) return product.variants[0]
+
+    return product.variants.find((v: any) => {
+      const vOpts: any[] = v.options ?? []
+      return selectedEntries.every(([optionTitle, selectedVal]) =>
+        vOpts.some((o: any) => {
+          const thisTitle = (o.option?.title ?? "").toLowerCase()
+          const thisVal   = (o.value ?? "").toLowerCase()
+          return thisTitle === optionTitle && thisVal === selectedVal.toLowerCase()
+        })
+      )
+    }) ?? product.variants[0]
   }
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -410,33 +444,14 @@ const elementOrder: string[] = storedOrder.length === 0
   }, [pd.description_collapsed])
 
   // ── Display image ──────────────────────────────────────────────────────────
-  const displayImage = (selectedColor ? getImageForColor(selectedColor) : null)
-    ?? product?.thumbnail ?? null
+    // ── Display image — from matched variant ───────────────────────────────────
+  const matchedVariantForDisplay = getVariantForOptions(selectedOptions)
+  const variantImages: any[] = matchedVariantForDisplay?.images ?? []
+  const displayImage = variantImages[0]?.url ?? product?.thumbnail ?? null
 
   // ── Variant resolution ─────────────────────────────────────────────────────
-  const findVariant = () => {
-    if (!product?.variants?.length) return null
-    return product.variants.find((v: any) => {
-      const opts: any[] = v.options ?? []
-      if (opts.length === 0) {
-        // title fallback
-        const segments = (v.title ?? "").toLowerCase().split(/\s*\/\s*/)
-        return Object.values(selectedOptions).every(val =>
-          !val || segments.some(s => s === val.toLowerCase())
-        )
-      }
-      // check every selected option matches this variant
-      return Object.entries(selectedOptions).every(([optionTitle, selectedVal]) => {
-        if (!selectedVal) return true
-        return opts.some((o: any) => {
-          const thisOptionTitle = (o.option?.title ?? "").toLowerCase()
-          const thisValue = (o.value ?? o.option_value ?? "").toLowerCase()
-          return thisOptionTitle === optionTitle && thisValue === selectedVal.toLowerCase()
-        })
-      })
-    }) ?? product.variants[0]
-  }
-  const selectedVariant = findVariant()
+    // ── Variant resolution — reuse getVariantForOptions ───────────────────────
+  const selectedVariant = getVariantForOptions(selectedOptions) ?? product?.variants?.[0]
 
   // console.log('[debug] selectedVariant:', JSON.stringify(selectedVariant, null, 2))
   // console.log('[debug] inventory_quantity:', selectedVariant?.inventory_quantity)
@@ -539,33 +554,33 @@ useEffect(() => {
     return () => window.removeEventListener("message", handler)
   }, [])
 
-  // ── Initial gallery images ─────────────────────────────────────────────────
+    // ── Gallery images — driven purely by selected variant ────────────────────
   const firstVariant = product.variants?.[0]
   const initialImages: any[] = firstVariant?.images?.length > 0
     ? firstVariant.images
     : (product.images ?? []).slice(0, 4)
 
-    const currentImages = (() => {
-  if (!selectedColor) return initialImages
+  const currentImages = (() => {
+    // Get the variant that matches ALL currently selected options
+    const matchedVariant = getVariantForOptions(selectedOptions)
+    const imgs: any[] = matchedVariant?.images ?? []
 
-  const colorSlug = selectedColor.toLowerCase().replace(/\s+/g, "_")
+    if (imgs.length === 0) return initialImages
 
-  const colorImages = allImages.filter((img: any) =>
-    img.url?.toLowerCase().includes(colorSlug)
-  )
+    // Sort: front first
+    return [...imgs].sort((a: any, b: any) => {
+      const aUrl = a.url?.toLowerCase() ?? ""
+      const bUrl = b.url?.toLowerCase() ?? ""
+      if (aUrl.includes("front") && !bUrl.includes("front")) return -1
+      if (!aUrl.includes("front") && bUrl.includes("front")) return 1
+      return 0
+    })
+  })()
 
-  if (colorImages.length === 0) return initialImages
-
-  // Sort: front first, then back, then others
-  return [...colorImages].sort((a: any, b: any) => {
-    const aUrl = a.url?.toLowerCase() ?? ""
-    const bUrl = b.url?.toLowerCase() ?? ""
-    if (aUrl.includes("front") && !bUrl.includes("front")) return -1
-    if (!aUrl.includes("front") && bUrl.includes("front")) return 1
-    return 0
-  })
-
-})() 
+  // ADD THESE RIGHT HERE — after currentImages is declared
+  console.log('🖼️ selectedOptions:', selectedOptions)
+  console.log('🖼️ currentImages count:', currentImages.length, currentImages.map(i => i.url))
+  console.log('🖼️ selectedVariant:', selectedVariant?.title, '| variant images:', selectedVariant?.images?.length)
 
   // ── Render element by key ──────────────────────────────────────────────────
   const renderElement = (el: string) => {
@@ -1374,7 +1389,7 @@ useEffect(() => {
 
       {/* Product detail */}
       <div className="px-6 py-4 mx-auto max-w-7xl">
-        <GalleryProvider initialImages={currentImages} key={selectedColor}>
+           <GalleryProvider initialImages={currentImages} variantId={selectedVariant?.id ?? ""}>
           <div className="grid items-start gap-16 mb-6 md:grid-cols-2">
 
             {/* Left: Gallery — updates on color select */}
